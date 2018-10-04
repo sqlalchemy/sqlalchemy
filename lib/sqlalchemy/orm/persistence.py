@@ -1337,9 +1337,7 @@ class BulkUD(object):
         self._do_post()
 
     def _execute_stmt(self, stmt):
-        self.result = self.query.session.execute(
-            stmt, params=self.query._params,
-            mapper=self.mapper)
+        self.result = self.query._execute_crud(stmt, self.mapper)
         self.rowcount = self.result.rowcount
 
     @util.dependencies("sqlalchemy.orm.query")

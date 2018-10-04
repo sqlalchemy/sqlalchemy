@@ -39,6 +39,19 @@ along with that object's full lifecycle in memory::
 
 :ticket:`4257`
 
+.. _change_4196:
+
+Horizontal Sharding extension supports bulk update and delete methods
+---------------------------------------------------------------------
+
+The :class:`.ShardedQuery` extension object supports the :meth:`.Query.update`
+and :meth:`.Query.delete` bulk update/delete methods.    The ``query_chooser``
+callable is consulted when they are called in order to run the update/delete
+across multiple shards based on given criteria.
+
+
+:ticket:`4196`
+
 Key Behavioral Changes - ORM
 =============================
 

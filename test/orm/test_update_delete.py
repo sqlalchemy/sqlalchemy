@@ -599,8 +599,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         # Do an update using unordered dict and check that the parameters used
         # are ordered in table order
-        with mock.patch.object(session, "execute") as exec_:
-            session.query(User).filter(User.id == 15).update(
+        q = session.query(User)
+        with mock.patch.object(q, "_execute_crud") as exec_:
+            q.filter(User.id == 15).update(
                 {'name': 'foob', 'id': 123})
             # Confirm that parameters are a dict instead of tuple or list
             params_type = type(exec_.mock_calls[0][1][0].parameters)
@@ -611,8 +612,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
         session = Session()
 
         # Do update using a tuple and check that order is preserved
-        with mock.patch.object(session, "execute") as exec_:
-            session.query(User).filter(User.id == 15).update(
+        q = session.query(User)
+        with mock.patch.object(q, "_execute_crud") as exec_:
+            q.filter(User.id == 15).update(
                 (('id', 123), ('name', 'foob')),
                 update_args={"preserve_parameter_order": True})
             cols = [c.key
@@ -621,8 +623,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         # Now invert the order and use a list instead, and check that order is
         # also preserved
-        with mock.patch.object(session, "execute") as exec_:
-            session.query(User).filter(User.id == 15).update(
+        q = session.query(User)
+        with mock.patch.object(q, "_execute_crud") as exec_:
+            q.filter(User.id == 15).update(
                 [('name', 'foob'), ('id', 123)],
                 update_args={"preserve_parameter_order": True})
             cols = [c.key
@@ -951,11 +954,14 @@ class ExpressionUpdateTest(fixtures.MappedTest):
         Data = self.classes.Data
         session = testing.mock.Mock(wraps=Session())
         update_args = {"mysql_limit": 1}
-        query.Query(Data, session).update({Data.cnt: Data.cnt + 1},
-                                          update_args=update_args)
-        eq_(session.execute.call_count, 1)
-        args, kwargs = session.execute.call_args
-        eq_(len(args), 1)
+
+        q = session.query(Data)
+        with testing.mock.patch.object(q, '_execute_crud') as exec_:
+            q.update({Data.cnt: Data.cnt + 1},
+                     update_args=update_args)
+        eq_(exec_.call_count, 1)
+        args, kwargs = exec_.mock_calls[0][1:3]
+        eq_(len(args), 2)
         update_stmt = args[0]
         eq_(update_stmt.dialect_kwargs, update_args)
 
