@@ -118,6 +118,8 @@ SQL expression-level boolean behavior::
         OR interval.start <= interval_1."end"
         AND interval."end" > interval_1."end"
 
+.. _hybrid_distinct_expression:
+
 Defining Expression Behavior Distinct from Attribute Behavior
 --------------------------------------------------------------
 
@@ -156,6 +158,28 @@ object for class-level expressions::
         interval."end" AS interval_end
     FROM interval
     WHERE abs(interval."end" - interval.start) / :abs_1 > :param_1
+
+.. note:: When defining an expression for a hybrid property or method, the
+   expression method **must** retain the name of the original hybrid, else
+   the new hybrid with the additional state will be attached to the class
+   with the non-matching name. To use the example above::
+
+    class Interval(object):
+        # ...
+
+        @hybrid_property
+        def radius(self):
+            return abs(self.length) / 2
+
+        # WRONG - the non-matching name will cause this function to be
+        # ignored
+        @radius.expression
+        def radius_expression(cls):
+            return func.abs(cls.length) / 2
+
+   This is also true for other mutator methods, such as
+   :meth:`.hybrid_property.update_expression`. This is the same behavior
+   as that of the ``@property`` construct that is part of standard Python.
 
 Defining Setters
 ----------------
@@ -202,7 +226,7 @@ expression is used as the column that's the target of the SET.  If our
 However, when using a composite hybrid like ``Interval.length``, this
 hybrid represents more than one column.   We can set up a handler that will
 accommodate a value passed to :meth:`.Query.update` which can affect
-this, using the :meth:`.hybrid_propery.update_expression` decorator.
+this, using the :meth:`.hybrid_property.update_expression` decorator.
 A handler that works similarly to our setter would be::
 
     class Interval(object):
@@ -964,6 +988,10 @@ class hybrid_property(interfaces.InspectionAttrInfo):
            subclass, it may be necessary to qualify it using the
            :attr:`.hybrid_property.overrides` modifier first.  See that
            modifier for details.
+
+        .. seealso::
+
+            :ref:`hybrid_distinct_expression`
 
         """
 
