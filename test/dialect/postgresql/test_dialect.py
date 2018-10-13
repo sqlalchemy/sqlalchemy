@@ -263,8 +263,8 @@ class MiscBackendTest(
                       "Can't infer the SQL type to use for an instance "
                       "of org.python.core.PyObjectDerived.")
     def test_extract(self):
-        fivedaysago = datetime.datetime.now() \
-            - datetime.timedelta(days=5)
+        fivedaysago = testing.db.scalar(select([func.now()])) - \
+            datetime.timedelta(days=5)
         for field, exp in ('year', fivedaysago.year), \
                 ('month', fivedaysago.month), ('day', fivedaysago.day):
             r = testing.db.execute(
