@@ -59,6 +59,12 @@ class ConnectionKiller(object):
         # not sure if this should be if pypy/jython only.
         # note that firebird/fdb definitely needs this though
         for conn, rec in list(self.conns):
+            if rec.connection is None:
+                # this is a hint that the connection is closed, which
+                # is causing segfaults on mysqlclient due to
+                # https://github.com/PyMySQL/mysqlclient-python/issues/270;
+                # try to work around here
+                continue
             self._safe(conn.rollback)
 
     def _stop_test_ctx(self):
