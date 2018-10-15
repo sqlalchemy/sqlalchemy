@@ -5,7 +5,7 @@ from sqlalchemy.sql import elements
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.testing import (
     fixtures, engines, eq_, assert_raises, assert_raises_message,
-    assert_warnings, mock, expect_warnings, is_, is_not_)
+    assert_warnings, mock, expect_warnings, is_, is_not_, is_true)
 from sqlalchemy.orm import (
     exc as orm_exc, Session, mapper, sessionmaker, create_session,
     relationship, attributes, session as _session)
@@ -582,9 +582,11 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         except sa_exc.DBAPIError as dbe_outer:
             caught_exceptions.append(dbe_outer.orig)
 
-        is_(
-            type(evented_exceptions[0]),
-            testing.db.dialect.dbapi.IntegrityError
+        is_true(
+            isinstance(
+                evented_exceptions[0],
+                testing.db.dialect.dbapi.IntegrityError
+            )
         )
         eq_(evented_exceptions[1], rollback_error)
         eq_(len(evented_exceptions), 2)
