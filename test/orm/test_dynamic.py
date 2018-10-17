@@ -262,6 +262,36 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             [Item(id=2)]
         )
 
+    def test_secondary_as_join(self):
+        User, users = self.classes.User, self.tables.users
+        items, orders, order_items, Item = (self.tables.items,
+                                            self.tables.orders,
+                                            self.tables.order_items,
+                                            self.classes.Item)
+
+        mapper(User, users, properties={
+            'items': relationship(
+                Item,
+                secondary=order_items.join(orders),
+                lazy="dynamic"
+            )
+        })
+        mapper(Item, items)
+
+        sess = create_session()
+        u1 = sess.query(User).first()
+
+        self.assert_compile(
+            u1.items,
+            "SELECT items.id AS items_id, "
+            "items.description AS items_description "
+            "FROM items, order_items JOIN orders "
+            "ON orders.id = order_items.order_id "
+            "WHERE :param_1 = orders.user_id "
+            "AND items.id = order_items.item_id",
+            use_default_dialect=True
+        )
+
     def test_transient_count(self):
         User, Address = self._user_address_fixture()
         u1 = User()
