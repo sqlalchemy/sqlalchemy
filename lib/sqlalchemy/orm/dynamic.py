@@ -219,6 +219,10 @@ class AppenderMixin(object):
 
         mapper = object_mapper(instance)
         prop = mapper._props[self.attr.key]
+
+        if prop.secondary is not None:
+            self._set_select_from([prop.secondary], False)
+
         self._criterion = prop._with_parent(
             instance,
             alias_secondary=False)
@@ -284,6 +288,7 @@ class AppenderMixin(object):
             query = sess.query(self.attr.target_mapper)
 
         query._criterion = self._criterion
+        query._from_obj = self._from_obj
         query._order_by = self._order_by
 
         return query

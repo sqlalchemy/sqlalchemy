@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4349
+
+   Fixed bug where "dynamic" loader needs to explicitly set the "secondary"
+   table in the FROM clause of the query, to suit the case where the secondary
+   is a join object that is otherwise not pulled into the query from its
+   columns alone.
+
