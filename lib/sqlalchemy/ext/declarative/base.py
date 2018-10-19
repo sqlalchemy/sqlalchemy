@@ -295,7 +295,8 @@ class _MapperConfig(object):
                             # produces nested proxies, so we are only
                             # looking one level deep right now.
                             if isinstance(ret, InspectionAttr) and \
-                                    ret._is_internal_proxy:
+                                    ret._is_internal_proxy and not isinstance(
+                                        ret.original_property, MapperProperty):
                                 ret = ret.descriptor
 
                             dict_[name] = column_copies[obj] = ret
