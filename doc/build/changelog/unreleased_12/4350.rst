@@ -1,0 +1,8 @@
+.. change::
+   :tags: bug, orm, declarative
+   :tickets: 4350
+
+   Fixed regression caused by :ticket:`4326` in version 1.2.12 where using
+   :class:`.declared_attr` with a mixin in conjunction with
+   :func:`.orm.synonym` would fail to map the synonym properly to an inherited
+   subclass.
