@@ -7,7 +7,7 @@ from sqlalchemy import Integer, String, ForeignKey, select, func
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     configure_mappers, clear_mappers, \
-    deferred, column_property, Session, base as orm_base
+    deferred, column_property, Session, base as orm_base, synonym
 from sqlalchemy.util import classproperty
 from sqlalchemy.ext.declarative import declared_attr, declarative_base
 from sqlalchemy.orm import events as orm_events
@@ -1252,7 +1252,9 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert isinstance(SomeAbstract.__dict__['some_attr'], declared_attr)
 
 
-class DeclarativeMixinPropertyTest(DeclarativeTestBase):
+class DeclarativeMixinPropertyTest(
+    DeclarativeTestBase,
+    testing.AssertsCompiledSQL):
 
     def test_column_property(self):
 
@@ -1369,6 +1371,53 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
         is_(
             b1.all_orm_descriptors['hp2'],
             d1.all_orm_descriptors['hp2'],
+        )
+
+    def test_correct_for_proxies_doesnt_impact_synonyms(self):
+        from sqlalchemy import inspect
+
+        class Mixin(object):
+            @declared_attr
+            def data_syn(cls):
+                return synonym('data')
+
+        class Base(declarative_base(), Mixin):
+            __tablename__ = 'test'
+            id = Column(String, primary_key=True)
+            data = Column(String)
+            type = Column(String)
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'polymorphic_identity': 'base'
+            }
+
+        class Derived(Base):
+            __mapper_args__ = {
+                'polymorphic_identity': 'derived'
+            }
+
+        assert Base.data_syn._is_internal_proxy
+        assert Derived.data_syn._is_internal_proxy
+
+        b1 = inspect(Base)
+        d1 = inspect(Derived)
+        is_(
+            b1.attrs['data_syn'],
+            d1.attrs['data_syn'],
+        )
+
+        s = Session()
+        self.assert_compile(
+            s.query(Base.data_syn).filter(Base.data_syn == 'foo'),
+            'SELECT test.data AS test_data FROM test WHERE test.data = :data_1',
+            dialect='default'
+        )
+        self.assert_compile(
+            s.query(Derived.data_syn).filter(Derived.data_syn == 'foo'),
+            'SELECT test.data AS test_data FROM test WHERE test.data = '
+            ':data_1 AND test.type IN (:type_1)',
+            dialect='default',
+            checkparams={"type_1": "derived", "data_1": "foo"}
         )
 
     def test_column_in_mapper_args(self):
