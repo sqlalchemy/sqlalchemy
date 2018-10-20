@@ -87,6 +87,18 @@ class MySQLDialect_mysqldb(MySQLDialect):
     def __init__(self, server_side_cursors=False, **kwargs):
         super(MySQLDialect_mysqldb, self).__init__(**kwargs)
         self.server_side_cursors = server_side_cursors
+        self._mysql_dbapi_version = self._parse_dbapi_version(
+            self.dbapi.__version__)
+
+    def _parse_dbapi_version(self, version):
+        m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?', version)
+        if m:
+            return tuple(
+                int(x)
+                for x in m.group(1, 2, 3)
+                if x is not None)
+        else:
+            return (0, 0, 0)
 
     @util.langhelpers.memoized_property
     def supports_server_side_cursors(self):

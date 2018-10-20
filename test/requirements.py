@@ -945,7 +945,21 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        return exclusions.fails_on("mysql+mysqldb", "driver specific")
+        # fixed for mysqlclient in
+        # https://github.com/PyMySQL/mysqlclient-python/commit/68b9662918577fc05be9610ef4824a00f2b051b0
+        def check(config):
+            if against(config, "mysql+mysqldb"):
+                # can remove once post 1.3.13 is released
+                try:
+                    from MySQLdb import converters
+                    from decimal import Decimal
+                    return Decimal not in converters.conversions
+                except:
+                    return True
+
+            return against(config, "mysql+mysqldb") and \
+                config.db.dialect._mysql_dbapi_version <= (1, 3, 13)
+        return exclusions.fails_on(check, "fixed for mysqlclient post 1.3.13")
 
     @property
     def fetch_null_from_numeric(self):
