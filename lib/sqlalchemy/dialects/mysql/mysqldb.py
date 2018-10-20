@@ -88,7 +88,8 @@ class MySQLDialect_mysqldb(MySQLDialect):
         super(MySQLDialect_mysqldb, self).__init__(**kwargs)
         self.server_side_cursors = server_side_cursors
         self._mysql_dbapi_version = self._parse_dbapi_version(
-            self.dbapi.__version__) if self.dbapi is not None else (0, 0, 0)
+            self.dbapi.__version__) if self.dbapi is not None \
+            and hasattr(self.dbapi, '__version__') else (0, 0, 0)
 
     def _parse_dbapi_version(self, version):
         m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?', version)
