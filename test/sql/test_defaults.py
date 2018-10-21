@@ -170,7 +170,8 @@ class DefaultTest(fixtures.TestBase):
                 sa.select(
                     [
                         func.trunc(
-                            func.sysdate(), sa.literal_column("'DAY'"),
+                            func.current_timestamp(),
+                            sa.literal_column("'DAY'"),
                             type_=sa.Date)]))
             assert isinstance(ts, datetime.date) and not isinstance(
                 ts, datetime.datetime)
@@ -182,7 +183,8 @@ class DefaultTest(fixtures.TestBase):
                 type_=sa.Date)
             def1 = currenttime
             def2 = func.trunc(
-                sa.text("sysdate"), sa.literal_column("'DAY'"), type_=sa.Date)
+                sa.text("current_timestamp"),
+                sa.literal_column("'DAY'"), type_=sa.Date)
 
             deftype = sa.Date
         elif use_function_defaults:
