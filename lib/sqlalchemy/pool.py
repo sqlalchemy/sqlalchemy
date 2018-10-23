@@ -117,10 +117,10 @@ class Pool(log.Identified):
           connection object.  The function will be called with
           parameters.
 
-        :param recycle: If set to non -1, number of seconds between
-          connection recycling, which means upon checkout, if this
-          timeout is surpassed the connection will be closed and
-          replaced with a newly opened connection. Defaults to -1.
+        :param recycle: If set to a value other than -1, number of
+          seconds between connection recycling, which means upon
+          checkout, if this timeout is surpassed the connection will be
+          closed and replaced with a newly opened connection. Defaults to -1.
 
         :param logging_name:  String identifier which will be used within
           the "name" field of logging records generated within the
