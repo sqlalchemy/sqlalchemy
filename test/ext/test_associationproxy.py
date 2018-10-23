@@ -18,7 +18,7 @@ from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
-
+from sqlalchemy.engine import default
 
 class DictCollection(dict):
     @collection.appender
@@ -1374,6 +1374,10 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         cls.session = session
 
     def _equivalent(self, q_proxy, q_direct):
+        proxy_sql = q_proxy.statement.compile(dialect=default.DefaultDialect())
+        direct_sql = q_direct.statement.compile(
+            dialect=default.DefaultDialect())
+        eq_(str(proxy_sql), str(direct_sql))
         eq_(q_proxy.all(), q_direct.all())
 
     def test_filter_any_criterion_ul_scalar(self):
@@ -1495,11 +1499,12 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_filter_ne_nul_nul(self):
         Keyword = self.classes.Keyword
+        UserKeyword = self.classes.UserKeyword
 
         self._equivalent(
             self.session.query(Keyword).filter(Keyword.user != self.u),
             self.session.query(Keyword).filter(
-                Keyword.user_keyword.has(Keyword.user != self.u)))
+                Keyword.user_keyword.has(UserKeyword.user != self.u)))
 
     def test_filter_eq_null_nul_nul(self):
         UserKeyword, Keyword = self.classes.UserKeyword, self.classes.Keyword
@@ -1519,7 +1524,20 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 self.session.query(Keyword).filter(
                     Keyword.user_keyword.has(UserKeyword.user != None)))
 
-    def test_filter_eq_None_nul(self):
+    def test_filter_object_eq_None_nul(self):
+        UserKeyword = self.classes.UserKeyword
+        User = self.classes.User
+
+        self._equivalent(
+            self.session.query(UserKeyword).filter(
+                UserKeyword.singular == None),  # noqa
+            self.session.query(UserKeyword).filter(or_(
+                UserKeyword.user.has(User.singular == None),
+                UserKeyword.user_id == None)
+            )
+        )
+
+    def test_filter_column_eq_None_nul(self):
         User = self.classes.User
         Singular = self.classes.Singular
 
@@ -1528,9 +1546,23 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 User.singular_value == None),  # noqa
             self.session.query(User).filter(or_(
                 User.singular.has(Singular.value == None),
-                User.singular == None)))
+                User.singular == None)
+            )
+        )
 
-    def test_filter_ne_value_nul(self):
+    def test_filter_object_ne_value_nul(self):
+        UserKeyword = self.classes.UserKeyword
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        s4 = self.session.query(Singular).filter_by(value="singular4").one()
+        self._equivalent(
+            self.session.query(UserKeyword).filter(
+                UserKeyword.singular != s4),
+            self.session.query(UserKeyword).filter(
+                UserKeyword.user.has(User.singular != s4)))
+
+    def test_filter_column_ne_value_nul(self):
         User = self.classes.User
         Singular = self.classes.Singular
 
@@ -1663,13 +1695,13 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             User.singular_keyword.has, keyword="brown"
         )
 
-    def test_filter_contains_chained_has_to_any(self):
+    def test_filter_eq_chained_has_to_any(self):
         User = self.classes.User
         Keyword = self.classes.Keyword
         Singular = self.classes.Singular
 
         q1 = self.session.query(User).filter(
-            User.singular_keyword.contains("brown")
+            User.singular_keyword == "brown"
         )
         self.assert_compile(
             q1,
@@ -1780,17 +1812,73 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             User.singular_value.has, singular_value="singular4"
         )
 
-    def test_filter_scalar_contains_fails_nul_nul(self):
+    def test_filter_scalar_object_contains_fails_nul_nul(self):
         Keyword = self.classes.Keyword
 
         assert_raises(exc.InvalidRequestError,
                       lambda: Keyword.user.contains(self.u))
 
-    def test_filter_scalar_any_fails_nul_nul(self):
+    def test_filter_scalar_object_any_fails_nul_nul(self):
         Keyword = self.classes.Keyword
 
         assert_raises(exc.InvalidRequestError,
                       lambda: Keyword.user.any(name='user2'))
+
+    def test_filter_scalar_column_like(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value.like('foo')),
+            self.session.query(User).filter(
+                User.singular.has(Singular.value.like('foo')),
+            )
+        )
+
+    def test_filter_scalar_column_contains(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value.contains('foo')),
+            self.session.query(User).filter(
+                User.singular.has(Singular.value.contains('foo')),
+            )
+        )
+
+    def test_filter_scalar_column_eq(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value == 'foo'),
+            self.session.query(User).filter(
+                User.singular.has(Singular.value == 'foo'),
+            )
+        )
+
+    def test_filter_scalar_column_ne(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value != 'foo'),
+            self.session.query(User).filter(
+                User.singular.has(Singular.value != 'foo'),
+            )
+        )
+
+    def test_filter_scalar_column_eq_nul(self):
+        User = self.classes.User
+        Singular = self.classes.Singular
+
+        self._equivalent(
+            self.session.query(User).filter(User.singular_value == None),
+            self.session.query(User).filter(or_(
+                User.singular.has(Singular.value == None),
+                User.singular == None
+            ))
+        )
 
     def test_filter_collection_has_fails_ul_nul(self):
         User = self.classes.User
@@ -1849,7 +1937,8 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
         m = MetaData()
         a = Table('a', m, Column('id', Integer, primary_key=True))
         b = Table('b', m, Column('id', Integer, primary_key=True),
-                  Column('aid', Integer, ForeignKey('a.id')))
+                  Column('aid', Integer, ForeignKey('a.id')),
+                  Column('elem', String))
         mapper(A, a, properties={
             'orig': relationship(
                 B,
@@ -1947,6 +2036,7 @@ class AttributeAccessTest(fixtures.TestBase):
             __tablename__ = 'child'
             parent_id = Column(
                 Integer, ForeignKey(Parent.id), primary_key=True)
+            value = Column(String)
 
         # 2. declarative builds up SubParent, scans through all attributes
         # over all classes.  Hits Mixin, hits "children", accesses "children"
@@ -1976,6 +2066,7 @@ class AttributeAccessTest(fixtures.TestBase):
             __tablename__ = 'child'
             parent_id = Column(
                 Integer, ForeignKey(Parent.id), primary_key=True)
+            value = Column(String)
 
         class SubParent(Parent):
             __tablename__ = 'subparent'
@@ -1996,6 +2087,7 @@ class AttributeAccessTest(fixtures.TestBase):
             __tablename__ = 'child'
             parent_id = Column(
                 Integer, ForeignKey(Parent.id), primary_key=True)
+            value = Column(String)
 
         class SubParent(Parent):
             __tablename__ = 'subparent'
@@ -2016,6 +2108,7 @@ class AttributeAccessTest(fixtures.TestBase):
             __tablename__ = 'child'
             parent_id = Column(
                 Integer, ForeignKey(Parent.id), primary_key=True)
+            value = Column(String)
 
         class SubParent(Parent):
             __tablename__ = 'subparent'
@@ -2411,26 +2504,27 @@ class MultiOwnerTest(fixtures.DeclarativeMappedTest,
             c_id = Column(ForeignKey('c.id'))
             c2_id = Column(ForeignKey('c2.id'))
 
-    def test_any_has(self):
+    def test_column_collection_expressions(self):
         B, C, C2 = self.classes("B", "C", "C2")
 
         self.assert_compile(
             B.d_values.contains('b1'),
             "EXISTS (SELECT 1 FROM d, b WHERE d.b_id = b.id "
-            "AND d.value = :value_1)"
+            "AND (d.value LIKE '%' || :value_1 || '%'))"
         )
 
         self.assert_compile(
             C2.d_values.contains("c2"),
             "EXISTS (SELECT 1 FROM d, c2 WHERE d.c2_id = c2.id "
-            "AND d.value = :value_1)"
+            "AND (d.value LIKE '%' || :value_1 || '%'))"
         )
 
         self.assert_compile(
             C.d_values.contains('c1'),
             "EXISTS (SELECT 1 FROM d, c WHERE d.c_id = c.id "
-            "AND d.value = :value_1)"
+            "AND (d.value LIKE '%' || :value_1 || '%'))"
         )
+
 
 class ScopeBehaviorTest(fixtures.DeclarativeMappedTest):
     # test some GC scenarios, including issue #4268

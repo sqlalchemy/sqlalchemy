@@ -234,6 +234,121 @@ specific to the ``User.keywords`` proxy, such as ``target_class``::
 
 :ticket:`3423`
 
+.. _change_4351:
+
+AssociationProxy now provides standard column operators for a column-oriented target
+------------------------------------------------------------------------------------
+
+Given an :class:`.AssociationProxy` where the target is a database column,
+as opposed to an object reference::
+
+    class User(Base):
+        # ...
+
+        elements = relationship("Element")
+
+        # column-based association proxy
+        values = association_proxy("elements", "value")
+
+    class Element(Base):
+        # ...
+
+        value = Column(String)
+
+The ``User.values`` association proxy refers to the ``Element.value`` column.
+Standard column operations are now available, such as ``like``::
+
+    >>> print(s.query(User).filter(User.values.like('%foo%')))
+    SELECT "user".id AS user_id
+    FROM "user"
+    WHERE EXISTS (SELECT 1
+    FROM element
+    WHERE "user".id = element.user_id AND element.value LIKE :value_1)
+
+``equals``::
+
+    >>> print(s.query(User).filter(User.values == 'foo'))
+    SELECT "user".id AS user_id
+    FROM "user"
+    WHERE EXISTS (SELECT 1
+    FROM element
+    WHERE "user".id = element.user_id AND element.value = :value_1)
+
+When comparing to ``None``, the ``IS NULL`` expression is augmented with
+a test that the related row does not exist at all; this is the same
+behavior as before::
+
+    >>> print(s.query(User).filter(User.values == None))
+    SELECT "user".id AS user_id
+    FROM "user"
+    WHERE (EXISTS (SELECT 1
+    FROM element
+    WHERE "user".id = element.user_id AND element.value IS NULL)) OR NOT (EXISTS (SELECT 1
+    FROM element
+    WHERE "user".id = element.user_id))
+
+Note that the :meth:`.ColumnOperators.contains` operator is in fact a string
+comparison operator; **this is a change in behavior** in that previously,
+the association proxy used ``.contains`` as a list containment operator only.
+With a column-oriented comparison, it now behaves like a "like"::
+
+    >>> print(s.query(User).filter(User.values.contains('foo')))
+    SELECT "user".id AS user_id
+    FROM "user"
+    WHERE EXISTS (SELECT 1
+    FROM element
+    WHERE "user".id = element.user_id AND (element.value LIKE '%' || :value_1 || '%'))
+
+In order to test the ``User.values`` collection for simple membership of the value
+``"foo"``, the equals operator (e.g. ``User.values == 'foo'``) should be used;
+this works in previous versions as well.
+
+When using an object-based association proxy with a collection, the behavior is
+as before, that of testing for collection membership, e.g. given a mapping::
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        user_elements = relationship("UserElement")
+
+        # object-based association proxy
+        elements = association_proxy("user_elements", "element")
+
+
+    class UserElement(Base):
+        __tablename__ = 'user_element'
+
+        id = Column(Integer, primary_key=True)
+        user_id = Column(ForeignKey("user.id"))
+        element_id = Column(ForeignKey("element.id"))
+        element = relationship("Element")
+
+
+    class Element(Base):
+        __tablename__ = 'element'
+
+        id = Column(Integer, primary_key=True)
+        value = Column(String)
+
+The ``.contains()`` method produces the same expression as before, testing
+the list of ``User.elements`` for the presence of an ``Element`` object::
+
+    >>> print(s.query(User).filter(User.elements.contains(Element(id=1))))
+    SELECT "user".id AS user_id
+    FROM "user"
+    WHERE EXISTS (SELECT 1
+    FROM user_element
+    WHERE "user".id = user_element.user_id AND :param_1 = user_element.element_id)
+
+Overall, the change is enabled based on the architectural change that is
+part of :ref:`change_3423`; as the proxy now spins off additional state when
+an expression is generated, there is both an object-target and a column-target
+version of the :class:`.AssociationProxyInstance` class.
+
+:ticket:`4351`
+
+
 .. _change_4246:
 
 FOR UPDATE clause is rendered within the joined eager load subquery as well as outside

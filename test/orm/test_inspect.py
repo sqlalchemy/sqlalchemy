@@ -4,7 +4,9 @@ from sqlalchemy.testing import eq_, assert_raises_message, is_
 from sqlalchemy import exc, util
 from sqlalchemy import inspect
 from test.orm import _fixtures
-from sqlalchemy.orm import class_mapper, synonym, Session, aliased
+from sqlalchemy.orm import class_mapper, synonym, Session, aliased,\
+    relationship
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm.attributes import instance_state, NO_VALUE
 from sqlalchemy import testing
 from sqlalchemy.orm.util import identity_key
@@ -260,6 +262,9 @@ class TestORMInspection(_fixtures.FixtureTest):
             def conv(self, fn):
                 raise NotImplementedError()
 
+        class Address(self.classes.Address):
+            pass
+
         class SomeSubClass(SomeClass):
             @hybrid_property
             def upper_name(self):
@@ -269,9 +274,17 @@ class TestORMInspection(_fixtures.FixtureTest):
             def foo(self):
                 raise NotImplementedError()
 
-        t = Table('sometable', MetaData(),
+        m = MetaData()
+        t = Table('sometable', m,
                   Column('id', Integer, primary_key=True))
-        mapper(SomeClass, t)
+        ta = Table('address_t', m,
+                  Column('id', Integer, primary_key=True),
+                  Column('s_id', ForeignKey('sometable.id'))
+            )
+        mapper(SomeClass, t, properties={
+            "addresses": relationship(Address)
+        })
+        mapper(Address, ta)
         mapper(SomeSubClass, inherits=SomeClass)
 
         insp = inspect(SomeSubClass)
