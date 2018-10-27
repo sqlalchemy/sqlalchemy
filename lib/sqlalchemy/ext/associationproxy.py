@@ -17,6 +17,7 @@ import operator
 from .. import exc, orm, util
 from ..orm import collections, interfaces
 from ..sql import or_
+from ..sql.operators import ColumnOperators
 from .. import inspect
 
 
@@ -217,7 +218,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         except KeyError:
             owner = self._calc_owner(class_)
             if owner is not None:
-                result = AssociationProxyInstance(self, owner)
+                result = AssociationProxyInstance.for_proxy(self, owner)
                 setattr(class_, self.key + "_inst", result)
                 return result
             else:
@@ -283,13 +284,49 @@ class AssociationProxyInstance(object):
 
     """
 
-    def __init__(self, parent, owning_class):
+    def __init__(self, parent, owning_class, target_class, value_attr):
         self.parent = parent
         self.key = parent.key
         self.owning_class = owning_class
         self.target_collection = parent.target_collection
         self.value_attr = parent.value_attr
         self.collection_class = None
+        self.target_class = target_class
+        self.value_attr = value_attr
+
+    target_class = None
+    """The intermediary class handled by this
+    :class:`.AssociationProxyInstance`.
+
+    Intercepted append/set/assignment events will result
+    in the generation of new instances of this class.
+
+    """
+
+    @classmethod
+    def for_proxy(cls, parent, owning_class):
+        target_collection = parent.target_collection
+        value_attr = parent.value_attr
+        prop = orm.class_mapper(owning_class).\
+            get_property(target_collection)
+        target_class = prop.mapper.class_
+
+        target_assoc = cls._cls_unwrap_target_assoc_proxy(
+            target_class, value_attr)
+        if target_assoc is not None:
+            return ObjectAssociationProxyInstance(
+                parent, owning_class, target_class, value_attr
+            )
+
+        is_object = getattr(target_class, value_attr).impl.uses_objects
+        if is_object:
+            return ObjectAssociationProxyInstance(
+                parent, owning_class, target_class, value_attr
+            )
+        else:
+            return ColumnAssociationProxyInstance(
+                parent, owning_class, target_class, value_attr
+            )
 
     def _get_property(self):
         return orm.class_mapper(self.owning_class).\
@@ -299,12 +336,17 @@ class AssociationProxyInstance(object):
     def _comparator(self):
         return self._get_property().comparator
 
-    @util.memoized_property
-    def _unwrap_target_assoc_proxy(self):
-        attr = getattr(self.target_class, self.value_attr)
+    @classmethod
+    def _cls_unwrap_target_assoc_proxy(cls, target_class, value_attr):
+        attr = getattr(target_class, value_attr)
         if isinstance(attr, (AssociationProxy, AssociationProxyInstance)):
             return attr
         return None
+
+    @util.memoized_property
+    def _unwrap_target_assoc_proxy(self):
+        return self._cls_unwrap_target_assoc_proxy(
+            self.target_class, self.value_attr)
 
     @property
     def remote_attr(self):
@@ -353,17 +395,6 @@ class AssociationProxyInstance(object):
         return (self.local_attr, self.remote_attr)
 
     @util.memoized_property
-    def target_class(self):
-        """The intermediary class handled by this
-        :class:`.AssociationProxyInstance`.
-
-        Intercepted append/set/assignment events will result
-        in the generation of new instances of this class.
-
-        """
-        return self._get_property().mapper.class_
-
-    @util.memoized_property
     def scalar(self):
         """Return ``True`` if this :class:`.AssociationProxyInstance`
         proxies a scalar relationship on the local side."""
@@ -378,9 +409,9 @@ class AssociationProxyInstance(object):
         return not self._get_property().\
             mapper.get_property(self.value_attr).uselist
 
-    @util.memoized_property
+    @property
     def _target_is_object(self):
-        return getattr(self.target_class, self.value_attr).impl.uses_objects
+        raise NotImplementedError()
 
     def _initialize_scalar_accessors(self):
         if self.parent.getset_factory:
@@ -587,6 +618,12 @@ class AssociationProxyInstance(object):
         return self._criterion_exists(
             criterion=criterion, is_has=True, **kwargs)
 
+
+class ObjectAssociationProxyInstance(AssociationProxyInstance):
+    """an :class:`.AssociationProxyInstance` that has an object as a target.
+    """
+    _target_is_object = True
+
     def contains(self, obj):
         """Produce a proxied 'contains' expression using EXISTS.
 
@@ -611,7 +648,7 @@ class AssociationProxyInstance(object):
         elif self._target_is_object and self.scalar and \
                 self._value_is_scalar:
             raise exc.InvalidRequestError(
-                "contains() doesn't apply to a scalar endpoint; use ==")
+                "contains() doesn't apply to a scalar object endpoint; use ==")
         else:
 
             return self._comparator._criterion_exists(**{self.value_attr: obj})
@@ -632,6 +669,31 @@ class AssociationProxyInstance(object):
         # is only allowed with a scalar.
         return self._comparator.has(
             getattr(self.target_class, self.value_attr) != obj)
+
+
+class ColumnAssociationProxyInstance(
+        ColumnOperators, AssociationProxyInstance):
+    """an :class:`.AssociationProxyInstance` that has a database column as a
+    target.
+    """
+    _target_is_object = False
+
+    def __eq__(self, other):
+        # special case "is None" to check for no related row as well
+        expr = self._criterion_exists(
+            self.remote_attr.operate(operator.eq, other)
+        )
+        if other is None:
+            return or_(
+                expr, self._comparator == None
+            )
+        else:
+            return expr
+
+    def operate(self, op, *other, **kwargs):
+        return self._criterion_exists(
+            self.remote_attr.operate(op, *other, **kwargs)
+        )
 
 
 class _lazy_collection(object):
