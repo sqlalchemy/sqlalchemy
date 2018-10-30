@@ -762,6 +762,75 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         session.commit()
         eq_(session.query(Engineer).first().target, o1)
 
+    def test_columns_single_inheritance_conflict_resolution_pk(self):
+        """Test #2472 in terms of a primary key column.  This is
+        #4352.
+
+        """
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+
+            target_id = Column(Integer, primary_key=True)
+
+        class Engineer(Person):
+
+            """single table inheritance"""
+
+            @declared_attr
+            def target_id(cls):
+                return cls.__table__.c.get(
+                    'target_id',
+                    Column(Integer, primary_key=True))
+
+        class Manager(Person):
+
+            """single table inheritance"""
+
+            @declared_attr
+            def target_id(cls):
+                return cls.__table__.c.get(
+                    'target_id',
+                    Column(Integer, primary_key=True))
+
+        is_(
+            Engineer.target_id.property.columns[0],
+            Person.__table__.c.target_id
+        )
+        is_(
+            Manager.target_id.property.columns[0],
+            Person.__table__.c.target_id
+        )
+
+    def test_columns_single_inheritance_cascading_resolution_pk(self):
+        """An additional test for #4352 in terms of the requested use case.
+
+        """
+        class TestBase(Base):
+            __abstract__ = True
+
+            @declared_attr.cascading
+            def id(cls):
+                col_val = None
+                if TestBase not in cls.__bases__:
+                    col_val = cls.__table__.c.get('id')
+                if col_val is None:
+                    col_val = Column(Integer, primary_key=True)
+                return col_val
+
+        class Person(TestBase):
+            """single table base class"""
+            __tablename__ = 'person'
+
+        class Engineer(Person):
+            """ single table inheritance, no extra cols """
+
+        class Manager(Person):
+            """ single table inheritance, no extra cols """
+
+        is_(Engineer.id.property.columns[0], Person.__table__.c.id)
+        is_(Manager.id.property.columns[0], Person.__table__.c.id)
+
     def test_joined_from_single(self):
 
         class Company(Base, fixtures.ComparableEntity):

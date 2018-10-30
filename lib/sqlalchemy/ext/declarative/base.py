@@ -534,11 +534,6 @@ class _MapperConfig(object):
                     )
                 # add any columns declared here to the inherited table.
                 for c in declared_columns:
-                    if c.primary_key:
-                        raise exc.ArgumentError(
-                            "Can't place primary key columns on an inherited "
-                            "class with no table."
-                        )
                     if c.name in inherited_table.c:
                         if inherited_table.c[c.name] is c:
                             continue
@@ -546,6 +541,11 @@ class _MapperConfig(object):
                             "Column '%s' on class %s conflicts with "
                             "existing column '%s'" %
                             (c, cls, inherited_table.c[c.name])
+                        )
+                    if c.primary_key:
+                        raise exc.ArgumentError(
+                            "Can't place primary key columns on an inherited "
+                            "class with no table."
                         )
                     inherited_table.append_column(c)
                     if inherited_mapped_table is not None and \
