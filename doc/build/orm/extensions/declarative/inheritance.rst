@@ -88,6 +88,8 @@ The attribute exclusion logic is provided by the
 behavior can be disabled by passing an explicit ``exclude_properties``
 collection (empty or otherwise) to the ``__mapper_args__``.
 
+.. _declarative_column_conflicts:
+
 Resolving Column Conflicts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
