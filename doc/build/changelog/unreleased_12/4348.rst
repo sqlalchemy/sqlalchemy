@@ -1,0 +1,6 @@
+.. change::
+   :tags: bug, mysql
+   :tickets: 4348
+
+   Added word ``function`` to the list of reserved words for MySQL, which is
+   now a keyword in MySQL 8.0
