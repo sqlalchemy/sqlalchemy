@@ -1,7 +1,0 @@
-.. change::
-   :tags: bug, postgresql
-   :tickets: 4337
-
-   Added support for the :class:`.aggregate_order_by` function to receive
-   multiple ORDER BY elements, previously only a single element was accepted.
-
