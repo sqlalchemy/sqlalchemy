@@ -1,0 +1,5 @@
+.. change::
+   :tags: bug, ext
+
+   Added missing ``.index()`` method to list-based association collections
+   in the association proxy extension.

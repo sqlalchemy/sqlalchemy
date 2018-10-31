@@ -778,6 +778,9 @@ class _AssociationList(_AssociationCollection):
             self.extend(list(self) * (n - 1))
         return self
 
+    def index(self, item, *args):
+        return list(self).index(item, *args)
+
     def copy(self):
         return list(self)
 
