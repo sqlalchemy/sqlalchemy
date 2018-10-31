@@ -1,7 +1,0 @@
-.. change::
-   :tags: bug, sql
-   :tickets: 4341
-
-   Fixed bug where the :paramref:`.Enum.create_constraint` flag on  the
-   :class:`.Enum` datatype would not be propagated to copies of the type, which
-   affects use cases such as declarative mixins and abstract bases.
