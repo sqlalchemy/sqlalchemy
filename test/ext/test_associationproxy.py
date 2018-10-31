@@ -211,6 +211,19 @@ class _CollectionOperations(fixtures.TestBase):
 
         p1 = Parent('P1')
 
+        def assert_index(expected, value, *args):
+            """Assert index of child value is equal to expected.
+
+            If expected is None, assert that index raises ValueError.
+            """
+            try:
+                index = p1.children.index(value, *args)
+            except ValueError:
+                self.assert_(expected is None)
+            else:
+                self.assert_(expected is not None)
+                self.assert_(index == expected)
+
         self.assert_(not p1._children)
         self.assert_(not p1.children)
 
@@ -225,6 +238,9 @@ class _CollectionOperations(fixtures.TestBase):
         self.assert_(ch not in p1.children)
         self.assert_('regular' in p1.children)
 
+        assert_index(0, 'regular')
+        assert_index(None, 'regular', 1)
+
         p1.children.append('proxied')
 
         self.assert_('proxied' in p1.children)
@@ -235,20 +251,33 @@ class _CollectionOperations(fixtures.TestBase):
         self.assert_(p1._children[0].name == 'regular')
         self.assert_(p1._children[1].name == 'proxied')
 
+        assert_index(0, 'regular')
+        assert_index(1, 'proxied')
+        assert_index(1, 'proxied', 1)
+        assert_index(None, 'proxied', 0, 1)
+
         del p1._children[1]
 
         self.assert_(len(p1._children) == 1)
         self.assert_(len(p1.children) == 1)
         self.assert_(p1._children[0] == ch)
 
+        assert_index(None, 'proxied')
+
         del p1.children[0]
 
         self.assert_(len(p1._children) == 0)
         self.assert_(len(p1.children) == 0)
 
+        assert_index(None, 'regular')
+
         p1.children = ['a', 'b', 'c']
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
+
+        assert_index(0, 'a')
+        assert_index(1, 'b')
+        assert_index(2, 'c')
 
         del ch
         p1 = self.roundtrip(p1)
@@ -256,15 +285,25 @@ class _CollectionOperations(fixtures.TestBase):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
+        assert_index(0, 'a')
+        assert_index(1, 'b')
+        assert_index(2, 'c')
+
         popped = p1.children.pop()
         self.assert_(len(p1.children) == 2)
         self.assert_(popped not in p1.children)
+        assert_index(None, popped)
+
         p1 = self.roundtrip(p1)
         self.assert_(len(p1.children) == 2)
         self.assert_(popped not in p1.children)
+        assert_index(None, popped)
 
         p1.children[1] = 'changed-in-place'
         self.assert_(p1.children[1] == 'changed-in-place')
+        assert_index(1, 'changed-in-place')
+        assert_index(None, 'b')
+
         inplace_id = p1._children[1].id
         p1 = self.roundtrip(p1)
         self.assert_(p1.children[1] == 'changed-in-place')
@@ -272,30 +311,41 @@ class _CollectionOperations(fixtures.TestBase):
 
         p1.children.append('changed-in-place')
         self.assert_(p1.children.count('changed-in-place') == 2)
+        assert_index(1, 'changed-in-place')
 
         p1.children.remove('changed-in-place')
         self.assert_(p1.children.count('changed-in-place') == 1)
+        assert_index(1, 'changed-in-place')
 
         p1 = self.roundtrip(p1)
         self.assert_(p1.children.count('changed-in-place') == 1)
+        assert_index(1, 'changed-in-place')
 
         p1._children = []
         self.assert_(len(p1.children) == 0)
+        assert_index(None, 'changed-in-place')
 
         after = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
         p1.children = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
         self.assert_(len(p1.children) == 10)
         self.assert_([c.name for c in p1._children] == after)
+        for i, val in enumerate(after):
+            assert_index(i, val)
 
         p1.children[2:6] = ['x'] * 4
         after = ['a', 'b', 'x', 'x', 'x', 'x', 'g', 'h', 'i', 'j']
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
+        assert_index(2, 'x')
+        assert_index(3, 'x', 3)
+        assert_index(None, 'x', 6)
 
         p1.children[2:6] = ['y']
         after = ['a', 'b', 'y', 'g', 'h', 'i', 'j']
         self.assert_(p1.children == after)
         self.assert_([c.name for c in p1._children] == after)
+        assert_index(2, 'y')
+        assert_index(None, 'y', 3)
 
         p1.children[2:3] = ['z'] * 4
         after = ['a', 'b', 'z', 'z', 'z', 'z', 'g', 'h', 'i', 'j']
