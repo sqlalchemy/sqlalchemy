@@ -319,6 +319,8 @@ class AttributesTest(fixtures.ORMTest):
         del f1.b
         is_(f1.b, None)
 
+        f1 = Foo()
+
         def go():
             del f1.b
 
@@ -1651,7 +1653,7 @@ class HistoryTest(fixtures.TestBase):
             **kw)
         return Foo
 
-    def _two_obj_fixture(self, uselist):
+    def _two_obj_fixture(self, uselist, active_history=False):
         class Foo(fixtures.BasicEntity):
             pass
 
@@ -1662,7 +1664,8 @@ class HistoryTest(fixtures.TestBase):
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'someattr', uselist=uselist,
-                                      useobject=True)
+                                      useobject=True,
+                                      active_history=active_history)
         return Foo, Bar
 
     def _someattr_history(self, f, **kw):
@@ -1732,6 +1735,69 @@ class HistoryTest(fixtures.TestBase):
         f = Foo()
         eq_(self._someattr_history(f), ((), (), ()))
 
+    def test_object_replace(self):
+        Foo, Bar = self._two_obj_fixture(uselist=False)
+        f = Foo()
+        b1, b2 = Bar(), Bar()
+        f.someattr = b1
+        self._commit_someattr(f)
+
+        f.someattr = b2
+        eq_(self._someattr_history(f), ([b2], (), [b1]))
+
+    def test_object_set_none(self):
+        Foo, Bar = self._two_obj_fixture(uselist=False)
+        f = Foo()
+        b1 = Bar()
+        f.someattr = b1
+        self._commit_someattr(f)
+
+        f.someattr = None
+        eq_(self._someattr_history(f), ([None], (), [b1]))
+
+    def test_object_set_none_expired(self):
+        Foo, Bar = self._two_obj_fixture(uselist=False)
+        f = Foo()
+        b1 = Bar()
+        f.someattr = b1
+        self._commit_someattr(f)
+
+        attributes.instance_state(f).dict.pop('someattr', None)
+        attributes.instance_state(f).expired_attributes.add('someattr')
+
+        f.someattr = None
+        eq_(self._someattr_history(f), ([None], (), ()))
+
+    def test_object_del(self):
+        Foo, Bar = self._two_obj_fixture(uselist=False)
+        f = Foo()
+        b1 = Bar()
+        f.someattr = b1
+
+        self._commit_someattr(f)
+
+        del f.someattr
+        eq_(self._someattr_history(f), ((), (), [b1]))
+
+    def test_object_del_expired(self):
+        Foo, Bar = self._two_obj_fixture(uselist=False)
+        f = Foo()
+        b1 = Bar()
+        f.someattr = b1
+        self._commit_someattr(f)
+
+        # the "delete" handler checks if the object
+        # is db-loaded when testing if an empty "del" is valid,
+        # because there's nothing else to look at for a related
+        # object, there's no "expired" status
+        attributes.instance_state(f).key = ('foo', )
+        attributes.instance_state(f)._expire_attributes(
+            attributes.instance_dict(f),
+            ['someattr'])
+
+        del f.someattr
+        eq_(self._someattr_history(f), ([None], (), ()))
+
     def test_scalar_no_init_side_effect(self):
         Foo = self._fixture(uselist=False, useobject=False,
                             active_history=False)
@@ -1758,6 +1824,40 @@ class HistoryTest(fixtures.TestBase):
                             active_history=False)
         f = Foo()
         f.someattr = None
+        eq_(self._someattr_history(f), ([None], (), ()))
+
+    def test_scalar_del(self):
+        # note - compare:
+        # test_scalar_set_None,
+        # test_scalar_get_first_set_None,
+        # test_use_object_set_None,
+        # test_use_object_get_first_set_None
+        Foo = self._fixture(uselist=False, useobject=False,
+                            active_history=False)
+        f = Foo()
+        f.someattr = 5
+        attributes.instance_state(f).key = ('foo', )
+        self._commit_someattr(f)
+
+        del f.someattr
+        eq_(self._someattr_history(f), ((), (), [5]))
+
+    def test_scalar_del_expired(self):
+        # note - compare:
+        # test_scalar_set_None,
+        # test_scalar_get_first_set_None,
+        # test_use_object_set_None,
+        # test_use_object_get_first_set_None
+        Foo = self._fixture(uselist=False, useobject=False,
+                            active_history=False)
+        f = Foo()
+        f.someattr = 5
+        self._commit_someattr(f)
+
+        attributes.instance_state(f)._expire_attributes(
+            attributes.instance_dict(f),
+            ['someattr'])
+        del f.someattr
         eq_(self._someattr_history(f), ([None], (), ()))
 
     def test_scalar_get_first_set_None(self):

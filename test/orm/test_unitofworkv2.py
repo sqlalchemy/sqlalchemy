@@ -455,6 +455,74 @@ class RudimentaryFlushTest(UOWTest):
             ),
         )
 
+    def test_many_to_one_del_attr(self):
+        users, Address, addresses, User = (self.tables.users,
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
+
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user': relationship(User)
+        })
+        sess = create_session()
+
+        u1 = User(name='u1')
+        a1, a2 = Address(email_address='a1', user=u1), \
+            Address(email_address='a2', user=u1)
+        sess.add_all([a1, a2])
+        sess.flush()
+
+        del a1.user
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "UPDATE addresses SET user_id=:user_id WHERE "
+                "addresses.id = :addresses_id",
+                lambda ctx: [
+                    {'addresses_id': a1.id, 'user_id': None},
+                ]
+            )
+        )
+
+    def test_many_to_one_del_attr_unloaded(self):
+        users, Address, addresses, User = (self.tables.users,
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
+
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user': relationship(User)
+        })
+        sess = create_session()
+
+        u1 = User(name='u1')
+        a1, a2 = Address(email_address='a1', user=u1), \
+            Address(email_address='a2', user=u1)
+        sess.add_all([a1, a2])
+        sess.flush()
+
+        # trying to guarantee that the history only includes
+        # PASSIVE_NO_RESULT for "deleted" and nothing else
+        sess.expunge(u1)
+        sess.expire(a1, ['user'])
+        del a1.user
+
+        sess.add(a1)
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "UPDATE addresses SET user_id=:user_id WHERE "
+                "addresses.id = :addresses_id",
+                lambda ctx: [
+                    {'addresses_id': a1.id, 'user_id': None},
+                ]
+            )
+        )
+
     def test_natural_ordering(self):
         """test that unconnected items take relationship()
         into account regardless."""

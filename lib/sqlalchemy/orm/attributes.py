@@ -674,7 +674,6 @@ class ScalarAttributeImpl(AttributeImpl):
         self._remove_token = Event(self, OP_REMOVE)
 
     def delete(self, state, dict_):
-
         if self.dispatch._active_history:
             old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
         else:
@@ -683,10 +682,12 @@ class ScalarAttributeImpl(AttributeImpl):
         if self.dispatch.remove:
             self.fire_remove_event(state, dict_, old, self._remove_token)
         state._modified_event(dict_, self, old)
-        try:
-            del dict_[self.key]
-        except KeyError:
-            raise AttributeError("%s object does not have a value" % self)
+
+        existing = dict_.pop(self.key, NO_VALUE)
+        if existing is NO_VALUE and old is NO_VALUE and \
+            not state.expired and \
+                self.key not in state.expired_attributes:
+                raise AttributeError("%s object does not have a value" % self)
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         if self.key in dict_:
@@ -744,11 +745,25 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     __slots__ = ()
 
     def delete(self, state, dict_):
-        old = self.get(state, dict_)
+        if self.dispatch._active_history:
+            old = self.get(
+                state, dict_,
+                passive=PASSIVE_ONLY_PERSISTENT |
+                NO_AUTOFLUSH | LOAD_AGAINST_COMMITTED)
+        else:
+            old = self.get(
+                state, dict_, passive=PASSIVE_NO_FETCH ^ INIT_OK |
+                LOAD_AGAINST_COMMITTED)
+
         self.fire_remove_event(state, dict_, old, self._remove_token)
-        try:
-            del dict_[self.key]
-        except:
+
+        existing = dict_.pop(self.key, NO_VALUE)
+
+        # if the attribute is expired, we currently have no way to tell
+        # that an object-attribute was expired vs. not loaded.   So
+        # for this test, we look to see if the object has a DB identity.
+        if existing is NO_VALUE and old is not PASSIVE_NO_RESULT and \
+                state.key is None:
             raise AttributeError("%s object does not have a value" % self)
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
@@ -1382,6 +1397,10 @@ class History(History):
             # key situations
             if id(original) in _NO_STATE_SYMBOLS:
                 deleted = ()
+                # indicate a "del" operation occured when we don't have
+                # the previous value as: ([None], (), ())
+                if id(current) in _NO_STATE_SYMBOLS:
+                    current = None
             else:
                 deleted = [original]
             if current is NEVER_SET:
@@ -1398,7 +1417,7 @@ class History(History):
                 return cls((), (), ())
             else:
                 return cls((), [current], ())
-        elif current is original:
+        elif current is original and current is not NEVER_SET:
             return cls((), [current], ())
         else:
             # current convention on related objects is to not
@@ -1408,6 +1427,10 @@ class History(History):
             # ignore the None in any case.
             if id(original) in _NO_STATE_SYMBOLS or original is None:
                 deleted = ()
+                # indicate a "del" operation occured when we don't have
+                # the previous value as: ([None], (), ())
+                if id(current) in _NO_STATE_SYMBOLS:
+                    current = None
             else:
                 deleted = [original]
             if current is NO_VALUE or current is NEVER_SET:

@@ -61,19 +61,22 @@ def track_cascade_events(descriptor, prop):
                 if prop.uselist
                 else "related attribute delete")
 
-        # expunge pending orphans
-        item_state = attributes.instance_state(item)
+        if item is not None and \
+            item is not attributes.NEVER_SET and \
+            item is not attributes.PASSIVE_NO_RESULT and \
+                prop._cascade.delete_orphan:
+            # expunge pending orphans
+            item_state = attributes.instance_state(item)
 
-        if prop._cascade.delete_orphan and \
-                prop.mapper._is_orphan(item_state):
-            if sess and item_state in sess._new:
-                sess.expunge(item)
-            else:
-                # the related item may or may not itself be in a
-                # Session, however the parent for which we are catching
-                # the event is not in a session, so memoize this on the
-                # item
-                item_state._orphaned_outside_of_session = True
+            if prop.mapper._is_orphan(item_state):
+                if sess and item_state in sess._new:
+                    sess.expunge(item)
+                else:
+                    # the related item may or may not itself be in a
+                    # Session, however the parent for which we are catching
+                    # the event is not in a session, so memoize this on the
+                    # item
+                    item_state._orphaned_outside_of_session = True
 
     def set_(state, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance

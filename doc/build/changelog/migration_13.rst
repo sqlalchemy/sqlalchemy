@@ -84,6 +84,24 @@ users should report a bug, however the change also incldues a flag
 
 :ticket:`4340`
 
+.. _change_4354:
+
+"del" implemented for ORM attributes
+------------------------------------
+
+The Python ``del`` operation was not really usable for mapped attributes, either
+scalar columns or object references.   Support has been added for this to work correctly,
+where the ``del`` operation is roughly equivalent to setting the attribute to the
+``None`` value::
+
+
+    some_object = session.query(SomeObject).get(5)
+
+    del some_object.some_attribute   # from a SQL perspective, works like "= None"
+
+:ticket:`4354`
+
+
 .. _change_4257:
 
 info dictionary added to InstanceState
