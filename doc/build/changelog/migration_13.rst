@@ -190,6 +190,41 @@ to ``None``::
 
 :ticket:`4308`
 
+.. _change_4353:
+
+Many-to-one replacement won't raise for "raiseload" or detached for "old" object
+--------------------------------------------------------------------------------
+
+Given the case where a lazy load would proceed on a many-to-one relationship
+in order to load the "old" value, if the relationship does not specify
+the :paramref:`.relationship.active_history` flag, an assertion will not
+be raised for a detached object::
+
+    a1 = session.query(Address).filter_by(id=5).one()
+
+    session.expunge(a1)
+
+    a1.user = some_user
+
+Above, when the ``.user`` attribute is replaced on the detached ``a1`` object,
+a :class:`.DetachedInstanceError` would be raised as the attribute is attempting
+to retrieve the previous value of ``.user`` from the identity map.  The change
+is that the operation now proceeds without the old value being loaded.
+
+The same change is also made to the ``lazy="raise"`` loader strategy::
+
+    class Address(Base):
+        # ...
+
+        user = relationship("User", ..., lazy="raise")
+
+Previously, the association of ``a1.user`` would invoke the "raiseload"
+exception as a result of the attribute attempting to retrieve the previous
+value.   This assertion is now skipped in the case of loading the "old" value.
+
+
+:ticket:`4353`
+
 .. _change_3423:
 
 AssociationProxy stores class-specific state in a separate container

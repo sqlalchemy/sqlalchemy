@@ -24,7 +24,8 @@ from .base import PASSIVE_NO_RESULT, ATTR_WAS_SET, ATTR_EMPTY, NO_VALUE,\
     NEVER_SET, NO_CHANGE, CALLABLES_OK, SQL_OK, RELATED_OBJECT_OK,\
     INIT_OK, NON_PERSISTENT_OK, LOAD_AGAINST_COMMITTED, PASSIVE_OFF,\
     PASSIVE_RETURN_NEVER_SET, PASSIVE_NO_INITIALIZE, PASSIVE_NO_FETCH,\
-    PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH
+    PASSIVE_NO_FETCH_RELATED, PASSIVE_ONLY_PERSISTENT, NO_AUTOFLUSH, \
+    NO_RAISE
 from .base import state_str, instance_str
 
 
@@ -753,7 +754,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         else:
             old = self.get(
                 state, dict_, passive=PASSIVE_NO_FETCH ^ INIT_OK |
-                LOAD_AGAINST_COMMITTED)
+                LOAD_AGAINST_COMMITTED | NO_RAISE)
 
         self.fire_remove_event(state, dict_, old, self._remove_token)
 
@@ -817,7 +818,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         else:
             old = self.get(
                 state, dict_, passive=PASSIVE_NO_FETCH ^ INIT_OK |
-                LOAD_AGAINST_COMMITTED)
+                LOAD_AGAINST_COMMITTED | NO_RAISE)
 
         if check_old is not None and \
                 old is not PASSIVE_NO_RESULT and \
@@ -1253,7 +1254,9 @@ def backref_listeners(attribute, key, uselist):
         return child
 
     def emit_backref_from_collection_remove_event(state, child, initiator):
-        if child is not None:
+        if child is not None and \
+                child is not PASSIVE_NO_RESULT and \
+                child is not NEVER_SET:
             child_state, child_dict = instance_state(child),\
                 instance_dict(child)
             child_impl = child_state.manager[key].impl

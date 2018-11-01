@@ -1,0 +1,11 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4353
+
+   Added new behavior to the lazy load that takes place when the "old" value of
+   a many-to-one is retrieved, such that exceptions which would be raised due
+   to either ``lazy="raise"`` or a detached session error are skipped.
+
+   .. seealso::
+
+    :ref:`change_4353`

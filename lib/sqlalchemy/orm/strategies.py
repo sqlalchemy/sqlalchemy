@@ -585,11 +585,14 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         ):
             return attributes.PASSIVE_NO_RESULT
 
-        if self._raise_always:
+        if self._raise_always and not passive & attributes.NO_RAISE:
             self._invoke_raise_load(state, passive, "raise")
 
         session = _state_session(state)
         if not session:
+            if passive & attributes.NO_RAISE:
+                return attributes.PASSIVE_NO_RESULT
+
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "lazy load operation of attribute '%s' cannot proceed" %

@@ -104,6 +104,12 @@ NO_AUTOFLUSH = util.symbol(
     canonical=64
 )
 
+NO_RAISE = util.symbol(
+    "NO_RAISE",
+    """Loader callables should not raise any assertions""",
+    canonical=128
+)
+
 # pre-packaged sets of flags used as inputs
 PASSIVE_OFF = util.symbol(
     "PASSIVE_OFF",

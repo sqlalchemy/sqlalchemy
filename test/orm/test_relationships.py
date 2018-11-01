@@ -15,6 +15,7 @@ from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_, in_
 from sqlalchemy.testing import fixtures
 from test.orm import _fixtures
 from sqlalchemy import exc
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy import inspect
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy.ext.declarative import declarative_base
@@ -4197,6 +4198,222 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
         })
         o1 = Order(composite=MyComposite('foo', 1))
         self._test_attribute(o1, "composite", MyComposite('bar', 1))
+
+
+class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    def _run_test(self, detached, raiseload, backref, active_history,
+                  delete):
+
+        if delete:
+            assert not backref, "delete and backref are mutually exclusive"
+
+        Address, addresses, users, User = (self.classes.Address,
+                                           self.tables.addresses,
+                                           self.tables.users,
+                                           self.classes.User)
+
+        opts = {}
+        if active_history:
+            opts['active_history'] = True
+        if raiseload:
+            opts['lazy'] = "raise"
+
+        mapper(Address, addresses, properties={
+            'user': relationship(
+                User, back_populates="addresses", **opts)
+        })
+        mapper(User, users, properties={
+            "addresses": relationship(Address, back_populates="user")
+        })
+
+        s = Session()
+
+        a1 = Address(email_address='a1')
+        u1 = User(name='u1', addresses=[a1])
+        s.add_all([a1, u1])
+        s.commit()
+
+        if backref:
+            u1.addresses
+
+            if detached:
+                s.expunge(a1)
+
+            def go():
+                u1.addresses = []
+
+            if active_history:
+                if raiseload:
+                    assert_raises_message(
+                        exc.InvalidRequestError,
+                        "'Address.user' is not available due to lazy='raise'",
+                        go
+                    )
+                    return
+                elif detached:
+                    assert_raises_message(
+                        orm_exc.DetachedInstanceError,
+                        "lazy load operation of attribute 'user' "
+                        "cannot proceed",
+                        go
+                    )
+                    return
+            go()
+        else:
+            if detached:
+                s.expunge(a1)
+
+            if delete:
+                def go():
+                    del a1.user
+            else:
+                def go():
+                    a1.user = None
+
+            if active_history:
+                if raiseload:
+                    assert_raises_message(
+                        exc.InvalidRequestError,
+                        "'Address.user' is not available due to lazy='raise'",
+                        go
+                    )
+                    return
+                elif detached:
+                    assert_raises_message(
+                        orm_exc.DetachedInstanceError,
+                        "lazy load operation of attribute 'user' "
+                        "cannot proceed",
+                        go
+                    )
+                    return
+            go()
+
+        if detached:
+            s.add(a1)
+
+        s.commit()
+
+    def test_replace_m2o(self):
+        self._run_test(
+            detached=False, raiseload=False,
+            backref=False, delete=False, active_history=False)
+
+    def test_replace_m2o_detached(self):
+        self._run_test(
+            detached=True, raiseload=False,
+            backref=False, delete=False, active_history=False)
+
+    def test_replace_m2o_raiseload(self):
+        self._run_test(
+            detached=False, raiseload=True,
+            backref=False, delete=False, active_history=False)
+
+    def test_replace_m2o_detached_raiseload(self):
+        self._run_test(
+            detached=True, raiseload=True,
+            backref=False, delete=False, active_history=False)
+
+    def test_replace_m2o_backref(self):
+        self._run_test(
+            detached=False, raiseload=False,
+            backref=True, delete=False, active_history=False)
+
+    def test_replace_m2o_detached_backref(self):
+        self._run_test(
+            detached=True, raiseload=False,
+            backref=True, delete=False, active_history=False)
+
+    def test_replace_m2o_raiseload_backref(self):
+        self._run_test(
+            detached=False, raiseload=True,
+            backref=True, delete=False, active_history=False)
+
+    def test_replace_m2o_detached_raiseload_backref(self):
+        self._run_test(
+            detached=True, raiseload=True,
+            backref=True, delete=False, active_history=False)
+
+    def test_replace_m2o_activehistory(self):
+        self._run_test(
+            detached=False, raiseload=False,
+            backref=False, delete=False, active_history=True)
+
+    def test_replace_m2o_detached_activehistory(self):
+        self._run_test(
+            detached=True, raiseload=False,
+            backref=False, delete=False, active_history=True)
+
+    def test_replace_m2o_raiseload_activehistory(self):
+        self._run_test(
+            detached=False, raiseload=True,
+            backref=False, delete=False, active_history=True)
+
+    def test_replace_m2o_detached_raiseload_activehistory(self):
+        self._run_test(
+            detached=True, raiseload=True,
+            backref=False, delete=False, active_history=True)
+
+    def test_replace_m2o_backref_activehistory(self):
+        self._run_test(
+            detached=False, raiseload=False,
+            backref=True, delete=False, active_history=True)
+
+    def test_replace_m2o_detached_backref_activehistory(self):
+        self._run_test(
+            detached=True, raiseload=False,
+            backref=True, delete=False, active_history=True)
+
+    def test_replace_m2o_raiseload_backref_activehistory(self):
+        self._run_test(
+            detached=False, raiseload=True,
+            backref=True, delete=False, active_history=True)
+
+    def test_replace_m2o_detached_raiseload_backref_activehistory(self):
+        self._run_test(
+            detached=True, raiseload=True,
+            backref=True, delete=False, active_history=True)
+
+    def test_delete_m2o(self):
+        self._run_test(
+            detached=False, raiseload=False,
+            backref=False, delete=True, active_history=False)
+
+    def test_delete_m2o_detached(self):
+        self._run_test(
+            detached=True, raiseload=False,
+            backref=False, delete=True, active_history=False)
+
+    def test_delete_m2o_raiseload(self):
+        self._run_test(
+            detached=False, raiseload=True,
+            backref=False, delete=True, active_history=False)
+
+    def test_delete_m2o_detached_raiseload(self):
+        self._run_test(
+            detached=True, raiseload=True,
+            backref=False, delete=True, active_history=False)
+
+    def test_delete_m2o_activehistory(self):
+        self._run_test(
+            detached=False, raiseload=False,
+            backref=False, delete=True, active_history=True)
+
+    def test_delete_m2o_detached_activehistory(self):
+        self._run_test(
+            detached=True, raiseload=False,
+            backref=False, delete=True, active_history=True)
+
+    def test_delete_m2o_raiseload_activehistory(self):
+        self._run_test(
+            detached=False, raiseload=True,
+            backref=False, delete=True, active_history=True)
+
+    def test_delete_m2o_detached_raiseload_activehistory(self):
+        self._run_test(
+            detached=True, raiseload=True,
+            backref=False, delete=True, active_history=True)
 
 
 class RelationDeprecationTest(fixtures.MappedTest):
