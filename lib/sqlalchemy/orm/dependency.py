@@ -752,6 +752,9 @@ class ManyToOneDP(DependencyProcessor):
                     for child in history.added:
                         self._synchronize(state, child, None, False,
                                           uowcommit, "add")
+                elif history.deleted:
+                    self._synchronize(
+                        state, None, None, True, uowcommit, "delete")
                 if self.post_update:
                     self._post_update(state, uowcommit, history.sum())
 

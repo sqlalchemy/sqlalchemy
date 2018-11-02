@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4354
+
+   A long-standing oversight in the ORM, the ``__delete__`` method for a many-
+   to-one relationship was non-functional, e.g. for an operation such as ``del
+   a.b``.  This is now implemented and is equivalent to setting the attribute
+   to ``None``.
+
+   .. seealso::
+
+        :ref:`change_4354`
