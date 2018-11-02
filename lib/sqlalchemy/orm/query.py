@@ -4243,6 +4243,11 @@ class _ColumnEntity(_QueryEntity):
         else:
             column = query._adapt_clause(self.column, False, True)
 
+        if column._annotations:
+            # annotated columns perform more slowly in compiler and
+            # result due to the __eq__() method, so use deannotated
+            column = column._deannotate()
+
         if context.adapter:
             column = context.adapter.columns[column]
 
@@ -4251,6 +4256,12 @@ class _ColumnEntity(_QueryEntity):
 
     def setup_context(self, query, context):
         column = query._adapt_clause(self.column, False, True)
+
+        if column._annotations:
+            # annotated columns perform more slowly in compiler and
+            # result due to the __eq__() method, so use deannotated
+            column = column._deannotate()
+
         context.froms += tuple(self.froms)
         context.primary_columns.append(column)
 
