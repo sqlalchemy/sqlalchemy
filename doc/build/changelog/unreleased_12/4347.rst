@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4347
+
+   Fixed a minor performance issue which could in some cases add unnecessary
+   overhead to result fetching, involving the use of ORM columns and entities
+   that include those same columns at the same time within a query.  The issue
+   has to do with hash / eq overhead when referring to the column in different
+   ways.

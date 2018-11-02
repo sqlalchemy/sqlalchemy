@@ -1,12 +1,13 @@
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import mapper, relationship, \
     sessionmaker, Session, defer, joinedload, defaultload, selectinload, \
-    Load, configure_mappers
+    Load, configure_mappers, Bundle
 from sqlalchemy import testing
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import inspect
+
 
 class MergeTest(fixtures.MappedTest):
 
@@ -954,3 +955,149 @@ class BranchedOptionTest(fixtures.MappedTest):
             q.options(*opts)
         go()
 
+
+class AnnotatedOverheadTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'a',
+            metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A = cls.classes.A
+        a = cls.tables.a
+
+        mapper(A, a)
+
+    @classmethod
+    def insert_data(cls):
+        A = cls.classes.A
+        s = Session()
+        s.add_all([A(data='asdf') for i in range(5)])
+        s.commit()
+
+    def test_no_bundle(self):
+        A = self.classes.A
+        s = Session()
+
+        q = s.query(A).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_no_entity_wo_annotations(self):
+        A = self.classes.A
+        a = self.tables.a
+        s = Session()
+
+        q = s.query(a.c.data).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_no_entity_w_annotations(self):
+        A = self.classes.A
+        s = Session()
+        q = s.query(A.data).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_entity_w_annotations(self):
+        A = self.classes.A
+        s = Session()
+        q = s.query(
+                    A, A.data
+                ).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_entity_wo_annotations(self):
+        A = self.classes.A
+        a = self.tables.a
+        s = Session()
+        q = s.query(
+                    A, a.c.data
+                ).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_no_bundle_wo_annotations(self):
+        A = self.classes.A
+        a = self.tables.a
+        s = Session()
+        q = s.query(
+                a.c.data, A
+            ).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_no_bundle_w_annotations(self):
+        A = self.classes.A
+        s = Session()
+        q = s.query(
+                A.data, A
+            ).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_bundle_wo_annotation(self):
+        A = self.classes.A
+        a = self.tables.a
+        s = Session()
+        q = s.query(
+                Bundle("ASdf", a.c.data), A
+            ).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
+
+    def test_bundle_w_annotation(self):
+        A = self.classes.A
+        s = Session()
+        q = s.query(
+                Bundle("ASdf", A.data), A
+            ).select_from(A)
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(100):
+                q.all()
+        go()
