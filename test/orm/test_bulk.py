@@ -340,39 +340,84 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
         })
 
     def test_insert_keys(self):
-        self._test_insert(self.classes.PersonKeys)
+        asserter = self._test_insert(self.classes.PersonKeys)
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO people_keys (person_id, name) "
+                "VALUES (:id, :personname)",
+                [{'id': 5, 'personname': 'thename'}]
+            ),
+        )
 
     def test_insert_attrs(self):
-        self._test_insert(self.classes.PersonAttrs)
+        asserter = self._test_insert(self.classes.PersonAttrs)
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO people_attrs (person_id, name) "
+                "VALUES (:person_id, :name)",
+                [{'person_id': 5, 'name': 'thename'}]
+            ),
+        )
 
     def test_insert_both(self):
-        self._test_insert(self.classes.PersonBoth)
+        asserter = self._test_insert(self.classes.PersonBoth)
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO people_both (person_id, name) "
+                "VALUES (:id_key, :name_key)",
+                [{'id_key': 5, 'name_key': 'thename'}]
+            ),
+        )
 
     def test_update_keys(self):
-        self._test_update(self.classes.PersonKeys)
+        asserter = self._test_update(self.classes.PersonKeys)
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE people_keys SET name=:personname "
+                "WHERE people_keys.person_id = :people_keys_person_id",
+                [{'personname': 'newname', 'people_keys_person_id': 5}]
+            ),
+        )
 
     @testing.requires.updateable_autoincrement_pks
     def test_update_attrs(self):
-        self._test_update(self.classes.PersonAttrs)
+        asserter = self._test_update(self.classes.PersonAttrs)
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE people_attrs SET name=:name "
+                "WHERE people_attrs.person_id = :people_attrs_person_id",
+                [{'name': 'newname', 'people_attrs_person_id': 5}]
+            ),
+        )
 
     @testing.requires.updateable_autoincrement_pks
     def test_update_both(self):
         # want to make sure that before [ticket:3849], this did not have
         # a successful behavior or workaround
-        self._test_update(self.classes.PersonBoth)
+        asserter = self._test_update(self.classes.PersonBoth)
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE people_both SET name=:name_key "
+                "WHERE people_both.person_id = :people_both_person_id",
+                [{'name_key': 'newname', 'people_both_person_id': 5}]
+            ),
+        )
 
     def _test_insert(self, person_cls):
         Person = person_cls
 
         s = Session()
-        s.bulk_insert_mappings(
-            Person, [{"id": 5, "personname": "thename"}]
-        )
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.bulk_insert_mappings(
+                Person, [{"id": 5, "personname": "thename"}]
+            )
 
         eq_(
             s.query(Person).first(),
             Person(id=5, personname="thename")
         )
+
+        return asserter
 
     def _test_update(self, person_cls):
         Person = person_cls
@@ -381,14 +426,17 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
         s.add(Person(id=5, personname="thename"))
         s.commit()
 
-        s.bulk_update_mappings(
-            Person, [{"id": 5, "personname": "newname"}]
-        )
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.bulk_update_mappings(
+                Person, [{"id": 5, "personname": "newname"}]
+            )
 
         eq_(
             s.query(Person).first(),
             Person(id=5, personname="newname")
         )
+
+        return asserter
 
 
 class BulkInheritanceTest(BulkTest, fixtures.MappedTest):

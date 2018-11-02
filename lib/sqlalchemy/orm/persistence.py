@@ -419,6 +419,8 @@ def _collect_insert_commands(
                 params[colkey] = None
 
         if not bulk or return_defaults:
+            # params are in terms of Column key objects, so
+            # compare to pk_keys_by_table
             has_all_pks = mapper._pk_keys_by_table[table].issubset(params)
 
             if mapper.base_mapper.eager_defaults:
@@ -468,11 +470,13 @@ def _collect_update_commands(
         propkey_to_col = mapper._propkey_to_col[table]
 
         if bulk:
+            # keys here are mapped attrbute keys, so
+            # look at mapper attribute keys for pk
             params = dict(
                 (propkey_to_col[propkey].key, state_dict[propkey])
                 for propkey in
                 set(propkey_to_col).intersection(state_dict).difference(
-                    mapper._pk_keys_by_table[table])
+                    mapper._pk_attr_keys_by_table[table])
             )
             has_all_defaults = True
         else:
@@ -537,6 +541,8 @@ def _collect_update_commands(
 
         has_all_pks = True
         if bulk:
+            # keys here are mapped attrbute keys, so
+            # look at mapper attribute keys for pk
             pk_params = dict(
                 (propkey_to_col[propkey]._label, state_dict.get(propkey))
                 for propkey in

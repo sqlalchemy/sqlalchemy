@@ -1,0 +1,11 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4357
+
+   Fixed bug in :meth:`.Session.bulk_update_mappings` where alternate mapped
+   attribute names would result in the primary key column of the UPDATE
+   statement being included in the SET clause, as well as the WHERE clause;
+   while usually harmless, for SQL Server this can raise an error due to the
+   IDENTITY column.  This is a continuation of the same bug that was fixed in
+   :ticket:`.3849`, where testing was insufficient to catch this additional
+   flaw.
