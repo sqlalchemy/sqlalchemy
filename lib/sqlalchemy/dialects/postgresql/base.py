@@ -43,10 +43,10 @@ case.
 To force the usage of RETURNING by default off, specify the flag
 ``implicit_returning=False`` to :func:`.create_engine`.
 
-Postgresql 10 IDENTITY columns
+PostgreSQL 10 IDENTITY columns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Postgresql 10 has a new IDENTITY feature that supersedes the use of SERIAL.
+PostgreSQL 10 has a new IDENTITY feature that supersedes the use of SERIAL.
 Built-in support for rendering of IDENTITY is not available yet, however the
 following compilation hook may be used to replace occurrences of SERIAL with
 IDENTITY::
@@ -126,7 +126,7 @@ Remote-Schema Table Introspection and PostgreSQL search_path
 ------------------------------------------------------------
 
 **TL;DR;**: keep the ``search_path`` variable set to its default of ``public``,
-name schemas **other** than ``public`` explicitly within ``Table`` defintitions.
+name schemas **other** than ``public`` explicitly within ``Table`` definitions.
 
 The PostgreSQL dialect can reflect tables from any schema.  The
 :paramref:`.Table.schema` argument, or alternatively the
@@ -257,9 +257,9 @@ which is in the ``public`` (i.e. default) schema will always have the
 
 .. seealso::
 
-        `The Schema Search Path
-        <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
-        - on the PostgreSQL website.
+    `The Schema Search Path
+    <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
+    - on the PostgreSQL website.
 
 INSERT/UPDATE...RETURNING
 -------------------------
@@ -357,7 +357,6 @@ named constraint or by column inference:
         set_=dict(data=stmt.excluded.data)
         )
     conn.execute(stmt)
-
 
 * The :paramref:`.Insert.on_conflict_do_update.constraint` argument is
   used to specify an index directly rather than inferring it.  This can be
@@ -474,7 +473,9 @@ constraint violation which occurs::
 
 .. seealso::
 
-    `INSERT .. ON CONFLICT <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_ - in the PostgreSQL documentation.
+    `INSERT .. ON CONFLICT
+    <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_
+    - in the PostgreSQL documentation.
 
 .. _postgresql_match:
 
@@ -514,13 +515,13 @@ produces a statement equivalent to::
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
 
 Full Text Searches in PostgreSQL are influenced by a combination of: the
-PostgresSQL setting of ``default_text_search_config``, the ``regconfig`` used
+PostgreSQL setting of ``default_text_search_config``, the ``regconfig`` used
 to build the GIN/GiST indexes, and the ``regconfig`` optionally passed in
 during a query.
 
 When performing a Full Text Search against a column that has a GIN or
 GiST index that is already pre-computed (which is common on full text
-searches) one may need to explicitly pass in a particular PostgresSQL
+searches) one may need to explicitly pass in a particular PostgreSQL
 ``regconfig`` value to ensure the query-planner utilizes the index and does
 not re-compute the column on demand.
 
@@ -552,7 +553,7 @@ produces a statement equivalent to::
         to_tsquery('english', 'somestring')
 
 It is recommended that you use the ``EXPLAIN ANALYZE...`` tool from
-PostgresSQL to ensure that you are generating queries with SQLAlchemy that
+PostgreSQL to ensure that you are generating queries with SQLAlchemy that
 take full advantage of any indexes you may have created for full text search.
 
 FROM ONLY ...
@@ -586,7 +587,7 @@ to the PostgreSQL dialect.
 .. _postgresql_partial_indexes:
 
 Partial Indexes
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 Partial indexes add criterion to the index definition so that the index is
 applied to a subset of rows.   These can be specified on :class:`.Index`
@@ -595,7 +596,7 @@ using the ``postgresql_where`` keyword argument::
   Index('my_index', my_table.c.id, postgresql_where=my_table.c.value > 10)
 
 Operator Classes
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 PostgreSQL allows the specification of an *operator class* for each column of
 an index (see
@@ -629,7 +630,7 @@ that is identified in the dictionary by name, e.g.::
 
 
 Index Types
-^^^^^^^^^^^^
+^^^^^^^^^^^
 
 PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well
 as the ability for users to create their own (see
@@ -693,7 +694,7 @@ a connection-less dialect, it will emit::
    of PostgreSQL is detected on the connection (or for a connection-less
    dialect).
 
-When using CONCURRENTLY, the Postgresql database requires that the statement
+When using CONCURRENTLY, the PostgreSQL database requires that the statement
 be invoked outside of a transaction block.   The Python DBAPI enforces that
 even for a single statement, a transaction is present, so to use this
 construct, the DBAPI's "autocommit" mode must be used::
@@ -754,7 +755,7 @@ of :class:`.PGInspector`, which offers additional methods::
 .. _postgresql_table_options:
 
 PostgreSQL Table Options
--------------------------
+------------------------
 
 Several options for CREATE TABLE are supported directly by the PostgreSQL
 dialect in conjunction with the :class:`.Table` construct:
@@ -1267,7 +1268,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     @classmethod
     def adapt_emulated_to_native(cls, impl, **kw):
-        """Produce a Postgresql native :class:`.postgresql.ENUM` from plain
+        """Produce a PostgreSQL native :class:`.postgresql.ENUM` from plain
         :class:`.Enum`.
 
         """
@@ -1692,7 +1693,7 @@ class PGCompiler(compiler.SQLCompiler):
 
     def delete_extra_from_clause(self, delete_stmt, from_table,
                            extra_froms, from_hints, **kw):
-        """Render the DELETE .. USING clause specific to PostgresSQL."""
+        """Render the DELETE .. USING clause specific to PostgreSQL."""
         return "USING " + ', '.join(
             t._compiler_dispatch(self, asfrom=True,
                                  fromhints=from_hints, **kw)
