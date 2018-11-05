@@ -576,6 +576,89 @@ Note that this change may be revised if it leads to problems.
 New Features and Improvements - Core
 ====================================
 
+.. _change_3989:
+
+New multi-column naming convention tokens, long name truncation
+----------------------------------------------------------------
+
+To suit the case where a :class:`.MetaData` naming convention needs to
+disambiguate between multiple-column constraints and wishes to use all the
+columns within the generated constraint name, a new series of
+naming convention tokens are added, including
+``column_0N_name``, ``column_0_N_name``, ``column_0N_key``, ``column_0_N_key``,
+``referred_column_0N_name``, ``referred_column_0_N_name``, etc., which render
+the column name (or key or label) for all columns in the constraint,
+joined together either with no separator or with an underscore
+separator.  Below we define a convention that will name :class:`.UniqueConstraint`
+constraints with a name that joins together the names of all columns::
+
+    metadata = MetaData(naming_convention={
+        "uq": "uq_%(table_name)s_%(column_0_N_name)s"
+    })
+
+    table = Table(
+        'info', metadata,
+        Column('a', Integer),
+        Column('b', Integer),
+        Column('c', Integer),
+        UniqueConstraint('a', 'b', 'c')
+    )
+
+The CREATE TABLE for the above table will render as::
+
+    CREATE TABLE info (
+        a INTEGER,
+        b INTEGER,
+        c INTEGER,
+        CONSTRAINT uq_info_a_b_c UNIQUE (a, b, c)
+    )
+
+In addition, long-name truncation logic is now applied to the names generated
+by naming conventions, in particular to accommodate for multi-column labels
+that can produce very long names.  This logic, which is the same as that used
+for truncating long label names in a SELECT statement, replaces excess
+characters that go over the identifier-length limit for the target database
+with a deterministically generated 4-character hash.  For example, on
+PostgreSQL where identifiers cannot be longer than 63 characters, a long
+constraint name would normally be generated from the table definition below::
+
+    long_names = Table(
+        'long_names', metadata,
+        Column('information_channel_code', Integer, key='a'),
+        Column('billing_convention_name', Integer, key='b'),
+        Column('product_identifier', Integer, key='c'),
+        UniqueConstraint('a', 'b', 'c')
+    )
+
+The truncation logic will ensure a too-long name isn't generated for the
+UNIQUE constraint::
+
+    CREATE TABLE long_names (
+        information_channel_code INTEGER,
+        billing_convention_name INTEGER,
+        product_identifier INTEGER,
+        CONSTRAINT uq_long_names_information_channel_code_billing_conventi_a79e
+        UNIQUE (information_channel_code, billing_convention_name, product_identifier)
+    )
+
+The above suffix ``a79e`` is based on the md5 hash of the long name and will
+generate the same value every time to produce consistent names for a given
+schema.
+
+The change also repairs two other issues.  One is that the  ``column_0_key``
+token wasn't available even though this token was documented, the other was
+that the ``referred_column_0_name`` token would  inadvertently render the
+``.key`` and not the ``.name`` of the column if these two values were
+different.
+
+.. seealso::
+
+    :ref:`constraint_naming_conventions`
+
+    :paramref:`.MetaData.naming_convention`
+
+:ticket:`3989`
+
 .. _change_3831:
 
 Binary comparison interpretation for SQL functions

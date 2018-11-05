@@ -1020,19 +1020,6 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         'when', 'where',
     ])
 
-    def format_index(self, index, use_schema=True, name=None):
-        """Prepare a quoted index and schema name."""
-
-        if name is None:
-            name = index.name
-        result = self.quote(name, index.quote)
-        if (not self.omit_schema and
-                use_schema and
-                getattr(index.table, "schema", None)):
-            result = self.quote_schema(
-                index.table.schema, index.table.quote_schema) + "." + result
-        return result
-
 
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     @util.memoized_property

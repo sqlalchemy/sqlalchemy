@@ -4163,6 +4163,8 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
                    Column('id', Integer, primary_key=True),
                    Column('version', Integer, primary_key=True),
                    Column('data', String(30)),
+                   Column('Data2', String(30), key="data2"),
+                   Column('Data3', String(30), key="data3"),
                    schema=table_schema
                    )
 
@@ -4174,6 +4176,191 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         })
         uq = UniqueConstraint(u1.c.data)
         eq_(uq.name, "uq_user_data")
+
+    def test_uq_conv_name(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0_name)s"
+        })
+        uq = UniqueConstraint(u1.c.data, name=naming.conv("myname"))
+        self.assert_compile(
+            schema.AddConstraint(uq),
+            'ALTER TABLE "user" ADD CONSTRAINT myname UNIQUE (data)',
+            dialect="default"
+        )
+
+    def test_uq_defer_name_no_convention(self):
+        u1 = self._fixture(naming_convention={})
+        uq = UniqueConstraint(u1.c.data, name=naming._defer_name("myname"))
+        self.assert_compile(
+            schema.AddConstraint(uq),
+            'ALTER TABLE "user" ADD CONSTRAINT myname UNIQUE (data)',
+            dialect="default"
+        )
+
+    def test_uq_defer_name_convention(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0_name)s"
+        })
+        uq = UniqueConstraint(u1.c.data, name=naming._defer_name("myname"))
+        self.assert_compile(
+            schema.AddConstraint(uq),
+            'ALTER TABLE "user" ADD CONSTRAINT uq_user_data UNIQUE (data)',
+            dialect="default"
+        )
+
+    def test_uq_key(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0_key)s"
+        })
+        uq = UniqueConstraint(u1.c.data, u1.c.data2)
+        eq_(uq.name, "uq_user_data")
+
+    def test_uq_label(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0_label)s"
+        })
+        uq = UniqueConstraint(u1.c.data, u1.c.data2)
+        eq_(uq.name, "uq_user_user_data")
+
+    def test_uq_allcols_underscore_name(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0_N_name)s"
+        })
+        uq = UniqueConstraint(u1.c.data, u1.c.data2, u1.c.data3)
+        eq_(uq.name, "uq_user_data_Data2_Data3")
+
+    def test_uq_allcols_merged_name(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0N_name)s"
+        })
+        uq = UniqueConstraint(u1.c.data, u1.c.data2, u1.c.data3)
+        eq_(uq.name, "uq_user_dataData2Data3")
+
+    def test_uq_allcols_merged_key(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0N_key)s"
+        })
+        uq = UniqueConstraint(u1.c.data, u1.c.data2, u1.c.data3)
+        eq_(uq.name, "uq_user_datadata2data3")
+
+    def test_uq_allcols_truncated_name(self):
+        u1 = self._fixture(naming_convention={
+            "uq": "uq_%(table_name)s_%(column_0N_name)s"
+        })
+        uq = UniqueConstraint(u1.c.data, u1.c.data2, u1.c.data3)
+
+        dialect = default.DefaultDialect()
+        self.assert_compile(
+            schema.AddConstraint(uq),
+            'ALTER TABLE "user" ADD '
+            'CONSTRAINT "uq_user_dataData2Data3" '
+            'UNIQUE (data, "Data2", "Data3")',
+            dialect=dialect
+        )
+
+        dialect.max_identifier_length = 15
+        self.assert_compile(
+            schema.AddConstraint(uq),
+            'ALTER TABLE "user" ADD '
+            'CONSTRAINT uq_user_2769 UNIQUE (data, "Data2", "Data3")',
+            dialect=dialect
+        )
+
+    def test_fk_allcols_underscore_name(self):
+        u1 = self._fixture(naming_convention={
+            "fk": "fk_%(table_name)s_%(column_0_N_name)s_"
+            "%(referred_table_name)s_%(referred_column_0_N_name)s"})
+
+        m1 = u1.metadata
+        a1 = Table('address', m1,
+                   Column('id', Integer, primary_key=True),
+                   Column('UserData', String(30), key="user_data"),
+                   Column('UserData2', String(30), key="user_data2"),
+                   Column('UserData3', String(30), key="user_data3")
+                   )
+        fk = ForeignKeyConstraint(['user_data', 'user_data2', 'user_data3'],
+                                  ['user.data', 'user.data2', 'user.data3'])
+        a1.append_constraint(fk)
+        self.assert_compile(
+            schema.AddConstraint(fk),
+            'ALTER TABLE address ADD CONSTRAINT '
+            '"fk_address_UserData_UserData2_UserData3_user_data_Data2_Data3" '
+            'FOREIGN KEY("UserData", "UserData2", "UserData3") '
+            'REFERENCES "user" (data, "Data2", "Data3")',
+            dialect=default.DefaultDialect()
+        )
+
+    def test_fk_allcols_merged_name(self):
+        u1 = self._fixture(naming_convention={
+            "fk": "fk_%(table_name)s_%(column_0N_name)s_"
+            "%(referred_table_name)s_%(referred_column_0N_name)s"})
+
+        m1 = u1.metadata
+        a1 = Table('address', m1,
+                   Column('id', Integer, primary_key=True),
+                   Column('UserData', String(30), key="user_data"),
+                   Column('UserData2', String(30), key="user_data2"),
+                   Column('UserData3', String(30), key="user_data3")
+                   )
+        fk = ForeignKeyConstraint(['user_data', 'user_data2', 'user_data3'],
+                                  ['user.data', 'user.data2', 'user.data3'])
+        a1.append_constraint(fk)
+        self.assert_compile(
+            schema.AddConstraint(fk),
+            'ALTER TABLE address ADD CONSTRAINT '
+            '"fk_address_UserDataUserData2UserData3_user_dataData2Data3" '
+            'FOREIGN KEY("UserData", "UserData2", "UserData3") '
+            'REFERENCES "user" (data, "Data2", "Data3")',
+            dialect=default.DefaultDialect()
+        )
+
+    def test_fk_allcols_truncated_name(self):
+        u1 = self._fixture(naming_convention={
+            "fk": "fk_%(table_name)s_%(column_0N_name)s_"
+            "%(referred_table_name)s_%(referred_column_0N_name)s"})
+
+        m1 = u1.metadata
+        a1 = Table('address', m1,
+                   Column('id', Integer, primary_key=True),
+                   Column('UserData', String(30), key="user_data"),
+                   Column('UserData2', String(30), key="user_data2"),
+                   Column('UserData3', String(30), key="user_data3")
+                   )
+        fk = ForeignKeyConstraint(['user_data', 'user_data2', 'user_data3'],
+                                  ['user.data', 'user.data2', 'user.data3'])
+        a1.append_constraint(fk)
+
+        dialect = default.DefaultDialect()
+        dialect.max_identifier_length = 15
+        self.assert_compile(
+            schema.AddConstraint(fk),
+            'ALTER TABLE address ADD CONSTRAINT '
+            'fk_addr_f9ff '
+            'FOREIGN KEY("UserData", "UserData2", "UserData3") '
+            'REFERENCES "user" (data, "Data2", "Data3")',
+            dialect=dialect
+        )
+
+    def test_ix_allcols_truncation(self):
+        u1 = self._fixture(naming_convention={
+            "ix": "ix_%(table_name)s_%(column_0N_name)s"
+        })
+        ix = Index(None, u1.c.data, u1.c.data2, u1.c.data3)
+        dialect = default.DefaultDialect()
+        dialect.max_identifier_length = 15
+        self.assert_compile(
+            schema.CreateIndex(ix),
+            'CREATE INDEX ix_user_2de9 ON '
+            '"user" (data, "Data2", "Data3")',
+            dialect=dialect
+        )
+
+    def test_ix_name(self):
+        u1 = self._fixture(naming_convention={
+            "ix": "ix_%(table_name)s_%(column_0_name)s"
+        })
+        ix = Index(None, u1.c.data)
+        eq_(ix.name, "ix_user_data")
 
     def test_ck_name_required(self):
         u1 = self._fixture(naming_convention={

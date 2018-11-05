@@ -48,6 +48,12 @@ class ConventionDict(object):
             self.const.name = None
         return self._const_name
 
+    def _key_column_X_key(self, idx):
+        # note this method was missing before
+        # [ticket:3989], meaning tokens like ``%(column_0_key)s`` weren't
+        # working even though documented.
+        return self._column_X(idx).key
+
     def _key_column_X_name(self, idx):
         return self._column_X(idx).name
 
@@ -65,12 +71,10 @@ class ConventionDict(object):
 
     def _key_referred_column_X_name(self, idx):
         fk = self.const.elements[idx]
-        refs = fk.target_fullname.split(".")
-        if len(refs) == 3:
-            refschema, reftable, refcol = refs
-        else:
-            reftable, refcol = refs
-        return refcol
+        # note that before [ticket:3989], this method was returning
+        # the specification for the :class:`.ForeignKey` itself, which normally
+        # would be using the ``.key`` of the column, not the name.
+        return fk.column.name
 
     def __getitem__(self, key):
         if key in self.convention:
@@ -78,13 +82,30 @@ class ConventionDict(object):
         elif hasattr(self, '_key_%s' % key):
             return getattr(self, '_key_%s' % key)()
         else:
-            col_template = re.match(r".*_?column_(\d+)_.+", key)
+            col_template = re.match(r".*_?column_(\d+)(_?N)?_.+", key)
             if col_template:
                 idx = col_template.group(1)
-                attr = "_key_" + key.replace(idx, "X")
-                idx = int(idx)
-                if hasattr(self, attr):
-                    return getattr(self, attr)(idx)
+                multiples = col_template.group(2)
+
+                if multiples:
+                    if self._is_fk:
+                        elems = self.const.elements
+                    else:
+                        elems = list(self.const.columns)
+                    tokens = []
+                    for idx, elem in enumerate(elems):
+                        attr = "_key_" + key.replace("0" + multiples, "X")
+                        try:
+                            tokens.append(getattr(self, attr)(idx))
+                        except AttributeError:
+                            raise KeyError(key)
+                    sep = "_" if multiples.startswith("_") else ""
+                    return sep.join(tokens)
+                else:
+                    attr = "_key_" + key.replace(idx, "X")
+                    idx = int(idx)
+                    if hasattr(self, attr):
+                        return getattr(self, attr)(idx)
         raise KeyError(key)
 
 _prefix_dict = {
