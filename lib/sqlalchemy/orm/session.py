@@ -642,26 +642,37 @@ class Session(_SessionClassMethods):
            operations performed by this session will execute via this
            connectable.
 
-        :param binds: An optional dictionary which contains more granular
-           "bind" information than the ``bind`` parameter provides. This
-           dictionary can map individual :class`.Table`
-           instances as well as :class:`~.Mapper` instances to individual
-           :class:`.Engine` or :class:`.Connection` objects. Operations which
-           proceed relative to a particular :class:`.Mapper` will consult this
-           dictionary for the direct :class:`.Mapper` instance as
-           well as the mapper's ``mapped_table`` attribute in order to locate
-           a connectable to use. The full resolution is described in the
-           :meth:`.Session.get_bind`.
-           Usage looks like::
+        :param binds: A dictionary which may specify any number of
+           :class:`.Engine` or :class:`.Connection` objects as the source of
+           connectivity for SQL operations on a per-entity basis.   The keys
+           of the dictionary consist of any series of mapped classes,
+           arbitrary Python classes that are bases for mapped classes,
+           :class:`.Table` objects and :class:`.Mapper` objects.  The
+           values of the dictionary are then instances of :class:`.Engine`
+           or less commonly :class:`.Connection` objects.  Operations which
+           proceed relative to a particular mapped class will consult this
+           dictionary for the closest matching entity in order to determine
+           which :class:`.Engine` should be used for a particular SQL
+           operation.    The complete heuristics for resolution are
+           described at :meth:`.Session.get_bind`.  Usage looks like::
 
             Session = sessionmaker(binds={
                 SomeMappedClass: create_engine('postgresql://engine1'),
-                somemapper: create_engine('postgresql://engine2'),
-                some_table: create_engine('postgresql://engine3'),
+                SomeDeclarativeBase: create_engine('postgresql://engine2'),
+                some_mapper: create_engine('postgresql://engine3'),
+                some_table: create_engine('postgresql://engine4'),
                 })
 
-          Also see the :meth:`.Session.bind_mapper`
-          and :meth:`.Session.bind_table` methods.
+           .. seealso::
+
+                :ref:`session_partitioning`
+
+                :meth:`.Session.bind_mapper`
+
+                :meth:`.Session.bind_table`
+
+                :meth:`.Session.get_bind`
+
 
         :param \class_: Specify an alternate class other than
            ``sqlalchemy.orm.session.Session`` which should be used by the
@@ -1254,21 +1265,51 @@ class Session(_SessionClassMethods):
                     "Not an acceptable bind target: %s" % key)
 
     def bind_mapper(self, mapper, bind):
-        """Associate a :class:`.Mapper` with a "bind", e.g. a :class:`.Engine`
-        or :class:`.Connection`.
+        """Associate a :class:`.Mapper` or arbitrary Python class with a
+        "bind", e.g. an :class:`.Engine` or :class:`.Connection`.
 
-        The given mapper is added to a lookup used by the
+        The given entity is added to a lookup used by the
         :meth:`.Session.get_bind` method.
+
+        :param mapper: a :class:`.Mapper` object, or an instance of a mapped
+         class, or any Python class that is the base of a set of mapped
+         classes.
+
+        :param bind: an :class:`.Engine` or :class:`.Connection` object.
+
+        .. seealso::
+
+            :ref:`session_partitioning`
+
+            :paramref:`.Session.binds`
+
+            :meth:`.Session.bind_table`
+
 
         """
         self._add_bind(mapper, bind)
 
     def bind_table(self, table, bind):
-        """Associate a :class:`.Table` with a "bind", e.g. a :class:`.Engine`
+        """Associate a :class:`.Table` with a "bind", e.g. an :class:`.Engine`
         or :class:`.Connection`.
 
-        The given mapper is added to a lookup used by the
+        The given :class:`.Table` is added to a lookup used by the
         :meth:`.Session.get_bind` method.
+
+        :param table: a :class:`.Table` object, which is typically the target
+         of an ORM mapping, or is present within a selectable that is
+         mapped.
+
+        :param bind: an :class:`.Engine` or :class:`.Connection` object.
+
+        .. seealso::
+
+            :ref:`session_partitioning`
+
+            :paramref:`.Session.binds`
+
+            :meth:`.Session.bind_mapper`
+
 
         """
         self._add_bind(table, bind)
@@ -1293,7 +1334,10 @@ class Session(_SessionClassMethods):
         The order of resolution is:
 
         1. if mapper given and session.binds is present,
-           locate a bind based on mapper.
+           locate a bind based first on the mapper in use, then
+           on the mapped class in use, then on any base classes that are
+           present in the ``__mro__`` of the mapped class, from more specific
+           superclasses to more general.
         2. if clause given and session.binds is present,
            locate a bind based on :class:`.Table` objects
            found in the given clause present in session.binds.
@@ -1307,6 +1351,11 @@ class Session(_SessionClassMethods):
            selectable to which the mapper is mapped.
         6. No bind can be found, :exc:`~sqlalchemy.exc.UnboundExecutionError`
            is raised.
+
+        Note that the :meth:`.Session.get_bind` method can be overridden on
+        a user-defined subclass of :class:`.Session` to provide any kind
+        of bind resolution scheme.  See the example at
+        :ref:`session_custom_partitioning`.
 
         :param mapper:
           Optional :func:`.mapper` mapped class or instance of
@@ -1323,6 +1372,16 @@ class Session(_SessionClassMethods):
             produce a bind, the given expression construct will be searched
             for a bound element, typically a :class:`.Table` associated with
             bound :class:`.MetaData`.
+
+        .. seealso::
+
+             :ref:`session_partitioning`
+
+             :paramref:`.Session.binds`
+
+             :meth:`.Session.bind_mapper`
+
+             :meth:`.Session.bind_table`
 
         """
 
