@@ -338,32 +338,105 @@ The above mapping upon INSERT will look like:
 
 .. _session_partitioning:
 
-Partitioning Strategies
-=======================
+Partitioning Strategies (e.g. multiple database backends per Session)
+=====================================================================
 
 Simple Vertical Partitioning
 ----------------------------
 
-Vertical partitioning places different kinds of objects, or different tables,
-across multiple databases::
+Vertical partitioning places different classes, class hierarchies,
+or mapped tables, across multiple databases, by configuring the
+:class:`.Session` with the :paramref:`.Session.binds` argument. This
+argument receives a dictionary that contains any combination of
+ORM-mapped classes, arbitrary classes within a mapped hierarchy (such
+as declarative base classes or mixins), :class:`.Table` objects,
+and :class:`.Mapper` objects as keys, which then refer typically to
+:class:`.Engine` or less typically :class:`.Connection` objects as targets.
+The dictionary is consulted whenever the :class:`.Session` needs to
+emit SQL on behalf of a particular kind of mapped class in order to locate
+the appropriate source of database connectivity::
 
     engine1 = create_engine('postgresql://db1')
     engine2 = create_engine('postgresql://db2')
 
-    Session = sessionmaker(twophase=True)
+    Session = sessionmaker()
 
     # bind User operations to engine 1, Account operations to engine 2
     Session.configure(binds={User:engine1, Account:engine2})
 
     session = Session()
 
-Above, operations against either class will make usage of the :class:`.Engine`
-linked to that class.   Upon a flush operation, similar rules take place
-to ensure each class is written to the right database.
+Above, SQL operations against either class will make usage of the :class:`.Engine`
+linked to that class.     The functionality is comprehensive across both
+read and write operations; a :class:`.Query` that is against entities
+mapped to ``engine1`` (determined by looking at the first entity in the
+list of items requested) will make use of ``engine1`` to run the query.   A
+flush operation will make use of **both** engines on a per-class basis as it
+flushes objects of type ``User`` and ``Account``.
 
-The transactions among the multiple databases can optionally be coordinated
-via two phase commit, if the underlying backend supports it.  See
-:ref:`session_twophase` for an example.
+In the more common case, there are typically base or mixin classes that  can be
+used to distinguish between operations that are destined for different database
+connections.  The :paramref:`.Session.binds` argument can accomodate any
+arbitrary Python class as a key, which will be used if it is found to be in the
+``__mro__`` (Python method resolution order) for a particular  mapped class.
+Supposing two declarative bases are representing two different database
+connections::
+
+    BaseA = declarative_base()
+
+    BaseB = declarative_base()
+
+    class User(BaseA):
+        # ...
+
+    class Address(BaseA):
+        # ...
+
+
+    class GameInfo(BaseB):
+        # ...
+
+    class GameStats(BaseB):
+        # ...
+
+
+    Session = sessionmaker()
+
+    # all User/Address operations will be on engine 1, all
+    # Game operations will be on engine 2
+    Session.configure(binds={BaseA:engine1, BaseB:engine2})
+
+Above, classes which descend from ``BaseA`` and ``BaseB`` will have their
+SQL operations routed to one of two engines based on which superclass
+they descend from, if any.   In the case of a class that descends from more
+than one "bound" superclass, the superclass that is highest in the target
+class' hierarchy will be chosen to represent which engine should be used.
+
+.. seealso::
+
+    :paramref:`.Session.binds`
+
+
+Coordination of Transactions for a multiple-engine Session
+----------------------------------------------------------
+
+One caveat to using multiple bound engines is in the case where a commit
+operation may fail on one backend after the commit has succeeded on another.
+This is an inconsistency problem that in relational databases is solved
+using a "two phase transaction", which adds an additional "prepare" step
+to the commit sequence that allows for multiple databases to agree to commit
+before actually completing the transaction.
+
+Due to limited support within DBAPIs,  SQLAlchemy has limited support for two-
+phase transactions across backends.  Most typically, it is known to work well
+with the PostgreSQL backend and to  a lesser extent with the MySQL backend.
+However, the :class:`.Session` is fully capable of taking advantage of the two
+phase transaction feature when the backend supports it, by setting the
+:paramref:`.Session.use_twophase` flag within :class:`.sessionmaker` or
+:class:`.Session`.  See :ref:`session_twophase` for an example.
+
+
+.. _session_custom_partitioning:
 
 Custom Vertical Partitioning
 ----------------------------
@@ -412,13 +485,19 @@ This approach can be combined with multiple :class:`.MetaData` objects,
 using an approach such as that of using the declarative ``__abstract__``
 keyword, described at :ref:`declarative_abstract`.
 
+.. seealso::
+
+    `Django-style Database Routers in SQLAlchemy <http://techspot.zzzeek.org/2012/01/11/django-style-database-routers-in-sqlalchemy/>`_  - blog post on a more comprehensive example of :meth:`.Session.get_bind`
+
 Horizontal Partitioning
 -----------------------
 
 Horizontal partitioning partitions the rows of a single table (or a set of
-tables) across multiple databases.
-
-See the "sharding" example: :ref:`examples_sharding`.
+tables) across multiple databases.    The SQLAlchemy :class:`.Session`
+contains support for this concept, however to use it fully requires that
+:class:`.Session` and :class:`.Query` subclasses are used.  A basic version
+of these subclasses are available in the :ref:`horizontal_sharding_toplevel`
+ORM extension.   An example of use is at: :ref:`examples_sharding`.
 
 .. _bulk_operations:
 

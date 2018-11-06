@@ -1,3 +1,5 @@
+.. _horizontal_sharding_toplevel:
+
 Horizontal Sharding
 ===================
 
