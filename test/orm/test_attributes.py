@@ -994,6 +994,58 @@ class AttributesTest(fixtures.ORMTest):
         except sa_exc.ArgumentError as e:
             assert False
 
+    def test_last_known_tracking(self):
+        class Foo(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'a', useobject=False)
+        attributes.register_attribute(Foo, 'b', useobject=False)
+        attributes.register_attribute(Foo, 'c', useobject=False)
+
+        f1 = Foo()
+        state = attributes.instance_state(f1)
+
+        f1.a = 'a1'
+        f1.b = 'b1'
+        f1.c = 'c1'
+
+        assert not state._last_known_values
+
+        state._track_last_known_value('b')
+        state._track_last_known_value('c')
+
+        eq_(
+            state._last_known_values,
+            {'b': attributes.NO_VALUE, 'c': attributes.NO_VALUE})
+
+        state._expire_attributes(state.dict, ['b'])
+        eq_(
+            state._last_known_values,
+            {'b': 'b1', 'c': attributes.NO_VALUE})
+
+        state._expire(state.dict, set())
+        eq_(
+            state._last_known_values,
+            {'b': 'b1', 'c': 'c1'})
+
+        f1.b = 'b2'
+
+        eq_(
+            state._last_known_values,
+            {'b': attributes.NO_VALUE, 'c': 'c1'})
+
+        f1.c = 'c2'
+
+        eq_(
+            state._last_known_values,
+            {'b': attributes.NO_VALUE, 'c': attributes.NO_VALUE})
+
+        state._expire(state.dict, set())
+        eq_(
+            state._last_known_values,
+            {'b': 'b2', 'c': 'c2'})
+
 
 class GetNoValueTest(fixtures.ORMTest):
     def _fixture(self, expected):

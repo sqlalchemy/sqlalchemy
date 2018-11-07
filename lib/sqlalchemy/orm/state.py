@@ -64,6 +64,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
     _orphaned_outside_of_session = False
     is_instance = True
     identity_token = None
+    _last_known_values = ()
 
     callables = ()
     """A namespace where a per-state loader callable can be associated.
@@ -228,6 +229,18 @@ class InstanceState(interfaces.InspectionAttrInfo):
     def _attached(self, sessionlib):
         return self.session_id is not None and \
             self.session_id in sessionlib._sessions
+
+    def _track_last_known_value(self, key):
+        """Track the last known value of a particular key after expiration
+        operations.
+
+        .. versionadded:: 1.3
+
+        """
+
+        if key not in self._last_known_values:
+            self._last_known_values = dict(self._last_known_values)
+            self._last_known_values[key] = NO_VALUE
 
     @property
     @util.dependencies("sqlalchemy.orm.session")
@@ -569,6 +582,12 @@ class InstanceState(interfaces.InspectionAttrInfo):
             collection = dict_.pop(k)
             collection._sa_adapter.invalidated = True
 
+        if self._last_known_values:
+            self._last_known_values.update(
+                (k, dict_[k]) for k in self._last_known_values
+                if k in dict_
+            )
+
         for key in self.manager._all_key_set.intersection(dict_):
             del dict_[key]
 
@@ -591,9 +610,13 @@ class InstanceState(interfaces.InspectionAttrInfo):
                 self.expired_attributes.add(key)
                 if callables and key in callables:
                     del callables[key]
-            old = dict_.pop(key, None)
-            if impl.collection and old is not None:
+            old = dict_.pop(key, NO_VALUE)
+            if impl.collection and old is not NO_VALUE:
                 impl._invalidate_collection(old)
+
+            if self._last_known_values and key in self._last_known_values \
+                    and old is not NO_VALUE:
+                self._last_known_values[key] = old
 
             self.committed_state.pop(key, None)
             if pending:
@@ -689,6 +712,9 @@ class InstanceState(interfaces.InspectionAttrInfo):
                     if previous not in (None, NO_VALUE, NEVER_SET):
                         previous = attr.copy(previous)
                 self.committed_state[attr.key] = previous
+
+            if attr.key in self._last_known_values:
+                self._last_known_values[attr.key] = NO_VALUE
 
         # assert self._strong_obj is None or self.modified
 
