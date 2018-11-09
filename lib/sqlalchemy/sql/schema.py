@@ -913,7 +913,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         return self._schema_item_copy(table)
 
 
-class Column(SchemaItem, ColumnClause):
+class Column(DialectKWArgs, SchemaItem, ColumnClause):
     """Represents a column in a database table."""
 
     __visit_name__ = 'column'
@@ -1284,9 +1284,10 @@ class Column(SchemaItem, ColumnClause):
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
 
-        if kwargs:
-            raise exc.ArgumentError(
-                "Unknown arguments passed to Column: " + repr(list(kwargs)))
+        self._extra_kwargs(**kwargs)
+
+    def _extra_kwargs(self, **kwargs):
+        self._validate_dialect_kwargs(kwargs)
 
 #    @property
 #    def quote(self):
@@ -2748,7 +2749,7 @@ class CheckConstraint(ColumnCollectionConstraint):
 
     def __init__(self, sqltext, name=None, deferrable=None,
                  initially=None, table=None, info=None, _create_rule=None,
-                 _autoattach=True, _type_bound=False):
+                 _autoattach=True, _type_bound=False, **kw):
         r"""Construct a CHECK constraint.
 
         :param sqltext:
@@ -2787,7 +2788,7 @@ class CheckConstraint(ColumnCollectionConstraint):
                 name=name, deferrable=deferrable,
                 initially=initially, _create_rule=_create_rule, info=info,
                 _type_bound=_type_bound, _autoattach=_autoattach,
-                *columns)
+                *columns, **kw)
         if table is not None:
             self._set_parent_with_dispatch(table)
 

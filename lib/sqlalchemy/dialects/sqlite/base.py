@@ -282,6 +282,110 @@ new connections through the usage of events::
     :ref:`use_alter` - more information on SQLAlchemy's facilities for handling
      mutually-dependent foreign key constraints.
 
+.. _sqlite_on_conflict_ddl:
+
+ON CONFLICT support for constraints
+-----------------------------------
+
+SQLite supports a non-standard clause known as ON CONFLICT which can be applied
+to primary key, unique, check, and not null constraints.   In DDL, it is
+rendered either within the "CONSTRAINT" clause or within the column definition
+itself depending on the location of the target constraint.    To render this
+clause within DDL, the extension parameter ``sqlite_on_conflict`` can be
+specified with a string conflict resolution algorithm within the
+:class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`,
+:class:`.CheckConstraint` objects.  Within the :class:`.Column` object, there
+are individual parameters ``sqlite_on_conflict_not_null``,
+``sqlite_on_conflict_primary_key``, ``sqlite_on_conflict_unique`` which each
+correspond to the three types of relevant constraint types that can be
+indicated from a :class:`.Column` object.
+
+.. seealso::
+
+    `ON CONFLICT <https://www.sqlite.org/lang_conflict.html>`_ - in the SQLite
+    documentation
+
+.. versionadded:: 1.3
+
+
+The ``sqlite_on_conflict`` parameters accept a  string argument which is just
+the resolution name to be chosen, which on SQLite can be one of ROLLBACK,
+ABORT, FAIL, IGNORE, and REPLACE.   For example, to add a UNIQUE constraint
+that specifies the IGNORE algorithm::
+
+    some_table = Table(
+        'some_table', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', Integer),
+        UniqueConstraint('id', 'data', sqlite_on_conflict='IGNORE')
+    )
+
+The above renders CREATE TABLE DDL as::
+
+    CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        data INTEGER,
+        PRIMARY KEY (id),
+        UNIQUE (id, data) ON CONFLICT IGNORE
+    )
+
+
+When using the :paramref:`.Column.unique` flag to add a UNIQUE constraint
+to a single column, the ``sqlite_on_conflict_unique`` parameter can
+be added to the :class:`.Column` as well, which will be added to the
+UNIQUE constraint in the DDL::
+
+    some_table = Table(
+        'some_table', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', Integer, unique=True,
+               sqlite_on_conflict_unique='IGNORE')
+    )
+
+rendering::
+
+    CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        data INTEGER,
+        PRIMARY KEY (id),
+        UNIQUE (data) ON CONFLICT IGNORE
+    )
+
+To apply the FAIL algorithm for a NOT NULL constraint,
+``sqlite_on_conflict_not_null`` is used::
+
+    some_table = Table(
+        'some_table', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', Integer, nullable=False,
+               sqlite_on_conflict_not_null='FAIL')
+    )
+
+this renders the column inline ON CONFLICT phrase::
+
+    CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        data INTEGER NOT NULL ON CONFLICT FAIL,
+        PRIMARY KEY (id)
+    )
+
+
+Similarly, for an inline primary key, use ``sqlite_on_conflict_primary_key``::
+
+    some_table = Table(
+        'some_table', metadata,
+        Column('id', Integer, primary_key=True,
+               sqlite_on_conflict_primary_key='FAIL')
+    )
+
+SQLAlchemy renders the PRIMARY KEY constraint separately, so the conflict
+resolution algorithm is applied to the constraint itself::
+
+    CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        PRIMARY KEY (id) ON CONFLICT FAIL
+    )
+
 .. _sqlite_type_reflection:
 
 Type Reflection
@@ -887,6 +991,11 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
 
+            on_conflict_clause = column.dialect_options['sqlite'][
+                'on_conflict_not_null']
+            if on_conflict_clause is not None:
+                colspec += " ON CONFLICT " + on_conflict_clause
+
         if column.primary_key:
             if (
                 column.autoincrement is True and
@@ -898,9 +1007,17 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
             if (column.table.dialect_options['sqlite']['autoincrement'] and
                     len(column.table.primary_key.columns) == 1 and
-                    issubclass(column.type._type_affinity, sqltypes.Integer) and
+                    issubclass(
+                        column.type._type_affinity, sqltypes.Integer) and
                     not column.foreign_keys):
-                colspec += " PRIMARY KEY AUTOINCREMENT"
+                colspec += " PRIMARY KEY"
+
+                on_conflict_clause = column.dialect_options['sqlite'][
+                    'on_conflict_primary_key']
+                if on_conflict_clause is not None:
+                    colspec += " ON CONFLICT " + on_conflict_clause
+
+                colspec += " AUTOINCREMENT"
 
         return colspec
 
@@ -916,8 +1033,61 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
                     not c.foreign_keys):
                 return None
 
-        return super(SQLiteDDLCompiler, self).visit_primary_key_constraint(
-            constraint)
+        text = super(
+            SQLiteDDLCompiler,
+            self).visit_primary_key_constraint(constraint)
+
+        on_conflict_clause = constraint.dialect_options['sqlite'][
+            'on_conflict']
+        if on_conflict_clause is None and len(constraint.columns) == 1:
+            on_conflict_clause = list(constraint)[0].\
+                dialect_options['sqlite']['on_conflict_primary_key']
+
+        if on_conflict_clause is not None:
+            text += " ON CONFLICT " + on_conflict_clause
+
+        return text
+
+    def visit_unique_constraint(self, constraint):
+        text = super(
+            SQLiteDDLCompiler,
+            self).visit_unique_constraint(constraint)
+
+        on_conflict_clause = constraint.dialect_options['sqlite'][
+            'on_conflict']
+        if on_conflict_clause is None and len(constraint.columns) == 1:
+            on_conflict_clause = list(constraint)[0].\
+                dialect_options['sqlite']['on_conflict_unique']
+
+        if on_conflict_clause is not None:
+            text += " ON CONFLICT " + on_conflict_clause
+
+        return text
+
+    def visit_check_constraint(self, constraint):
+        text = super(
+            SQLiteDDLCompiler,
+            self).visit_check_constraint(constraint)
+
+        on_conflict_clause = constraint.dialect_options['sqlite'][
+            'on_conflict']
+
+        if on_conflict_clause is not None:
+            text += " ON CONFLICT " + on_conflict_clause
+
+        return text
+
+    def visit_column_check_constraint(self, constraint):
+        text = super(
+            SQLiteDDLCompiler,
+            self).visit_column_check_constraint(constraint)
+
+        if constraint.dialect_options['sqlite']['on_conflict'] is not None:
+            raise exc.CompileError(
+                "SQLite does not support on conflict clause for "
+                "column check constraint")
+
+        return text
 
     def visit_foreign_key_constraint(self, constraint):
 
@@ -1083,6 +1253,14 @@ class SQLiteDialect(default.DefaultDialect):
         }),
         (sa_schema.Index, {
             "where": None,
+        }),
+        (sa_schema.Column, {
+            "on_conflict_primary_key": None,
+            "on_conflict_not_null": None,
+            "on_conflict_unique": None,
+        }),
+        (sa_schema.Constraint, {
+            "on_conflict": None,
         }),
     ]
 
