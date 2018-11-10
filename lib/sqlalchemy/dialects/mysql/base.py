@@ -1982,6 +1982,7 @@ class MySQLDialect(default.DefaultDialect):
         self._connection_charset = self._detect_charset(connection)
         self._detect_sql_mode(connection)
         self._detect_ansiquotes(connection)
+        self._detect_casing(connection)
         if self._server_ansiquotes:
             # if ansiquotes == True, build a new IdentifierPreparer
             # with the new setting
@@ -2156,11 +2157,24 @@ class MySQLDialect(default.DefaultDialect):
         # https://bugs.mysql.com/bug.php?id=88718
         # issue #4344 for SQLAlchemy
 
+        # for lower_case_table_names=2, information_schema.columns
+        # preserves the original table/schema casing, but SHOW CREATE
+        # TABLE does not.   this problem is not in lower_case_table_names=1,
+        # but use case-insensitive matching for these two modes in any case.
+        if self._casing in (1, 2):
+            lower = str.lower
+        else:
+            # if on case sensitive, there can be two tables referenced
+            # with the same name different casing, so we need to use
+            # case-sensitive matching.
+            def lower(s):
+                return s
+
         default_schema_name = connection.dialect.default_schema_name
         col_tuples = [
             (
-                rec['referred_schema'] or default_schema_name,
-                rec['referred_table'],
+                lower(rec['referred_schema'] or default_schema_name),
+                lower(rec['referred_table']),
                 col_name
             )
             for rec in fkeys
@@ -2180,16 +2194,28 @@ class MySQLDialect(default.DefaultDialect):
                 ), table_data=col_tuples
             )
 
+            # in casing=0, table name and schema name come back in their
+            # exact case.
+            # in casing=1, table name and schema name come back in lower
+            # case.
+            # in casing=2, table name and schema name come back from the
+            # information_schema.columns view in the case
+            # that was used in CREATE DATABASE and CREATE TABLE, but
+            # SHOW CREATE TABLE converts them to *lower case*, therefore
+            # not matching.  So for this case, case-insensitive lookup
+            # is necessary
             d = defaultdict(dict)
             for schema, tname, cname in correct_for_wrong_fk_case:
-                d[(schema, tname)][cname.lower()] = cname
+                d[(lower(schema), lower(tname))][cname.lower()] = cname
 
             for fkey in fkeys:
                 fkey['referred_columns'] = [
                     d[
                         (
-                            fkey['referred_schema'] or default_schema_name,
-                            fkey['referred_table']
+                            lower(
+                                fkey['referred_schema'] or
+                                default_schema_name),
+                            lower(fkey['referred_table'])
                         )
                     ][col.lower()]
                     for col in fkey['referred_columns']
@@ -2345,6 +2371,7 @@ class MySQLDialect(default.DefaultDialect):
                 cs = 1
             else:
                 cs = int(row[1])
+        self._casing = cs
         return cs
 
     def _detect_collations(self, connection):
