@@ -12,7 +12,41 @@
 
 .. changelog::
     :version: 1.2.14
-    :include_notes_from: unreleased_12
+    :released: November 10, 2018
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4357
+
+       Fixed bug in :meth:`.Session.bulk_update_mappings` where alternate mapped
+       attribute names would result in the primary key column of the UPDATE
+       statement being included in the SET clause, as well as the WHERE clause;
+       while usually harmless, for SQL Server this can raise an error due to the
+       IDENTITY column.  This is a continuation of the same bug that was fixed in
+       :ticket:`3849`, where testing was insufficient to catch this additional
+       flaw.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4361
+
+        Fixed regression caused by :ticket:`4344` released in 1.2.13, where the fix
+        for MySQL 8.0's case sensitivity problem with referenced column names when
+        reflecting foreign key referents is worked around using the
+        ``information_schema.columns`` view.  The workaround was failing on OSX /
+        ``lower_case_table_names=2`` which produces non-matching casing for the
+        ``information_schema.columns`` vs. that of ``SHOW CREATE TABLE``, so in
+        case-insensitive SQL modes case-insensitive matching is now used.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4347
+
+       Fixed a minor performance issue which could in some cases add unnecessary
+       overhead to result fetching, involving the use of ORM columns and entities
+       that include those same columns at the same time within a query.  The issue
+       has to do with hash / eq overhead when referring to the column in different
+       ways.
 
 .. changelog::
     :version: 1.2.13
