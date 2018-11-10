@@ -604,11 +604,13 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         m1 = self.metadata
 
         Table(
-            'Track', m1, Column('TrackID', Integer, primary_key=True)
+            'Track', m1, Column('TrackID', Integer, primary_key=True),
+            mysql_engine='InnoDB'
         )
         Table(
             'Track', m1, Column('TrackID', Integer, primary_key=True),
-            schema=testing.config.test_schema
+            schema=testing.config.test_schema,
+            mysql_engine='InnoDB'
         )
         Table(
             'PlaylistTrack', m1, Column('id', Integer, primary_key=True),
@@ -620,24 +622,94 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     '%s.Track.TrackID' % (testing.config.test_schema,),
                     name='FK_PlaylistTTrackId'
                 )
-            )
+            ),
+            mysql_engine='InnoDB'
         )
         m1.create_all()
 
+        if testing.db.dialect._casing in (1, 2):
+            eq_(
+                inspect(testing.db).get_foreign_keys('PlaylistTrack'),
+                [
+                    {'name': 'FK_PlaylistTTrackId',
+                     'constrained_columns': ['TTrackID'],
+                     'referred_schema': testing.config.test_schema,
+                     'referred_table': 'track',
+                     'referred_columns': ['TrackID'], 'options': {}},
+                    {'name': 'FK_PlaylistTrackId',
+                     'constrained_columns': ['TrackID'],
+                     'referred_schema': None,
+                     'referred_table': 'track',
+                     'referred_columns': ['TrackID'], 'options': {}}
+                ]
+            )
+        else:
+            eq_(
+                inspect(testing.db).get_foreign_keys('PlaylistTrack'),
+                [
+                    {'name': 'FK_PlaylistTTrackId',
+                     'constrained_columns': ['TTrackID'],
+                     'referred_schema': testing.config.test_schema,
+                     'referred_table': 'Track',
+                     'referred_columns': ['TrackID'], 'options': {}},
+                    {'name': 'FK_PlaylistTrackId',
+                     'constrained_columns': ['TrackID'],
+                     'referred_schema': None,
+                     'referred_table': 'Track',
+                     'referred_columns': ['TrackID'], 'options': {}}
+                ]
+            )
+
+    @testing.requires.mysql_fully_case_sensitive
+    @testing.provide_metadata
+    def test_case_sensitive_reflection_dual_case_references(self):
+        # this tests that within the fix we do for MySQL bug
+        # 88718, we don't do case-insensitive logic if the backend
+        # is case sensitive
+        m = self.metadata
+        Table(
+            't1', m,
+            Column('some_id', Integer, primary_key=True),
+            mysql_engine='InnoDB'
+
+        )
+
+        Table(
+            'T1', m,
+            Column('Some_Id', Integer, primary_key=True),
+            mysql_engine='InnoDB'
+        )
+
+        Table(
+            't2', m,
+            Column('id', Integer, primary_key=True),
+            Column('t1id', ForeignKey('t1.some_id', name='t1id_fk')),
+            Column('cap_t1id', ForeignKey('T1.Some_Id', name='cap_t1id_fk')),
+            mysql_engine='InnoDB'
+        )
+        m.create_all(testing.db)
+
         eq_(
-            inspect(testing.db).get_foreign_keys('PlaylistTrack'),
-            [
-                {'name': 'FK_PlaylistTTrackId',
-                 'constrained_columns': ['TTrackID'],
-                 'referred_schema': testing.config.test_schema,
-                 'referred_table': 'Track',
-                 'referred_columns': ['TrackID'], 'options': {}},
-                {'name': 'FK_PlaylistTrackId',
-                 'constrained_columns': ['TrackID'],
-                 'referred_schema': None,
-                 'referred_table': 'Track',
-                 'referred_columns': ['TrackID'], 'options': {}}
-            ]
+            dict(
+                (rec['name'], rec)
+                for rec in inspect(testing.db).get_foreign_keys('t2')
+            ),
+            {
+                'cap_t1id_fk': {
+                    'name': 'cap_t1id_fk',
+                    'constrained_columns': ['cap_t1id'],
+                    'referred_schema': None,
+                    'referred_table': 'T1',
+                    'referred_columns': ['Some_Id'], 'options': {}
+                },
+                't1id_fk': {
+                    'name': 't1id_fk',
+                    'constrained_columns': ['t1id'],
+                    'referred_schema': None,
+                    'referred_table': 't1',
+                    'referred_columns': ['some_id'], 'options': {}
+                },
+            }
         )
 
 
