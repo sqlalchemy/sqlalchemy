@@ -7,5 +7,5 @@
    statement being included in the SET clause, as well as the WHERE clause;
    while usually harmless, for SQL Server this can raise an error due to the
    IDENTITY column.  This is a continuation of the same bug that was fixed in
-   :ticket:`.3849`, where testing was insufficient to catch this additional
+   :ticket:`3849`, where testing was insufficient to catch this additional
    flaw.
