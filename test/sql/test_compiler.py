@@ -2898,6 +2898,18 @@ class StringifySpecialTest(fixtures.TestBase):
             "SELECT anon_1.myid FROM anon_1"
         )
 
+    def test_next_sequence_value(self):
+        # using descriptive text that is intentionally not compatible
+        # with any particular backend, since all backends have different
+        # syntax
+
+        seq = Sequence("my_sequence")
+
+        eq_ignore_whitespace(
+            str(seq.next_value()),
+            "<next sequence value: my_sequence>"
+        )
+
     def test_returning(self):
         stmt = table1.insert().returning(table1.c.myid)
 

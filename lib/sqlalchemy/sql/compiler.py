@@ -2407,6 +2407,9 @@ class StrSQLCompiler(SQLCompiler):
     def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
         return self.visit_getitem_binary(binary, operator, **kw)
 
+    def visit_sequence(self, seq, **kw):
+        return "<next sequence value: %s>" % self.preparer.format_sequence(seq)
+
     def returning_clause(self, stmt, returning_cols):
         columns = [
             self._label_select_column(None, c, True, False, {})
