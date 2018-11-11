@@ -2,11 +2,11 @@
     :tags: bug, ext
     :tickets: 4308
 
-	Fixed multiple issues regarding de-association of scalar objects with the
-	association proxy.  ``del`` now works, and additionally a new flag
-	:paramref:`.AssociationProxy.cascade_scalar_deletes` is added, which when
-	set to True indicates that setting a scalar attribute to ``None`` or
-	deleting via ``del`` will also set the source association to ``None``.
+    Fixed multiple issues regarding de-association of scalar objects with the
+    association proxy.  ``del`` now works, and additionally a new flag
+    :paramref:`.AssociationProxy.cascade_scalar_deletes` is added, which when
+    set to True indicates that setting a scalar attribute to ``None`` or
+    deleting via ``del`` will also set the source association to ``None``.
 
     .. seealso::
 
