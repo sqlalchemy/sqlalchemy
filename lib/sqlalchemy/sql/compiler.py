@@ -2621,17 +2621,7 @@ class DDLCompiler(Compiled):
         else:
             schema_name = None
 
-        ident = index.name
-        if isinstance(ident, elements._truncated_label):
-            max_ = self.dialect.max_index_name_length or \
-                self.dialect.max_identifier_length
-            if len(ident) > max_:
-                ident = ident[0:max_ - 8] + \
-                    "_" + util.md5_hex(ident)[-4:]
-        else:
-            self.dialect.validate_identifier(ident)
-
-        index_name = self.preparer.quote(ident)
+        index_name = self.preparer.format_index(index)
 
         if schema_name:
             index_name = schema_name + "." + index_name
@@ -3162,11 +3152,31 @@ class IdentifierPreparer(object):
         if isinstance(constraint.name, elements._defer_name):
             name = naming._constraint_name_for_table(
                 constraint, constraint.table)
-            if name:
-                return self.quote(name)
-            elif isinstance(constraint.name, elements._defer_none_name):
-                return None
-        return self.quote(constraint.name)
+
+            if name is None:
+                if isinstance(constraint.name, elements._defer_none_name):
+                    return None
+                else:
+                    name = constraint.name
+        else:
+            name = constraint.name
+
+        if isinstance(name, elements._truncated_label):
+            if constraint.__visit_name__ == 'index':
+                max_ = self.dialect.max_index_name_length or \
+                    self.dialect.max_identifier_length
+            else:
+                max_ = self.dialect.max_identifier_length
+            if len(name) > max_:
+                name = name[0:max_ - 8] + \
+                    "_" + util.md5_hex(name)[-4:]
+        else:
+            self.dialect.validate_identifier(name)
+
+        return self.quote(name)
+
+    def format_index(self, index):
+        return self.format_constraint(index)
 
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""

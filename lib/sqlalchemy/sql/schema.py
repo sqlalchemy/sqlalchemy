@@ -3655,15 +3655,29 @@ class MetaData(SchemaItem):
             * ``%(column_0_name)s`` - the name of the :class:`.Column` at
               index position "0" within the constraint.
 
-            * ``%(column_0_label)s`` - the label of the :class:`.Column` at
-              index position "0", e.g. :attr:`.Column.label`
+            * ``%(column_0N_name)s`` - the name of all :class:`.Column`
+              objects in order within the constraint, joined without a
+              separator.
 
-            * ``%(column_0_key)s`` - the key of the :class:`.Column` at
-              index position "0", e.g. :attr:`.Column.key`
+            * ``%(column_0_N_name)s`` - the name of all :class:`.Column`
+              objects in order within the constraint, joined with an
+              underscore as a separator.
 
-            * ``%(referred_column_0_name)s`` - the name of a :class:`.Column`
-              at index position "0" referenced by a
-              :class:`.ForeignKeyConstraint`.
+            * ``%(column_0_label)s``, ``%(column_0N_label)s``,
+              ``%(column_0_N_label)s`` - the label of either the zeroth
+              :class:`.Column` or all :class:`.Columns`, separated with
+              or without an underscore
+
+            * ``%(column_0_key)s``, ``%(column_0N_key)s``,
+              ``%(column_0_N_key)s`` - the key of either the zeroth
+              :class:`.Column` or all :class:`.Columns`, separated with
+              or without an underscore
+
+            * ``%(referred_column_0_name)s``, ``%(referred_column_0N_name)s``
+              ``%(referred_column_0_N_name)s``,  ``%(referred_column_0_key)s``,
+              ``%(referred_column_0N_key)s``, ...  column tokens which
+              render the names/keys/labels of columns that are referenced
+              by a  :class:`.ForeignKeyConstraint`.
 
             * ``%(constraint_name)s`` - a special key that refers to the
               existing name given to the constraint.  When this key is
@@ -3676,7 +3690,10 @@ class MetaData(SchemaItem):
               it along with a ``fn(constraint, table)`` callable to the
               naming_convention dictionary.
 
-          .. versionadded:: 0.9.2
+          .. versionadded:: 1.3.0 - added new ``%(column_0N_name)s``,
+             ``%(column_0_N_name)s``, and related tokens that produce
+             concatenations of names, keys, or labels for all columns referred
+             to by a given constraint.
 
           .. seealso::
 

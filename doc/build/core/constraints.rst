@@ -506,14 +506,53 @@ object that is created using the :paramref:`.Column.index` parameter::
     >>> DEFAULT_NAMING_CONVENTION
     immutabledict({'ix': 'ix_%(column_0_label)s'})
 
-The tokens available include ``%(table_name)s``,
-``%(referred_table_name)s``, ``%(column_0_name)s``, ``%(column_0_label)s``,
-``%(column_0_key)s``,  ``%(referred_column_0_name)s``, and ``%(constraint_name)s``;
-the documentation for :paramref:`.MetaData.naming_convention` describes each
-individually.  New tokens can also be added, by specifying an additional
-token and a callable within the naming_convention dictionary.  For example,
-if we wanted to name our foreign key constraints using a GUID scheme,
-we could do that as follows::
+The tokens available include ``%(table_name)s``, ``%(referred_table_name)s``,
+``%(column_0_name)s``, ``%(column_0_label)s``, ``%(column_0_key)s``,
+``%(referred_column_0_name)s``, and  ``%(constraint_name)s``, as well as
+multiple-column versions of each including ``%(column_0N_name)s``,
+``%(column_0_N_name)s``,  ``%(referred_column_0_N_name)s`` which render all
+column names separated with or without an underscore.  The documentation for
+:paramref:`.MetaData.naming_convention` has further detail on each  of these
+conventions.
+
+When a generated name, particularly those that use the multiple-column tokens,
+is too long for the identifier length limit of the target database
+(for example, PostgreSQL has a limit of 63 characters), the name will be
+deterministically truncated using a 4-character suffix based on the md5
+hash of the long name.  For example, the naming convention below will
+generate very long names given the column names in use::
+
+    metadata = MetaData(naming_convention={
+        "uq": "uq_%(table_name)s_%(column_0_N_name)s"
+    })
+
+    long_names = Table(
+        'long_names', metadata,
+        Column('information_channel_code', Integer, key='a'),
+        Column('billing_convention_name', Integer, key='b'),
+        Column('product_identifier', Integer, key='c'),
+        UniqueConstraint('a', 'b', 'c')
+    )
+
+On the PostgreSQL dialect, names longer than 63 characters will be truncated
+as in the following example::
+
+    CREATE TABLE long_names (
+        information_channel_code INTEGER,
+        billing_convention_name INTEGER,
+        product_identifier INTEGER,
+        CONSTRAINT uq_long_names_information_channel_code_billing_conventi_a79e
+        UNIQUE (information_channel_code, billing_convention_name, product_identifier)
+    )
+
+The above suffix ``a79e`` is based on the md5 hash of the long name and will
+generate the same value every time to produce consistent names for a given
+schema.
+
+New tokens can also be added, by specifying an additional token
+and a callable within the naming_convention dictionary.  For example, if we
+wanted to name our foreign key constraints using a GUID scheme, we could do
+that as follows::
 
     import uuid
 
@@ -562,7 +601,10 @@ name as follows::
 
     `The Importance of Naming Constraints <http://alembic.zzzcomputing.com/en/latest/naming.html>`_ - in the Alembic documentation.
 
-.. versionadded:: 0.9.2 Added the :paramref:`.MetaData.naming_convention` argument.
+
+.. versionadded:: 1.3.0 added multi-column naming tokens such as ``%(column_0_N_name)s``.
+   Generated names that go beyond the character limit for the target database will be
+   deterministically truncated.
 
 .. _naming_check_constraints:
 
