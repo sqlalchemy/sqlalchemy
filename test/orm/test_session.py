@@ -387,37 +387,6 @@ class SessionStateTest(_fixtures.FixtureTest):
                 r"expected to delete 1 row\(s\); 0 were matched."):
             sess.commit()
 
-    def test_autoflush_expressions(self):
-        """test that an expression which is dependent on object state is
-        evaluated after the session autoflushes.   This is the lambda
-        inside of strategies.py lazy_clause.
-
-        """
-
-        users, Address, addresses, User = (self.tables.users,
-                                           self.classes.Address,
-                                           self.tables.addresses,
-                                           self.classes.User)
-
-        mapper(User, users, properties={
-            'addresses': relationship(Address, backref="user")})
-        mapper(Address, addresses)
-
-        sess = create_session(autoflush=True, autocommit=False)
-        u = User(name='ed', addresses=[Address(email_address='foo')])
-        sess.add(u)
-        eq_(sess.query(Address).filter(Address.user == u).one(),
-            Address(email_address='foo'))
-
-        # still works after "u" is garbage collected
-        sess.commit()
-        sess.close()
-        u = sess.query(User).get(u.id)
-        q = sess.query(Address).filter(Address.user == u)
-        del u
-        gc_collect()
-        eq_(q.one(), Address(email_address='foo'))
-
     @testing.requires.independent_connections
     @engines.close_open_connections
     def test_autoflush_unbound(self):
@@ -799,6 +768,171 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert was_deleted(u1)
         assert u1 not in sess
         assert object_session(u1) is None
+
+
+class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
+    run_inserts = None
+    run_deletes = 'each'
+
+    @classmethod
+    def setup_mappers(cls):
+        users, Address, addresses, User = (cls.tables.users,
+                                           cls.classes.Address,
+                                           cls.tables.addresses,
+                                           cls.classes.User)
+
+        mapper(User, users, properties={
+            'addresses': relationship(Address, backref="user")})
+        mapper(Address, addresses)
+
+    def test_deferred_expression_unflushed(self):
+        """test that an expression which is dependent on object state is
+        evaluated after the session autoflushes.   This is the lambda
+        inside of strategies.py lazy_clause.
+
+        """
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+        sess.add(u)
+        eq_(sess.query(Address).filter(Address.user == u).one(),
+            Address(email_address='foo'))
+
+    def test_deferred_expression_obj_was_gced(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+        sess.add(u)
+
+        sess.commit()
+        sess.close()
+        u = sess.query(User).get(u.id)
+        q = sess.query(Address).filter(Address.user == u)
+        del u
+        gc_collect()
+        eq_(q.one(), Address(email_address='foo'))
+
+    def test_deferred_expression_favors_immediate(self):
+        """Test that a deferred expression will return an immediate value
+        if available, rather than invoking after the object is detached
+
+        """
+
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+        sess.add(u)
+        sess.commit()
+
+        q = sess.query(Address).filter(Address.user == u)
+        sess.expire(u)
+        sess.expunge(u)
+        eq_(q.one(), Address(email_address='foo'))
+
+    def test_deferred_expression_obj_was_never_flushed(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't resolve value for column users.id on object "
+            ".User.*.; no value has been set for this column",
+            (Address.user == u).left.callable
+        )
+
+        q = sess.query(Address).filter(Address.user == u)
+        assert_raises_message(
+            sa.exc.StatementError,
+            "Can't resolve value for column users.id on object "
+            ".User.*.; no value has been set for this column",
+            q.one
+        )
+
+    def test_deferred_expression_transient_but_manually_set(self):
+        User, Address = self.classes("User", "Address")
+
+        u = User(id=5, name='ed', addresses=[Address(email_address='foo')])
+
+        expr = Address.user == u
+        eq_(expr.left.callable(), 5)
+
+    def test_deferred_expression_unflushed_obj_became_detached_unexpired(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+
+        q = sess.query(Address).filter(Address.user == u)
+
+        sess.add(u)
+        sess.flush()
+
+        sess.expunge(u)
+        eq_(q.one(), Address(email_address='foo'))
+
+    def test_deferred_expression_unflushed_obj_became_detached_expired(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+
+        q = sess.query(Address).filter(Address.user == u)
+
+        sess.add(u)
+        sess.flush()
+
+        sess.expire(u)
+        sess.expunge(u)
+        eq_(q.one(), Address(email_address='foo'))
+
+    def test_deferred_expr_unflushed_obj_became_detached_expired_by_key(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(autoflush=True, autocommit=False)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+
+        q = sess.query(Address).filter(Address.user == u)
+
+        sess.add(u)
+        sess.flush()
+
+        sess.expire(u, ['id'])
+        sess.expunge(u)
+        eq_(q.one(), Address(email_address='foo'))
+
+    def test_deferred_expression_expired_obj_became_detached_expired(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session(
+            autoflush=True, autocommit=False, expire_on_commit=True)
+        u = User(name='ed', addresses=[Address(email_address='foo')])
+
+        sess.add(u)
+        sess.commit()
+
+        assert 'id' not in u.__dict__  # it's expired
+
+        # should not emit SQL
+        def go():
+            Address.user == u
+        self.assert_sql_count(testing.db, go, 0)
+
+        # create the expression here, but note we weren't tracking 'id'
+        # yet so we don't have the old value
+        q = sess.query(Address).filter(Address.user == u)
+
+        sess.expunge(u)
+        assert_raises_message(
+            sa.exc.StatementError,
+            "Can't resolve value for column users.id on object "
+            ".User.*.; the object is detached and the value was expired ",
+            q.one
+        )
 
 
 class SessionStateWFixtureTest(_fixtures.FixtureTest):

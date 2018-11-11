@@ -3,7 +3,8 @@ Primary key changing capabilities and passive/non-passive cascading updates.
 
 """
 
-from sqlalchemy.testing import fixtures, eq_, ne_, assert_raises
+from sqlalchemy.testing import fixtures, eq_, ne_, assert_raises, \
+    assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy import testing, Integer, String, ForeignKey
 from sqlalchemy.testing.schema import Table, Column
@@ -495,6 +496,106 @@ class NaturalPKTest(fixtures.MappedTest):
         sess.flush()
         r = sess.query(Item).with_parent(u2).all()
         eq_(Item(itemname='item2'), r[0])
+
+    def test_manytoone_deferred_relationship_expr(self):
+        """for [ticket:4359], test that updates to the columns embedded
+        in an object expression are also updated."""
+        users, Address, addresses, User = (self.tables.users,
+                                           self.classes.Address,
+                                           self.tables.addresses,
+                                           self.classes.User)
+
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user': relationship(
+                User,
+                passive_updates=testing.requires.on_update_cascade.enabled)
+        })
+
+        s = Session()
+        a1 = Address(email='jack1')
+        u1 = User(username='jack', fullname='jack')
+
+        a1.user = u1
+
+        # scenario 1.  object is still transient, we get a value.
+        expr = Address.user == u1
+
+        eq_(expr.left.callable(), 'jack')
+
+        # scenario 2.  value has been changed while we are transient.
+        # we get the updated value.
+        u1.username = 'ed'
+        eq_(expr.left.callable(), 'ed')
+
+        s.add_all([u1, a1])
+        s.commit()
+
+        eq_(a1.username, 'ed')
+
+        # scenario 3.  the value is changed and flushed, we get the new value.
+        u1.username = 'fred'
+        s.flush()
+
+        eq_(expr.left.callable(), 'fred')
+
+        # scenario 4.  the value is changed, flushed, and expired.
+        # the callable goes out to get that value.
+        u1.username = 'wendy'
+        s.commit()
+        assert 'username' not in u1.__dict__
+
+        eq_(expr.left.callable(), 'wendy')
+
+        # scenario 5.  the value is changed flushed, expired,
+        # and then when we hit the callable, we are detached.
+        u1.username = 'jack'
+        s.commit()
+        assert 'username' not in u1.__dict__
+
+        s.expunge(u1)
+
+        # InstanceState has a "last known values" feature we use
+        # to pick up on this
+        eq_(expr.left.callable(), 'jack')
+
+        # doesn't unexpire the attribute
+        assert 'username' not in u1.__dict__
+
+        # once we are persistent again, we check the DB
+        s.add(u1)
+        eq_(expr.left.callable(), 'jack')
+        assert 'username' in u1.__dict__
+
+        # scenario 6.  we are using del
+        u2 = User(username='jack', fullname='jack')
+        expr = Address.user == u2
+
+        eq_(expr.left.callable(), 'jack')
+
+        del u2.username
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't resolve value for column users.username",
+            expr.left.callable
+        )
+
+        u2.username = 'ed'
+        eq_(expr.left.callable(), 'ed')
+
+        s.add(u2)
+        s.commit()
+
+        eq_(expr.left.callable(), 'ed')
+
+        del u2.username
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't resolve value for column users.username",
+            expr.left.callable
+        )
 
 
 class TransientExceptionTesst(_fixtures.FixtureTest):

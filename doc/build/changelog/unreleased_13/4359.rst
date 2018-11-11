@@ -1,0 +1,17 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4359
+
+   Improved the behavior of a relationship-bound many-to-one object expression
+   such that the retrieval of column values on the related object are now
+   resilient against the object being detached from its parent
+   :class:`.Session`, even if the attribute has been expired.  New features
+   within the :class:`.InstanceState` are used to memoize the last known value
+   of a particular column attribute before its expired, so that the expression
+   can still evaluate when the object is detached and expired at the same
+   time.  Error conditions are also improved using modern attribute state
+   features to produce more specific messages as needed.
+
+   .. seealso::
+
+        :ref:`change_4359`

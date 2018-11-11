@@ -225,6 +225,78 @@ value.   This assertion is now skipped in the case of loading the "old" value.
 
 :ticket:`4353`
 
+.. _change_4359:
+
+Improvement to the behavior of many-to-one query expressions
+------------------------------------------------------------
+
+When building a query that compares a many-to-one relationship to an
+object value, such as::
+
+    u1 = session.query(User).get(5)
+
+    query = session.query(Address).filter(Address.user == u1)
+
+The above expression ``Address.user == u1``, which ultimately compiles to a SQL
+expression normally based on the primary key columns of the ``User`` object
+like ``"address.user_id = 5"``, uses a deferred callable in order to retrieve
+the value ``5`` within the bound expression until  as late as possible.  This
+is to suit both the use case where the ``Address.user == u1`` expression may be
+against a ``User`` object that isn't flushed yet which relies upon a server-
+generated primary key value, as well as that the expression always returns the
+correct result even if the primary key value of ``u1`` has been changed since
+the expression was created.
+
+However, a side effect of this behavior is that if ``u1`` ends up being expired
+by the time the expression is evaluated, it results in an additional SELECT
+statement, and in the case that ``u1`` was also detached from the
+:class:`.Session`, it would raise an error::
+
+    u1 = session.query(User).get(5)
+
+    query = session.query(Address).filter(Address.user == u1)
+
+    session.expire(u1)
+    session.expunge(u1)
+
+    query.all()  # <-- would raise DetachedInstanceError
+
+The expiration / expunging of the object can occur implicitly when the
+:class:`.Session` is committed and the ``u1`` instance falls out of scope,
+as the ``Address.user == u1`` expression does not strongly reference the
+object itself, only its :class:`.InstanceState`.
+
+The fix is to allow the ``Address.user == u1`` expression to evaluate the value
+``5`` based on attempting to retrieve or load the value normally at expression
+compilation time as it does now, but if the object is detached and has
+been expired, it is retrieved from a new mechanism upon the
+:class:`.InstanceState` which will memoize the last known value for a
+particular attribute on that state when that attribute is expired.  This
+mechanism is only enabled for a specific attribute / :class:`.InstanceState`
+when needed by the expression feature to conserve performance / memory
+overhead.
+
+Originally, simpler approaches such as evaluating the expression immediately
+with various arrangements for trying to load the value later if not present
+were attempted, however the difficult edge case is that of the value  of a
+column attribute (typically a natural primary key) that is being changed.   In
+order to ensure that an expression like ``Address.user == u1`` always returns
+the correct answer for the current state of ``u1``, it will return the current
+database-persisted value for a persistent object, unexpiring via SELECT query
+if necessary, and for a detached object it will return the most recent known
+value, regardless of when the object was expired using a new feature within the
+:class:`.InstanceState` that tracks the last known value of a column attribute
+whenever the attribute is to be expired.
+
+Modern attribute API features are used to indicate specific error messages when
+the value cannot be evaluated, the two cases of which are when the column
+attributes have never been set, and when the object was already expired
+when the first evaluation was made and is now detached. In all cases,
+:class:`.DetachedInstanceError` is no longer raised.
+
+
+:ticket:`4359`
+
 .. _change_3423:
 
 AssociationProxy stores class-specific state in a separate container
