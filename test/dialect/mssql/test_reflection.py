@@ -94,16 +94,19 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         metadata = self.metadata
         table = Table(
             'identity_test', metadata,
-            Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
+            Column('col1', Integer, mssql_identity_start=2,
+                   mssql_identity_increment=3, primary_key=True)
         )
         table.create()
 
         meta2 = MetaData(testing.db)
         table2 = Table('identity_test', meta2, autoload=True)
-        sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
-            and table2.c['col1'].default
-        assert sequence.start == 2
-        assert sequence.increment == 3
+        eq_(
+            table2.c['col1'].dialect_options['mssql'][
+                'identity_start'], 2)
+        eq_(
+            table2.c['col1'].dialect_options['mssql'][
+                'identity_increment'], 3)
 
     @testing.emits_warning("Did not recognize")
     @testing.provide_metadata

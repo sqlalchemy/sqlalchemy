@@ -952,3 +952,49 @@ Pass it via :func:`.create_engine`::
 
 
 :ticket:`4158`
+
+.. _change_4362:
+
+New parameters to affect IDENTITY start and increment, use of Sequence deprecated
+---------------------------------------------------------------------------------
+
+SQL Server as of SQL Server 2012 now supports sequences with real
+``CREATE SEQUENCE`` syntax.  In :ticket:`4235`, SQLAchemy will add support for
+these using :class:`.Sequence` in the same way as for any other dialect.
+However, the current situation is that :class:`.Sequence` has been repurposed
+on SQL Server specifically in order to affect the "start" and "increment"
+parameters for the ``IDENTITY`` specification on a primary key column.  In order
+to make the transition towards normal sequences being available as well,
+using :class:.`.Sequence` will emit a deprecation warning throughout the
+1.3 series.  In order to affect "start" and "increment", use the
+new ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
+on :class:`.Column`::
+
+    test = Table(
+        'test', metadata,
+        Column(
+            'id', Integer, primary_key=True, mssql_identity_start=100,
+             mssql_identity_increment=10
+        ),
+        Column('name', String(20))
+    )
+
+In order to emit ``IDENTITY`` on a non-primary key column, which is a little-used
+but valid SQL Server use case, use the :paramref:`.Column.autoincrement` flag,
+setting it to ``True`` on the target column, ``False`` on any integer
+primary key column::
+
+
+    test = Table(
+        'test', metadata,
+        Column('id', Integer, primary_key=True, autoincrement=False),
+        Column('number', Integer, autoincrement=True)
+    )
+
+.. seealso::
+
+    :ref:`mssql_identity`
+
+:ticket:`4362`
+
+:ticket:`4235`

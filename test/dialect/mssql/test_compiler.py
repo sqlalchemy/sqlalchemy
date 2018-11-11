@@ -731,33 +731,122 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={'x_1': 5}
         )
 
-    def test_sequence_start_0(self):
+    def test_primary_key_no_identity(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
-                    Column('id', Integer, Sequence('', 0), primary_key=True))
+                    Column('id', Integer, autoincrement=False,
+                           primary_key=True))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL, "
+            "PRIMARY KEY (id))"
+        )
+
+    def test_primary_key_defaults_to_identity(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, primary_key=True))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1), "
+            "PRIMARY KEY (id))"
+        )
+
+    def test_identity_no_primary_key(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, autoincrement=True))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1)"
+            ")"
+        )
+
+    def test_identity_separate_from_primary_key(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, autoincrement=False,
+                           primary_key=True),
+                    Column('x', Integer, autoincrement=True)
+                    )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL, "
+            "x INTEGER NOT NULL IDENTITY(1,1), "
+            "PRIMARY KEY (id))"
+        )
+
+    def test_identity_illegal_two_autoincrements(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, autoincrement=True),
+                    Column('id2', Integer, autoincrement=True),
+                    )
+        # this will be rejected by the database, just asserting this is what
+        # the two autoincrements will do right now
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1), "
+            "id2 INTEGER NOT NULL IDENTITY(1,1))"
+        )
+
+    def test_identity_start_0(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, mssql_identity_start=0,
+                           primary_key=True))
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
             "PRIMARY KEY (id))"
         )
 
+    def test_identity_increment_5(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, mssql_identity_increment=5,
+                           primary_key=True))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,5), "
+            "PRIMARY KEY (id))"
+        )
+
+    def test_sequence_start_0(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata,
+                    Column('id', Integer, Sequence('', 0), primary_key=True))
+        with testing.expect_deprecated(
+                "Use of Sequence with SQL Server in order to affect "):
+            self.assert_compile(
+                schema.CreateTable(tbl),
+                "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
+                "PRIMARY KEY (id))"
+            )
+
     def test_sequence_non_primary_key(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
-                    Column('id', Integer, Sequence(''), primary_key=False))
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
-        )
+                    Column('id', Integer, Sequence('', start=5),
+                           primary_key=False))
+        with testing.expect_deprecated(
+                "Use of Sequence with SQL Server in order to affect "):
+            self.assert_compile(
+                schema.CreateTable(tbl),
+                "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(5,1))"
+            )
 
     def test_sequence_ignore_nullability(self):
         metadata = MetaData()
         tbl = Table('test', metadata,
-                    Column('id', Integer, Sequence(''), nullable=True))
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))"
-        )
+                    Column('id', Integer, Sequence('', start=5),
+                           nullable=True))
+        with testing.expect_deprecated(
+                "Use of Sequence with SQL Server in order to affect "):
+            self.assert_compile(
+                schema.CreateTable(tbl),
+                "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(5,1))"
+            )
 
     def test_table_pkc_clustering(self):
         metadata = MetaData()
