@@ -1544,14 +1544,24 @@ class JoinedLoader(AbstractRelationshipLoader):
         if entity not in context.eager_joins and \
             not should_nest_selectable and \
                 context.from_clause:
-            index, clause = sql_util.find_join_source(
+            indexes = sql_util.find_left_clause_that_matches_given(
                 context.from_clause, entity.selectable)
-            if clause is not None:
+
+            if len(indexes) > 1:
+                # for the eager load case, I can't reproduce this right
+                # now.   For query.join() I can.
+                raise sa_exc.InvalidRequestError(
+                    "Can't identify which entity in which to joined eager "
+                    "load from.   Please use an exact match when specifying "
+                    "the join path.")
+
+            if indexes:
+                clause = context.from_clause[indexes[0]]
                 # join to an existing FROM clause on the query.
                 # key it to its list index in the eager_joins dict.
                 # Query._compile_context will adapt as needed and
                 # append to the FROM clause of the select().
-                entity_key, default_towrap = index, clause
+                entity_key, default_towrap = indexes[0], clause
 
         if entity_key is None:
             entity_key, default_towrap = entity, entity.selectable

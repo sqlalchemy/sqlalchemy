@@ -49,12 +49,97 @@ def find_join_source(clauses, join_to):
     """
 
     selectables = list(_from_objects(join_to))
+    idx = []
     for i, f in enumerate(clauses):
         for s in selectables:
             if f.is_derived_from(s):
-                return i, f
+                idx.append(i)
+    return idx
+
+
+def find_left_clause_that_matches_given(clauses, join_from):
+    """Given a list of FROM clauses and a selectable,
+    return the indexes from the list of
+    clauses which is derived from the selectable.
+
+    """
+
+    selectables = list(_from_objects(join_from))
+    liberal_idx = []
+    for i, f in enumerate(clauses):
+        for s in selectables:
+            # basic check, if f is derived from s.
+            # this can be joins containing a table, or an aliased table
+            # or select statement matching to a table.  This check
+            # will match a table to a selectable that is adapted from
+            # that table.  With Query, this suits the case where a join
+            # is being made to an adapted entity
+            if f.is_derived_from(s):
+                liberal_idx.append(i)
+                break
+
+    # in an extremely small set of use cases, a join is being made where
+    # there are multiple FROM clauses where our target table is represented
+    # in more than one, such as embedded or similar.   in this case, do
+    # another pass where we try to get a more exact match where we aren't
+    # looking at adaption relationships.
+    if len(liberal_idx) > 1:
+        conservative_idx = []
+        for idx in liberal_idx:
+            f = clauses[idx]
+            for s in selectables:
+                if set(surface_selectables(f)).\
+                        intersection(surface_selectables(s)):
+                    conservative_idx.append(idx)
+                    break
+        if conservative_idx:
+            return conservative_idx
+
+    return liberal_idx
+
+
+def find_left_clause_to_join_from(clauses, join_to, onclause):
+    """Given a list of FROM clauses, a selectable,
+    and optional ON clause, return a list of integer indexes from the
+    clauses list indicating the clauses that can be joined from.
+
+    The presense of an "onclause" indicates that at least one clause can
+    definitely be joined from; if the list of clauses is of length one
+    and the onclause is given, returns that index.   If the list of clauses
+    is more than length one, and the onclause is given, attempts to locate
+    which clauses contain the same columns.
+
+    """
+    idx = []
+    selectables = set(_from_objects(join_to))
+
+    # if we are given more than one target clause to join
+    # from, use the onclause to provide a more specific answer.
+    # otherwise, don't try to limit, after all, "ON TRUE" is a valid
+    # on clause
+    if len(clauses) > 1 and onclause is not None:
+        resolve_ambiguity = True
+        cols_in_onclause = _find_columns(onclause)
     else:
-        return None, None
+        resolve_ambiguity = False
+        cols_in_onclause = None
+
+    for i, f in enumerate(clauses):
+        for s in selectables.difference([f]):
+            if resolve_ambiguity:
+                if set(f.c).union(s.c).issuperset(cols_in_onclause):
+                    idx.append(i)
+                    break
+            elif Join._can_join(f, s) or onclause is not None:
+                idx.append(i)
+                break
+
+    # onclause was given and none of them resolved, so assume
+    # all indexes can match
+    if not idx and onclause is not None:
+        return range(len(clauses))
+    else:
+        return idx
 
 
 def visit_binary_product(fn, expr):

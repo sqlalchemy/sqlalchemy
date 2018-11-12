@@ -987,6 +987,19 @@ class Join(FromClause):
             return and_(*crit)
 
     @classmethod
+    def _can_join(cls, left, right, consider_as_foreign_keys=None):
+        if isinstance(left, Join):
+            left_right = left.right
+        else:
+            left_right = None
+
+        constraints = cls._joincond_scan_left_right(
+            a=left, b=right, a_subset=left_right,
+            consider_as_foreign_keys=consider_as_foreign_keys)
+
+        return bool(constraints)
+
+    @classmethod
     def _joincond_scan_left_right(
             cls, a, a_subset, b, consider_as_foreign_keys):
         constraints = collections.defaultdict(list)
@@ -1058,6 +1071,7 @@ class Join(FromClause):
                 "constraint relationship between them. "
                 "Please specify the 'onclause' of this "
                 "join explicitly." % (a.description, b.description))
+
 
     def select(self, whereclause=None, **kwargs):
         r"""Create a :class:`.Select` from this :class:`.Join`.
