@@ -263,6 +263,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_secondary_as_join(self):
+        # test [ticket:4349]
         User, users = self.classes.User, self.tables.users
         items, orders, order_items, Item = (self.tables.items,
                                             self.tables.orders,
@@ -288,6 +289,47 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             "FROM items, order_items JOIN orders "
             "ON orders.id = order_items.order_id "
             "WHERE :param_1 = orders.user_id "
+            "AND items.id = order_items.item_id",
+            use_default_dialect=True
+        )
+
+    def test_secondary_doesnt_interfere_w_join_to_fromlist(self):
+        # tests that the "secondary" being added to the FROM
+        # as part of [ticket:4349] does not prevent a subsequent join to
+        # an entity that does not provide any "left side".  Query right now
+        # does not know how to join() like this unambiguously if _from_obj is
+        # more than one element long.
+        Order, orders = self.classes.Order, self.tables.orders
+
+        items, order_items, Item = (
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Item)
+        item_keywords = self.tables.item_keywords
+
+        class ItemKeyword(object):
+            pass
+
+        mapper(Order, orders, properties={
+            'items': relationship(Item, secondary=order_items, lazy='dynamic'),
+        })
+        mapper(
+            ItemKeyword, item_keywords,
+            primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id])
+        mapper(Item, items, properties={
+            'item_keywords': relationship(ItemKeyword)
+        })
+
+        sess = create_session()
+        order = sess.query(Order).first()
+
+        self.assert_compile(
+            order.items.join(ItemKeyword),
+            "SELECT items.id AS items_id, "
+            "items.description AS items_description "
+            "FROM order_items, items "
+            "JOIN item_keywords ON items.id = item_keywords.item_id "
+            "WHERE :param_1 = order_items.order_id "
             "AND items.id = order_items.item_id",
             use_default_dialect=True
         )
