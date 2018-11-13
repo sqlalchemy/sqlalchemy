@@ -1,0 +1,10 @@
+.. change::
+   :tags: feature, sql
+   :tickets: 4144
+
+   Added :class:`.Sequence` to the "string SQL" system that will render a
+   meaningful string expression (``"<next sequence value: my_sequence>"``)
+   when stringifying without a dialect a statement that includes a "sequence
+   nextvalue" expression, rather than raising a compilation error.
+
+
