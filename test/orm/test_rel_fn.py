@@ -1,7 +1,7 @@
 from sqlalchemy.testing import assert_raises_message, eq_, \
     AssertsCompiledSQL, is_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.orm import relationships, foreign, remote
+from sqlalchemy.orm import relationships, foreign, remote, relationship
 from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
     select, ForeignKeyConstraint, exc, func, and_, String, Boolean
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
@@ -511,6 +511,9 @@ class _JoinFixtures(object):
         )
         local_selectable = self.base.join(self.sub)
         remote_selectable = self.base.join(self.sub_w_sub_rel)
+
+        # note this test requires that "parentmapper" annotation is
+        # present in the columns ahead of time
 
         sub_w_sub_rel__sub_id = self.sub_w_sub_rel.c.sub_id._annotate(
             {'parentmapper': prop.mapper})
@@ -1237,3 +1240,30 @@ class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
             ":param_1 = selfref.sid OR selfref.sid = :param_1",
             checkparams={'param_1': None}
         )
+
+
+class DeannotateCorrectlyTest(fixtures.TestBase):
+    def test_pj_deannotates(self):
+        from sqlalchemy.ext.declarative import declarative_base
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey(A.id))
+            a = relationship(A)
+
+        eq_(
+            B.a.property.primaryjoin.left._annotations,
+            {"parentmapper": A.__mapper__, "remote": True}
+        )
+        eq_(
+            B.a.property.primaryjoin.right._annotations,
+            {'foreign': True, 'local': True, 'parentmapper': B.__mapper__}
+        )
+
+
