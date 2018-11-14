@@ -1996,6 +1996,7 @@ class JoinCondition(object):
         self.support_sync = support_sync
         self.can_be_synced_fn = can_be_synced_fn
         self._determine_joins()
+        self._sanitize_joins()
         self._annotate_fks()
         self._annotate_remote()
         self._annotate_local()
@@ -2033,6 +2034,22 @@ class JoinCondition(object):
                  )
         log.info('%s relationship direction %s', self.prop,
                  self.direction)
+
+    def _sanitize_joins(self):
+        """remove the parententity annotation from our join conditions which
+        can leak in here based on some declarative patterns and maybe others.
+
+        We'd want to remove "parentmapper" also, but apparently there's
+        an exotic use case in _join_fixture_inh_selfref_w_entity
+        that relies upon it being present, see :ticket:`3364`.
+
+        """
+
+        self.primaryjoin = _deep_deannotate(
+            self.primaryjoin, values=("parententity",))
+        if self.secondaryjoin is not None:
+            self.secondaryjoin = _deep_deannotate(
+                self.secondaryjoin, values=("parententity",))
 
     def _determine_joins(self):
         """Determine the 'primaryjoin' and 'secondaryjoin' attributes,
