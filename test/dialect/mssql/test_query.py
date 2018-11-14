@@ -8,7 +8,7 @@ from sqlalchemy.util import ue
 from sqlalchemy import util
 from sqlalchemy.testing.assertsql import CursorSQL, DialectSQL
 from sqlalchemy import Integer, String, Table, Column, select, MetaData,\
-    func, PrimaryKeyConstraint, desc, Sequence, DDL, ForeignKey, or_, and_
+    func, PrimaryKeyConstraint, desc, DDL, ForeignKey, or_, and_
 from sqlalchemy import event
 
 metadata = None
@@ -254,7 +254,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         #      test should be written.
         meta = MetaData(testing.db)
         t1 = Table('t1', meta,
-                   Column('id', Integer, Sequence('fred', 100, 1),
+                   Column('id', Integer, mssql_identity_start=100,
                           primary_key=True),
                    Column('descr', String(200)),
                    # the following flag will prevent the
@@ -265,7 +265,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
                    implicit_returning=False
                    )
         t2 = Table('t2', meta,
-                   Column('id', Integer, Sequence('fred', 200, 1),
+                   Column('id', Integer, mssql_identity_start=200,
                           primary_key=True),
                    Column('descr', String(200)))
         meta.create_all()

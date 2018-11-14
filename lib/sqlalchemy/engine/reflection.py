@@ -667,9 +667,14 @@ class Inspector(object):
 
         col_kw = dict(
             (k, col_d[k])
-            for k in ['nullable', 'autoincrement', 'quote', 'info', 'key', 'comment']
+            for k in [
+                'nullable', 'autoincrement', 'quote', 'info', 'key',
+                'comment']
             if k in col_d
         )
+
+        if 'dialect_options' in col_d:
+            col_kw.update(col_d['dialect_options'])
 
         colargs = []
         if col_d.get('default') is not None:

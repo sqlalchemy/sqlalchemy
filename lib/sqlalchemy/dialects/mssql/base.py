@@ -10,15 +10,18 @@
     :name: Microsoft SQL Server
 
 
-Auto Increment Behavior
------------------------
+.. _mssql_identity:
+
+Auto Increment Behavior / IDENTITY Columns
+------------------------------------------
 
 SQL Server provides so-called "auto incrementing" behavior using the
-``IDENTITY`` construct, which can be placed on an integer primary key.
-SQLAlchemy considers ``IDENTITY`` within its default "autoincrement" behavior,
-described at :paramref:`.Column.autoincrement`; this means
-that by default, the first integer primary key column in a :class:`.Table`
-will be considered to be the identity column and will generate DDL as such::
+``IDENTITY`` construct, which can be placed on any single integer column in a
+table. SQLAlchemy considers ``IDENTITY`` within its default "autoincrement"
+behavior for an integer primary key column, described at
+:paramref:`.Column.autoincrement`.  This means that by default, the first
+integer primary key column in a :class:`.Table` will be considered to be the
+identity column and will generate DDL as such::
 
     from sqlalchemy import Table, MetaData, Column, Integer
 
@@ -39,7 +42,8 @@ The above example will generate DDL as:
     )
 
 For the case where this default generation of ``IDENTITY`` is not desired,
-specify ``autoincrement=False`` on all integer primary key columns::
+specify ``False`` for the :paramref:`.Column.autoincrement` flag,
+on the first integer primary key column::
 
     m = MetaData()
     t = Table('t', m,
@@ -47,34 +51,64 @@ specify ``autoincrement=False`` on all integer primary key columns::
             Column('x', Integer))
     m.create_all(engine)
 
+To add the ``IDENTITY`` keyword to a non-primary key column, specify
+``True`` for the :paramref:`.Column.autoincrement` flag on the desired
+:class:`.Column` object, and ensure that :paramref:`.Column.autoincrement`
+is set to ``False`` on any integer primary key column::
+
+    m = MetaData()
+    t = Table('t', m,
+            Column('id', Integer, primary_key=True, autoincrement=False),
+            Column('x', Integer, autoincrement=True))
+    m.create_all(engine)
+
+.. versionchanged::  1.3   Added ``mssql_identity_start`` and
+   ``mssql_identity_increment`` parameters to :class:`.Column`.  These replace
+   the use of the :class:`.Sequence` object in order to specify these values.
+   The use of :class:`.Sequence` to specify IDENTITY characteristics is
+   deprecated and will emit a warning.
+
 .. note::
 
-    An INSERT statement which refers to an explicit value for such
-    a column is prohibited by SQL Server, however SQLAlchemy will detect this
-    and modify the ``IDENTITY_INSERT`` flag accordingly at statement execution
-    time.  As this is not a high performing process, care should be taken to
-    set the ``autoincrement`` flag appropriately for columns that will not
-    actually require IDENTITY behavior.
+    There can only be one IDENTITY column on the table.  When using
+    ``autoincrement=True`` to enable the IDENTITY keyword, SQLAlchemy does not
+    guard against multiple columns specifying the option simultaneously.  The
+    SQL Server database will instead reject the ``CREATE TABLE`` statement.
+
+.. note::
+
+    An INSERT statement which attempts to provide a value for a column that is
+    marked with IDENTITY will be rejected by SQL Server.   In order for the
+    value to be accepted, a session-level option "SET IDENTITY_INSERT" must be
+    enabled.   The SQLAlchemy SQL Server dialect will perform this operation
+    automatically when using a core :class:`.Insert` construct; if the
+    execution specifies a value for the IDENTITY column, the "IDENTITY_INSERT"
+    option will be enabled for the span of that statement's invocation.However,
+    this scenario is not high performing and should not be relied upon for
+    normal use.   If a table doesn't actually require IDENTITY behavior in its
+    integer primary key column, the keyword should be disabled when creating
+    the table by ensuring that ``autoincrement=False`` is set.
 
 Controlling "Start" and "Increment"
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Specific control over the parameters of the ``IDENTITY`` value is supported
-using the :class:`.schema.Sequence` object.  While this object normally
-represents an explicit "sequence" for supporting backends, on SQL Server it is
-re-purposed to specify behavior regarding the identity column, including
-support of the "start" and "increment" values::
+Specific control over the "start" and "increment" values for
+the ``IDENTITY`` generator are provided using the
+``mssql_identity_start`` and ``mssql_identity_increment`` parameters
+passed to the :class:`.Column` object::
 
-    from sqlalchemy import Table, Integer, Sequence, Column
+    from sqlalchemy import Table, Integer, Column
 
-    Table('test', metadata,
-           Column('id', Integer,
-                  Sequence('blah', start=100, increment=10),
-                  primary_key=True),
-           Column('name', String(20))
-         ).create(some_engine)
+    test = Table(
+        'test', metadata,
+        Column(
+            'id', Integer, primary_key=True, mssql_identity_start=100,
+             mssql_identity_increment=10
+        ),
+        Column('name', String(20))
+    )
 
-would yield:
+The CREATE TABLE for the above :class:`.Table` object would be:
 
 .. sourcecode:: sql
 
@@ -83,8 +117,12 @@ would yield:
      name VARCHAR(20) NULL,
      )
 
-Note that the ``start`` and ``increment`` values for sequences are
-optional and will default to 1,1.
+.. versionchanged:: 1.3  The ``mssql_identity_start`` and
+   ``mssql_identity_increment`` parameters are now used to affect the
+   ``IDENTITY`` generator for a :class:`.Column` under  SQL Server.
+   Previously, the :class:`.Sequence` object was used.  As SQL Server now
+   supports real sequences as a separate construct, :class:`.Sequence` will be
+   functional in the normal way in a future SQLAlchemy version.
 
 INSERT behavior
 ^^^^^^^^^^^^^^^^
@@ -1592,7 +1630,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         if column.nullable is not None:
             if not column.nullable or column.primary_key or \
-                    isinstance(column.default, sa_schema.Sequence):
+                    isinstance(column.default, sa_schema.Sequence) or \
+                    column.autoincrement is True:
                 colspec += " NOT NULL"
             else:
                 colspec += " NULL"
@@ -1605,6 +1644,18 @@ class MSDDLCompiler(compiler.DDLCompiler):
         # install an IDENTITY Sequence if we either a sequence or an implicit
         # IDENTITY column
         if isinstance(column.default, sa_schema.Sequence):
+
+            if (column.default.start is not None or
+                    column.default.increment is not None or
+                    column is not column.table._autoincrement_column):
+                util.warn_deprecated(
+                    "Use of Sequence with SQL Server in order to affect the "
+                    "parameters of the IDENTITY value is deprecated, as "
+                    "Sequence "
+                    "will correspond to an actual SQL Server "
+                    "CREATE SEQUENCE in "
+                    "a future release.  Please use the mssql_identity_start "
+                    "and mssql_identity_increment parameters.")
             if column.default.start == 0:
                 start = 0
             else:
@@ -1612,8 +1663,11 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
             colspec += " IDENTITY(%s,%s)" % (start,
                                              column.default.increment or 1)
-        elif column is column.table._autoincrement_column:
-            colspec += " IDENTITY(1,1)"
+        elif column is column.table._autoincrement_column or \
+                column.autoincrement is True:
+            start = column.dialect_options['mssql']['identity_start']
+            increment = column.dialect_options['mssql']['identity_increment']
+            colspec += " IDENTITY(%s,%s)" % (start, increment)
         else:
             default = self.get_column_default_string(column)
             if default is not None:
@@ -1845,6 +1899,10 @@ class MSDialect(default.DefaultDialect):
         (sa_schema.Index, {
             "clustered": None,
             "include": None
+        }),
+        (sa_schema.Column, {
+            "identity_start": 1,
+            "identity_increment": 1
         })
     ]
 
@@ -2188,8 +2246,10 @@ class MSDialect(default.DefaultDialect):
             if type_name.endswith("identity") and col_name in colmap:
                 ic = col_name
                 colmap[col_name]['autoincrement'] = True
-                colmap[col_name]['sequence'] = dict(
-                    name='%s_identity' % col_name)
+                colmap[col_name]['dialect_options'] = {
+                    'mssql_identity_start': 1,
+                    'mssql_identity_increment': 1
+                }
                 break
         cursor.close()
 
@@ -2202,9 +2262,9 @@ class MSDialect(default.DefaultDialect):
 
             row = cursor.first()
             if row is not None and row[0] is not None:
-                colmap[ic]['sequence'].update({
-                    'start': int(row[0]),
-                    'increment': int(row[1])
+                colmap[ic]['dialect_options'].update({
+                    'mssql_identity_start': int(row[0]),
+                    'mssql_identity_increment': int(row[1])
                 })
         return cols
 
