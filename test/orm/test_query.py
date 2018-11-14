@@ -1,7 +1,7 @@
 from sqlalchemy import (
     testing, null, exists, text, union, literal, literal_column, func, between,
     Unicode, desc, and_, bindparam, select, distinct, or_, collate, insert,
-    Integer, String, Boolean, exc as sa_exc, util, cast, MetaData)
+    Integer, String, Boolean, exc as sa_exc, util, cast, MetaData, ForeignKey)
 from sqlalchemy.sql import operators, expression
 from sqlalchemy import column, table
 from sqlalchemy.engine import default
@@ -2563,6 +2563,127 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             s.query(User).filter(text("name='ed'")),
             "SELECT users.id AS users_id, users.name "
             "AS users_name FROM users WHERE name='ed'"
+        )
+
+
+class HasAnyTest(
+        fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class D(Base):
+            __tablename__ = 'd'
+            id = Column(Integer, primary_key=True)
+
+        class C(Base):
+            __tablename__ = 'c'
+            id = Column(Integer, primary_key=True)
+            d_id = Column(ForeignKey(D.id))
+
+            bs = relationship("B", back_populates="c")
+
+        b_d = Table(
+            'b_d', Base.metadata,
+            Column('bid', ForeignKey('b.id')),
+            Column('did', ForeignKey('d.id'))
+        )
+
+        # note we are using the ForeignKey pattern identified as a bug
+        # in [ticket:4367]
+        class B(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            c_id = Column(ForeignKey(C.id))
+
+            c = relationship("C", back_populates="bs")
+
+            d = relationship("D", secondary=b_d)
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey(B.id))
+
+    def test_has_many_to_one(self):
+        B, C = self.classes("B", "C")
+        s = Session()
+        self.assert_compile(
+            s.query(B).filter(B.c.has(C.id == 1)),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
+            "EXISTS (SELECT 1 FROM c WHERE c.id = b.c_id AND c.id = :id_1)"
+        )
+
+    def test_any_many_to_many(self):
+        B, D = self.classes("B", "D")
+        s = Session()
+        self.assert_compile(
+            s.query(B).filter(B.d.any(D.id == 1)),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
+            "EXISTS (SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "AND d.id = b_d.did AND d.id = :id_1)"
+        )
+
+    def test_any_one_to_many(self):
+        B, C = self.classes("B", "C")
+        s = Session()
+        self.assert_compile(
+            s.query(C).filter(C.bs.any(B.id == 1)),
+            "SELECT c.id AS c_id, c.d_id AS c_d_id FROM c WHERE "
+            "EXISTS (SELECT 1 FROM b WHERE c.id = b.c_id AND b.id = :id_1)"
+        )
+
+    def test_any_many_to_many_doesnt_overcorrelate(self):
+        B, D = self.classes("B", "D")
+        s = Session()
+
+        self.assert_compile(
+            s.query(B).join(B.d).filter(B.d.any(D.id == 1)),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id FROM "
+            "b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
+            "JOIN d ON d.id = b_d_1.did WHERE "
+            "EXISTS (SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "AND d.id = b_d.did AND d.id = :id_1)"
+        )
+
+    def test_has_doesnt_overcorrelate(self):
+        B, C = self.classes("B", "C")
+        s = Session()
+
+        self.assert_compile(
+            s.query(B).join(B.c).filter(B.c.has(C.id == 1)),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id "
+            "FROM b JOIN c ON c.id = b.c_id "
+            "WHERE EXISTS "
+            "(SELECT 1 FROM c WHERE c.id = b.c_id AND c.id = :id_1)"
+        )
+
+    def test_has_doesnt_get_aliased_join_subq(self):
+        B, C = self.classes("B", "C")
+        s = Session()
+
+        self.assert_compile(
+            s.query(B).join(B.c, aliased=True).filter(B.c.has(C.id == 1)),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id "
+            "FROM b JOIN c AS c_1 ON c_1.id = b.c_id "
+            "WHERE EXISTS "
+            "(SELECT 1 FROM c WHERE c.id = b.c_id AND c.id = :id_1)"
+        )
+
+    def test_any_many_to_many_doesnt_get_aliased_join_subq(self):
+        B, D = self.classes("B", "D")
+        s = Session()
+
+        self.assert_compile(
+            s.query(B).join(B.d, aliased=True).filter(B.d.any(D.id == 1)),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id "
+            "FROM b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
+            "JOIN d AS d_1 ON d_1.id = b_d_1.did "
+            "WHERE EXISTS "
+            "(SELECT 1 FROM b_d, d WHERE b.id = b_d.bid "
+            "AND d.id = b_d.did AND d.id = :id_1)"
         )
 
 
