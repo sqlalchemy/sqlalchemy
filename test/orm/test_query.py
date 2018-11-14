@@ -2308,6 +2308,8 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_any(self):
+        # see also HasAnyTest, a newer suite which tests these at the level of
+        # SQL compilation
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
@@ -2344,6 +2346,8 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             filter(~User.addresses.any()).all()
 
     def test_any_doesnt_overcorrelate(self):
+        # see also HasAnyTest, a newer suite which tests these at the level of
+        # SQL compilation
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
@@ -2356,6 +2360,8 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
                     Address.email_address == 'fred@fred.com')).all()
 
     def test_has(self):
+        # see also HasAnyTest, a newer suite which tests these at the level of
+        # SQL compilation
         Dingaling, User, Address = (
             self.classes.Dingaling, self.classes.User, self.classes.Address)
 
@@ -2606,6 +2612,23 @@ class HasAnyTest(
             __tablename__ = 'a'
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey(B.id))
+
+            d = relationship(
+                'D',
+                secondary="join(B, C)",
+                primaryjoin="A.b_id == B.id",
+                secondaryjoin="C.d_id == D.id",
+                uselist=False)
+
+    def test_has_composite_secondary(self):
+        A, D = self.classes("A", "D")
+        s = Session()
+        self.assert_compile(
+            s.query(A).filter(A.d.has(D.id == 1)),
+            "SELECT a.id AS a_id, a.b_id AS a_b_id FROM a WHERE EXISTS "
+            "(SELECT 1 FROM d, b JOIN c ON c.id = b.c_id "
+            "WHERE a.b_id = b.id AND c.d_id = d.id AND d.id = :id_1)"
+        )
 
     def test_has_many_to_one(self):
         B, C = self.classes("B", "C")
