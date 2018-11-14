@@ -1099,9 +1099,12 @@ class RelationshipProperty(StrategizedProperty):
 
             crit = j & sql.True_._ifnone(criterion)
 
-            ex = sql.exists([1], crit, from_obj=dest).correlate_except(dest)
             if secondary is not None:
-                ex = ex.correlate_except(secondary)
+                ex = sql.exists([1], crit, from_obj=[dest, secondary]).\
+                    correlate_except(dest, secondary)
+            else:
+                ex = sql.exists([1], crit, from_obj=dest).\
+                    correlate_except(dest)
             return ex
 
         def any(self, criterion=None, **kwargs):
