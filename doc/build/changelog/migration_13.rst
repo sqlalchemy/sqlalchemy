@@ -190,6 +190,73 @@ to ``None``::
 
 :ticket:`4308`
 
+.. _change_4365:
+
+Query.join() handles ambiguity in deciding the "left" side more explicitly
+---------------------------------------------------------------------------
+
+Historically, given a query like the following::
+
+    u_alias = aliased(User)
+    session.query(User, u_alias).join(Address)
+
+given the standard tutorial mappings, the query would produce a FROM clause
+as:
+
+.. sourcecode:: sql
+
+    SELECT ...
+    FROM users AS users_1, users JOIN addresses ON users.id = addresses.user_id
+
+That is, the JOIN would implcitly be against the first entity that matches.
+The new behavior is that an exception requests that this ambiguity be
+resolved::
+
+    sqlalchemy.exc.InvalidRequestError: Can't determine which FROM clause to
+    join from, there are multiple FROMS which can join to this entity.
+    Try adding an explicit ON clause to help resolve the ambiguity.
+
+The solution is to provide an ON clause, either as an expression::
+
+    # join to User
+    session.query(User, u_alias).join(Address, Address.user_id == User.id)
+
+    # join to u_alias
+    session.query(User, u_alias).join(Address, Address.user_id == u_alias.id)
+
+Or to use the relationship attribute, if available::
+
+    # join to User
+    session.query(User, u_alias).join(Address, User.addresses)
+
+    # join to u_alias
+    session.query(User, u_alias).join(Address, u_alias.addresses)
+
+The change includes that a join can now correctly link to a FROM clause that
+is not the first element in the list if the join is otherwise non-ambiguous::
+
+    session.query(func.current_timestamp(), User).join(Address)
+
+Prior to this enhancement, the above query would raise::
+
+    sqlalchemy.exc.InvalidRequestError: Don't know how to join from
+    CURRENT_TIMESTAMP; please use select_from() to establish the
+    left entity/selectable of this join
+
+Now the query works fine:
+
+.. sourcecode:: sql
+
+    SELECT CURRENT_TIMESTAMP AS current_timestamp_1, users.id AS users_id,
+    users.name AS users_name, users.fullname AS users_fullname,
+    users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
+
+Overall the change is directly towards Python's "explicit is better than
+implicit" philosophy.
+
+:ticket:`4365`
+
 .. _change_4353:
 
 Many-to-one replacement won't raise for "raiseload" or detached for "old" object

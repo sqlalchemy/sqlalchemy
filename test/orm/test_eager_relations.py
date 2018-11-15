@@ -3445,9 +3445,10 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.exclude(
-        'sqlite', '>', (0, ), "sqlite flat out blows it on the multiple JOINs")
     def test_two_entities_with_joins(self):
+        # early versions of SQLite could not handle this test
+        # however as of 2018 and probably for some years before that
+        # it has no issue with this.
         Item, Order, User, Address = (self.classes.Item,
                                       self.classes.Order,
                                       self.classes.User,

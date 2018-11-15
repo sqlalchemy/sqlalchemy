@@ -472,17 +472,22 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(User).outerjoin, "address", foob="bar", bar="bat"
         )
 
-    def test_left_is_none(self):
+    def test_left_w_no_entity(self):
         User = self.classes.User
         Address = self.classes.Address
 
         sess = create_session()
 
-        assert_raises_message(
-            sa_exc.InvalidRequestError,
-            r"Don't know how to join from x; please use select_from\(\) to "
-            r"establish the left entity/selectable of this join",
-            sess.query(literal_column('x'), User).join, Address
+        self.assert_compile(
+            sess.query(User, literal_column('x'), ).join(Address),
+            "SELECT users.id AS users_id, users.name AS users_name, x "
+            "FROM users JOIN addresses ON users.id = addresses.user_id"
+        )
+
+        self.assert_compile(
+            sess.query(literal_column('x'), User).join(Address),
+            "SELECT x, users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id"
         )
 
     def test_left_is_none_and_query_has_no_entities(self):
@@ -1064,6 +1069,235 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
+    def test_invalid_join_entity_from_single_from_clause(self):
+        Address, Item = (
+            self.classes.Address, self.classes.Item)
+        sess = create_session()
+
+        q = sess.query(Address).select_from(Address)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Don't know how to join to .*Item.*; "
+            "please use an ON clause to more clearly establish the "
+            "left side of this join",
+            q.join, Item
+        )
+
+    def test_invalid_join_entity_from_no_from_clause(self):
+        Address, Item = (
+            self.classes.Address, self.classes.Item)
+        sess = create_session()
+
+        q = sess.query(Address)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Don't know how to join to .*Item.*; "
+            "please use an ON clause to more clearly establish the "
+            "left side of this join",
+            q.join, Item
+        )
+
+    def test_invalid_join_entity_from_multiple_from_clause(self):
+        """test adding joins onto multiple FROM clauses where
+        we still need to say there's nothing to JOIN from"""
+
+        User, Address, Item = (
+            self.classes.User, self.classes.Address, self.classes.Item)
+        sess = create_session()
+
+        q = sess.query(Address, User).join(Address.dingaling).\
+            join(User.orders)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Don't know how to join to .*Item.*; "
+            "please use an ON clause to more clearly establish the "
+            "left side of this join",
+            q.join, Item
+        )
+
+    def test_join_explicit_left_multiple_from_clause(self):
+        """test adding joins onto multiple FROM clauses where
+        it is ambiguous which FROM should be used when an
+        ON clause is given"""
+
+        User = self.classes.User
+
+        sess = create_session()
+
+        u1 = aliased(User)
+
+        # in this case, two FROM objects, one
+        # is users, the other is u1_alias.
+        # User.addresses looks for the "users" table and can match
+        # to both u1_alias and users if the match is not specific enough
+        q = sess.query(User, u1).\
+            select_from(User, u1).\
+            join(User.addresses)
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1, "
+            "users JOIN addresses ON users.id = addresses.user_id"
+        )
+
+        q = sess.query(User, u1).\
+            select_from(User, u1).\
+            join(u1.addresses)
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users, "
+            "users AS users_1 JOIN addresses ON users_1.id = addresses.user_id"
+        )
+
+    def test_join_explicit_left_multiple_adapted(self):
+        """test adding joins onto multiple FROM clauses where
+        it is ambiguous which FROM should be used when an
+        ON clause is given"""
+
+        User = self.classes.User
+
+        sess = create_session()
+
+        u1 = aliased(User)
+        u2 = aliased(User)
+
+        # in this case, two FROM objects, one
+        # is users, the other is u1_alias.
+        # User.addresses looks for the "users" table and can match
+        # to both u1_alias and users if the match is not specific enough
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "Can't identify which entity in which to assign the "
+            "left side of this join.",
+            sess.query(u1, u2).select_from(u1, u2).join,
+            User.addresses
+        )
+
+        # more specific ON clause
+        self.assert_compile(
+            sess.query(u1, u2).select_from(u1, u2).join(u2.addresses),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, "
+            "users_2.id AS users_2_id, users_2.name AS users_2_name "
+            "FROM users AS users_1, "
+            "users AS users_2 JOIN addresses ON users_2.id = addresses.user_id"
+        )
+
+    def test_join_entity_from_multiple_from_clause(self):
+        """test adding joins onto multiple FROM clauses where
+        it is ambiguous which FROM should be used"""
+
+        User, Order, Address, Dingaling = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Address,
+            self.classes.Dingaling)
+
+        sess = create_session()
+
+        q = sess.query(Address, User).join(Address.dingaling).\
+            join(User.orders)
+
+        a1 = aliased(Address)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't determine which FROM clause to join from, there are "
+            "multiple FROMS which can join to this entity. "
+            "Try adding an explicit ON clause to help resolve the ambiguity.",
+            q.join, a1
+        )
+
+        # to resolve, add an ON clause
+
+        # the user->orders join is chosen to join to a1
+        self.assert_compile(
+            q.join(a1, Order.address_id == a1.id),
+            "SELECT addresses.id AS addresses_id, "
+            "addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address, "
+            "users.id AS users_id, users.name AS users_name "
+            "FROM addresses JOIN dingalings "
+            "ON addresses.id = dingalings.address_id, "
+            "users JOIN orders "
+            "ON users.id = orders.user_id "
+            "JOIN addresses AS addresses_1 "
+            "ON orders.address_id = addresses_1.id"
+        )
+
+        # the address->dingalings join is chosen to join to a1
+        self.assert_compile(
+            q.join(a1, Dingaling.address_id == a1.id),
+            "SELECT addresses.id AS addresses_id, "
+            "addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address, "
+            "users.id AS users_id, users.name AS users_name "
+            "FROM addresses JOIN dingalings "
+            "ON addresses.id = dingalings.address_id "
+            "JOIN addresses AS addresses_1 "
+            "ON dingalings.address_id = addresses_1.id, "
+            "users JOIN orders ON users.id = orders.user_id"
+        )
+
+    def test_join_entity_from_multiple_entities(self):
+        """test adding joins onto multiple FROM clauses where
+        it is ambiguous which FROM should be used"""
+
+        Order, Address, Dingaling = (
+            self.classes.Order,
+            self.classes.Address,
+            self.classes.Dingaling)
+
+        sess = create_session()
+
+        q = sess.query(Order, Dingaling)
+
+        a1 = aliased(Address)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't determine which FROM clause to join from, there are "
+            "multiple FROMS which can join to this entity. "
+            "Try adding an explicit ON clause to help resolve the ambiguity.",
+            q.join, a1
+        )
+
+        # to resolve, add an ON clause
+
+        # Order is chosen to join to a1
+        self.assert_compile(
+            q.join(a1, Order.address_id == a1.id),
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, "
+            "orders.address_id AS orders_address_id, "
+            "orders.description AS orders_description, "
+            "orders.isopen AS orders_isopen, dingalings.id AS dingalings_id, "
+            "dingalings.address_id AS dingalings_address_id, "
+            "dingalings.data AS dingalings_data "
+            "FROM dingalings, orders "
+            "JOIN addresses AS addresses_1 "
+            "ON orders.address_id = addresses_1.id"
+        )
+
+        # Dingaling is chosen to join to a1
+        self.assert_compile(
+            q.join(a1, Dingaling.address_id == a1.id),
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, "
+            "orders.address_id AS orders_address_id, "
+            "orders.description AS orders_description, "
+            "orders.isopen AS orders_isopen, dingalings.id AS dingalings_id, "
+            "dingalings.address_id AS dingalings_address_id, "
+            "dingalings.data AS dingalings_data "
+            "FROM orders, dingalings JOIN addresses AS addresses_1 "
+            "ON dingalings.address_id = addresses_1.id"
+        )
+
     def test_multiple_adaption(self):
         Item, Order, User = (self.classes.Item,
                              self.classes.Order,
@@ -1614,14 +1848,25 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Can't join table/selectable 'users' to itself",
+            "Don't know how to join to .*User.* please use an ON clause to ",
             sess.query(users.c.id).join, User
         )
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Can't join table/selectable 'users' to itself",
+            "Don't know how to join to .*User.* please use an ON clause to ",
             sess.query(users.c.id).select_from(users).join, User
+        )
+
+    def test_on_clause_no_right_side(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        sess = create_session()
+
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Expected mapped entity or selectable/table as join target",
+            sess.query(User).join, User.id == Address.user_id
         )
 
     def test_select_from(self):
@@ -1759,10 +2004,25 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
         subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
             group_by(T2.t1_id).subquery()
 
-        assert_raises_message(
-            sa_exc.InvalidRequestError,
-            r"Can't construct a join from ",
-            sess.query(subq.c.count, T1.id).join, subq, subq.c.t1_id == T1.id,
+        # without select_from
+        self.assert_compile(
+            sess.query(subq.c.count, T1.id).join(subq, subq.c.t1_id == T1.id),
+            "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
+            "FROM table1 JOIN "
+            "(SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
+            "FROM table2 GROUP BY table2.t1_id) "
+            "AS anon_1 ON anon_1.t1_id = table1.id"
+        )
+
+        # with select_from, same query
+        self.assert_compile(
+            sess.query(subq.c.count, T1.id).select_from(T1).
+            join(subq, subq.c.t1_id == T1.id),
+            "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
+            "FROM table1 JOIN "
+            "(SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
+            "FROM table2 GROUP BY table2.t1_id) "
+            "AS anon_1 ON anon_1.t1_id = table1.id"
         )
 
     def test_mapped_select_to_mapped_implicit_left(self):
@@ -1772,12 +2032,17 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
         subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
             group_by(T2.t1_id).subquery()
 
-        assert_raises_message(
-            sa_exc.InvalidRequestError,
-            "Can't join table/selectable 'table1' to itself",
-            sess.query(T1.id, subq.c.count).join, T1, subq.c.t1_id == T1.id
+        # without select_from
+        self.assert_compile(
+            sess.query(T1.id, subq.c.count).
+            join(T1, subq.c.t1_id == T1.id),
+            "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
+            "FROM (SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
+            "FROM table2 GROUP BY table2.t1_id) AS anon_1 "
+            "JOIN table1 ON anon_1.t1_id = table1.id"
         )
 
+        # with select_from, same query
         self.assert_compile(
             sess.query(T1.id, subq.c.count).select_from(subq).
             join(T1, subq.c.t1_id == T1.id),
