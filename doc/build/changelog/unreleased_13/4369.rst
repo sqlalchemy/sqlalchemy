@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, oracle
+   :tickets: 4369
+
+   Updated the parameters that can be sent to the cx_Oracle DBAPI to both allow
+   for all current parameters as well as for future parameters not added yet.
+   In addition, removed unused parameters that were deprecated in version 1.2,
+   and additionally we are now defaulting "threaded" to False.
+
+   .. seealso::
+
+      :ref:`change_4369`

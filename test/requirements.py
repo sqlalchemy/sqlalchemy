@@ -1224,6 +1224,13 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def cxoracle6_or_greater(self):
+        return only_if(
+            lambda config: against(config, "oracle+cx_oracle") and
+            config.db.dialect.cx_oracle_ver >= (6, )
+        )
+
+    @property
     def oracle5x(self):
         return only_if(
             lambda config: against(config, "oracle+cx_oracle") and

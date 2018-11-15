@@ -2,34 +2,23 @@
 
 
 from sqlalchemy.testing import eq_
-from sqlalchemy import types as sqltypes, exc, schema
-from sqlalchemy.sql import table, column
+from sqlalchemy import exc
 from sqlalchemy.testing import (fixtures,
                                 AssertsExecutionResults,
                                 AssertsCompiledSQL)
 from sqlalchemy import testing
-from sqlalchemy import Integer, Text, LargeBinary, Unicode, UniqueConstraint,\
-    Index, MetaData, select, inspect, ForeignKey, String, func, \
-    TypeDecorator, bindparam, Numeric, TIMESTAMP, CHAR, text, \
-    literal_column, VARCHAR, create_engine, Date, NVARCHAR, \
-    ForeignKeyConstraint, Sequence, Float, DateTime, cast, UnicodeText, \
-    union, except_, type_coerce, or_, outerjoin, DATE, NCHAR, outparam, \
-    PrimaryKeyConstraint, FLOAT
-from sqlalchemy.util import u, b
-from sqlalchemy import util
+from sqlalchemy import create_engine
+from sqlalchemy import bindparam, outparam
+from sqlalchemy import text, Float, Integer, String, select, literal_column,\
+    Unicode, UnicodeText, Sequence
+from sqlalchemy.util import u
 from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
-from sqlalchemy.engine import default
-import decimal
 from sqlalchemy.engine import url
 from sqlalchemy.testing.schema import Table, Column
-import datetime
-import os
-from sqlalchemy import sql
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing import mock
-from sqlalchemy import exc
+
 
 class DialectTest(fixtures.TestBase):
     def test_cx_oracle_version_parse(self):
@@ -320,7 +309,7 @@ class UnicodeSchemaTest(fixtures.TestBase):
         eq_(result, u('’é'))
 
 
-class ServiceNameTest(fixtures.TestBase):
+class CXOracleConnectArgsTest(fixtures.TestBase):
     __only_on__ = 'oracle+cx_oracle'
     __backend__ = True
 
@@ -340,3 +329,106 @@ class ServiceNameTest(fixtures.TestBase):
             _initialize=False
         )
 
+    def _test_db_opt(self, url_string, key, value):
+        import cx_Oracle
+        url_obj = url.make_url(url_string)
+        dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        arg, kw = dialect.create_connect_args(url_obj)
+        eq_(kw[key], value)
+
+    def _test_db_opt_unpresent(self, url_string, key):
+        import cx_Oracle
+        url_obj = url.make_url(url_string)
+        dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        arg, kw = dialect.create_connect_args(url_obj)
+        assert key not in kw
+
+    def _test_dialect_param_from_url(self, url_string, key, value):
+        import cx_Oracle
+        url_obj = url.make_url(url_string)
+        dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+        with testing.expect_deprecated(
+                "cx_oracle dialect option %r should" % key):
+            arg, kw = dialect.create_connect_args(url_obj)
+        eq_(getattr(dialect, key), value)
+
+        # test setting it on the dialect normally
+        dialect = cx_oracle.dialect(dbapi=cx_Oracle, **{key: value})
+        eq_(getattr(dialect, key), value)
+
+    def test_mode(self):
+        import cx_Oracle
+        self._test_db_opt(
+            'oracle+cx_oracle://scott:tiger@host/?mode=sYsDBA',
+            "mode",
+            cx_Oracle.SYSDBA
+        )
+
+        self._test_db_opt(
+            'oracle+cx_oracle://scott:tiger@host/?mode=SYSOPER',
+            "mode",
+            cx_Oracle.SYSOPER
+        )
+
+    def test_int_mode(self):
+        self._test_db_opt(
+            'oracle+cx_oracle://scott:tiger@host/?mode=32767',
+            "mode",
+            32767
+        )
+
+    @testing.requires.cxoracle6_or_greater
+    def test_purity(self):
+        import cx_Oracle
+        self._test_db_opt(
+            'oracle+cx_oracle://scott:tiger@host/?purity=attr_purity_new',
+            "purity",
+            cx_Oracle.ATTR_PURITY_NEW
+        )
+
+    def test_encoding(self):
+        self._test_db_opt(
+            "oracle+cx_oracle://scott:tiger@host/"
+            "?encoding=AMERICAN_AMERICA.UTF8",
+            "encoding",
+            "AMERICAN_AMERICA.UTF8"
+        )
+
+    def test_threaded(self):
+        self._test_db_opt(
+            'oracle+cx_oracle://scott:tiger@host/?threaded=true',
+            "threaded",
+            True
+        )
+
+        self._test_db_opt_unpresent(
+            'oracle+cx_oracle://scott:tiger@host/',
+            "threaded"
+        )
+
+    def test_events(self):
+        self._test_db_opt(
+            'oracle+cx_oracle://scott:tiger@host/?events=true',
+            "events",
+            True
+        )
+
+    def test_threaded_deprecated_at_dialect_level(self):
+        with testing.expect_deprecated(
+                "The 'threaded' parameter to the cx_oracle dialect"):
+            dialect = cx_oracle.dialect(threaded=False)
+        arg, kw = dialect.create_connect_args(
+            url.make_url("oracle+cx_oracle://scott:tiger@dsn"))
+        eq_(kw['threaded'], False)
+
+    def test_deprecated_use_ansi(self):
+        self._test_dialect_param_from_url(
+            'oracle+cx_oracle://scott:tiger@host/?use_ansi=False',
+            'use_ansi', False
+        )
+
+    def test_deprecated_auto_convert_lobs(self):
+        self._test_dialect_param_from_url(
+            'oracle+cx_oracle://scott:tiger@host/?auto_convert_lobs=False',
+            'auto_convert_lobs', False
+        )

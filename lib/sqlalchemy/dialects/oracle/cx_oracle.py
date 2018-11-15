@@ -47,6 +47,18 @@ Any cx_Oracle parameter value and/or constant may be passed, such as::
         }
     )
 
+Alternatively, most cx_Oracle DBAPI arguments can also be encoded as strings
+within the URL, which includes parameters such as ``mode``, ``purity``,
+``events``, ``threaded``, and others::
+
+    e = create_engine("oracle+cx_oracle://user:pass@dsn?mode=SYSDBA&events=true")
+
+.. versionchanged:: 1.3 the cx_oracle dialect now accepts all argument names
+   within the URL string itself, to be passed to the cx_Oracle DBAPI.   As
+   was the case earlier but not correctly documented, the
+   :paramref:`.create_engine.connect_args` parameter also accepts all
+   cx_Oracle DBAPI connect arguments.
+
 There are also options that are consumed by the SQLAlchemy cx_oracle dialect
 itself.  These options are always passed directly to :func:`.create_engine`,
 such as::
@@ -65,11 +77,6 @@ The parameters accepted by the cx_oracle dialect are as follows:
 * ``coerce_to_unicode`` - see :ref:`cx_oracle_unicode` for detail.
 
 * ``coerce_to_decimal`` - see :ref:`cx_oracle_numeric` for detail.
-
-* ``threaded`` - this parameter is passed as the value of "threaded" to
-  ``cx_Oracle.connect()`` and defaults to True, which is the opposite of
-  cx_Oracle's default.   This parameter is deprecated and will default to
-  ``False`` in version 1.3 of SQLAlchemy.
 
 .. _cx_oracle_unicode:
 
@@ -712,19 +719,27 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     execute_sequence_format = list
 
+    _cx_oracle_threaded = None
+
     def __init__(self,
                  auto_convert_lobs=True,
-                 threaded=True,
                  coerce_to_unicode=True,
                  coerce_to_decimal=True,
                  arraysize=50,
+                 threaded=None,
                  **kwargs):
 
-        self._pop_deprecated_kwargs(kwargs)
-
         OracleDialect.__init__(self, **kwargs)
-        self.threaded = threaded
         self.arraysize = arraysize
+        if threaded is not None:
+            util.warn_deprecated(
+                "The 'threaded' parameter to the cx_oracle dialect "
+                "itself is deprecated.  The value now defaults to False in "
+                "any case.  To pass an explicit True value, use the "
+                "create_engine connect_args dictionary or add ?threaded=true "
+                "to the URL string."
+            )
+            self._cx_oracle_threaded = threaded
         self.auto_convert_lobs = auto_convert_lobs
         self.coerce_to_unicode = coerce_to_unicode
         self.coerce_to_decimal = coerce_to_decimal
@@ -924,16 +939,18 @@ class OracleDialect_cx_oracle(OracleDialect):
         return on_connect
 
     def create_connect_args(self, url):
-        dialect_opts = dict(url.query)
+        opts = dict(url.query)
 
-        for opt in ('use_ansi', 'auto_setinputsizes', 'auto_convert_lobs',
-                    'threaded', 'allow_twophase'):
-            if opt in dialect_opts:
-                util.coerce_kw_type(dialect_opts, opt, bool)
-                setattr(self, opt, dialect_opts[opt])
+        for opt in ('use_ansi', 'auto_convert_lobs'):
+            if opt in opts:
+                util.warn_deprecated(
+                    "cx_oracle dialect option %r should only be passed to "
+                    "create_engine directly, not within the URL string" % opt)
+                util.coerce_kw_type(opts, opt, bool)
+                setattr(self, opt, opts.pop(opt))
 
         database = url.database
-        service_name = dialect_opts.get('service_name', None)
+        service_name = opts.pop('service_name', None)
         if database or service_name:
             # if we have a database, then we have a remote host
             port = url.port
@@ -956,10 +973,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             # we have a local tnsname
             dsn = url.host
 
-        opts = dict(
-            threaded=self.threaded,
-        )
-
         if dsn is not None:
             opts['dsn'] = dsn
         if url.password is not None:
@@ -967,16 +980,26 @@ class OracleDialect_cx_oracle(OracleDialect):
         if url.username is not None:
             opts['user'] = url.username
 
-        if 'mode' in url.query:
-            opts['mode'] = url.query['mode']
-            if isinstance(opts['mode'], util.string_types):
-                mode = opts['mode'].upper()
-                if mode == 'SYSDBA':
-                    opts['mode'] = self.dbapi.SYSDBA
-                elif mode == 'SYSOPER':
-                    opts['mode'] = self.dbapi.SYSOPER
+        if self._cx_oracle_threaded is not None:
+            opts.setdefault("threaded", self._cx_oracle_threaded)
+
+        def convert_cx_oracle_constant(value):
+            if isinstance(value, util.string_types):
+                try:
+                    int_val = int(value)
+                except ValueError:
+                    value = value.upper()
+                    return getattr(self.dbapi, value)
                 else:
-                    util.coerce_kw_type(opts, 'mode', int)
+                    return int_val
+            else:
+                return value
+
+        util.coerce_kw_type(opts, 'mode', convert_cx_oracle_constant)
+        util.coerce_kw_type(opts, 'threaded', bool)
+        util.coerce_kw_type(opts, 'events', bool)
+        util.coerce_kw_type(opts, 'purity', convert_cx_oracle_constant)
+
         return ([], opts)
 
     def _get_server_version_info(self, connection):

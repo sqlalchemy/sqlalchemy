@@ -1024,7 +1024,9 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
     when coercing to boolean.
     """
 
-    if key in kw and not isinstance(kw[key], type_) and kw[key] is not None:
+    if key in kw and (
+        not isinstance(type_, type) or not isinstance(kw[key], type_)
+    ) and kw[key] is not None:
         if type_ is bool and flexi_bool:
             kw[key] = asbool(kw[key])
         else:
