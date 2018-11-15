@@ -16,13 +16,44 @@
 Additional Connect Arguments
 ----------------------------
 
-When connecting with ``dbname`` present, the host, port, and dbname tokens are
-converted to a TNS name using
-the cx_oracle ``makedsn()`` function.  Otherwise, the host token is taken
-directly as a TNS name.
+When connecting with the ``dbname`` URL token present, the ``hostname``,
+``port``, and ``dbname`` tokens are converted to a TNS name using the
+``cx_Oracle.makedsn()`` function. The URL below::
 
-Additional arguments which may be specified either as query string arguments
-on the URL, or as keyword arguments to :func:`.create_engine()` are:
+    e = create_engine("oracle+cx_oracle://user:pass@hostname/dbname")
+
+Will be used to create the DSN as follows::
+
+    >>> import cx_Oracle
+    >>> cx_Oracle.makedsn("hostname", 1521, sid="dbname")
+    '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=hostname)(PORT=1521))(CONNECT_DATA=(SID=dbname)))'
+
+The ``service_name`` parameter, also consumed by ``cx_Oracle.makedsn()``, may
+be specified in the URL query string, e.g. ``?service_name=my_service``.
+
+If ``dbname`` is not present, then the value of ``hostname`` in the
+URL is used directly as the DSN passed to ``cx_Oracle.connect()``.
+
+Additional connection arguments may be sent to the ``cx_Oracle.connect()``
+function using the :paramref:`.create_engine.connect_args` dictionary.
+Any cx_Oracle parameter value and/or constant may be passed, such as::
+
+    import cx_Oracle
+    e = create_engine(
+        "oracle+cx_oracle://user:pass@dsn",
+        connect_args={
+            "mode": cx_Oracle.SYSDBA,
+            "events": True
+        }
+    )
+
+There are also options that are consumed by the SQLAlchemy cx_oracle dialect
+itself.  These options are always passed directly to :func:`.create_engine`,
+such as::
+
+    e = create_engine("oracle+cx_oracle://user:pass@dsn", coerce_to_unicode=False)
+
+The parameters accepted by the cx_oracle dialect are as follows:
 
 * ``arraysize`` - set the cx_oracle.arraysize value on cursors, defaulted
   to 50.  This setting is significant with cx_Oracle as the contents of LOB
@@ -35,21 +66,10 @@ on the URL, or as keyword arguments to :func:`.create_engine()` are:
 
 * ``coerce_to_decimal`` - see :ref:`cx_oracle_numeric` for detail.
 
-* ``mode`` - This is given the string value of SYSDBA or SYSOPER, or
-  alternatively an integer value.  This value is only available as a URL query
-  string argument.
-
-* ``threaded`` - enable multithreaded access to cx_oracle connections.
-  Defaults to ``True``.  Note that this is the opposite default of the
-  cx_Oracle DBAPI itself.
-
-* ``service_name`` - An option to use connection string (DSN) with
-  ``SERVICE_NAME`` instead of ``SID``. It can't be passed when a ``database``
-  part is given.
-  E.g. ``oracle+cx_oracle://scott:tiger@host:1521/?service_name=hr``
-  is a valid url. This value is only available as a URL query string argument.
-
-  .. versionadded:: 1.0.0
+* ``threaded`` - this parameter is passed as the value of "threaded" to
+  ``cx_Oracle.connect()`` and defaults to True, which is the opposite of
+  cx_Oracle's default.   This parameter is deprecated and will default to
+  ``False`` in version 1.3 of SQLAlchemy.
 
 .. _cx_oracle_unicode:
 
