@@ -1024,7 +1024,8 @@ fields within an "OVER" or "DISTINCT" clause.  If we have such a label
 in our :func:`.select` construct, we can refer to it directly by passing the
 string straight into :meth:`.select.order_by` or :meth:`.select.group_by`,
 among others.  This will refer to the named label and also prevent the
-expression from being rendered twice:
+expression from being rendered twice.  Label names that resolve to columns
+are rendered fully:
 
 .. sourcecode:: pycon+sql
 
@@ -1032,13 +1033,13 @@ expression from being rendered twice:
     >>> stmt = select([
     ...         addresses.c.user_id,
     ...         func.count(addresses.c.id).label('num_addresses')]).\
-    ...         order_by("num_addresses")
+    ...         group_by("user_id").order_by("user_id", "num_addresses")
 
     {sql}>>> conn.execute(stmt).fetchall()
     SELECT addresses.user_id, count(addresses.id) AS num_addresses
-    FROM addresses ORDER BY num_addresses
+    FROM addresses GROUP BY addresses.user_id ORDER BY addresses.user_id, num_addresses
     ()
-    {stop}[(2, 4)]
+    {stop}[(1, 2), (2, 2)]
 
 We can use modifiers like :func:`.asc` or :func:`.desc` by passing the string
 name:
@@ -1049,13 +1050,13 @@ name:
     >>> stmt = select([
     ...         addresses.c.user_id,
     ...         func.count(addresses.c.id).label('num_addresses')]).\
-    ...         order_by(desc("num_addresses"))
+    ...         group_by("user_id").order_by("user_id", desc("num_addresses"))
 
     {sql}>>> conn.execute(stmt).fetchall()
     SELECT addresses.user_id, count(addresses.id) AS num_addresses
-    FROM addresses ORDER BY num_addresses DESC
+    FROM addresses GROUP BY addresses.user_id ORDER BY addresses.user_id, num_addresses DESC
     ()
-    {stop}[(2, 4)]
+    {stop}[(1, 2), (2, 2)]
 
 Note that the string feature here is very much tailored to when we have
 already used the :meth:`~.ColumnElement.label` method to create a
