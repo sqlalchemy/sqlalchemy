@@ -84,214 +84,6 @@ users should report a bug, however the change also incldues a flag
 
 :ticket:`4340`
 
-.. _change_4354:
-
-"del" implemented for ORM attributes
-------------------------------------
-
-The Python ``del`` operation was not really usable for mapped attributes, either
-scalar columns or object references.   Support has been added for this to work correctly,
-where the ``del`` operation is roughly equivalent to setting the attribute to the
-``None`` value::
-
-
-    some_object = session.query(SomeObject).get(5)
-
-    del some_object.some_attribute   # from a SQL perspective, works like "= None"
-
-:ticket:`4354`
-
-
-.. _change_4257:
-
-info dictionary added to InstanceState
---------------------------------------
-
-Added the ``.info`` dictionary to the :class:`.InstanceState` class, the object
-that comes from calling :func:`.inspect` on a mapped object.  This allows custom
-recipes to add additional information about an object that will be carried
-along with that object's full lifecycle in memory::
-
-    from sqlalchemy import inspect
-
-    u1 = User(id=7, name='ed')
-
-    inspect(u1).info['user_info'] = '7|ed'
-
-
-:ticket:`4257`
-
-.. _change_4196:
-
-Horizontal Sharding extension supports bulk update and delete methods
----------------------------------------------------------------------
-
-The :class:`.ShardedQuery` extension object supports the :meth:`.Query.update`
-and :meth:`.Query.delete` bulk update/delete methods.    The ``query_chooser``
-callable is consulted when they are called in order to run the update/delete
-across multiple shards based on given criteria.
-
-
-:ticket:`4196`
-
-Key Behavioral Changes - ORM
-=============================
-
-.. _change_4308:
-
-Association proxy has new cascade_scalar_deletes flag
------------------------------------------------------
-
-Given a mapping as::
-
-    class A(Base):
-        __tablename__ = 'test_a'
-        id = Column(Integer, primary_key=True)
-        ab = relationship(
-            'AB', backref='a', uselist=False)
-        b = association_proxy(
-            'ab', 'b', creator=lambda b: AB(b=b),
-            cascade_scalar_deletes=True)
-
-
-    class B(Base):
-        __tablename__ = 'test_b'
-        id = Column(Integer, primary_key=True)
-        ab = relationship('AB', backref='b', cascade='all, delete-orphan')
-
-
-    class AB(Base):
-        __tablename__ = 'test_ab'
-        a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
-        b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
-
-An assigment to ``A.b`` will generate an ``AB`` object::
-
-    a.b = B()
-
-The ``A.b`` association is scalar, and includes a new flag
-:paramref:`.AssociationProxy.cascade_scalar_deletes`.  When set, setting ``A.b``
-to ``None`` will remove ``A.ab`` as well.   The default behavior remains
-that it leaves ``a.ab`` in place::
-
-    a.b = None
-    assert a.ab is None
-
-While it at first seemed intuitive that this logic should just look at the
-"cascade" attribute of the existing relationship, it's not clear from that
-alone if the proxied object should be removed, hence the behavior is
-made available as an explicit option.
-
-Additionally, ``del`` now works for scalars in a similar manner as setting
-to ``None``::
-
-    del a.b
-    assert a.ab is None
-
-:ticket:`4308`
-
-.. _change_4365:
-
-Query.join() handles ambiguity in deciding the "left" side more explicitly
----------------------------------------------------------------------------
-
-Historically, given a query like the following::
-
-    u_alias = aliased(User)
-    session.query(User, u_alias).join(Address)
-
-given the standard tutorial mappings, the query would produce a FROM clause
-as:
-
-.. sourcecode:: sql
-
-    SELECT ...
-    FROM users AS users_1, users JOIN addresses ON users.id = addresses.user_id
-
-That is, the JOIN would implcitly be against the first entity that matches.
-The new behavior is that an exception requests that this ambiguity be
-resolved::
-
-    sqlalchemy.exc.InvalidRequestError: Can't determine which FROM clause to
-    join from, there are multiple FROMS which can join to this entity.
-    Try adding an explicit ON clause to help resolve the ambiguity.
-
-The solution is to provide an ON clause, either as an expression::
-
-    # join to User
-    session.query(User, u_alias).join(Address, Address.user_id == User.id)
-
-    # join to u_alias
-    session.query(User, u_alias).join(Address, Address.user_id == u_alias.id)
-
-Or to use the relationship attribute, if available::
-
-    # join to User
-    session.query(User, u_alias).join(Address, User.addresses)
-
-    # join to u_alias
-    session.query(User, u_alias).join(Address, u_alias.addresses)
-
-The change includes that a join can now correctly link to a FROM clause that
-is not the first element in the list if the join is otherwise non-ambiguous::
-
-    session.query(func.current_timestamp(), User).join(Address)
-
-Prior to this enhancement, the above query would raise::
-
-    sqlalchemy.exc.InvalidRequestError: Don't know how to join from
-    CURRENT_TIMESTAMP; please use select_from() to establish the
-    left entity/selectable of this join
-
-Now the query works fine:
-
-.. sourcecode:: sql
-
-    SELECT CURRENT_TIMESTAMP AS current_timestamp_1, users.id AS users_id,
-    users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password
-    FROM users JOIN addresses ON users.id = addresses.user_id
-
-Overall the change is directly towards Python's "explicit is better than
-implicit" philosophy.
-
-:ticket:`4365`
-
-.. _change_4353:
-
-Many-to-one replacement won't raise for "raiseload" or detached for "old" object
---------------------------------------------------------------------------------
-
-Given the case where a lazy load would proceed on a many-to-one relationship
-in order to load the "old" value, if the relationship does not specify
-the :paramref:`.relationship.active_history` flag, an assertion will not
-be raised for a detached object::
-
-    a1 = session.query(Address).filter_by(id=5).one()
-
-    session.expunge(a1)
-
-    a1.user = some_user
-
-Above, when the ``.user`` attribute is replaced on the detached ``a1`` object,
-a :class:`.DetachedInstanceError` would be raised as the attribute is attempting
-to retrieve the previous value of ``.user`` from the identity map.  The change
-is that the operation now proceeds without the old value being loaded.
-
-The same change is also made to the ``lazy="raise"`` loader strategy::
-
-    class Address(Base):
-        # ...
-
-        user = relationship("User", ..., lazy="raise")
-
-Previously, the association of ``a1.user`` would invoke the "raiseload"
-exception as a result of the attribute attempting to retrieve the previous
-value.   This assertion is now skipped in the case of loading the "old" value.
-
-
-:ticket:`4353`
-
 .. _change_4359:
 
 Improvement to the behavior of many-to-one query expressions
@@ -364,10 +156,154 @@ when the first evaluation was made and is now detached. In all cases,
 
 :ticket:`4359`
 
+.. _change_4353:
+
+Many-to-one replacement won't raise for "raiseload" or detached for "old" object
+--------------------------------------------------------------------------------
+
+Given the case where a lazy load would proceed on a many-to-one relationship
+in order to load the "old" value, if the relationship does not specify
+the :paramref:`.relationship.active_history` flag, an assertion will not
+be raised for a detached object::
+
+    a1 = session.query(Address).filter_by(id=5).one()
+
+    session.expunge(a1)
+
+    a1.user = some_user
+
+Above, when the ``.user`` attribute is replaced on the detached ``a1`` object,
+a :class:`.DetachedInstanceError` would be raised as the attribute is attempting
+to retrieve the previous value of ``.user`` from the identity map.  The change
+is that the operation now proceeds without the old value being loaded.
+
+The same change is also made to the ``lazy="raise"`` loader strategy::
+
+    class Address(Base):
+        # ...
+
+        user = relationship("User", ..., lazy="raise")
+
+Previously, the association of ``a1.user`` would invoke the "raiseload"
+exception as a result of the attribute attempting to retrieve the previous
+value.   This assertion is now skipped in the case of loading the "old" value.
+
+
+:ticket:`4353`
+
+
+.. _change_4354:
+
+"del" implemented for ORM attributes
+------------------------------------
+
+The Python ``del`` operation was not really usable for mapped attributes, either
+scalar columns or object references.   Support has been added for this to work correctly,
+where the ``del`` operation is roughly equivalent to setting the attribute to the
+``None`` value::
+
+
+    some_object = session.query(SomeObject).get(5)
+
+    del some_object.some_attribute   # from a SQL perspective, works like "= None"
+
+:ticket:`4354`
+
+
+.. _change_4257:
+
+info dictionary added to InstanceState
+--------------------------------------
+
+Added the ``.info`` dictionary to the :class:`.InstanceState` class, the object
+that comes from calling :func:`.inspect` on a mapped object.  This allows custom
+recipes to add additional information about an object that will be carried
+along with that object's full lifecycle in memory::
+
+    from sqlalchemy import inspect
+
+    u1 = User(id=7, name='ed')
+
+    inspect(u1).info['user_info'] = '7|ed'
+
+
+:ticket:`4257`
+
+.. _change_4196:
+
+Horizontal Sharding extension supports bulk update and delete methods
+---------------------------------------------------------------------
+
+The :class:`.ShardedQuery` extension object supports the :meth:`.Query.update`
+and :meth:`.Query.delete` bulk update/delete methods.    The ``query_chooser``
+callable is consulted when they are called in order to run the update/delete
+across multiple shards based on given criteria.
+
+:ticket:`4196`
+
+Association Proxy Improvements
+-------------------------------
+
+While not for any particular reason, the Association Proxy extension
+had many improvements this cycle.
+
+.. _change_4308:
+
+Association proxy has new cascade_scalar_deletes flag
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Given a mapping as::
+
+    class A(Base):
+        __tablename__ = 'test_a'
+        id = Column(Integer, primary_key=True)
+        ab = relationship(
+            'AB', backref='a', uselist=False)
+        b = association_proxy(
+            'ab', 'b', creator=lambda b: AB(b=b),
+            cascade_scalar_deletes=True)
+
+
+    class B(Base):
+        __tablename__ = 'test_b'
+        id = Column(Integer, primary_key=True)
+        ab = relationship('AB', backref='b', cascade='all, delete-orphan')
+
+
+    class AB(Base):
+        __tablename__ = 'test_ab'
+        a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
+        b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
+
+An assigment to ``A.b`` will generate an ``AB`` object::
+
+    a.b = B()
+
+The ``A.b`` association is scalar, and includes a new flag
+:paramref:`.AssociationProxy.cascade_scalar_deletes`.  When set, setting ``A.b``
+to ``None`` will remove ``A.ab`` as well.   The default behavior remains
+that it leaves ``a.ab`` in place::
+
+    a.b = None
+    assert a.ab is None
+
+While it at first seemed intuitive that this logic should just look at the
+"cascade" attribute of the existing relationship, it's not clear from that
+alone if the proxied object should be removed, hence the behavior is
+made available as an explicit option.
+
+Additionally, ``del`` now works for scalars in a similar manner as setting
+to ``None``::
+
+    del a.b
+    assert a.ab is None
+
+:ticket:`4308`
+
 .. _change_3423:
 
-AssociationProxy stores class-specific state in a separate container
---------------------------------------------------------------------
+AssociationProxy stores class-specific state on a per-class basis
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :class:`.AssociationProxy` object makes lots of decisions based on the
 parent mapped class it is associated with.   While the
@@ -429,7 +365,7 @@ specific to the ``User.keywords`` proxy, such as ``target_class``::
 .. _change_4351:
 
 AssociationProxy now provides standard column operators for a column-oriented target
-------------------------------------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Given an :class:`.AssociationProxy` where the target is a database column,
 as opposed to an object reference::
@@ -540,6 +476,142 @@ version of the :class:`.AssociationProxyInstance` class.
 
 :ticket:`4351`
 
+Association Proxy now Strong References the Parent Object
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The long-standing behavior of the association proxy collection maintaining
+only a weak reference to the parent object is reverted; the proxy will now
+maintain a strong reference to the parent for as long as the proxy
+collection itself is also in memory, eliminating the "stale association
+proxy" error. This change is being made on an experimental basis to see if
+any use cases arise where it causes side effects.
+
+As an example, given a mapping with association proxy::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B")
+        b_data = association_proxy('bs', 'data')
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+        data = Column(String)
+
+
+    a1 = A(bs=[B(data='b1'), B(data='b2')])
+
+    b_data = a1.b_data
+
+Previously, if ``a1`` were deleted out of scope::
+
+    del a1
+
+Trying to iterate the ``b_data`` collection after ``a1`` is deleted from scope
+would raise the error ``"stale association proxy, parent object has gone out of
+scope"``.  This is because the association proxy needs to access the actual
+``a1.bs`` collection in order to produce a view, and prior to this change it
+maintained only a weak reference to ``a1``.   In particular, users would
+frequently encounter this error when performing an inline operation
+such as::
+
+    collection = session.query(A).filter_by(id=1).first().b_data
+
+Above, because the ``A`` object would be garbage collected before the
+``b_data`` collection were actually used.
+
+The change is that the ``b_data`` collection is now maintaining a strong
+reference to the ``a1`` object, so that it remains present::
+
+    assert b_data == ['b1', 'b2']
+
+This change introduces the side effect that if an application is passing around
+the collection as above, **the parent object won't be garbage collected** until
+the collection is also discarded.   As always, if ``a1`` is persistent inside a
+particular :class:`.Session`, it will remain part of that session's  state
+until it is garbage collected.
+
+Note that this change may be revised if it leads to problems.
+
+:ticket:`4268`
+
+.. _change_4365:
+
+Key Behavioral Changes - ORM
+=============================
+
+
+Query.join() handles ambiguity in deciding the "left" side more explicitly
+---------------------------------------------------------------------------
+
+Historically, given a query like the following::
+
+    u_alias = aliased(User)
+    session.query(User, u_alias).join(Address)
+
+given the standard tutorial mappings, the query would produce a FROM clause
+as:
+
+.. sourcecode:: sql
+
+    SELECT ...
+    FROM users AS users_1, users JOIN addresses ON users.id = addresses.user_id
+
+That is, the JOIN would implcitly be against the first entity that matches.
+The new behavior is that an exception requests that this ambiguity be
+resolved::
+
+    sqlalchemy.exc.InvalidRequestError: Can't determine which FROM clause to
+    join from, there are multiple FROMS which can join to this entity.
+    Try adding an explicit ON clause to help resolve the ambiguity.
+
+The solution is to provide an ON clause, either as an expression::
+
+    # join to User
+    session.query(User, u_alias).join(Address, Address.user_id == User.id)
+
+    # join to u_alias
+    session.query(User, u_alias).join(Address, Address.user_id == u_alias.id)
+
+Or to use the relationship attribute, if available::
+
+    # join to User
+    session.query(User, u_alias).join(Address, User.addresses)
+
+    # join to u_alias
+    session.query(User, u_alias).join(Address, u_alias.addresses)
+
+The change includes that a join can now correctly link to a FROM clause that
+is not the first element in the list if the join is otherwise non-ambiguous::
+
+    session.query(func.current_timestamp(), User).join(Address)
+
+Prior to this enhancement, the above query would raise::
+
+    sqlalchemy.exc.InvalidRequestError: Don't know how to join from
+    CURRENT_TIMESTAMP; please use select_from() to establish the
+    left entity/selectable of this join
+
+Now the query works fine:
+
+.. sourcecode:: sql
+
+    SELECT CURRENT_TIMESTAMP AS current_timestamp_1, users.id AS users_id,
+    users.name AS users_name, users.fullname AS users_fullname,
+    users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
+
+Overall the change is directly towards Python's "explicit is better than
+implicit" philosophy.
+
+:ticket:`4365`
+
+
+
 
 .. _change_4246:
 
@@ -648,69 +720,6 @@ The fix now includes that ``address.user_id`` is left unchanged as per
 
 .. _change_4268:
 
-Association Proxy now Strong References the Parent Object
-=========================================================
-
-The long-standing behavior of the association proxy collection maintaining
-only a weak reference to the parent object is reverted; the proxy will now
-maintain a strong reference to the parent for as long as the proxy
-collection itself is also in memory, eliminating the "stale association
-proxy" error. This change is being made on an experimental basis to see if
-any use cases arise where it causes side effects.
-
-As an example, given a mapping with association proxy::
-
-    class A(Base):
-        __tablename__ = 'a'
-
-        id = Column(Integer, primary_key=True)
-        bs = relationship("B")
-        b_data = association_proxy('bs', 'data')
-
-
-    class B(Base):
-        __tablename__ = 'b'
-        id = Column(Integer, primary_key=True)
-        a_id = Column(ForeignKey("a.id"))
-        data = Column(String)
-
-
-    a1 = A(bs=[B(data='b1'), B(data='b2')])
-
-    b_data = a1.b_data
-
-Previously, if ``a1`` were deleted out of scope::
-
-    del a1
-
-Trying to iterate the ``b_data`` collection after ``a1`` is deleted from scope
-would raise the error ``"stale association proxy, parent object has gone out of
-scope"``.  This is because the association proxy needs to access the actual
-``a1.bs`` collection in order to produce a view, and prior to this change it
-maintained only a weak reference to ``a1``.   In particular, users would
-frequently encounter this error when performing an inline operation
-such as::
-
-    collection = session.query(A).filter_by(id=1).first().b_data
-
-Above, because the ``A`` object would be garbage collected before the
-``b_data`` collection were actually used.
-
-The change is that the ``b_data`` collection is now maintaining a strong
-reference to the ``a1`` object, so that it remains present::
-
-    assert b_data == ['b1', 'b2']
-
-This change introduces the side effect that if an application is passing around
-the collection as above, **the parent object won't be garbage collected** until
-the collection is also discarded.   As always, if ``a1`` is persistent inside a
-particular :class:`.Session`, it will remain part of that session's  state
-until it is garbage collected.
-
-Note that this change may be revised if it leads to problems.
-
-
-:ticket:`4268`
 
 New Features and Improvements - Core
 ====================================
