@@ -539,11 +539,11 @@ Note that this change may be revised if it leads to problems.
 
 :ticket:`4268`
 
-.. _change_4365:
 
 Key Behavioral Changes - ORM
 =============================
 
+.. _change_4365:
 
 Query.join() handles ambiguity in deciding the "left" side more explicitly
 ---------------------------------------------------------------------------
@@ -982,8 +982,6 @@ considered, however this was too much verbosity).
 
 
 
-Key Behavioral Changes - Core
-=============================
 
 Dialect Improvements and Changes - PostgreSQL
 =============================================
