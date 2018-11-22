@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm declarative
+    :tickets: 4372
+
+   Added a ``__clause_element__()`` method to :class:`.ColumnProperty` which
+   can allow the usage of a not-fully-declared column or deferred attribute in
+   a declarative mapped class slightly more friendly when it's used in a
+   constraint or other column-oriented scenario within the class declaration,
+   though this still can't work in open-ended expressions; prefer to call the
+   :attr:`.ColumnProperty.expression` attribute if receiving ``TypeError``.

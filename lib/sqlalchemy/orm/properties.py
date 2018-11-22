@@ -163,6 +163,13 @@ class ColumnProperty(StrategizedProperty):
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key), self.key)
 
+    def __clause_element__(self):
+        """Allow the ColumnProperty to work in expression before it is turned
+        into an instrumented attribute.
+        """
+
+        return self.expression
+
     @property
     def expression(self):
         """Return the primary column or expression for this ColumnProperty.
