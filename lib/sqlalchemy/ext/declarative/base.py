@@ -303,6 +303,11 @@ class _MapperConfig(object):
                         if isinstance(ret, (Column, MapperProperty)) and \
                                 ret.doc is None:
                             ret.doc = obj.__doc__
+                    # here, the attribute is some other kind of property that
+                    # we assume is not part of the declarative mapping.
+                    # however, check for some more common mistakes
+                    else:
+                        self._warn_for_decl_attributes(base, name, obj)
 
         if inherited_table_args and not tablename:
             table_args = None
@@ -310,6 +315,14 @@ class _MapperConfig(object):
         self.table_args = table_args
         self.tablename = tablename
         self.mapper_args_fn = mapper_args_fn
+
+    def _warn_for_decl_attributes(self, cls, key, c):
+        if isinstance(c, expression.ColumnClause):
+            util.warn(
+                "Attribute '%s' on class %s appears to be a non-schema "
+                "'sqlalchemy.sql.column()' "
+                "object; this won't be part of the declarative mapping" %
+                (key, cls))
 
     def _produce_column_copies(self, base):
         cls = self.cls
@@ -382,6 +395,7 @@ class _MapperConfig(object):
                 # and place the evaluated value onto the class.
                 if not k.startswith('__'):
                     dict_.pop(k)
+                    self._warn_for_decl_attributes(cls, k, value)
                     if not late_mapped:
                         setattr(cls, k, value)
                 continue
