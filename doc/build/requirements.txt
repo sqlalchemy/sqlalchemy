@@ -1,3 +1,3 @@
-git+https://bitbucket.org/zzzeek/changelog.git@HEAD#egg=changelog
-git+https://bitbucket.org/zzzeek/sphinx-paramlinks.git@HEAD#egg=sphinx-paramlinks
-git+https://bitbucket.org/zzzeek/zzzeeksphinx.git@HEAD#egg=zzzeeksphinx
+git+https://bitbucket.org/zzzeek/changelog.git#egg=changelog
+git+https://bitbucket.org/zzzeek/sphinx-paramlinks.git#egg=sphinx-paramlinks
+git+https://bitbucket.org/zzzeek/zzzeeksphinx.git#egg=zzzeeksphinx
