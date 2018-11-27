@@ -64,9 +64,8 @@ changelog_inner_tag_sort = ["feature", "bug", "moved", "changed", "removed"]
 changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"
 
 changelog_render_pullreq = {
-    "bitbucket": "https://bitbucket.org/zzzeek/sqlalchemy/pull-request/%s",
-    "default": "https://bitbucket.org/zzzeek/sqlalchemy/pull-request/%s",
-    "github": "https://github.com/zzzeek/sqlalchemy/pull/%s",
+    "default": "https://github.com/sqlalchemy/sqlalchemy/pull/%s",
+    "github": "https://github.com/sqlalchemy/sqlalchemy/pull/%s",
 }
 
 changelog_render_changeset = "http://www.sqlalchemy.org/trac/changeset/%s"
