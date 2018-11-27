@@ -495,7 +495,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 3643
-        :pullreq: github:232
 
         Fixed issue where the "literal_binds" flag was not propagated
         for :func:`.expression.insert`, :func:`.expression.update` or
@@ -567,7 +566,6 @@
     .. change::
         :tags: bug, mssql
         :tickets: 3624
-        :pullreq: bitbucket:70
 
         Fixed the syntax of the :func:`.extract` function when used on
         MSSQL against a datetime value; the quotes around the keyword
@@ -609,7 +607,6 @@
 
     .. change::
         :tags: bug, mysql
-        :pullreq: github:222
 
         Added new reserved words for MySQL 5.7 to the MySQL dialect,
         including 'generated', 'optimizer_costs', 'stored', 'virtual'.
@@ -747,7 +744,6 @@
 
     .. change::
         :tags: bug, postgresql
-        :pullreq: github:216
         :tickets: 3573
 
 
@@ -758,7 +754,6 @@
 
     .. change::
         :tags: bug, postgresql
-        :pullreq: github:215
 
 
         Fixed bug where some varieties of SQL expression passed to the
@@ -767,7 +762,6 @@
 
     .. change::
         :tags: bug, orm, declarative
-        :pullreq: github:212
 
 
         Fixed bug where in Py2K a unicode literal would not be accepted as the
@@ -777,7 +771,6 @@
 
     .. change::
         :tags: bug, mssql
-        :pullreq: github:206
 
         A descriptive ValueError is now raised in the event that SQL server
         returns an invalid date or time format from a DATE or TIME
@@ -786,7 +779,6 @@
 
     .. change::
         :tags: bug, py3k
-        :pullreq: github:210, github:218, github:211
 
         Updates to internal getargspec() calls, some py36-related
         fixture updates, and alterations to two iterators to "return" instead
@@ -807,7 +799,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: github:200
 
         Added support for parameter-ordered SET clauses in an UPDATE
         statement.  This feature is available by passing the
@@ -870,7 +861,6 @@
 
     .. change::
         :tags: bug, mssql
-        :pullreq: github:213
 
 
         Fixed issue where DDL generated for the MSSQL types DATETIME2,
@@ -916,7 +906,6 @@
 
     .. change::
         :tags: feature, orm
-        :pullreq: github:201
 
         Added new method :meth:`.Query.one_or_none`; same as
         :meth:`.Query.one` but returns None if no row found.  Pull request
@@ -981,7 +970,6 @@
 
     .. change::
         :tags: bug, postgresql
-        :pullreq: github:190
 
 
         An adjustment to the new PostgreSQL feature of reflecting storage
@@ -1015,7 +1003,6 @@
     .. change::
         :tags: feature, sql
         :tickets: 3459
-        :pullreq: bitbucket:56
 
         Added a :meth:`.ColumnElement.cast` method which performs the same
         purpose as the standalone :func:`.cast` function.  Pull request
@@ -1062,7 +1049,6 @@
 
     .. change::
         :tags: bug, sql
-        :pullreq: github:188
 
         Fixed bug where the modulus SQL operator wouldn't work in reverse
         due to a missing ``__rmod__`` method.  Pull request courtesy
@@ -1070,7 +1056,6 @@
 
     .. change::
         :tags: feature, schema
-        :pullreq: github:186
 
         Added support for the MINVALUE, MAXVALUE, NO MINVALUE, NO MAXVALUE,
         and CYCLE arguments for CREATE SEQUENCE as supported by PostgreSQL
@@ -1165,7 +1150,6 @@
     .. change::
         :tags: feature, postgresql
         :tickets: 3455
-        :pullreq: github:179
 
         Added support for storage parameters under CREATE INDEX, using
         a new keyword argument ``postgresql_with``.  Also added support for
@@ -1200,7 +1184,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: github:182
 
         Added new execution option ``max_row_buffer`` which is interpreted
         by the psycopg2 dialect when the ``stream_results`` option is
@@ -1212,7 +1195,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3451
-        :pullreq: github:181
 
         Fixed bug in new :meth:`.Session.bulk_update_mappings` feature where
         the primary key columns used in the WHERE clause to locate the row
@@ -1277,7 +1259,6 @@
 
     .. change::
         :tags: feature, ext
-        :pullreq: bitbucket:54
 
         Added support for ``*args`` to be passed to the baked query
         initial callable, in the same way that ``*args`` are supported
@@ -1684,7 +1665,6 @@
     .. change::
         :tags: bug, firebird
         :tickets: 3380
-        :pullreq: github:168
 
         Fixed a regression due to :ticket:`3034` where limit/offset
         clauses were not properly interpreted by the Firebird dialect.
@@ -1855,7 +1835,6 @@
 
     .. change::
         :tags: bug, mssql
-        :pullreq: github:166
 
         Using the ``Binary`` constructor now present in pymssql rather than
         patching one in.  Pull request courtesy Ramiro Morales.
@@ -1873,7 +1852,6 @@
     .. change::
         :tags: feature, sql
         :tickets: 3084
-        :pullreq: bitbucket:47
 
         The topological sorting used to sort :class:`.Table` objects
         and available via the :attr:`.MetaData.sorted_tables` collection
@@ -1891,7 +1869,6 @@
 
     .. change::
         :tags: feature, orm
-        :pullreq: github:164
 
         Added new argument :paramref:`.Query.update.update_args` which allows
         kw arguments such as ``mysql_limit`` to be passed to the underlying
@@ -2031,7 +2008,6 @@
     .. change::
         :tags: bug, mysql
         :tickets: 2771
-        :pullreq: bitbucket:49
 
         Fixes to fully support using the ``'utf8mb4'`` MySQL-specific charset
         with MySQL dialects, in particular MySQL-Python and PyMySQL.   In
@@ -2074,7 +2050,6 @@
     .. change::
         :tags: bug, orm
         :tickets: 3327
-        :pullreq: github:160
 
         Fixed unexpected use regression from pullreq github:137 where
         Py2K unicode literals (e.g. ``u""``) would not be accepted by the
@@ -2194,7 +2169,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: github:132
 
         The PG8000 dialect now supports the
         :paramref:`.create_engine.encoding` parameter, by setting up
@@ -2203,7 +2177,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: github:132
 
         Added support for PG8000's native JSONB feature.  Pull request
         courtesy Tony Locke.
@@ -2263,7 +2236,6 @@
 
     .. change::
         :tags: feature, oracle
-        :pullreq: github:152
 
         Added support for cx_oracle connections to a specific service
         name, as opposed to a tns name, by passing ``?service_name=<name>``
@@ -2309,7 +2281,6 @@
     .. change::
         :tags: feature, postgresql, pypy
         :tickets: 3052
-        :pullreq: bitbucket:34
 
         Added support for the psycopg2cffi DBAPI on pypy.   Pull request
         courtesy shauns.
@@ -2321,7 +2292,6 @@
     .. change::
         :tags: feature, orm
         :tickets: 3262
-        :pullreq: bitbucket:38
 
         A warning is emitted when the same polymorphic identity is assigned
         to two different mappers in the same hierarchy.  This is typically a
@@ -2331,7 +2301,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: github:150
 
         The type of expression is reported when an object passed to a
         SQL expression unit can't be interpreted as a SQL fragment;
@@ -2679,7 +2648,6 @@
 
     .. change::
         :tags: bug, sql
-        :pullreq: github:146
 
         Fixed the name of the :paramref:`.PoolEvents.reset.dbapi_connection`
         parameter as passed to this event; in particular this affects
@@ -2688,7 +2656,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: github:139
 
         Added a new parameter :paramref:`.Table.tometadata.name` to
         the :meth:`.Table.tometadata` method.  Similar to
@@ -2700,7 +2667,6 @@
 
     .. change::
         :tags: bug, orm
-        :pullreq: github:137
 
         Repaired support of the ``copy.deepcopy()`` call when used by the
         :class:`.orm.util.CascadeOptions` argument, which occurs
@@ -2858,7 +2824,6 @@
     .. change::
         :tags: feature, sql
         :tickets: 3184
-        :pullreq: bitbucket:30
 
         The :class:`.UniqueConstraint` construct is now included when
         reflecting a :class:`.Table` object, for databases where this
@@ -2889,7 +2854,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: github:134
 
         Added support for the FILTER keyword as applied to aggregate
         functions, supported by PostgreSQL 9.4.   Pull request
@@ -2975,7 +2939,6 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 3203
-        :pullreq: bitbucket:31
 
         SQLite now supports reflection of unique constraints from
         temp tables; previously, this would fail with a TypeError.
@@ -3007,7 +2970,6 @@
     .. change::
         :tags: feature, postgresql
         :tickets: 2891
-        :pullreq: github:128
 
         Support has been added for reflection of materialized views
         and foreign tables, as well as support for materialized views
@@ -3347,7 +3309,6 @@
     .. change::
         :tags: sql, feature
         :tickets: 3027
-        :pullrequest: bitbucket:29
 
         The :paramref:`.Table.autoload_with` flag now implies that
         :paramref:`.Table.autoload` should be ``True``.  Pull request
@@ -3355,7 +3316,6 @@
 
     .. change::
         :tags: postgresql, feature
-        :pullreq: github:126
 
         Added new method :meth:`.PGInspector.get_enums`, when using the
         inspector for PostgreSQL will provide a list of ENUM types.

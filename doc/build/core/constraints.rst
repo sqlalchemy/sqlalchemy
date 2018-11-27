@@ -425,7 +425,7 @@ parameters which create :class:`.UniqueConstraint` and :class:`.Index` objects
 without an explicit name being specified.
 
 The use case of alteration of existing tables and constraints can be handled
-by schema migration tools such as `Alembic <http://alembic.zzzcomputing.com/>`_.
+by schema migration tools such as `Alembic <https://alembic.sqlalchemy.org/>`_.
 However, neither Alembic nor SQLAlchemy currently create names for constraint
 objects where the name is otherwise unspecified, leading to the case where
 being able to alter existing constraints means that one must reverse-engineer
@@ -599,7 +599,7 @@ name as follows::
     :paramref:`.MetaData.naming_convention` - for additional usage details
     as well as a listing of all available naming components.
 
-    `The Importance of Naming Constraints <http://alembic.zzzcomputing.com/en/latest/naming.html>`_ - in the Alembic documentation.
+    `The Importance of Naming Constraints <https://alembic.sqlalchemy.org/en/latest/naming.html>`_ - in the Alembic documentation.
 
 
 .. versionadded:: 1.3.0 added multi-column naming tokens such as ``%(column_0_N_name)s``.
