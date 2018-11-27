@@ -43,7 +43,6 @@ from . import properties
 
 __all__ = ['Query', 'QueryContext', 'aliased']
 
-
 _path_registry = PathRegistry.root
 
 
@@ -507,7 +506,7 @@ class Query(object):
 
         """
 
-        stmt = self._compile_context(labels=self._with_labels).\
+        stmt = self._compile_context(labels=self._with_labels). \
             statement
         if self._params:
             stmt = stmt.params(self._params)
@@ -602,7 +601,7 @@ class Query(object):
             :meth:`.HasCTE.cte`
 
         """
-        return self.enable_eagerloads(False).\
+        return self.enable_eagerloads(False). \
             statement.cte(name=name, recursive=recursive)
 
     def label(self, name):
@@ -1323,7 +1322,7 @@ class Query(object):
          those being selected.
 
         """
-        fromclause = self.with_labels().enable_eagerloads(False).\
+        fromclause = self.with_labels().enable_eagerloads(False). \
             statement.correlate(None)
         q = self._from_selectable(fromclause)
         q._enable_single_crit = False
@@ -1369,6 +1368,7 @@ class Query(object):
         if not q._yield_per:
             q._yield_per = 10
         return iter(q)
+
     _values = values
 
     def value(self, column):
@@ -2122,10 +2122,10 @@ class Query(object):
             SQLAlchemy versions was the primary ORM-level joining interface.
 
         """
-        aliased, from_joinpoint, isouter, full = kwargs.pop('aliased', False),\
-            kwargs.pop('from_joinpoint', False),\
-            kwargs.pop('isouter', False),\
-            kwargs.pop('full', False)
+        aliased, from_joinpoint, isouter, full = kwargs.pop('aliased', False), \
+                                                 kwargs.pop('from_joinpoint', False), \
+                                                 kwargs.pop('isouter', False), \
+                                                 kwargs.pop('full', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ', '.join(sorted(kwargs)))
@@ -2142,8 +2142,8 @@ class Query(object):
 
         """
         aliased, from_joinpoint, full = kwargs.pop('aliased', False), \
-            kwargs.pop('from_joinpoint', False), \
-            kwargs.pop('full', False)
+                                        kwargs.pop('from_joinpoint', False), \
+                                        kwargs.pop('full', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" %
                             ', '.join(sorted(kwargs)))
@@ -2174,10 +2174,10 @@ class Query(object):
             self._reset_joinpoint()
 
         if len(keys) == 2 and \
-            isinstance(keys[0], (expression.FromClause,
-                                 type, AliasedClass)) and \
-            isinstance(keys[1], (str, expression.ClauseElement,
-                                 interfaces.PropComparator)):
+                isinstance(keys[0], (expression.FromClause,
+                                     type, AliasedClass)) and \
+                isinstance(keys[1], (str, expression.ClauseElement,
+                                     interfaces.PropComparator)):
             # detect 2-arg form of join and
             # convert to a tuple.
             keys = (keys,)
@@ -2342,11 +2342,11 @@ class Query(object):
             left_clause = self._from_obj[replace_from_obj_index]
 
             self._from_obj = (
-                self._from_obj[:replace_from_obj_index] +
-                (orm_join(
-                    left_clause, right,
-                    onclause, isouter=outerjoin, full=full), ) +
-                self._from_obj[replace_from_obj_index + 1:])
+                    self._from_obj[:replace_from_obj_index] +
+                    (orm_join(
+                        left_clause, right,
+                        onclause, isouter=outerjoin, full=full),) +
+                    self._from_obj[replace_from_obj_index + 1:])
         else:
             # add a new element to the self._from_obj list
 
@@ -2404,7 +2404,7 @@ class Query(object):
                 raise sa_exc.InvalidRequestError(
                     "Don't know how to join to %s; please use "
                     "an ON clause to more clearly establish the left "
-                    "side of this join" % (right, )
+                    "side of this join" % (right,)
                 )
 
         elif self._entities:
@@ -2444,7 +2444,7 @@ class Query(object):
                 raise sa_exc.InvalidRequestError(
                     "Don't know how to join to %s; please use "
                     "an ON clause to more clearly establish the left "
-                    "side of this join" % (right, )
+                    "side of this join" % (right,)
                 )
         else:
             raise sa_exc.InvalidRequestError(
@@ -2533,8 +2533,8 @@ class Query(object):
             # if the target is a joined inheritance mapping,
             # be more liberal about auto-aliasing.
             if right_mapper and (
-                right_mapper.with_polymorphic or
-                isinstance(right_mapper.mapped_table, expression.Join)
+                    right_mapper.with_polymorphic or
+                    isinstance(right_mapper.mapped_table, expression.Join)
             ):
                 for from_obj in self._from_obj or [l_info.selectable]:
                     if sql_util.selectables_overlap(
@@ -2565,7 +2565,7 @@ class Query(object):
         # _join_entities is used as a hint for single-table inheritance
         # purposes at the moment
         if hasattr(r_info, 'mapper'):
-            self._join_entities += (r_info, )
+            self._join_entities += (r_info,)
 
         if not right_mapper and prop:
             right_mapper = prop.mapper
@@ -2594,15 +2594,15 @@ class Query(object):
             right = aliased(right_mapper, right_selectable)
 
         aliased_entity = right_mapper and \
-            not right_is_aliased and \
-            (
-                right_mapper.with_polymorphic and isinstance(
-                    right_mapper._with_polymorphic_selectable,
-                    expression.Alias) or overlap
-                # test for overlap:
-                # orm/inheritance/relationships.py
-                # SelfReferentialM2MTest
-            )
+                         not right_is_aliased and \
+                         (
+                                 right_mapper.with_polymorphic and isinstance(
+                             right_mapper._with_polymorphic_selectable,
+                             expression.Alias) or overlap
+                             # test for overlap:
+                             # orm/inheritance/relationships.py
+                             # SelfReferentialM2MTest
+                         )
 
         if not need_adapter and (create_aliases or aliased_entity):
             right = aliased(right, flat=True)
@@ -2615,7 +2615,7 @@ class Query(object):
             self._filter_aliases = ORMAdapter(
                 right,
                 equivalents=right_mapper and
-                right_mapper._equivalent_columns or {},
+                            right_mapper._equivalent_columns or {},
                 chain_to=self._filter_aliases)
 
         # if the onclause is a ClauseElement, adapt it with any
@@ -2994,7 +2994,7 @@ class Query(object):
         :param ret_scalars: if True and count of entities = 1 then return list of scalars
         """
 
-        if len(self._entities) == 1 and ret_scalars:
+        if ret_scalars and len(self._entities) == 1 and isinstance(self._entities[0], _ColumnEntity):
             return [x[0] for x in self]
         else:
             return list(self)
@@ -3237,14 +3237,14 @@ class Query(object):
                 'entity':
                     getattr(insp_ent, "entity", None)
                     if ent.entity_zero is not None
-                    and not insp_ent.is_clause_element
+                       and not insp_ent.is_clause_element
                     else None
             }
             for ent, insp_ent in [
                 (
                     _ent,
                     (inspect(_ent.entity_zero)
-                        if _ent.entity_zero is not None else None)
+                     if _ent.entity_zero is not None else None)
                 )
                 for _ent in self._entities
             ]
@@ -4161,6 +4161,7 @@ class Bundle(InspectionAttr):
 
         def proc(row):
             return keyed_tuple([proc(row) for proc in procs])
+
         return proc
 
 
@@ -4265,8 +4266,8 @@ class _ColumnEntity(_QueryEntity):
             check_column = True
             _entity = None
         elif isinstance(column, (
-            attributes.QueryableAttribute,
-            interfaces.PropComparator
+                attributes.QueryableAttribute,
+                interfaces.PropComparator
         )):
             _entity = getattr(column, '_parententity', None)
             if _entity is not None:
@@ -4291,7 +4292,7 @@ class _ColumnEntity(_QueryEntity):
 
             raise sa_exc.InvalidRequestError(
                 "SQL expression, column, or mapped entity "
-                "expected - got '%r'" % (column, )
+                "expected - got '%r'" % (column,)
             )
         elif not check_column:
             self._label_name = getattr(column, 'key', None)
@@ -4348,7 +4349,7 @@ class _ColumnEntity(_QueryEntity):
                 elem._annotations['parententity']
                 for elem in all_elements
                 if 'parententity' in elem._annotations
-                and actual_froms.intersection(elem._from_objects)
+                   and actual_froms.intersection(elem._from_objects)
             ])
             if self.entities:
                 self.entity_zero = self.entities[0]
@@ -4392,7 +4393,7 @@ class _ColumnEntity(_QueryEntity):
             return entity is self.entity_zero
         else:
             return not _is_aliased_class(self.entity_zero) and \
-                entity.common_parent(self.entity_zero)
+                   entity.common_parent(self.entity_zero)
 
     def row_processor(self, query, context, result):
         if ('fetch_column', self) in context.attributes:
