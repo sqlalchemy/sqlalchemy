@@ -155,7 +155,6 @@
     .. change::
         :tags: bug, py3k, mysql
         :tickets: 3333
-        :pullreq: github:158
         :versions: 1.0.0b2
 
         Fixed the :class:`.mysql.BIT` type on Py3K which was not using the
@@ -190,7 +189,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: bitbucket:45
         :versions: 1.0.0b1
 
         Added support for the ``CONCURRENTLY`` keyword with PostgreSQL
@@ -203,7 +201,6 @@
 
     .. change::
         :tags: bug, ext, py3k
-        :pullreq: github:154
         :versions: 1.0.0b1
 
         Fixed bug where the association proxy list class would not interpret
@@ -212,7 +209,6 @@
 
     .. change::
         :tags: feature, sqlite
-        :pullreq: bitbucket:42
         :versions: 1.0.0b1
 
         Added support for partial indexes (e.g. with a WHERE clause) on
@@ -248,7 +244,6 @@
 
     .. change::
         :tags: bug, orm
-        :pullreq: github:147
         :versions: 1.0.0b1
 
         Fixed bug where TypeError raised when :meth:`.Query.join` called
@@ -321,7 +316,6 @@
 
     .. change::
         :tags: bug, postgresql
-        :pullreq: github:145
         :versions: 1.0.0b1
 
         Added support for the :class:`postgresql.JSONB` datatype when
@@ -397,7 +391,6 @@
     .. change::
         :tags: bug, sql
         :versions: 1.0.0b1
-        :pullreq: bitbucket:41
 
         Added the ``native_enum`` flag to the ``__repr__()`` output
         of :class:`.Enum`, which is mostly important when using it with
@@ -715,7 +708,6 @@
     .. change::
         :tags: bug, ext
         :versions: 1.0.0b1
-        :pullrequest: bitbucket:28
 
         Fixed bug where :class:`.ext.mutable.MutableDict`
         failed to implement the ``update()`` dictionary method, thus
@@ -724,7 +716,6 @@
     .. change::
         :tags: bug, ext
         :versions: 1.0.0b1
-        :pullrequest: bitbucket:27
 
         Fixed bug where a custom subclass of :class:`.ext.mutable.MutableDict`
         would not show up in a "coerce" operation, and would instead
@@ -745,7 +736,6 @@
     .. change::
         :tags: feature, postgresql, pg8000
         :versions: 1.0.0b1
-        :pullreq: github:125
 
         Support is added for "sane multi row count" with the pg8000 driver,
         which applies mostly to when using versioning with the ORM.
@@ -816,7 +806,6 @@
         :tags: bug, postgresql
         :versions: 1.0.0b1
         :tickets: 3141
-        :pullreq: github:124
 
         Fixed bug in :class:`.postgresql.array` object where comparison
         to a plain Python list would fail to use the correct array constructor.
@@ -976,7 +965,6 @@
     .. change::
         :tags: feature, postgresql
         :versions: 1.0.0b1
-        :pullreq: bitbucket:22
         :tickets: 3078
 
         Added kw argument ``postgresql_regconfig`` to the
@@ -987,14 +975,12 @@
     .. change::
         :tags: feature, postgresql
         :versions: 1.0.0b1
-        :pullreq: github:101
 
         Added support for PostgreSQL JSONB via :class:`.JSONB`.  Pull request
         courtesy Damian Dimmich.
 
     .. change::
         :tags: feature, mssql
-        :pullreq: github:98
         :versions: 1.0.0b1
 
         Enabled "multivalues insert" for SQL Server 2008.  Pull request
@@ -1123,7 +1109,6 @@
 
     .. change::
         :tags: feature, examples
-        :pullreq: bitbucket:21
         :versions: 1.0.0b1
 
         Added a new example illustrating materialized paths, using the
@@ -1131,7 +1116,6 @@
 
     .. change::
         :tags: bug, testsuite
-        :pullreq: github:95
         :versions: 1.0.0b1
 
         In public test suite, shanged to use of ``String(40)`` from
@@ -1155,7 +1139,6 @@
     .. change::
         :tags: feature, postgresql
         :versions: 1.0.0b1
-        :pullreq: github:88
 
         Added support for AUTOCOMMIT isolation level when using the pg8000
         DBAPI.  Pull request courtesy Tony Locke.
@@ -1164,7 +1147,6 @@
         :tags: bug, postgresql
         :tickets: 3021
         :versions: 1.0.0b1
-        :pullreq: github:87
 
         The psycopg2 ``.closed`` accessor is now consulted when determining
         if an exception is a "disconnect" error; ideally, this should remove
@@ -1227,7 +1209,6 @@
     .. change::
         :tags: feature, postgresql
         :tickets: 2785
-        :pullreq: bitbucket:18
         :versions: 1.0.0b1
 
         Added a new flag :paramref:`.ARRAY.zero_indexes` to the PostgreSQL
@@ -1319,7 +1300,6 @@
     .. change::
         :tags: bug, py3k, tests
         :tickets: 2830
-        :pullreq: bitbucket:2830
         :versions: 1.0.0b1
 
         Corrected for some deprecation warnings involving the ``imp``
@@ -1506,7 +1486,6 @@
     .. change::
         :tags: bug, sql
         :tickets: 2988
-        :pullreq: github:78
 
         Fixed an 0.9 regression where a :class:`.Table` that failed to
         reflect correctly wouldn't be removed from the parent
@@ -1585,7 +1564,6 @@
     .. change::
         :tags: feature, oracle
         :tickets: 2911
-        :pullreq: github:74
 
         Added a new engine option ``coerce_to_unicode=True`` to the
         cx_Oracle dialect, which restores the cx_Oracle outputtypehandler
@@ -1806,7 +1784,6 @@
 
     .. change::
         :tags: sqlite, bug
-        :pullreq: github:65
 
         Support has been added to SQLite type reflection to fully support
         the "type affinity" contract specified at http://www.sqlite.org/datatype3.html.
@@ -1820,14 +1797,12 @@
 
     .. change::
         :tags: postgresql, feature
-        :pullreq: github:64
 
         Added the :attr:`.TypeEngine.python_type` convenience accessor onto the
         :class:`.postgresql.ARRAY` type.  Pull request courtesy Alexey Terentev.
 
     .. change::
         :tags: examples, feature
-        :pullreq: github:41
 
         Added optional "changed" column to the versioned rows example, as well
         as support for when the versioned :class:`.Table` has an explicit
@@ -1867,7 +1842,6 @@
     .. change::
         :tags: bug, mysql, cymysql
         :tickets: 2934
-        :pullreq: github:69
 
         Fixed bug in cymysql dialect where a version string such as
         ``'33a-MariaDB'`` would fail to parse properly.  Pull request
@@ -1896,7 +1870,6 @@
 
     .. change::
         :tags: bug, sql
-        :pullreq: github:67
 
         Fixed regression in new "naming convention" feature where conventions
         would fail if the referred table in a foreign key contained a schema
@@ -2186,7 +2159,6 @@
 
     .. change::
         :tags: bug, sql
-        :pullreq: bitbucket:11
 
         A :class:`.UniqueConstraint` created inline with a :class:`.Table`
         that has no columns within it will be skipped.  Pullreq courtesy
@@ -2194,7 +2166,6 @@
 
     .. change::
         :tags: feature, mssql
-        :pullreq: bitbucket:11
 
         Added an option ``mssql_clustered`` to the :class:`.UniqueConstraint`
         and :class:`.PrimaryKeyConstraint` constructs; on SQL Server, this adds
@@ -2336,7 +2307,6 @@
 
     .. change::
         :tags: bug, py3k, cextensions
-        :pullreq: github:55
 
         Fixed an issue where the C extensions in Py3K are using the wrong API
         to specify the top-level module function, which breaks
@@ -2347,7 +2317,6 @@
 
     .. change::
         :tags: bug, schema
-        :pullreq: github:57
 
         Restored :class:`sqlalchemy.schema.SchemaVisitor` to the ``.schema``
         module.  Pullreq courtesy Sean Dague.
@@ -2416,7 +2385,6 @@
 
     .. change::
         :tags: bug, orm
-        :pullreq: bitbucket:9
 
         Fixed bug where using new :attr:`.Session.info` attribute would fail
         if the ``.info`` argument were only passed to the :class:`.sessionmaker`
@@ -2496,7 +2464,6 @@
     .. change::
         :tags: feature, postgresql
         :tickets: 2581
-        :pullreq: github:50
 
         Support for PostgreSQL JSON has been added, using the new
         :class:`.JSON` type.   Huge thanks to Nathan Rice for
@@ -2546,7 +2513,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: bitbucket:8
 
         Added support for PostgreSQL TSVECTOR via the
         :class:`.postgresql.TSVECTOR` type.  Pull request courtesy
@@ -2607,7 +2573,6 @@
 
     .. change::
         :tags: bug, orm, collections, py3k
-        :pullreq: github:40
 
         Added support for the Python 3 method ``list.clear()`` within
         the ORM collection instrumentation system; pull request
@@ -2650,7 +2615,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: github:42
 
         A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
         is added with the new :meth:`.GenerativeSelect.with_for_update` method.
@@ -2667,7 +2631,6 @@
 
     .. change::
         :tags: feature, orm
-        :pullreq: github:42
 
         A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
         is added with the new :meth:`.Query.with_for_update` method,

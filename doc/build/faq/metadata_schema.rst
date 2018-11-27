@@ -88,7 +88,7 @@ metadata creation sequence, using this recipe::
     engine = create_engine('postgresql://', strategy='mock', executor=dump)
     metadata.create_all(engine, checkfirst=False)
 
-The `Alembic <https://bitbucket.org/zzzeek/alembic>`_ tool also supports
+The `Alembic <https://alembic.sqlalchemy.org>`_ tool also supports
 an "offline" SQL generation mode that renders database migrations as SQL scripts.
 
 How can I subclass Table/Column to provide certain behaviors/configurations?

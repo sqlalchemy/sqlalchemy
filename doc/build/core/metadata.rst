@@ -243,16 +243,14 @@ database schemas in relation to application code using schema migration tools.
 
 There are two major migration tools available for SQLAlchemy:
 
-* `Alembic <http://alembic.zzzcomputing.com>`_ - Written by the author of SQLAlchemy,
+* `Alembic <https://alembic.sqlalchemy.org>`_ - Written by the author of SQLAlchemy,
   Alembic features a highly customizable environment and a minimalistic usage pattern,
   supporting such features as transactional DDL, automatic generation of "candidate"
   migrations, an "offline" mode which generates SQL scripts, and support for branch
   resolution.
 * `SQLAlchemy-Migrate <https://github.com/openstack/sqlalchemy-migrate>`_ - The original
-  migration tool for SQLAlchemy, SQLAlchemy-Migrate is widely used and continues
-  under active development.   SQLAlchemy-Migrate includes features such as
-  SQL script generation, ORM class generation, ORM model comparison, and extensive
-  support for SQLite migrations.
+  migration tool for SQLAlchemy, SQLAlchemy-Migrate is still used by projects
+  such as Openstack, however is being superseded by Alembic.
 
 
 Specifying the Schema Name
