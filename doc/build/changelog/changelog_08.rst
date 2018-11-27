@@ -127,7 +127,6 @@
     .. change::
         :tags: bug, ext
         :versions: 0.9.5, 1.0.0b1
-        :pullreq: bitbucket:24
         :tickets: 3093, 3051
 
         Fixed bug where :meth:`.MutableDict.setdefault` didn't return the
@@ -137,7 +136,6 @@
     .. change::
         :tags: bug, mysql
         :versions: 0.9.5, 1.0.0b1
-        :pullreq: bitbucket:15
 
         Added support for reflecting tables where an index includes
         KEY_BLOCK_SIZE using an equal sign.  Pull request courtesy
@@ -165,7 +163,6 @@
 
     .. change::
         :tags: bug, postgresql
-        :pullreq: bitbucket:13
         :versions: 0.9.5, 1.0.0b1
 
         Added a new "disconnect" message "connection has been closed unexpectedly".
@@ -311,7 +308,6 @@
         :tags: bug, mysql
         :versions: 0.9.3
         :tickets: 2966
-        :pullreq: bitbucket:12
 
         Added support for the ``PARTITION BY`` and ``PARTITIONS``
         MySQL table keywords, specified as ``mysql_partition_by='value'`` and
@@ -339,7 +335,6 @@
 
     .. change::
         :tags: bug, sqlite
-        :pullreq: github:72
 
         Restored a change that was missed in the backport of unique
         constraint reflection to 0.8, where :class:`.UniqueConstraint`
@@ -392,7 +387,6 @@
 
     .. change::
         :tags: bug, mysql
-        :pullreq: github:61
         :versions: 0.9.2
 
         Some missing methods added to the cymysql dialect, including
@@ -401,7 +395,6 @@
 
     .. change::
         :tags: bug, py3k
-        :pullreq: github:63
 
         Fixed Py3K bug where a missing import would cause "literal binary"
         mode to fail to import "util.binary_type" when rendering a bound
@@ -411,7 +404,6 @@
     .. change::
         :tags: bug, orm
         :versions: 0.9.2
-        :pullreq: github:58
 
         Fixed error message when an iterator object is passed to
         :func:`.class_mapper` or similar, where the error would fail to
@@ -444,7 +436,6 @@
     .. change::
         :tags: bug, mssql, pymssql
         :versions: 0.9.0
-        :pullreq: github:51
 
         Added "Net-Lib error during Connection reset by peer" message
         to the list of messages checked for "disconnect" within the
@@ -571,7 +562,6 @@
      .. change::
         :tags: bug, mssql
         :versions: 0.9.0
-        :pullreq: bitbucket:7
 
         Fixed bug introduced in 0.8.0 where the ``DROP INDEX``
         statement for an index in MSSQL would render incorrectly if the
@@ -1202,7 +1192,6 @@
 
     .. change::
         :tags: bug, engine
-        :pullreq: github:6
         :versions: 0.9.0b1
 
         Fixed bug where the ``reset_on_return`` argument to various :class:`.Pool`
@@ -1334,7 +1323,6 @@
 
     .. change::
       :tags: bug, postgresql
-      :pullreq: github:2
       :tickets: 2735
 
       Fixed the HSTORE type to correctly encode/decode for unicode.
