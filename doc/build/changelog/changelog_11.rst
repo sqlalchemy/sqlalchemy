@@ -1699,7 +1699,6 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: bitbucket:84
 
         The DDL for DROP INDEX will emit "CONCURRENTLY" if the
         ``postgresql_concurrently`` flag is set upon the
@@ -1789,7 +1788,6 @@
 
     .. change::
         :tags: orm, feature
-        :pullreq: github:237
 
         Added :paramref:`.AutomapBase.prepare.schema` to the
         :meth:`.AutomapBase.prepare` method, to indicate which schema
@@ -1798,7 +1796,6 @@
 
     .. change::
         :tags: feature, sqlite
-        :pullreq: github:244
 
         The SQLite dialect now reflects ON UPDATE and ON DELETE phrases
         within foreign key constraints.  Pull request courtesy
@@ -1806,7 +1803,6 @@
 
     .. change::
         :tags: bug, mssql
-        :pullreq: bitbucket:58
 
         Adjustments to the mxODBC dialect to make use of the ``BinaryNull``
         symbol when appropriate in conjunction with the ``VARBINARY``
@@ -1814,7 +1810,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: bitbucket:80
 
         Implemented reflection of CHECK constraints for SQLite and PostgreSQL.
         This is available via the new inspector method
@@ -1825,8 +1820,7 @@
 
     .. change::
         :tags: feature, postgresql
-        :pullreq: github:297
-
+3
         Added new parameter
         :paramref:`.GenerativeSelect.with_for_update.key_share`, which
         will render the ``FOR NO KEY UPDATE`` version of ``FOR UPDATE``
@@ -1835,7 +1829,6 @@
 
     .. change::
         :tags: feature, postgresql, oracle
-        :pullreq: bitbucket:86
 
         Added new parameter
         :paramref:`.GenerativeSelect.with_for_update.skip_locked`, which
@@ -1899,7 +1892,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: github:275
 
         Added a hook in :meth:`.DDLCompiler.visit_create_table` called
         :meth:`.DDLCompiler.create_table_suffix`, allowing custom dialects
@@ -1908,7 +1900,6 @@
 
     .. change::
         :tags: feature, sql
-        :pullreq: github:231
 
         Negative integer indexes are now accommodated by rows
         returned from a :class:`.ResultProxy`.  Pull request courtesy
@@ -1944,7 +1935,6 @@
     .. change::
         :tags: feature, sql
         :tickets: 1957
-        :pullreq: github:209
 
         Added support for rendering "FULL OUTER JOIN" to both Core and ORM.
         Pull request courtesy Stefan Urbanek.
@@ -2344,7 +2334,6 @@
 
     .. change::
         :tags: enhancement, schema
-        :pullreq: github:204
 
         The default generation functions passed to :class:`.Column` objects
         are now run through "update_wrapper", or an equivalent function
@@ -2391,7 +2380,6 @@
 
     .. change::
         :tags: change, sqlite
-        :pullreq: github:198
 
         Added support to the SQLite dialect for the
         :meth:`.Inspector.get_schema_names` method to work with SQLite;
@@ -2720,7 +2708,6 @@
     .. change::
         :tags: feature, orm
         :tickets: 3512
-        :pullreq: github:193
 
         Added new relationship loading strategy :func:`.orm.raiseload` (also
         accessible via ``lazy='raise'``).  This strategy behaves almost like
