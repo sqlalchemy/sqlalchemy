@@ -13,7 +13,7 @@ from sqlalchemy import Table, Column, MetaData, Integer, String, \
 from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, TSRANGE
+from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, INTEGER, TSRANGE
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 import re
 
@@ -221,7 +221,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42', \
                 'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0', \
                 "CREATE TYPE testtype AS ENUM ('test')", \
-                'CREATE DOMAIN enumdomain AS testtype':
+                'CREATE DOMAIN enumdomain AS testtype', \
+                'CREATE DOMAIN arraydomain AS INTEGER[]':
             try:
                 con.execute(ddl)
             except exc.DBAPIError as e:
@@ -237,6 +238,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
         con.execute('CREATE TABLE enum_test (id integer, data enumdomain)')
 
+        con.execute('CREATE TABLE array_test (id integer, data arraydomain)')
+
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
@@ -248,6 +251,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         con.execute("DROP TABLE enum_test")
         con.execute("DROP DOMAIN enumdomain")
         con.execute("DROP TYPE testtype")
+        con.execute('DROP TABLE array_test')
+        con.execute('DROP DOMAIN arraydomain')
 
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -270,6 +275,18 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(
             table.c.data.type.enums,
             ['test']
+        )
+
+    def test_array_domain_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('array_test', metadata, autoload=True)
+        eq_(
+            table.c.data.type.__class__,
+            ARRAY
+        )
+        eq_(
+            table.c.data.type.item_type.__class__,
+            INTEGER
         )
 
     def test_table_is_reflected_test_schema(self):
