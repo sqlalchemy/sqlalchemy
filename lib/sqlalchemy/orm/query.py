@@ -2986,13 +2986,18 @@ class Query(object):
         else:
             self._suffixes = suffixes
 
-    def all(self):
+    def all(self, ret_scalars=False):
         """Return the results represented by this ``Query`` as a list.
 
         This results in an execution of the underlying query.
 
+        :param ret_scalars: if True and count of entities = 1 then return list of scalars
         """
-        return list(self)
+
+        if len(self._entities) == 1 and ret_scalars:
+            return [x[0] for x in self]
+        else:
+            return list(self)
 
     @_generative(_no_clauseelement_condition)
     def from_statement(self, statement):
