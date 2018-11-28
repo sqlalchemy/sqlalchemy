@@ -44,6 +44,28 @@ class DialectTest(fixtures.TestBase):
             }
         )
 
+    def test_normal_arguments_mysqldb(self):
+        from sqlalchemy.dialects.mysql import mysqldb
+        dialect = mysqldb.dialect()
+        self._test_normal_arguments(dialect)
+
+    def _test_normal_arguments(self, dialect):
+        for kwarg, value in [
+            ('compress', True),
+            ('connect_timeout', 30),
+            ('read_timeout', 30),
+            ('client_flag', 1234),
+            ('local_infile', 1234),
+            ('use_unicode', False),
+            ('charset', 'hello')
+        ]:
+            connect_args = dialect.create_connect_args(
+                make_url("mysql://scott:tiger@localhost:3306/test"
+                         "?%s=%s" % (kwarg, value))
+            )
+
+            eq_(connect_args[1][kwarg], value)
+
     def test_mysqlconnector_buffered_arg(self):
         from sqlalchemy.dialects.mysql import mysqlconnector
         dialect = mysqlconnector.dialect()
