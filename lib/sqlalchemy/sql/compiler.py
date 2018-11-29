@@ -111,20 +111,20 @@ OPERATORS = {
 }
 
 FUNCTIONS = {
-    functions.coalesce: 'coalesce%(expr)s',
+    functions.coalesce: 'coalesce',
     functions.current_date: 'CURRENT_DATE',
     functions.current_time: 'CURRENT_TIME',
     functions.current_timestamp: 'CURRENT_TIMESTAMP',
     functions.current_user: 'CURRENT_USER',
     functions.localtime: 'LOCALTIME',
     functions.localtimestamp: 'LOCALTIMESTAMP',
-    functions.random: 'random%(expr)s',
+    functions.random: 'random',
     functions.sysdate: 'sysdate',
     functions.session_user: 'SESSION_USER',
     functions.user: 'USER',
-    functions.cube: 'CUBE%(expr)s',
-    functions.rollup: 'ROLLUP%(expr)s',
-    functions.grouping_sets: 'GROUPING SETS%(expr)s',
+    functions.cube: 'CUBE',
+    functions.rollup: 'ROLLUP',
+    functions.grouping_sets: 'GROUPING SETS',
 }
 
 EXTRACT_MAP = {
@@ -927,7 +927,12 @@ class SQLCompiler(Compiled):
         if disp:
             return disp(func, **kwargs)
         else:
-            name = FUNCTIONS.get(func.__class__, func.name + "%(expr)s")
+            name = FUNCTIONS.get(func.__class__, None)
+            if name:
+                if func._has_args:
+                    name += "%(expr)s"
+            else:
+                name = func.name + "%(expr)s"
             return ".".join(list(func.packagenames) + [name]) % \
                 {'expr': self.function_argspec(func, **kwargs)}
 

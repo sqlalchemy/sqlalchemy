@@ -54,10 +54,13 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     packagenames = ()
 
+    _has_args = False
+
     def __init__(self, *clauses, **kwargs):
         """Construct a :class:`.FunctionElement`.
         """
         args = [_literal_as_binds(c, self.name) for c in clauses]
+        self._has_args = self._has_args or bool(args)
         self.clause_expr = ClauseList(
             operator=operators.comma_op,
             group_contents=True, *args).\
@@ -635,6 +638,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         parsed_args = kwargs.pop('_parsed_args', None)
         if parsed_args is None:
             parsed_args = [_literal_as_binds(c, self.name) for c in args]
+        self._has_args = self._has_args or bool(parsed_args)
         self.packagenames = []
         self._bind = kwargs.get('bind', None)
         self.clause_expr = ClauseList(
@@ -671,8 +675,8 @@ class next_value(GenericFunction):
 
 
 class AnsiFunction(GenericFunction):
-    def __init__(self, **kwargs):
-        GenericFunction.__init__(self, **kwargs)
+    def __init__(self, *args, **kwargs):
+        GenericFunction.__init__(self, *args, **kwargs)
 
 
 class ReturnTypeFromArgs(GenericFunction):
@@ -686,7 +690,7 @@ class ReturnTypeFromArgs(GenericFunction):
 
 
 class coalesce(ReturnTypeFromArgs):
-    pass
+    _has_args = True
 
 
 class max(ReturnTypeFromArgs):
@@ -717,7 +721,7 @@ class char_length(GenericFunction):
 
 
 class random(GenericFunction):
-    pass
+    _has_args = True
 
 
 class count(GenericFunction):
@@ -937,6 +941,7 @@ class cube(GenericFunction):
     .. versionadded:: 1.2
 
     """
+    _has_args = True
 
 
 class rollup(GenericFunction):
@@ -952,6 +957,7 @@ class rollup(GenericFunction):
     .. versionadded:: 1.2
 
     """
+    _has_args = True
 
 
 class grouping_sets(GenericFunction):
@@ -984,3 +990,4 @@ class grouping_sets(GenericFunction):
     .. versionadded:: 1.2
 
     """
+    _has_args = True

@@ -14,7 +14,7 @@ import decimal
 from sqlalchemy import testing
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
 from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
-from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_raises_message, assert_raises
 
 table1 = table('mytable',
                column('myid', Integer),
@@ -133,12 +133,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             pass
 
         assert isinstance(func.myfunc(), myfunc)
+        self.assert_compile(func.myfunc(), "myfunc()")
 
     def test_custom_type(self):
         class myfunc(GenericFunction):
             type = DateTime
 
         assert isinstance(func.myfunc().type, DateTime)
+        self.assert_compile(func.myfunc(), "myfunc()")
 
     def test_custom_legacy_type(self):
         # in case someone was using this system
@@ -228,24 +230,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         c = column('abc')
         self.assert_compile(func.count(c), 'count(abc)')
 
-    def test_constructor(self):
-        try:
-            func.current_timestamp('somearg')
-            assert False
-        except TypeError:
-            assert True
+    def test_ansi_functions_with_args(self):
+        ct = func.current_timestamp('somearg')
+        self.assert_compile(ct, "CURRENT_TIMESTAMP(:current_timestamp_1)")
 
-        try:
-            func.char_length('a', 'b')
-            assert False
-        except TypeError:
-            assert True
-
-        try:
-            func.char_length()
-            assert False
-        except TypeError:
-            assert True
+    def test_char_length_fixed_args(self):
+        assert_raises(
+            TypeError,
+            func.char_length, 'a', 'b'
+        )
+        assert_raises(
+            TypeError,
+            func.char_length
+        )
 
     def test_return_type_detection(self):
 
