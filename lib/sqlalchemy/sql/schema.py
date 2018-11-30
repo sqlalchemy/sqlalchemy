@@ -1074,7 +1074,7 @@ class Column(SchemaItem, ColumnClause):
         :param onupdate: A scalar, Python callable, or
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing a
             default value to be applied to the column within UPDATE
-            statements, which wil be invoked upon update if this column is not
+            statements, which will be invoked upon update if this column is not
             present in the SET clause of the update. This is a shortcut to
             using :class:`.ColumnDefault` as a positional argument with
             ``for_update=True``.
