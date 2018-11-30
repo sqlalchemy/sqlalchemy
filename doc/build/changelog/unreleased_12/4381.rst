@@ -1,0 +1,6 @@
+.. change::
+    :tag: feature, mysql
+    :tickets: 4381
+
+    Added support for the ``write_timeout`` flag accepted by mysqlclient and
+    pymysql to  be passed in the URL string.

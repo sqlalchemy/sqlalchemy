@@ -54,6 +54,7 @@ class DialectTest(fixtures.TestBase):
             ('compress', True),
             ('connect_timeout', 30),
             ('read_timeout', 30),
+            ('write_timeout', 30),
             ('client_flag', 1234),
             ('local_infile', 1234),
             ('use_unicode', False),
