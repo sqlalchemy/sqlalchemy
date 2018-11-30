@@ -8,11 +8,11 @@ from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy import testing, util
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-    ForeignKeyConstraint, Index
+    ForeignKeyConstraint, Index, UniqueConstraint, CheckConstraint
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \
-    column_property, composite, Session, properties
+    column_property, composite, Session, properties, deferred
 from sqlalchemy.util import with_metaclass
 from sqlalchemy.ext.declarative import declared_attr, synonym_for
 from sqlalchemy.testing import fixtures, mock
@@ -263,6 +263,53 @@ class DeclarativeTest(DeclarativeTestBase):
             "only one will be used: x, y, z",
             go
         )
+
+    def test_using_explicit_prop_in_schema_objects(self):
+        class Foo(Base):
+            __tablename__ = 'foo'
+
+            id = Column(Integer, primary_key=True)
+            cprop = column_property(Column(Integer))
+
+            __table_args__ = (
+                UniqueConstraint(cprop),
+            )
+        uq = [
+            c for c in Foo.__table__.constraints
+            if isinstance(c, UniqueConstraint)][0]
+        is_(uq.columns.cprop, Foo.__table__.c.cprop)
+
+        class Bar(Base):
+            __tablename__ = 'bar'
+
+            id = Column(Integer, primary_key=True)
+            cprop = deferred(Column(Integer))
+
+            __table_args__ = (
+                CheckConstraint(cprop > sa.func.foo()),
+            )
+        ck = [
+            c for c in Bar.__table__.constraints
+            if isinstance(c, CheckConstraint)][0]
+        is_(ck.columns.cprop, Bar.__table__.c.cprop)
+
+        if testing.requires.python3.enabled:
+            # test the existing failure case in case something changes
+            def go():
+                class Bat(Base):
+                    __tablename__ = 'bat'
+
+                    id = Column(Integer, primary_key=True)
+                    cprop = deferred(Column(Integer))
+
+                    # we still can't do an expression like
+                    # "cprop > 5" because the column property isn't
+                    # a full blown column
+
+                    __table_args__ = (
+                        CheckConstraint(cprop > 5),
+                    )
+            assert_raises(TypeError, go)
 
     def test_relationship_level_msg_for_invalid_callable(self):
         class A(Base):

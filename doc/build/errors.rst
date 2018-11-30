@@ -318,6 +318,50 @@ the database driver (DBAPI), not SQLAlchemy itself.
 SQL Expression Language
 =======================
 
+TypeError: <operator> not supported between instances of 'ColumnProperty' and <something>
+-----------------------------------------------------------------------------------------
+
+This often occurs when attempting to use a :func:`.column_property` or
+:func:`.deferred` object in the context of a SQL expression, usually within
+declarative such as::
+
+    class Bar(Base):
+        __tablename__ = 'bar'
+
+        id = Column(Integer, primary_key=True)
+        cprop = deferred(Column(Integer))
+
+        __table_args__ = (
+            CheckConstraint(cprop > 5),
+        )
+
+Above, the ``cprop`` attribute is used inline before it has been mapped,
+however this ``cprop`` attribute is not a :class:`.Column`,
+it's a :class:`.ColumnProperty`, which is an interim object and therefore
+does not have the full functionality of either the :class:`.Column` object
+or the :class:`.InstrmentedAttribute` object that will be mapped onto the
+``Bar`` class once the declarative process is complete.
+
+While the :class:`.ColumnProperty` does have a ``__clause_element__()`` method,
+which allows it to work in some column-oriented contexts, it can't work in an
+open-ended comparison context as illustrated above, since it has no Python
+``__eq__()`` method that would allow it to interpret the comparison to the
+number "5" as a SQL expression and not a regular Python comparison.
+
+The solution is to access the :class:`.Column` directly using the
+:attr:`.ColumnProperty.expression` attribute::
+
+    class Bar(Base):
+        __tablename__ = 'bar'
+
+        id = Column(Integer, primary_key=True)
+        cprop = deferred(Column(Integer))
+
+        __table_args__ = (
+            CheckConstraint(cprop.expression > 5),
+        )
+
+
 .. _error_2afi:
 
 This Compiled object is not bound to any Engine or Connection
