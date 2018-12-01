@@ -913,10 +913,32 @@ class SelfReferentialMultiPathTest(testing.fixtures.DeclarativeMappedTest):
 class InheritanceTest(_Polymorphic):
     __dialect__ = 'default'
 
+    @classmethod
+    def setup_mappers(cls):
+        super(InheritanceTest, cls).setup_mappers()
+        from sqlalchemy import inspect
+        inspect(Company).add_property("managers", relationship(Manager))
+
     def test_load_only_subclass(self):
         s = Session()
         q = s.query(Manager).order_by(Manager.person_id).\
             options(load_only("status", "manager_name"))
+        self.assert_compile(
+            q,
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people JOIN managers "
+            "ON people.person_id = managers.person_id "
+            "ORDER BY managers.person_id"
+        )
+
+    def test_load_only_subclass_bound(self):
+        s = Session()
+        q = s.query(Manager).order_by(Manager.person_id).\
+            options(Load(Manager).load_only("status", "manager_name"))
         self.assert_compile(
             q,
             "SELECT managers.person_id AS managers_person_id, "
@@ -945,11 +967,44 @@ class InheritanceTest(_Polymorphic):
             "ON managers.person_id = boss.boss_id ORDER BY people.person_id"
         )
 
+    def test_load_only_subclass_and_superclass_bound(self):
+        s = Session()
+        q = s.query(Boss).order_by(Person.person_id).\
+            options(Load(Boss).load_only("status", "manager_name"))
+        self.assert_compile(
+            q,
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people JOIN managers "
+            "ON people.person_id = managers.person_id JOIN boss "
+            "ON managers.person_id = boss.boss_id ORDER BY people.person_id"
+        )
+
     def test_load_only_alias_subclass(self):
         s = Session()
         m1 = aliased(Manager, flat=True)
         q = s.query(m1).order_by(m1.person_id).\
             options(load_only("status", "manager_name"))
+        self.assert_compile(
+            q,
+            "SELECT managers_1.person_id AS managers_1_person_id, "
+            "people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.status AS managers_1_status, "
+            "managers_1.manager_name AS managers_1_manager_name "
+            "FROM people AS people_1 JOIN managers AS "
+            "managers_1 ON people_1.person_id = managers_1.person_id "
+            "ORDER BY managers_1.person_id"
+        )
+
+    def test_load_only_alias_subclass_bound(self):
+        s = Session()
+        m1 = aliased(Manager, flat=True)
+        q = s.query(m1).order_by(m1.person_id).\
+            options(Load(m1).load_only("status", "manager_name"))
         self.assert_compile(
             q,
             "SELECT managers_1.person_id AS managers_1_person_id, "
@@ -984,12 +1039,51 @@ class InheritanceTest(_Polymorphic):
             "people_1.company_id"
         )
 
+    def test_load_only_subclass_from_relationship_polymorphic_bound(self):
+        s = Session()
+        wp = with_polymorphic(Person, [Manager], flat=True)
+        q = s.query(Company).join(Company.employees.of_type(wp)).options(
+            Load(Company).contains_eager(Company.employees.of_type(wp)).
+            load_only(wp.Manager.status, wp.Manager.manager_name)
+        )
+        self.assert_compile(
+            q,
+            "SELECT people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.person_id AS managers_1_person_id, "
+            "managers_1.status AS managers_1_status, "
+            "managers_1.manager_name AS managers_1_manager_name, "
+            "companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name "
+            "FROM companies JOIN (people AS people_1 LEFT OUTER JOIN "
+            "managers AS managers_1 ON people_1.person_id = "
+            "managers_1.person_id) ON companies.company_id = "
+            "people_1.company_id"
+        )
+
     def test_load_only_subclass_from_relationship(self):
         s = Session()
-        from sqlalchemy import inspect
-        inspect(Company).add_property("managers", relationship(Manager))
         q = s.query(Company).join(Company.managers).options(
             contains_eager(Company.managers).
+            load_only("status", "manager_name")
+        )
+        self.assert_compile(
+            q,
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, "
+            "managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.type AS people_type, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM companies JOIN (people JOIN managers ON people.person_id = "
+            "managers.person_id) ON companies.company_id = people.company_id"
+        )
+
+    def test_load_only_subclass_from_relationship_bound(self):
+        s = Session()
+        q = s.query(Company).join(Company.managers).options(
+            Load(Company).contains_eager(Company.managers).
             load_only("status", "manager_name")
         )
         self.assert_compile(
@@ -1009,6 +1103,8 @@ class InheritanceTest(_Polymorphic):
         # pretty much the same as load_only except doesn't
         # exclude the primary key
 
+        # TODO: what is ".*"?  this is not documented anywhere, how did this
+        # get implemented without docs ?  see #4390
         s = Session()
         q = s.query(Manager).order_by(Person.person_id).options(
             defer(".*"), undefer("status"))
@@ -1019,9 +1115,28 @@ class InheritanceTest(_Polymorphic):
             "people.person_id = managers.person_id ORDER BY people.person_id"
         )
 
+        # note this doesn't apply to "bound" loaders since they don't seem
+        # to have this ".*" featue.
+
     def test_defer_super_name_on_subclass(self):
         s = Session()
         q = s.query(Manager).order_by(Person.person_id).options(defer("name"))
+        self.assert_compile(
+            q,
+            "SELECT managers.person_id AS managers_person_id, "
+            "people.person_id AS people_person_id, "
+            "people.company_id AS people_company_id, "
+            "people.type AS people_type, managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people JOIN managers "
+            "ON people.person_id = managers.person_id "
+            "ORDER BY people.person_id"
+        )
+
+    def test_defer_super_name_on_subclass_bound(self):
+        s = Session()
+        q = s.query(Manager).order_by(Person.person_id).options(
+            Load(Manager).defer("name"))
         self.assert_compile(
             q,
             "SELECT managers.person_id AS managers_person_id, "

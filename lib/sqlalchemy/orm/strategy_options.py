@@ -357,9 +357,15 @@ class Load(Generative, MapperOption):
         else:
             effective_path = self.path
 
-        self._set_for_path(
-            self.context, effective_path, replace=True,
-            merge_opts=self.is_opts_only)
+        if effective_path.is_token:
+            for path in effective_path.generate_for_superclasses():
+                self._set_for_path(
+                    self.context, path, replace=True,
+                    merge_opts=self.is_opts_only)
+        else:
+            self._set_for_path(
+                self.context, effective_path, replace=True,
+                merge_opts=self.is_opts_only)
 
     def __getstate__(self):
         d = self.__dict__.copy()

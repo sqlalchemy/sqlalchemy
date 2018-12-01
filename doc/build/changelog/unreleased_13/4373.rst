@@ -1,0 +1,11 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4373
+
+   Extended the fix first made as part of :ticket:`3287`, where a loader option
+   made against a subclass using a wildcard would extend itself to include
+   application of the wildcard to attributes on the super classes as well, to a
+   "bound" loader option as well, e.g. in an expression like
+   ``Load(SomeSubClass).load_only('foo')``.  Columns that are part of the
+   parent class of ``SomeSubClass`` will also be excluded in the same way as if
+   the unbound option ``load_only('foo')`` were used.
