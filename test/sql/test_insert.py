@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table,\
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL,\
-    assert_raises_message, fixtures, eq_, expect_warnings
+    assert_raises_message, fixtures, eq_, expect_warnings, assert_raises
 from sqlalchemy.sql import crud
 
 
@@ -30,6 +30,91 @@ class _InsertTestBase(object):
 
 class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = 'default'
+
+    def test_binds_that_match_columns(self):
+        """test bind params named after column names
+        replace the normal SET/VALUES generation."""
+
+        t = table('foo', column('x'), column('y'))
+
+        i = t.insert().values(x=3 + bindparam('x'))
+        self.assert_compile(i,
+                            "INSERT INTO foo (x) VALUES ((:param_1 + :x))")
+        self.assert_compile(
+            i,
+            "INSERT INTO foo (x, y) VALUES ((:param_1 + :x), :y)",
+            params={
+                'x': 1,
+                'y': 2})
+
+        i = t.insert().values(x=bindparam('y'))
+        self.assert_compile(i, "INSERT INTO foo (x) VALUES (:y)")
+
+        i = t.insert().values(x=bindparam('y'), y=5)
+        assert_raises(exc.CompileError, i.compile)
+
+        i = t.insert().values(x=3 + bindparam('y'), y=5)
+        assert_raises(exc.CompileError, i.compile)
+
+        i = t.insert().values(x=3 + bindparam('x2'))
+        self.assert_compile(i,
+                            "INSERT INTO foo (x) VALUES ((:param_1 + :x2))")
+        self.assert_compile(
+            i,
+            "INSERT INTO foo (x) VALUES ((:param_1 + :x2))",
+            params={})
+        self.assert_compile(
+            i,
+            "INSERT INTO foo (x, y) VALUES ((:param_1 + :x2), :y)",
+            params={
+                'x': 1,
+                'y': 2})
+        self.assert_compile(
+            i,
+            "INSERT INTO foo (x, y) VALUES ((:param_1 + :x2), :y)",
+            params={
+                'x2': 1,
+                'y': 2})
+
+    def test_insert_literal_binds(self):
+        table1 = self.tables.mytable
+        stmt = table1.insert().values(myid=3, name='jack')
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name) VALUES (3, 'jack')",
+            literal_binds=True)
+
+    def test_insert_literal_binds_sequence_notimplemented(self):
+        table = Table('x', MetaData(), Column('y', Integer, Sequence('y_seq')))
+        dialect = default.DefaultDialect()
+        dialect.supports_sequences = True
+
+        stmt = table.insert().values(myid=3, name='jack')
+
+        assert_raises(
+            NotImplementedError,
+            stmt.compile,
+            compile_kwargs=dict(literal_binds=True), dialect=dialect
+        )
+
+    def test_inline_defaults(self):
+        m = MetaData()
+        foo = Table('foo', m,
+                    Column('id', Integer))
+
+        t = Table('test', m,
+                  Column('col1', Integer, default=func.foo(1)),
+                  Column('col2', Integer, default=select(
+                      [func.coalesce(func.max(foo.c.id))])),
+                  )
+
+        self.assert_compile(
+            t.insert(
+                inline=True, values={}),
+            "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
+            "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
+            "foo))")
 
     def test_generic_insert_bind_params_all_columns(self):
         table1 = self.tables.mytable

@@ -170,6 +170,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(sql.delete(a1), "DELETE FROM t1 AS a1")
 
+    def test_update_from(self):
+        metadata = MetaData()
+        table1 = Table(
+            'mytable', metadata,
+            Column('myid', Integer),
+            Column('name', String(30)),
+            Column('description', String(50)))
+        table2 = Table(
+            'myothertable', metadata,
+            Column('otherid', Integer),
+            Column('othername', String(30)))
+
+        mt = table1.alias()
+
+        u = table1.update().values(name='foo')\
+                  .where(table2.c.otherid == table1.c.myid)
+
+        # testing mssql.base.MSSQLCompiler.update_from_clause
+        self.assert_compile(u,
+                            "UPDATE mytable SET name=:name "
+                            "FROM mytable, myothertable WHERE "
+                            "myothertable.otherid = mytable.myid")
+
+        self.assert_compile(u.where(table2.c.othername == mt.c.name),
+                            "UPDATE mytable SET name=:name "
+                            "FROM mytable, myothertable, mytable AS mytable_1 "
+                            "WHERE myothertable.otherid = mytable.myid "
+                            "AND myothertable.othername = mytable_1.name")
+
     def test_update_from_hint(self):
         t = table('sometable', column('somecolumn'))
         t2 = table('othertable', column('somecolumn'))
