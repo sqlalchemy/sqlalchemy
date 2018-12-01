@@ -1,0 +1,7 @@
+.. change::
+   :tag: bug, postgresql
+   :tickets: 4377, 4380
+
+   Fixed issue where reflection of a PostgreSQL domain that is expressed as an
+   array would fail to be recognized.  Pull request courtesy Jakub Synowiec.
+

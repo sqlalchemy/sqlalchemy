@@ -2600,6 +2600,12 @@ class PGDialect(default.DefaultDialect):
 
     def _get_column_info(self, name, format_type, default,
                          notnull, domains, enums, schema, comment):
+        def _handle_array_type(attype):
+            return (
+                attype.replace('[]', ''), # strip '[]' from integer[], etc.
+                attype.endswith('[]'),
+            )
+
         # strip (*) from character varying(5), timestamp(5)
         # with time zone, geometry(POLYGON), etc.
         attype = re.sub(r'\(.*\)', '', format_type)
@@ -2607,11 +2613,11 @@ class PGDialect(default.DefaultDialect):
         # strip quotes from case sensitive enum names
         attype = re.sub(r'^"|"$', '', attype)
 
-        # strip '[]' from integer[], etc.
-        attype = attype.replace('[]', '')
+        # strip '[]' from integer[], etc. and check if an array
+        attype, is_array = _handle_array_type(attype)
 
         nullable = not notnull
-        is_array = format_type.endswith('[]')
+
         charlen = re.search(r'\(([\d,]+)\)', format_type)
         if charlen:
             charlen = charlen.group(1)
@@ -2676,6 +2682,7 @@ class PGDialect(default.DefaultDialect):
             elif attype in domains:
                 domain = domains[attype]
                 attype = domain['attype']
+                attype, is_array = _handle_array_type(attype)
                 # A table can't override whether the domain is nullable.
                 nullable = domain['nullable']
                 if domain['default'] and not default:
