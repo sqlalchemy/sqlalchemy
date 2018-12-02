@@ -386,8 +386,8 @@ class _MapperConfig(object):
             if (isinstance(value, tuple) and len(value) == 1 and
                     isinstance(value[0], (Column, MapperProperty))):
                 util.warn("Ignoring declarative-like tuple value of attribute "
-                          "%s: possibly a copy-and-paste error with a comma "
-                          "left at the end of the line?" % k)
+                          "'%s': possibly a copy-and-paste error with a comma "
+                          "accidentally placed at the end of the line?" % k)
                 continue
             elif not isinstance(value, (Column, MapperProperty)):
                 # using @declared_attr for some object that

@@ -1122,23 +1122,17 @@ class DeclarativeTest(DeclarativeTestBase):
 
         eq_(Foo.__mapper__.CHECK, True)
 
-    @testing.emits_warning('Ignoring declarative-like tuple value of '
-                           'attribute id')
     def test_oops(self):
 
-        def define():
+        with testing.expect_warnings(
+            "Ignoring declarative-like tuple value of "
+                "attribute 'name'"):
 
             class User(Base, fixtures.ComparableEntity):
 
                 __tablename__ = 'users'
-                id = Column('id', Integer, primary_key=True),
-                name = Column('name', String(50))
-
-            assert False
-
-        assert_raises_message(sa.exc.ArgumentError,
-                              'Mapper Mapper|User|users could not '
-                              'assemble any primary key', define)
+                id = Column('id', Integer, primary_key=True)
+                name = Column('name', String(50)),
 
     def test_table_args_no_dict(self):
 
