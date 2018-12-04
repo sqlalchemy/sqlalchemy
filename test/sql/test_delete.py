@@ -27,6 +27,16 @@ class _DeleteTestBase(object):
 class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = 'default'
 
+    def test_delete_literal_binds(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.delete().where(table1.c.name == 'jill')
+
+        self.assert_compile(
+            stmt,
+            "DELETE FROM mytable WHERE mytable.name = 'jill'",
+            literal_binds=True)
+
     def test_delete(self):
         table1 = self.tables.mytable
 
