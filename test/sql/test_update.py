@@ -1,10 +1,11 @@
 from sqlalchemy import Integer, String, ForeignKey, and_, or_, func, \
-    literal, update, table, bindparam, column, select, exc, exists
+    literal, update, table, bindparam, column, select, exc, exists, text, \
+    MetaData
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
 from sqlalchemy.testing import AssertsCompiledSQL, eq_, fixtures, \
-    assert_raises_message
+    assert_raises_message, assert_raises
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy import util
 
@@ -68,7 +69,188 @@ class _UpdateFromTestBase(object):
 
 
 class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = 'default_enhanced'
+
+    def test_update_literal_binds(self):
+        table1 = self.tables.mytable
+
+        table1 = self.tables.mytable
+
+        stmt = table1.update().values(name='jack').\
+            where(table1.c.name == 'jill')
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name='jack' WHERE mytable.name = 'jill'",
+            literal_binds=True)
+
+    def test_correlated_update_one(self):
+        table1 = self.tables.mytable
+
+        # test against a straight text subquery
+        u = update(
+            table1,
+            values={
+                table1.c.name:
+                text("(select name from mytable where id=mytable.id)")
+            }
+        )
+        self.assert_compile(
+            u,
+            "UPDATE mytable SET name=(select name from mytable "
+            "where id=mytable.id)")
+
+    def test_correlated_update_two(self):
+        table1 = self.tables.mytable
+
+        mt = table1.alias()
+        u = update(table1, values={
+            table1.c.name:
+            select([mt.c.name], mt.c.myid == table1.c.myid)
+        })
+        self.assert_compile(
+            u, "UPDATE mytable SET name=(SELECT mytable_1.name FROM "
+            "mytable AS mytable_1 WHERE "
+            "mytable_1.myid = mytable.myid)")
+
+    def test_correlated_update_three(self):
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        # test against a regular constructed subquery
+        s = select([table2], table2.c.otherid == table1.c.myid)
+        u = update(table1, table1.c.name == 'jack', values={table1.c.name: s})
+        self.assert_compile(
+            u, "UPDATE mytable SET name=(SELECT myothertable.otherid, "
+            "myothertable.othername FROM myothertable WHERE "
+            "myothertable.otherid = mytable.myid) "
+            "WHERE mytable.name = :name_1")
+
+    def test_correlated_update_four(self):
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        # test a non-correlated WHERE clause
+        s = select([table2.c.othername], table2.c.otherid == 7)
+        u = update(table1, table1.c.name == s)
+        self.assert_compile(u,
+                            "UPDATE mytable SET myid=:myid, name=:name, "
+                            "description=:description WHERE mytable.name = "
+                            "(SELECT myothertable.othername FROM myothertable "
+                            "WHERE myothertable.otherid = :otherid_1)")
+
+    def test_correlated_update_five(self):
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        # test one that is actually correlated...
+        s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
+        u = table1.update(table1.c.name == s)
+        self.assert_compile(u,
+                            "UPDATE mytable SET myid=:myid, name=:name, "
+                            "description=:description WHERE mytable.name = "
+                            "(SELECT myothertable.othername FROM myothertable "
+                            "WHERE myothertable.otherid = mytable.myid)")
+
+    def test_correlated_update_six(self):
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        # test correlated FROM implicit in WHERE and SET clauses
+        u = table1.update().values(name=table2.c.othername)\
+                  .where(table2.c.otherid == table1.c.myid)
+        self.assert_compile(
+            u, "UPDATE mytable SET name=myothertable.othername "
+            "FROM myothertable WHERE myothertable.otherid = mytable.myid")
+
+    def test_correlated_update_seven(self):
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        u = table1.update().values(name='foo')\
+                  .where(table2.c.otherid == table1.c.myid)
+
+        # this is the "default_enhanced" compiler.  there's no UPDATE FROM
+        # in the base compiler.
+        # See also test/dialect/mssql/test_compiler->test_update_from().
+        self.assert_compile(
+            u, "UPDATE mytable SET name=:name "
+            "FROM myothertable WHERE myothertable.otherid = mytable.myid")
+
+    def test_binds_that_match_columns(self):
+        """test bind params named after column names
+        replace the normal SET/VALUES generation."""
+
+        t = table('foo', column('x'), column('y'))
+
+        u = t.update().where(t.c.x == bindparam('x'))
+
+        assert_raises(exc.CompileError, u.compile)
+
+        self.assert_compile(u, "UPDATE foo SET  WHERE foo.x = :x", params={})
+
+        assert_raises(exc.CompileError, u.values(x=7).compile)
+
+        self.assert_compile(u.values(y=7),
+                            "UPDATE foo SET y=:y WHERE foo.x = :x")
+
+        assert_raises(exc.CompileError,
+                      u.values(x=7).compile, column_keys=['x', 'y'])
+        assert_raises(exc.CompileError, u.compile, column_keys=['x', 'y'])
+
+        self.assert_compile(
+            u.values(
+                x=3 +
+                bindparam('x')),
+            "UPDATE foo SET x=(:param_1 + :x) WHERE foo.x = :x")
+
+        self.assert_compile(
+            u.values(
+                x=3 +
+                bindparam('x')),
+            "UPDATE foo SET x=(:param_1 + :x) WHERE foo.x = :x",
+            params={
+                'x': 1})
+
+        self.assert_compile(
+            u.values(
+                x=3 +
+                bindparam('x')),
+            "UPDATE foo SET x=(:param_1 + :x), y=:y WHERE foo.x = :x",
+            params={
+                'x': 1,
+                'y': 2})
+
+    def test_labels_no_collision(self):
+
+        t = table('foo', column('id'), column('foo_id'))
+
+        self.assert_compile(
+            t.update().where(t.c.id == 5),
+            "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :id_1"
+        )
+
+        self.assert_compile(
+            t.update().where(t.c.id == bindparam(key=t.c.id._label)),
+            "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1"
+        )
+
+    def test_inline_defaults(self):
+        m = MetaData()
+        foo = Table('foo', m,
+                    Column('id', Integer))
+
+        t = Table('test', m,
+                  Column('col1', Integer, onupdate=func.foo(1)),
+                  Column('col2', Integer, onupdate=select(
+                      [func.coalesce(func.max(foo.c.id))])),
+                  Column('col3', String(30))
+                  )
+
+        self.assert_compile(t.update(inline=True, values={'col3': 'foo'}),
+                            "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
+                            "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
+                            "col3=:col3")
 
     def test_update_1(self):
         table1 = self.tables.mytable
