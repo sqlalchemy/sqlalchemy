@@ -311,7 +311,7 @@ class Query(object):
             orm_only = False
 
         if as_filter and self._filter_aliases:
-            for fa in self._filter_aliases._visitor_iterator:
+            for fa in self._filter_aliases.visitor_iterator:
                 adapters.append(
                     (
                         orm_only, fa.replace
