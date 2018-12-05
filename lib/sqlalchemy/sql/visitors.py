@@ -115,7 +115,7 @@ class ClauseVisitor(object):
     __traverse_options__ = {}
 
     def traverse_single(self, obj, **kw):
-        for v in self._visitor_iterator:
+        for v in self.visitor_iterator:
             meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
             if meth:
                 return meth(obj, **kw)
@@ -142,7 +142,7 @@ class ClauseVisitor(object):
         return visitors
 
     @property
-    def _visitor_iterator(self):
+    def visitor_iterator(self):
         """iterate through this visitor and each 'chained' visitor."""
 
         v = self
@@ -156,7 +156,7 @@ class ClauseVisitor(object):
         the chained visitor will receive all visit events after this one.
 
         """
-        tail = list(self._visitor_iterator)[-1]
+        tail = list(self.visitor_iterator)[-1]
         tail._next = visitor
         return self
 
@@ -200,7 +200,7 @@ class ReplacingCloningVisitor(CloningVisitor):
         """traverse and visit the given expression structure."""
 
         def replace(elem):
-            for v in self._visitor_iterator:
+            for v in self.visitor_iterator:
                 e = v.replace(elem)
                 if e is not None:
                     return e
