@@ -57,7 +57,7 @@ Production Ready
 * `sqlalchemy-monetdb <https://github.com/gijzelaerr/sqlalchemy-monetdb>`_ - driver for MonetDB.
 * `snowflake-sqlalchemy <https://github.com/snowflakedb/snowflake-sqlalchemy>`_ - driver for `Snowflake <https://www.snowflake.net/>`_.
 * `sqlalchemy-tds <https://github.com/m32/sqlalchemy-tds>`_ - driver for MS-SQL,
-  on top of `pythone-tds <https://github.com/denisenkom/pytds>`_.
+  on top of `python-tds <https://github.com/denisenkom/pytds>`_.
 * `crate <https://github.com/crate/crate-python>`_ - driver for `CrateDB <https://crate.io/>`_.
 
 Experimental / Incomplete
