@@ -1,6 +1,4 @@
-"""table_per_association.py
-
-Illustrates a mixin which provides a generic association
+"""Illustrates a mixin which provides a generic association
 via a individually generated association tables for each parent class.
 The associated objects themselves are persisted in a single table
 shared among all parents.
