@@ -1,6 +1,4 @@
-"""advanced.py
-
-Illustrate usage of Query combined with the FromCache option,
+"""Illustrate usage of Query combined with the FromCache option,
 including front-end loading, cache invalidation and collection caching.
 
 """

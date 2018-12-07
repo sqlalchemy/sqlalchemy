@@ -1,6 +1,4 @@
-"""proxied_association.py
-
-same example as basic_association, adding in
+"""Same example as basic_association, adding in
 usage of :mod:`sqlalchemy.ext.associationproxy` to make explicit references
 to ``OrderItem`` optional.
 
