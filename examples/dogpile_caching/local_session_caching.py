@@ -1,9 +1,6 @@
-"""local_session_caching.py
-
-Grok everything so far ?   This example
-creates a new dogpile.cache backend that will persist data in a dictionary
-which is local to the current session.   remove() the session
-and the cache is gone.
+"""This example creates a new dogpile.cache backend that will persist data in a
+dictionary which is local to the current session.   remove() the session and
+the cache is gone.
 
 Create a new Dogpile cache backend that will store
 cached data local to the current Session.
@@ -15,6 +12,7 @@ with the basic operation of CachingQuery.
 
 from dogpile.cache.api import CacheBackend, NO_VALUE
 from dogpile.cache.region import register_backend
+
 
 class ScopedSessionBackend(CacheBackend):
     """A dogpile backend which will cache objects locally on
@@ -77,8 +75,8 @@ if __name__ == '__main__':
     # query to load Person by name, with criterion
     # of "person 10"
     q = Session.query(Person).\
-                    options(FromCache("local_session")).\
-                    filter(Person.name == "person 10")
+        options(FromCache("local_session")).\
+        filter(Person.name == "person 10")
 
     # load from DB
     person10 = q.one()

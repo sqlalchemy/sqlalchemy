@@ -1,6 +1,4 @@
-"""caching_query.py
-
-Represent functions and classes
+"""Represent functions and classes
 which allow the usage of Dogpile caching with SQLAlchemy.
 Introduces a query option called FromCache.
 
@@ -21,21 +19,21 @@ dogpile.cache constructs.
 """
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.orm.query import Query
-from sqlalchemy.sql import visitors
 from dogpile.cache.api import NO_VALUE
+
 
 class CachingQuery(Query):
     """A Query subclass which optionally loads full results from a dogpile
     cache region.
 
-    The CachingQuery optionally stores additional state that allows it to consult
-    a dogpile.cache cache before accessing the database, in the form
-    of a FromCache or RelationshipCache object.   Each of these objects
-    refer to the name of a :class:`dogpile.cache.Region` that's been configured
-    and stored in a lookup dictionary.  When such an object has associated
-    itself with the CachingQuery, the corresponding :class:`dogpile.cache.Region`
-    is used to locate a cached result.  If none is present, then the
-    Query is invoked normally, the results being cached.
+    The CachingQuery optionally stores additional state that allows it to
+    consult a dogpile.cache cache before accessing the database, in the form of
+    a FromCache or RelationshipCache object.   Each of these objects refer to
+    the name of a :class:`dogpile.cache.Region` that's been configured and
+    stored in a lookup dictionary.  When such an object has associated itself
+    with the CachingQuery, the corresponding :class:`dogpile.cache.Region` is
+    used to locate a cached result.  If none is present, then the Query is
+    invoked normally, the results being cached.
 
     The FromCache and RelationshipCache mapper options below represent
     the "public" method of configuring this state upon the CachingQuery.
