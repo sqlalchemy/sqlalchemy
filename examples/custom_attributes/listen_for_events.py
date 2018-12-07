@@ -1,5 +1,4 @@
-"""
-Illustrates how to attach events to all instrumented attributes
+"""Illustrates how to attach events to all instrumented attributes
 and listen for change events.
 
 """

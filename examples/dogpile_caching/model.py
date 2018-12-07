@@ -1,6 +1,4 @@
-"""model.py
-
-The datamodel, which represents Person that has multiple
+"""The datamodel, which represents Person that has multiple
 Address objects, each with PostalCode, City, Country.
 
 Person --(1..n)--> Address
@@ -11,8 +9,9 @@ City --(has a)--> Country
 """
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from .caching_query import FromCache, RelationshipCache
+from .caching_query import RelationshipCache
 from .environment import Base, bootstrap
+
 
 class Country(Base):
     __tablename__ = 'country'
@@ -22,6 +21,7 @@ class Country(Base):
 
     def __init__(self, name):
         self.name = name
+
 
 class City(Base):
     __tablename__ = 'city'
@@ -34,6 +34,7 @@ class City(Base):
     def __init__(self, name, country):
         self.name = name
         self.country = country
+
 
 class PostalCode(Base):
     __tablename__ = 'postal_code'
@@ -50,6 +51,7 @@ class PostalCode(Base):
     def __init__(self, code, city):
         self.code = code
         self.city = city
+
 
 class Address(Base):
     __tablename__ = 'address'
@@ -69,10 +71,12 @@ class Address(Base):
         return self.postal_code.country
 
     def __str__(self):
-        return "%s\t"\
-              "%s, %s\t"\
-              "%s" % (self.street, self.city.name,
+        return (
+            "%s\t%s, %s\t%s" % (
+                self.street, self.city.name,
                 self.postal_code.code, self.country.name)
+        )
+
 
 class Person(Base):
     __tablename__ = 'person'
@@ -98,10 +102,10 @@ class Person(Base):
 # which can be applied to Query(), causing the "lazy load"
 # of these attributes to be loaded from cache.
 cache_address_bits = RelationshipCache(PostalCode.city, "default").\
-                and_(
-                    RelationshipCache(City.country, "default")
-                ).and_(
-                    RelationshipCache(Address.postal_code, "default")
-                )
+    and_(
+        RelationshipCache(City.country, "default")
+).and_(
+        RelationshipCache(Address.postal_code, "default")
+)
 
 bootstrap()
