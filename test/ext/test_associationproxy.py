@@ -19,6 +19,8 @@ from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.engine import default
+from sqlalchemy import inspect
+
 
 class DictCollection(dict):
     @collection.appender
@@ -2506,9 +2508,70 @@ class InfoTest(fixtures.TestBase):
         eq_(Foob.assoc.info, {'foo': 'bar'})
 
 
-class MultiOwnerTest(fixtures.DeclarativeMappedTest,
-                                     testing.AssertsCompiledSQL):
+class OnlyRelationshipTest(fixtures.DeclarativeMappedTest):
+    run_define_tables = None
+    run_create_tables = None
+    run_inserts = None
+    run_deletes = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Foo(Base):
+            __tablename__ = 'foo'
+
+            id = Column(Integer, primary_key=True)
+            foo = Column(String)  # assume some composite datatype
+
+            bar = association_proxy("foo", "attr")
+
+    def test_setattr(self):
+        Foo = self.classes.Foo
+
+        f1 = Foo()
+
+        assert_raises_message(
+            NotImplementedError,
+            "association proxy to a non-relationship "
+            "intermediary is not supported",
+            setattr, f1, 'bar', 'asdf'
+        )
+
+    def test_getattr(self):
+        Foo = self.classes.Foo
+
+        f1 = Foo()
+
+        assert_raises_message(
+            NotImplementedError,
+            "association proxy to a non-relationship "
+            "intermediary is not supported",
+            getattr, f1, 'bar'
+        )
+
+    def test_get_class_attr(self):
+        Foo = self.classes.Foo
+
+        assert_raises_message(
+            NotImplementedError,
+            "association proxy to a non-relationship "
+            "intermediary is not supported",
+            getattr, Foo, 'bar'
+        )
+
+
+class MultiOwnerTest(
+        fixtures.DeclarativeMappedTest,
+        testing.AssertsCompiledSQL):
     __dialect__ = 'default'
+
+    run_define_tables = 'each'
+    run_create_tables = None
+    run_inserts = None
+    run_deletes = None
+    run_setup_classes = 'each'
+    run_setup_mappers = 'each'
 
     @classmethod
     def setup_classes(cls):
@@ -2526,6 +2589,8 @@ class MultiOwnerTest(fixtures.DeclarativeMappedTest,
             __tablename__ = 'b'
             id = Column(ForeignKey('a.id'), primary_key=True)
 
+            c1_id = Column(ForeignKey("c1.id"))
+
             ds = relationship("D", primaryjoin="D.b_id == B.id")
 
             __mapper_args__ = {"polymorphic_identity": "b"}
@@ -2534,15 +2599,30 @@ class MultiOwnerTest(fixtures.DeclarativeMappedTest,
             __tablename__ = 'c'
             id = Column(ForeignKey('a.id'), primary_key=True)
 
-            ds = relationship("D", primaryjoin="D.c_id == C.id")
+            ds = relationship(
+                "D", primaryjoin="D.c_id == C.id", back_populates="c")
 
             __mapper_args__ = {"polymorphic_identity": "c"}
+
+        class C1(C):
+            __tablename__ = 'c1'
+            id = Column(ForeignKey('c.id'), primary_key=True)
+
+            csub_only_data = relationship("B")  # uselist=True relationship
+
+            ds = relationship(
+                "D", primaryjoin="D.c1_id == C1.id", back_populates="c")
+
+            __mapper_args__ = {"polymorphic_identity": "c1"}
 
         class C2(C):
             __tablename__ = 'c2'
             id = Column(ForeignKey('c.id'), primary_key=True)
 
-            ds = relationship("D", primaryjoin="D.c2_id == C2.id")
+            csub_only_data = Column(String(50))  # scalar Column
+
+            ds = relationship(
+                "D", primaryjoin="D.c2_id == C2.id", back_populates="c")
 
             __mapper_args__ = {"polymorphic_identity": "c2"}
 
@@ -2552,7 +2632,19 @@ class MultiOwnerTest(fixtures.DeclarativeMappedTest,
             value = Column(String(50))
             b_id = Column(ForeignKey('b.id'))
             c_id = Column(ForeignKey('c.id'))
+            c1_id = Column(ForeignKey('c1.id'))
             c2_id = Column(ForeignKey('c2.id'))
+
+            c = relationship("C", primaryjoin="D.c_id == C.id")
+
+            c_data = association_proxy("c", "csub_only_data")
+
+    def _assert_raises_ambiguous(self, fn, *arg, **kw):
+        assert_raises_message(
+            AttributeError,
+            "Association proxy D.c refers to an attribute 'csub_only_data'",
+            fn, *arg, **kw
+        )
 
     def test_column_collection_expressions(self):
         B, C, C2 = self.classes("B", "C", "C2")
@@ -2573,6 +2665,110 @@ class MultiOwnerTest(fixtures.DeclarativeMappedTest,
             C.d_values.contains('c1'),
             "EXISTS (SELECT 1 FROM d, c WHERE d.c_id = c.id "
             "AND (d.value LIKE '%' || :value_1 || '%'))"
+        )
+
+    def test_subclass_only_owner_none(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D()
+        self._assert_raises_ambiguous(
+            getattr, d1, 'c_data'
+        )
+
+    def test_subclass_only_owner_assign(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D(c=C2())
+        d1.c_data = 'some c2'
+        eq_(d1.c_data, "some c2")
+
+    def test_subclass_only_owner_get(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D(c=C2(csub_only_data='some c2'))
+        eq_(d1.c_data, "some c2")
+
+    def test_subclass_only_owner_none_raise(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D()
+        self._assert_raises_ambiguous(
+            getattr, d1, "c_data"
+        )
+
+    def test_subclass_only_owner_delete(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D(c=C2(csub_only_data='some c2'))
+        del d1.c_data
+
+        self._assert_raises_ambiguous(
+            getattr, d1, "c_data"
+        )
+
+    def test_subclass_only_owner_assign_raises(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D(c=C())
+        self._assert_raises_ambiguous(
+            setattr, d1, "c_data", 'some c1'
+        )
+
+    def test_subclass_only_owner_get_raises(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D(c=C())
+        self._assert_raises_ambiguous(
+            getattr, d1, "c_data"
+        )
+
+    def test_subclass_only_owner_delete_raises(self):
+        D, C, C2 = self.classes("D", "C", "C2")
+
+        d1 = D(c=C2(csub_only_data='some c2'))
+        eq_(d1.c_data, "some c2")
+
+        # now switch
+        d1.c = C()
+
+        self._assert_raises_ambiguous(
+            delattr, d1, "c_data"
+        )
+
+    def test_subclasses_conflicting_types(self):
+        B, D, C, C1, C2 = self.classes("B", "D", "C", "C1", "C2")
+
+        bs = [B(), B()]
+        d1 = D(c=C1(csub_only_data=bs))
+        d2 = D(c=C2(csub_only_data='some c2'))
+
+        association_proxy_object = inspect(D).all_orm_descriptors['c_data']
+        inst1 = association_proxy_object.for_class(D, d1)
+        inst2 = association_proxy_object.for_class(D, d2)
+
+        eq_(inst1._target_is_object, True)
+        eq_(inst2._target_is_object, False)
+
+        # both instances are cached
+        inst0 = association_proxy_object.for_class(D)
+        eq_(inst0._lookup_cache, {C1: inst1, C2: inst2})
+
+        # cache works
+        is_(association_proxy_object.for_class(D, d1), inst1)
+        is_(association_proxy_object.for_class(D, d2), inst2)
+
+    def test_col_expressions_not_available(self):
+        D, = self.classes("D")
+
+        self._assert_raises_ambiguous(
+            lambda: D.c_data == 5
+        )
+
+    def test_rel_expressions_not_available(self):
+        B, D, = self.classes("B", "D")
+
+        self._assert_raises_ambiguous(
+            lambda: D.c_data.any(B.id == 5)
         )
 
 
