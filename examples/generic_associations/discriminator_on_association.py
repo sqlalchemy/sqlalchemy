@@ -1,6 +1,4 @@
-"""discriminator_on_related.py
-
-Illustrates a mixin which provides a generic association
+"""Illustrates a mixin which provides a generic association
 using a single target table and a single association table,
 referred to by all parent tables.  The association table
 contains a "discriminator" column which determines what type of
