@@ -55,10 +55,14 @@ class PathTest(object):
         q._attributes = q._attributes.copy()
         attr = {}
 
-        for val in opt._to_bind:
-            val._bind_loader(
-                [ent.entity_zero for ent in q._mapper_entities],
-                q._current_path, attr, False)
+        if isinstance(opt, strategy_options._UnboundLoad):
+            for val in opt._to_bind:
+                val._bind_loader(
+                    [ent.entity_zero for ent in q._mapper_entities],
+                    q._current_path, attr, False)
+        else:
+            opt._process(q, True)
+            attr = q._attributes
 
         assert_paths = [k[1] for k in attr]
         eq_(
@@ -180,6 +184,127 @@ class LoadTest(PathTest, QueryTest):
             {
                 ('loader', self._make_path([User, "name"])): l3
             }
+        )
+
+
+class OfTypePathingTest(PathTest, QueryTest):
+    def _fixture(self):
+        User, Address = self.classes.User, self.classes.Address
+        Dingaling = self.classes.Dingaling
+        address_table = self.tables.addresses
+
+        class SubAddr(Address):
+            pass
+
+        mapper(SubAddr, inherits=Address, properties={
+            "sub_attr": column_property(address_table.c.email_address),
+            "dings": relationship(Dingaling)
+        })
+
+        return User, Address, SubAddr
+
+    def test_oftype_only_col_attr_unbound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = defaultload(
+            User.addresses.of_type(SubAddr)).defer(SubAddr.sub_attr)
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'sub_attr')]
+        )
+
+    def test_oftype_only_col_attr_bound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = Load(User).defaultload(
+            User.addresses.of_type(SubAddr)).defer(SubAddr.sub_attr)
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'sub_attr')]
+        )
+
+    def test_oftype_only_col_attr_string_unbound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = defaultload(
+            User.addresses.of_type(SubAddr)).defer("sub_attr")
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'sub_attr')]
+        )
+
+    def test_oftype_only_col_attr_string_bound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = Load(User).defaultload(
+            User.addresses.of_type(SubAddr)).defer("sub_attr")
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'sub_attr')]
+        )
+
+    def test_oftype_only_rel_attr_unbound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = defaultload(
+            User.addresses.of_type(SubAddr)).joinedload(SubAddr.dings)
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'dings')]
+        )
+
+    def test_oftype_only_rel_attr_bound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = Load(User).defaultload(
+            User.addresses.of_type(SubAddr)).joinedload(SubAddr.dings)
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'dings')]
+        )
+
+    def test_oftype_only_rel_attr_string_unbound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = defaultload(
+            User.addresses.of_type(SubAddr)).joinedload("dings")
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'dings')]
+        )
+
+    def test_oftype_only_rel_attr_string_bound(self):
+        User, Address, SubAddr = self._fixture()
+
+        l1 = Load(User).defaultload(
+            User.addresses.of_type(SubAddr)).defer("sub_attr")
+
+        sess = Session()
+        q = sess.query(User)
+        self._assert_path_result(
+            l1, q,
+            [(User, 'addresses'), (User, 'addresses', SubAddr, 'sub_attr')]
         )
 
 
@@ -431,6 +556,26 @@ class OptionsTest(PathTest, QueryTest):
         q = sess.query(User)
         opt = self._option_fixture(
             User.addresses.of_type(SubAddr), SubAddr.user)
+
+        u_mapper = inspect(User)
+        a_mapper = inspect(Address)
+        self._assert_path_result(opt, q, [
+            (u_mapper, u_mapper.attrs.addresses),
+            (u_mapper, u_mapper.attrs.addresses, a_mapper, a_mapper.attrs.user)
+        ])
+
+    def test_of_type_string_attr(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = Session()
+
+        class SubAddr(Address):
+            pass
+        mapper(SubAddr, inherits=Address)
+
+        q = sess.query(User)
+        opt = self._option_fixture(
+            User.addresses.of_type(SubAddr), "user")
 
         u_mapper = inspect(User)
         a_mapper = inspect(Address)
@@ -1295,6 +1440,23 @@ class CacheKeyTest(PathTest, QueryTest):
             )
         )
 
+    def test_unbound_cache_key_of_type_subclass_relationship_stringattr(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
+
+        query_path = self._make_path_registry([Order, "items", Item])
+
+        opt = subqueryload(
+            Order.items.of_type(SubItem)).subqueryload("extra_keywords")
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (SubItem, ('lazy', 'subquery')),
+                ('extra_keywords', Keyword, ('lazy', 'subquery'))
+            )
+        )
+
     def test_bound_cache_key_of_type_subclass_relationship(self):
         User, Address, Order, Item, SubItem, Keyword = self.classes(
             'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
@@ -1303,6 +1465,23 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = Load(Order).subqueryload(
             Order.items.of_type(SubItem)).subqueryload(SubItem.extra_keywords)
+
+        eq_(
+            opt._generate_cache_key(query_path),
+            (
+                (SubItem, ('lazy', 'subquery')),
+                ('extra_keywords', Keyword, ('lazy', 'subquery'))
+            )
+        )
+
+    def test_bound_cache_key_of_type_subclass_string_relationship(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            'User', 'Address', 'Order', 'Item', 'SubItem', "Keyword")
+
+        query_path = self._make_path_registry([Order, "items", Item])
+
+        opt = Load(Order).subqueryload(
+            Order.items.of_type(SubItem)).subqueryload("extra_keywords")
 
         eq_(
             opt._generate_cache_key(query_path),
