@@ -149,6 +149,7 @@ _INSTRUMENTOR = ('mapper', 'instrumentor')
 
 EXT_CONTINUE = util.symbol('EXT_CONTINUE')
 EXT_STOP = util.symbol('EXT_STOP')
+EXT_SKIP = util.symbol('EXT_SKIP')
 
 ONETOMANY = util.symbol(
     'ONETOMANY',
