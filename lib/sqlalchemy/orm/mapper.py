@@ -26,7 +26,9 @@ from ..sql import expression, visitors, operators, util as sql_util
 from . import instrumentation, attributes, exc as orm_exc, loading
 from . import properties
 from . import util as orm_util
-from .interfaces import MapperProperty, InspectionAttr, _MappedAttribute
+from .interfaces import MapperProperty, InspectionAttr, _MappedAttribute, \
+    EXT_SKIP
+
 
 from .base import _class_to_mapper, _state_mapper, class_mapper, \
     state_str, _INSTRUMENTOR
@@ -3014,6 +3016,8 @@ def configure_mappers():
             if not Mapper._new_mappers:
                 return
 
+            has_skip = False
+
             Mapper.dispatch._for_class(Mapper).before_configured()
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
@@ -3021,6 +3025,15 @@ def configure_mappers():
             # the order of mapper compilation
 
             for mapper in list(_mapper_registry):
+                run_configure = None
+                for fn in mapper.dispatch.before_mapper_configured:
+                    run_configure = fn(mapper, mapper.class_)
+                    if run_configure is EXT_SKIP:
+                        has_skip = True
+                        break
+                if run_configure is EXT_SKIP:
+                    continue
+
                 if getattr(mapper, '_configure_failed', False):
                     e = sa_exc.InvalidRequestError(
                         "One or more mappers failed to initialize - "
@@ -3030,6 +3043,7 @@ def configure_mappers():
                         % (mapper, mapper._configure_failed))
                     e._configure_failed = mapper._configure_failed
                     raise e
+
                 if not mapper.configured:
                     try:
                         mapper._post_configure_properties()
@@ -3042,7 +3056,8 @@ def configure_mappers():
                             mapper._configure_failed = exc
                         raise
 
-            Mapper._new_mappers = False
+            if not has_skip:
+                Mapper._new_mappers = False
         finally:
             _already_compiling = False
     finally:
