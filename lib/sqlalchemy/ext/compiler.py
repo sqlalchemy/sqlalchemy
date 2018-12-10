@@ -336,7 +336,7 @@ that is of the highest value - its equivalent to Python's ``max``
 function.  A SQL standard version versus a CASE based version which only
 accommodates two arguments::
 
-    from sqlalchemy.sql import expression
+    from sqlalchemy.sql import expression, case
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.types import Numeric
 
@@ -353,12 +353,7 @@ accommodates two arguments::
     @compiles(greatest, 'oracle')
     def case_greatest(element, compiler, **kw):
         arg1, arg2 = list(element.clauses)
-        return "CASE WHEN %s > %s THEN %s ELSE %s END" % (
-            compiler.process(arg1),
-            compiler.process(arg2),
-            compiler.process(arg1),
-            compiler.process(arg2),
-        )
+        return compiler.process(case([(arg1 > arg2, arg1)], else_=arg2), **kw)
 
 Example usage::
 
