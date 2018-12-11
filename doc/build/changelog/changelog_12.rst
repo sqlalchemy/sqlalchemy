@@ -12,7 +12,76 @@
 
 .. changelog::
     :version: 1.2.15
-    :include_notes_from: unreleased_12
+    :released: December 11, 2018
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4367
+
+        Fixed bug where the ORM annotations could be incorrect for the
+        primaryjoin/secondaryjoin a relationship if one used the pattern
+        ``ForeignKey(SomeClass.id)`` in the declarative mappings.   This pattern
+        would leak undesired annotations into the join conditions which can break
+        aliasing operations done within :class:`.Query` that are not supposed to
+        impact elements in that join condition.  These annotations are now removed
+        up front if present.
+
+    .. change::
+       :tags: bug, orm, declarative
+       :tickets: 4374
+
+       A warning is emitted in the case that a :func:`.column` object is applied to
+       a declarative class, as it seems likely this intended to be a
+       :class:`.Column` object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4366
+
+        In continuing with a similar theme as that of very recent :ticket:`4349`,
+        repaired issue with :meth:`.RelationshipProperty.Comparator.any` and
+        :meth:`.RelationshipProperty.Comparator.has` where the "secondary"
+        selectable needs to be explicitly part of the FROM clause in the
+        EXISTS subquery to suit the case where this "secondary" is a :class:`.Join`
+        object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4363
+
+        Fixed regression caused by :ticket:`4349` where adding the "secondary"
+        table to the FROM clause for a dynamic loader would affect the ability of
+        the :class:`.Query` to make a subsequent join to another entity.   The fix
+        adds the primary entity as the first element of the FROM list since
+        :meth:`.Query.join` wants to jump from that.   Version 1.3 will have
+        a more comprehensive solution to this problem as well (:ticket:`4365`).
+
+
+
+
+    .. change::
+       :tags: bug, orm
+       :tickests: 4400
+
+       Fixed bug where chaining of mapper options using
+       :meth:`.RelationshipProperty.of_type` in conjunction with a chained option
+       that refers to an attribute name by string only would fail to locate the
+       attribute.
+
+    .. change::
+        :tag: feature, mysql
+        :tickets: 4381
+
+        Added support for the ``write_timeout`` flag accepted by mysqlclient and
+        pymysql to  be passed in the URL string.
+
+    .. change::
+       :tag: bug, postgresql
+       :tickets: 4377, 4380
+
+       Fixed issue where reflection of a PostgreSQL domain that is expressed as an
+       array would fail to be recognized.  Pull request courtesy Jakub Synowiec.
+
 
 .. changelog::
     :version: 1.2.14

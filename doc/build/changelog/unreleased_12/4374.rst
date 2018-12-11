@@ -1,7 +1,0 @@
-.. change::
-   :tags: bug, orm, declarative
-   :tickets: 4374
-
-   A warning is emitted in the case that a :func:`.column` object is applied to
-   a declarative class, as it seems likely this intended to be a
-   :class:`.Column` object.
