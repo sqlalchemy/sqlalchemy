@@ -313,6 +313,80 @@ class PointTest(fixtures.MappedTest):
         eq_(e.start, None)
 
 
+class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('stuff', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column("a", String(30)),
+              Column("b", String(30)),
+              Column("c", String(30)),
+              Column("d", String(30)))
+
+    def _fixture(self):
+        class AB(object):
+            def __init__(self, a, b, cd):
+                self.a = a
+                self.b = b
+                self.cd = cd
+
+            @classmethod
+            def generate(cls, a, b, c, d):
+                return AB(a, b, CD(c, d))
+
+            def __composite_values__(self):
+                return (self.a, self.b) + self.cd.__composite_values__()
+
+            def __eq__(self, other):
+                return isinstance(other, AB) and \
+                    self.a == other.a and self.b == other.b and \
+                    self.cd == other.cd
+
+            def __ne__(self, other):
+                return not self.__eq__(other)
+
+        class CD(object):
+            def __init__(self, c, d):
+                self.c = c
+                self.d = d
+
+            def __composite_values__(self):
+                return (self.c, self.d)
+
+            def __eq__(self, other):
+                return isinstance(other, CD) and \
+                    self.c == other.c and self.d == other.d
+
+            def __ne__(self, other):
+                return not self.__eq__(other)
+
+        class Thing(object):
+            def __init__(self, ab):
+                self.ab = ab
+
+        stuff = self.tables.stuff
+        mapper(Thing, stuff, properties={
+            "ab": composite(
+                AB.generate, stuff.c.a, stuff.c.b, stuff.c.c, stuff.c.d)
+        })
+        return Thing, AB, CD
+
+    def test_round_trip(self):
+        Thing, AB, CD = self._fixture()
+
+        s = Session()
+
+        s.add(Thing(AB('a', 'b', CD('c', 'd'))))
+        s.commit()
+
+        s.close()
+
+        t1 = s.query(Thing).filter(
+            Thing.ab == AB('a', 'b', CD('c', 'd'))).one()
+        eq_(t1.ab, AB('a', 'b', CD('c', 'd')))
+
+
 class PrimaryKeyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
