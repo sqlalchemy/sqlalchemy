@@ -100,7 +100,9 @@ class CompositeProperty(DescriptorProperty):
         is the :class:`.CompositeProperty`.
 
         :param class\_:
-          The "composite type" class.
+          The "composite type" class, or any classmethod or callable which
+          will produce a new instance of the composite object given the
+          column values in order.
 
         :param \*cols:
           List of Column objects to be mapped.
