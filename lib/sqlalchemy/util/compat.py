@@ -283,6 +283,7 @@ def nested(*managers):
 
     exits = []
     vars = []
+    exc = (None, None, None)
     try:
         for mgr in managers:
             exit = mgr.__exit__
@@ -302,7 +303,6 @@ def nested(*managers):
                 exc = sys.exc_info()
         if exc != (None, None, None):
             reraise(exc[0], exc[1], exc[2])
-    exc = (None, None, None)
 
 
 def raise_from_cause(exception, exc_info=None):
