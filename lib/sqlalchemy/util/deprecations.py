@@ -25,6 +25,9 @@ def warn_pending_deprecation(msg, stacklevel=3):
 def deprecated(version, message=None, add_deprecation_to_docstring=True):
     """Decorates a function and issues a deprecation warning on use.
 
+    :param version:
+      Issue version in the warning.
+
     :param message:
       If provided, issue message in the warning.  A sensible default
       is used if not provided.
