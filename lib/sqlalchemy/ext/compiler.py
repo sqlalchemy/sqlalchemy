@@ -85,8 +85,8 @@ method which can be used for compilation of embedded attributes::
     @compiles(InsertFromSelect)
     def visit_insert_from_select(element, compiler, **kw):
         return "INSERT INTO %s (%s)" % (
-            compiler.process(element.table, asfrom=True),
-            compiler.process(element.select)
+            compiler.process(element.table, asfrom=True, **kw),
+            compiler.process(element.select, **kw)
         )
 
     insert = InsertFromSelect(t1, select([t1]).where(t1.c.x>5))
@@ -119,10 +119,11 @@ below where we generate a CHECK constraint that embeds a SQL expression::
 
     @compiles(MyConstraint)
     def compile_my_constraint(constraint, ddlcompiler, **kw):
+        kw['literal_binds'] = True
         return "CONSTRAINT %s CHECK (%s)" % (
             constraint.name,
             ddlcompiler.sql_compiler.process(
-                constraint.expression, literal_binds=True)
+                constraint.expression, **kw)
         )
 
 Above, we add an additional flag to the process step as called by
@@ -265,13 +266,13 @@ A synopsis is as follows:
 
       @compiles(coalesce)
       def compile(element, compiler, **kw):
-          return "coalesce(%s)" % compiler.process(element.clauses)
+          return "coalesce(%s)" % compiler.process(element.clauses, **kw)
 
       @compiles(coalesce, 'oracle')
       def compile(element, compiler, **kw):
           if len(element.clauses) > 2:
               raise TypeError("coalesce only supports two arguments on Oracle")
-          return "nvl(%s)" % compiler.process(element.clauses)
+          return "nvl(%s)" % compiler.process(element.clauses, **kw)
 
 * :class:`~sqlalchemy.schema.DDLElement` - The root of all DDL expressions,
   like CREATE TABLE, ALTER TABLE, etc. Compilation of ``DDLElement``
@@ -336,7 +337,7 @@ that is of the highest value - its equivalent to Python's ``max``
 function.  A SQL standard version versus a CASE based version which only
 accommodates two arguments::
 
-    from sqlalchemy.sql import expression
+    from sqlalchemy.sql import expression, case
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.types import Numeric
 
@@ -353,12 +354,7 @@ accommodates two arguments::
     @compiles(greatest, 'oracle')
     def case_greatest(element, compiler, **kw):
         arg1, arg2 = list(element.clauses)
-        return "CASE WHEN %s > %s THEN %s ELSE %s END" % (
-            compiler.process(arg1),
-            compiler.process(arg2),
-            compiler.process(arg1),
-            compiler.process(arg2),
-        )
+        return compiler.process(case([(arg1 > arg2, arg1)], else_=arg2), **kw)
 
 Example usage::
 
