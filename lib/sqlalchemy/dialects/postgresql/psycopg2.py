@@ -444,7 +444,7 @@ class _PGUUID(UUID):
             nonetype = type(None)
 
             def process(value):
-                if value is not None:
+                if value is not None and not isinstance(value, _python_UUID):
                     value = _python_UUID(value)
                 return value
             return process
