@@ -2611,7 +2611,7 @@ class PGDialect(default.DefaultDialect):
         attype = re.sub(r'\(.*\)', '', format_type)
 
         # strip quotes from case sensitive enum names
-        attype = re.sub(r'^"|"$', '', attype)
+        attype = re.sub(r'^"|"$|\b"', '', attype)
 
         # strip '[]' from integer[], etc. and check if an array
         attype, is_array = _handle_array_type(attype)
