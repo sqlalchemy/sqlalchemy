@@ -529,6 +529,41 @@ class QueryTest(fixtures.TestBase):
                 [(8, 'fred'), (9, 'ed')]
             )
 
+    def test_expanding_in_repeated(self):
+        testing.db.execute(
+            users.insert(),
+            [
+                dict(user_id=7, user_name='jack'),
+                dict(user_id=8, user_name='fred'),
+                dict(user_id=9, user_name='ed')
+            ]
+        )
+
+        with testing.db.connect() as conn:
+            stmt = select([users]).where(
+                users.c.user_name.in_(
+                    bindparam('uname', expanding=True)
+                ) | users.c.user_name.in_(bindparam('uname2', expanding=True))
+            ).where(users.c.user_id == 8)
+            stmt = stmt.union(
+                select([users]).where(
+                    users.c.user_name.in_(
+                        bindparam('uname', expanding=True)
+                    ) | users.c.user_name.in_(
+                        bindparam('uname2', expanding=True))
+                ).where(users.c.user_id == 9)
+            ).order_by(stmt.c.user_id)
+
+            eq_(
+                conn.execute(
+                    stmt,
+                    {
+                        "uname": ['jack', 'fred'],
+                        "uname2": ['ed'], "userid": [8, 9]}
+                ).fetchall(),
+                [(8, 'fred'), (9, 'ed')]
+            )
+
     @testing.requires.tuple_in
     def test_expanding_in_composite(self):
         testing.db.execute(
