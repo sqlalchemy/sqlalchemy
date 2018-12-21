@@ -16,6 +16,8 @@ from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, INTEGER, TSRANGE
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 import re
+from operator import itemgetter
+import itertools
 
 
 class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -217,12 +219,15 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
         con = testing.db.connect()
-        for ddl in \
-                'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42', \
-                'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0', \
-                "CREATE TYPE testtype AS ENUM ('test')", \
-                'CREATE DOMAIN enumdomain AS testtype', \
-                'CREATE DOMAIN arraydomain AS INTEGER[]':
+        for ddl in [
+            'CREATE SCHEMA "SomeSchema"',
+            'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42',
+            'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0',
+            "CREATE TYPE testtype AS ENUM ('test')",
+            'CREATE DOMAIN enumdomain AS testtype',
+            'CREATE DOMAIN arraydomain AS INTEGER[]',
+            'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0'
+        ]:
             try:
                 con.execute(ddl)
             except exc.DBAPIError as e:
@@ -240,12 +245,17 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
         con.execute('CREATE TABLE array_test (id integer, data arraydomain)')
 
+        con.execute(
+            'CREATE TABLE quote_test '
+            '(id integer, data "SomeSchema"."Quoted.Domain")')
+
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
         con.execute('DROP TABLE testtable')
         con.execute('DROP TABLE test_schema.testtable')
         con.execute('DROP TABLE crosschema')
+        con.execute('DROP TABLE quote_test')
         con.execute('DROP DOMAIN testdomain')
         con.execute('DROP DOMAIN test_schema.testdomain')
         con.execute("DROP TABLE enum_test")
@@ -253,6 +263,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         con.execute("DROP TYPE testtype")
         con.execute('DROP TABLE array_test')
         con.execute('DROP DOMAIN arraydomain')
+        con.execute('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
+        con.execute('DROP SCHEMA "SomeSchema"')
 
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -286,6 +298,14 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         )
         eq_(
             table.c.data.type.item_type.__class__,
+            INTEGER
+        )
+
+    def test_quoted_remote_schema_domain_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('quote_test', metadata, autoload=True)
+        eq_(
+            table.c.data.type.__class__,
             INTEGER
         )
 
@@ -972,38 +992,85 @@ class ReflectionTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_inspect_enums_case_sensitive(self):
-        enum_type = postgresql.ENUM(
-            'CapsOne', 'CapsTwo', name='UpperCase', metadata=self.metadata)
-        enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
-        eq_(inspector.get_enums(), [
-            {
-                'visible': True,
-                'labels': ['CapsOne', 'CapsTwo'],
-                'name': 'UpperCase',
-                'schema': 'public'
-            }])
+        sa.event.listen(
+            self.metadata, "before_create",
+            sa.DDL('create schema "TestSchema"'))
+        sa.event.listen(
+            self.metadata, "after_drop",
+            sa.DDL('drop schema "TestSchema" cascade'))
+
+        for enum in 'lower_case', 'UpperCase', 'Name.With.Dot':
+            for schema in None, 'test_schema', 'TestSchema':
+
+                postgresql.ENUM(
+                    'CapsOne', 'CapsTwo', name=enum,
+                    schema=schema, metadata=self.metadata)
+
+        self.metadata.create_all(testing.db)
+        inspector = inspect(testing.db)
+        for schema in None, 'test_schema', 'TestSchema':
+            eq_(sorted(
+                inspector.get_enums(schema=schema),
+                key=itemgetter("name")), [
+                {
+                    'visible': schema is None,
+                    'labels': ['CapsOne', 'CapsTwo'],
+                    'name': "Name.With.Dot",
+                    'schema': 'public' if schema is None else schema
+                },
+                {
+                    'visible': schema is None,
+                    'labels': ['CapsOne', 'CapsTwo'],
+                    'name': "UpperCase",
+                    'schema': 'public' if schema is None else schema
+                },
+                {
+                    'visible': schema is None,
+                    'labels': ['CapsOne', 'CapsTwo'],
+                    'name': "lower_case",
+                    'schema': 'public' if schema is None else schema
+                }
+            ])
 
     @testing.provide_metadata
     def test_inspect_enums_case_sensitive_from_table(self):
-        enum_type = postgresql.ENUM(
-            'CapsOne', 'CapsTwo', name='UpperCase', metadata=self.metadata)
+        sa.event.listen(
+            self.metadata, "before_create",
+            sa.DDL('create schema "TestSchema"'))
+        sa.event.listen(
+            self.metadata, "after_drop",
+            sa.DDL('drop schema "TestSchema" cascade'))
 
-        t = Table('t', self.metadata, Column('q', enum_type))
+        counter = itertools.count()
+        for enum in 'lower_case', 'UpperCase', 'Name.With.Dot':
+            for schema in None, 'test_schema', 'TestSchema':
 
-        enum_type.create(testing.db)
-        t.create(testing.db)
+                    enum_type = postgresql.ENUM(
+                        'CapsOne', 'CapsTwo', name=enum,
+                        metadata=self.metadata, schema=schema)
 
-        inspector = reflection.Inspector.from_engine(testing.db)
-        cols = inspector.get_columns("t")
-        cols[0]['type'] = (cols[0]['type'].name, cols[0]['type'].enums)
-        eq_(cols, [
-            {
-                'name': 'q',
-                'type': ('UpperCase', ['CapsOne', 'CapsTwo']),
-                'nullable': True, 'default': None,
-                'autoincrement': False, 'comment': None}
-        ])
+                    Table(
+                        't%d' % next(counter),
+                        self.metadata, Column('q', enum_type))
+
+        self.metadata.create_all(testing.db)
+
+        inspector = inspect(testing.db)
+        counter = itertools.count()
+        for enum in 'lower_case', 'UpperCase', 'Name.With.Dot':
+            for schema in None, 'test_schema', 'TestSchema':
+                cols = inspector.get_columns("t%d" % next(counter))
+                cols[0]['type'] = (
+                    cols[0]['type'].schema,
+                    cols[0]['type'].name, cols[0]['type'].enums)
+                eq_(cols, [
+                    {
+                        'name': 'q',
+                        'type': (
+                            schema, enum, ['CapsOne', 'CapsTwo']),
+                        'nullable': True, 'default': None,
+                        'autoincrement': False, 'comment': None}
+                ])
 
     @testing.provide_metadata
     def test_inspect_enums_star(self):

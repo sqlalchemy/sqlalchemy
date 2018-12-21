@@ -1,0 +1,19 @@
+.. change::
+   :tags: bug, postgresql
+   :tickets: 4416
+
+   Fixed issue where a :class:`.postgresql.ENUM` or a custom domain present
+   in a remote schema would not be recognized within column reflection if
+   the name of the enum/domain or the name of the schema required quoting.
+   A new parsing scheme now fully parses out quoted or non-quoted tokens
+   including support for SQL-escaped quotes.
+
+.. change::
+   :tags: bug, postgresql
+
+   Fixed issue where multiple :class:`.postgresql.ENUM` objects referred to
+   by the same :class:`.MetaData` object would fail to be created if
+   multiple objects had the same name under different schema names.  The
+   internal memoization the Postgresql dialect uses to track if it has
+   created a particular :class:`.postgresql.ENUM` in the database during
+   a DDL creation sequence now takes schema name into account.

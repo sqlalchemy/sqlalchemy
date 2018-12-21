@@ -34,7 +34,7 @@ from .langhelpers import iterate_attributes, class_hierarchy, \
     classproperty, set_creation_order, warn_exception, warn, NoneType,\
     constructor_copy, methods_equivalent, chop_traceback, asint,\
     generic_repr, counter, PluginLoader, hybridproperty, hybridmethod, \
-    safe_reraise,\
+    safe_reraise, quoted_token_parser,\
     get_callable_argspec, only_once, attrsetter, ellipses_string, \
     warn_limited, map_bits, MemoizedSlots, EnsureKWArgType, wrap_callable
 
