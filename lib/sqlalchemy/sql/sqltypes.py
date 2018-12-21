@@ -156,35 +156,49 @@ class String(Concatenable, TypeEngine):
 
         :param convert_unicode: When set to ``True``, the
           :class:`.String` type will assume that
-          input is to be passed as Python ``unicode`` objects,
-          and results returned as Python ``unicode`` objects.
-          If the DBAPI in use does not support Python unicode
-          (which is fewer and fewer these days), SQLAlchemy
-          will encode/decode the value, using the
-          value of the ``encoding`` parameter passed to
-          :func:`.create_engine` as the encoding.
+          input is to be passed as Python Unicode objects under Python 2,
+          and results returned as Python Unicode objects.
+          In the rare circumstance that the DBAPI does not support
+          Python unicode under Python 2, SQLAlchemy will use its own
+          encoder/decoder functionality on strings, referring to the
+          value of the :paramref:`.create_engine.encoding` parameter
+          parameter passed to :func:`.create_engine` as the encoding.
 
-          When using a DBAPI that natively supports Python
-          unicode objects, this flag generally does not
-          need to be set.  For columns that are explicitly
-          intended to store non-ASCII data, the :class:`.Unicode`
-          or :class:`.UnicodeText`
-          types should be used regardless, which feature
-          the same behavior of ``convert_unicode`` but
-          also indicate an underlying column type that
-          directly supports unicode, such as ``NVARCHAR``.
-
-          For the extremely rare case that Python ``unicode``
+          For the extremely rare case that Python Unicode
           is to be encoded/decoded by SQLAlchemy on a backend
-          that does natively support Python ``unicode``,
-          the value ``force`` can be passed here which will
+          that *does* natively support Python Unicode,
+          the string value ``"force"`` can be passed here which will
           cause SQLAlchemy's encode/decode services to be
           used unconditionally.
+
+          .. note::
+
+            SQLAlchemy's unicode-conversion flags and features only apply
+            to Python 2; in Python 3, all string objects are Unicode objects.
+            For this reason, as well as the fact that virtually all modern
+            DBAPIs now support Unicode natively even under Python 2,
+            the :paramref:`.String.convert_unicode` flag is inherently a
+            legacy feature.
+
+          .. note::
+
+            In the vast majority of cases, the :class:`.Unicode` or
+            :class:`.UnicodeText` datatypes should be used for a
+            :class:`.Column` that expects to store non-ascii data.  These
+            datatypes will ensure that the correct types are used on the
+            database side as well as set up the correct Unicode behaviors
+            under Python 2.
+
+          .. seealso::
+
+            :paramref:`.create_engine.convert_unicode` -
+            :class:`.Engine`-wide parameter
 
         :param unicode_error: Optional, a method to use to handle Unicode
           conversion errors. Behaves like the ``errors`` keyword argument to
           the standard library's ``string.decode()`` functions.   This flag
-          requires that ``convert_unicode`` is set to ``force`` - otherwise,
+          requires that :paramref:`.String.convert_unicode` is set to
+          ``"force"`` - otherwise,
           SQLAlchemy is not guaranteed to handle the task of unicode
           conversion.   Note that this flag adds significant performance
           overhead to row-fetching operations for backends that already
