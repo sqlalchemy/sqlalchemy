@@ -726,45 +726,58 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             positiontup = None
 
         replacement_expressions = {}
+        to_update_sets = {}
+
         for name in (
             self.compiled.positiontup if compiled.positional
             else self.compiled.binds
         ):
             parameter = self.compiled.binds[name]
             if parameter.expanding:
-                values = compiled_params.pop(name)
-                if not values:
-                    raise exc.InvalidRequestError(
-                        "'expanding' parameters can't be used with an "
-                        "empty list"
-                    )
-                elif isinstance(values[0], (tuple, list)):
-                    to_update = [
-                        ("%s_%s_%s" % (name, i, j), value)
-                        for i, tuple_element in enumerate(values, 1)
-                        for j, value in enumerate(tuple_element, 1)
-                    ]
-                    replacement_expressions[name] = ", ".join(
-                        "(%s)" % ", ".join(
-                            self.compiled.bindtemplate % {
-                                "name":
-                                to_update[i * len(tuple_element) + j][0]
-                            }
-                            for j, value in enumerate(tuple_element)
-                        )
-                        for i, tuple_element in enumerate(values)
-
-                    )
+                if name in replacement_expressions:
+                    to_update = to_update_sets[name]
                 else:
-                    to_update = [
-                        ("%s_%s" % (name, i), value)
-                        for i, value in enumerate(values, 1)
-                    ]
-                    replacement_expressions[name] = ", ".join(
-                        self.compiled.bindtemplate % {
-                            "name": key}
-                        for key, value in to_update
-                    )
+                    # we are removing the parameter from compiled_params
+                    # because it is a list value, which is not expected by
+                    # TypeEngine objects that would otherwise be asked to
+                    # process it. the single name is being replaced with
+                    # individual numbered parameters for each value in the
+                    # param.
+                    values = compiled_params.pop(name)
+
+                    if not values:
+                        raise exc.InvalidRequestError(
+                            "'expanding' parameters with an empty list not "
+                            "supported until SQLAlchemy 1.3."
+                        )
+                    elif isinstance(values[0], (tuple, list)):
+                        to_update = to_update_sets[name] = [
+                            ("%s_%s_%s" % (name, i, j), value)
+                            for i, tuple_element in enumerate(values, 1)
+                            for j, value in enumerate(tuple_element, 1)
+                        ]
+                        replacement_expressions[name] = ", ".join(
+                            "(%s)" % ", ".join(
+                                self.compiled.bindtemplate % {
+                                    "name":
+                                    to_update[i * len(tuple_element) + j][0]
+                                }
+                                for j, value in enumerate(tuple_element)
+                            )
+                            for i, tuple_element in enumerate(values)
+
+                        )
+                    else:
+                        to_update = to_update_sets[name] = [
+                            ("%s_%s" % (name, i), value)
+                            for i, value in enumerate(values, 1)
+                        ]
+                        replacement_expressions[name] = ", ".join(
+                            self.compiled.bindtemplate % {
+                                "name": key}
+                            for key, value in to_update
+                        )
+
                 compiled_params.update(to_update)
                 processors.update(
                     (key, processors[name])
@@ -778,7 +791,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 positiontup.append(name)
 
         def process_expanding(m):
-            return replacement_expressions.pop(m.group(1))
+            return replacement_expressions[m.group(1)]
 
         self.statement = re.sub(
             r"\[EXPANDING_(\S+)\]",
