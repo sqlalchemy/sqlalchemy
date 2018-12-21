@@ -818,7 +818,6 @@ See :func:`.orm.%(name)s` for usage examples.
         return self
 
     def _add_unbound_all_fn(self, fn):
-        self._unbound_all_fn = fn
         fn.__doc__ = """Produce a standalone "all" option for :func:`.orm.%(name)s`.
 
 .. deprecated:: 0.9
@@ -834,6 +833,15 @@ See :func:`.orm.%(name)s` for usage examples.
 """ % {
             "name": self.name
         }
+        fn = util.deprecated(
+            "0.9",
+            "The :func:`.%(name)s_all` function is deprecated, and will be "
+            "removed in a future release.  Please use method chaining with "
+            ":func:`.%(name)s` instead" % {"name": self.name},
+            add_deprecation_to_docstring=False,
+        )(fn)
+
+        self._unbound_all_fn = fn
         return self
 
 
@@ -1307,8 +1315,8 @@ def defaultload(*keys):
 
 @loader_option()
 def defer(loadopt, key):
-    r"""Indicate that the given column-oriented attribute should be deferred, e.g.
-    not loaded until accessed.
+    r"""Indicate that the given column-oriented attribute should be deferred,
+    e.g. not loaded until accessed.
 
     This function is part of the :class:`.Load` interface and supports
     both method-chained and standalone operation.
@@ -1346,9 +1354,15 @@ def defer(loadopt, key):
 
     :param key: Attribute to be deferred.
 
-    :param \*addl_attrs: Deprecated; this option supports the old 0.8 style
+    :param \*addl_attrs: This option supports the old 0.8 style
      of specifying a path as a series of attributes, which is now superseded
      by the method-chained style.
+
+        .. deprecated:: 0.9  The \*addl_attrs on :func:`.orm.defer` is
+           deprecated and will be removed in a future release.   Please
+           use method chaining in conjunction with defaultload() to
+           indicate a path.
+
 
     .. seealso::
 
@@ -1364,6 +1378,12 @@ def defer(loadopt, key):
 
 @defer._add_unbound_fn
 def defer(key, *addl_attrs):
+    if addl_attrs:
+        util.warn_deprecated(
+            "The *addl_attrs on orm.defer is deprecated.  Please use "
+            "method chaining in conjunction with defaultload() to "
+            "indicate a path."
+        )
     return _UnboundLoad._from_keys(
         _UnboundLoad.defer, (key,) + addl_attrs, False, {}
     )
@@ -1389,11 +1409,20 @@ def undefer(loadopt, key):
         session.query(MyClass, MyOtherClass).options(
             Load(MyClass).undefer("*"))
 
+        # undefer a column on a related object
+        session.query(MyClass).options(
+            defaultload(MyClass.items).undefer('text'))
+
     :param key: Attribute to be undeferred.
 
-    :param \*addl_attrs: Deprecated; this option supports the old 0.8 style
+    :param \*addl_attrs: This option supports the old 0.8 style
      of specifying a path as a series of attributes, which is now superseded
      by the method-chained style.
+
+        .. deprecated:: 0.9  The \*addl_attrs on :func:`.orm.undefer` is
+           deprecated and will be removed in a future release.   Please
+           use method chaining in conjunction with defaultload() to
+           indicate a path.
 
     .. seealso::
 
@@ -1411,6 +1440,12 @@ def undefer(loadopt, key):
 
 @undefer._add_unbound_fn
 def undefer(key, *addl_attrs):
+    if addl_attrs:
+        util.warn_deprecated(
+            "The *addl_attrs on orm.undefer is deprecated.  Please use "
+            "method chaining in conjunction with defaultload() to "
+            "indicate a path."
+        )
     return _UnboundLoad._from_keys(
         _UnboundLoad.undefer, (key,) + addl_attrs, False, {}
     )

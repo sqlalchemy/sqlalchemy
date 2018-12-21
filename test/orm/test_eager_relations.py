@@ -21,7 +21,6 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
@@ -1437,7 +1436,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User)
-            .options(joinedload_all("orders.address"))
+            .options(joinedload("orders").joinedload("address"))
             .limit(10),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
@@ -1459,7 +1458,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User).options(
-                joinedload_all("orders.items"), joinedload("orders.address")
+                joinedload("orders").joinedload("items"),
+                joinedload("orders").joinedload("address"),
             ),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "items_1.id AS items_1_id, "
@@ -2391,7 +2391,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             sess.query(User)
             .join(User.orders)
             .join(Order.items)
-            .options(joinedload_all("orders.items.keywords"))
+            .options(
+                joinedload("orders").joinedload("items").joinedload("keywords")
+            )
         )
 
         # here, the eager join for keywords can catch onto
@@ -2583,7 +2585,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User).options(
-                joinedload_all(User.orders, Order.items, innerjoin=True)
+                joinedload(User.orders, innerjoin=True).joinedload(
+                    Order.items, innerjoin=True
+                )
             ),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "items_1.id AS items_1_id, "
@@ -3230,7 +3234,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             create_session()
             .query(A)
-            .options(joinedload_all("bs"))
+            .options(joinedload("bs"))
             .order_by(A.summation)
             .limit(50),
             "SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.a_id "
@@ -3253,7 +3257,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             create_session()
             .query(A)
-            .options(joinedload_all("bs"))
+            .options(joinedload("bs"))
             .order_by(A.summation.desc())
             .limit(50),
             "SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.a_id "
@@ -3278,7 +3282,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             create_session()
             .query(A)
-            .options(joinedload_all("bs"))
+            .options(joinedload("bs"))
             .order_by(A.summation)
             .limit(50),
             "SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.a_id "
@@ -3307,7 +3311,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             create_session()
             .query(A)
-            .options(joinedload_all("bs"))
+            .options(joinedload("bs"))
             .order_by(cp)
             .limit(50),
             "SELECT anon_1.a_id AS anon_1_a_id, anon_1.anon_2 "
@@ -3334,7 +3338,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             create_session()
             .query(A)
-            .options(joinedload_all("bs"))
+            .options(joinedload("bs"))
             .order_by(cp)
             .limit(50),
             "SELECT anon_1.a_id AS anon_1_a_id, anon_1.foo "
@@ -3361,7 +3365,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             create_session()
             .query(A)
-            .options(joinedload_all("bs"))
+            .options(joinedload("bs"))
             .order_by(~cp)
             .limit(50),
             "SELECT anon_1.a_id AS anon_1_a_id, anon_1.anon_2 "
@@ -3457,7 +3461,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            joinedload_all("addresses.dingaling")
+            joinedload("addresses").joinedload("dingaling")
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -3475,9 +3479,9 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1.orders
         o1 = Order()
         u1.orders.append(o1)
-        sess.query(User).options(joinedload_all("orders.items")).filter_by(
-            id=7
-        ).all()
+        sess.query(User).options(
+            joinedload("orders").joinedload("items")
+        ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
                 assert "items" in o.__dict__
@@ -3494,7 +3498,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            joinedload_all("addresses.dingaling")
+            joinedload("addresses").joinedload("dingaling")
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -3508,7 +3512,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            joinedload_all("orders.items")
+            joinedload("orders").joinedload("items")
         ).first()
         assert "items" in u1.orders[0].__dict__
 

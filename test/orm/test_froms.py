@@ -26,7 +26,6 @@ from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
@@ -2551,22 +2550,6 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
         eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
 
-    @testing.uses_deprecated("Mapper.order_by")
-    def test_join_mapper_order_by(self):
-        """test that mapper-level order_by is adapted to a selectable."""
-
-        User, users = self.classes.User, self.tables.users
-
-        mapper(User, users, order_by=users.c.id)
-
-        sel = users.select(users.c.id.in_([7, 8]))
-        sess = create_session()
-
-        eq_(
-            sess.query(User).select_entity_from(sel).all(),
-            [User(name="jack", id=7), User(name="ed", id=8)],
-        )
-
     def test_differentiate_self_external(self):
         """test some different combinations of joining a table to a subquery of
         itself."""
@@ -2964,7 +2947,11 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .select_entity_from(sel)
-                .options(joinedload_all("orders.items.keywords"))
+                .options(
+                    joinedload("orders")
+                    .joinedload("items")
+                    .joinedload("keywords")
+                )
                 .join("orders", "items", "keywords", aliased=True)
                 .filter(Keyword.name.in_(["red", "big", "round"]))
                 .all(),
@@ -3425,7 +3412,7 @@ class ExternalColumnsTest(QueryTest):
         def go():
             o1 = (
                 sess.query(Order)
-                .options(joinedload_all("address.user"))
+                .options(joinedload("address").joinedload("user"))
                 .get(1)
             )
             eq_(o1.address.user.count, 1)
@@ -3437,7 +3424,7 @@ class ExternalColumnsTest(QueryTest):
         def go():
             o1 = (
                 sess.query(Order)
-                .options(joinedload_all("address.user"))
+                .options(joinedload("address").joinedload("user"))
                 .first()
             )
             eq_(o1.address.user.count, 1)

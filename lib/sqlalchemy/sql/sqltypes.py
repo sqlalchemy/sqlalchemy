@@ -137,6 +137,22 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = "string"
 
+    @util.deprecated_params(
+        convert_unicode=(
+            "1.3",
+            "The :paramref:`.String.convert_unicode` parameter is deprecated "
+            "and will be removed in a future release.  All modern DBAPIs "
+            "now support Python Unicode directly and this parameter is "
+            "unnecessary.",
+        ),
+        unicode_error=(
+            "1.3",
+            "The :paramref:`.String.unicode_errors` parameter is deprecated "
+            "and will be removed in a future release.  This parameter is "
+            "unnecessary for modern Python DBAPIs and degrades performance "
+            "significantly.",
+        ),
+    )
     def __init__(
         self,
         length=None,
@@ -144,6 +160,7 @@ class String(Concatenable, TypeEngine):
         convert_unicode=False,
         unicode_error=None,
         _warn_on_bytestring=False,
+        _expect_unicode=False,
     ):
         """
         Create a string-holding type.
@@ -207,15 +224,9 @@ class String(Concatenable, TypeEngine):
 
         :param unicode_error: Optional, a method to use to handle Unicode
           conversion errors. Behaves like the ``errors`` keyword argument to
-          the standard library's ``string.decode()`` functions.   This flag
-          requires that :paramref:`.String.convert_unicode` is set to
-          ``"force"`` - otherwise,
-          SQLAlchemy is not guaranteed to handle the task of unicode
-          conversion.   Note that this flag adds significant performance
-          overhead to row-fetching operations for backends that already
-          return unicode objects natively (which most DBAPIs do).  This
-          flag should only be used as a last resort for reading
-          strings from a column with varied or corrupted encodings.
+          the standard library's ``string.decode()`` functions, requires
+          that :paramref:`.String.convert_unicode` is set to
+          ``"force"``
 
         """
         if unicode_error is not None and convert_unicode != "force":
@@ -225,8 +236,9 @@ class String(Concatenable, TypeEngine):
 
         self.length = length
         self.collation = collation
-        self.convert_unicode = convert_unicode
-        self.unicode_error = unicode_error
+        self._expect_unicode = convert_unicode or _expect_unicode
+        self._expect_unicode_error = unicode_error
+
         self._warn_on_bytestring = _warn_on_bytestring
 
     def literal_processor(self, dialect):
@@ -241,10 +253,10 @@ class String(Concatenable, TypeEngine):
         return process
 
     def bind_processor(self, dialect):
-        if self.convert_unicode or dialect.convert_unicode:
+        if self._expect_unicode or dialect.convert_unicode:
             if (
                 dialect.supports_unicode_binds
-                and self.convert_unicode != "force"
+                and self._expect_unicode != "force"
             ):
                 if self._warn_on_bytestring:
 
@@ -266,7 +278,7 @@ class String(Concatenable, TypeEngine):
 
                 def process(value):
                     if isinstance(value, util.text_type):
-                        return encoder(value, self.unicode_error)[0]
+                        return encoder(value, self._expect_unicode_error)[0]
                     elif warn_on_bytestring and value is not None:
                         util.warn_limited(
                             "Unicode type received non-unicode bind "
@@ -280,37 +292,47 @@ class String(Concatenable, TypeEngine):
             return None
 
     def result_processor(self, dialect, coltype):
-        wants_unicode = self.convert_unicode or dialect.convert_unicode
+        wants_unicode = self._expect_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and (
             dialect.returns_unicode_strings is not True
-            or self.convert_unicode in ("force", "force_nocheck")
+            or self._expect_unicode in ("force", "force_nocheck")
         )
         needs_isinstance = (
             needs_convert
             and dialect.returns_unicode_strings
-            and self.convert_unicode != "force_nocheck"
+            and self._expect_unicode != "force_nocheck"
         )
         if needs_convert:
             if needs_isinstance:
                 return processors.to_conditional_unicode_processor_factory(
-                    dialect.encoding, self.unicode_error
+                    dialect.encoding, self._expect_unicode_error
                 )
             else:
                 return processors.to_unicode_processor_factory(
-                    dialect.encoding, self.unicode_error
+                    dialect.encoding, self._expect_unicode_error
                 )
         else:
             return None
 
     @property
     def python_type(self):
-        if self.convert_unicode:
+        if self._expect_unicode:
             return util.text_type
         else:
             return str
 
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
+
+    @classmethod
+    def _warn_deprecated_unicode(cls):
+        util.warn_deprecated(
+            "The convert_unicode on Engine and String as well as the "
+            "unicode_error flag on String are deprecated.  All modern "
+            "DBAPIs now support Python Unicode natively under Python 2, and "
+            "under Python 3 all strings are inherently Unicode.  These flags "
+            "will be removed in a future release."
+        )
 
 
 class Text(String):
@@ -395,7 +417,7 @@ class Unicode(String):
         defaults to ``True``.
 
         """
-        kwargs.setdefault("convert_unicode", True)
+        kwargs.setdefault("_expect_unicode", True)
         kwargs.setdefault("_warn_on_bytestring", True)
         super(Unicode, self).__init__(length=length, **kwargs)
 
@@ -424,9 +446,12 @@ class UnicodeText(Text):
         defaults to ``True``.
 
         """
-        kwargs.setdefault("convert_unicode", True)
+        kwargs.setdefault("_expect_unicode", True)
         kwargs.setdefault("_warn_on_bytestring", True)
         super(UnicodeText, self).__init__(length=length, **kwargs)
+
+    def _warn_deprecated_unicode(self):
+        pass
 
 
 class Integer(_LookupExpressionAdapter, TypeEngine):
@@ -697,11 +722,7 @@ class Float(Numeric):
     scale = None
 
     def __init__(
-        self,
-        precision=None,
-        asdecimal=False,
-        decimal_return_scale=None,
-        **kwargs
+        self, precision=None, asdecimal=False, decimal_return_scale=None
     ):
         r"""
         Construct a Float.
@@ -724,25 +745,10 @@ class Float(Numeric):
 
          .. versionadded:: 0.9.0
 
-        :param \**kwargs:
-
-            .. deprecated:: 0.9
-
-                Additional keyword arguments are ignored by the base
-                :class:`.Float` type, and keyword arguments will no longer
-                be accepted in a future release.  For database specific floats
-                that support additional arguments, see that dialect's
-                documentation for details, such as
-                :class:`sqlalchemy.dialects.mysql.FLOAT`.
-
         """
         self.precision = precision
         self.asdecimal = asdecimal
         self.decimal_return_scale = decimal_return_scale
-        if kwargs:
-            util.warn_deprecated(
-                "Additional keyword arguments " "passed to Float ignored."
-            )
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
@@ -975,19 +981,13 @@ class LargeBinary(_Binary):
         _Binary.__init__(self, length=length)
 
 
+@util.deprecated_cls(
+    "0.6",
+    "The :class:`.Binary` class is deprecated and will be removed "
+    "in a future relase.  Please use :class:`.LargeBinary`.",
+)
 class Binary(LargeBinary):
-
-    """.. deprecated:: 0.6
-
-            The :class:`.Binary` class is deprecated and will be removed
-            in a future relase.  Please use :class:`.LargeBinary`.
-
-    """
-
     def __init__(self, *arg, **kw):
-        util.warn_deprecated(
-            "The Binary type has been renamed to " "LargeBinary."
-        )
         LargeBinary.__init__(self, *arg, **kw)
 
 
@@ -1264,6 +1264,15 @@ class Enum(Emulated, String, SchemaType):
 
     __visit_name__ = "enum"
 
+    @util.deprecated_params(
+        convert_unicode=(
+            "1.3",
+            "The :paramref:`.Enum.convert_unicode` parameter is deprecated "
+            "and will be removed in a future release.  All modern DBAPIs "
+            "now support Python Unicode directly and this parameter is "
+            "unnecessary.",
+        )
+    )
     def __init__(self, *enums, **kw):
         r"""Construct an enum.
 
@@ -1376,11 +1385,15 @@ class Enum(Emulated, String, SchemaType):
 
         if convert_unicode is None:
             for e in self.enums:
+                # this is all py2k logic that can go away for py3k only,
+                # "expect unicode" will always be implicitly true
                 if isinstance(e, util.text_type):
-                    convert_unicode = True
+                    _expect_unicode = True
                     break
             else:
-                convert_unicode = False
+                _expect_unicode = False
+        else:
+            _expect_unicode = convert_unicode
 
         if self.enums:
             length = max(len(x) for x in self.enums)
@@ -1389,7 +1402,7 @@ class Enum(Emulated, String, SchemaType):
         self._valid_lookup[None] = self._object_lookup[None] = None
 
         super(Enum, self).__init__(
-            length=length, convert_unicode=convert_unicode
+            length=length, _expect_unicode=_expect_unicode
         )
 
         if self.enum_class:
@@ -1469,7 +1482,7 @@ class Enum(Emulated, String, SchemaType):
             )
             if op is operators.concat_op:
                 typ = String(
-                    self.type.length, convert_unicode=self.type.convert_unicode
+                    self.type.length, _expect_unicode=self.type._expect_unicode
                 )
             return op, typ
 
@@ -1491,7 +1504,7 @@ class Enum(Emulated, String, SchemaType):
         )
 
     def adapt_to_emulated(self, impltype, **kw):
-        kw.setdefault("convert_unicode", self.convert_unicode)
+        kw.setdefault("_expect_unicode", self._expect_unicode)
         kw.setdefault("validate_strings", self.validate_strings)
         kw.setdefault("name", self.name)
         kw.setdefault("schema", self.schema)
@@ -2205,7 +2218,7 @@ class JSON(Indexable, TypeEngine):
 
     @util.memoized_property
     def _str_impl(self):
-        return String(convert_unicode=True)
+        return String(_expect_unicode=True)
 
     def bind_processor(self, dialect):
         string_process = self._str_impl.bind_processor(dialect)

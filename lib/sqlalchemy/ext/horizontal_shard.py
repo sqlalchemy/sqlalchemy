@@ -242,7 +242,7 @@ class ShardedSession(Session):
         else:
             return self.get_bind(
                 mapper, shard_id=shard_id, instance=instance
-            ).contextual_connect(**kwargs)
+            )._contextual_connect(**kwargs)
 
     def get_bind(
         self, mapper, shard_id=None, instance=None, clause=None, **kw

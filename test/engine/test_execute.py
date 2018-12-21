@@ -22,7 +22,6 @@ from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Engine
-from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal
 from sqlalchemy.testing import assert_raises
@@ -372,8 +371,7 @@ class ExecuteTest(fixtures.TestBase):
         def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(test.engine.test_execute.SomeException\) "
-                r"nope \[SQL\: u?'SELECT 1 ",
+                r"\(.*.SomeException\) " r"nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(column("foo") == literal("bar", MyType())),
             )
@@ -613,7 +611,7 @@ class ExecuteTest(fixtures.TestBase):
         eng = engines.testing_engine(
             options={"execution_options": {"foo": "bar"}}
         )
-        with eng.contextual_connect() as conn:
+        with eng.connect() as conn:
             eq_(conn._execution_options["foo"], "bar")
             eq_(
                 conn.execution_options(bat="hoho")._execution_options["foo"],
@@ -628,7 +626,7 @@ class ExecuteTest(fixtures.TestBase):
                 "hoho",
             )
             eng.update_execution_options(foo="hoho")
-            conn = eng.contextual_connect()
+            conn = eng.connect()
             eq_(conn._execution_options["foo"], "hoho")
 
     @testing.requires.ad_hoc_engines
@@ -776,32 +774,6 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
     def test_transaction_engine_ctx_rollback(self):
         fn = self._trans_rollback_fn()
         ctx = testing.db.begin()
-        assert_raises_message(
-            Exception,
-            "breakage",
-            testing.run_as_contextmanager,
-            ctx,
-            fn,
-            5,
-            value=8,
-        )
-        self._assert_no_data()
-
-    def test_transaction_tlocal_engine_ctx_commit(self):
-        fn = self._trans_fn()
-        engine = engines.testing_engine(
-            options=dict(strategy="threadlocal", pool=testing.db.pool)
-        )
-        ctx = engine.begin()
-        testing.run_as_contextmanager(ctx, fn, 5, value=8)
-        self._assert_fn(5, value=8)
-
-    def test_transaction_tlocal_engine_ctx_rollback(self):
-        fn = self._trans_rollback_fn()
-        engine = engines.testing_engine(
-            options=dict(strategy="threadlocal", pool=testing.db.pool)
-        )
-        ctx = engine.begin()
         assert_raises_message(
             Exception,
             "breakage",
@@ -1495,11 +1467,16 @@ class EngineEventsTest(fixtures.TestBase):
         ):
             cursor_stmts.append((str(statement), parameters, None))
 
+        with testing.expect_deprecated(
+            "The 'threadlocal' engine strategy is deprecated"
+        ):
+            tl_engine = engines.testing_engine(
+                options=dict(implicit_returning=False, strategy="threadlocal")
+            )
+
         for engine in [
             engines.testing_engine(options=dict(implicit_returning=False)),
-            engines.testing_engine(
-                options=dict(implicit_returning=False, strategy="threadlocal")
-            ),
+            tl_engine,
             engines.testing_engine(
                 options=dict(implicit_returning=False)
             ).connect(),
@@ -1999,63 +1976,6 @@ class HandleErrorTest(fixtures.TestBase):
         Engine.dispatch._clear()
         Engine._has_events = False
 
-    def test_legacy_dbapi_error(self):
-        engine = engines.testing_engine()
-        canary = Mock()
-
-        event.listen(engine, "dbapi_error", canary)
-
-        with engine.connect() as conn:
-            try:
-                conn.execute("SELECT FOO FROM I_DONT_EXIST")
-                assert False
-            except tsa.exc.DBAPIError as e:
-                eq_(canary.mock_calls[0][1][5], e.orig)
-                eq_(canary.mock_calls[0][1][2], "SELECT FOO FROM I_DONT_EXIST")
-
-    def test_legacy_dbapi_error_no_ad_hoc_context(self):
-        engine = engines.testing_engine()
-
-        listener = Mock(return_value=None)
-        event.listen(engine, "dbapi_error", listener)
-
-        nope = SomeException("nope")
-
-        class MyType(TypeDecorator):
-            impl = Integer
-
-            def process_bind_param(self, value, dialect):
-                raise nope
-
-        with engine.connect() as conn:
-            assert_raises_message(
-                tsa.exc.StatementError,
-                r"\(test.engine.test_execute.SomeException\) "
-                r"nope \[SQL\: u?'SELECT 1 ",
-                conn.execute,
-                select([1]).where(column("foo") == literal("bar", MyType())),
-            )
-        # no legacy event
-        eq_(listener.mock_calls, [])
-
-    def test_legacy_dbapi_error_non_dbapi_error(self):
-        engine = engines.testing_engine()
-
-        listener = Mock(return_value=None)
-        event.listen(engine, "dbapi_error", listener)
-
-        nope = TypeError("I'm not a DBAPI error")
-        with engine.connect() as c:
-            c.connection.cursor = Mock(
-                return_value=Mock(execute=Mock(side_effect=nope))
-            )
-
-            assert_raises_message(
-                TypeError, "I'm not a DBAPI error", c.execute, "select "
-            )
-        # no legacy event
-        eq_(listener.mock_calls, [])
-
     def test_handle_error(self):
         engine = engines.testing_engine()
         canary = Mock(return_value=None)
@@ -2249,8 +2169,7 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(test.engine.test_execute.SomeException\) "
-                r"nope \[SQL\: u?'SELECT 1 ",
+                r"\(.*.SomeException\) " r"nope \[SQL\: u?'SELECT 1 ",
                 conn.execute,
                 select([1]).where(column("foo") == literal("bar", MyType())),
             )
@@ -2571,26 +2490,14 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
         except tsa.exc.DBAPIError:
             assert conn.invalidated
 
-    def _test_dont_touch_non_dbapi_exception_on_connect(self, connect_fn):
+    def test_dont_touch_non_dbapi_exception_on_connect(self):
         dbapi = self.dbapi
         dbapi.connect = Mock(side_effect=TypeError("I'm not a DBAPI error"))
 
         e = create_engine("sqlite://", module=dbapi)
         e.dialect.is_disconnect = is_disconnect = Mock()
-        assert_raises_message(
-            TypeError, "I'm not a DBAPI error", connect_fn, e
-        )
+        assert_raises_message(TypeError, "I'm not a DBAPI error", e.connect)
         eq_(is_disconnect.call_count, 0)
-
-    def test_dont_touch_non_dbapi_exception_on_connect(self):
-        self._test_dont_touch_non_dbapi_exception_on_connect(
-            lambda engine: engine.connect()
-        )
-
-    def test_dont_touch_non_dbapi_exception_on_contextual_connect(self):
-        self._test_dont_touch_non_dbapi_exception_on_connect(
-            lambda engine: engine.contextual_connect()
-        )
 
     def test_ensure_dialect_does_is_disconnect_no_conn(self):
         """test that is_disconnect() doesn't choke if no connection,
@@ -2601,26 +2508,6 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
             dbapi.OperationalError("test"), None, None
         )
 
-    def _test_invalidate_on_connect(self, connect_fn):
-        """test that is_disconnect() is called during connect.
-
-        interpretation of connection failures are not supported by
-        every backend.
-
-        """
-
-        dbapi = self.dbapi
-        dbapi.connect = Mock(
-            side_effect=self.ProgrammingError(
-                "Cannot operate on a closed database."
-            )
-        )
-        try:
-            connect_fn(create_engine("sqlite://", module=dbapi))
-            assert False
-        except tsa.exc.DBAPIError as de:
-            assert de.connection_invalidated
-
     def test_invalidate_on_connect(self):
         """test that is_disconnect() is called during connect.
 
@@ -2628,247 +2515,18 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
         every backend.
 
         """
-        self._test_invalidate_on_connect(lambda engine: engine.connect())
-
-    def test_invalidate_on_contextual_connect(self):
-        """test that is_disconnect() is called during connect.
-
-        interpretation of connection failures are not supported by
-        every backend.
-
-        """
-        self._test_invalidate_on_connect(
-            lambda engine: engine.contextual_connect()
-        )
-
-
-class ProxyConnectionTest(fixtures.TestBase):
-
-    """These are the same tests as EngineEventsTest, except using
-    the deprecated ConnectionProxy interface.
-
-    """
-
-    __requires__ = ("ad_hoc_engines",)
-    __prefer_requires__ = ("two_phase_transactions",)
-
-    @testing.uses_deprecated(r".*Use event.listen")
-    @testing.fails_on("firebird", "Data type unknown")
-    def test_proxy(self):
-
-        stmts = []
-        cursor_stmts = []
-
-        class MyProxy(ConnectionProxy):
-            def execute(
-                self, conn, execute, clauseelement, *multiparams, **params
-            ):
-                stmts.append((str(clauseelement), params, multiparams))
-                return execute(clauseelement, *multiparams, **params)
-
-            def cursor_execute(
-                self,
-                execute,
-                cursor,
-                statement,
-                parameters,
-                context,
-                executemany,
-            ):
-                cursor_stmts.append((str(statement), parameters, None))
-                return execute(cursor, statement, parameters, context)
-
-        def assert_stmts(expected, received):
-            for stmt, params, posn in expected:
-                if not received:
-                    assert False, "Nothing available for stmt: %s" % stmt
-                while received:
-                    teststmt, testparams, testmultiparams = received.pop(0)
-                    teststmt = (
-                        re.compile(r"[\n\t ]+", re.M)
-                        .sub(" ", teststmt)
-                        .strip()
-                    )
-                    if teststmt.startswith(stmt) and (
-                        testparams == params or testparams == posn
-                    ):
-                        break
-
-        for engine in (
-            engines.testing_engine(
-                options=dict(implicit_returning=False, proxy=MyProxy())
-            ),
-            engines.testing_engine(
-                options=dict(
-                    implicit_returning=False,
-                    proxy=MyProxy(),
-                    strategy="threadlocal",
-                )
-            ),
-        ):
-            m = MetaData(engine)
-            t1 = Table(
-                "t1",
-                m,
-                Column("c1", Integer, primary_key=True),
-                Column(
-                    "c2",
-                    String(50),
-                    default=func.lower("Foo"),
-                    primary_key=True,
-                ),
+        dbapi = self.dbapi
+        dbapi.connect = Mock(
+            side_effect=self.ProgrammingError(
+                "Cannot operate on a closed database."
             )
-            m.create_all()
-            try:
-                t1.insert().execute(c1=5, c2="some data")
-                t1.insert().execute(c1=6)
-                eq_(
-                    engine.execute("select * from t1").fetchall(),
-                    [(5, "some data"), (6, "foo")],
-                )
-            finally:
-                m.drop_all()
-            engine.dispose()
-            compiled = [
-                ("CREATE TABLE t1", {}, None),
-                (
-                    "INSERT INTO t1 (c1, c2)",
-                    {"c2": "some data", "c1": 5},
-                    None,
-                ),
-                ("INSERT INTO t1 (c1, c2)", {"c1": 6}, None),
-                ("select * from t1", {}, None),
-                ("DROP TABLE t1", {}, None),
-            ]
-
-            cursor = [
-                ("CREATE TABLE t1", {}, ()),
-                (
-                    "INSERT INTO t1 (c1, c2)",
-                    {"c2": "some data", "c1": 5},
-                    (5, "some data"),
-                ),
-                ("SELECT lower", {"lower_1": "Foo"}, ("Foo",)),
-                (
-                    "INSERT INTO t1 (c1, c2)",
-                    {"c2": "foo", "c1": 6},
-                    (6, "foo"),
-                ),
-                ("select * from t1", {}, ()),
-                ("DROP TABLE t1", {}, ()),
-            ]
-
-            assert_stmts(compiled, stmts)
-            assert_stmts(cursor, cursor_stmts)
-
-    @testing.uses_deprecated(r".*Use event.listen")
-    def test_options(self):
-        canary = []
-
-        class TrackProxy(ConnectionProxy):
-            def __getattribute__(self, key):
-                fn = object.__getattribute__(self, key)
-
-                def go(*arg, **kw):
-                    canary.append(fn.__name__)
-                    return fn(*arg, **kw)
-
-                return go
-
-        engine = engines.testing_engine(options={"proxy": TrackProxy()})
-        conn = engine.connect()
-        c2 = conn.execution_options(foo="bar")
-        eq_(c2._execution_options, {"foo": "bar"})
-        c2.execute(select([1]))
-        c3 = c2.execution_options(bar="bat")
-        eq_(c3._execution_options, {"foo": "bar", "bar": "bat"})
-        eq_(canary, ["execute", "cursor_execute"])
-
-    @testing.uses_deprecated(r".*Use event.listen")
-    def test_transactional(self):
-        canary = []
-
-        class TrackProxy(ConnectionProxy):
-            def __getattribute__(self, key):
-                fn = object.__getattribute__(self, key)
-
-                def go(*arg, **kw):
-                    canary.append(fn.__name__)
-                    return fn(*arg, **kw)
-
-                return go
-
-        engine = engines.testing_engine(options={"proxy": TrackProxy()})
-        conn = engine.connect()
-        trans = conn.begin()
-        conn.execute(select([1]))
-        trans.rollback()
-        trans = conn.begin()
-        conn.execute(select([1]))
-        trans.commit()
-
-        eq_(
-            canary,
-            [
-                "begin",
-                "execute",
-                "cursor_execute",
-                "rollback",
-                "begin",
-                "execute",
-                "cursor_execute",
-                "commit",
-            ],
         )
-
-    @testing.uses_deprecated(r".*Use event.listen")
-    @testing.requires.savepoints
-    @testing.requires.two_phase_transactions
-    def test_transactional_advanced(self):
-        canary = []
-
-        class TrackProxy(ConnectionProxy):
-            def __getattribute__(self, key):
-                fn = object.__getattribute__(self, key)
-
-                def go(*arg, **kw):
-                    canary.append(fn.__name__)
-                    return fn(*arg, **kw)
-
-                return go
-
-        engine = engines.testing_engine(options={"proxy": TrackProxy()})
-        conn = engine.connect()
-
-        trans = conn.begin()
-        trans2 = conn.begin_nested()
-        conn.execute(select([1]))
-        trans2.rollback()
-        trans2 = conn.begin_nested()
-        conn.execute(select([1]))
-        trans2.commit()
-        trans.rollback()
-
-        trans = conn.begin_twophase()
-        conn.execute(select([1]))
-        trans.prepare()
-        trans.commit()
-
-        canary = [t for t in canary if t not in ("cursor_execute", "execute")]
-        eq_(
-            canary,
-            [
-                "begin",
-                "savepoint",
-                "rollback_savepoint",
-                "savepoint",
-                "release_savepoint",
-                "rollback",
-                "begin_twophase",
-                "prepare_twophase",
-                "commit_twophase",
-            ],
-        )
+        e = create_engine("sqlite://", module=dbapi)
+        try:
+            e.connect()
+            assert False
+        except tsa.exc.DBAPIError as de:
+            assert de.connection_invalidated
 
 
 class DialectEventTest(fixtures.TestBase):

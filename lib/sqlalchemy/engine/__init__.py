@@ -147,6 +147,13 @@ def create_engine(*args, **kwargs):
         columns to accommodate Python Unicode objects directly as though the
         datatype were the :class:`.Unicode` type.
 
+          .. deprecated:: The :paramref:`.create_engine.convert_unicode` flag
+             and related Unicode conversion features are legacy Python 2
+             mechanisms which no longer have relevance under Python 3.
+             As all modern DBAPIs now support Python Unicode fully even
+             under Python 2, these flags will be removed in an upcoming
+             release.
+
         .. note::
 
             SQLAlchemy's unicode-conversion flags and features only apply

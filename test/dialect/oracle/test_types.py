@@ -556,15 +556,12 @@ class TypesTest(fixtures.TestBase):
         )
 
         row = testing.db.execute(
-            text(
-                stmt,
-                typemap={
-                    "idata": Integer(),
-                    "ndata": Numeric(20, 2),
-                    "ndata2": Numeric(20, 2),
-                    "nidata": Numeric(5, 0),
-                    "fdata": Float(),
-                },
+            text(stmt).columns(
+                idata=Integer(),
+                ndata=Numeric(20, 2),
+                ndata2=Numeric(20, 2),
+                nidata=Numeric(5, 0),
+                fdata=Float(),
             )
         ).fetchall()[0]
         eq_(
@@ -616,15 +613,12 @@ class TypesTest(fixtures.TestBase):
         )
 
         row = testing.db.execute(
-            text(
-                stmt,
-                typemap={
-                    "anon_1_idata": Integer(),
-                    "anon_1_ndata": Numeric(20, 2),
-                    "anon_1_ndata2": Numeric(20, 2),
-                    "anon_1_nidata": Numeric(5, 0),
-                    "anon_1_fdata": Float(),
-                },
+            text(stmt).columns(
+                anon_1_idata=Integer(),
+                anon_1_ndata=Numeric(20, 2),
+                anon_1_ndata2=Numeric(20, 2),
+                anon_1_nidata=Numeric(5, 0),
+                anon_1_fdata=Float(),
             )
         ).fetchall()[0]
         eq_(
@@ -643,15 +637,12 @@ class TypesTest(fixtures.TestBase):
         )
 
         row = testing.db.execute(
-            text(
-                stmt,
-                typemap={
-                    "anon_1_idata": Integer(),
-                    "anon_1_ndata": Numeric(20, 2, asdecimal=False),
-                    "anon_1_ndata2": Numeric(20, 2, asdecimal=False),
-                    "anon_1_nidata": Numeric(5, 0, asdecimal=False),
-                    "anon_1_fdata": Float(asdecimal=True),
-                },
+            text(stmt).columns(
+                anon_1_idata=Integer(),
+                anon_1_ndata=Numeric(20, 2, asdecimal=False),
+                anon_1_ndata2=Numeric(20, 2, asdecimal=False),
+                anon_1_nidata=Numeric(5, 0, asdecimal=False),
+                anon_1_fdata=Float(asdecimal=True),
             )
         ).fetchall()[0]
         eq_(

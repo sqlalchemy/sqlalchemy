@@ -275,6 +275,10 @@ class _JoinedDispatcher(object):
     def _listen(self):
         return self.parent._listen
 
+    @property
+    def _events(self):
+        return self.parent._events
+
 
 class dispatcher(object):
     """Descriptor used by target classes to

@@ -313,11 +313,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
             answer = ["email_addresses_v", "users_v"]
             eq_(sorted(table_names), answer)
         else:
-            table_names = [
-                t
-                for t in insp.get_table_names(schema, order_by=order_by)
-                if t not in _ignore_tables
-            ]
+            if order_by:
+                tables = [
+                    rec[0]
+                    for rec in insp.get_sorted_table_and_fkc_names(schema)
+                    if rec[0]
+                ]
+            else:
+                tables = insp.get_table_names(schema)
+            table_names = [t for t in tables if t not in _ignore_tables]
 
             if order_by == "foreign_key":
                 answer = ["users", "email_addresses", "dingalings"]

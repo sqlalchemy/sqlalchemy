@@ -116,7 +116,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
                 ValueError,
                 "Couldn't parse %s string." % disp,
                 lambda: testing.db.execute(
-                    text("select 'ASDF' as value", typemap={"value": typ})
+                    text("select 'ASDF' as value").columns(value=typ)
                 ).scalar(),
             )
 
@@ -254,12 +254,12 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
         dialect = sqlite.dialect()
         for t in (
-            String(convert_unicode=True),
-            sqltypes.CHAR(convert_unicode=True),
+            String(),
+            sqltypes.CHAR(),
             sqltypes.Unicode(),
             sqltypes.UnicodeText(),
-            String(convert_unicode=True),
-            sqltypes.CHAR(convert_unicode=True),
+            String(),
+            sqltypes.CHAR(),
             sqltypes.Unicode(),
             sqltypes.UnicodeText(),
         ):

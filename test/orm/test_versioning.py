@@ -363,19 +363,19 @@ class VersioningTest(fixtures.MappedTest):
             sa.orm.exc.StaleDataError,
             r"Instance .* has version id '\d+' which does not "
             r"match database-loaded version id '\d+'",
-            s1.query(Foo).with_lockmode("read").get,
+            s1.query(Foo).with_for_update(read=True).get,
             f1s1.id,
         )
 
         # reload it - this expires the old version first
-        s1.refresh(f1s1, lockmode="read")
+        s1.refresh(f1s1, with_for_update=dict(read=True))
 
         # now assert version OK
-        s1.query(Foo).with_lockmode("read").get(f1s1.id)
+        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
 
         # assert brand new load is OK too
         s1.close()
-        s1.query(Foo).with_lockmode("read").get(f1s1.id)
+        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
 
     def test_versioncheck_not_versioned(self):
         """ensure the versioncheck logic skips if there isn't a
@@ -389,7 +389,7 @@ class VersioningTest(fixtures.MappedTest):
         f1s1 = Foo(value="f1 value", version_id=1)
         s1.add(f1s1)
         s1.commit()
-        s1.query(Foo).with_lockmode("read").get(f1s1.id)
+        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
 
     @testing.emits_warning(r".*versioning cannot be verified")
     @engines.close_open_connections
@@ -489,7 +489,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         s2 = create_session(autocommit=False)
-        f1s2 = s2.query(Foo).with_lockmode("read").get(f1s1.id)
+        f1s2 = s2.query(Foo).with_for_update(read=True).get(f1s1.id)
         assert f1s2.id == f1s1.id
         assert f1s2.value == f1s1.value
 

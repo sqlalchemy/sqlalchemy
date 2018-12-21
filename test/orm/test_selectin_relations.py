@@ -13,7 +13,6 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
-from sqlalchemy.orm import selectinload_all
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import undefer
@@ -136,7 +135,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 2)
 
         q = sess.query(u).options(
-            selectinload_all(u.addresses, Address.dingalings)
+            selectinload(u.addresses).selectinload(Address.dingalings)
         )
 
         def go():
@@ -1040,33 +1039,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         result = q.order_by(sa.desc(User.id)).limit(2).offset(2).all()
         eq_(list(reversed(self.static.user_all_result[0:2])), result)
 
-    @testing.uses_deprecated("Mapper.order_by")
-    def test_mapper_order_by(self):
-        users, User, Address, addresses = (
-            self.tables.users,
-            self.classes.User,
-            self.classes.Address,
-            self.tables.addresses,
-        )
-
-        mapper(Address, addresses)
-        mapper(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    Address, lazy="selectin", order_by=addresses.c.id
-                )
-            },
-            order_by=users.c.id.desc(),
-        )
-
-        sess = create_session()
-        q = sess.query(User)
-
-        result = q.limit(2).all()
-        eq_(result, list(reversed(self.static.user_address_result[2:4])))
-
     def test_one_to_many_scalar(self):
         Address, addresses, users, User = (
             self.classes.Address,
@@ -1320,7 +1292,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            selectinload_all("addresses.dingaling")
+            selectinload("addresses").selectinload("dingaling")
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -1338,9 +1310,9 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1.orders
         o1 = Order()
         u1.orders.append(o1)
-        sess.query(User).options(selectinload_all("orders.items")).filter_by(
-            id=7
-        ).all()
+        sess.query(User).options(
+            selectinload("orders").selectinload("items")
+        ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
                 assert "items" in o.__dict__
@@ -1357,7 +1329,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            selectinload_all("addresses.dingaling")
+            selectinload("addresses").selectinload("dingaling")
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -1371,7 +1343,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            selectinload_all("orders.items")
+            selectinload("orders").selectinload("items")
         ).first()
         assert "items" in u1.orders[0].__dict__
 
@@ -2429,7 +2401,7 @@ class SelfReferentialTest(fixtures.MappedTest):
                 sess.query(Node)
                 .filter_by(data="n1")
                 .order_by(Node.id)
-                .options(selectinload_all("children.children"))
+                .options(selectinload("children").selectinload("children"))
                 .first()
             )
             eq_(

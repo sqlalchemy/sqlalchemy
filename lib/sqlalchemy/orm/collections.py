@@ -460,7 +460,7 @@ class collection(object):
     @staticmethod
     @util.deprecated(
         "1.3",
-        "The :meth:`.collection.converter` method is deprecated and will "
+        "The :meth:`.collection.converter` handler is deprecated and will "
         "be removed in a future release.  Please refer to the "
         ":class:`.AttributeEvents.bulk_replace` listener interface in "
         "conjunction with the :func:`.event.listen` function.",

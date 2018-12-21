@@ -160,6 +160,16 @@ class Inspector(object):
             )
         return []
 
+    @util.deprecated_params(
+        order_by=(
+            "1.0",
+            "The :paramref:`get_table_names.order_by` parameter is deprecated "
+            "and will be removed in a future release.  Please refer to "
+            ":meth:`.Inspector.get_sorted_table_and_fkc_names` for a "
+            "more comprehensive solution to resolving foreign key cycles "
+            "between tables.",
+        )
+    )
     def get_table_names(self, schema=None, order_by=None):
         """Return all table names in referred to within a particular schema.
 
@@ -178,14 +188,6 @@ class Inspector(object):
          the result on foreign key dependencies.  Does not automatically
          resolve cycles, and will raise :class:`.CircularDependencyError`
          if cycles exist.
-
-         .. deprecated:: 1.0
-
-            The :paramref:`get_table_names.order_by` parameter is deprecated
-            and will be removed in a future release.  Please refer to
-            :meth:`.Inspector.get_sorted_table_and_fkc_names` for a
-            more comprehensive solution to resolving foreign key cycles
-            between tables.
 
         .. seealso::
 
@@ -380,7 +382,7 @@ class Inspector(object):
         "0.7",
         "The :meth:`.Inspector.get_primary_keys` method is deprecated and "
         "will be removed in a future release.  Please refer to the "
-        ":meth:`.Inspector.get_pk_constraint` method."
+        ":meth:`.Inspector.get_pk_constraint` method.",
     )
     def get_primary_keys(self, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.

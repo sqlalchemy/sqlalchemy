@@ -206,6 +206,12 @@ class _EventKey(object):
 
         self = self.with_wrapper(adjusted_fn)
 
+        stub_function = getattr(
+            self.dispatch_target.dispatch._events, self.identifier
+        )
+        if hasattr(stub_function, "_sa_warn"):
+            stub_function._sa_warn()
+
         if once:
             self.with_wrapper(util.only_once(self._listen_fn)).listen(
                 *args, **kw

@@ -363,7 +363,7 @@ class DefaultTest(fixtures.TestBase):
 
     @testing.fails_on("firebird", "Data type unknown")
     def test_standalone(self):
-        c = testing.db.engine.contextual_connect()
+        c = testing.db.engine.connect()
         x = c.execute(t.c.col1.default)
         y = t.c.col2.default.execute()
         z = c.execute(t.c.col3.default)

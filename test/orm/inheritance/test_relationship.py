@@ -9,12 +9,10 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.orm import subqueryload_all
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -956,7 +954,9 @@ class EagerToSubclassTest(fixtures.MappedTest):
         def go():
             eq_(
                 sess.query(Parent)
-                .options(subqueryload_all(Parent.children, Base.related))
+                .options(
+                    subqueryload(Parent.children).subqueryload(Base.related)
+                )
                 .order_by(Parent.data)
                 .all(),
                 [p1, p2],
@@ -973,7 +973,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
         def go():
             eq_(
                 sess.query(pa)
-                .options(subqueryload_all(pa.children, Base.related))
+                .options(subqueryload(pa.children).subqueryload(Base.related))
                 .order_by(pa.data)
                 .all(),
                 [p1, p2],
@@ -1909,7 +1909,7 @@ class JoinedloadOverWPolyAliased(
 
         session = Session()
         q = session.query(cls).options(
-            joinedload_all(cls.links, Link.child, cls.links)
+            joinedload(cls.links).joinedload(Link.child).joinedload(cls.links)
         )
         if cls is self.classes.Sub1:
             extra = " WHERE parent.type IN (:type_1)"
@@ -1938,7 +1938,7 @@ class JoinedloadOverWPolyAliased(
 
         session = Session()
         q = session.query(Link).options(
-            joinedload_all(Link.child, parent_cls.owner)
+            joinedload(Link.child).joinedload(parent_cls.owner)
         )
 
         if Link.child.property.mapper.class_ is self.classes.Sub1:

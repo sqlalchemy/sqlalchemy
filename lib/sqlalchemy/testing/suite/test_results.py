@@ -320,7 +320,7 @@ class ServerSideCursorsTest(
 
     def test_for_update_expr(self):
         engine = self._fixture(True)
-        s1 = select([1], for_update=True)
+        s1 = select([1]).with_for_update()
         result = engine.execute(s1)
         assert self._is_server_side(result.cursor)
 

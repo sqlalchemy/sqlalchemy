@@ -87,6 +87,14 @@ class MapperExtension(object):
             ls_meth = getattr(listener, meth)
 
             if not util.methods_equivalent(me_meth, ls_meth):
+                util.warn_deprecated(
+                    "MapperExtension.%s is deprecated.  The "
+                    "MapperExtension class will be removed in a future "
+                    "release.  Please transition to the @event interface, "
+                    "using @event.listens_for(mapped_class, '%s')."
+                    % (meth, meth)
+                )
+
                 if meth == "reconstruct_instance":
 
                     def go(ls_meth):
@@ -359,6 +367,13 @@ class SessionExtension(object):
             ls_meth = getattr(listener, meth)
 
             if not util.methods_equivalent(me_meth, ls_meth):
+                util.warn_deprecated(
+                    "SessionExtension.%s is deprecated.  The "
+                    "SessionExtension class will be removed in a future "
+                    "release.  Please transition to the @event interface, "
+                    "using @event.listens_for(Session, '%s')." % (meth, meth)
+                )
+
                 event.listen(self, meth, getattr(listener, meth))
 
     def before_commit(self, session):
@@ -492,6 +507,19 @@ class AttributeExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
+        for meth in ["append", "remove", "set"]:
+            me_meth = getattr(AttributeExtension, meth)
+            ls_meth = getattr(listener, meth)
+
+            if not util.methods_equivalent(me_meth, ls_meth):
+                util.warn_deprecated(
+                    "AttributeExtension.%s is deprecated.  The "
+                    "AttributeExtension class will be removed in a future "
+                    "release.  Please transition to the @event interface, "
+                    "using @event.listens_for(Class.attribute, '%s')."
+                    % (meth, meth)
+                )
+
         event.listen(
             self,
             "append",

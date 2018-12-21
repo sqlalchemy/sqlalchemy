@@ -85,13 +85,12 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     def test_out_params(self):
         result = testing.db.execute(
             text(
-                "begin foo(:x_in, :x_out, :y_out, " ":z_out); end;",
-                bindparams=[
-                    bindparam("x_in", Float),
-                    outparam("x_out", Integer),
-                    outparam("y_out", Float),
-                    outparam("z_out", String),
-                ],
+                "begin foo(:x_in, :x_out, :y_out, " ":z_out); end;"
+            ).bindparams(
+                bindparam("x_in", Float),
+                outparam("x_out", Integer),
+                outparam("y_out", Float),
+                outparam("z_out", String),
             ),
             x_in=5,
         )
@@ -268,7 +267,7 @@ class ExecuteTest(fixtures.TestBase):
 
         # here, we can't use ORDER BY.
         eq_(
-            t.select(for_update=True).limit(2).execute().fetchall(),
+            t.select().with_for_update().limit(2).execute().fetchall(),
             [(1, 1), (2, 7)],
         )
 
@@ -277,7 +276,7 @@ class ExecuteTest(fixtures.TestBase):
         assert_raises_message(
             exc.DatabaseError,
             "ORA-02014",
-            t.select(for_update=True).limit(2).offset(3).execute,
+            t.select().with_for_update().limit(2).offset(3).execute,
         )
 
 

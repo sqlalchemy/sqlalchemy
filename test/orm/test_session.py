@@ -34,7 +34,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util import pickle
-from sqlalchemy.util import pypy
 from sqlalchemy.util.compat import inspect_getfullargspec
 from test.orm import _fixtures
 
@@ -187,8 +186,9 @@ class SessionUtilTest(_fixtures.FixtureTest):
         assert u2 in s2
 
         with assertions.expect_deprecated(
-                r"The Session.close_all\(\) method is deprecated and will "
-                "be removed in a future release. "):
+            r"The Session.close_all\(\) method is deprecated and will "
+            "be removed in a future release. "
+        ):
             Session.close_all()
 
         assert u1 not in s1
@@ -628,12 +628,11 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u1 not in s2
         assert not s2.identity_map.keys()
 
-    @testing.uses_deprecated()
     def test_identity_conflict(self):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        for s in (create_session(), create_session(weak_identity_map=False)):
+        for s in (create_session(), create_session()):
             users.delete().execute()
             u1 = User(name="ed")
             s.add(u1)
@@ -1466,172 +1465,6 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         assert not sess.identity_map.contains_state(u2._sa_instance_state)
 
 
-class StrongIdentityMapTest(_fixtures.FixtureTest):
-    run_inserts = None
-
-    def _strong_ident_fixture(self):
-        sess = create_session(weak_identity_map=False)
-        return sess, sess.prune
-
-    def _event_fixture(self):
-        session = create_session()
-
-        @event.listens_for(session, "pending_to_persistent")
-        @event.listens_for(session, "deleted_to_persistent")
-        @event.listens_for(session, "detached_to_persistent")
-        @event.listens_for(session, "loaded_as_persistent")
-        def strong_ref_object(sess, instance):
-            if "refs" not in sess.info:
-                sess.info["refs"] = refs = set()
-            else:
-                refs = sess.info["refs"]
-
-            refs.add(instance)
-
-        @event.listens_for(session, "persistent_to_detached")
-        @event.listens_for(session, "persistent_to_deleted")
-        @event.listens_for(session, "persistent_to_transient")
-        def deref_object(sess, instance):
-            sess.info["refs"].discard(instance)
-
-        def prune():
-            if "refs" not in session.info:
-                return 0
-
-            sess_size = len(session.identity_map)
-            session.info["refs"].clear()
-            gc_collect()
-            session.info["refs"] = set(
-                s.obj() for s in session.identity_map.all_states()
-            )
-            return sess_size - len(session.identity_map)
-
-        return session, prune
-
-    @testing.uses_deprecated()
-    def test_strong_ref_imap(self):
-        self._test_strong_ref(self._strong_ident_fixture)
-
-    def test_strong_ref_events(self):
-        self._test_strong_ref(self._event_fixture)
-
-    def _test_strong_ref(self, fixture):
-        s, prune = fixture()
-
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        # save user
-        s.add(User(name="u1"))
-        s.flush()
-        user = s.query(User).one()
-        user = None
-        print(s.identity_map)
-        gc_collect()
-        assert len(s.identity_map) == 1
-
-        user = s.query(User).one()
-        assert not s.identity_map._modified
-        user.name = "u2"
-        assert s.identity_map._modified
-        s.flush()
-        eq_(users.select().execute().fetchall(), [(user.id, "u2")])
-
-    @testing.uses_deprecated()
-    def test_prune_imap(self):
-        self._test_prune(self._strong_ident_fixture)
-
-    def test_prune_events(self):
-        self._test_prune(self._event_fixture)
-
-    @testing.fails_if(lambda: pypy, "pypy has a real GC")
-    @testing.fails_on("+zxjdbc", "http://www.sqlalchemy.org/trac/ticket/1473")
-    def _test_prune(self, fixture):
-        s, prune = fixture()
-
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        for o in [User(name="u%s" % x) for x in range(10)]:
-            s.add(o)
-        # o is still live after this loop...
-
-        self.assert_(len(s.identity_map) == 0)
-        eq_(prune(), 0)
-        s.flush()
-        gc_collect()
-        eq_(prune(), 9)
-        # o is still in local scope here, so still present
-        self.assert_(len(s.identity_map) == 1)
-
-        id_ = o.id
-        del o
-        eq_(prune(), 1)
-        self.assert_(len(s.identity_map) == 0)
-
-        u = s.query(User).get(id_)
-        eq_(prune(), 0)
-        self.assert_(len(s.identity_map) == 1)
-        u.name = "squiznart"
-        del u
-        eq_(prune(), 0)
-        self.assert_(len(s.identity_map) == 1)
-        s.flush()
-        eq_(prune(), 1)
-        self.assert_(len(s.identity_map) == 0)
-
-        s.add(User(name="x"))
-        eq_(prune(), 0)
-        self.assert_(len(s.identity_map) == 0)
-        s.flush()
-        self.assert_(len(s.identity_map) == 1)
-        eq_(prune(), 1)
-        self.assert_(len(s.identity_map) == 0)
-
-        u = s.query(User).get(id_)
-        s.delete(u)
-        del u
-        eq_(prune(), 0)
-        self.assert_(len(s.identity_map) == 1)
-        s.flush()
-        eq_(prune(), 0)
-        self.assert_(len(s.identity_map) == 0)
-
-    @testing.uses_deprecated()
-    def test_fast_discard_race(self):
-        # test issue #4068
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        sess = Session(weak_identity_map=False)
-
-        u1 = User(name="u1")
-        sess.add(u1)
-        sess.commit()
-
-        u1_state = u1._sa_instance_state
-        sess.identity_map._dict.pop(u1_state.key)
-        ref = u1_state.obj
-        u1_state.obj = lambda: None
-
-        u2 = sess.query(User).first()
-        u1_state._cleanup(ref)
-
-        u3 = sess.query(User).first()
-
-        is_(u2, u3)
-
-        u2_state = u2._sa_instance_state
-        assert sess.identity_map.contains_state(u2._sa_instance_state)
-        ref = u2_state.obj
-        u2_state.obj = lambda: None
-        u2_state._cleanup(ref)
-        assert not sess.identity_map.contains_state(u2._sa_instance_state)
-
-
 class IsModifiedTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -1699,28 +1532,6 @@ class IsModifiedTest(_fixtures.FixtureTest):
         mod = s.is_modified(u)
         addresses_loaded = "addresses" in u.__dict__
         assert mod is not addresses_loaded
-
-    def test_is_modified_passive_on(self):
-        User, Address = self._default_mapping_fixture()
-
-        s = Session()
-        u = User(name="fred", addresses=[Address(email_address="foo")])
-        s.add(u)
-        s.commit()
-
-        u.id
-
-        def go():
-            assert not s.is_modified(u, passive=True)
-
-        self.assert_sql_count(testing.db, go, 0)
-
-        u.name = "newname"
-
-        def go():
-            assert s.is_modified(u, passive=True)
-
-        self.assert_sql_count(testing.db, go, 0)
 
     def test_is_modified_syn(self):
         User, users = self.classes.User, self.tables.users
@@ -2035,49 +1846,6 @@ class SessionInterface(fixtures.TestBase):
                 ],
                 [LockmodeArg(read=True), LockmodeArg(), None, None],
             )
-
-
-class TLTransactionTest(fixtures.MappedTest):
-    run_dispose_bind = "once"
-    __backend__ = True
-
-    @classmethod
-    def setup_bind(cls):
-        return engines.testing_engine(options=dict(strategy="threadlocal"))
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "users",
-            metadata,
-            Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            ),
-            Column("name", String(20)),
-            test_needs_acid=True,
-        )
-
-    @classmethod
-    def setup_classes(cls):
-        class User(cls.Basic):
-            pass
-
-    @classmethod
-    def setup_mappers(cls):
-        users, User = cls.tables.users, cls.classes.User
-
-        mapper(User, users)
-
-    @testing.exclude("mysql", "<", (5, 0, 3), "FIXME: unknown")
-    def test_session_nesting(self):
-        User = self.classes.User
-
-        sess = create_session(bind=self.bind)
-        self.bind.begin()
-        u = User(name="ed")
-        sess.add(u)
-        sess.flush()
-        self.bind.commit()
 
 
 class FlushWarningsTest(fixtures.MappedTest):

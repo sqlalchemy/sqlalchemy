@@ -2544,39 +2544,6 @@ class ResultMapTest(fixtures.TestBase):
 class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def _assert_legacy(self, leg, read=False, nowait=False):
-        t = table("t", column("c"))
-        s1 = select([t], for_update=leg)
-
-        if leg is False:
-            assert s1._for_update_arg is None
-            assert s1.for_update is None
-        else:
-            eq_(s1._for_update_arg.read, read)
-            eq_(s1._for_update_arg.nowait, nowait)
-            eq_(s1.for_update, leg)
-
-    def test_false_legacy(self):
-        self._assert_legacy(False)
-
-    def test_plain_true_legacy(self):
-        self._assert_legacy(True)
-
-    def test_read_legacy(self):
-        self._assert_legacy("read", read=True)
-
-    def test_nowait_legacy(self):
-        self._assert_legacy("nowait", nowait=True)
-
-    def test_read_nowait_legacy(self):
-        self._assert_legacy("read_nowait", read=True, nowait=True)
-
-    def test_legacy_setter(self):
-        t = table("t", column("c"))
-        s = select([t])
-        s.for_update = "nowait"
-        eq_(s._for_update_arg.nowait, True)
-
     def test_basic_clone(self):
         t = table("t", column("c"))
         s = select([t]).with_for_update(read=True, of=t.c.c)

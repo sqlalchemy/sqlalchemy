@@ -1325,7 +1325,7 @@ class ReconstitutionTest(fixtures.TestBase):
             Parent, self.parents, properties=dict(children=relationship(Child))
         )
         mapper(Child, self.children)
-        session = create_session(weak_identity_map=True)
+        session = create_session()
 
         def add_child(parent_name, child_name):
             parent = session.query(Parent).filter_by(name=parent_name).one()

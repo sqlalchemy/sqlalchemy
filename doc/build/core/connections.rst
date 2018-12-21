@@ -510,17 +510,23 @@ with the current thread, such that all parts of the
 application can participate in that transaction implicitly without the need to
 explicitly reference a :class:`.Connection`.
 
-.. note::
+.. deprecated:: 1.3
 
-    The "threadlocal" feature is generally discouraged.   It's
-    designed for a particular pattern of usage which is generally
-    considered as a legacy pattern.  It has **no impact** on the "thread safety"
-    of SQLAlchemy components
-    or one's application. It also should not be used when using an ORM
+    The "threadlocal" engine strategy is deprecated, and will be removed
+    in a future release.
+
+    This strategy is designed for a particular pattern of usage which is
+    generally considered as a legacy pattern.  It has **no impact** on the
+    "thread safety" of SQLAlchemy components or one's application. It also
+    should not be used when using an ORM
     :class:`~sqlalchemy.orm.session.Session` object, as the
     :class:`~sqlalchemy.orm.session.Session` itself represents an ongoing
     transaction and itself handles the job of maintaining connection and
     transactional resources.
+
+    .. seealso::
+
+        :ref:`change_4393_threadlocal`
 
 Enabling ``threadlocal`` is achieved as follows::
 

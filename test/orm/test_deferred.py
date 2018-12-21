@@ -966,7 +966,9 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         q = sess.query(User).options(
-            defer(User.orders, Order.items, Item.description)
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defer(Item.description)
         )
         self.assert_compile(q, exp)
 

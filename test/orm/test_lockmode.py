@@ -11,54 +11,6 @@ from sqlalchemy.testing import eq_
 from test.orm import _fixtures
 
 
-class LegacyLockModeTest(_fixtures.FixtureTest):
-    run_inserts = None
-
-    @classmethod
-    def setup_mappers(cls):
-        User, users = cls.classes.User, cls.tables.users
-        mapper(User, users)
-
-    def _assert_legacy(self, arg, read=False, nowait=False):
-        User = self.classes.User
-        s = Session()
-        q = s.query(User).with_lockmode(arg)
-        sel = q._compile_context().statement
-
-        if arg is None:
-            assert q._for_update_arg is None
-            assert sel._for_update_arg is None
-            return
-
-        assert q._for_update_arg.read is read
-        assert q._for_update_arg.nowait is nowait
-
-        assert sel._for_update_arg.read is read
-        assert sel._for_update_arg.nowait is nowait
-
-    def test_false_legacy(self):
-        self._assert_legacy(None)
-
-    def test_plain_legacy(self):
-        self._assert_legacy("update")
-
-    def test_nowait_legacy(self):
-        self._assert_legacy("update_nowait", nowait=True)
-
-    def test_read_legacy(self):
-        self._assert_legacy("read", read=True)
-
-    def test_unknown_legacy_lock_mode(self):
-        User = self.classes.User
-        sess = Session()
-        assert_raises_message(
-            exc.ArgumentError,
-            "Unknown with_lockmode argument: 'unknown_mode'",
-            sess.query(User.id).with_lockmode,
-            "unknown_mode",
-        )
-
-
 class ForUpdateTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):

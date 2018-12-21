@@ -11,7 +11,6 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import mapper
@@ -978,11 +977,11 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             r"Mapper\|Keyword\|keywords in this Query.",
         )
 
-    def test_option_against_nonexistent_twolevel_all(self):
+    def test_option_against_nonexistent_twolevel_chained(self):
         Item = self.classes.Item
         self._assert_eager_with_entity_exception(
             [Item],
-            (joinedload_all("keywords.foo"),),
+            (joinedload("keywords").joinedload("foo"),),
             r"Can't find property named 'foo' on the mapped entity "
             r"Mapper\|Keyword\|keywords in this Query.",
         )
@@ -996,7 +995,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
-            (joinedload_all("keywords"),),
+            (joinedload("keywords"),),
             r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
             "does not refer to a mapped entity",
         )
@@ -1010,7 +1009,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
-            (joinedload_all("keywords"),),
+            (joinedload("keywords"),),
             r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
             "does not refer to a mapped entity",
         )
@@ -1019,7 +1018,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Item = self.classes.Item
         self._assert_eager_with_entity_exception(
             [Item],
-            (joinedload_all("id", "keywords"),),
+            (joinedload("id").joinedload("keywords"),),
             r"Attribute 'id' of entity 'Mapper\|Item\|items' does not "
             r"refer to a mapped entity",
         )
@@ -1029,7 +1028,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
-            (joinedload_all("id", "keywords"),),
+            (joinedload("id").joinedload("keywords"),),
             r"Attribute 'id' of entity 'Mapper\|Keyword\|keywords' "
             "does not refer to a mapped entity",
         )
@@ -1039,7 +1038,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
-            (joinedload_all("description"),),
+            (joinedload("description"),),
             r"Can't find property named 'description' on the mapped "
             r"entity Mapper\|Keyword\|keywords in this Query.",
         )
@@ -1049,7 +1048,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword.id, Item.id],
-            (joinedload_all("keywords"),),
+            (joinedload("keywords"),),
             r"Query has only expression-based entities - can't find property "
             "named 'keywords'.",
         )
@@ -1059,7 +1058,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
-            (joinedload_all(Keyword.id, Item.keywords),),
+            (joinedload(Keyword.id).joinedload(Item.keywords),),
             r"Attribute 'id' of entity 'Mapper\|Keyword\|keywords' "
             "does not refer to a mapped entity",
         )
@@ -1069,7 +1068,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
-            (joinedload_all(Keyword.keywords, Item.keywords),),
+            (joinedload(Keyword.keywords).joinedload(Item.keywords),),
             r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
             "does not refer to a mapped entity",
         )
@@ -1079,7 +1078,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword.id, Item.id],
-            (joinedload_all(Keyword.keywords, Item.keywords),),
+            (joinedload(Keyword.keywords).joinedload(Item.keywords),),
             r"Query has only expression-based entities - "
             "can't find property named 'keywords'.",
         )
@@ -1089,7 +1088,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Item],
-            (joinedload_all(Keyword),),
+            (joinedload(Keyword),),
             r"mapper option expects string key or list of attributes",
         )
 
@@ -1097,7 +1096,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         User = self.classes.User
         self._assert_eager_with_entity_exception(
             [User],
-            (joinedload_all(User.addresses, User.orders),),
+            (joinedload(User.addresses).joinedload(User.orders),),
             r"Attribute 'User.orders' does not link "
             "from element 'Mapper|Address|addresses'",
         )
@@ -1107,7 +1106,11 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Order = self.classes.Order
         self._assert_eager_with_entity_exception(
             [User],
-            (joinedload_all(User.addresses, User.orders.of_type(Order)),),
+            (
+                joinedload(User.addresses).joinedload(
+                    User.orders.of_type(Order)
+                ),
+            ),
             r"Attribute 'User.orders' does not link "
             "from element 'Mapper|Address|addresses'",
         )

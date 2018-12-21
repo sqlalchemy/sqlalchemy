@@ -711,19 +711,19 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(
             bind.mock_calls,
             [
-                mock.call.contextual_connect(),
-                mock.call.contextual_connect().execution_options(
+                mock.call._contextual_connect(),
+                mock.call._contextual_connect().execution_options(
                     isolation_level="FOO"
                 ),
-                mock.call.contextual_connect().execution_options().begin(),
+                mock.call._contextual_connect().execution_options().begin(),
             ],
         )
-        eq_(c1, bind.contextual_connect().execution_options())
+        eq_(c1, bind._contextual_connect().execution_options())
 
     def test_execution_options_ignored_mid_transaction(self):
         bind = mock.Mock()
         conn = mock.Mock(engine=bind)
-        bind.contextual_connect = mock.Mock(return_value=conn)
+        bind._contextual_connect = mock.Mock(return_value=conn)
         sess = Session(bind=bind)
         sess.execute("select 1")
         with expect_warnings(
@@ -1552,75 +1552,6 @@ class AccountingFlagsTest(_LocalFixture):
         assert u1.name == "ed"
         sess.expire_all()
         assert u1.name == "edward"
-
-    def test_rollback_no_accounting(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = sessionmaker(_enable_transaction_accounting=False)()
-        u1 = User(name="ed")
-        sess.add(u1)
-        sess.commit()
-
-        u1.name = "edwardo"
-        sess.rollback()
-
-        testing.db.execute(
-            users.update(users.c.name == "ed").values(name="edward")
-        )
-
-        assert u1.name == "edwardo"
-        sess.expire_all()
-        assert u1.name == "edward"
-
-    def test_commit_no_accounting(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = sessionmaker(_enable_transaction_accounting=False)()
-        u1 = User(name="ed")
-        sess.add(u1)
-        sess.commit()
-
-        u1.name = "edwardo"
-        sess.rollback()
-
-        testing.db.execute(
-            users.update(users.c.name == "ed").values(name="edward")
-        )
-
-        assert u1.name == "edwardo"
-        sess.commit()
-
-        assert testing.db.execute(select([users.c.name])).fetchall() == [
-            ("edwardo",)
-        ]
-        assert u1.name == "edwardo"
-
-        sess.delete(u1)
-        sess.commit()
-
-    def test_preflush_no_accounting(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = Session(
-            _enable_transaction_accounting=False,
-            autocommit=True,
-            autoflush=False,
-        )
-        u1 = User(name="ed")
-        sess.add(u1)
-        sess.flush()
-
-        sess.begin()
-        u1.name = "edwardo"
-        u2 = User(name="some other user")
-        sess.add(u2)
-
-        sess.rollback()
-
-        sess.begin()
-        assert testing.db.execute(select([users.c.name])).fetchall() == [
-            ("ed",)
-        ]
 
 
 class AutoCommitTest(_LocalFixture):

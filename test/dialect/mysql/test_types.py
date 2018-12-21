@@ -1117,12 +1117,7 @@ class EnumSetTest(
             "t",
             self.metadata,
             Column("id", Integer, primary_key=True),
-            Column(
-                "data",
-                mysql.SET(
-                    u("réveillé"), u("drôle"), u("S’il"), convert_unicode=True
-                ),
-            ),
+            Column("data", mysql.SET(u("réveillé"), u("drôle"), u("S’il"))),
         )
 
         set_table.create()

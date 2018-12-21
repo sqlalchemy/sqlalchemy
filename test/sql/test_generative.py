@@ -500,8 +500,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_text(self):
-        clause = text(
-            "select * from table where foo=:bar", bindparams=[bindparam("bar")]
+        clause = text("select * from table where foo=:bar").bindparams(
+            bindparam("bar")
         )
         c1 = str(clause)
 

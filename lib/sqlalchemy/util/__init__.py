@@ -87,6 +87,8 @@ from .compat import win32  # noqa
 from .compat import with_metaclass  # noqa
 from .compat import zip_longest  # noqa
 from .deprecations import deprecated  # noqa
+from .deprecations import deprecated_cls  # noqa
+from .deprecations import deprecated_params  # noqa
 from .deprecations import inject_docstring_text  # noqa
 from .deprecations import pending_deprecation  # noqa
 from .deprecations import warn_deprecated  # noqa

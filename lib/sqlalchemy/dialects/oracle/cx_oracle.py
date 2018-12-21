@@ -736,6 +736,17 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     _cx_oracle_threaded = None
 
+    @util.deprecated_params(
+        threaded=(
+            "1.3",
+            "The 'threaded' parameter to the cx_oracle dialect "
+            "is deprecated as a dialect-level argument, and will be removed "
+            "in a future release.  As of version 1.3, it defaults to False "
+            "rather than True.  The 'threaded' option can be passed to "
+            "cx_Oracle directly in the URL query string passed to "
+            ":func:`.create_engine`.",
+        )
+    )
     def __init__(
         self,
         auto_convert_lobs=True,
@@ -749,13 +760,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         OracleDialect.__init__(self, **kwargs)
         self.arraysize = arraysize
         if threaded is not None:
-            util.warn_deprecated(
-                "The 'threaded' parameter to the cx_oracle dialect "
-                "itself is deprecated.  The value now defaults to False in "
-                "any case.  To pass an explicit True value, use the "
-                "create_engine connect_args dictionary or add ?threaded=true "
-                "to the URL string."
-            )
             self._cx_oracle_threaded = threaded
         self.auto_convert_lobs = auto_convert_lobs
         self.coerce_to_unicode = coerce_to_unicode
@@ -810,23 +814,6 @@ class OracleDialect_cx_oracle(OracleDialect):
                 self._returningval = self._paramval
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6,)
-
-    def _pop_deprecated_kwargs(self, kwargs):
-        auto_setinputsizes = kwargs.pop("auto_setinputsizes", None)
-        exclude_setinputsizes = kwargs.pop("exclude_setinputsizes", None)
-        if auto_setinputsizes or exclude_setinputsizes:
-            util.warn_deprecated(
-                "auto_setinputsizes and exclude_setinputsizes are deprecated. "
-                "Modern cx_Oracle only requires that LOB types are part "
-                "of this behavior, and these parameters no longer have any "
-                "effect."
-            )
-        allow_twophase = kwargs.pop("allow_twophase", None)
-        if allow_twophase is not None:
-            util.warn.deprecated(
-                "allow_twophase is deprecated.  The cx_Oracle dialect no "
-                "longer supports two-phase transaction mode."
-            )
 
     def _parse_cx_oracle_ver(self, version):
         m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)
@@ -982,6 +969,7 @@ class OracleDialect_cx_oracle(OracleDialect):
     def create_connect_args(self, url):
         opts = dict(url.query)
 
+        # deprecated in 1.3
         for opt in ("use_ansi", "auto_convert_lobs"):
             if opt in opts:
                 util.warn_deprecated(
@@ -1067,14 +1055,19 @@ class OracleDialect_cx_oracle(OracleDialect):
         else:
             return False
 
+    @util.deprecated(
+        "1.2",
+        "The create_xid() method of the cx_Oracle dialect is deprecated and "
+        "will be removed in a future release.  "
+        "Two-phase transaction support is no longer functional "
+        "in SQLAlchemy's cx_Oracle dialect as of cx_Oracle 6.0b1, which no "
+        "longer supports the API that SQLAlchemy relied upon.",
+    )
     def create_xid(self):
         """create a two-phase transaction ID.
 
         this id will be passed to do_begin_twophase(), do_rollback_twophase(),
         do_commit_twophase().  its format is unspecified.
-
-        .. deprecated:: two-phase transaction support is no longer functional
-           in SQLAlchemy's cx_Oracle dialect as of cx_Oracle 6.0b1
 
         """
 

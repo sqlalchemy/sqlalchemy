@@ -933,10 +933,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
         eq_(
             s.query(
-                cast(
-                    self.tables.data_table.c.data,
-                    String(convert_unicode="force"),
-                ),
+                cast(self.tables.data_table.c.data, String()),
                 cast(self.tables.data_table.c.nulldata, String),
             )
             .filter(self.tables.data_table.c.name == "d1")
@@ -945,10 +942,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
         eq_(
             s.query(
-                cast(
-                    self.tables.data_table.c.data,
-                    String(convert_unicode="force"),
-                ),
+                cast(self.tables.data_table.c.data, String()),
                 cast(self.tables.data_table.c.nulldata, String),
             )
             .filter(self.tables.data_table.c.name == "d2")

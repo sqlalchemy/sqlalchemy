@@ -1309,9 +1309,10 @@ class EagerTest9(fixtures.MappedTest):
             acc = (
                 session.query(Account)
                 .options(
-                    sa.orm.joinedload_all(
-                        "entries.transaction.entries.account"
-                    )
+                    sa.orm.joinedload("entries")
+                    .joinedload("transaction")
+                    .joinedload("entries")
+                    .joinedload("account")
                 )
                 .order_by(Account.account_id)
             ).first()

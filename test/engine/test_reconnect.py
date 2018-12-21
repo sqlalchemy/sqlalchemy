@@ -950,33 +950,30 @@ class RecycleTest(fixtures.TestBase):
     __backend__ = True
 
     def test_basic(self):
-        for threadlocal in False, True:
-            engine = engines.reconnecting_engine(
-                options={"pool_threadlocal": threadlocal}
-            )
+        engine = engines.reconnecting_engine()
 
-            conn = engine.contextual_connect()
-            eq_(conn.execute(select([1])).scalar(), 1)
-            conn.close()
+        conn = engine.connect()
+        eq_(conn.execute(select([1])).scalar(), 1)
+        conn.close()
 
-            # set the pool recycle down to 1.
-            # we aren't doing this inline with the
-            # engine create since cx_oracle takes way
-            # too long to create the 1st connection and don't
-            # want to build a huge delay into this test.
+        # set the pool recycle down to 1.
+        # we aren't doing this inline with the
+        # engine create since cx_oracle takes way
+        # too long to create the 1st connection and don't
+        # want to build a huge delay into this test.
 
-            engine.pool._recycle = 1
+        engine.pool._recycle = 1
 
-            # kill the DB connection
-            engine.test_shutdown()
+        # kill the DB connection
+        engine.test_shutdown()
 
-            # wait until past the recycle period
-            time.sleep(2)
+        # wait until past the recycle period
+        time.sleep(2)
 
-            # can connect, no exception
-            conn = engine.contextual_connect()
-            eq_(conn.execute(select([1])).scalar(), 1)
-            conn.close()
+        # can connect, no exception
+        conn = engine.connect()
+        eq_(conn.execute(select([1])).scalar(), 1)
+        conn.close()
 
 
 class PrePingRealTest(fixtures.TestBase):

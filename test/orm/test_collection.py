@@ -1,11 +1,10 @@
 from operator import and_
 
-import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
@@ -24,11 +23,16 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class Canary(sa.orm.interfaces.AttributeExtension):
+class Canary(object):
     def __init__(self):
         self.data = set()
         self.added = set()
         self.removed = set()
+
+    def listen(self, attr):
+        event.listen(attr, "append", self.append)
+        event.listen(attr, "remove", self.remove)
+        event.listen(attr, "set", self.set)
 
     def append(self, obj, value, initiator):
         assert value not in self.added
@@ -91,14 +95,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -142,14 +146,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -371,14 +375,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         direct = obj.attr
@@ -578,14 +582,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -846,14 +850,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         direct = obj.attr
@@ -986,14 +990,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -1114,14 +1118,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         direct = obj.attr
@@ -1227,38 +1231,6 @@ class CollectionsTest(fixtures.ORMTest):
         self._test_dict(MyOrdered)
         self._test_dict_bulk(MyOrdered)
         self.assert_(getattr(MyOrdered, "_sa_instrumented") == id(MyOrdered))
-
-    @testing.uses_deprecated(r".*Please refer to the .*bulk_replace listener")
-    def test_dict_subclass4(self):
-        # tests #2654
-        class MyDict(collections.MappedCollection):
-            def __init__(self):
-                super(MyDict, self).__init__(lambda value: "k%d" % value)
-
-            @collection.converter
-            def _convert(self, dictlike):
-                for key, value in dictlike.items():
-                    yield value + 5
-
-        class Foo(object):
-            pass
-
-        canary = Canary()
-
-        instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo,
-            "attr",
-            uselist=True,
-            extension=canary,
-            typecallable=MyDict,
-            useobject=True,
-        )
-
-        f = Foo()
-        f.attr = {"k1": 1, "k2": 2}
-
-        eq_(f.attr, {"k7": 7, "k6": 6})
 
     def test_dict_duck(self):
         class DictLike(object):
@@ -1371,14 +1343,14 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        d = attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,
-            extension=canary,
             typecallable=typecallable,
             useobject=True,
         )
+        canary.listen(d)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -1532,14 +1504,10 @@ class CollectionsTest(fixtures.ORMTest):
 
         canary = Canary()
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo,
-            "attr",
-            uselist=True,
-            extension=canary,
-            typecallable=Custom,
-            useobject=True,
+        d = attributes.register_attribute(
+            Foo, "attr", uselist=True, typecallable=Custom, useobject=True
         )
+        canary.listen(d)
 
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
@@ -1610,9 +1578,10 @@ class CollectionsTest(fixtures.ORMTest):
         canary = Canary()
         creator = self.entity_maker
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo, "attr", uselist=True, extension=canary, useobject=True
+        d = attributes.register_attribute(
+            Foo, "attr", uselist=True, useobject=True
         )
+        canary.listen(d)
 
         obj = Foo()
         col1 = obj.attr
@@ -2419,77 +2388,6 @@ class InstrumentationTest(fixtures.ORMTest):
         assert "no_touch" in dir(Touchy)
 
         collections._instrument_class(Touchy)
-
-    @testing.uses_deprecated(r".*Please refer to the .*bulk_replace listener")
-    def test_name_setup(self):
-        class Base(object):
-            @collection.iterator
-            def base_iterate(self, x):
-                return "base_iterate"
-
-            @collection.appender
-            def base_append(self, x):
-                return "base_append"
-
-            @collection.converter
-            def base_convert(self, x):
-                return "base_convert"
-
-            @collection.remover
-            def base_remove(self, x):
-                return "base_remove"
-
-        from sqlalchemy.orm.collections import _instrument_class
-
-        _instrument_class(Base)
-
-        eq_(Base._sa_remover(Base(), 5), "base_remove")
-        eq_(Base._sa_appender(Base(), 5), "base_append")
-        eq_(Base._sa_iterator(Base(), 5), "base_iterate")
-        eq_(Base._sa_converter(Base(), 5), "base_convert")
-
-        class Sub(Base):
-            @collection.converter
-            def base_convert(self, x):
-                return "sub_convert"
-
-            @collection.remover
-            def sub_remove(self, x):
-                return "sub_remove"
-
-        _instrument_class(Sub)
-
-        eq_(Sub._sa_appender(Sub(), 5), "base_append")
-        eq_(Sub._sa_remover(Sub(), 5), "sub_remove")
-        eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
-        eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
-
-    @testing.uses_deprecated(r".*Please refer to the .*init_collection")
-    def test_link_event(self):
-        canary = []
-
-        class Collection(list):
-            @collection.linker
-            def _on_link(self, obj):
-                canary.append(obj)
-
-        class Foo(object):
-            pass
-
-        instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo, "attr", uselist=True, typecallable=Collection, useobject=True
-        )
-
-        f1 = Foo()
-        f1.attr.append(3)
-
-        eq_(canary, [f1.attr._sa_adapter])
-        adapter_1 = f1.attr._sa_adapter
-
-        l2 = Collection()
-        f1.attr = l2
-        eq_(canary, [adapter_1, f1.attr._sa_adapter, None])
 
     def test_referenced_by_owner(self):
         class Foo(object):

@@ -1,7 +1,6 @@
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import event
-from sqlalchemy import exc
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import String
@@ -11,7 +10,6 @@ from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.schema import DDL
 from sqlalchemy.schema import DropConstraint
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -373,22 +371,6 @@ class DDLEventTest(fixtures.TestBase):
         )
         eq_(metadata_canary.mock_calls, [])
 
-    def test_append_listener(self):
-        metadata, table, bind = self.metadata, self.table, self.bind
-
-        def fn(*a):
-            return None
-
-        table.append_ddl_listener("before-create", fn)
-        assert_raises(
-            exc.InvalidRequestError, table.append_ddl_listener, "blah", fn
-        )
-
-        metadata.append_ddl_listener("before-create", fn)
-        assert_raises(
-            exc.InvalidRequestError, metadata.append_ddl_listener, "blah", fn
-        )
-
 
 class DDLExecutionTest(fixtures.TestBase):
     def setup(self):
@@ -465,66 +447,6 @@ class DDLExecutionTest(fixtures.TestBase):
         assert "klptzyxm" not in strings
         assert "xyzzy" in strings
         assert "fnord" in strings
-
-    def test_deprecated_append_ddl_listener_table(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
-        canary = []
-        users.append_ddl_listener(
-            "before-create", lambda e, t, b: canary.append("mxyzptlk")
-        )
-        users.append_ddl_listener(
-            "after-create", lambda e, t, b: canary.append("klptzyxm")
-        )
-        users.append_ddl_listener(
-            "before-drop", lambda e, t, b: canary.append("xyzzy")
-        )
-        users.append_ddl_listener(
-            "after-drop", lambda e, t, b: canary.append("fnord")
-        )
-
-        metadata.create_all()
-        assert "mxyzptlk" in canary
-        assert "klptzyxm" in canary
-        assert "xyzzy" not in canary
-        assert "fnord" not in canary
-        del engine.mock[:]
-        canary[:] = []
-        metadata.drop_all()
-        assert "mxyzptlk" not in canary
-        assert "klptzyxm" not in canary
-        assert "xyzzy" in canary
-        assert "fnord" in canary
-
-    def test_deprecated_append_ddl_listener_metadata(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
-        canary = []
-        metadata.append_ddl_listener(
-            "before-create",
-            lambda e, t, b, tables=None: canary.append("mxyzptlk"),
-        )
-        metadata.append_ddl_listener(
-            "after-create",
-            lambda e, t, b, tables=None: canary.append("klptzyxm"),
-        )
-        metadata.append_ddl_listener(
-            "before-drop", lambda e, t, b, tables=None: canary.append("xyzzy")
-        )
-        metadata.append_ddl_listener(
-            "after-drop", lambda e, t, b, tables=None: canary.append("fnord")
-        )
-
-        metadata.create_all()
-        assert "mxyzptlk" in canary
-        assert "klptzyxm" in canary
-        assert "xyzzy" not in canary
-        assert "fnord" not in canary
-        del engine.mock[:]
-        canary[:] = []
-        metadata.drop_all()
-        assert "mxyzptlk" not in canary
-        assert "klptzyxm" not in canary
-        assert "xyzzy" in canary
-        assert "fnord" in canary
 
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
@@ -779,27 +701,3 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             )
             ._should_execute(tbl, cx)
         )
-
-    @testing.uses_deprecated(r"See DDLEvents")
-    def test_filter_deprecated(self):
-        cx = self.mock_engine()
-
-        tbl = Table("t", MetaData(), Column("id", Integer))
-        target = cx.name
-
-        assert DDL("")._should_execute_deprecated("x", tbl, cx)
-        assert DDL("", on=target)._should_execute_deprecated("x", tbl, cx)
-        assert not DDL("", on="bogus")._should_execute_deprecated("x", tbl, cx)
-        assert DDL("", on=lambda d, x, y, z: True)._should_execute_deprecated(
-            "x", tbl, cx
-        )
-        assert DDL(
-            "", on=lambda d, x, y, z: z.engine.name != "bogus"
-        )._should_execute_deprecated("x", tbl, cx)
-
-    def test_repr(self):
-        assert repr(DDL("s"))
-        assert repr(DDL("s", on="engine"))
-        assert repr(DDL("s", on=lambda x: 1))
-        assert repr(DDL("s", context={"a": 1}))
-        assert repr(DDL("s", on="engine", context={"a": 1}))

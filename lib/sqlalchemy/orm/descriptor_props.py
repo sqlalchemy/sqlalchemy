@@ -93,6 +93,15 @@ class CompositeProperty(DescriptorProperty):
 
     """
 
+    @util.deprecated_params(
+        extension=(
+            "0.7",
+            ":class:`.AttributeExtension` is deprecated in favor of the "
+            ":class:`.AttributeEvents` listener interface.  The "
+            ":paramref:`.composite.extension` parameter will be "
+            "removed in a future release.",
+        )
+    )
     def __init__(self, class_, *attrs, **kwargs):
         r"""Return a composite column-based property for use with a Mapper.
 
@@ -140,13 +149,6 @@ class CompositeProperty(DescriptorProperty):
           or list of extensions, which will be prepended to the list of
           attribute listeners for the resulting descriptor placed on the
           class.
-
-           .. deprecated:: 0.7
-
-                :class:`.AttributeExtension` is deprecated in favor of the
-                :class:`.AttributeEvents` listener interface.  The
-                :paramref:`.composite.extension` parameter will be
-                removed in a future release.
 
         """
         super(CompositeProperty, self).__init__()
@@ -698,6 +700,12 @@ class SynonymProperty(DescriptorProperty):
 
 
 @util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
+@util.deprecated_cls(
+    "0.7",
+    ":func:`.comparable_property` is deprecated and will be removed in a "
+    "future release.  Please refer to the :mod:`~sqlalchemy.ext.hybrid` "
+    "extension.",
+)
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
@@ -707,10 +715,6 @@ class ComparableProperty(DescriptorProperty):
         """Provides a method of applying a :class:`.PropComparator`
         to any Python descriptor attribute.
 
-        .. deprecated:: 0.7
-            :func:`.comparable_property` is superseded by
-            the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example
-            at :ref:`hybrid_custom_comparators`.
 
         Allows any Python descriptor to behave like a SQL-enabled
         attribute when used at the class level in queries, allowing

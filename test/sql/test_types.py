@@ -175,7 +175,7 @@ class AdaptTest(fixtures.TestBase):
                     % (type_, expected)
                 )
 
-    @testing.uses_deprecated()
+    @testing.uses_deprecated(".*Binary.*")
     def test_adapt_method(self):
         """ensure all types have a working adapt() method,
         which creates a distinct copy.
@@ -191,6 +191,8 @@ class AdaptTest(fixtures.TestBase):
 
         def adaptions():
             for typ in self._all_types():
+                # up adapt from LowerCase to UPPERCASE,
+                # as well as to all non-sqltypes
                 up_adaptions = [typ] + typ.__subclasses__()
                 yield False, typ, up_adaptions
                 for subcl in typ.__subclasses__():
@@ -258,7 +260,6 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.DateTime().python_type, datetime.datetime)
         eq_(types.String().python_type, str)
         eq_(types.Unicode().python_type, util.text_type)
-        eq_(types.String(convert_unicode=True).python_type, util.text_type)
         eq_(types.Enum("one", "two", "three").python_type, str)
 
         assert_raises(
@@ -283,10 +284,15 @@ class AdaptTest(fixtures.TestBase):
         This essentially is testing the behavior of util.constructor_copy().
 
         """
-        t1 = String(length=50, convert_unicode=False)
-        t2 = t1.adapt(Text, convert_unicode=True)
+        t1 = String(length=50)
+        t2 = t1.adapt(Text)
         eq_(t2.length, 50)
-        eq_(t2.convert_unicode, True)
+
+    def test_convert_unicode_text_type(self):
+        with testing.expect_deprecated(
+            "The String.convert_unicode parameter is deprecated"
+        ):
+            eq_(types.String(convert_unicode=True).python_type, util.text_type)
 
 
 class TypeAffinityTest(fixtures.TestBase):
@@ -1245,34 +1251,6 @@ class UnicodeTest(fixtures.TestBase):
         ):
             eq_(uni(5), 5)
 
-    def test_unicode_warnings_dialectlevel(self):
-
-        unicodedata = self.data
-
-        dialect = default.DefaultDialect(convert_unicode=True)
-        dialect.supports_unicode_binds = False
-
-        s = String()
-        uni = s.dialect_impl(dialect).bind_processor(dialect)
-
-        uni(util.b("x"))
-        assert isinstance(uni(unicodedata), util.binary_type)
-
-        eq_(uni(unicodedata), unicodedata.encode("utf-8"))
-
-    def test_ignoring_unicode_error(self):
-        """checks String(unicode_error='ignore') is passed to
-        underlying codec."""
-
-        unicodedata = self.data
-
-        type_ = String(248, convert_unicode="force", unicode_error="ignore")
-        dialect = default.DefaultDialect(encoding="ascii")
-        proc = type_.result_processor(dialect, 10)
-
-        utfdata = unicodedata.encode("utf8")
-        eq_(proc(utfdata), unicodedata.encode("ascii", "ignore").decode())
-
 
 class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     __backend__ = True
@@ -1857,6 +1835,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         # depending on backend.
         assert "('x'," in e.print_sql()
 
+    @testing.uses_deprecated(".*convert_unicode")
     def test_repr(self):
         e = Enum(
             "x",
@@ -1958,13 +1937,14 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             binary_table.select(order_by=binary_table.c.primary_id),
             text(
                 "select * from binary_table order by binary_table.primary_id",
-                typemap={
+                bind=testing.db,
+            ).columns(
+                **{
                     "pickled": PickleType,
                     "mypickle": MyPickleType,
                     "data": LargeBinary,
                     "data_slice": LargeBinary,
-                },
-                bind=testing.db,
+                }
             ),
         ):
             result = stmt.execute().fetchall()

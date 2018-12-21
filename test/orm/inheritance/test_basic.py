@@ -1876,7 +1876,7 @@ class VersioningTest(fixtures.MappedTest):
 
         assert_raises(
             orm_exc.StaleDataError,
-            sess2.query(Base).with_lockmode("read").get,
+            sess2.query(Base).with_for_update(read=True).get,
             s1.id,
         )
 

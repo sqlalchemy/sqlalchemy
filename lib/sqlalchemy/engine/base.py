@@ -493,19 +493,7 @@ class Connection(Connectable):
 
         return self._branch()
 
-    def contextual_connect(self, **kwargs):
-        """Returns a branched version of this :class:`.Connection`.
-
-        The :meth:`.Connection.close` method on the returned
-        :class:`.Connection` can be called and this
-        :class:`.Connection` will remain open.
-
-        This method provides usage symmetry with
-        :meth:`.Engine.contextual_connect`, including for usage
-        with context managers.
-
-        """
-
+    def _contextual_connect(self, **kwargs):
         return self._branch()
 
     def invalidate(self, exception=None):
@@ -1993,13 +1981,13 @@ class Engine(Connectable, log.Identified):
         self.dispatch.engine_disposed(self)
 
     def _execute_default(self, default):
-        with self.contextual_connect() as conn:
+        with self._contextual_connect() as conn:
             return conn._execute_default(default, (), {})
 
     @contextlib.contextmanager
     def _optional_conn_ctx_manager(self, connection=None):
         if connection is None:
-            with self.contextual_connect() as conn:
+            with self._contextual_connect() as conn:
                 yield conn
         else:
             yield connection
@@ -2058,7 +2046,7 @@ class Engine(Connectable, log.Identified):
             for a particular :class:`.Connection`.
 
         """
-        conn = self.contextual_connect(close_with_result=close_with_result)
+        conn = self._contextual_connect(close_with_result=close_with_result)
         try:
             trans = conn.begin()
         except:
@@ -2105,7 +2093,7 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        with self.contextual_connect() as conn:
+        with self._contextual_connect() as conn:
             return conn.transaction(callable_, *args, **kwargs)
 
     def run_callable(self, callable_, *args, **kwargs):
@@ -2121,7 +2109,7 @@ class Engine(Connectable, log.Identified):
         which one is being dealt with.
 
         """
-        with self.contextual_connect() as conn:
+        with self._contextual_connect() as conn:
             return conn.run_callable(callable_, *args, **kwargs)
 
     def execute(self, statement, *multiparams, **params):
@@ -2140,18 +2128,18 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        connection = self.contextual_connect(close_with_result=True)
+        connection = self._contextual_connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
 
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
-        connection = self.contextual_connect(close_with_result=True)
+        connection = self._contextual_connect(close_with_result=True)
         return connection._execute_clauseelement(elem, multiparams, params)
 
     def _execute_compiled(self, compiled, multiparams, params):
-        connection = self.contextual_connect(close_with_result=True)
+        connection = self._contextual_connect(close_with_result=True)
         return connection._execute_compiled(compiled, multiparams, params)
 
     def connect(self, **kwargs):
@@ -2170,6 +2158,13 @@ class Engine(Connectable, log.Identified):
 
         return self._connection_cls(self, **kwargs)
 
+    @util.deprecated(
+        "1.3",
+        "The :meth:`.Engine.contextual_connect` method is deprecated.  This "
+        "method is an artifact of the threadlocal engine strategy which is "
+        "also to be deprecated.   For explicit connections from an "
+        ":class:`.Engine`, use the :meth:`.Engine.connect` method.",
+    )
     def contextual_connect(self, close_with_result=False, **kwargs):
         """Return a :class:`.Connection` object which may be part of some
         ongoing context.
@@ -2187,6 +2182,11 @@ class Engine(Connectable, log.Identified):
 
         """
 
+        return self._contextual_connect(
+            close_with_result=close_with_result, **kwargs
+        )
+
+    def _contextual_connect(self, close_with_result=False, **kwargs):
         return self._connection_cls(
             self,
             self._wrap_pool_connect(self.pool.connect, None),

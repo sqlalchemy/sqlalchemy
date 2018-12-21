@@ -16,12 +16,17 @@ today.
 """
 
 from .impl import QueuePool
+from .. import util
 from ..util import threading
-
 
 proxies = {}
 
 
+@util.deprecated(
+    "1.3",
+    "The :func:`.pool.manage` function is deprecated, and will be "
+    "removed in a future release.",
+)
 def manage(module, **params):
     r"""Return a proxy for a DB-API module that automatically
     pools connections.

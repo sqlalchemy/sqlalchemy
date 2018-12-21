@@ -315,7 +315,7 @@ class Compiled(object):
         "The :meth:`.Compiled.compile` method is deprecated and will be "
         "removed in a future release.   The :class:`.Compiled` object "
         "now runs its compilation within the constructor, and this method "
-        "does nothing."
+        "does nothing.",
     )
     def compile(self):
         """Produce the internal string representation of this element.
@@ -3442,6 +3442,7 @@ class IdentifierPreparer(object):
     def quote_schema(self, schema, force=None):
         """Conditionally quote a schema name.
 
+
         The name is quoted if it is a reserved word, contains quote-necessary
         characters, or is an instance of :class:`.quoted_name` which includes
         ``quote`` set to ``True``.
@@ -3450,17 +3451,30 @@ class IdentifierPreparer(object):
         quoting behavior for schema names.
 
         :param schema: string schema name
-        :param force: this parameter is no longer used.
+        :param force: unused
 
-         .. deprecated:: 0.9
+            .. deprecated:: 0.9
 
-            The :paramref:`.IdentifierPreparer.force` parameter is deprecated
-            and will be removed in a future release.  Quoting preference
-            is now intrinsic to the string being quoted by making use of the
-            :class:`.quoted_name` class.
+                The :paramref:`.IdentifierPreparer.quote_schema.force`
+                parameter is deprecated and will be removed in a future
+                release.  This flag has no effect on the behavior of the
+                :meth:`.IdentifierPreparer.quote` method; please refer to
+                :class:`.quoted_name`.
 
         """
-        return self.quote(schema, force)
+        if force is not None:
+            # not using the util.deprecated_params() decorator in this
+            # case because of the additional function call overhead on this
+            # very performance-critical spot.
+            util.warn_deprecated(
+                "The IdentifierPreparer.quote_schema.force parameter is "
+                "deprecated and will be removed in a future release.  This "
+                "flag has no effect on the behavior of the "
+                "IdentifierPreparer.quote method; please refer to "
+                "quoted_name()."
+            )
+
+        return self.quote(schema)
 
     def quote(self, ident, force=None):
         """Conditionally quote an identfier.
@@ -3473,16 +3487,28 @@ class IdentifierPreparer(object):
         quoting behavior for identifier names.
 
         :param ident: string identifier
-        :param force: this parameter is no longer used.
+        :param force: unused
 
-         .. deprecated:: 0.9
+            .. deprecated:: 0.9
 
-             The :paramref:`.IdentifierPreparer.force` parameter is deprecated
-             and will be removed in a future release.  Quoting preference
-             is now intrinsic to the string being quoted by making use of the
-             :class:`.quoted_name` class.
+                The :paramref:`.IdentifierPreparer.quote.force`
+                parameter is deprecated and will be removed in a future
+                release.  This flag has no effect on the behavior of the
+                :meth:`.IdentifierPreparer.quote` method; please refer to
+                :class:`.quoted_name`.
 
         """
+        if force is not None:
+            # not using the util.deprecated_params() decorator in this
+            # case because of the additional function call overhead on this
+            # very performance-critical spot.
+            util.warn_deprecated(
+                "The IdentifierPreparer.quote.force parameter is "
+                "deprecated and will be removed in a future release.  This "
+                "flag has no effect on the behavior of the "
+                "IdentifierPreparer.quote method; please refer to "
+                "quoted_name()."
+            )
 
         force = getattr(ident, "quote", None)
 
@@ -3580,10 +3606,10 @@ class IdentifierPreparer(object):
             result = self.quote_schema(effective_schema) + "." + result
         return result
 
-    def format_schema(self, name, quote=None):
+    def format_schema(self, name):
         """Prepare a quoted schema name."""
 
-        return self.quote(name, quote)
+        return self.quote(name)
 
     def format_column(
         self,

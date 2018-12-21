@@ -1529,14 +1529,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE",
         )
 
-        assert_raises_message(
-            exc.ArgumentError,
-            "Unknown for_update argument: 'unknown_mode'",
-            table1.select,
-            table1.c.myid == 7,
-            for_update="unknown_mode",
-        )
-
     def test_alias(self):
         # test the alias for a table1.  column names stay the same,
         # table name "changes" to "foo".

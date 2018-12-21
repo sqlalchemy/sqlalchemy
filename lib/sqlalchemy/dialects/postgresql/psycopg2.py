@@ -407,11 +407,17 @@ class _PGNumeric(sqltypes.Numeric):
 
 class _PGEnum(ENUM):
     def result_processor(self, dialect, coltype):
-        if util.py2k and self.convert_unicode is True:
-            # we can't easily use PG's extensions here because
-            # the OID is on the fly, and we need to give it a python
-            # function anyway - not really worth it.
-            self.convert_unicode = "force_nocheck"
+        if util.py2k and self._expect_unicode is True:
+            # for py2k, if the enum type needs unicode data (which is set up as
+            # part of the Enum() constructor based on values passed as py2k
+            # unicode objects) we have to use our own converters since
+            # psycopg2's don't work, a rare exception to the "modern DBAPIs
+            # support unicode everywhere" theme of deprecating
+            # convert_unicode=True. Use the special "force_nocheck" directive
+            # which forces unicode conversion to happen on the Python side
+            # without an isinstance() check.   in py3k psycopg2 does the right
+            # thing automatically.
+            self._expect_unicode = "force_nocheck"
         return super(_PGEnum, self).result_processor(dialect, coltype)
 
 

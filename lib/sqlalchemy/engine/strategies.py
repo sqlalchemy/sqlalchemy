@@ -271,6 +271,9 @@ class MockEngineStrategy(EngineStrategy):
         def contextual_connect(self, **kwargs):
             return self
 
+        def connect(self, **kwargs):
+            return self
+
         def execution_options(self, **kw):
             return self
 

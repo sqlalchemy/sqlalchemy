@@ -23,19 +23,10 @@ class BindTest(fixtures.TestBase):
             assert not conn.closed
         assert conn.closed
 
-        with e.contextual_connect() as conn:
-            assert not conn.closed
-        assert conn.closed
-
     def test_bind_close_conn(self):
         e = testing.db
         conn = e.connect()
         with conn.connect() as c2:
-            assert not c2.closed
-        assert not conn.closed
-        assert c2.closed
-
-        with conn.contextual_connect() as c2:
             assert not c2.closed
         assert not conn.closed
         assert c2.closed

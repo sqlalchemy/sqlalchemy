@@ -30,21 +30,11 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         # has the effect of initializing
         # class-level event listeners on Pool,
         # if not present already.
-        p1 = QueuePool(
-            creator=self.Connection,
-            pool_size=3,
-            max_overflow=-1,
-            use_threadlocal=True,
-        )
+        p1 = QueuePool(creator=self.Connection, pool_size=3, max_overflow=-1)
         p1.connect()
 
         global pool
-        pool = QueuePool(
-            creator=self.Connection,
-            pool_size=3,
-            max_overflow=-1,
-            use_threadlocal=True,
-        )
+        pool = QueuePool(creator=self.Connection, pool_size=3, max_overflow=-1)
 
     @profiling.function_call_count()
     def test_first_connect(self):
@@ -58,15 +48,5 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         def go():
             conn2 = pool.connect()
             return conn2
-
-        go()
-
-    def test_second_samethread_connect(self):
-        conn = pool.connect()
-        conn  # strong ref
-
-        @profiling.function_call_count()
-        def go():
-            return pool.connect()
 
         go()

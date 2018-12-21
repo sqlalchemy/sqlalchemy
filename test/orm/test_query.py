@@ -39,7 +39,6 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Query
@@ -842,7 +841,7 @@ class GetTest(QueryTest):
 
         # eager load does
         s.query(User).options(
-            joinedload("addresses"), joinedload_all("orders.items")
+            joinedload("addresses"), joinedload("orders").joinedload("items")
         ).populate_existing().all()
         assert u.addresses[0].email_address == "jack@bean.com"
         assert u.orders[1].items[2].description == "item 5"
@@ -4000,31 +3999,30 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             None,
         )
 
-    def test_fragment(self):
+    def test_whereclause(self):
         User = self.classes.User
 
-        with expect_warnings("Textual SQL expression"):
-            eq_(
-                create_session().query(User).filter("id in (8, 9)").all(),
-                [User(id=8), User(id=9)],
-            )
+        eq_(
+            create_session().query(User).filter(text("id in (8, 9)")).all(),
+            [User(id=8), User(id=9)],
+        )
 
-            eq_(
-                create_session()
-                .query(User)
-                .filter("name='fred'")
-                .filter("id=9")
-                .all(),
-                [User(id=9)],
-            )
-            eq_(
-                create_session()
-                .query(User)
-                .filter("name='fred'")
-                .filter(User.id == 9)
-                .all(),
-                [User(id=9)],
-            )
+        eq_(
+            create_session()
+            .query(User)
+            .filter(text("name='fred'"))
+            .filter(text("id=9"))
+            .all(),
+            [User(id=9)],
+        )
+        eq_(
+            create_session()
+            .query(User)
+            .filter(text("name='fred'"))
+            .filter(User.id == 9)
+            .all(),
+            [User(id=9)],
+        )
 
     def test_binds_coerce(self):
         User = self.classes.User
