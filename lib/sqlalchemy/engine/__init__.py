@@ -155,20 +155,45 @@ def create_engine(*args, **kwargs):
         additional keyword arguments.  See the example
         at :ref:`custom_dbapi_args`.
 
-    :param convert_unicode=False: if set to True, sets
-        the default behavior of ``convert_unicode`` on the
-        :class:`.String` type to ``True``, regardless
-        of a setting of ``False`` on an individual
-        :class:`.String` type, thus causing all :class:`.String`
-        -based columns
-        to accommodate Python ``unicode`` objects.  This flag
-        is useful as an engine-wide setting when using a
-        DBAPI that does not natively support Python
-        ``unicode`` objects and raises an error when
-        one is received (such as pyodbc with FreeTDS).
+    :param convert_unicode=False: if set to True, causes
+        all :class:`.String` datatypes to act as though the
+        :paramref:`.String.convert_unicode` flag has been set to ``True``,
+        regardless of a setting of ``False`` on an individual :class:`.String`
+        type.  This has the effect of causing all :class:`.String` -based
+        columns to accommodate Python Unicode objects directly as though the
+        datatype were the :class:`.Unicode` type.
 
-        See :class:`.String` for further details on
-        what this flag indicates.
+        .. note::
+
+            SQLAlchemy's unicode-conversion flags and features only apply
+            to Python 2; in Python 3, all string objects are Unicode objects.
+            For this reason, as well as the fact that virtually all modern
+            DBAPIs now support Unicode natively even under Python 2,
+            the :paramref:`.Engine.convert_unicode` flag is inherently a
+            legacy feature.
+
+        .. note::
+
+            This flag does **not** imply that SQLAlchemy's unicode-conversion
+            services will be used, as all modern DBAPIs already handle
+            unicode natively; in most cases it only indicates that the
+            :class:`.String` datatype will return Python unicode objects,
+            rather than plain strings.   The :class:`.String` datatype itself
+            has additional options to force the usage of SQLAlchemy's unicode
+            converters.
+
+        .. note::
+
+            This flag does **not** impact "raw" SQL statements that have no
+            typing information set up; that is, if the :class:`.String`
+            datatype is not used, no unicode behavior is implied.
+
+        .. seealso::
+
+            :paramref:`.String.convert_unicode` - the flag local to the
+            :class:`.String` datatype has additional options
+            which can force unicode handling on a per-type basis.
+
 
     :param creator: a callable which returns a DBAPI connection.
         This creation function will be passed to the underlying
