@@ -2373,3 +2373,122 @@ class TestProperties(fixtures.TestBase):
 
             eq_(props._data, p._data)
             eq_(props.keys(), p.keys())
+
+
+class QuotedTokenParserTest(fixtures.TestBase):
+    def _test(self, string, expected):
+        eq_(
+            langhelpers.quoted_token_parser(string),
+            expected
+        )
+
+    def test_single(self):
+        self._test(
+            "name",
+            ["name"]
+        )
+
+    def test_dotted(self):
+        self._test(
+            "schema.name", ["schema", "name"]
+        )
+
+    def test_dotted_quoted_left(self):
+        self._test(
+            '"Schema".name', ["Schema", "name"]
+        )
+
+    def test_dotted_quoted_left_w_quote_left_edge(self):
+        self._test(
+            '"""Schema".name', ['"Schema', "name"]
+        )
+
+    def test_dotted_quoted_left_w_quote_right_edge(self):
+        self._test(
+            '"Schema""".name', ['Schema"', "name"]
+        )
+
+    def test_dotted_quoted_left_w_quote_middle(self):
+        self._test(
+            '"Sch""ema".name', ['Sch"ema', "name"]
+        )
+
+    def test_dotted_quoted_right(self):
+        self._test(
+            'schema."SomeName"', ["schema", "SomeName"]
+        )
+
+    def test_dotted_quoted_right_w_quote_left_edge(self):
+        self._test(
+            'schema."""name"', ['schema', '"name']
+        )
+
+    def test_dotted_quoted_right_w_quote_right_edge(self):
+        self._test(
+            'schema."name"""', ['schema', 'name"']
+        )
+
+    def test_dotted_quoted_right_w_quote_middle(self):
+        self._test(
+            'schema."na""me"', ['schema', 'na"me']
+        )
+
+    def test_quoted_single_w_quote_left_edge(self):
+        self._test(
+            '"""name"', ['"name']
+        )
+
+    def test_quoted_single_w_quote_right_edge(self):
+        self._test(
+            '"name"""', ['name"']
+        )
+
+    def test_quoted_single_w_quote_middle(self):
+        self._test(
+            '"na""me"', ['na"me']
+        )
+
+    def test_dotted_quoted_left_w_dot_left_edge(self):
+        self._test(
+            '".Schema".name', ['.Schema', "name"]
+        )
+
+    def test_dotted_quoted_left_w_dot_right_edge(self):
+        self._test(
+            '"Schema.".name', ['Schema.', "name"]
+        )
+
+    def test_dotted_quoted_left_w_dot_middle(self):
+        self._test(
+            '"Sch.ema".name', ['Sch.ema', "name"]
+        )
+
+    def test_dotted_quoted_right_w_dot_left_edge(self):
+        self._test(
+            'schema.".name"', ['schema', '.name']
+        )
+
+    def test_dotted_quoted_right_w_dot_right_edge(self):
+        self._test(
+            'schema."name."', ['schema', 'name.']
+        )
+
+    def test_dotted_quoted_right_w_dot_middle(self):
+        self._test(
+            'schema."na.me"', ['schema', 'na.me']
+        )
+
+    def test_quoted_single_w_dot_left_edge(self):
+        self._test(
+            '".name"', ['.name']
+        )
+
+    def test_quoted_single_w_dot_right_edge(self):
+        self._test(
+            '"name."', ['name.']
+        )
+
+    def test_quoted_single_w_dot_middle(self):
+        self._test(
+            '"na.me"', ['na.me']
+        )

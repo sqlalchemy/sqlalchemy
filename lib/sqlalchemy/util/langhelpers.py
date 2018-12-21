@@ -1422,3 +1422,48 @@ def wrap_callable(wrapper, fn):
             _f.__doc__ = fn.__doc__
 
         return _f
+
+
+def quoted_token_parser(value):
+    """Parse a dotted identifier with accomodation for quoted names.
+
+    Includes support for SQL-style double quotes as a literal character.
+
+    E.g.::
+
+        >>> quoted_token_parser("name")
+        ["name"]
+        >>> quoted_token_parser("schema.name")
+        ["schema", "name"]
+        >>> quoted_token_parser('"Schema"."Name"')
+        ['Schema', 'Name']
+        >>> quoted_token_parser('"Schema"."Name""Foo"')
+        ['Schema', 'Name""Foo']
+
+    """
+
+    if '"' not in value:
+        return value.split(".")
+
+    # 0 = outside of quotes
+    # 1 = inside of quotes
+    state = 0
+    result = [[]]
+    idx = 0
+    lv = len(value)
+    while idx < lv:
+        char = value[idx]
+        if char == '"':
+            if state == 1 and idx < lv - 1 and value[idx + 1] == '"':
+                result[-1].append('"')
+                idx += 1
+            else:
+                state ^= 1
+        elif char == "." and state == 0:
+            result.append([])
+        else:
+            result[-1].append(char)
+        idx += 1
+
+    return ["".join(token) for token in result]
+
