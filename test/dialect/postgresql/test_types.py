@@ -351,6 +351,27 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         t2.create()  # does not create ENUM
 
     @testing.provide_metadata
+    def test_generate_multiple_schemaname_on_metadata(self):
+        metadata = self.metadata
+
+        Enum('one', 'two', 'three', name="myenum", metadata=metadata)
+        Enum('one', 'two', 'three', name="myenum", metadata=metadata,
+             schema="test_schema")
+
+        metadata.create_all(checkfirst=False)
+        assert 'myenum' in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        assert 'myenum' in [
+            e['name'] for
+            e in inspect(testing.db).get_enums(schema="test_schema")]
+        metadata.drop_all(checkfirst=False)
+        assert 'myenum' not in [
+            e['name'] for e in inspect(testing.db).get_enums()]
+        assert 'myenum' not in [
+            e['name'] for
+            e in inspect(testing.db).get_enums(schema="test_schema")]
+
+    @testing.provide_metadata
     def test_drops_on_table(self):
         metadata = self.metadata
 

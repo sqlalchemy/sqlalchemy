@@ -1344,8 +1344,8 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
                 pg_enums = ddl_runner.memo['_pg_enums']
             else:
                 pg_enums = ddl_runner.memo['_pg_enums'] = set()
-            present = self.name in pg_enums
-            pg_enums.add(self.name)
+            present = (self.schema, self.name) in pg_enums
+            pg_enums.add((self.schema, self.name))
             return present
         else:
             return False
@@ -2567,20 +2567,26 @@ class PGDialect(default.DefaultDialect):
                      )
         c = connection.execute(s, table_oid=table_oid)
         rows = c.fetchall()
+
+        # dictionary with (name, ) if default search path or (schema, name)
+        # as keys
         domains = self._load_domains(connection)
+
+        # dictionary with (name, ) if default search path or (schema, name)
+        # as keys
         enums = dict(
-            (
-                "%s.%s" % (rec['schema'], rec['name'])
-                if not rec['visible'] else rec['name'], rec) for rec in
-            self._load_enums(connection, schema='*')
+            ((rec['name'], ), rec)
+            if rec['visible'] else ((rec['schema'], rec['name']), rec)
+            for rec in self._load_enums(connection, schema='*')
         )
 
         # format columns
         columns = []
-        for name, format_type, default, notnull, attnum, table_oid, \
+
+        for name, format_type, default_, notnull, attnum, table_oid, \
                 comment in rows:
             column_info = self._get_column_info(
-                name, format_type, default, notnull, domains, enums,
+                name, format_type, default_, notnull, domains, enums,
                 schema, comment)
             columns.append(column_info)
         return columns
@@ -2589,7 +2595,8 @@ class PGDialect(default.DefaultDialect):
                          notnull, domains, enums, schema, comment):
         def _handle_array_type(attype):
             return (
-                attype.replace('[]', ''), # strip '[]' from integer[], etc.
+                # strip '[]' from integer[], etc.
+                re.sub(r'\[\]$', '', attype),
                 attype.endswith('[]'),
             )
 
@@ -2597,11 +2604,11 @@ class PGDialect(default.DefaultDialect):
         # with time zone, geometry(POLYGON), etc.
         attype = re.sub(r'\(.*\)', '', format_type)
 
-        # strip quotes from case sensitive enum names
-        attype = re.sub(r'^"|"$', '', attype)
-
         # strip '[]' from integer[], etc. and check if an array
         attype, is_array = _handle_array_type(attype)
+
+        # strip quotes from case sensitive enum or domain names
+        enum_or_domain_key = tuple(util.quoted_token_parser(attype))
 
         nullable = not notnull
 
@@ -2655,21 +2662,24 @@ class PGDialect(default.DefaultDialect):
             args = (int(charlen),)
 
         while True:
+            # looping here to suit nested domains
             if attype in self.ischema_names:
                 coltype = self.ischema_names[attype]
                 break
-            elif attype in enums:
-                enum = enums[attype]
+            elif enum_or_domain_key in enums:
+                enum = enums[enum_or_domain_key]
                 coltype = ENUM
                 kwargs['name'] = enum['name']
                 if not enum['visible']:
                     kwargs['schema'] = enum['schema']
                 args = tuple(enum['labels'])
                 break
-            elif attype in domains:
-                domain = domains[attype]
+            elif enum_or_domain_key in domains:
+                domain = domains[enum_or_domain_key]
                 attype = domain['attype']
                 attype, is_array = _handle_array_type(attype)
+                # strip quotes from case sensitive enum or domain names
+                enum_or_domain_key = tuple(util.quoted_token_parser(attype))
                 # A table can't override whether the domain is nullable.
                 nullable = domain['nullable']
                 if domain['default'] and not default:
@@ -3153,16 +3163,16 @@ class PGDialect(default.DefaultDialect):
         for domain in c.fetchall():
             # strip (30) from character varying(30)
             attype = re.search(r'([^\(]+)', domain['attype']).group(1)
+            # 'visible' just means whether or not the domain is in a
+            # schema that's on the search path -- or not overridden by
+            # a schema with higher precedence. If it's not visible,
+            # it will be prefixed with the schema-name when it's used.
             if domain['visible']:
-                # 'visible' just means whether or not the domain is in a
-                # schema that's on the search path -- or not overridden by
-                # a schema with higher precedence. If it's not visible,
-                # it will be prefixed with the schema-name when it's used.
-                name = domain['name']
+                key = (domain['name'], )
             else:
-                name = "%s.%s" % (domain['schema'], domain['name'])
+                key = (domain['schema'], domain['name'])
 
-            domains[name] = {
+            domains[key] = {
                 'attype': attype,
                 'nullable': domain['nullable'],
                 'default': domain['default']
