@@ -292,6 +292,91 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         assert a1 not in u1.addresses
 
+    def test_tuple_assignment_w_reverse(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User()
+
+        a1 = Address(email_address="1")
+        a2 = Address(email_address="2")
+        a3 = Address(email_address="3")
+        u1.addresses.append(a1)
+        u1.addresses.append(a2)
+        u1.addresses.append(a3)
+
+        u1.addresses[1], u1.addresses[2] = u1.addresses[2], u1.addresses[1]
+
+        assert a3.user is u1
+
+        eq_(
+            u1.addresses,
+            [a1, a3, a2]
+        )
+
+    def test_straight_remove(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User()
+
+        a1 = Address(email_address="1")
+        a2 = Address(email_address="2")
+        a3 = Address(email_address="3")
+        u1.addresses.append(a1)
+        u1.addresses.append(a2)
+        u1.addresses.append(a3)
+
+        del u1.addresses[2]
+
+        assert a3.user is None
+        eq_(
+            u1.addresses,
+            [a1, a2]
+        )
+
+    def test_append_del(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User()
+
+        a1 = Address(email_address="1")
+        a2 = Address(email_address="2")
+        a3 = Address(email_address="3")
+        u1.addresses.append(a1)
+        u1.addresses.append(a2)
+        u1.addresses.append(a3)
+
+        u1.addresses.append(a2)
+        del u1.addresses[1]
+
+        assert a2.user is u1
+        eq_(
+            u1.addresses,
+            [a1, a3, a2]
+        )
+
+    def test_bulk_replace(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User()
+
+        a1 = Address(email_address="1")
+        a2 = Address(email_address="2")
+        a3 = Address(email_address="3")
+        u1.addresses.append(a1)
+        u1.addresses.append(a2)
+        u1.addresses.append(a3)
+        u1.addresses.append(a3)
+
+        assert a3.user is u1
+
+        u1.addresses = [a1, a2, a1]
+
+        assert a3.user is None
+        eq_(
+            u1.addresses,
+            [a1, a2, a1]
+        )
+
 
 class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -810,3 +895,4 @@ class M2MStaleBackrefTest(_fixtures.FixtureTest):
         i1.keywords = []
         k2.items.remove(i1)
         assert len(k2.items) == 0
+

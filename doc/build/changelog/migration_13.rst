@@ -539,6 +539,80 @@ Note that this change may be revised if it leads to problems.
 
 :ticket:`4268`
 
+.. _change_1103:
+
+Many-to-one backref checks for collection duplicates during remove operation
+----------------------------------------------------------------------------
+
+When an ORM-mapped collection that existed as a Python sequence, typically a
+Python ``list`` as is the default for :func:`.relationship`, contained
+duplicates, and the object were removed from one of its positions but not the
+other(s),  a many-to-one backref would set its attribute to ``None`` even
+though the one-to-many side still represented the object as present.  Even
+though one-to-many collections cannot have duplicates in the relational model,
+an ORM-mapped :func:`.relationship` that uses a sequence collection can have
+duplicates inside of it in memory, with the restriction that this duplicate
+state can neither be persisted nor retrieved from the database.   In particular,
+having a duplicate temporarily present in the list is intrinsic to a Python
+"swap" operation.  Given a standard one-to-many/many-to-one setup::
+
+    class A(Base):
+        __tablename__ = 'a'
+
+        id = Column(Integer, primary_key=True)
+        bs = relationship("B", backref="a")
+
+
+    class B(Base):
+        __tablename__ = 'b'
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+
+If we have an ``A`` object with two ``B`` members, and perform a swap::
+
+    a1 = A(bs=[B(), B()])
+
+    a1.bs[0], a1.bs[1] = a1.bs[1], a1.bs[0]
+
+During the above operation, interception of the standard Python ``__setitem__``
+``__delitem__`` methods delivers an interim state where the second ``B()``
+object is present twice in the collection.  When the ``B()`` object is removed
+from one of the positions, the ``B.a`` backref would set the reference to
+``None``, causing the link between the ``A`` and ``B`` object to be removed
+during the flush.   The same issue can be demonstrated using plain duplicates::
+
+    >>> a1 = A()
+    >>> b1 = B()
+    >>> a1.bs.append(b1)
+    >>> a1.bs.append(b1)  # append the same b1 object twice
+    >>> del a1.bs[1]
+    >>> a1.bs  # collection is unaffected so far...
+    [<__main__.B object at 0x7f047af5fb70>]
+    >>> b1.a   # however b1.a is None
+    >>>
+    >>> session.add(a1)
+    >>> session.commit()  # so upon flush + expire....
+    >>> a1.bs  # the value is gone
+    []
+
+The fix ensures that when the backref fires off, which is before the collection
+is mutated, the collection is checked for exactly one or zero instances of
+the target item before unsetting the many-to-one side, using a linear search
+which at the moment makes use of ``list.search`` and ``list.__contains__``.
+
+Originally it was thought that an event-based reference counting scheme would
+need to be used within the collection internals so that all duplicate instances
+could be tracked throughout the lifecycle of the collection, which would have
+added a performance/memory/complexity impact to all collection operations,
+including the very frequent operations of loading and appending.  The approach
+that is taken instead limits the  additional expense  to the less common
+operations of collection removal and bulk replacement, and the observed
+overhead of the linear scan is negligible; linear scans of relationship-bound
+collections are already used within the unit of work as well as when a
+collection is bulk replaced.
+
+
+:ticket:`1103`
 
 Key Behavioral Changes - ORM
 =============================
