@@ -437,7 +437,9 @@ class _EventsHold(event.RefCollection):
         _dispatch_target = None
 
         @classmethod
-        def _listen(cls, event_key, raw=False, propagate=False, **kw):
+        def _listen(
+                cls, event_key, raw=False, propagate=False,
+                retval=False, **kw):
             target, identifier, fn = \
                 event_key.dispatch_target, event_key.identifier, event_key.fn
 
@@ -447,7 +449,7 @@ class _EventsHold(event.RefCollection):
                 collection = target.all_holds[target.class_] = {}
 
             event.registry._stored_in_collection(event_key, target)
-            collection[event_key._key] = (event_key, raw, propagate)
+            collection[event_key._key] = (event_key, raw, propagate, retval)
 
             if propagate:
                 stack = list(target.class_.__subclasses__())
@@ -459,7 +461,7 @@ class _EventsHold(event.RefCollection):
                         # we are already going through __subclasses__()
                         # so leave generic propagate flag False
                         event_key.with_dispatch_target(subject).\
-                            listen(raw=raw, propagate=False, **kw)
+                            listen(raw=raw, propagate=False, retval=retval, **kw)
 
     def remove(self, event_key):
         target, identifier, fn = \
@@ -474,7 +476,7 @@ class _EventsHold(event.RefCollection):
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
                 collection = cls.all_holds[subclass]
-                for event_key, raw, propagate in collection.values():
+                for event_key, raw, propagate, retval in collection.values():
                     if propagate or subclass is class_:
                         # since we can't be sure in what order different
                         # classes in a hierarchy are triggered with
@@ -482,7 +484,7 @@ class _EventsHold(event.RefCollection):
                         # assignment, instead of using the generic propagate
                         # flag.
                         event_key.with_dispatch_target(subject).\
-                            listen(raw=raw, propagate=False)
+                            listen(raw=raw, propagate=False, retval=retval)
 
 
 class _InstanceEventsHold(_EventsHold):
@@ -659,6 +661,54 @@ class MapperEvents(event.Events):
 
         """
 
+    def before_mapper_configured(self, mapper, class_):
+        """Called right before a specific mapper is to be configured.
+
+        This event is intended to allow a specific mapper to be skipped during
+        the configure step, by returning the :attr:`.orm.interfaces.EXT_SKIP`
+        symbol which indicates to the :func:`.configure_mappers` call that this
+        particular mapper (or hierarchy of mappers, if ``propagate=True`` is
+        used) should be skipped in the current configuration run.  When one or
+        more mappers are skipped, the he "new mappers" flag will remain set,
+        meaning the :func:`.configure_mappers` function will continue to be
+        called when mappers are used, to continue to try to configure all
+        available mappers.
+
+        In comparison to the other configure-level events,
+        :meth:`.MapperEvents.before_configured`,
+        :meth:`.MapperEvents.after_configured`, and
+        :meth:`.MapperEvents.mapper_configured`, the
+        :meth;`.MapperEvents.before_mapper_configured` event provides for a
+        meaningful return value when it is registered with the ``retval=True``
+        parameter.
+
+        .. versionadded:: 1.3
+
+        e.g.::
+
+            from sqlalchemy.orm import EXT_SKIP
+
+            Base = declarative_base()
+
+            DontConfigureBase = declarative_base()
+
+            @event.listens_for(
+                DontConfigureBase,
+                "before_mapper_configured", retval=True, propagate=True)
+            def dont_configure(mapper, cls):
+                return EXT_SKIP
+
+
+        .. seealso::
+
+            :meth:`.MapperEvents.before_configured`
+
+            :meth:`.MapperEvents.after_configured`
+
+            :meth:`.MapperEvents.mapper_configured`
+
+        """
+
     def mapper_configured(self, mapper, class_):
         r"""Called when a specific mapper has completed its own configuration
         within the scope of the :func:`.configure_mappers` call.
@@ -708,6 +758,8 @@ class MapperEvents(event.Events):
 
             :meth:`.MapperEvents.after_configured`
 
+            :meth:`.MapperEvents.before_mapper_configured`
+
         """
         # TODO: need coverage for this event
 
@@ -734,8 +786,9 @@ class MapperEvents(event.Events):
 
         Contrast this event to :meth:`.MapperEvents.after_configured`,
         which is invoked after the series of mappers has been configured,
-        as well as :meth:`.MapperEvents.mapper_configured`, which is invoked
-        on a per-mapper basis as each one is configured to the extent possible.
+        as well as :meth:`.MapperEvents.before_mapper_configured`
+        and :meth:`.MapperEvents.mapper_configured`, which are both invoked
+        on a per-mapper basis.
 
         Theoretically this event is called once per
         application, but is actually called any time new mappers
@@ -756,6 +809,8 @@ class MapperEvents(event.Events):
 
 
         .. seealso::
+
+            :meth:`.MapperEvents.before_mapper_configured`
 
             :meth:`.MapperEvents.mapper_configured`
 
@@ -807,6 +862,8 @@ class MapperEvents(event.Events):
                 # ...
 
         .. seealso::
+
+            :meth:`.MapperEvents.before_mapper_configured`
 
             :meth:`.MapperEvents.mapper_configured`
 

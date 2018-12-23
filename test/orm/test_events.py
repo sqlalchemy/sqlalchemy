@@ -2,6 +2,7 @@ from sqlalchemy.testing import assert_raises_message, assert_raises
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy import Integer, String
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.testing.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, \
     create_session, class_mapper, \
@@ -9,7 +10,9 @@ from sqlalchemy.orm import mapper, relationship, \
     Session, sessionmaker, attributes, configure_mappers
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm import instrumentation, events
-from sqlalchemy.testing import eq_, is_not_
+from sqlalchemy.orm import EXT_SKIP
+from sqlalchemy.orm.mapper import _mapper_registry
+from sqlalchemy.testing import eq_, is_not_, assert_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing.util import gc_collect
@@ -473,6 +476,63 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             ],
             canary.mock_calls
         )
+
+    def test_before_mapper_configured_event(self):
+        """Test [ticket:4397].
+
+        This event is intended to allow a specific mapper to be skipped during
+        the configure step, by returning a value of
+        :attr:`.orm.interfaces.EXT_SKIP` which means the mapper will be skipped
+        within this configure run.    The "new mappers" flag will remain set in
+        this case and the configure operation will occur again.
+
+        This event, and its return value, make it possible to query one base
+        while a different one still needs configuration, which cannot be
+        completed at this time.
+        """
+
+        User, users = self.classes.User, self.tables.users
+        mapper(User, users)
+
+        AnotherBase = declarative_base()
+
+        class Animal(AnotherBase):
+            __tablename__ = 'animal'
+            species = Column(String(30), primary_key=True)
+            __mapper_args__ = dict(
+                polymorphic_on='species', polymorphic_identity='Animal')
+
+        # Register the first classes and create their Mappers:
+        configure_mappers()
+
+        unconfigured = [m for m in _mapper_registry if not m.configured]
+        eq_(0, len(unconfigured))
+
+        # Declare a subclass, table and mapper, which refers to one that has
+        # not been loaded yet (Employer), and therefore cannot be configured:
+        class Mammal(Animal):
+            nonexistent = relationship('Nonexistent')
+
+        # These new classes should not be configured at this point:
+        unconfigured = [m for m in _mapper_registry if not m.configured]
+        eq_(1, len(unconfigured))
+
+        # Now try to query User, which is internally consistent. This query
+        # fails by default because Mammal needs to be configured, and cannot
+        # be:
+        def probe():
+            s = Session()
+            s.query(User)
+        assert_raises(sa.exc.InvalidRequestError, probe)
+
+        # If we disable configuring mappers while querying, then it succeeds:
+        @event.listens_for(
+            AnotherBase, "before_mapper_configured", propagate=True,
+            retval=True)
+        def disable_configure_mappers(mapper, cls):
+            return EXT_SKIP
+
+        probe()
 
 
 class DeclarativeEventListenTest(_RemoveListeners,

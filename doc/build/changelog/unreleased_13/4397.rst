@@ -1,0 +1,17 @@
+.. change::
+   :tags: feature, orm
+   :tickets: 4397
+
+   Added new :meth:`.MapperEvents.before_mapper_configured` event.   This
+   event complements the other "configure" stage mapper events with a per
+   mapper event that receives each :class:`.Mapper` right before its
+   configure step, and additionally may be used to prevent or delay the
+   configuration of specific :class:`.Mapper` objects using a new
+   return value :attr:`.orm.interfaces.EXT_SKIP`.  See the
+   documentation link for an example.
+
+   .. seealso::
+
+      :ref:`.MapperEvents.before_mapper_configured`
+
+

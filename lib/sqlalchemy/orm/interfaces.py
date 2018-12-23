@@ -23,7 +23,7 @@ from __future__ import absolute_import
 from .. import util
 from ..sql import operators
 from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
-                   EXT_CONTINUE, EXT_STOP, NOT_EXTENSION)
+                   EXT_CONTINUE, EXT_STOP, EXT_SKIP, NOT_EXTENSION)
 from .base import InspectionAttr, InspectionAttrInfo, _MappedAttribute
 import collections
 from .. import inspect
@@ -36,6 +36,7 @@ __all__ = (
     'AttributeExtension',
     'EXT_CONTINUE',
     'EXT_STOP',
+    'EXT_SKIP',
     'ONETOMANY',
     'MANYTOMANY',
     'MANYTOONE',
