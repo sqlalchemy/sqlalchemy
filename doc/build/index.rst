@@ -98,5 +98,11 @@ Dialect Documentation
 The **dialect** is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.
 This section describes notes, options, and usage patterns regarding individual dialects.
 
-:doc:`Index of all Dialects <dialects/index>`
+:doc:`PostgreSQL <dialects/postgresql>` |
+:doc:`MySQL <dialects/mysql>` |
+:doc:`SQLite <dialects/sqlite>` |
+:doc:`Oracle <dialects/oracle>` |
+:doc:`Microsoft SQL Server <dialects/mssql>`
+
+:doc:`More Dialects ... <dialects/index>`
 

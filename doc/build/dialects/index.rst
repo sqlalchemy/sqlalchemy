@@ -16,12 +16,12 @@ Included Dialects
     :maxdepth: 1
     :glob:
 
-    firebird
-    mssql
-    mysql
-    oracle
     postgresql
+    mysql
     sqlite
+    oracle
+    mssql
+    firebird
     sybase
 
 .. _external_toplevel:
@@ -29,25 +29,10 @@ Included Dialects
 External Dialects
 -----------------
 
-.. versionchanged:: 0.8
-   As of SQLAlchemy 0.8, several dialects have been moved to external
-   projects, and dialects for new databases will also be published
-   as external projects.   The rationale here is to keep the base
-   SQLAlchemy install and test suite from growing inordinately large.
+Currently maintained external dialect projects for SQLAlchemy include:
 
-   The "classic" dialects such as SQLite, MySQL, PostgreSQL, Oracle,
-   SQL Server, and Firebird will remain in the Core for the time being.
 
-.. versionchanged:: 1.0
-    The Drizzle dialect has been moved into the third party system.
-
-Current external dialect projects for SQLAlchemy include:
-
-Production Ready
-^^^^^^^^^^^^^^^^
-
-* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix,
-  developed jointly by IBM and SQLAlchemy developers.
+* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix.
 * `sqlalchemy-redshift <https://pypi.python.org/pypi/sqlalchemy-redshift>`_ - driver for Amazon Redshift, adapts
   the existing PostgreSQL/psycopg2 driver.
 * `sqlalchemy-hana <https://github.com/SAP/sqlalchemy-hana>`_ - driver for SAP Hana.
@@ -59,27 +44,4 @@ Production Ready
 * `sqlalchemy-tds <https://github.com/m32/sqlalchemy-tds>`_ - driver for MS-SQL,
   on top of `python-tds <https://github.com/denisenkom/pytds>`_.
 * `crate <https://github.com/crate/crate-python>`_ - driver for `CrateDB <https://crate.io/>`_.
-
-Experimental / Incomplete
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Dialects that are in an incomplete state or are considered somewhat experimental.
-
-* `CALCHIPAN <https://bitbucket.org/zzzeek/calchipan/>`_ - Adapts `Pandas <http://pandas.pydata.org/>`_ dataframes to SQLAlchemy.
-* `sqlalchemy-cubrid <https://bitbucket.org/zzzeek/sqlalchemy-cubrid>`_ - driver for the CUBRID database.
-
-Attic
-^^^^^
-
-Dialects in the "attic" are those that were contributed for SQLAlchemy long ago
-but have received little attention or demand since then, and are now moved out to
-their own repositories in at best a semi-working state.
-Community members interested in these dialects should feel free to pick up on
-their current codebase and fork off into working libraries.
-
-* `sqlalchemy-access <https://bitbucket.org/zzzeek/sqlalchemy-access>`_ - driver for Microsoft Access.
-* `sqlalchemy-drizzle <https://bitbucket.org/zzzeek/sqlalchemy-drizzle>`_ - driver for the Drizzle MySQL variant.
-* `sqlalchemy-informixdb <https://bitbucket.org/zzzeek/sqlalchemy-informixdb>`_ - driver for the informixdb DBAPI.
-* `sqlalchemy-maxdb <https://bitbucket.org/zzzeek/sqlalchemy-maxdb>`_ - driver for the MaxDB database
-
 
