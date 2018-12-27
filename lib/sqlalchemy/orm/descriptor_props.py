@@ -660,6 +660,10 @@ class SynonymProperty(DescriptorProperty):
             comp = prop.comparator_factory(prop, mapper)
         return comp
 
+    def get_history(self, *arg, **kw):
+        attr = getattr(self.parent.class_, self.name)
+        return attr.impl.get_history(*arg, **kw)
+
     def set_parent(self, parent, init):
         if self.map_column:
             # implement the 'map_column' option.

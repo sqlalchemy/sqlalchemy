@@ -1381,6 +1381,23 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         u = s.query(User).filter(User.y == 8).one()
         eq_(u.y, 8)
 
+    def test_synonym_get_history(self):
+        users, User = (self.tables.users,
+                       self.classes.User)
+
+        mapper(User, users, properties={
+            'x': synonym('id'),
+            'y': synonym('x')
+        })
+
+        u1 = User()
+        eq_(attributes.instance_state(u1).attrs.x.history, (None, None, None))
+        eq_(attributes.instance_state(u1).attrs.y.history, (None, None, None))
+
+        u1.y = 5
+        eq_(attributes.instance_state(u1).attrs.x.history, ([5], (), ()))
+        eq_(attributes.instance_state(u1).attrs.y.history, ([5], (), ()))
+
     def test_synonym_of_non_property_raises(self):
         from sqlalchemy.ext.associationproxy import association_proxy
 
