@@ -564,23 +564,22 @@ class AttributesTest(fixtures.ORMTest):
                                       extension=[ReceiveEvents('scalar')])
 
         def create_hist():
-            def hist(key, shouldmatch, fn, *arg):
+            def hist(key, fn, *arg):
                 attributes.instance_state(f1)._commit_all(
                     attributes.instance_dict(f1))
                 fn(*arg)
-                histories.append((shouldmatch,
-                                  attributes.get_history(f1, key)))
+                histories.append(attributes.get_history(f1, key))
 
             f1 = Foo()
-            hist('bars', True, f1.bars.append, b3)
-            hist('bars', True, f1.bars.append, b4)
-            hist('bars', False, f1.bars.remove, b2)
-            hist('bar', True, setattr, f1, 'bar', b3)
-            hist('bar', True, setattr, f1, 'bar', None)
-            hist('bar', True, setattr, f1, 'bar', b4)
-            hist('scalar', True, setattr, f1, 'scalar', 5)
-            hist('scalar', True, setattr, f1, 'scalar', None)
-            hist('scalar', True, setattr, f1, 'scalar', 4)
+            hist('bars', f1.bars.append, b3)
+            hist('bars', f1.bars.append, b4)
+            hist('bars', f1.bars.remove, b2)
+            hist('bar', setattr, f1, 'bar', b3)
+            hist('bar', setattr, f1, 'bar', None)
+            hist('bar', setattr, f1, 'bar', b4)
+            hist('scalar', setattr, f1, 'scalar', 5)
+            hist('scalar', setattr, f1, 'scalar', None)
+            hist('scalar', setattr, f1, 'scalar', 4)
 
         histories = []
         commit = False
@@ -591,12 +590,9 @@ class AttributesTest(fixtures.ORMTest):
         create_hist()
         with_commit = histories
         for without, with_ in zip(without_commit, with_commit):
-            shouldmatch, woc = without
-            shouldmatch, wic = with_
-            if shouldmatch:
-                eq_(woc, wic)
-            else:
-                ne_(woc, wic)
+            woc = without
+            wic = with_
+            eq_(woc, wic)
 
     def test_extension_lazyload_assertion(self):
         class Foo(fixtures.BasicEntity):
