@@ -576,10 +576,18 @@ the rows in both ``A`` and ``B`` simultaneously::
     # 2. Create a new mapper() to B, with non_primary=True.
     # Columns in the join with the same name must be
     # disambiguated within the mapping, using named properties.
-    B_viacd = mapper(B, j, non_primary=True, properties={
-        "b_id": [j.c.b_id, j.c.d_b_id],
-        "d_id": j.c.d_id
-        })
+    # we also have to make sure the primary key of the regular "B"
+    # mapping is maintained.
+    B_viacd = mapper(
+        B, j, non_primary=True, primary_key=[j.c.b_id],
+        properties={
+            "id": j.c.b_id,  # so that 'id' looks the same as before
+            "c_id": j.c.c_id,   # needed for disambiguation
+            "d_c_id": j.c.d_c_id,  # needed for disambiguation
+            "b_id": [j.c.b_id, j.c.d_b_id],
+            "d_id": j.c.d_id,
+        }
+    )
 
     A.b = relationship(B_viacd, primaryjoin=A.b_id == B_viacd.c.b_id)
 
