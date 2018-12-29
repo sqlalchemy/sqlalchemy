@@ -1273,19 +1273,27 @@ def backref_listeners(attribute, key, uselist):
             if not child_impl.collection and not child_impl.dynamic:
                 check_remove_token = child_impl._remove_token
                 check_replace_token = child_impl._replace_token
+                check_for_dupes_on_remove = uselist and not parent_impl.dynamic
             else:
                 check_remove_token = child_impl._remove_token
                 check_replace_token = child_impl._bulk_replace_token \
                     if child_impl.collection else None
+                check_for_dupes_on_remove = False
 
             if initiator is not check_remove_token and \
                     initiator is not check_replace_token:
-                child_impl.pop(
-                    child_state,
-                    child_dict,
-                    state.obj(),
-                    initiator,
-                    passive=PASSIVE_NO_FETCH)
+
+                if not check_for_dupes_on_remove or \
+                    not util.has_dupes(
+                        # when this event is called, the item is usually
+                        # present in the list, except for a pop() operation.
+                        state.dict[parent_impl.key], child):
+                    child_impl.pop(
+                        child_state,
+                        child_dict,
+                        state.obj(),
+                        initiator,
+                        passive=PASSIVE_NO_FETCH)
 
     if uselist:
         event.listen(attribute, "append",

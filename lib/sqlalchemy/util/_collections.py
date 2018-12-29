@@ -1057,3 +1057,33 @@ def _iter_id(iterable):
 
     for item in iterable:
         yield id(item), item
+
+
+def has_dupes(sequence, target):
+    """Given a sequence and search object, return True if there's more
+    than one, False if zero or one of them.
+
+
+    """
+    # compare to .index version below, this version introduces less function
+    # overhead and is usually the same speed.  At 15000 items (way bigger than
+    # a relationship-bound collection in memory usually is) it begins to
+    # fall behind the other version only by microseconds.
+    c = 0
+    for item in sequence:
+        if item is target:
+            c += 1
+            if c > 1:
+                return True
+    return False
+
+# .index version.  the two __contains__ calls as well
+# as .index() and isinstance() slow this down.
+# def has_dupes(sequence, target):
+#    if target not in sequence:
+#        return False
+#    elif not isinstance(sequence, collections_abc.Sequence):
+#        return False
+#
+#    idx = sequence.index(target)
+#    return target in sequence[idx + 1:]
