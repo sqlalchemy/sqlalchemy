@@ -973,6 +973,14 @@ class CollectionAttributeImpl(AttributeImpl):
         return value
 
     def fire_pre_remove_event(self, state, dict_, initiator):
+        """A special event used for pop() operations.
+
+        The "remove" event needs to have the item to be removed passed to
+        it, which in the case of pop from a set, we don't have a way to access
+        the item before the operation.   the event is used for all pop()
+        operations (even though set.pop is the one where it is really needed).
+
+        """
         state._modified_event(dict_, self, NEVER_SET, True)
 
     def fire_remove_event(self, state, dict_, value, initiator):

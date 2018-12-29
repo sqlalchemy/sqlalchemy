@@ -1009,7 +1009,11 @@ def _instrument_membership_mutator(method, before, argument, after):
 
 
 def __set(collection, item, _sa_initiator=None):
-    """Run set events, may eventually be inlined into decorators."""
+    """Run set events.
+
+    This event always occurs before the collection is actually mutated.
+
+    """
 
     if _sa_initiator is not False:
         executor = collection._sa_adapter
@@ -1019,15 +1023,22 @@ def __set(collection, item, _sa_initiator=None):
 
 
 def __del(collection, item, _sa_initiator=None):
-    """Run del events, may eventually be inlined into decorators."""
+    """Run del events.
+
+    This event occurs before the collection is actually mutated, *except*
+    in the case of a pop operation, in which case it occurs afterwards.
+    For pop operations, the __before_pop hook is called before the
+    operation occurs.
+
+    """
     if _sa_initiator is not False:
         executor = collection._sa_adapter
         if executor:
             executor.fire_remove_event(item, _sa_initiator)
 
 
-def __before_delete(collection, _sa_initiator=None):
-    """Special method to run 'commit existing value' methods"""
+def __before_pop(collection, _sa_initiator=None):
+    """An event which occurs on a before a pop() operation occurs."""
     executor = collection._sa_adapter
     if executor:
         executor.fire_pre_remove_event(_sa_initiator)
@@ -1049,10 +1060,9 @@ def _list_decorators():
 
     def remove(fn):
         def remove(self, value, _sa_initiator=None):
-            __before_delete(self, _sa_initiator)
+            __del(self, value, _sa_initiator)
             # testlib.pragma exempt:__eq__
             fn(self, value)
-            __del(self, value, _sa_initiator)
         _tidy(remove)
         return remove
 
@@ -1156,7 +1166,7 @@ def _list_decorators():
 
     def pop(fn):
         def pop(self, index=-1):
-            __before_delete(self)
+            __before_pop(self)
             item = fn(self, index)
             __del(self, item)
             return item
@@ -1218,18 +1228,21 @@ def _dict_decorators():
 
     def pop(fn):
         def pop(self, key, default=Unspecified):
-            if key in self:
-                __del(self, self[key])
+            __before_pop(self)
+            _to_del = key in self
             if default is Unspecified:
-                return fn(self, key)
+                item = fn(self, key)
             else:
-                return fn(self, key, default)
+                item = fn(self, key, default)
+            if _to_del:
+                __del(self, item)
+            return item
         _tidy(pop)
         return pop
 
     def popitem(fn):
         def popitem(self):
-            __before_delete(self)
+            __before_pop(self)
             item = fn(self)
             __del(self, item[1])
             return item
@@ -1324,8 +1337,10 @@ def _set_decorators():
 
     def pop(fn):
         def pop(self):
-            __before_delete(self)
+            __before_pop(self)
             item = fn(self)
+            # for set in particular, we have no way to access the item
+            # that will be popped before pop is called.
             __del(self, item)
             return item
         _tidy(pop)

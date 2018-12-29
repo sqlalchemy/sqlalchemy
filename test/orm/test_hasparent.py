@@ -135,9 +135,9 @@ class ParentRemovalTest(fixtures.MappedTest):
             u1.addresses.remove, a1
         )
 
-        # unfortunately, u1.addresses was impacted
-        # here
-        assert u1.addresses == []
+        # u1.addresses wasn't actually impacted, because the event was
+        # caught before collection mutation
+        eq_(u1.addresses, [a1])
 
         # expire all and we can continue
         s.expire_all()
