@@ -140,7 +140,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
     def setup_query(
         self,
         context,
-        entity,
+        query_entity,
         path,
         loadopt,
         adapter,
@@ -173,7 +173,7 @@ class ColumnLoader(LoaderStrategy):
     def setup_query(
         self,
         context,
-        entity,
+        query_entity,
         path,
         loadopt,
         adapter,
@@ -235,7 +235,7 @@ class ExpressionColumnLoader(ColumnLoader):
     def setup_query(
         self,
         context,
-        entity,
+        query_entity,
         path,
         loadopt,
         adapter,
@@ -335,7 +335,7 @@ class DeferredColumnLoader(LoaderStrategy):
     def setup_query(
         self,
         context,
-        entity,
+        query_entity,
         path,
         loadopt,
         adapter,
@@ -366,7 +366,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 (("deferred", False), ("instrument", True))
             ).setup_query(
                 context,
-                entity,
+                query_entity,
                 path,
                 loadopt,
                 adapter,
@@ -440,11 +440,12 @@ class LoadDeferredColumns(object):
 class AbstractRelationshipLoader(LoaderStrategy):
     """LoaderStratgies which deal with related objects."""
 
-    __slots__ = "mapper", "target", "uselist"
+    __slots__ = "mapper", "target", "uselist", "entity"
 
     def __init__(self, parent, strategy_key):
         super(AbstractRelationshipLoader, self).__init__(parent, strategy_key)
         self.mapper = self.parent_property.mapper
+        self.entity = self.parent_property.entity
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
 
@@ -510,6 +511,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "_lazywhere",
         "_rev_lazywhere",
         "use_get",
+        "is_aliased_class",
         "_bind_to_col",
         "_equated_columns",
         "_rev_bind_to_col",
@@ -524,6 +526,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         super(LazyLoader, self).__init__(parent, strategy_key)
         self._raise_always = self.strategy_opts["lazy"] == "raise"
         self._raise_on_sql = self.strategy_opts["lazy"] == "raise_on_sql"
+
+        self.is_aliased_class = inspect(self.entity).is_aliased_class
 
         join_condition = self.parent_property._join_condition
         self._lazywhere, self._bind_to_col, self._equated_columns = (
@@ -540,10 +544,14 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
-        self.use_get = not self.uselist and self.mapper._get_clause[0].compare(
-            self._lazywhere,
-            use_proxies=True,
-            equivalents=self.mapper._equivalent_columns,
+        self.use_get = (
+            not self.is_aliased_class
+            and not self.uselist
+            and self.entity._get_clause[0].compare(
+                self._lazywhere,
+                use_proxies=True,
+                equivalents=self.mapper._equivalent_columns,
+            )
         )
 
         if self.use_get:
@@ -693,7 +701,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # does this, including how it decides what the correct
             # identity_token would be for this identity.
             instance = session.query()._identity_lookup(
-                self.mapper,
+                self.entity,
                 primary_key_identity,
                 passive=passive,
                 lazy_loaded_from=state,
@@ -757,7 +765,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         # lazy loaders.   Currently the LRU cache is local to the LazyLoader,
         # however add ourselves to the initial cache key just to future
         # proof in case it moves
-        q = self._bakery(lambda session: session.query(self.mapper), self)
+        q = self._bakery(lambda session: session.query(self.entity), self)
 
         q.add_criteria(
             lambda q: q._adapt_all_clauses()._with_invoke_all_eagers(False),
@@ -992,7 +1000,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if with_poly_info is not None:
             effective_entity = with_poly_info.entity
         else:
-            effective_entity = self.mapper
+            effective_entity = self.entity
 
         subq_path = context.attributes.get(
             ("subquery_path", None), orm_util.PathRegistry.root
@@ -1422,7 +1430,7 @@ class JoinedLoader(AbstractRelationshipLoader):
     def setup_query(
         self,
         context,
-        entity,
+        query_entity,
         path,
         loadopt,
         adapter,
@@ -1454,7 +1462,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 adapter,
                 add_to_collection,
             ) = self._setup_query_on_user_defined_adapter(
-                context, entity, path, adapter, user_defined_adapter
+                context, query_entity, path, adapter, user_defined_adapter
             )
         else:
             # if not via query option, check for
@@ -1473,7 +1481,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 chained_from_outerjoin,
             ) = self._generate_row_adapter(
                 context,
-                entity,
+                query_entity,
                 path,
                 loadopt,
                 adapter,
@@ -1490,12 +1498,12 @@ class JoinedLoader(AbstractRelationshipLoader):
         else:
             with_polymorphic = None
 
-        path = path[self.mapper]
+        path = path[self.entity]
 
         loading._setup_entity_query(
             context,
             self.mapper,
-            entity,
+            query_entity,
             path,
             clauses,
             add_to_collection,
@@ -1535,11 +1543,6 @@ class JoinedLoader(AbstractRelationshipLoader):
         alias = loadopt.local_opts["eager_from_alias"]
 
         root_mapper, prop = path[-2:]
-
-        # from .mapper import Mapper
-        # from .interfaces import MapperProperty
-        # assert isinstance(root_mapper, Mapper)
-        # assert isinstance(prop, MapperProperty)
 
         if alias is not None:
             if isinstance(alias, str):
@@ -1597,6 +1600,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         # we need one unique AliasedClass per query per appearance of our
         # entity in the query.
 
+        if inspect(self.entity).is_aliased_class:
+            alt_selectable = inspect(self.entity).selectable
+        else:
+            alt_selectable = None
+
         key = ("joinedloader_ac", self)
         if key not in context.attributes:
             context.attributes[key] = idx = 0
@@ -1605,8 +1613,14 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if idx >= len(self._aliased_class_pool):
             to_adapt = orm_util.AliasedClass(
-                self.mapper, flat=True, use_mapper_path=True
+                self.mapper,
+                alias=alt_selectable.alias(flat=True)
+                if alt_selectable is not None
+                else None,
+                flat=True,
+                use_mapper_path=True,
             )
+
             # load up the .columns collection on the Alias() before
             # the object becomes shared among threads.  this prevents
             # races for column identities.
@@ -1683,7 +1697,7 @@ class JoinedLoader(AbstractRelationshipLoader):
     def _create_eager_join(
         self,
         context,
-        entity,
+        query_entity,
         path,
         adapter,
         parentmapper,
@@ -1693,7 +1707,7 @@ class JoinedLoader(AbstractRelationshipLoader):
     ):
 
         if parentmapper is None:
-            localparent = entity.mapper
+            localparent = query_entity.mapper
         else:
             localparent = parentmapper
 
@@ -1705,24 +1719,24 @@ class JoinedLoader(AbstractRelationshipLoader):
             and context.query._should_nest_selectable
         )
 
-        entity_key = None
+        query_entity_key = None
 
         if (
-            entity not in context.eager_joins
+            query_entity not in context.eager_joins
             and not should_nest_selectable
             and context.from_clause
         ):
             indexes = sql_util.find_left_clause_that_matches_given(
-                context.from_clause, entity.selectable
+                context.from_clause, query_entity.selectable
             )
 
             if len(indexes) > 1:
                 # for the eager load case, I can't reproduce this right
                 # now.   For query.join() I can.
                 raise sa_exc.InvalidRequestError(
-                    "Can't identify which entity in which to joined eager "
-                    "load from.   Please use an exact match when specifying "
-                    "the join path."
+                    "Can't identify which query entity in which to joined "
+                    "eager load from.   Please use an exact match when "
+                    "specifying the join path."
                 )
 
             if indexes:
@@ -1731,12 +1745,17 @@ class JoinedLoader(AbstractRelationshipLoader):
                 # key it to its list index in the eager_joins dict.
                 # Query._compile_context will adapt as needed and
                 # append to the FROM clause of the select().
-                entity_key, default_towrap = indexes[0], clause
+                query_entity_key, default_towrap = indexes[0], clause
 
-        if entity_key is None:
-            entity_key, default_towrap = entity, entity.selectable
+        if query_entity_key is None:
+            query_entity_key, default_towrap = (
+                query_entity,
+                query_entity.selectable,
+            )
 
-        towrap = context.eager_joins.setdefault(entity_key, default_towrap)
+        towrap = context.eager_joins.setdefault(
+            query_entity_key, default_towrap
+        )
 
         if adapter:
             if getattr(adapter, "aliased_class", None):
@@ -1771,7 +1790,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             not chained_from_outerjoin
             or not innerjoin
             or innerjoin == "unnested"
-            or entity.entity_zero.represents_outer_join
+            or query_entity.entity_zero.represents_outer_join
         )
 
         if attach_on_outside:
@@ -1781,7 +1800,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 clauses.aliased_class,
                 onclause,
                 isouter=not innerjoin
-                or entity.entity_zero.represents_outer_join
+                or query_entity.entity_zero.represents_outer_join
                 or (chained_from_outerjoin and isinstance(towrap, sql.Join)),
                 _left_memo=self.parent,
                 _right_memo=self.mapper,
@@ -1792,10 +1811,10 @@ class JoinedLoader(AbstractRelationshipLoader):
                 path, towrap, clauses, onclause
             )
 
-        context.eager_joins[entity_key] = eagerjoin
+        context.eager_joins[query_entity_key] = eagerjoin
 
         # send a hint to the Query as to where it may "splice" this join
-        eagerjoin.stop_on = entity.selectable
+        eagerjoin.stop_on = query_entity.selectable
 
         if not parentmapper:
             # for parentclause that is the non-eager end of the join,
@@ -1808,7 +1827,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             for col in sql_util._find_columns(
                 self.parent_property.primaryjoin
             ):
-                if localparent.mapped_table.c.contains_column(col):
+                if localparent.persist_selectable.c.contains_column(col):
                     if adapter:
                         col = adapter.columns[col]
                     context.primary_columns.append(col)
@@ -1938,7 +1957,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 self.mapper,
                 context,
                 result,
-                our_path[self.mapper],
+                our_path[self.entity],
                 eager_adapter,
             )
 
@@ -2145,7 +2164,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if with_poly_info is not None:
             effective_entity = with_poly_info.entity
         else:
-            effective_entity = self.mapper
+            effective_entity = self.entity
 
         if not path_w_prop.contains(context.attributes, "loader"):
             if self.join_depth:

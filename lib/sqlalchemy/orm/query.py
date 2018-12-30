@@ -211,7 +211,7 @@ class Query(object):
                         and ext_info.mapper.with_polymorphic
                     ):
                         if (
-                            ext_info.mapper.mapped_table
+                            ext_info.mapper.persist_selectable
                             not in self._polymorphic_adapters
                         ):
                             self._mapper_loads_polymorphically_with(
@@ -2304,7 +2304,7 @@ class Query(object):
                     if of_type:
                         right = of_type
                     else:
-                        right = onclause.property.mapper
+                        right = onclause.property.entity
 
                 left = onclause._parententity
 
@@ -2610,7 +2610,7 @@ class Query(object):
             # be more liberal about auto-aliasing.
             if right_mapper and (
                 right_mapper.with_polymorphic
-                or isinstance(right_mapper.mapped_table, expression.Join)
+                or isinstance(right_mapper.persist_selectable, expression.Join)
             ):
                 for from_obj in self._from_obj or [l_info.selectable]:
                     if sql_util.selectables_overlap(
@@ -2669,13 +2669,13 @@ class Query(object):
                 # as the ON clause
 
                 if not right_selectable.is_derived_from(
-                    right_mapper.mapped_table
+                    right_mapper.persist_selectable
                 ):
                     raise sa_exc.InvalidRequestError(
                         "Selectable '%s' is not derived from '%s'"
                         % (
                             right_selectable.description,
-                            right_mapper.mapped_table.description,
+                            right_mapper.persist_selectable.description,
                         )
                     )
 
@@ -4660,7 +4660,7 @@ class AliasOption(interfaces.MapperOption):
 
     def process_query(self, query):
         if isinstance(self.alias, util.string_types):
-            alias = query._mapper_zero().mapped_table.alias(self.alias)
+            alias = query._mapper_zero().persist_selectable.alias(self.alias)
         else:
             alias = self.alias
         query._from_obj_alias = sql_util.ColumnAdapter(alias)

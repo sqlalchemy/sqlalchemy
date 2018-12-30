@@ -2399,7 +2399,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         ]:
             q = s.query(crit)
             mzero = q._entity_zero()
-            is_(mzero.mapped_table, q._query_entity_zero().selectable)
+            is_(mzero.persist_selectable, q._query_entity_zero().selectable)
             q = q.join(j)
             self.assert_compile(q, exp)
 

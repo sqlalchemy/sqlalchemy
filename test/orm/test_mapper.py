@@ -853,28 +853,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert n1.children[0] is n1._children[0] is n2
         eq_(str(Node.parent == n2), ":param_1 = nodes.parent_id")
 
-    def test_non_primary_identity_class(self):
-        User = self.classes.User
-        users, addresses = self.tables.users, self.tables.addresses
-
-        class AddressUser(User):
-            pass
-
-        m1 = mapper(User, users, polymorphic_identity="user")
-        m2 = mapper(
-            AddressUser,
-            addresses,
-            inherits=User,
-            polymorphic_identity="address",
-            properties={"address_id": addresses.c.id},
-        )
-        m3 = mapper(AddressUser, addresses, non_primary=True)
-        assert m3._identity_class is m2._identity_class
-        eq_(
-            m2.identity_key_from_instance(AddressUser()),
-            m3.identity_key_from_instance(AddressUser()),
-        )
-
     def test_reassign_polymorphic_identity_warns(self):
         User = self.classes.User
         users = self.tables.users
@@ -896,60 +874,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             users,
             inherits=User,
             polymorphic_identity="user",
-        )
-
-    def test_illegal_non_primary(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        mapper(User, users)
-        mapper(Address, addresses)
-        mapper(
-            User,
-            users,
-            non_primary=True,
-            properties={"addresses": relationship(Address)},
-        )
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Attempting to assign a new relationship 'addresses' "
-            "to a non-primary mapper on class 'User'",
-            configure_mappers,
-        )
-
-    def test_illegal_non_primary_2(self):
-        User, users = self.classes.User, self.tables.users
-
-        assert_raises_message(
-            sa.exc.InvalidRequestError,
-            "Configure a primary mapper first",
-            mapper,
-            User,
-            users,
-            non_primary=True,
-        )
-
-    def test_illegal_non_primary_3(self):
-        users, addresses = self.tables.users, self.tables.addresses
-
-        class Base(object):
-            pass
-
-        class Sub(Base):
-            pass
-
-        mapper(Base, users)
-        assert_raises_message(
-            sa.exc.InvalidRequestError,
-            "Configure a primary mapper first",
-            mapper,
-            Sub,
-            addresses,
-            non_primary=True,
         )
 
     def test_prop_filters(self):

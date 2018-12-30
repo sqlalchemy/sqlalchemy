@@ -944,6 +944,20 @@ class RelationshipProperty(StrategizedProperty):
             )
 
         @util.memoized_property
+        def entity(self):
+            """The target entity referred to by this
+            :class:`.RelationshipProperty.Comparator`.
+
+            This is either a :class:`.Mapper` or :class:`.AliasedInsp`
+            object.
+
+            This is the "target" or "remote" side of the
+            :func:`.relationship`.
+
+            """
+            return self.property.entity
+
+        @util.memoized_property
         def mapper(self):
             """The target :class:`.Mapper` referred to by this
             :class:`.RelationshipProperty.Comparator`.
@@ -967,9 +981,9 @@ class RelationshipProperty(StrategizedProperty):
         def __clause_element__(self):
             adapt_from = self._source_selectable()
             if self._of_type:
-                of_type = inspect(self._of_type).mapper
+                of_type_mapper = inspect(self._of_type).mapper
             else:
-                of_type = None
+                of_type_mapper = None
 
             (
                 pj,
@@ -981,7 +995,7 @@ class RelationshipProperty(StrategizedProperty):
             ) = self.property._create_joins(
                 source_selectable=adapt_from,
                 source_polymorphic=True,
-                of_type=of_type,
+                of_type_mapper=of_type_mapper,
             )
             if sj is not None:
                 return pj & sj
@@ -1795,11 +1809,9 @@ class RelationshipProperty(StrategizedProperty):
             )
 
     @util.memoized_property
-    def mapper(self):
-        """Return the targeted :class:`.Mapper` for this
-        :class:`.RelationshipProperty`.
-
-        This is a lazy-initializing static attribute.
+    def entity(self):  # type: () -> Union[AliasedInsp, Mapper]
+        """Return the target mapped entity, which is an inspect() of the
+        class or aliased class tha is referred towards.
 
         """
         if util.callable(self.argument) and not isinstance(
@@ -1810,25 +1822,31 @@ class RelationshipProperty(StrategizedProperty):
             argument = self.argument
 
         if isinstance(argument, type):
-            mapper_ = mapperlib.class_mapper(argument, configure=False)
-        elif isinstance(self.argument, mapperlib.Mapper):
-            mapper_ = argument
+            return mapperlib.class_mapper(argument, configure=False)
+
+        try:
+            entity = inspect(argument)
+        except sa_exc.NoInspectionAvailable:
+            pass
         else:
-            raise sa_exc.ArgumentError(
-                "relationship '%s' expects "
-                "a class or a mapper argument (received: %s)"
-                % (self.key, type(argument))
-            )
-        return mapper_
+            if hasattr(entity, "mapper"):
+                return entity
+
+        raise sa_exc.ArgumentError(
+            "relationship '%s' expects "
+            "a class or a mapper argument (received: %s)"
+            % (self.key, type(argument))
+        )
 
     @util.memoized_property
-    @util.deprecated("0.7", "Use .target")
-    def table(self):
-        """Return the selectable linked to this
-        :class:`.RelationshipProperty` object's target
-        :class:`.Mapper`.
+    def mapper(self):
+        """Return the targeted :class:`.Mapper` for this
+        :class:`.RelationshipProperty`.
+
+        This is a lazy-initializing static attribute.
+
         """
-        return self.target
+        return self.entity.mapper
 
     def do_init(self):
         self._check_conflicts()
@@ -1894,14 +1912,14 @@ class RelationshipProperty(StrategizedProperty):
             for x in util.to_column_set(self.remote_side)
         )
 
-        self.target = self.mapper.mapped_table
+        self.target = self.entity.persist_selectable
 
     def _setup_join_conditions(self):
         self._join_condition = jc = JoinCondition(
-            parent_selectable=self.parent.mapped_table,
-            child_selectable=self.mapper.mapped_table,
+            parent_persist_selectable=self.parent.persist_selectable,
+            child_persist_selectable=self.entity.persist_selectable,
             parent_local_selectable=self.parent.local_table,
-            child_local_selectable=self.mapper.local_table,
+            child_local_selectable=self.entity.local_table,
             primaryjoin=self.primaryjoin,
             secondary=self.secondary,
             secondaryjoin=self.secondaryjoin,
@@ -2016,7 +2034,7 @@ class RelationshipProperty(StrategizedProperty):
                 and self.secondary.c.contains_column(c)
             ):
                 continue
-            if not self.parent.mapped_table.c.contains_column(
+            if not self.parent.persist_selectable.c.contains_column(
                 c
             ) and not self.target.c.contains_column(c):
                 return False
@@ -2124,7 +2142,7 @@ class RelationshipProperty(StrategizedProperty):
         source_selectable=None,
         dest_polymorphic=False,
         dest_selectable=None,
-        of_type=None,
+        of_type_mapper=None,
     ):
         if source_selectable is None:
             if source_polymorphic and self.parent.with_polymorphic:
@@ -2132,11 +2150,9 @@ class RelationshipProperty(StrategizedProperty):
 
         aliased = False
         if dest_selectable is None:
+            dest_selectable = self.entity.selectable
             if dest_polymorphic and self.mapper.with_polymorphic:
-                dest_selectable = self.mapper._with_polymorphic_selectable
                 aliased = True
-            else:
-                dest_selectable = self.mapper.mapped_table
 
             if self._is_self_referential and source_selectable is None:
                 dest_selectable = dest_selectable.alias()
@@ -2144,7 +2160,7 @@ class RelationshipProperty(StrategizedProperty):
         else:
             aliased = True
 
-        dest_mapper = of_type or self.mapper
+        dest_mapper = of_type_mapper or self.mapper
 
         single_crit = dest_mapper._single_table_criterion
         aliased = aliased or (source_selectable is not None)
@@ -2161,7 +2177,7 @@ class RelationshipProperty(StrategizedProperty):
         if source_selectable is None:
             source_selectable = self.parent.local_table
         if dest_selectable is None:
-            dest_selectable = self.mapper.local_table
+            dest_selectable = self.entity.local_table
         return (
             primaryjoin,
             secondaryjoin,
@@ -2187,8 +2203,8 @@ def _annotate_columns(element, annotations):
 class JoinCondition(object):
     def __init__(
         self,
-        parent_selectable,
-        child_selectable,
+        parent_persist_selectable,
+        child_persist_selectable,
         parent_local_selectable,
         child_local_selectable,
         primaryjoin=None,
@@ -2204,9 +2220,9 @@ class JoinCondition(object):
         support_sync=True,
         can_be_synced_fn=lambda *c: True,
     ):
-        self.parent_selectable = parent_selectable
+        self.parent_persist_selectable = parent_persist_selectable
         self.parent_local_selectable = parent_local_selectable
-        self.child_selectable = child_selectable
+        self.child_persist_selectable = child_persist_selectable
         self.child_local_selectable = child_local_selectable
         self.parent_equivalents = parent_equivalents
         self.child_equivalents = child_equivalents
@@ -2317,14 +2333,14 @@ class JoinCondition(object):
             if self.secondary is not None:
                 if self.secondaryjoin is None:
                     self.secondaryjoin = join_condition(
-                        self.child_selectable,
+                        self.child_persist_selectable,
                         self.secondary,
                         a_subset=self.child_local_selectable,
                         consider_as_foreign_keys=consider_as_foreign_keys,
                     )
                 if self.primaryjoin is None:
                     self.primaryjoin = join_condition(
-                        self.parent_selectable,
+                        self.parent_persist_selectable,
                         self.secondary,
                         a_subset=self.parent_local_selectable,
                         consider_as_foreign_keys=consider_as_foreign_keys,
@@ -2332,8 +2348,8 @@ class JoinCondition(object):
             else:
                 if self.primaryjoin is None:
                     self.primaryjoin = join_condition(
-                        self.parent_selectable,
-                        self.child_selectable,
+                        self.parent_persist_selectable,
+                        self.child_persist_selectable,
                         a_subset=self.parent_local_selectable,
                         consider_as_foreign_keys=consider_as_foreign_keys,
                     )
@@ -2519,8 +2535,8 @@ class JoinCondition(object):
         comparisons where both columns are in both tables.
 
         """
-        pt = self.parent_selectable
-        mt = self.child_selectable
+        pt = self.parent_persist_selectable
+        mt = self.child_persist_selectable
         result = [False]
 
         def visit_binary(binary):
@@ -2542,7 +2558,7 @@ class JoinCondition(object):
         """Return True if parent/child tables have some overlap."""
 
         return selectables_overlap(
-            self.parent_selectable, self.child_selectable
+            self.parent_persist_selectable, self.child_persist_selectable
         )
 
     def _annotate_remote(self):
@@ -2661,9 +2677,9 @@ class JoinCondition(object):
             if isinstance(left, expression.ColumnClause) and isinstance(
                 right, expression.ColumnClause
             ):
-                if self.child_selectable.c.contains_column(
+                if self.child_persist_selectable.c.contains_column(
                     right
-                ) and self.parent_selectable.c.contains_column(left):
+                ) and self.parent_persist_selectable.c.contains_column(left):
                     right = right._annotate({"remote": True})
             elif (
                 check_entities
@@ -2692,7 +2708,7 @@ class JoinCondition(object):
         """
 
         def repl(element):
-            if self.child_selectable.c.contains_column(element) and (
+            if self.child_persist_selectable.c.contains_column(element) and (
                 not self.parent_local_selectable.c.contains_column(element)
                 or self.child_local_selectable.c.contains_column(element)
             ):
@@ -2728,7 +2744,7 @@ class JoinCondition(object):
                 [l for (l, r) in self._local_remote_pairs]
             )
         else:
-            local_side = util.column_set(self.parent_selectable.c)
+            local_side = util.column_set(self.parent_persist_selectable.c)
 
         def locals_(elem):
             if "remote" not in elem._annotations and elem in local_side:
@@ -2839,8 +2855,8 @@ class JoinCondition(object):
         if self.secondaryjoin is not None:
             self.direction = MANYTOMANY
         else:
-            parentcols = util.column_set(self.parent_selectable.c)
-            targetcols = util.column_set(self.child_selectable.c)
+            parentcols = util.column_set(self.parent_persist_selectable.c)
+            targetcols = util.column_set(self.child_persist_selectable.c)
 
             # fk collection which suggests ONETOMANY.
             onetomany_fk = targetcols.intersection(self.foreign_key_columns)

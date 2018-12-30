@@ -2162,3 +2162,369 @@ class InstrumentationTest(fixtures.ORMTest):
         l2 = Collection()
         f1.attr = l2
         eq_(canary, [adapter_1, f1.attr._sa_adapter, None])
+
+
+class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    def test_selectload(self):
+        """tests lazy loading with two relationships simultaneously,
+        from the same table, using aliases.  """
+
+        users, orders, User, Address, Order, addresses = (
+            self.tables.users,
+            self.tables.orders,
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Order,
+            self.tables.addresses,
+        )
+
+        openorders = sa.alias(orders, "openorders")
+        closedorders = sa.alias(orders, "closedorders")
+
+        mapper(Address, addresses)
+
+        mapper(Order, orders)
+
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            open_mapper = mapper(Order, openorders, non_primary=True)
+            closed_mapper = mapper(Order, closedorders, non_primary=True)
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(Address, lazy=True),
+                open_orders=relationship(
+                    open_mapper,
+                    primaryjoin=sa.and_(
+                        openorders.c.isopen == 1,
+                        users.c.id == openorders.c.user_id,
+                    ),
+                    lazy="select",
+                ),
+                closed_orders=relationship(
+                    closed_mapper,
+                    primaryjoin=sa.and_(
+                        closedorders.c.isopen == 0,
+                        users.c.id == closedorders.c.user_id,
+                    ),
+                    lazy="select",
+                ),
+            ),
+        )
+
+        self._run_double_test(10)
+
+    def test_joinedload(self):
+        """Eager loading with two relationships simultaneously,
+            from the same table, using aliases."""
+
+        users, orders, User, Address, Order, addresses = (
+            self.tables.users,
+            self.tables.orders,
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Order,
+            self.tables.addresses,
+        )
+
+        openorders = sa.alias(orders, "openorders")
+        closedorders = sa.alias(orders, "closedorders")
+
+        mapper(Address, addresses)
+        mapper(Order, orders)
+
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            open_mapper = mapper(Order, openorders, non_primary=True)
+            closed_mapper = mapper(Order, closedorders, non_primary=True)
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    Address, lazy="joined", order_by=addresses.c.id
+                ),
+                open_orders=relationship(
+                    open_mapper,
+                    primaryjoin=sa.and_(
+                        openorders.c.isopen == 1,
+                        users.c.id == openorders.c.user_id,
+                    ),
+                    lazy="joined",
+                    order_by=openorders.c.id,
+                ),
+                closed_orders=relationship(
+                    closed_mapper,
+                    primaryjoin=sa.and_(
+                        closedorders.c.isopen == 0,
+                        users.c.id == closedorders.c.user_id,
+                    ),
+                    lazy="joined",
+                    order_by=closedorders.c.id,
+                ),
+            ),
+        )
+        self._run_double_test(1)
+
+    def test_selectin(self):
+
+        users, orders, User, Address, Order, addresses = (
+            self.tables.users,
+            self.tables.orders,
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Order,
+            self.tables.addresses,
+        )
+
+        openorders = sa.alias(orders, "openorders")
+        closedorders = sa.alias(orders, "closedorders")
+
+        mapper(Address, addresses)
+        mapper(Order, orders)
+
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            open_mapper = mapper(Order, openorders, non_primary=True)
+            closed_mapper = mapper(Order, closedorders, non_primary=True)
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    Address, lazy="selectin", order_by=addresses.c.id
+                ),
+                open_orders=relationship(
+                    open_mapper,
+                    primaryjoin=sa.and_(
+                        openorders.c.isopen == 1,
+                        users.c.id == openorders.c.user_id,
+                    ),
+                    lazy="selectin",
+                    order_by=openorders.c.id,
+                ),
+                closed_orders=relationship(
+                    closed_mapper,
+                    primaryjoin=sa.and_(
+                        closedorders.c.isopen == 0,
+                        users.c.id == closedorders.c.user_id,
+                    ),
+                    lazy="selectin",
+                    order_by=closedorders.c.id,
+                ),
+            ),
+        )
+
+        self._run_double_test(4)
+
+    def test_subqueryload(self):
+
+        users, orders, User, Address, Order, addresses = (
+            self.tables.users,
+            self.tables.orders,
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Order,
+            self.tables.addresses,
+        )
+
+        openorders = sa.alias(orders, "openorders")
+        closedorders = sa.alias(orders, "closedorders")
+
+        mapper(Address, addresses)
+        mapper(Order, orders)
+
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            open_mapper = mapper(Order, openorders, non_primary=True)
+            closed_mapper = mapper(Order, closedorders, non_primary=True)
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    Address, lazy="subquery", order_by=addresses.c.id
+                ),
+                open_orders=relationship(
+                    open_mapper,
+                    primaryjoin=sa.and_(
+                        openorders.c.isopen == 1,
+                        users.c.id == openorders.c.user_id,
+                    ),
+                    lazy="subquery",
+                    order_by=openorders.c.id,
+                ),
+                closed_orders=relationship(
+                    closed_mapper,
+                    primaryjoin=sa.and_(
+                        closedorders.c.isopen == 0,
+                        users.c.id == closedorders.c.user_id,
+                    ),
+                    lazy="subquery",
+                    order_by=closedorders.c.id,
+                ),
+            ),
+        )
+
+        self._run_double_test(4)
+
+    def _run_double_test(self, count):
+        User, Address, Order, Item = self.classes(
+            "User", "Address", "Order", "Item"
+        )
+        q = create_session().query(User).order_by(User.id)
+
+        def go():
+            eq_(
+                [
+                    User(
+                        id=7,
+                        addresses=[Address(id=1)],
+                        open_orders=[Order(id=3)],
+                        closed_orders=[Order(id=1), Order(id=5)],
+                    ),
+                    User(
+                        id=8,
+                        addresses=[
+                            Address(id=2),
+                            Address(id=3),
+                            Address(id=4),
+                        ],
+                        open_orders=[],
+                        closed_orders=[],
+                    ),
+                    User(
+                        id=9,
+                        addresses=[Address(id=5)],
+                        open_orders=[Order(id=4)],
+                        closed_orders=[Order(id=2)],
+                    ),
+                    User(id=10),
+                ],
+                q.all(),
+            )
+
+        self.assert_sql_count(testing.db, go, count)
+
+        sess = create_session()
+        user = sess.query(User).get(7)
+
+        closed_mapper = User.closed_orders.entity
+        open_mapper = User.open_orders.entity
+        eq_(
+            [Order(id=1), Order(id=5)],
+            create_session()
+            .query(closed_mapper)
+            .with_parent(user, property="closed_orders")
+            .all(),
+        )
+        eq_(
+            [Order(id=3)],
+            create_session()
+            .query(open_mapper)
+            .with_parent(user, property="open_orders")
+            .all(),
+        )
+
+
+class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_non_primary_identity_class(self):
+        User = self.classes.User
+        users, addresses = self.tables.users, self.tables.addresses
+
+        class AddressUser(User):
+            pass
+
+        m1 = mapper(User, users, polymorphic_identity="user")
+        m2 = mapper(
+            AddressUser,
+            addresses,
+            inherits=User,
+            polymorphic_identity="address",
+            properties={"address_id": addresses.c.id},
+        )
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            m3 = mapper(AddressUser, addresses, non_primary=True)
+        assert m3._identity_class is m2._identity_class
+        eq_(
+            m2.identity_key_from_instance(AddressUser()),
+            m3.identity_key_from_instance(AddressUser()),
+        )
+
+    def test_illegal_non_primary(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(User, users)
+        mapper(Address, addresses)
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            mapper(
+                User,
+                users,
+                non_primary=True,
+                properties={"addresses": relationship(Address)},
+            )
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Attempting to assign a new relationship 'addresses' "
+            "to a non-primary mapper on class 'User'",
+            configure_mappers,
+        )
+
+    def test_illegal_non_primary_2(self):
+        User, users = self.classes.User, self.tables.users
+
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "Configure a primary mapper first",
+                mapper,
+                User,
+                users,
+                non_primary=True,
+            )
+
+    def test_illegal_non_primary_3(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        class Base(object):
+            pass
+
+        class Sub(Base):
+            pass
+
+        mapper(Base, users)
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "Configure a primary mapper first",
+                mapper,
+                Sub,
+                addresses,
+                non_primary=True,
+            )

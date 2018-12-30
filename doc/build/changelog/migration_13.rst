@@ -72,12 +72,97 @@ below.
 
     :ref:`change_4393_convertunicode`
 
-    :ref:`FIXME` - FIXME - link to non-primary mapper deprecation
+    :ref:`change_4423`
 
 :ticket:`4393`
 
 New Features and Improvements - ORM
 ===================================
+
+.. _change_4423:
+
+Relationship to AliasedClass replaces the need for non primary mappers
+-----------------------------------------------------------------------
+
+The "non primary mapper" is a :func:`.mapper` created in the
+:ref:`classical_mapping` style, which acts as an additional mapper against an
+already mapped class against a different kind of selectable.  The non primary
+mapper has its roots in the 0.1, 0.2 series of SQLAlchemy where it was
+anticipated that the :func:`.mapper` object was to be the primary query
+construction interface, before the :class:`.Query` object existed.
+
+With the advent of :class:`.Query` and later the :class:`.AliasedClass`
+construct, most use cases for the non primary mapper went away.  This was a
+good thing since SQLAlchemy also moved away from "classical" mappings altogether
+around the 0.5 series in favor of the declarative system.
+
+One use case remained around for non primary mappers when it was realized that
+some very hard-to-define :func:`.relationship` configurations could be made
+possible when a non-primary mapper with an alternative selectable was made as
+the mapping target, rather than trying to construct a
+:paramref:`.relationship.primaryjoin` that encompassed all the complexity of a
+particular inter-object relationship.
+
+As this use case became more popular, its limitations became apparent,
+including that the non primary mapper is difficult to configure against a
+selectable that adds new columns, that the mapper does not inherit the
+relationships of the original mapping, that relationships which are configured
+explicitly on the non primary mapper do  not function well with loader options,
+and that the non primary mapper also doesn't provide a fully functional
+namespace of column-based attributes which can be used in queries (which again,
+in the old 0.1 - 0.4 days, one would use :class:`.Table` objects directly with
+the ORM).
+
+The missing piece was to allow the :func:`.relationship` to refer directly
+to the :class:`.AliasedClass`.  The :class:`.AliasedClass` already does
+everything we want the non primary mapper to do; it allows an existing mapped
+class to be loaded from an alternative selectable, it inherits all the
+attributes and relationships of the existing mapper, it works
+extremely well with loader options, and it provides a class-like
+object that can be mixed into queries just like the class itself.
+With this change, the recipes that
+were formerly for non primary mappers at :ref:`relationship_configure_joins`
+are changed to aliased class.
+
+At :ref:`relationship_aliased_class`, the original non primary mapper looked
+like::
+
+    j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
+
+    B_viacd = mapper(
+        B, j, non_primary=True, primary_key=[j.c.b_id],
+        properties={
+            "id": j.c.b_id,  # so that 'id' looks the same as before
+            "c_id": j.c.c_id,   # needed for disambiguation
+            "d_c_id": j.c.d_c_id,  # needed for disambiguation
+            "b_id": [j.c.b_id, j.c.d_b_id],
+            "d_id": j.c.d_id,
+        }
+    )
+
+    A.b = relationship(B_viacd, primaryjoin=A.b_id == B_viacd.c.b_id)
+
+The properties were necessary in order to re-map the additional columns
+so that they did not conflict with the existing columns mapped to ``B``, as
+well as it was necessary to define a new primary key.
+
+With the new approach, all of this verbosity goes away, and the additional
+columns are referred towards directly when making the relationship::
+
+    j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
+
+    B_viacd = aliased(B, j, flat=True)
+
+    A.b = relationship(B_viacd, primaryjoin=A.b_id == j.c.b_id)
+
+The non primary mapper is now deprecated with the eventual goal to be that
+classical mappings as a feature go away entirely.  The Declarative API would
+become the single means of mapping which hopefully will allow internal
+improvements and simplifications, as well as a clearer documentation story.
+
+
+:ticket:`4423`
+
 
 .. _change_4340:
 

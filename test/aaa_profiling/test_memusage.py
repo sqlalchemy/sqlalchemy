@@ -321,8 +321,6 @@ class MemUsageWBackendTest(EnsureZeroed):
         )
         m2 = mapper(B, table2)
 
-        m3 = mapper(A, table1, non_primary=True)
-
         @profile_memory()
         def go():
             sess = create_session()
@@ -354,7 +352,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         go()
 
         metadata.drop_all()
-        del m1, m2, m3
+        del m1, m2
         assert_no_mappers()
 
     def test_sessionmaker(self):
@@ -415,8 +413,6 @@ class MemUsageWBackendTest(EnsureZeroed):
         )
         m2 = mapper(B, table2, _compiled_cache_size=50)
 
-        m3 = mapper(A, table1, non_primary=True)
-
         @profile_memory()
         def go():
             engine = engines.testing_engine(
@@ -458,7 +454,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         go()
 
         metadata.drop_all()
-        del m1, m2, m3
+        del m1, m2
         assert_no_mappers()
 
     @testing.emits_warning("Compiled statement cache for.*")
@@ -641,8 +637,6 @@ class MemUsageWBackendTest(EnsureZeroed):
                 properties={"bs": relationship(B, order_by=table2.c.col1)},
             )
             mapper(B, table2)
-
-            mapper(A, table1, non_primary=True)
 
             sess = create_session()
             a1 = A(col2="a1")

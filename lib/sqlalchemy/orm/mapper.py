@@ -114,10 +114,18 @@ class Mapper(InspectionAttr):
         ),
         order_by=(
             "1.1",
-            "The :paramref:`.Mapper.order_by` parameter "
+            "The :paramref:`.mapper.order_by` parameter "
             "is deprecated, and will be removed in a future release. "
             "Use :meth:`.Query.order_by` to determine the ordering of a "
             "result set.",
+        ),
+        non_primary=(
+            "1.3",
+            "The :paramref:`.mapper.non_primary` parameter is deprecated, "
+            "and will be removed in a future release.  The functionality "
+            "of non primary mappers is now better suited using the "
+            ":class:`.AliasedClass` construct, which can also be used "
+            "as the target of a :func:`.relationship` in 1.3.",
         ),
     )
     def __init__(
@@ -755,25 +763,33 @@ class Mapper(InspectionAttr):
 
     .. seealso::
 
-        :attr:`~.Mapper.mapped_table`.
+        :attr:`~.Mapper.persist_selectable`.
 
     """
 
-    mapped_table = None
+    persist_selectable = None
     """The :class:`.Selectable` to which this :class:`.Mapper` is mapped.
 
     Typically an instance of :class:`.Table`, :class:`.Join`, or
     :class:`.Alias`.
 
-    The "mapped" table is the selectable that
-    the mapper selects from during queries.   For non-inheriting
-    mappers, the mapped table is the same as the "local" table.
-    For joined-table inheritance mappers, mapped_table references the
-    full :class:`.Join` representing full rows for this particular
-    subclass.  For single-table inheritance mappers, mapped_table
-    references the base table.
+    The :attr:`.Mapper.persist_selectable` is separate from
+    :attr:`.Mapper.selectable` in that the former represents columns
+    that are mapped on this class or its superclasses, whereas the
+    latter may be a "polymorphic" selectable that contains additional columns
+    which are in fact mapped on subclasses only.
+
+    "persist selectable" is the "thing the mapper writes to" and
+    "selectable" is the "thing the mapper selects from".
+
+    :attr:`.Mapper.persist_selectable` is also separate from
+    :attr:`.Mapper.local_table`, which represents the set of columns that
+    are locally mapped on this class directly.
+
 
     .. seealso::
+
+        :attr:`~.Mapper.selectable`.
 
         :attr:`~.Mapper.local_table`.
 
@@ -827,8 +843,8 @@ class Mapper(InspectionAttr):
     which comprise the 'primary key' of the mapped table, from the
     perspective of this :class:`.Mapper`.
 
-    This list is against the selectable in :attr:`~.Mapper.mapped_table`. In
-    the case of inheriting mappers, some columns may be managed by a
+    This list is against the selectable in :attr:`~.Mapper.persist_selectable`.
+    In the case of inheriting mappers, some columns may be managed by a
     superclass mapper.  For example, in the case of a :class:`.Join`, the
     primary key is determined by all of the primary key columns across all
     tables referenced by the :class:`.Join`.
@@ -965,6 +981,11 @@ class Mapper(InspectionAttr):
     c = None
     """A synonym for :attr:`~.Mapper.columns`."""
 
+    @property
+    @util.deprecated("1.3", "Use .persist_selectable")
+    def mapped_table(self):
+        return self.persist_selectable
+
     @util.memoized_property
     def _path_registry(self):
         return PathRegistry.per_mapper(self)
@@ -994,11 +1015,11 @@ class Mapper(InspectionAttr):
             # inherit_condition is optional.
             if self.local_table is None:
                 self.local_table = self.inherits.local_table
-                self.mapped_table = self.inherits.mapped_table
+                self.persist_selectable = self.inherits.persist_selectable
                 self.single = True
             elif self.local_table is not self.inherits.local_table:
                 if self.concrete:
-                    self.mapped_table = self.local_table
+                    self.persist_selectable = self.local_table
                     for mapper in self.iterate_to_root():
                         if mapper.polymorphic_on is not None:
                             mapper._requires_row_aliasing = True
@@ -1011,19 +1032,19 @@ class Mapper(InspectionAttr):
                         self.inherit_condition = sql_util.join_condition(
                             self.inherits.local_table, self.local_table
                         )
-                    self.mapped_table = sql.join(
-                        self.inherits.mapped_table,
+                    self.persist_selectable = sql.join(
+                        self.inherits.persist_selectable,
                         self.local_table,
                         self.inherit_condition,
                     )
 
                     fks = util.to_set(self.inherit_foreign_keys)
                     self._inherits_equated_pairs = sql_util.criterion_as_pairs(
-                        self.mapped_table.onclause,
+                        self.persist_selectable.onclause,
                         consider_as_foreign_keys=fks,
                     )
             else:
-                self.mapped_table = self.local_table
+                self.persist_selectable = self.local_table
 
             if self.polymorphic_identity is not None and not self.concrete:
                 self._identity_class = self.inherits._identity_class
@@ -1099,14 +1120,15 @@ class Mapper(InspectionAttr):
         else:
             self._all_tables = set()
             self.base_mapper = self
-            self.mapped_table = self.local_table
+            self.persist_selectable = self.local_table
             if self.polymorphic_identity is not None:
                 self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
 
-        if self.mapped_table is None:
+        if self.persist_selectable is None:
             raise sa_exc.ArgumentError(
-                "Mapper '%s' does not have a mapped_table specified." % self
+                "Mapper '%s' does not have a persist_selectable specified."
+                % self
             )
 
     def _set_with_polymorphic(self, with_polymorphic):
@@ -1331,7 +1353,7 @@ class Mapper(InspectionAttr):
             instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):
-        self.tables = sql_util.find_tables(self.mapped_table)
+        self.tables = sql_util.find_tables(self.persist_selectable)
 
         self._pks_by_table = {}
         self._cols_by_table = {}
@@ -1343,7 +1365,7 @@ class Mapper(InspectionAttr):
         pk_cols = util.column_set(c for c in all_cols if c.primary_key)
 
         # identify primary key columns which are also mapped by this mapper.
-        tables = set(self.tables + [self.mapped_table])
+        tables = set(self.tables + [self.persist_selectable])
         self._all_tables.update(tables)
         for t in tables:
             if t.primary_key and pk_cols.issuperset(t.primary_key):
@@ -1366,13 +1388,13 @@ class Mapper(InspectionAttr):
 
         # otherwise, see that we got a full PK for the mapped table
         elif (
-            self.mapped_table not in self._pks_by_table
-            or len(self._pks_by_table[self.mapped_table]) == 0
+            self.persist_selectable not in self._pks_by_table
+            or len(self._pks_by_table[self.persist_selectable]) == 0
         ):
             raise sa_exc.ArgumentError(
                 "Mapper %s could not assemble any primary "
                 "key columns for mapped table '%s'"
-                % (self, self.mapped_table.description)
+                % (self, self.persist_selectable.description)
             )
         elif self.local_table not in self._pks_by_table and isinstance(
             self.local_table, schema.Table
@@ -1393,19 +1415,19 @@ class Mapper(InspectionAttr):
             # that of the inheriting (unless concrete or explicit)
             self.primary_key = self.inherits.primary_key
         else:
-            # determine primary key from argument or mapped_table pks -
+            # determine primary key from argument or persist_selectable pks -
             # reduce to the minimal set of columns
             if self._primary_key_argument:
                 primary_key = sql_util.reduce_columns(
                     [
-                        self.mapped_table.corresponding_column(c)
+                        self.persist_selectable.corresponding_column(c)
                         for c in self._primary_key_argument
                     ],
                     ignore_nonexistent_tables=True,
                 )
             else:
                 primary_key = sql_util.reduce_columns(
-                    self._pks_by_table[self.mapped_table],
+                    self._pks_by_table[self.persist_selectable],
                     ignore_nonexistent_tables=True,
                 )
 
@@ -1413,7 +1435,7 @@ class Mapper(InspectionAttr):
                 raise sa_exc.ArgumentError(
                     "Mapper %s could not assemble any primary "
                     "key columns for mapped table '%s'"
-                    % (self, self.mapped_table.description)
+                    % (self, self.persist_selectable.description)
                 )
 
             self.primary_key = tuple(primary_key)
@@ -1458,7 +1480,7 @@ class Mapper(InspectionAttr):
 
         # create properties for each column in the mapped table,
         # for those columns which don't already map to a property
-        for column in self.mapped_table.columns:
+        for column in self.persist_selectable.columns:
             if column in self._columntoproperty:
                 continue
 
@@ -1539,8 +1561,8 @@ class Mapper(InspectionAttr):
                 # doesn't appear to be mapped. this means it can be 1.
                 # only present in the with_polymorphic selectable or
                 # 2. a totally standalone SQL expression which we'd
-                # hope is compatible with this mapper's mapped_table
-                col = self.mapped_table.corresponding_column(
+                # hope is compatible with this mapper's persist_selectable
+                col = self.persist_selectable.corresponding_column(
                     self.polymorphic_on
                 )
                 if col is None:
@@ -1550,7 +1572,7 @@ class Mapper(InspectionAttr):
                     # for it. Just check that if it's directly a
                     # schema.Column and we have with_polymorphic, it's
                     # likely a user error if the schema.Column isn't
-                    # represented somehow in either mapped_table or
+                    # represented somehow in either persist_selectable or
                     # with_polymorphic.   Otherwise as of 0.7.4 we
                     # just go with it and assume the user wants it
                     # that way (i.e. a CASE statement)
@@ -1607,12 +1629,12 @@ class Mapper(InspectionAttr):
                 # table is the same as the parent (i.e. single table
                 # inheritance), we can use it
                 if mapper.polymorphic_on is not None:
-                    if self.mapped_table is mapper.mapped_table:
+                    if self.persist_selectable is mapper.persist_selectable:
                         self.polymorphic_on = mapper.polymorphic_on
                     else:
                         self.polymorphic_on = (
-                            self.mapped_table.corresponding_column
-                        )(mapper.polymorphic_on)
+                            self.persist_selectable
+                        ).corresponding_column(mapper.polymorphic_on)
                     # we can use the parent mapper's _set_polymorphic_identity
                     # directly; it ensures the polymorphic_identity of the
                     # instance's mapper is used so is portable to subclasses.
@@ -1674,7 +1696,7 @@ class Mapper(InspectionAttr):
         stack = deque([self])
         while stack:
             item = stack.popleft()
-            if item.mapped_table is self.mapped_table:
+            if item.persist_selectable is self.persist_selectable:
                 identities.add(item.polymorphic_identity)
                 stack.extend(item._inheriting_mappers)
 
@@ -1717,7 +1739,7 @@ class Mapper(InspectionAttr):
             prop = self._property_from_column(key, prop)
 
         if isinstance(prop, properties.ColumnProperty):
-            col = self.mapped_table.corresponding_column(prop.columns[0])
+            col = self.persist_selectable.corresponding_column(prop.columns[0])
 
             # if the column is not present in the mapped table,
             # test if a column has been added after the fact to the
@@ -1728,8 +1750,8 @@ class Mapper(InspectionAttr):
                     col = m.local_table.corresponding_column(prop.columns[0])
                     if col is not None:
                         for m2 in path:
-                            m2.mapped_table._reset_exported()
-                        col = self.mapped_table.corresponding_column(
+                            m2.persist_selectable._reset_exported()
+                        col = self.persist_selectable.corresponding_column(
                             prop.columns[0]
                         )
                         break
@@ -1874,7 +1896,7 @@ class Mapper(InspectionAttr):
         ):
             mapped_column = []
             for c in columns:
-                mc = self.mapped_table.corresponding_column(c)
+                mc = self.persist_selectable.corresponding_column(c)
                 if mc is None:
                     mc = self.local_table.corresponding_column(c)
                     if mc is not None:
@@ -1882,8 +1904,8 @@ class Mapper(InspectionAttr):
                         # mapped table, this corresponds to adding a
                         # column after the fact to the local table.
                         # [ticket:1523]
-                        self.mapped_table._reset_exported()
-                    mc = self.mapped_table.corresponding_column(c)
+                        self.persist_selectable._reset_exported()
+                    mc = self.persist_selectable.corresponding_column(c)
                     if mc is None:
                         raise sa_exc.ArgumentError(
                             "When configuring property '%s' on %s, "
@@ -2077,7 +2099,7 @@ class Mapper(InspectionAttr):
         mapped tables.
 
         """
-        from_obj = self.mapped_table
+        from_obj = self.persist_selectable
         for m in mappers:
             if m is self:
                 continue
@@ -2118,7 +2140,7 @@ class Mapper(InspectionAttr):
     @_memoized_configured_property
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
-            return self.mapped_table
+            return self.persist_selectable
 
         spec, selectable = self.with_polymorphic
         if selectable is not None:
@@ -2243,7 +2265,7 @@ class Mapper(InspectionAttr):
         """The :func:`.select` construct this :class:`.Mapper` selects from
         by default.
 
-        Normally, this is equivalent to :attr:`.mapped_table`, unless
+        Normally, this is equivalent to :attr:`.persist_selectable`, unless
         the ``with_polymorphic`` feature is in use, in which case the
         full "polymorphic" selectable is returned.
 

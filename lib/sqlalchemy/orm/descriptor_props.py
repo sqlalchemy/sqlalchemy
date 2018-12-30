@@ -673,16 +673,21 @@ class SynonymProperty(DescriptorProperty):
     def set_parent(self, parent, init):
         if self.map_column:
             # implement the 'map_column' option.
-            if self.key not in parent.mapped_table.c:
+            if self.key not in parent.persist_selectable.c:
                 raise sa_exc.ArgumentError(
                     "Can't compile synonym '%s': no column on table "
                     "'%s' named '%s'"
-                    % (self.name, parent.mapped_table.description, self.key)
+                    % (
+                        self.name,
+                        parent.persist_selectable.description,
+                        self.key,
+                    )
                 )
             elif (
-                parent.mapped_table.c[self.key] in parent._columntoproperty
+                parent.persist_selectable.c[self.key]
+                in parent._columntoproperty
                 and parent._columntoproperty[
-                    parent.mapped_table.c[self.key]
+                    parent.persist_selectable.c[self.key]
                 ].key
                 == self.name
             ):
@@ -692,7 +697,9 @@ class SynonymProperty(DescriptorProperty):
                     "%r for column %r"
                     % (self.key, self.name, self.name, self.key)
                 )
-            p = properties.ColumnProperty(parent.mapped_table.c[self.key])
+            p = properties.ColumnProperty(
+                parent.persist_selectable.c[self.key]
+            )
             parent._configure_property(self.name, p, init=init, setparent=True)
             p._mapped_by_synonym = self.key
 
