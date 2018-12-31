@@ -15,6 +15,7 @@ from .environment import Session
 from .model import cache_address_bits
 from .model import Person
 
+
 for p in Session.query(Person).options(
     joinedload(Person.addresses), cache_address_bits
 ):

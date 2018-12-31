@@ -6,6 +6,7 @@ from .caching_query import FromCache
 from .environment import Session
 from .model import Person
 
+
 # load Person objects.  cache the result in the "default" cache region
 print("loading people....")
 people = Session.query(Person).options(FromCache("default")).all()

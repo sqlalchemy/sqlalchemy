@@ -217,18 +217,18 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         """test the quoting of labels.
 
         If labels aren't quoted, a query in postgresql in particular will
-        fail since it produces:
+        fail since it produces::
 
-        SELECT
-            LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
-        FROM (
-            SELECT DISTINCT
-                "WorstCase1".lowercase AS lowercase,
-                "WorstCase1"."UPPERCASE" AS UPPERCASE,
-                "WorstCase1"."MixedCase" AS MixedCase,
-                "WorstCase1"."ASC" AS ASC
-            FROM "WorstCase1"
-        ) AS LaLa
+            SELECT
+                LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
+            FROM (
+                SELECT DISTINCT
+                    "WorstCase1".lowercase AS lowercase,
+                    "WorstCase1"."UPPERCASE" AS UPPERCASE,
+                    "WorstCase1"."MixedCase" AS MixedCase,
+                    "WorstCase1"."ASC" AS ASC
+                FROM "WorstCase1"
+            ) AS LaLa
 
         where the "UPPERCASE" column of "LaLa" doesn't exist.
         """

@@ -7,6 +7,7 @@ import os
 import sys
 
 from dogpile.cache.region import make_region
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
@@ -17,7 +18,7 @@ from . import caching_query
 py2k = sys.version_info < (3, 0)
 
 if py2k:
-    input = raw_input
+    input = raw_input  # noqa
 
 # dogpile cache regions.  A home base for cache configurations.
 regions = {}

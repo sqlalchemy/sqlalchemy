@@ -4,15 +4,13 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """
 .. dialect:: postgresql+pygresql
     :name: pygresql
     :dbapi: pgdb
-    :connectstring: postgresql+pygresql://user:password@host:port/dbname\
-[?key=value&key=value...]
+    :connectstring: postgresql+pygresql://user:password@host:port/dbname[?key=value&key=value...]
     :url: http://www.pygresql.org/
-"""
+"""  # noqa
 
 import decimal
 import re

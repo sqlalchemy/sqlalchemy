@@ -173,20 +173,19 @@ def _history_mapper(local_mapper):
 class Versioned(object):
     @declared_attr
     def __mapper_cls__(cls):
-        def map(cls, *arg, **kw):
+        def map_(cls, *arg, **kw):
             mp = mapper(cls, *arg, **kw)
             _history_mapper(mp)
             return mp
-
-        return map
+        return map_
 
     __table_args__ = {"sqlite_autoincrement": True}
     """Use sqlite_autoincrement, to ensure unique integer values
     are used for new rows even for rows taht have been deleted."""
 
 
-def versioned_objects(iter):
-    for obj in iter:
+def versioned_objects(iter_):
+    for obj in iter_:
         if hasattr(obj, "__history_mapper__"):
             yield obj
 

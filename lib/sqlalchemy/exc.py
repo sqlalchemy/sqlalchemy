@@ -179,7 +179,7 @@ class InvalidatePoolError(DisconnectionError):
     invalidate_pool = True
 
 
-class TimeoutError(SQLAlchemyError):
+class TimeoutError(SQLAlchemyError):  # noqa
     """Raised when a connection pool times out on getting a connection."""
 
 

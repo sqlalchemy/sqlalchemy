@@ -9,8 +9,7 @@
 .. dialect:: sybase+pyodbc
     :name: PyODBC
     :dbapi: pyodbc
-    :connectstring: sybase+pyodbc://<username>:<password>@<dsnname>\
-[/<database>]
+    :connectstring: sybase+pyodbc://<username>:<password>@<dsnname>[/<database>]
     :url: http://pypi.python.org/pypi/pyodbc/
 
 
@@ -32,7 +31,7 @@ Currently *not* supported are::
     UNITEXT
     UNIVARCHAR
 
-"""
+"""  # noqa
 
 import decimal
 

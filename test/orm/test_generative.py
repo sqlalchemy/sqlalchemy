@@ -158,7 +158,7 @@ class GenerativeQueryTest(fixtures.MappedTest):
         assert query.order_by(Foo.bar)[0].bar == 0
         assert query.order_by(sa.desc(Foo.bar))[0].bar == 99
 
-    def test_offset(self):
+    def test_offset_order_by(self):
         Foo = self.classes.Foo
 
         query = create_session().query(Foo)

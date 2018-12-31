@@ -1,3 +1,13 @@
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker
+
+
 class ProxyDict(object):
     def __init__(self, parent, collection_name, childclass, keyname):
         self.parent = parent
@@ -28,15 +38,6 @@ class ProxyDict(object):
             pass
         self.collection.append(value)
 
-
-from sqlalchemy import Column
-from sqlalchemy import create_engine
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import sessionmaker
 
 engine = create_engine("sqlite://", echo=True)
 Base = declarative_base(engine)

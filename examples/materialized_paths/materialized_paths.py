@@ -40,6 +40,7 @@ from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import cast
 
+
 Base = declarative_base()
 
 

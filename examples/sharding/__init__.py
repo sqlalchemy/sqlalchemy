@@ -8,7 +8,7 @@ The basic components of a "sharded" mapping are:
 * a function which can return a single shard id, given an instance
   to be saved; this is called "shard_chooser"
 * a function which can return a list of shard ids which apply to a particular
-  instance identifier; this is called "id_chooser".  If it returns all shard ids,
+  instance identifier; this is called "id_chooser".If it returns all shard ids,
   all shards will be searched.
 * a function which can return a list of shard ids to try, given a particular
   Query ("query_chooser").  If it returns all shard ids, all shards will be

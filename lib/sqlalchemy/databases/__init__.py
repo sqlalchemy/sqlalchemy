@@ -20,6 +20,9 @@ from ..dialects.sybase import base as sybase
 postgres = postgresql
 
 
+postgres = postgresql
+
+
 __all__ = (
     "firebird",
     "mssql",

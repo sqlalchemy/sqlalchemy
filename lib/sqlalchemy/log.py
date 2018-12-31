@@ -21,6 +21,7 @@ instance only.
 import logging
 import sys
 
+
 # set initial level to WARN.  This so that
 # log statements don't occur in the absence of explicit
 # logging being enabled for 'sqlalchemy'.
@@ -73,8 +74,8 @@ class InstanceLogger(object):
 
     'debug' -> logging.DEBUG
     True    -> logging.INFO
-    False   -> Effective level of underlying logger
-               (logging.WARNING by default)
+    False   -> Effective level of underlying logger (
+    logging.WARNING by default)
     None    -> same as False
     """
 

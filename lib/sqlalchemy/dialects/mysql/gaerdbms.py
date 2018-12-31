@@ -4,13 +4,12 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-"""
+r"""
 .. dialect:: mysql+gaerdbms
     :name: Google Cloud SQL
     :dbapi: rdbms
     :connectstring: mysql+gaerdbms:///<dbname>?instance=<instancename>
-    :url: https://developers.google.com/appengine/docs/python/cloud-sql/\
-developers-guide
+    :url: https://developers.google.com/appengine/docs/python/cloud-sql/developers-guide
 
     This dialect is based primarily on the :mod:`.mysql.mysqldb` dialect with
     minimal changes.
@@ -33,7 +32,7 @@ so the dialect does not pool connections.  The :class:`.NullPool`
 implementation is installed within the :class:`.Engine` by
 default.
 
-"""
+"""  # noqa
 
 import os
 import re

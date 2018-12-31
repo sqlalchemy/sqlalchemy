@@ -609,10 +609,10 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def setUp(self):
         class MyTypeCompiler(compiler.GenericTypeCompiler):
-            def visit_mytype(self, type, **kw):
+            def visit_mytype(self, type_, **kw):
                 return "MYTYPE"
 
-            def visit_myothertype(self, type, **kw):
+            def visit_myothertype(self, type_, **kw):
                 return "MYOTHERTYPE"
 
         class MyCompiler(compiler.SQLCompiler):
@@ -726,10 +726,10 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def setUp(self):
         class MyTypeCompiler(compiler.GenericTypeCompiler):
-            def visit_mytype(self, type, **kw):
+            def visit_mytype(self, type_, **kw):
                 return "MYTYPE"
 
-            def visit_myothertype(self, type, **kw):
+            def visit_myothertype(self, type_, **kw):
                 return "MYOTHERTYPE"
 
         class MyCompiler(compiler.SQLCompiler):

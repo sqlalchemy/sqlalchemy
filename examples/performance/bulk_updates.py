@@ -9,6 +9,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
+from . import Profiler
+
 
 from . import Profiler
 

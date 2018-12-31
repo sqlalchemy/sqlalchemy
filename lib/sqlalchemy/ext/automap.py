@@ -512,7 +512,7 @@ the :meth:`.AutomapBase.prepare` method is required; if not called, the classes
 we've declared are in an un-mapped state.
 
 
-"""
+"""  # noqa
 from .declarative import declarative_base as _declarative_base
 from .declarative.base import _DeferredMapperConfig
 from .. import util

@@ -281,7 +281,8 @@ if __name__ == "__main__":
         ]
     )
 
-    # or use an explicit TextualGisElement (similar to saying func.GeomFromText())
+    # or use an explicit TextualGisElement
+    # (similar to saying func.GeomFromText())
     r = Road(
         road_name="Dave Cres",
         road_geom=TextualGisElement(
@@ -295,7 +296,8 @@ if __name__ == "__main__":
 
     session.commit()
 
-    # after flush and/or commit, all the TextualGisElements become PersistentGisElements.
+    # after flush and/or commit, all the TextualGisElements
+    # become PersistentGisElements.
     assert str(r.road_geom) == "LINESTRING(198231 263418,198213 268322)"
 
     r1 = session.query(Road).filter(Road.road_name == "Graeme Ave").one()
@@ -321,16 +323,16 @@ if __name__ == "__main__":
     )
     print(session.execute(stmt).fetchall())
 
-    # TODO: for some reason the auto-generated labels have the internal replacement
-    # strings exposed, even though PG doesn't complain
+    # TODO: for some reason the auto-generated labels have the internal
+    # replacement strings exposed, even though PG doesn't complain
 
     # look up the hex binary version, using SQLAlchemy casts
     as_binary = session.scalar(
         select([type_coerce(r.road_geom, Geometry(coerce_="binary"))])
     )
-    assert (
-        as_binary.as_hex
-        == "01020000000200000000000000b832084100000000e813104100000000283208410000000088601041"
+    assert as_binary.as_hex == (
+        "01020000000200000000000000b832084100000000"
+        "e813104100000000283208410000000088601041"
     )
 
     # back again, same method !

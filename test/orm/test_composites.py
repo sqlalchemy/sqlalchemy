@@ -496,8 +496,8 @@ class PrimaryKeyTest(fixtures.MappedTest):
         graphs = cls.tables.graphs
 
         class Version(cls.Comparable):
-            def __init__(self, id, version):
-                self.id = id
+            def __init__(self, id_, version):
+                self.id = id_
                 self.version = version
 
             def __composite_values__(self):

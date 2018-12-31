@@ -72,8 +72,8 @@ class ClassManager(dict):
             if mgr is not None
         ]
 
-        for base in self._bases:
-            self.update(base)
+        for base_ in self._bases:
+            self.update(base_)
 
         self.dispatch._events._new_classmanager_instance(class_, self)
         # events._InstanceEventsHold.populate(class_, self)

@@ -1,6 +1,6 @@
-"""Installs some sample data.   Here we have a handful of postal codes for a few US/
-Canadian cities.   Then, 100 Person records are installed, each with a
-randomly selected postal code.
+"""Installs some sample data.   Here we have a handful of postal codes for
+a few US/Canadian cities.   Then, 100 Person records are installed, each
+with a randomly selected postal code.
 
 """
 import random

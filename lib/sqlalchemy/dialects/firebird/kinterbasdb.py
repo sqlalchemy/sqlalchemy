@@ -9,8 +9,7 @@
 .. dialect:: firebird+kinterbasdb
     :name: kinterbasdb
     :dbapi: kinterbasdb
-    :connectstring: firebird+kinterbasdb://user:password@host:port/path/to/db\
-[?key=value&key=value...]
+    :connectstring: firebird+kinterbasdb://user:password@host:port/path/to/db[?key=value&key=value...]
     :url: http://firebirdsql.org/index.php?op=devel&sub=python
 
 Arguments
@@ -36,7 +35,7 @@ In addition, it also accepts the following:
 
     http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
 
-"""
+"""  # noqa
 
 import decimal
 from re import match

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from . import Profiler
 
+
 Base = declarative_base()
 engine = None
 

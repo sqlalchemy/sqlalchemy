@@ -29,9 +29,16 @@ in order to note to the ORM that ``B.a_id`` should be treated like the
 "foreign key" column.
 
 """
-from sqlalchemy import *
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import TypeDecorator
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import *
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+
 
 Base = declarative_base()
 

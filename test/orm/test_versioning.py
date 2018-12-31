@@ -1260,7 +1260,7 @@ class ServerVersioningTest(fixtures.MappedTest):
             pass
 
         @compiles(IncDefault)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             # cache the counter value on the statement
             # itself so the assertsql system gets the same
             # value when it compiles the statement a second time

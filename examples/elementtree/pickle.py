@@ -1,9 +1,13 @@
-"""illustrates a quick and dirty way to persist an XML document expressed using ElementTree and pickle.
+"""
+illustrates a quick and dirty way to persist an XML document expressed using
+ElementTree and pickle.
 
 This is a trivial example using PickleType to marshal/unmarshal the ElementTree
-document into a binary column.  Compare to explicit.py which stores the individual components of the ElementTree
-structure in distinct rows using two additional mapped entities.  Note that the usage of both
-styles of persistence are identical, as is the structure of the main Document class.
+document into a binary column.  Compare to explicit.py which stores the
+individual components of the ElementTree structure in distinct rows using two
+additional mapped entities.  Note that the usage of both styles of persistence
+are identical, as is the structure of the main Document class.
+
 """
 
 import os
@@ -20,11 +24,14 @@ from sqlalchemy import Table
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
 
+
 e = create_engine("sqlite://")
 meta = MetaData()
 
 # setup a comparator for the PickleType since it's a mutable
 # element.
+
+
 def are_elements_equal(x, y):
     return x == y
 
@@ -43,6 +50,8 @@ meta.create_all(e)
 
 # our document class.  contains a string name,
 # and the ElementTree root element.
+
+
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
@@ -52,7 +61,7 @@ class Document(object):
 # setup mapper.
 mapper(Document, documents)
 
-###### time to test ! #########
+# time to test !
 
 # get ElementTree document
 filename = os.path.join(os.path.dirname(__file__), "test.xml")

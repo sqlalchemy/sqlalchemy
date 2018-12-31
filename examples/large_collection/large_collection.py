@@ -56,8 +56,8 @@ mapper(
             # Member objects "belong" to their parent, are deleted when
             # removed from the collection
             cascade="all, delete-orphan",
-            # "delete, delete-orphan" cascade does not load in objects on delete,
-            # allows ON DELETE CASCADE to handle it.
+            # "delete, delete-orphan" cascade does not load in objects on
+            # delete, allows ON DELETE CASCADE to handle it.
             # this only works with a database that supports ON DELETE CASCADE -
             # *not* sqlite or MySQL with MyISAM
             passive_deletes=True,
@@ -108,7 +108,8 @@ if __name__ == "__main__":
     # disappear automatically without the need for additional SQL.
     sess.delete(org)
     print(
-        "-------------------------\nflush three - delete org, delete members in one statement\n"
+       "-------------------------\nflush three - delete org, "
+        "delete members in one statement\n"
     )
     sess.commit()
 

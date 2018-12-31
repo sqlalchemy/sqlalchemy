@@ -93,8 +93,8 @@ class TLEngine(base.Engine):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        if type is None:
+    def __exit__(self, type_, value, traceback):
+        if type_ is None:
             self.commit()
         else:
             self.rollback()

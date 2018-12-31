@@ -83,9 +83,9 @@ class ExcludeConstraint(ColumnCollectionConstraint):
     Defines an EXCLUDE constraint as described in the `postgres
     documentation`__.
 
-    __ http://www.postgresql.org/docs/9.0/\
-static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
-    """
+    __ http://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+
+    """  # noqa
 
     __visit_name__ = "exclude_constraint"
 

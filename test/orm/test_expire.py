@@ -1397,7 +1397,7 @@ class PolymorphicExpireTest(fixtures.MappedTest):
         sess.add(e1)
         assert e1.name == "engineer1"
 
-    def test_no_instance_key(self):
+    def test_no_instance_key_pk_absent(self):
         Engineer = self.classes.Engineer
 
         # same as test_no_instance_key, but the PK columns

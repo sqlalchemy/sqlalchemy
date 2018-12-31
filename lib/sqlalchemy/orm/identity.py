@@ -33,7 +33,7 @@ class IdentityMap(object):
         in the map"""
         self.add(state)
 
-    def update(self, dict):
+    def update(self, dict_):
         raise NotImplementedError("IdentityMap uses add() to insert data")
 
     def clear(self):

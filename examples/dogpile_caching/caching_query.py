@@ -18,6 +18,7 @@ dogpile.cache constructs.
 
 """
 from dogpile.cache.api import NO_VALUE
+
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.orm.query import Query
 
@@ -187,14 +188,14 @@ class FromCache(MapperOption):
         """Construct a new FromCache.
 
         :param region: the cache region.  Should be a
-        region configured in the dictionary of dogpile
-        regions.
+         region configured in the dictionary of dogpile
+         regions.
 
         :param cache_key: optional.  A string cache key
-        that will serve as the key to the query.   Use this
-        if your query has a huge amount of parameters (such
-        as when using in_()) which correspond more simply to
-        some other identifier.
+         that will serve as the key to the query.   Use this
+         if your query has a huge amount of parameters (such
+         as when using in_()) which correspond more simply to
+         some other identifier.
 
         """
         self.region = region
@@ -215,14 +216,14 @@ class RelationshipCache(MapperOption):
         """Construct a new RelationshipCache.
 
         :param attribute: A Class.attribute which
-        indicates a particular class relationship() whose
-        lazy loader should be pulled from the cache.
+         indicates a particular class relationship() whose
+         lazy loader should be pulled from the cache.
 
         :param region: name of the cache region.
 
         :param cache_key: optional.  A string cache key
-        that will serve as the key to the query, bypassing
-        the usual means of forming a key from the Query itself.
+         that will serve as the key to the query, bypassing
+         the usual means of forming a key from the Query itself.
 
         """
         self.region = region

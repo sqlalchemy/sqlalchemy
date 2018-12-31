@@ -9,8 +9,7 @@
 .. dialect:: sybase+pysybase
     :name: Python-Sybase
     :dbapi: Sybase
-    :connectstring: sybase+pysybase://<username>:<password>@<dsn>/\
-[database name]
+    :connectstring: sybase+pysybase://<username>:<password>@<dsn>/[database name]
     :url: http://python-sybase.sourceforge.net/
 
 Unicode Support
@@ -19,7 +18,7 @@ Unicode Support
 The python-sybase driver does not appear to support non-ASCII strings of any
 kind at this time.
 
-"""
+"""  # noqa
 
 from sqlalchemy import processors
 from sqlalchemy import types as sqltypes

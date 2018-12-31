@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from . import Profiler
 
+
 Base = declarative_base()
 engine = None
 
@@ -169,8 +170,8 @@ def _test_dbapi_raw(n, make_objects):
         # going to do this, so see how this pushes you right back into
         # ORM land anyway :)
         class SimpleCustomer(object):
-            def __init__(self, id, name, description):
-                self.id = id
+            def __init__(self, id_, name, description):
+                self.id = id_
                 self.name = name
                 self.description = description
 
