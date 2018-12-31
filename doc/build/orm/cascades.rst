@@ -131,7 +131,7 @@ delete
 
 The ``delete`` cascade indicates that when a "parent" object
 is marked for deletion, its related "child" objects should also be marked
-for deletion.   If for example we we have a relationship ``User.addresses``
+for deletion.   If for example we have a relationship ``User.addresses``
 with ``delete`` cascade configured::
 
     class User(Base):

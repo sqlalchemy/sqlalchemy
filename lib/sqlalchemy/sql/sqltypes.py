@@ -1890,13 +1890,13 @@ class JSON(Indexable, TypeEngine):
     Index operations return an expression object whose type defaults to
     :class:`.JSON` by default, so that further JSON-oriented instructions
     may be called upon the result type.   Note that there are backend-specific
-    idiosyncracies here, including that the Postgresql database does not generally
+    idiosyncracies here, including that the PostgreSQL database does not generally
     compare a "json" to a "json" structure without type casts.  These idiosyncracies
-    can be accommodated in a backend-neutral way by by making explicit use
+    can be accommodated in a backend-neutral way by making explicit use
     of the :func:`.cast` and :func:`.type_coerce` constructs.
     Comparison of specific index elements of a :class:`.JSON` object
-    to other objects work best if the **left hand side is CAST to a string**
-    and the **right hand side is rendered as a json string**; a future SQLAlchemy
+    to other objects works best if the **left hand side is CAST to a string**
+    and the **right hand side is rendered as a JSON string**; a future SQLAlchemy
     feature such as a generic "astext" modifier may simplify this at some point:
 
     * **Compare an element of a JSON structure to a string**::

@@ -23,7 +23,7 @@ Python 2.7 using an in-memory SQLite database::
 
 The tox runner contains a series of target combinations that can run
 against various combinations of databases.  The test suite can be
-run against SQLite with "backend" tests also running against a Postgresql
+run against SQLite with "backend" tests also running against a PostgreSQL
 database::
 
     tox -e py36-sqlite-postgresql
@@ -64,13 +64,13 @@ quickly allow for custom database connections.  Example::
 
 Above will run the tests in the test/sql/test_query.py file (a pretty good
 file for basic "does this database work at all?" to start with) against a
-running Postgresql database at the given URL.
+running PostgreSQL database at the given URL.
 
 The py.test frontend can also run tests against multiple kinds of databases
 at once - a large subset of tests are marked as "backend" tests, which will
 be run against each available backend, and additionally lots of tests are targeted
 at specific backends only, which only run if a matching backend is made available.
-For example, to run the test suite against both Postgresql and MySQL at the same time::
+For example, to run the test suite against both PostgreSQL and MySQL at the same time::
 
     py.test -n4 --db postgresql --db mysql
 

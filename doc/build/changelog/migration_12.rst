@@ -140,7 +140,7 @@ The above SELECT statement includes these advantages:
 * Because the query only fetches for a given list of primary key identifiers,
   "selectin" loading is potentially compatible with :meth:`.Query.yield_per` to
   operate on chunks of a SELECT result at a time, provided that the
-  database driver allows for multiple, simultaneous cursors (SQlite, Postgresql;
+  database driver allows for multiple, simultaneous cursors (SQlite, PostgreSQL;
   **not** MySQL drivers or SQL Server ODBC drivers).   Neither joined eager
   loading nor subquery eager loading are compatible with :meth:`.Query.yield_per`.
 
@@ -151,7 +151,7 @@ will have more additional "SELECT IN" queries following.  Also, support
 for composite primary keys depends on the database's ability to use
 tuples with IN, e.g.
 ``(table.column_one, table_column_two) IN ((?, ?), (?, ?) (?, ?))``.
-Currently, Postgresql and MySQL are known to be compatible with this syntax,
+Currently, PostgreSQL and MySQL are known to be compatible with this syntax,
 SQLite is not.
 
 .. seealso::
@@ -779,7 +779,7 @@ follows::
     SELECT NULL IN (SELECT 1 WHERE 1 != 1)
 
 With the above test, we see that the databases themselves can't agree on
-the answer.  Postgresql, considered by most to be the most "correct" database,
+the answer.  PostgreSQL, considered by most to be the most "correct" database,
 returns False; because even though "NULL" represents "unknown", the "empty set"
 means nothing is present, including all unknown values.  On the
 other hand, MySQL and MariaDB return NULL for the above expression, defaulting
@@ -794,7 +794,7 @@ With the compilation-time behavior, the dialect itself can be instructed
 to invoke either approach, that is, the "static" ``1 != 1`` comparison or the
 "dynamic" ``expr != expr`` comparison.   The default has been **changed**
 to be the "static" comparison, since this agrees with the behavior that
-Postgresql would have in any case and this is also what the vast majority
+PostgreSQL would have in any case and this is also what the vast majority
 of users prefer.   This will **change the result** of a query that is comparing
 a null expression to the empty set, particularly one that is querying
 for the negation ``where(~null_expr.in_([]))``, since this now evaluates to true
@@ -873,7 +873,7 @@ the above table is autoloaded or inspected with :meth:`.Inspector.get_columns`,
 the comments are included.   The table comment is also available independently
 using the :meth:`.Inspector.get_table_comment` method.
 
-Current backend support includes MySQL, Postgresql, and Oracle.
+Current backend support includes MySQL, PostgreSQL, and Oracle.
 
 :ticket:`1546`
 
@@ -884,7 +884,7 @@ Multiple-table criteria support for DELETE
 
 The :class:`.Delete` construct now supports multiple-table criteria,
 implemented for those backends which support it, currently these are
-Postgresql, MySQL and Microsoft SQL Server (support is also added to the
+PostgreSQL, MySQL and Microsoft SQL Server (support is also added to the
 currently non-working Sybase dialect).   The feature works in the same
 was as that of multiple-table criteria for UPDATE, first introduced in
 the 0.7 and 0.8 series.
@@ -896,7 +896,7 @@ Given a statement as::
             where(addresses.c.email_address.startswith('ed%'))
     conn.execute(stmt)
 
-The resulting SQL from the above statement on a Postgresql backend
+The resulting SQL from the above statement on a PostgreSQL backend
 would render as::
 
     DELETE FROM users USING addresses
@@ -919,8 +919,8 @@ The "autoescape" parameter is added to :meth:`.ColumnOperators.startswith`,
 This parameter when set to ``True`` will automatically escape all occurrences
 of ``%``, ``_`` with an escape character, which defaults to a forwards slash ``/``;
 occurrences of the escape character itself are also escaped.  The forwards slash
-is used to avoid conflicts with settings like Postgresql's
-``standard_confirming_strings``, whose default value changed as of Postgresql
+is used to avoid conflicts with settings like PostgreSQL's
+``standard_confirming_strings``, whose default value changed as of PostgreSQL
 9.1, and MySQL's ``NO_BACKSLASH_ESCAPES`` settings.  The existing "escape" parameter
 can now be used to change the autoescape character, if desired.
 
@@ -1452,7 +1452,7 @@ same as the left-hand expression::
     DateTime()
 
 As most user-defined operators tend to be "comparison" operators, often
-one of the many special operators defined by Postgresql, the
+one of the many special operators defined by PostgreSQL, the
 :paramref:`.Operators.op.is_comparison` flag has been repaired to follow
 its documented behavior of allowing the return type to be :class:`.Boolean`
 in all cases, including for :class:`.ARRAY` and :class:`.JSON`::
@@ -1570,7 +1570,7 @@ on by default in a future release.
 Support for fields specification in INTERVAL, including full reflection
 -----------------------------------------------------------------------
 
-The "fields" specifier in Postgresql's INTERVAL datatype allows specification
+The "fields" specifier in PostgreSQL's INTERVAL datatype allows specification
 of which fields of the interval to store, including such values as "YEAR",
 "MONTH", "YEAR TO MONTH", etc.   The :class:`.postgresql.INTERVAL` datatype
 now allows these values to be specified::
