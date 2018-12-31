@@ -150,7 +150,7 @@ methods are called.
 
 The :class:`.Session` also features an older legacy mode of use called
 **autocommit mode**, where a transaction is not started implicitly, and unless
-the the :meth:`.Session.begin` method is invoked, the :class:`.Session` will
+the :meth:`.Session.begin` method is invoked, the :class:`.Session` will
 perform each database operation on a new connection checked out from the
 connection pool, which is then released back to the pool immediately
 after the operation completes.  This refers to

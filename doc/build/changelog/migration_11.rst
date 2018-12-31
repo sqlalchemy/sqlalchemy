@@ -1652,9 +1652,9 @@ retained as None/NULL.
    integer values, such as strings, also changed in behavior such that the
    string value ``"0"`` would be interpreted as "true", but only on backends
    that don't have a native boolean datatype - on "native boolean" backends
-   like Postgresql, the string value ``"0"`` is passed directly to the driver
+   like PostgreSQL, the string value ``"0"`` is passed directly to the driver
    and is interpreted as "false".  This is an inconsistency that did not occur
-   with the previous implementation.It should be noted that passing strings or
+   with the previous implementation. It should be noted that passing strings or
    any other value outside of ``None``, ``True``, ``False``, ``1``, ``0`` to
    the :class:`.Boolean` datatype is **not supported** and version 1.2 will
    raise an error for this scenario (or possibly just emit a warning, TBD).
@@ -2220,7 +2220,7 @@ expressions to :meth:`.Query.distinct`, the above "column adding" logic
 is disabled entirely.
 
 When the query is being bundled into a subquery for the purposes of
-joined eager loading, the "augment column list" rules are are necessarily
+joined eager loading, the "augment column list" rules are necessarily
 more aggressive so that the ORDER BY can still be satisfied, so this case
 remains unchanged.
 

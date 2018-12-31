@@ -189,7 +189,7 @@ The other axis along which SQLite's transactional locking is impacted is
 via the nature of the ``BEGIN`` statement used.   The three varieties
 are "deferred", "immediate", and "exclusive", as described at
 `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_.   A straight
-``BEGIN`` statement uses the "deferred" mode, where the the database file is
+``BEGIN`` statement uses the "deferred" mode, where the database file is
 not locked until the first read or write operation, and read access remains
 open to other transactions until the first write operation.  But again,
 it is critical to note that the pysqlite driver interferes with this behavior

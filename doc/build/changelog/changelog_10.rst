@@ -217,7 +217,7 @@
         ``_reset_exported()`` would corrupt the state of the object.  This
         method is intended for selectable objects and is called by the ORM
         in some cases; an erroneous mapper configuration would could lead the
-        ORM to call this on on a :class:`.Table` object.
+        ORM to call this on a :class:`.Table` object.
 
     .. change::
         :tags: bug, ext
@@ -703,7 +703,7 @@
         construct, when the target :class:`.Table` has Python-side defaults.
         The :class:`.Select` construct would compile standalone with the
         erroneous column present subsequent to compilation of the
-        :class:`.Insert`, and the the :class:`.Insert` statement itself would
+        :class:`.Insert`, and the :class:`.Insert` statement itself would
         fail on a second compile attempt due to duplicate bound parameters.
 
     .. change::
