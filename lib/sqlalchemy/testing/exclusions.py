@@ -6,14 +6,15 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import operator
-from ..util import decorator
-from . import config
-from .. import util
-import inspect
 import contextlib
+import operator
+import re
+
 from sqlalchemy.util.compat import inspect_getargspec
 
+from . import config
+from .. import util
+from ..util import decorator
 
 def skip_if(predicate, reason=None):
     rule = compound()
@@ -190,13 +191,18 @@ class Predicate(object):
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
         elif isinstance(predicate, util.string_types):
-            tokens = predicate.split(" ", 2)
-            op = spec = None
-            db = tokens.pop(0)
-            if tokens:
-                op = tokens.pop(0)
-            if tokens:
-                spec = tuple(int(d) for d in tokens.pop(0).split("."))
+            tokens = re.match(
+                r'([\+\w]+)\s*(?:(>=|==|!=|<=|<|>)\s*([\d\.]+))?', predicate)
+            if not tokens:
+                raise ValueError(
+                    "Couldn't locate DB name in predicate: %r" % predicate)
+            db = tokens.group(1)
+            op = tokens.group(2)
+            spec = (
+                tuple(int(d) for d in tokens.group(3).split("."))
+                if tokens.group(3) else None
+            )
+
             return SpecPredicate(db, op, spec, description=description)
         elif util.callable(predicate):
             return LambdaPredicate(predicate, description)
