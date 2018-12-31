@@ -359,7 +359,7 @@ the generative method :meth:`~.mysql.dml.Insert.on_duplicate_key_update`::
 
     conn.execute(on_duplicate_key_stmt)
 
-Unlike Postgresql's "ON CONFLICT" phrase, the "ON DUPLICATE KEY UPDATE"
+Unlike PostgreSQL's "ON CONFLICT" phrase, the "ON DUPLICATE KEY UPDATE"
 phrase will always match on any primary key or unique key, and will always
 perform an UPDATE if there's a match; there are no options for it to raise
 an error or to skip performing an UPDATE.

@@ -475,7 +475,7 @@ the one against ``Manager`` will be:
 Note that selectin polymorphic loading has similar caveats as that of
 selectin relationship loading; for entities that make use of a composite
 primary key, the database in use must support tuples with "IN", currently
-known to work with MySQL and Postgresql.
+known to work with MySQL and PostgreSQL.
 
 .. versionadded:: 1.2
 

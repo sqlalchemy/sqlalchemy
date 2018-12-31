@@ -175,7 +175,7 @@
         means the query renders with two FOR UPDATE clauses; note that on some
         backends such as Oracle, FOR UPDATE clauses on subqueries are silently
         ignored since they are unnecessary.  Additionally, in the case of the "OF"
-        clause used primarily with Postgresql, the FOR UPDATE is rendered only on
+        clause used primarily with PostgreSQL, the FOR UPDATE is rendered only on
         the inner subquery when this is used so that the selectable can be targeted
         to the table within the SELECT statement.
 
@@ -237,7 +237,7 @@
        :tags: feature, postgresql
        :tickets: 4237
 
-       Added rudimental support for reflection of Postgresql
+       Added rudimental support for reflection of PostgreSQL
        partitioned tables, e.g. that relkind='p' is added to reflection
        queries that return table information.
 

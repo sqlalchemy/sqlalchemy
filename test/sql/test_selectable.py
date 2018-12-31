@@ -335,7 +335,7 @@ class SelectableTest(
 
     def test_alias_handles_column_context(self):
         # not quite a use case yet but this is expected to become
-        # prominent w/ Postgresql's tuple functions
+        # prominent w/ PostgreSQL's tuple functions
 
         stmt = select([table1.c.col1, table1.c.col2])
         a = stmt.alias('a')

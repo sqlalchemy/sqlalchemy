@@ -345,7 +345,7 @@ outside of the database's usual autoincrement routine. In this case, we have to
 make sure SQLAlchemy can "pre-execute" the default, which means it has to be an
 explicit SQL expression.
 
-.. note::  This section will will illustrate multiple recipes involving
+.. note::  This section will illustrate multiple recipes involving
    datetime values for MySQL and SQLite, since the datetime datatypes on these
    two  backends have additional idiosyncratic requirements that are useful to
    illustrate.  Keep in mind however that SQLite and MySQL require an explicit

@@ -2331,7 +2331,7 @@ class Query(object):
 
         # the right side as given often needs to be adapted.  additionally
         # a lot of things can be wrong with it.  handle all that and
-        # get back the the new effective "right" side
+        # get back the new effective "right" side
         r_info, right, onclause = self._join_check_and_adapt_right_side(
             left, right, onclause, prop, create_aliases,
         )
@@ -3722,7 +3722,7 @@ class Query(object):
             **self._select_args
         )
         # put FOR UPDATE on the inner query, where MySQL will honor it,
-        # as well as if it has an OF so Postgresql can use it.
+        # as well as if it has an OF so PostgreSQL can use it.
         inner._for_update_arg = context._for_update_arg
 
         for hint in self._with_hints:
@@ -3742,7 +3742,7 @@ class Query(object):
             use_labels=context.labels)
 
         # Oracle however does not allow FOR UPDATE on the subquery,
-        # and the Oracle dialect ignores it, plus for Postgresql, MySQL
+        # and the Oracle dialect ignores it, plus for PostgreSQL, MySQL
         # we expect that all elements of the row are locked, so also put it
         # on the outside (except in the case of PG when OF is used)
         if context._for_update_arg is not None and \

@@ -418,7 +418,7 @@ class DefaultRequirements(SuiteRequirements):
         """target system has a strong concept of 'default' schema that can
            be referred to implicitly.
 
-           basically, Postgresql.
+           basically, PostgreSQL.
 
         """
         return only_on([

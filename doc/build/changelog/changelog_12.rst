@@ -834,7 +834,7 @@
         :tags: bug, postgresql
         :tickets: 4229
 
-        Fixed bug where the special "not equals" operator for the Postgresql
+        Fixed bug where the special "not equals" operator for the PostgreSQL
         "range" datatypes such as DATERANGE would fail to render "IS NOT NULL" when
         compared to the Python ``None`` value.
 
@@ -871,7 +871,7 @@
 
         Fixed issue where the compilation of an INSERT statement with the
         "literal_binds" option that also uses an explicit sequence and "inline"
-        generation, as on Postgresql and Oracle, would fail to accommodate the
+        generation, as on PostgreSQL and Oracle, would fail to accommodate the
         extra keyword argument within the sequence processing routine.
 
     .. change::
@@ -901,7 +901,7 @@
     .. change::
         :tags: feature, postgresql
 
-        Added support for "PARTITION BY" in Postgresql table definitions,
+        Added support for "PARTITION BY" in PostgreSQL table definitions,
         using "postgresql_partition_by".  Pull request courtesy
         Vsevolod Solovyov.
 
@@ -1325,7 +1325,7 @@
         :tags: enhancement, sql
         :tickets: 959
 
-        Implemented "DELETE..FROM" syntax for Postgresql, MySQL, MS SQL Server
+        Implemented "DELETE..FROM" syntax for PostgreSQL, MySQL, MS SQL Server
         (as well as within the unsupported Sybase dialect) in a manner similar
         to how "UPDATE..FROM" works.  A DELETE statement that refers to more than
         one table will switch into "multi-table" mode and render the appropriate
@@ -1859,7 +1859,7 @@
         :class:`.Boolean` types, which now extend a common mixin
         :class:`.Emulated` that indicates a type that provides Python-side
         emulation of a DB native type, switching out to the DB native type when a
-        supporting backend is in use.   The Postgresql :class:`.INTERVAL` type
+        supporting backend is in use.   The PostgreSQL :class:`.INTERVAL` type
         when used directly will now include the correct type coercion rules for
         SQL expressions that also take effect for :class:`.sqltypes.Interval`
         (such as adding a date to an interval yields a datetime).
@@ -2150,7 +2150,7 @@
         each other will produce parentheses between them.   This suits the
         stated operator precedence of databases like Oracle, MySQL and others
         which place all of these operators as equal precedence, as well as
-        Postgresql as of 9.5 which has also flattened its operator precendence.
+        PostgreSQL as of 9.5 which has also flattened its operator precendence.
 
         .. seealso::
 
@@ -2330,7 +2330,7 @@
         signs mostly associated with the :obj:`.literal_column` construct
         as well as operators like :meth:`.ColumnOperators.contains` now
         occurs based on the stated paramstyle of the DBAPI in use; for
-        percent-sensitive paramstyles as are common with the Postgresql
+        percent-sensitive paramstyles as are common with the PostgreSQL
         and MySQL drivers the doubling will occur, for others like that
         of SQLite it will not.   This allows more database-agnostic use
         of the :obj:`.literal_column` construct to be possible.
@@ -2344,7 +2344,7 @@
         :tickets: 3959
 
         Added support for all possible "fields" identifiers when reflecting the
-        Postgresql ``INTERVAL`` datatype, e.g. "YEAR", "MONTH", "DAY TO
+        PostgreSQL ``INTERVAL`` datatype, e.g. "YEAR", "MONTH", "DAY TO
         MINUTE", etc..   In addition, the :class:`.postgresql.INTERVAL`
         datatype itself now includes a new parameter
         :paramref:`.postgresql.INTERVAL.fields` where these qualifiers can be
@@ -2482,7 +2482,7 @@
         as part of DDL on table creation, either inline or via an appropriate
         ALTER statement, and are also reflected back within table reflection,
         as well as via the :class:`.Inspector`.   Supported backends currently
-        include MySQL, Postgresql, and Oracle.  Many thanks to Frazer McLean
+        include MySQL, PostgreSQL, and Oracle.  Many thanks to Frazer McLean
         for a large amount of effort on this.
 
         .. seealso::
@@ -2518,7 +2518,7 @@
         into a parenthesized expression.   Using :class:`.Alias` in this way
         is not yet a fully supported API, however it applies to some end-user
         recipes and may have a more prominent role in support of some
-        future Postgresql features.
+        future PostgreSQL features.
 
     .. change:: 3366
         :tags: bug, orm

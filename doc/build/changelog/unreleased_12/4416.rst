@@ -14,6 +14,6 @@
    Fixed issue where multiple :class:`.postgresql.ENUM` objects referred to
    by the same :class:`.MetaData` object would fail to be created if
    multiple objects had the same name under different schema names.  The
-   internal memoization the Postgresql dialect uses to track if it has
+   internal memoization the PostgreSQL dialect uses to track if it has
    created a particular :class:`.postgresql.ENUM` in the database during
    a DDL creation sequence now takes schema name into account.

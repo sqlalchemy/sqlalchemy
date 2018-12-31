@@ -7,5 +7,5 @@
    like a regular ad-hoc function.  This to suit the case that many of
    these functions on specific backends accept arguments such as
    "fractional seconds" precision and such.  If the function is created
-   with arguments, it renders the the parenthesis and the arguments.  If
-   no arguents are present, the compiler generates the non-parenthesized form.
+   with arguments, it renders the parenthesis and the arguments.  If
+   no arguments are present, the compiler generates the non-parenthesized form.

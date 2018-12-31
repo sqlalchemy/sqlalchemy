@@ -2155,7 +2155,7 @@ implicitly, by specifying multiple tables in the WHERE clause::
             where(addresses.c.email_address.startswith('ed%'))
     conn.execute(stmt)
 
-On a Postgresql backend, the resulting SQL from the above statement would render as::
+On a PostgreSQL backend, the resulting SQL from the above statement would render as::
 
     DELETE FROM users USING addresses
     WHERE users.id = addresses.id

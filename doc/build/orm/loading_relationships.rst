@@ -391,7 +391,7 @@ SELECT statements, each referring to a subset of rows using the WHERE
 clause, e.g. windowing.   Alternatively, consider using "select IN" eager loading
 which is **potentially** compatible with :meth:`.Query.yield_per`, provided
 that the database driver in use supports multiple, simultaneous cursors
-(SQLite, Postgresql drivers, not MySQL drivers or SQL Server ODBC drivers).
+(SQLite, PostgreSQL drivers, not MySQL drivers or SQL Server ODBC drivers).
 
 
 .. _zen_of_eager_loading:
@@ -811,7 +811,7 @@ as of the 1.2 series.   Things to know about this kind of loading include:
   with a top limit on memory use when used with :meth:`.Query.yield_per`.
 
   Current database drivers that support simultaneous cursors include
-  SQLite, Postgresql.   The MySQL drivers mysqlclient and pymysql currently
+  SQLite, PostgreSQL.   The MySQL drivers mysqlclient and pymysql currently
   **do not** support simultaneous cursors, nor do the ODBC drivers for
   SQL Server.
 
@@ -819,7 +819,7 @@ as of the 1.2 series.   Things to know about this kind of loading include:
   keys, it must use the "tuple" form of IN, which looks like
   ``WHERE (table.column_a, table.column_b) IN ((?, ?), (?, ?), (?, ?))``.
   This syntax is not supported on every database; currently it is known
-  to be only supported by modern Postgresql and MySQL versions.  Therefore
+  to be only supported by modern PostgreSQL and MySQL versions.  Therefore
   **selectin loading is not platform-agnostic for composite primary keys**.
   There is no special logic in SQLAlchemy to check ahead of time which platforms
   support this syntax or not; if run against a non-supporting platform (such

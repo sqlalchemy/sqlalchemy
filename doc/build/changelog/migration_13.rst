@@ -77,8 +77,8 @@ lazy loading uses in order to determine if related entities can be fetched
 directly from the identity map.   However, as with most querying features,
 the feature's implementation became more complex as a result of advanced
 scenarios regarding polymorphic loading.   If problems are encountered,
-users should report a bug, however the change also incldues a flag
-:paramref:`.relationship.omit_join` which can be set to False on the
+users should report a bug, however the change also includes a flag
+:paramref:`.relationship.omit_join` which can be set to ``False`` on the
 :func:`.relationship` to disable the optimization.
 
 
@@ -716,7 +716,7 @@ combined with "SELECT..FOR UPDATE", the behavior has been this::
     ) AS subq LEFT OUTER JOIN b ON subq.a_id=b.a_id FOR UPDATE
 
 However, MySQL due to https://bugs.mysql.com/bug.php?id=90693 does not lock
-the rows inside the subquery, unlike that of Postgresql and other databases.
+the rows inside the subquery, unlike that of PostgreSQL and other databases.
 So the above query now renders as::
 
     SELECT subq.a_id, subq.a_data, b_alias.id, b_alias.data FROM (
@@ -725,11 +725,11 @@ So the above query now renders as::
 
 On the Oracle dialect, the inner "FOR UPDATE" is not rendered as Oracle does
 not support this syntax and the dialect skips any "FOR UPDATE" that is against
-a subquery; it isn't necessary in any case since Oracle, like Postgresql,
+a subquery; it isn't necessary in any case since Oracle, like PostgreSQL,
 correctly locks all elements of the returned row.
 
 When using the :paramref:`.Query.with_for_update.of` modifier, typically on
-Postgresql, the outer "FOR UPDATE" is omitted, and the OF is now rendered
+PostgreSQL, the outer "FOR UPDATE" is omitted, and the OF is now rendered
 on the inside; previously, the OF target would not be converted to accommodate
 for the subquery correctly.  So
 given::
@@ -742,7 +742,7 @@ The query would now render as::
         SELECT a.id AS a_id, a.data AS a_data FROM a LIMIT 5 FOR UPDATE OF a
     ) AS subq LEFT OUTER JOIN b ON subq.a_id=b.a_id
 
-The above form should be helpful on Postgresql additionally since Postgresql
+The above form should be helpful on PostgreSQL additionally since PostgreSQL
 will not allow the FOR UPDATE clause to be rendered after the LEFT OUTER JOIN
 target.
 
@@ -948,7 +948,7 @@ Expanding IN feature now supports empty lists
 The "expanding IN" feature introduced in version 1.2 at :ref:`change_3953` now
 supports empty lists passed to the :meth:`.ColumnOperators.in_` operator.   The implementation
 for an empty list will produce an "empty set" expression that is specific to a target
-backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for Postgresql,
+backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for PostgreSQL,
 "SELECT 1 FROM (SELECT 1) as _empty_set WHERE 1!=1" for MySQL::
 
     >>> from sqlalchemy import create_engine
@@ -965,7 +965,7 @@ backend, such as "SELECT CAST(NULL AS INTEGER) WHERE 1!=1" for Postgresql,
 
 The feature also works for tuple-oriented IN statements, where the "empty IN"
 expression will be expanded to support the elements given inside the tuple,
-such as on Postgresql::
+such as on PostgreSQL::
 
     >>> from sqlalchemy import create_engine
     >>> from sqlalchemy import select, literal_column, tuple_, bindparam
@@ -1062,10 +1062,10 @@ Dialect Improvements and Changes - PostgreSQL
 
 .. _change_4237:
 
-Added basic reflection support for Postgresql paritioned tables
----------------------------------------------------------------
+Added basic reflection support for PostgreSQL partitioned tables
+----------------------------------------------------------------
 
-SQLAlchemy can render the "PARTITION BY" sequnce within a Postgresql
+SQLAlchemy can render the "PARTITION BY" sequence within a PostgreSQL
 CREATE TABLE statement using the flag ``postgresql_partition_by``, added in
 version 1.2.6.    However, the ``'p'`` type was not part of the reflection
 queries used until now.
