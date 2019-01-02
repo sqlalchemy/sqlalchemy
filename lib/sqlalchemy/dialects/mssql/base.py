@@ -646,6 +646,7 @@ http://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
 """
 import codecs
+import collections
 import datetime
 import operator
 import re
@@ -2334,7 +2335,7 @@ class MSDialect(default.DefaultDialect):
                 'referred_columns': []
             }
 
-        fkeys = util.defaultdict(fkey_rec)
+        fkeys = collections.defaultdict(fkey_rec)
 
         for r in connection.execute(s).fetchall():
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r

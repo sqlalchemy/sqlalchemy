@@ -7,6 +7,8 @@
 
 """Topological sorting algorithms."""
 
+import collections
+
 from ..exc import CircularDependencyError
 from .. import util
 
@@ -15,7 +17,7 @@ __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
 def sort_as_subsets(tuples, allitems, deterministic_order=False):
 
-    edges = util.defaultdict(set)
+    edges = collections.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
 
@@ -56,7 +58,7 @@ def find_cycles(tuples, allitems):
     # adapted from:
     # http://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html
 
-    edges = util.defaultdict(set)
+    edges = collections.defaultdict(set)
     for parent, child in tuples:
         edges[parent].add(child)
     nodes_to_test = set(edges)

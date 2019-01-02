@@ -44,7 +44,6 @@ from .deprecations import warn_deprecated, warn_pending_deprecation, \
 
 # things that used to be not always available,
 # but are now as of current support Python versions
-from collections import defaultdict
 from functools import partial
 from functools import update_wrapper
 from contextlib import contextmanager

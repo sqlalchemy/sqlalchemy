@@ -17,12 +17,13 @@ instances of ``_Dispatch``.
 """
 from __future__ import absolute_import
 
+import collections
 import weakref
 
 from .. import util
 from .attr import _ClsLevelDispatch, _EmptyListener, _JoinedListener
 
-_registrars = util.defaultdict(list)
+_registrars = collections.defaultdict(list)
 
 
 def _is_event_name(name):

@@ -70,6 +70,7 @@ the SQLAlchemy ``returning()`` method, such as::
 
 """
 
+import collections
 import datetime
 
 from sqlalchemy import schema as sa_schema
@@ -689,7 +690,7 @@ class FBDialect(default.DefaultDialect):
         tablename = self.denormalize_name(table_name)
 
         c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
-        fks = util.defaultdict(lambda: {
+        fks = collections.defaultdict(lambda: {
             'name': None,
             'constrained_columns': [],
             'referred_schema': None,
@@ -727,7 +728,7 @@ class FBDialect(default.DefaultDialect):
         """
         c = connection.execute(qry, [self.denormalize_name(table_name)])
 
-        indexes = util.defaultdict(dict)
+        indexes = collections.defaultdict(dict)
         for row in c:
             indexrec = indexes[row['index_name']]
             if 'name' not in indexrec:

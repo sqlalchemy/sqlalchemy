@@ -345,6 +345,7 @@ columns for non-unique indexes, all but the last column for unique indexes).
 
 """
 
+import collections
 import re
 
 from sqlalchemy import util, sql
@@ -1649,7 +1650,7 @@ class OracleDialect(default.DefaultDialect):
                 'options': {},
             }
 
-        fkeys = util.defaultdict(fkey_rec)
+        fkeys = collections.defaultdict(fkey_rec)
 
         for row in constraint_data:
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \

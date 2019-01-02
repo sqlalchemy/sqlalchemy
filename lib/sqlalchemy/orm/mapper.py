@@ -19,7 +19,7 @@ from __future__ import absolute_import
 import types
 import weakref
 from itertools import chain
-from collections import deque
+from collections import defaultdict, deque
 
 from .. import sql, util, log, exc as sa_exc, event, schema, inspection
 from ..sql import expression, visitors, operators, util as sql_util
@@ -2950,7 +2950,7 @@ class Mapper(InspectionAttr):
         """memoized map of tables to collections of columns to be
         synchronized upwards to the base mapper."""
 
-        result = util.defaultdict(list)
+        result = defaultdict(list)
 
         for table in self._sorted_tables:
             cols = set(table.c)

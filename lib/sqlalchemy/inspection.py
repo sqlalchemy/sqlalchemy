@@ -31,8 +31,10 @@ in a forwards-compatible way.
 
 """
 
-from . import util, exc
-_registrars = util.defaultdict(list)
+import collections
+
+from . import exc
+_registrars = collections.defaultdict(list)
 
 
 def inspect(subject, raiseerr=True):

@@ -13,11 +13,12 @@ organizes them in order of dependency, and executes.
 
 """
 
+import collections
+
 from .. import util, event
 from ..util import topological
 from . import attributes, persistence, util as orm_util
 from . import exc as orm_exc
-import itertools
 
 
 def track_cascade_events(descriptor, prop):
@@ -127,12 +128,12 @@ class UOWTransaction(object):
         # DependencyProcessors, which are also
         # set to be part of the sorted flush actions,
         # which have that mapper as a parent.
-        self.deps = util.defaultdict(set)
+        self.deps = collections.defaultdict(set)
 
         # dictionary of mappers to sets of InstanceState
         # items pending for flush which have that mapper
         # as a parent.
-        self.mappers = util.defaultdict(set)
+        self.mappers = collections.defaultdict(set)
 
         # a dictionary of Preprocess objects, which gather
         # additional states impacted by the flush
@@ -159,7 +160,7 @@ class UOWTransaction(object):
         # a "post update" call.  Keys are mappers,
         # values are a set of states and a set of the
         # columns which should be included in the update.
-        self.post_update_states = util.defaultdict(lambda: (set(), set()))
+        self.post_update_states = collections.defaultdict(lambda: (set(), set()))
 
     @property
     def has_work(self):

@@ -8,6 +8,8 @@
 """SQL function API, factories, and built-in functions.
 
 """
+import collections
+
 from . import sqltypes, schema
 from .base import Executable, ColumnCollection
 from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
@@ -21,7 +23,7 @@ from .visitors import VisitableType
 from .. import util
 from . import annotation
 
-_registry = util.defaultdict(dict)
+_registry = collections.defaultdict(dict)
 
 
 def register_function(identifier, fn, package="_default"):
