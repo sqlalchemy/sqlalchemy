@@ -5,13 +5,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from ..util import jython, pypy, defaultdict, decorator, py2k
+import collections
 import decimal
 import gc
 import time
 import random
 import sys
 import types
+
+from ..util import jython, pypy, decorator, py2k
 
 if jython:
     def jython_gc_collect(*args):
@@ -93,7 +95,7 @@ class RandomSet(set):
 def conforms_partial_ordering(tuples, sorted_elements):
     """True if the given sorting conforms to the given partial ordering."""
 
-    deps = defaultdict(set)
+    deps = collections.defaultdict(set)
     for parent, child in tuples:
         deps[parent].add(child)
     for i, node in enumerate(sorted_elements):
@@ -105,7 +107,7 @@ def conforms_partial_ordering(tuples, sorted_elements):
 
 
 def all_partial_orderings(tuples, elements):
-    edges = defaultdict(set)
+    edges = collections.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
 
