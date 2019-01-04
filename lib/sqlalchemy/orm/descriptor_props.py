@@ -76,7 +76,7 @@ class DescriptorProperty(MapperProperty):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class CompositeProperty(DescriptorProperty):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
@@ -465,7 +465,7 @@ class CompositeProperty(DescriptorProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class ConcreteInheritedProperty(DescriptorProperty):
     """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
@@ -516,7 +516,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
         self.descriptor = NoninheritedConcreteProp()
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class SynonymProperty(DescriptorProperty):
 
     def __init__(self, name, map_column=None,
@@ -693,7 +693,7 @@ class SynonymProperty(DescriptorProperty):
         self.parent = parent
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 

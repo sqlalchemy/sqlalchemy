@@ -16,8 +16,6 @@ from sqlalchemy.sql import visitors
 from sqlalchemy import inspection
 from sqlalchemy import exc, types, util, dialects
 from sqlalchemy.util import OrderedDict
-for name in dialects.__all__:  # noqa
-    __import__("sqlalchemy.dialects.%s" % name)
 from sqlalchemy.sql import operators, column, table, null
 from sqlalchemy.schema import CheckConstraint, AddConstraint
 from sqlalchemy.engine import default
@@ -31,15 +29,15 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.sql import column
 import operator
+import importlib
 
 
 class AdaptTest(fixtures.TestBase):
 
     def _all_dialect_modules(self):
         return [
-            getattr(dialects, d)
-            for d in dialects.__all__
-            if not d.startswith('_')
+            importlib.import_module("sqlalchemy.dialects.%s" % d)
+            for d in dialects.__all__ if not d.startswith("_")
         ]
 
     def _all_dialects(self):

@@ -20,8 +20,7 @@ from .util import _orm_full_deannotate
 
 from .interfaces import PropComparator, StrategizedProperty
 
-__all__ = ['ColumnProperty', 'CompositeProperty', 'SynonymProperty',
-           'ComparableProperty', 'RelationshipProperty']
+__all__ = ['ColumnProperty']
 
 
 @log.class_logger

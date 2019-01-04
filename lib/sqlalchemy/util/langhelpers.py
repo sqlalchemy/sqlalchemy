@@ -853,7 +853,7 @@ class MemoizedSlots(object):
             return self._fallback_getattr(key)
 
 
-def dependency_for(modulename):
+def dependency_for(modulename, add_to_all=False):
     def decorate(obj):
         # TODO: would be nice to improve on this import silliness,
         # unfortunately importlib doesn't work that great either
@@ -862,6 +862,8 @@ def dependency_for(modulename):
             ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]])
         mod = getattr(mod, tokens[-1])
         setattr(mod, obj.__name__, obj)
+        if add_to_all and hasattr(mod, "__all__"):
+            mod.__all__.append(obj.__name__)
         return obj
     return decorate
 
