@@ -45,7 +45,7 @@ def pytest_addoption(parser):
                     dest,
                     default=False,
                     required=False,
-                    help=None,
+                    help=None,  # noqa
                 ):
                     super(CallableAction, self).__init__(
                         option_strings=option_strings,

@@ -10,10 +10,11 @@ import contextlib
 import operator
 import re
 
-from sqlalchemy.util.compat import inspect_getargspec
 from . import config
 from .. import util
 from ..util import decorator
+from ..util.compat import inspect_getargspec
+
 
 
 def skip_if(predicate, reason=None):
@@ -398,7 +399,7 @@ def db_spec(*dbs):
     return OrPredicate([Predicate.as_predicate(db) for db in dbs])
 
 
-def open():
+def open():  # noqa
     return skip_if(BooleanPredicate(False, "mark as execute"))
 
 

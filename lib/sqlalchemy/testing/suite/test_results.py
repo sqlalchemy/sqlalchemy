@@ -1,12 +1,5 @@
 import datetime
 
-from sqlalchemy import DateTime
-from sqlalchemy import func
-from sqlalchemy import Integer
-from sqlalchemy import select
-from sqlalchemy import sql
-from sqlalchemy import String
-from sqlalchemy import text
 from .. import config
 from .. import engines
 from .. import fixtures
@@ -14,7 +7,14 @@ from ..assertions import eq_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
+from ... import DateTime
+from ... import func
+from ... import Integer
+from ... import select
+from ... import sql
+from ... import String
 from ... import testing
+from ... import text
 
 
 class RowFetchTest(fixtures.TablesTest):

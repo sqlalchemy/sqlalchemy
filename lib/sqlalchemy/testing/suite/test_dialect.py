@@ -1,8 +1,3 @@
-from sqlalchemy import exc
-from sqlalchemy import Integer
-from sqlalchemy import literal_column
-from sqlalchemy import select
-from sqlalchemy import String
 from .. import assert_raises
 from .. import config
 from .. import eq_
@@ -11,6 +6,11 @@ from .. import provide_metadata
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
+from ... import exc
+from ... import Integer
+from ... import literal_column
+from ... import select
+from ... import String
 
 
 class ExceptionTest(fixtures.TablesTest):

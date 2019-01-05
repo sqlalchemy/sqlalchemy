@@ -3,13 +3,14 @@ import logging
 import os
 import time
 
-from sqlalchemy import create_engine
-from sqlalchemy import exc
-from sqlalchemy import text
-from sqlalchemy.engine import url as sa_url
-from sqlalchemy.util import compat
 from . import config
 from . import engines
+from .. import create_engine
+from .. import exc
+from .. import text
+from ..engine import url as sa_url
+from ..util import compat
+
 
 log = logging.getLogger(__name__)
 
@@ -172,12 +173,17 @@ def _pg_create_db(cfg, eng, ident):
             pass
         if not template_db:
             template_db = conn.scalar("select current_database()")
-        for attempt in range(3):
+
+        attempt = 0
+        while True:
             try:
                 conn.execute(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, template_db)
                 )
             except exc.OperationalError as err:
+                attempt += 1
+                if attempt >= 3:
+                    raise
                 if "accessed by other users" in str(err):
                     log.info(
                         "Waiting to create %s, URI %r, "
@@ -189,8 +195,6 @@ def _pg_create_db(cfg, eng, ident):
                     time.sleep(0.5)
             else:
                 break
-        else:
-            raise err
 
 
 @_create_db.for_db("mysql")
@@ -394,7 +398,8 @@ def _mssql_drop_ignore(conn, ident):
     try:
         # typically when this happens, we can't KILL the session anyway,
         # so let the cleanup process drop the DBs
-        # for row in conn.execute("select session_id from sys.dm_exec_sessions "
+        # for row in conn.execute(
+        #     "select session_id from sys.dm_exec_sessions "
         #        "where database_id=db_id('%s')" % ident):
         #    log.info("killing SQL server sesssion %s", row['session_id'])
         #    conn.execute("kill %s" % row['session_id'])

@@ -1,1 +1,10 @@
-
+from .test_cte import *  # noqa
+from .test_ddl import *  # noqa
+from .test_dialect import *  # noqa
+from .test_insert import *  # noqa
+from .test_reflection import *  # noqa
+from .test_results import *  # noqa
+from .test_select import *  # noqa
+from .test_sequence import *  # noqa
+from .test_types import *  # noqa
+from .test_update_delete import *  # noqa

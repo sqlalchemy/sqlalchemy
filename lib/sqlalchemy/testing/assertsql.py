@@ -9,12 +9,12 @@ import collections
 import contextlib
 import re
 
-from sqlalchemy.engine import url
-from sqlalchemy.engine.util import _distill_params
-from sqlalchemy.schema import _DDLCompiles
 from .. import event
 from .. import util
+from ..engine import url
 from ..engine.default import DefaultDialect
+from ..engine.util import _distill_params
+from ..schema import _DDLCompiles
 
 
 class AssertRule(object):

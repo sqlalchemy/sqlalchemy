@@ -1,12 +1,12 @@
-from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import Table
 from .. import config
 from .. import fixtures
 from .. import util
 from ..assertions import eq_
 from ..config import requirements
+from ... import Column
+from ... import Integer
+from ... import String
+from ... import Table
 
 
 class TableDDLTest(fixtures.TestBase):

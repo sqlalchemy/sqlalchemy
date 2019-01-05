@@ -3,35 +3,37 @@
 import datetime
 import decimal
 
-from sqlalchemy import and_
-from sqlalchemy import BigInteger
-from sqlalchemy import Boolean
-from sqlalchemy import cast
-from sqlalchemy import Date
-from sqlalchemy import DateTime
-from sqlalchemy import Float
-from sqlalchemy import Integer
-from sqlalchemy import JSON
-from sqlalchemy import literal
-from sqlalchemy import MetaData
-from sqlalchemy import null
-from sqlalchemy import Numeric
-from sqlalchemy import select
-from sqlalchemy import String
-from sqlalchemy import Text
-from sqlalchemy import Time
-from sqlalchemy import TIMESTAMP
-from sqlalchemy import type_coerce
-from sqlalchemy import Unicode
-from sqlalchemy import UnicodeText
 from .. import config
 from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
+from ... import and_
+from ... import BigInteger
+from ... import Boolean
+from ... import cast
+from ... import Date
+from ... import DateTime
+from ... import Float
+from ... import Integer
+from ... import JSON
+from ... import literal
+from ... import MetaData
+from ... import null
+from ... import Numeric
+from ... import select
+from ... import String
 from ... import testing
+from ... import Text
+from ... import Time
+from ... import TIMESTAMP
+from ... import type_coerce
+from ... import Unicode
+from ... import UnicodeText
 from ... import util
+from ...ext.declarative import declarative_base
+from ...orm import Session
 from ...util import u
 
 
@@ -346,7 +348,7 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
         if util.py3k:
             assert isinstance(row[0], int)
         else:
-            assert isinstance(row[0], (long, int))
+            assert isinstance(row[0], (long, int))  # noqa
 
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
@@ -868,8 +870,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
     def test_eval_none_flag_orm(self):
-        from sqlalchemy.ext.declarative import declarative_base
-        from sqlalchemy.orm import Session
 
         Base = declarative_base()
 

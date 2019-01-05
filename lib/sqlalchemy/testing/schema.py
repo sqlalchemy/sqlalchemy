@@ -10,7 +10,7 @@ from . import exclusions
 from .. import event
 from .. import schema
 
-__all__ = "Table", "Column"
+__all__ = ["Table", "Column"]
 
 table_options = {}
 

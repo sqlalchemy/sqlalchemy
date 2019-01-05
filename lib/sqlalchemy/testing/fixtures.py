@@ -8,9 +8,6 @@
 import sys
 
 import sqlalchemy as sa
-from sqlalchemy import event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from . import assertions
 from . import config
 from . import schema
@@ -18,7 +15,11 @@ from .engines import drop_all_tables
 from .entities import BasicEntity
 from .entities import ComparableEntity
 from .util import adict
+from .. import event
 from .. import util
+from ..ext.declarative import declarative_base
+from ..ext.declarative import DeclarativeMeta
+
 
 # whether or not we use unittest changes things dramatically,
 # as far as how py.test collection works.

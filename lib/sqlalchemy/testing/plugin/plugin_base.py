@@ -245,7 +245,8 @@ def post_begin():
 
     # late imports, has to happen after config as well
     # as nose plugins like coverage
-    global util, fixtures, engines, exclusions, assertions, warnings, profiling, config, testing
+    global util, fixtures, engines, exclusions, assertions
+    global warnings, profiling, config, testing
     from sqlalchemy import testing  # noqa
     from sqlalchemy.testing import fixtures, engines, exclusions  # noqa
     from sqlalchemy.testing import assertions, warnings, profiling  # noqa
@@ -525,8 +526,8 @@ def generate_sub_tests(cls, module):
             # pytest junit plugin, which is tripped up by the brackets
             # and periods, so sanitize
 
-            alpha_name = re.sub("[_\[\]\.]+", "_", cfg.name)
-            alpha_name = re.sub("_+$", "", alpha_name)
+            alpha_name = re.sub(r"[_\[\]\.]+", "_", cfg.name)
+            alpha_name = re.sub(r"_+$", "", alpha_name)
             name = "%s_%s" % (cls.__name__, alpha_name)
             subcls = type(
                 name,

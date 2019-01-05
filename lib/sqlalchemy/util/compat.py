@@ -8,9 +8,13 @@
 """Handle Python version/platform incompatibilities."""
 
 import collections
+from collections import namedtuple
 from contextlib import contextmanager
+from operator import attrgetter as dottedgetter
 import sys
 import time
+
+
 
 try:
     import threading

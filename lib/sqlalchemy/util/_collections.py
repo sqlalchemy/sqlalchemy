@@ -13,10 +13,10 @@ import operator
 import types
 import weakref
 
-from . import py2k
 from .compat import binary_types
 from .compat import collections_abc
 from .compat import itertools_filterfalse
+from .compat import py2k
 from .compat import string_types
 from .compat import threading
 
@@ -191,8 +191,8 @@ class Properties(object):
     def __add__(self, other):
         return list(self) + list(other)
 
-    def __setitem__(self, key, object):
-        self._data[key] = object
+    def __setitem__(self, key, obj):
+        self._data[key] = obj
 
     def __getitem__(self, key):
         return self._data[key]
@@ -334,7 +334,7 @@ class OrderedDict(dict):
         def iteritems(self):
             return iter(self.items())
 
-    def __setitem__(self, key, object):
+    def __setitem__(self, key, obj):
         if key not in self:
             try:
                 self._list.append(key)
@@ -342,7 +342,7 @@ class OrderedDict(dict):
                 # work around Python pickle loads() with
                 # dict subclass (seems to ignore __setstate__?)
                 self._list = [key]
-        dict.__setitem__(self, key, object)
+        dict.__setitem__(self, key, obj)
 
     def __delitem__(self, key):
         dict.__delitem__(self, key)
@@ -817,7 +817,7 @@ def to_list(x, default=None):
 
 
 def has_intersection(set_, iterable):
-    """return True if any items of set_ are present in iterable.
+    r"""return True if any items of set\_ are present in iterable.
 
     Goes through special effort to ensure __hash__ is not called
     on items in iterable that don't support it.
@@ -1069,3 +1069,4 @@ def _iter_id(iterable):
 
     for item in iterable:
         yield id(item), item
+

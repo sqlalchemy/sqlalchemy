@@ -210,7 +210,7 @@ def function_call_count(variance=0.05):
 @contextlib.contextmanager
 def count_functions(variance=0.05):
     if cProfile is None:
-        raise SkipTest("cProfile is not installed")
+        raise config._skip_test_exception("cProfile is not installed")
 
     if not _profile_stats.has_stats() and not _profile_stats.write:
         config.skip_test(

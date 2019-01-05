@@ -1,18 +1,23 @@
-from sqlalchemy import bindparam
-from sqlalchemy import func
-from sqlalchemy import Integer
-from sqlalchemy import literal_column
-from sqlalchemy import select
-from sqlalchemy import String
-from sqlalchemy import testing
-from sqlalchemy import tuple_
-from sqlalchemy import union
-from sqlalchemy import util
 from .. import config
 from .. import fixtures
 from ..assertions import eq_
+from ..assertions import in_
 from ..schema import Column
 from ..schema import Table
+from ... import bindparam
+from ... import case
+from ... import false
+from ... import func
+from ... import Integer
+from ... import literal_column
+from ... import null
+from ... import select
+from ... import String
+from ... import testing
+from ... import true
+from ... import tuple_
+from ... import union
+from ... import util
 
 
 class CollateTest(fixtures.TablesTest):
@@ -383,6 +388,8 @@ class ExpandingBoundInTest(fixtures.TablesTest):
     def _assert_result(self, select, result, params=()):
         eq_(config.db.execute(select, params).fetchall(), result)
 
+        self._assert_result(stmt, [], params={"q": []})
+
     def test_bound_in_scalar(self):
         table = self.tables.some_table
 
@@ -411,6 +418,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         self._assert_result(
             stmt, [(2,), (3,), (4,)], params={"q": [(2, 3), (3, 4), (4, 5)]}
         )
+        in_(config.db.execute(stmt).fetchone()[0], (False, 0))
 
 
 class LikeFunctionsTest(fixtures.TablesTest):

@@ -1,8 +1,3 @@
-from sqlalchemy import Integer
-from sqlalchemy import literal
-from sqlalchemy import literal_column
-from sqlalchemy import select
-from sqlalchemy import String
 from .. import config
 from .. import engines
 from .. import fixtures
@@ -10,6 +5,11 @@ from ..assertions import eq_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
+from ... import Integer
+from ... import literal
+from ... import literal_column
+from ... import select
+from ... import String
 
 
 class LastrowidTest(fixtures.TablesTest):
