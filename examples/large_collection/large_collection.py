@@ -108,7 +108,7 @@ if __name__ == "__main__":
     # disappear automatically without the need for additional SQL.
     sess.delete(org)
     print(
-       "-------------------------\nflush three - delete org, "
+        "-------------------------\nflush three - delete org, "
         "delete members in one statement\n"
     )
     sess.commit()

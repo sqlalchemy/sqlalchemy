@@ -23,7 +23,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.entities import ComparableEntity
-
 from .history_meta import Versioned
 from .history_meta import versioned_session
 

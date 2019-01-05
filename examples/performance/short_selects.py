@@ -15,7 +15,6 @@ from sqlalchemy.ext import baked
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import Session
-
 from . import Profiler
 
 

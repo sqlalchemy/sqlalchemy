@@ -12,7 +12,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.orm import relationship
-
 from .caching_query import RelationshipCache
 from .environment import Base
 from .environment import bootstrap
