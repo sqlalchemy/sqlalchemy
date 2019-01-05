@@ -72,26 +72,26 @@ the SQLAlchemy ``returning()`` method, such as::
 
 import datetime
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import exc, types as sqltypes, sql, util
-from sqlalchemy.sql import expression
-from sqlalchemy.engine import base, default, reflection
+from sqlalchemy import exc
+from sqlalchemy import sql
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import reflection
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql import expression
 from sqlalchemy.sql.elements import quoted_name
-
-from sqlalchemy.types import (
-    BIGINT,
-    BLOB,
-    DATE,
-    FLOAT,
-    INTEGER,
-    NUMERIC,
-    SMALLINT,
-    TEXT,
-    TIME,
-    TIMESTAMP,
-    Integer,
-)
+from sqlalchemy.types import BIGINT
+from sqlalchemy.types import BLOB
+from sqlalchemy.types import DATE
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import Integer
+from sqlalchemy.types import NUMERIC
+from sqlalchemy.types import SMALLINT
+from sqlalchemy.types import TEXT
+from sqlalchemy.types import TIME
+from sqlalchemy.types import TIMESTAMP
 
 
 RESERVED_WORDS = set(

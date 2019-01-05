@@ -6,8 +6,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import datetime
-from ... import exc, util
+
+from ... import exc
 from ... import types as sqltypes
+from ... import util
 
 
 class _NumericType(object):

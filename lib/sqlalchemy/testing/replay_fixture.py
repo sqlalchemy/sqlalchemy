@@ -1,13 +1,14 @@
+from collections import deque
+import contextlib
+import types
+
+from sqlalchemy import create_engine
+from sqlalchemy import MetaData
+from sqlalchemy.orm import Session
+from . import config
 from . import fixtures
 from . import profiling
 from .. import util
-import types
-from collections import deque
-import contextlib
-from . import config
-from sqlalchemy import MetaData
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
 
 
 class ReplayFixtureTest(fixtures.TestBase):

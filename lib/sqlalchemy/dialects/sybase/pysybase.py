@@ -21,12 +21,11 @@ kind at this time.
 
 """
 
-from sqlalchemy import types as sqltypes, processors
-from sqlalchemy.dialects.sybase.base import (
-    SybaseDialect,
-    SybaseExecutionContext,
-    SybaseSQLCompiler,
-)
+from sqlalchemy import processors
+from sqlalchemy import types as sqltypes
+from sqlalchemy.dialects.sybase.base import SybaseDialect
+from sqlalchemy.dialects.sybase.base import SybaseExecutionContext
+from sqlalchemy.dialects.sybase.base import SybaseSQLCompiler
 
 
 class _SybNumeric(sqltypes.Numeric):

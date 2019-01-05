@@ -8,10 +8,12 @@
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
 
-from .. import exc
-import warnings
 import re
+import textwrap
+import warnings
+
 from .langhelpers import decorator
+from .. import exc
 
 
 def warn_deprecated(msg, stacklevel=3):
@@ -125,9 +127,6 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     decorated = warned(func)
     decorated.__doc__ = doc
     return decorated
-
-
-import textwrap
 
 
 def _dedent_docstring(text):

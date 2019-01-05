@@ -19,8 +19,10 @@ from __future__ import absolute_import
 
 import weakref
 
+from .attr import _ClsLevelDispatch
+from .attr import _EmptyListener
+from .attr import _JoinedListener
 from .. import util
-from .attr import _JoinedListener, _EmptyListener, _ClsLevelDispatch
 
 _registrars = util.defaultdict(list)
 

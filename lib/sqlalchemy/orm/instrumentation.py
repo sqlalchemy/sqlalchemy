@@ -30,9 +30,12 @@ alternate instrumentation forms.
 """
 
 
-from . import exc, collections, interfaces, state
-from .. import util
 from . import base
+from . import collections
+from . import exc
+from . import interfaces
+from . import state
+from .. import util
 
 
 _memoized_key_collection = util.group_expirable_memoized_property()

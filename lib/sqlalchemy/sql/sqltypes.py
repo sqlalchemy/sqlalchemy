@@ -9,35 +9,33 @@
 
 """
 
-import datetime as dt
 import codecs
-import collections
+import datetime as dt
+import decimal
 import json
 
 from . import elements
-from .type_api import (
-    TypeEngine,
-    TypeDecorator,
-    to_instance,
-    Variant,
-    Emulated,
-    NativeForEmulated,
-)
-from .elements import (
-    quoted_name,
-    TypeCoerce as type_coerce,
-    _defer_name,
-    Slice,
-    _literal_as_binds,
-)
-from .. import exc, util, processors
-from .base import _bind_or_error, SchemaEventTarget
 from . import operators
-from .. import inspection
+from . import type_api
+from .base import _bind_or_error
+from .base import SchemaEventTarget
+from .elements import _defer_name
+from .elements import _literal_as_binds
+from .elements import quoted_name
+from .elements import Slice
+from .elements import TypeCoerce as type_coerce
+from .type_api import Emulated
+from .type_api import to_instance
+from .type_api import TypeDecorator
+from .type_api import TypeEngine
+from .type_api import Variant
 from .. import event
-from ..util import pickle
+from .. import exc
+from .. import inspection
+from .. import processors
+from .. import util
 from ..util import compat
-import decimal
+from ..util import pickle
 
 if util.jython:
     import array
@@ -2807,7 +2805,6 @@ def _resolve_value_to_type(value):
 
 
 # back-assign to type_api
-from . import type_api
 
 type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE

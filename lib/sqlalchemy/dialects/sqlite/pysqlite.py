@@ -264,12 +264,15 @@ by adding the desired locking mode to our ``"BEGIN"``::
 
 """
 
-from sqlalchemy.dialects.sqlite.base import SQLiteDialect, DATETIME, DATE
-from sqlalchemy import exc, pool
+import os
+
+from sqlalchemy import exc
+from sqlalchemy import pool
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
-
-import os
+from sqlalchemy.dialects.sqlite.base import DATE
+from sqlalchemy.dialects.sqlite.base import DATETIME
+from sqlalchemy.dialects.sqlite.base import SQLiteDialect
 
 
 class _SQLite_pysqliteTimeStamp(DATETIME):

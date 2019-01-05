@@ -15,10 +15,11 @@
 
 
 """
-from ... import util
-from ... import types as sqltypes
-from .base import PGDialect, PGExecutionContext
+from .base import PGDialect
+from .base import PGExecutionContext
 from ... import processors
+from ... import types as sqltypes
+from ... import util
 
 
 class PGNumeric(sqltypes.Numeric):

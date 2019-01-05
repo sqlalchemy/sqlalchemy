@@ -5,11 +5,12 @@ except ImportError:
     # assume we're a package, use traditional import
     from . import plugin_base
 
-import pytest
 import argparse
-import inspect
 import collections
+import inspect
 import os
+
+import pytest
 
 try:
     import xdist  # noqa

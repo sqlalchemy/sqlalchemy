@@ -30,25 +30,29 @@ as components in SQL expressions.
 """
 from __future__ import absolute_import
 
-from .. import exc, util, event, inspection
-from .base import SchemaEventTarget, DialectKWArgs
-import operator
-from . import visitors
-from . import type_api
-from .base import _bind_or_error, ColumnCollection
-from .elements import (
-    ClauseElement,
-    ColumnClause,
-    _as_truncated,
-    TextClause,
-    _literal_as_text,
-    ColumnElement,
-    quoted_name,
-)
-from .selectable import TableClause
 import collections
+import operator
+
 import sqlalchemy
 from . import ddl
+from . import type_api
+from . import visitors
+from .base import _bind_or_error
+from .base import ColumnCollection
+from .base import DialectKWArgs
+from .base import SchemaEventTarget
+from .elements import _as_truncated
+from .elements import _literal_as_text
+from .elements import ClauseElement
+from .elements import ColumnClause
+from .elements import ColumnElement
+from .elements import quoted_name
+from .elements import TextClause
+from .selectable import TableClause
+from .. import event
+from .. import exc
+from .. import inspection
+from .. import util
 
 RETAIN_SCHEMA = util.symbol("retain_schema")
 

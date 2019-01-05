@@ -15,10 +15,9 @@
     :url: https://github.com/nakagami/CyMySQL
 
 """
-import re
-
+from .base import BIT
+from .base import MySQLDialect
 from .mysqldb import MySQLDialect_mysqldb
-from .base import BIT, MySQLDialect
 from ... import util
 
 

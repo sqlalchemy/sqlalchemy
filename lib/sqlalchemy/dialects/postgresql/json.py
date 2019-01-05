@@ -6,13 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 from __future__ import absolute_import
 
-import json
-
-from .base import ischema_names, colspecs
+from .base import colspecs
+from .base import ischema_names
 from ... import types as sqltypes
-from ...sql import operators
-from ...sql import elements
 from ... import util
+from ...sql import operators
 
 __all__ = ("JSON", "JSONB")
 

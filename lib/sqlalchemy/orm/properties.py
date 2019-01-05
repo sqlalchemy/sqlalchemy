@@ -13,12 +13,13 @@ mapped attributes.
 """
 from __future__ import absolute_import
 
-from .. import util, log
-from ..sql import expression
 from . import attributes
+from .interfaces import PropComparator
+from .interfaces import StrategizedProperty
 from .util import _orm_full_deannotate
-
-from .interfaces import PropComparator, StrategizedProperty
+from .. import log
+from .. import util
+from ..sql import expression
 
 __all__ = ["ColumnProperty"]
 

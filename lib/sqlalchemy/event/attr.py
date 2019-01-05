@@ -29,15 +29,18 @@ as well as support for subclass propagation (e.g. events assigned to
 
 """
 
-from __future__ import absolute_import, with_statement
+from __future__ import absolute_import
+from __future__ import with_statement
+
+import collections
+from itertools import chain
+import weakref
+
+from . import legacy
+from . import registry
 from .. import exc
 from .. import util
 from ..util import threading
-from . import registry
-from . import legacy
-from itertools import chain
-import weakref
-import collections
 
 
 class RefCollection(util.MemoizedSlots):

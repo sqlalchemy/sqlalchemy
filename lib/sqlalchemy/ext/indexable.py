@@ -228,8 +228,8 @@ The above query will render::
 from __future__ import absolute_import
 
 from sqlalchemy import inspect
-from ..orm.attributes import flag_modified
 from ..ext.hybrid import hybrid_property
+from ..orm.attributes import flag_modified
 
 
 __all__ = ["index_property"]

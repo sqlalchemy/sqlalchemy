@@ -1,20 +1,28 @@
-import sqlalchemy as sa
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import types as sql_types
-from sqlalchemy import inspect
-from sqlalchemy import MetaData, Integer, String, func
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.testing import engines, fixtures
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import eq_, is_, assert_raises_message
-from sqlalchemy import testing
-from .. import config
 import operator
-from sqlalchemy.schema import DDL, Index
-from sqlalchemy import event
-from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy import ForeignKey
 import re
+
+import sqlalchemy as sa
+from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import types as sql_types
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.schema import DDL
+from sqlalchemy.schema import Index
+from sqlalchemy.sql.elements import quoted_name
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from .. import config
 
 metadata, users = None, None
 

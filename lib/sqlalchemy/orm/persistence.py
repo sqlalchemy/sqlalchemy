@@ -14,14 +14,22 @@ in unitofwork.py.
 
 """
 
+from itertools import chain
+from itertools import groupby
 import operator
-from itertools import groupby, chain
-from .. import sql, util, exc as sa_exc
-from . import attributes, sync, exc as orm_exc, evaluator
-from .base import state_str, _entity_descriptor
+
+from . import attributes
+from . import evaluator
+from . import exc as orm_exc
+from . import loading
+from . import sync
+from .base import _entity_descriptor
+from .base import state_str
+from .. import exc as sa_exc
+from .. import sql
+from .. import util
 from ..sql import expression
 from ..sql.base import _from_objects
-from . import loading
 
 
 def _bulk_insert(

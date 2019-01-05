@@ -15,9 +15,12 @@ be used directly and is also accepted directly by ``create_engine()``.
 """
 
 import re
-from .. import exc, util
+
 from . import Dialect
-from ..dialects import registry, plugins
+from .. import exc
+from .. import util
+from ..dialects import plugins
+from ..dialects import registry
 
 
 class URL(object):

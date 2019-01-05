@@ -7,12 +7,14 @@
 
 from __future__ import absolute_import
 
-import weakref
-from . import config
-from .util import decorator
-from .. import event, pool
 import re
 import warnings
+import weakref
+
+from . import config
+from .util import decorator
+from .. import event
+from .. import pool
 
 
 class ConnectionKiller(object):

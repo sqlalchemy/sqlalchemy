@@ -64,22 +64,22 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 
 
 """
-from ... import util, exc
 import decimal
+import re
+
+from sqlalchemy.dialects.postgresql.json import JSON
+from .base import _DECIMAL_TYPES
+from .base import _FLOAT_TYPES
+from .base import _INT_TYPES
+from .base import PGCompiler
+from .base import PGDialect
+from .base import PGExecutionContext
+from .base import PGIdentifierPreparer
+from .base import UUID
+from ... import exc
 from ... import processors
 from ... import types as sqltypes
-from .base import (
-    PGDialect,
-    PGCompiler,
-    PGIdentifierPreparer,
-    PGExecutionContext,
-    _DECIMAL_TYPES,
-    _FLOAT_TYPES,
-    _INT_TYPES,
-    UUID,
-)
-import re
-from sqlalchemy.dialects.postgresql.json import JSON
+from ... import util
 from ...sql.elements import quoted_name
 
 try:

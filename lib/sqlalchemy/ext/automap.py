@@ -515,11 +515,13 @@ we've declared are in an un-mapped state.
 """
 from .declarative import declarative_base as _declarative_base
 from .declarative.base import _DeferredMapperConfig
-from ..sql import and_
-from ..schema import ForeignKeyConstraint
-from ..orm import relationship, backref, interfaces
-from ..orm.mapper import _CONFIGURE_MUTEX
 from .. import util
+from ..orm import backref
+from ..orm import interfaces
+from ..orm import relationship
+from ..orm.mapper import _CONFIGURE_MUTEX
+from ..schema import ForeignKeyConstraint
+from ..sql import and_
 
 
 def classname_for_table(base, tablename, table):

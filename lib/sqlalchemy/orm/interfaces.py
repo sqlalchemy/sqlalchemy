@@ -20,20 +20,20 @@ are exposed when inspecting mappings.
 
 from __future__ import absolute_import
 
+import collections
+
+from . import path_registry
+from .base import _MappedAttribute
+from .base import EXT_CONTINUE
+from .base import EXT_STOP
+from .base import InspectionAttr
+from .base import MANYTOMANY
+from .base import MANYTOONE
+from .base import NOT_EXTENSION
+from .base import ONETOMANY
+from .. import inspect
 from .. import util
 from ..sql import operators
-from .base import (
-    ONETOMANY,
-    MANYTOONE,
-    MANYTOMANY,
-    EXT_CONTINUE,
-    EXT_STOP,
-    NOT_EXTENSION,
-)
-from .base import InspectionAttr, InspectionAttrInfo, _MappedAttribute
-import collections
-from .. import inspect
-from . import path_registry
 
 # imported later
 MapperExtension = SessionExtension = AttributeExtension = None

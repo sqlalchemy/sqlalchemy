@@ -8,17 +8,17 @@
 """Collection classes and helpers."""
 
 from __future__ import absolute_import
-import weakref
+
 import operator
-from .compat import (
-    threading,
-    itertools_filterfalse,
-    string_types,
-    binary_types,
-    collections_abc,
-)
-from . import py2k
 import types
+import weakref
+
+from . import py2k
+from .compat import binary_types
+from .compat import collections_abc
+from .compat import itertools_filterfalse
+from .compat import string_types
+from .compat import threading
 
 
 EMPTY_SET = frozenset()

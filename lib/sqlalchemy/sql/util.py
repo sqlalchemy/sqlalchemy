@@ -9,40 +9,34 @@
 
 """
 
-from .. import exc, util
-from .base import _from_objects, ColumnSet
-from . import operators, visitors
-from itertools import chain
 from collections import deque
+from itertools import chain
 
-from .elements import (
-    BindParameter,
-    ColumnClause,
-    ColumnElement,
-    Null,
-    UnaryExpression,
-    literal_column,
-    Label,
-    _label_reference,
-    _textual_label_reference,
-)
-from .selectable import (
-    SelectBase,
-    ScalarSelect,
-    Join,
-    FromClause,
-    FromGrouping,
-)
+from . import operators
+from . import visitors
+from .base import _from_objects
+from .base import ColumnSet
+from .elements import _label_reference
+from .elements import _textual_label_reference
+from .elements import BindParameter
+from .elements import ColumnClause
+from .elements import ColumnElement
+from .elements import Null
+from .elements import UnaryExpression
 from .schema import Column
+from .selectable import FromClause
+from .selectable import FromGrouping
+from .selectable import Join
+from .selectable import ScalarSelect
+from .selectable import SelectBase
+from .. import exc
+from .. import util
 
 join_condition = util.langhelpers.public_factory(
     Join._join_condition, ".sql.util.join_condition"
 )
 
 # names that are still being imported from the outside
-from .annotation import _shallow_annotate, _deep_annotate, _deep_deannotate
-from .elements import _find_columns
-from .ddl import sort_tables
 
 
 def find_join_source(clauses, join_to):

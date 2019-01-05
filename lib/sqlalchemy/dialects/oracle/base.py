@@ -345,25 +345,28 @@ columns for non-unique indexes, all but the last column for unique indexes).
 
 """
 
+from itertools import groupby
 import re
 
-from sqlalchemy import util, sql
-from sqlalchemy.engine import default, reflection
-from sqlalchemy.sql import compiler, visitors, expression, util as sql_util
-from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy import schema as sa_schema
+from sqlalchemy import sql
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql import expression
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import visitors
 from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy import types as sqltypes, schema as sa_schema
-from sqlalchemy.types import (
-    VARCHAR,
-    NVARCHAR,
-    CHAR,
-    BLOB,
-    CLOB,
-    TIMESTAMP,
-    FLOAT,
-    INTEGER,
-)
-from itertools import groupby
+from sqlalchemy.types import BLOB
+from sqlalchemy.types import CHAR
+from sqlalchemy.types import CLOB
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import NVARCHAR
+from sqlalchemy.types import TIMESTAMP
+from sqlalchemy.types import VARCHAR
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "

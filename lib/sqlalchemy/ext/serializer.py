@@ -53,15 +53,21 @@ needed for:
 
 """
 
-from ..orm import class_mapper
-from ..orm.session import Session
-from ..orm.mapper import Mapper
-from ..orm.interfaces import MapperProperty
-from ..orm.attributes import QueryableAttribute
-from .. import Table, Column
-from ..engine import Engine
-from ..util import pickle, byte_buffer, b64encode, b64decode, text_type
 import re
+
+from .. import Column
+from .. import Table
+from ..engine import Engine
+from ..orm import class_mapper
+from ..orm.attributes import QueryableAttribute
+from ..orm.interfaces import MapperProperty
+from ..orm.mapper import Mapper
+from ..orm.session import Session
+from ..util import b64decode
+from ..util import b64encode
+from ..util import byte_buffer
+from ..util import pickle
+from ..util import text_type
 
 
 __all__ = ["Serializer", "Deserializer", "dumps", "loads"]

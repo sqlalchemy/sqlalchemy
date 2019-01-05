@@ -7,8 +7,10 @@
 
 """Handle Python version/platform incompatibilities."""
 
-import sys
+import collections
 from contextlib import contextmanager
+import sys
+import time
 
 try:
     import threading
@@ -26,8 +28,6 @@ jython = sys.platform.startswith("java")
 pypy = hasattr(sys, "pypy_version_info")
 win32 = sys.platform.startswith("win")
 cpython = not pypy and not jython  # TODO: something better for this ?
-
-import collections
 
 next = next
 
@@ -246,16 +246,10 @@ if py35:
 else:
     from inspect import formatargspec as inspect_formatargspec
 
-
-import time
-
 if win32 or jython:
     time_func = time.clock
 else:
     time_func = time.time
-
-from collections import namedtuple
-from operator import attrgetter as dottedgetter
 
 
 if py3k:

@@ -17,10 +17,12 @@ an equivalent :class:`._EventKey`.
 
 from __future__ import absolute_import
 
-import weakref
 import collections
 import types
-from .. import exc, util
+import weakref
+
+from .. import exc
+from .. import util
 
 
 _key_to_collection = collections.defaultdict(dict)

@@ -13,22 +13,22 @@ defines a large part of the ORM's interactivity.
 """
 
 import weakref
-from .. import util
-from .. import inspection
-from .. import exc as sa_exc
-from . import exc as orm_exc, interfaces
-from .path_registry import PathRegistry
-from .base import (
-    PASSIVE_NO_RESULT,
-    SQL_OK,
-    NEVER_SET,
-    ATTR_WAS_SET,
-    NO_VALUE,
-    PASSIVE_NO_INITIALIZE,
-    INIT_OK,
-    PASSIVE_OFF,
-)
+
 from . import base
+from . import exc as orm_exc
+from . import interfaces
+from .base import ATTR_WAS_SET
+from .base import INIT_OK
+from .base import NEVER_SET
+from .base import NO_VALUE
+from .base import PASSIVE_NO_INITIALIZE
+from .base import PASSIVE_NO_RESULT
+from .base import PASSIVE_OFF
+from .base import SQL_OK
+from .path_registry import PathRegistry
+from .. import exc as sa_exc
+from .. import inspection
+from .. import util
 
 
 @inspection._self_inspects

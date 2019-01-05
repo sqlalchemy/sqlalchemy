@@ -5,11 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from ...sql import expression
+from .array import ARRAY
 from ...sql import elements
+from ...sql import expression
 from ...sql import functions
 from ...sql.schema import ColumnCollectionConstraint
-from .array import ARRAY
 
 
 class aggregate_order_by(expression.ColumnElement):

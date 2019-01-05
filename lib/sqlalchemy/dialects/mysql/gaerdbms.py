@@ -36,11 +36,11 @@ default.
 """
 
 import os
+import re
 
+from sqlalchemy.util import warn_deprecated
 from .mysqldb import MySQLDialect_mysqldb
 from ...pool import NullPool
-import re
-from sqlalchemy.util import warn_deprecated
 
 
 def _is_dev_environment():

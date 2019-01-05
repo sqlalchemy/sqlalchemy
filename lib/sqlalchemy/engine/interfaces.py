@@ -10,7 +10,6 @@
 from .. import util
 
 # backwards compat
-from ..sql.compiler import Compiled, TypeCompiler
 
 
 class Dialect(object):

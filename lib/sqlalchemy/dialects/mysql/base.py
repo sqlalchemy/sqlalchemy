@@ -695,60 +695,64 @@ output::
 
 """
 
+from array import array as _array
 from collections import defaultdict
 import re
 import sys
-import json
-
-from ... import schema as sa_schema
-from ... import exc, log, sql, util
-from ...sql import compiler, elements
-from array import array as _array
-
-from ...engine import reflection
-from ...engine import default
-from ... import types as sqltypes
-from ...util import topological
-from ...types import DATE, BOOLEAN, BLOB, BINARY, VARBINARY
 
 from . import reflection as _reflection
-from .types import (
-    BIGINT,
-    BIT,
-    CHAR,
-    DECIMAL,
-    DATETIME,
-    DOUBLE,
-    FLOAT,
-    INTEGER,
-    LONGBLOB,
-    LONGTEXT,
-    MEDIUMBLOB,
-    MEDIUMINT,
-    MEDIUMTEXT,
-    NCHAR,
-    NUMERIC,
-    NVARCHAR,
-    REAL,
-    SMALLINT,
-    TEXT,
-    TIME,
-    TIMESTAMP,
-    TINYBLOB,
-    TINYINT,
-    TINYTEXT,
-    VARCHAR,
-    YEAR,
-)
-from .types import (
-    _StringType,
-    _IntegerType,
-    _NumericType,
-    _FloatType,
-    _MatchType,
-)
-from .enumerated import ENUM, SET
-from .json import JSON, JSONIndexType, JSONPathType
+from .enumerated import ENUM
+from .enumerated import SET
+from .json import JSON
+from .json import JSONIndexType
+from .json import JSONPathType
+from .types import _FloatType
+from .types import _IntegerType
+from .types import _MatchType
+from .types import _NumericType
+from .types import _StringType
+from .types import BIGINT
+from .types import BIT
+from .types import CHAR
+from .types import DATETIME
+from .types import DECIMAL
+from .types import DOUBLE
+from .types import FLOAT
+from .types import INTEGER
+from .types import LONGBLOB
+from .types import LONGTEXT
+from .types import MEDIUMBLOB
+from .types import MEDIUMINT
+from .types import MEDIUMTEXT
+from .types import NCHAR
+from .types import NUMERIC
+from .types import NVARCHAR
+from .types import REAL
+from .types import SMALLINT
+from .types import TEXT
+from .types import TIME
+from .types import TIMESTAMP
+from .types import TINYBLOB
+from .types import TINYINT
+from .types import TINYTEXT
+from .types import VARCHAR
+from .types import YEAR
+from ... import exc
+from ... import log
+from ... import schema as sa_schema
+from ... import sql
+from ... import types as sqltypes
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import elements
+from ...types import BINARY
+from ...types import BLOB
+from ...types import BOOLEAN
+from ...types import DATE
+from ...types import VARBINARY
+from ...util import topological
 
 
 RESERVED_WORDS = set(

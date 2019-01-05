@@ -6,10 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import weakref
+
 from . import attributes
-from .. import util
-from .. import exc as sa_exc
 from . import util as orm_util
+from .. import exc as sa_exc
+from .. import util
 
 
 class IdentityMap(object):

@@ -9,11 +9,12 @@
 within INSERT and UPDATE statements.
 
 """
-from .. import util
-from .. import exc
+import operator
+
 from . import dml
 from . import elements
-import operator
+from .. import exc
+from .. import util
 
 REQUIRED = util.symbol(
     "REQUIRED",

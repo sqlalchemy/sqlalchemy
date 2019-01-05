@@ -19,9 +19,12 @@
 
 """
 import datetime
-from sqlalchemy import types as sqltypes, util
-from sqlalchemy.dialects.mssql.base import MSDateTime, MSDialect
 import sys
+
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.dialects.mssql.base import MSDateTime
+from sqlalchemy.dialects.mssql.base import MSDialect
 
 
 class MSDateTime_adodbapi(MSDateTime):

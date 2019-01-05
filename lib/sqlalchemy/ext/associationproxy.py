@@ -15,10 +15,14 @@ See the example ``examples/association/proxied_association.py``.
 """
 import operator
 import weakref
-from .. import exc, orm, util
-from ..orm import collections, interfaces
-from ..sql import or_
+
+from .. import exc
 from .. import inspect
+from .. import orm
+from .. import util
+from ..orm import collections
+from ..orm import interfaces
+from ..sql import or_
 
 
 def association_proxy(target_collection, attr, **kw):

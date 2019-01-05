@@ -5,10 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .base import ischema_names, colspecs
-from ...sql import expression, operators
-from ...sql.base import SchemaEventTarget
+from .base import colspecs
+from .base import ischema_names
 from ... import types as sqltypes
+from ...sql import expression
+from ...sql import operators
 
 try:
     from uuid import UUID as _python_UUID

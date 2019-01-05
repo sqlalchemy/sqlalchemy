@@ -22,10 +22,12 @@
 
 """
 
-from .base import MySQLDialect, MySQLExecutionContext
-from ...connectors.pyodbc import PyODBCConnector
-from ... import util
 import re
+
+from .base import MySQLDialect
+from .base import MySQLExecutionContext
+from ... import util
+from ...connectors.pyodbc import PyODBCConnector
 
 
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):

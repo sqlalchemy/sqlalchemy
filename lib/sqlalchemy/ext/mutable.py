@@ -370,12 +370,16 @@ pickling process of the parent's object-relational state so that the
 :meth:`MutableBase._parents` collection is restored to all ``Point`` objects.
 
 """
-from ..orm.attributes import flag_modified
-from .. import event, types
-from ..orm import mapper, object_mapper, Mapper
-from ..util import memoized_property
-from ..sql.base import SchemaEventTarget
 import weakref
+
+from .. import event
+from .. import types
+from ..orm import Mapper
+from ..orm import mapper
+from ..orm import object_mapper
+from ..orm.attributes import flag_modified
+from ..sql.base import SchemaEventTarget
+from ..util import memoized_property
 
 
 class MutableBase(object):

@@ -776,7 +776,8 @@ there's probably a whole lot of amazing things it can be used for.
 
 """
 from .. import util
-from ..orm import attributes, interfaces
+from ..orm import attributes
+from ..orm import interfaces
 
 HYBRID_METHOD = util.symbol("HYBRID_METHOD")
 """Symbol indicating an :class:`InspectionAttr` that's

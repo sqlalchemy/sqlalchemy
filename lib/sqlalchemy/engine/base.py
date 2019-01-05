@@ -6,18 +6,22 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 from __future__ import with_statement
 
+import contextlib
+import sys
+
+from .interfaces import Connectable
+from .interfaces import ExceptionContext
+from .util import _distill_params
+from .. import exc
+from .. import interfaces
+from .. import log
+from .. import util
+from ..sql import schema
+from ..sql import util as sql_util
+
 """Defines :class:`.Connection` and :class:`.Engine`.
 
 """
-
-
-import sys
-from .. import exc, util, log, interfaces
-from ..sql import util as sql_util
-from ..sql import schema
-from .interfaces import Connectable, ExceptionContext
-from .util import _distill_params
-import contextlib
 
 
 class Connection(Connectable):

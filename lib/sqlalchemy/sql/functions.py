@@ -8,29 +8,31 @@
 """SQL function API, factories, and built-in functions.
 
 """
-from . import sqltypes, schema
-from .base import Executable, ColumnCollection
-from .elements import (
-    ClauseList,
-    Cast,
-    Extract,
-    _literal_as_binds,
-    literal_column,
-    _type_from_args,
-    ColumnElement,
-    _clone,
-    Over,
-    BindParameter,
-    FunctionFilter,
-    Grouping,
-    WithinGroup,
-)
-from .selectable import FromClause, Select, Alias
-from . import util as sqlutil
+from . import annotation
 from . import operators
+from . import schema
+from . import sqltypes
+from . import util as sqlutil
+from .base import ColumnCollection
+from .base import Executable
+from .elements import _clone
+from .elements import _literal_as_binds
+from .elements import _type_from_args
+from .elements import BindParameter
+from .elements import Cast
+from .elements import ClauseList
+from .elements import ColumnElement
+from .elements import Extract
+from .elements import FunctionFilter
+from .elements import Grouping
+from .elements import literal_column
+from .elements import Over
+from .elements import WithinGroup
+from .selectable import Alias
+from .selectable import FromClause
+from .selectable import Select
 from .visitors import VisitableType
 from .. import util
-from . import annotation
 
 _registry = util.defaultdict(dict)
 

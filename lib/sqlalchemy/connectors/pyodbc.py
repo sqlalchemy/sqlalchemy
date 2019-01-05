@@ -5,11 +5,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import re
+
 from . import Connector
 from .. import util
-
-
-import re
 
 
 class PyODBCConnector(Connector):

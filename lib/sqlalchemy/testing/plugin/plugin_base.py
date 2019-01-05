@@ -15,8 +15,8 @@ functionality via py.test.
 
 from __future__ import absolute_import
 
-import sys
 import re
+import sys
 
 py3k = sys.version_info >= (3, 0)
 

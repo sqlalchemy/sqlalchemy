@@ -9,6 +9,8 @@
 modules, classes, hierarchies, attributes, functions, and methods.
 
 """
+from functools import update_wrapper
+import hashlib
 import inspect
 import itertools
 import operator
@@ -16,11 +18,10 @@ import re
 import sys
 import types
 import warnings
-from functools import update_wrapper
-from .. import exc
-import hashlib
-from . import compat
+
 from . import _collections
+from . import compat
+from .. import exc
 
 
 def md5_hex(x):

@@ -1,11 +1,15 @@
-from .. import fixtures, config
-from ..config import requirements
+from .. import config
+from .. import fixtures
 from ..assertions import eq_
+from ..config import requirements
+from ..schema import Column
+from ..schema import Table
+from ... import Integer
+from ... import MetaData
+from ... import schema
+from ... import Sequence
+from ... import String
 from ... import testing
-
-from ... import Integer, String, Sequence, schema, MetaData
-
-from ..schema import Table, Column
 
 
 class SequenceTest(fixtures.TablesTest):

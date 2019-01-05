@@ -8,6 +8,7 @@
 """Import stub for mock library.
 """
 from __future__ import absolute_import
+
 from ..util import py33
 
 if py33:

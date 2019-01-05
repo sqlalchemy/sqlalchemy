@@ -21,39 +21,35 @@
     caveats not currently handled.
 
 """
-import operator
 import re
 
-from sqlalchemy.sql import compiler, expression, text, bindparam
-from sqlalchemy.engine import default, base, reflection
-from sqlalchemy import types as sqltypes
-from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy import exc
 from sqlalchemy import schema as sa_schema
-from sqlalchemy import util, sql, exc
-
-from sqlalchemy.types import (
-    CHAR,
-    VARCHAR,
-    TIME,
-    NCHAR,
-    NVARCHAR,
-    TEXT,
-    DATE,
-    DATETIME,
-    FLOAT,
-    NUMERIC,
-    BIGINT,
-    INT,
-    INTEGER,
-    SMALLINT,
-    BINARY,
-    VARBINARY,
-    DECIMAL,
-    TIMESTAMP,
-    Unicode,
-    UnicodeText,
-    REAL,
-)
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql import text
+from sqlalchemy.types import BIGINT
+from sqlalchemy.types import BINARY
+from sqlalchemy.types import CHAR
+from sqlalchemy.types import DATE
+from sqlalchemy.types import DATETIME
+from sqlalchemy.types import DECIMAL
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import NCHAR
+from sqlalchemy.types import NUMERIC
+from sqlalchemy.types import NVARCHAR
+from sqlalchemy.types import REAL
+from sqlalchemy.types import SMALLINT
+from sqlalchemy.types import TEXT
+from sqlalchemy.types import TIME
+from sqlalchemy.types import TIMESTAMP
+from sqlalchemy.types import Unicode
+from sqlalchemy.types import VARBINARY
+from sqlalchemy.types import VARCHAR
 
 RESERVED_WORDS = set(
     [

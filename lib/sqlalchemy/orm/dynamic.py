@@ -12,18 +12,17 @@ basic add/delete mutation.
 
 """
 
-from .. import log, util, exc
-from ..sql import operators
-from . import (
-    attributes,
-    object_session,
-    util as orm_util,
-    strategies,
-    object_mapper,
-    exc as orm_exc,
-    properties,
-)
+from . import attributes
+from . import exc as orm_exc
+from . import object_mapper
+from . import object_session
+from . import properties
+from . import strategies
+from . import util as orm_util
 from .query import Query
+from .. import exc
+from .. import log
+from .. import util
 
 
 @log.class_logger

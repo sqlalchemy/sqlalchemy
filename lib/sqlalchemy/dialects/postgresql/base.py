@@ -915,34 +915,35 @@ E.g.::
 
 """
 from collections import defaultdict
-import re
 import datetime as dt
-
+import re
 
 from sqlalchemy.sql import elements
-from ... import sql, schema, exc, util
-from ...engine import default, reflection
-from ...sql import compiler, expression
+from sqlalchemy.types import BIGINT
+from sqlalchemy.types import BOOLEAN
+from sqlalchemy.types import CHAR
+from sqlalchemy.types import DATE
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import NUMERIC
+from sqlalchemy.types import REAL
+from sqlalchemy.types import SMALLINT
+from sqlalchemy.types import TEXT
+from sqlalchemy.types import VARCHAR
+from ... import exc
+from ... import schema
+from ... import sql
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import expression
 from ...sql import sqltypes
 
 try:
     from uuid import UUID as _python_UUID
 except ImportError:
     _python_UUID = None
-
-from sqlalchemy.types import (
-    INTEGER,
-    BIGINT,
-    SMALLINT,
-    VARCHAR,
-    CHAR,
-    TEXT,
-    FLOAT,
-    NUMERIC,
-    DATE,
-    BOOLEAN,
-    REAL,
-)
 
 AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|GRANT|REVOKE|"

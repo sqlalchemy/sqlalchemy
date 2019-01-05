@@ -9,9 +9,17 @@
 
 """
 
-from .. import sql, util, exc as sa_exc
-from . import attributes, exc, sync, unitofwork, util as mapperutil
-from .interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
+from . import attributes
+from . import exc
+from . import sync
+from . import unitofwork
+from . import util as mapperutil
+from .interfaces import MANYTOMANY
+from .interfaces import MANYTOONE
+from .interfaces import ONETOMANY
+from .. import exc as sa_exc
+from .. import sql
+from .. import util
 
 
 class DependencyProcessor(object):

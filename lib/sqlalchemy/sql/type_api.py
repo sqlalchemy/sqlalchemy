@@ -10,10 +10,12 @@
 """
 
 
-from .. import exc, util
 from . import operators
-from .visitors import Visitable, VisitableType
 from .base import SchemaEventTarget
+from .visitors import Visitable
+from .visitors import VisitableType
+from .. import exc
+from .. import util
 
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None

@@ -14,32 +14,37 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 
 """
 from __future__ import absolute_import
-from .. import sql, util, exc as sa_exc, schema, log
 
-import weakref
-from .util import CascadeOptions, _orm_annotate, _orm_deannotate
-from . import dependency
-from . import attributes
-from ..sql.util import (
-    ClauseAdapter,
-    join_condition,
-    _shallow_annotate,
-    visit_binary_product,
-    _deep_deannotate,
-    selectables_overlap,
-    adapt_criterion_to_null,
-)
-from ..sql import operators, expression, visitors
-from .interfaces import (
-    MANYTOMANY,
-    MANYTOONE,
-    ONETOMANY,
-    StrategizedProperty,
-    PropComparator,
-)
-from ..inspection import inspect
-from . import mapper as mapperlib
 import collections
+import weakref
+
+from . import attributes
+from . import dependency
+from . import mapper as mapperlib
+from .interfaces import MANYTOMANY
+from .interfaces import MANYTOONE
+from .interfaces import ONETOMANY
+from .interfaces import PropComparator
+from .interfaces import StrategizedProperty
+from .util import _orm_annotate
+from .util import _orm_deannotate
+from .util import CascadeOptions
+from .. import exc as sa_exc
+from .. import log
+from .. import schema
+from .. import sql
+from .. import util
+from ..inspection import inspect
+from ..sql import expression
+from ..sql import operators
+from ..sql import visitors
+from ..sql.util import _deep_deannotate
+from ..sql.util import _shallow_annotate
+from ..sql.util import adapt_criterion_to_null
+from ..sql.util import ClauseAdapter
+from ..sql.util import join_condition
+from ..sql.util import selectables_overlap
+from ..sql.util import visit_binary_product
 
 
 def remote(expr):

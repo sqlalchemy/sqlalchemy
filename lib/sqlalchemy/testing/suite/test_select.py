@@ -1,12 +1,18 @@
-from .. import fixtures, config
-from ..assertions import eq_
-
-from sqlalchemy import util
-from sqlalchemy import Integer, String, select, func, bindparam, union, tuple_
-from sqlalchemy import testing
+from sqlalchemy import bindparam
+from sqlalchemy import func
+from sqlalchemy import Integer
 from sqlalchemy import literal_column
-
-from ..schema import Table, Column
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import tuple_
+from sqlalchemy import union
+from sqlalchemy import util
+from .. import config
+from .. import fixtures
+from ..assertions import eq_
+from ..schema import Column
+from ..schema import Table
 
 
 class CollateTest(fixtures.TablesTest):

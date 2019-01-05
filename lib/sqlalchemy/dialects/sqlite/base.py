@@ -468,27 +468,15 @@ When using the per-:class:`.Engine` execution option, note that
 import datetime
 import re
 
+from ... import exc
 from ... import processors
-from ... import sql, exc
-from ... import types as sqltypes, schema as sa_schema
+from ... import schema as sa_schema
+from ... import sql
+from ... import types as sqltypes
 from ... import util
-from ...engine import default, reflection
+from ...engine import default
+from ...engine import reflection
 from ...sql import compiler
-
-from ...types import (
-    BLOB,
-    BOOLEAN,
-    CHAR,
-    DECIMAL,
-    FLOAT,
-    INTEGER,
-    REAL,
-    NUMERIC,
-    SMALLINT,
-    TEXT,
-    TIMESTAMP,
-    VARCHAR,
-)
 
 
 class _DateTimeMixin(object):

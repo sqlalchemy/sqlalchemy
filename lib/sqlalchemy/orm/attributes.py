@@ -15,33 +15,32 @@ defines a large part of the ORM's interactivity.
 """
 
 import operator
-from .. import util, event, inspection
-from . import interfaces, collections, exc as orm_exc
 
-from .base import instance_state, instance_dict, manager_of_class
-
-from .base import (
-    PASSIVE_NO_RESULT,
-    ATTR_WAS_SET,
-    ATTR_EMPTY,
-    NO_VALUE,
-    NEVER_SET,
-    NO_CHANGE,
-    CALLABLES_OK,
-    SQL_OK,
-    RELATED_OBJECT_OK,
-    INIT_OK,
-    NON_PERSISTENT_OK,
-    LOAD_AGAINST_COMMITTED,
-    PASSIVE_OFF,
-    PASSIVE_RETURN_NEVER_SET,
-    PASSIVE_NO_INITIALIZE,
-    PASSIVE_NO_FETCH,
-    PASSIVE_NO_FETCH_RELATED,
-    PASSIVE_ONLY_PERSISTENT,
-    NO_AUTOFLUSH,
-)
-from .base import state_str, instance_str
+from . import collections
+from . import exc as orm_exc
+from . import interfaces
+from .base import ATTR_EMPTY
+from .base import ATTR_WAS_SET
+from .base import CALLABLES_OK
+from .base import INIT_OK
+from .base import instance_dict
+from .base import instance_state
+from .base import instance_str
+from .base import LOAD_AGAINST_COMMITTED
+from .base import manager_of_class
+from .base import NEVER_SET
+from .base import NO_AUTOFLUSH
+from .base import NO_VALUE
+from .base import PASSIVE_NO_FETCH
+from .base import PASSIVE_NO_INITIALIZE
+from .base import PASSIVE_NO_RESULT
+from .base import PASSIVE_OFF
+from .base import PASSIVE_ONLY_PERSISTENT
+from .base import PASSIVE_RETURN_NEVER_SET
+from .base import state_str
+from .. import event
+from .. import inspection
+from .. import util
 
 
 @inspection._self_inspects

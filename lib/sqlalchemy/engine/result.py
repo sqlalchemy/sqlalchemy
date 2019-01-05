@@ -9,10 +9,14 @@
 and :class:`.RowProxy."""
 
 
-from .. import exc, util
-from ..sql import expression, sqltypes, util as sql_util
 import collections
 import operator
+
+from .. import exc
+from .. import util
+from ..sql import expression
+from ..sql import sqltypes
+from ..sql import util as sql_util
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.

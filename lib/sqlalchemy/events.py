@@ -7,9 +7,12 @@
 
 """Core event interfaces."""
 
-from . import event, exc
+from . import event
+from . import exc
+from .engine import Connectable
+from .engine import Dialect
+from .engine import Engine
 from .pool import Pool
-from .engine import Connectable, Engine, Dialect
 from .sql.base import SchemaEventTarget
 
 

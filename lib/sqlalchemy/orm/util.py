@@ -6,26 +6,23 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from .. import sql, util, event, exc as sa_exc, inspection
-from ..sql import expression, util as sql_util, operators
-from .interfaces import PropComparator, MapperProperty
-from . import attributes
 import re
 
-from .base import (
-    instance_str,
-    state_str,
-    state_class_str,
-    attribute_str,
-    state_attribute_str,
-    object_mapper,
-    object_state,
-    _none_set,
-    _never_set,
-)
-from .base import class_mapper, _class_to_mapper
+from . import attributes
+from .base import _class_to_mapper
+from .base import class_mapper
 from .base import InspectionAttr
+from .base import object_mapper
+from .interfaces import MapperProperty
+from .interfaces import PropComparator
 from .path_registry import PathRegistry
+from .. import event
+from .. import exc as sa_exc
+from .. import inspection
+from .. import sql
+from .. import util
+from ..sql import expression
+from ..sql import util as sql_util
 
 all_cascades = frozenset(
     (

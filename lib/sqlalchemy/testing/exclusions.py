@@ -11,7 +11,6 @@ import operator
 import re
 
 from sqlalchemy.util.compat import inspect_getargspec
-
 from . import config
 from .. import util
 from ..util import decorator

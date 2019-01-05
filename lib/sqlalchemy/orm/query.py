@@ -21,36 +21,38 @@ database to return iterable result sets.
 
 from itertools import chain
 
-from . import (
-    attributes,
-    interfaces,
-    persistence,
-    exc as orm_exc,
-    loading,
-)
-from .util import object_mapper
-from .base import (
-    _entity_descriptor,
-    _is_aliased_class,
-    _is_mapped_class,
-    _orm_columns,
-    _generative,
-    InspectionAttr,
-)
-from .path_registry import PathRegistry
-from .util import (
-    AliasedClass,
-    ORMAdapter,
-    join as orm_join,
-    with_parent,
-    aliased,
-    _entity_corresponds_to,
-)
-from .. import sql, util, log, exc as sa_exc, inspect, inspection
-from ..sql.expression import _interpret_as_from
-from ..sql import util as sql_util, expression, visitors
-from ..sql.base import ColumnCollection
+from . import attributes
+from . import exc as orm_exc
+from . import interfaces
+from . import loading
+from . import persistence
 from . import properties
+from .base import _entity_descriptor
+from .base import _generative
+from .base import _is_aliased_class
+from .base import _is_mapped_class
+from .base import _orm_columns
+from .base import InspectionAttr
+from .path_registry import PathRegistry
+from .util import _entity_corresponds_to
+from .util import aliased
+from .util import AliasedClass
+from .util import join as orm_join
+from .util import object_mapper
+from .util import ORMAdapter
+from .util import with_parent
+from .. import exc as sa_exc
+from .. import inspect
+from .. import inspection
+from .. import log
+from .. import sql
+from .. import util
+from ..sql import expression
+from ..sql import util as sql_util
+from ..sql import visitors
+from ..sql.base import ColumnCollection
+from ..sql.expression import _interpret_as_from
+from ..sql.selectable import ForUpdateArg
 
 __all__ = ["Query", "QueryContext", "aliased"]
 
@@ -3785,9 +3787,6 @@ class Query(object):
                 context.whereclause = sql.and_(
                     sql.True_._ifnone(context.whereclause), single_crit
                 )
-
-
-from ..sql.selectable import ForUpdateArg
 
 
 class LockmodeArg(ForUpdateArg):

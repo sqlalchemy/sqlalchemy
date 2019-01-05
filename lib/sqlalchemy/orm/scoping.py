@@ -5,10 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .. import exc as sa_exc
-from ..util import ScopedRegistry, ThreadLocalRegistry, warn
-from . import class_mapper, exc as orm_exc
+from . import class_mapper
+from . import exc as orm_exc
 from .session import Session
+from .. import exc as sa_exc
+from ..util import ScopedRegistry
+from ..util import ThreadLocalRegistry
+from ..util import warn
 
 
 __all__ = ["scoped_session"]

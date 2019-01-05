@@ -10,10 +10,12 @@
 """
 
 
-from .. import util, exc
 import itertools
-from .visitors import ClauseVisitor
 import re
+
+from .visitors import ClauseVisitor
+from .. import exc
+from .. import util
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")

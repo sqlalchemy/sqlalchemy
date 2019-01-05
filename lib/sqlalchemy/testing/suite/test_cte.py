@@ -1,11 +1,13 @@
-from .. import fixtures, config
-from ..assertions import eq_
-
-from sqlalchemy import Integer, String, select
 from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-
-from ..schema import Table, Column
+from .. import config
+from .. import fixtures
+from ..assertions import eq_
+from ..schema import Column
+from ..schema import Table
 
 
 class CTETest(fixtures.TablesTest):

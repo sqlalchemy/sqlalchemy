@@ -21,9 +21,13 @@ Modern versions of this driver work very well with SQL Server and
 FreeTDS from Linux and is highly recommended.
 
 """
-from .base import MSDialect, MSIdentifierPreparer
-from ... import types as sqltypes, util, processors
 import re
+
+from .base import MSDialect
+from .base import MSIdentifierPreparer
+from ... import processors
+from ... import types as sqltypes
+from ... import util
 
 
 class _MSNumeric_pymssql(sqltypes.Numeric):

@@ -22,10 +22,11 @@ handling.
 
 """
 
-import re
-
-from .base import BIT, MySQLDialect, MySQLExecutionContext
-from ... import types as sqltypes, util
+from .base import BIT
+from .base import MySQLDialect
+from .base import MySQLExecutionContext
+from ... import types as sqltypes
+from ... import util
 
 
 class _oursqlBIT(BIT):

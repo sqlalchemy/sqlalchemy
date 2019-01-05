@@ -9,29 +9,22 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
 
-from .base import (
-    Executable,
-    _generative,
-    _from_objects,
-    DialectKWArgs,
-    ColumnCollection,
-)
-from .elements import (
-    ClauseElement,
-    _literal_as_text,
-    Null,
-    and_,
-    _clone,
-    _column_as_key,
-)
-from .selectable import (
-    _interpret_as_from,
-    _interpret_as_select,
-    HasPrefixes,
-    HasCTE,
-)
-from .. import util
+from .base import _from_objects
+from .base import _generative
+from .base import DialectKWArgs
+from .base import Executable
+from .elements import _clone
+from .elements import _column_as_key
+from .elements import _literal_as_text
+from .elements import and_
+from .elements import ClauseElement
+from .elements import Null
+from .selectable import _interpret_as_from
+from .selectable import _interpret_as_select
+from .selectable import HasCTE
+from .selectable import HasPrefixes
 from .. import exc
+from .. import util
 
 
 class UpdateBase(

@@ -30,7 +30,8 @@ to the pymysql driver as well.
 """
 
 from .mysqldb import MySQLDialect_mysqldb
-from ...util import langhelpers, py3k
+from ...util import langhelpers
+from ...util import py3k
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):

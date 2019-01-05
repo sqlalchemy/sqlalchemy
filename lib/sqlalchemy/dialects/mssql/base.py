@@ -612,31 +612,34 @@ import datetime
 import operator
 import re
 
-from ... import sql, schema as sa_schema, exc, util
-from ...sql import compiler, expression, util as sql_util, quoted_name
-from ... import engine
-from ...engine import reflection, default
-from ... import types as sqltypes
-from ...types import (
-    INTEGER,
-    BIGINT,
-    SMALLINT,
-    DECIMAL,
-    NUMERIC,
-    FLOAT,
-    DATETIME,
-    DATE,
-    BINARY,
-    TEXT,
-    VARCHAR,
-    NVARCHAR,
-    CHAR,
-    NCHAR,
-)
-
-
-from ...util import update_wrapper
 from . import information_schema as ischema
+from ... import engine
+from ... import exc
+from ... import schema as sa_schema
+from ... import sql
+from ... import types as sqltypes
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import expression
+from ...sql import quoted_name
+from ...sql import util as sql_util
+from ...types import BIGINT
+from ...types import BINARY
+from ...types import CHAR
+from ...types import DATE
+from ...types import DATETIME
+from ...types import DECIMAL
+from ...types import FLOAT
+from ...types import INTEGER
+from ...types import NCHAR
+from ...types import NUMERIC
+from ...types import NVARCHAR
+from ...types import SMALLINT
+from ...types import TEXT
+from ...types import VARCHAR
+from ...util import update_wrapper
 
 # http://sqlserverbuilds.blogspot.com/
 MS_2016_VERSION = (13,)

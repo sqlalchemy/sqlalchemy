@@ -7,19 +7,26 @@
 
 from __future__ import absolute_import
 
-from . import util as testutil
-from sqlalchemy import pool, orm, util
-from sqlalchemy.engine import default, url
-from sqlalchemy.util import decorator, compat
-from sqlalchemy import types as sqltypes, schema, exc as sa_exc
-import warnings
+import contextlib
 import re
-from .exclusions import db_spec
+import warnings
+
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import orm
+from sqlalchemy import pool
+from sqlalchemy import schema
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import url
+from sqlalchemy.util import compat
+from sqlalchemy.util import decorator
 from . import assertsql
 from . import config
-from .util import fail
-import contextlib
 from . import mock
+from . import util as testutil
+from .exclusions import db_spec
+from .util import fail
 
 
 def expect_warnings(*messages, **kw):

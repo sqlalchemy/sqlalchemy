@@ -8,8 +8,9 @@
 from __future__ import absolute_import
 
 import warnings
-from .. import exc as sa_exc
+
 from . import assertions
+from .. import exc as sa_exc
 
 
 def setup_filters():

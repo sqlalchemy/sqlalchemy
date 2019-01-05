@@ -7,12 +7,12 @@
 
 import re
 
-from .base import ischema_names
 from .array import ARRAY
+from .base import ischema_names
 from ... import types as sqltypes
+from ... import util
 from ...sql import functions as sqlfunc
 from ...sql import operators
-from ... import util
 
 __all__ = ("HSTORE", "hstore")
 

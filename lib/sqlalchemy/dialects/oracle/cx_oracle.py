@@ -301,15 +301,20 @@ SQLAlchemy type (or a subclass of such).
 
 from __future__ import absolute_import
 
-from .base import OracleCompiler, OracleDialect, OracleExecutionContext
-from . import base as oracle
-from ...engine import result as _result
-from sqlalchemy import types as sqltypes, util, exc, processors
-import random
 import collections
 import decimal
+import random
 import re
-import time
+
+from sqlalchemy import exc
+from sqlalchemy import processors
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from . import base as oracle
+from .base import OracleCompiler
+from .base import OracleDialect
+from .base import OracleExecutionContext
+from ...engine import result as _result
 
 
 class _OracleInteger(sqltypes.Integer):

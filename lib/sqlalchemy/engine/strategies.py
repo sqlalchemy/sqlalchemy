@@ -17,9 +17,12 @@ New strategies can be added via new ``EngineStrategy`` classes.
 
 from operator import attrgetter
 
-from sqlalchemy.engine import base, threadlocal, url
-from sqlalchemy import util, event
+from sqlalchemy import event
 from sqlalchemy import pool as poollib
+from sqlalchemy import util
+from sqlalchemy.engine import base
+from sqlalchemy.engine import threadlocal
+from sqlalchemy.engine import url
 from sqlalchemy.sql import schema
 
 strategies = {}

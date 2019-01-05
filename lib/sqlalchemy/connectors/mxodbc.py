@@ -19,8 +19,8 @@ For more info on mxODBC, see http://www.egenix.com/
 
 """
 
-import sys
 import re
+import sys
 import warnings
 
 from . import Connector

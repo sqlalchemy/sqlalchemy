@@ -29,9 +29,12 @@ overridden via a ``create_engine`` URL parameter.
 """
 import re
 
-from ... import types as sqltypes, util
+from .base import BIT
+from .base import MySQLDialect
+from .base import MySQLExecutionContext
+from ... import types as sqltypes
+from ... import util
 from ...connectors.zxJDBC import ZxJDBCConnector
-from .base import BIT, MySQLDialect, MySQLExecutionContext
 
 
 class _ZxJDBCBit(BIT):

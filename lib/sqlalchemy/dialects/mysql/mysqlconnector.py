@@ -47,17 +47,15 @@ are contributed to SQLAlchemy.
 
 """
 
-from .base import (
-    MySQLDialect,
-    MySQLExecutionContext,
-    MySQLCompiler,
-    MySQLIdentifierPreparer,
-    BIT,
-)
-
-from ... import util
 import re
+
+from .base import BIT
+from .base import MySQLCompiler
+from .base import MySQLDialect
+from .base import MySQLExecutionContext
+from .base import MySQLIdentifierPreparer
 from ... import processors
+from ... import util
 
 
 class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):

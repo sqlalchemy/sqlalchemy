@@ -34,13 +34,13 @@ Currently *not* supported are::
 
 """
 
-from sqlalchemy.dialects.sybase.base import (
-    SybaseDialect,
-    SybaseExecutionContext,
-)
-from sqlalchemy.connectors.pyodbc import PyODBCConnector
-from sqlalchemy import types as sqltypes, processors
 import decimal
+
+from sqlalchemy import processors
+from sqlalchemy import types as sqltypes
+from sqlalchemy.connectors.pyodbc import PyODBCConnector
+from sqlalchemy.dialects.sybase.base import SybaseDialect
+from sqlalchemy.dialects.sybase.base import SybaseExecutionContext
 
 
 class _SybNumeric_pyodbc(sqltypes.Numeric):

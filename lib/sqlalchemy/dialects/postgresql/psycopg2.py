@@ -344,28 +344,27 @@ which may be more performant.
 """
 from __future__ import absolute_import
 
-import re
-import logging
-
-from ... import util, exc
 import decimal
-from ... import processors
-from ...engine import result as _result
-from ...sql import expression
-from ... import types as sqltypes
-from .base import (
-    PGDialect,
-    PGCompiler,
-    PGIdentifierPreparer,
-    PGExecutionContext,
-    ENUM,
-    _DECIMAL_TYPES,
-    _FLOAT_TYPES,
-    _INT_TYPES,
-    UUID,
-)
+import logging
+import re
+
+from .base import _DECIMAL_TYPES
+from .base import _FLOAT_TYPES
+from .base import _INT_TYPES
+from .base import ENUM
+from .base import PGCompiler
+from .base import PGDialect
+from .base import PGExecutionContext
+from .base import PGIdentifierPreparer
+from .base import UUID
 from .hstore import HSTORE
-from .json import JSON, JSONB
+from .json import JSON
+from .json import JSONB
+from ... import exc
+from ... import processors
+from ... import types as sqltypes
+from ... import util
+from ...engine import result as _result
 
 try:
     from uuid import UUID as _python_UUID

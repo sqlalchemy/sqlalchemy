@@ -10,20 +10,21 @@
 
 """
 
-from .schema import (
-    Constraint,
-    ForeignKeyConstraint,
-    PrimaryKeyConstraint,
-    UniqueConstraint,
-    CheckConstraint,
-    Index,
-    Table,
-    Column,
-)
-from .. import event, events
-from .. import exc
-from .elements import _truncated_label, _defer_name, _defer_none_name, conv
 import re
+
+from .elements import _defer_name
+from .elements import _defer_none_name
+from .elements import conv
+from .schema import CheckConstraint
+from .schema import Column
+from .schema import Constraint
+from .schema import ForeignKeyConstraint
+from .schema import Index
+from .schema import PrimaryKeyConstraint
+from .schema import Table
+from .schema import UniqueConstraint
+from .. import event
+from .. import exc
 
 
 class ConventionDict(object):

@@ -1,33 +1,38 @@
 # coding: utf-8
 
-from .. import fixtures, config
+import datetime
+import decimal
+
+from sqlalchemy import and_
+from sqlalchemy import BigInteger
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import Integer
+from sqlalchemy import JSON
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import null
+from sqlalchemy import Numeric
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Text
+from sqlalchemy import Time
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import type_coerce
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
+from .. import config
+from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
-from sqlalchemy import Integer, Unicode, UnicodeText, select, TIMESTAMP
-from sqlalchemy import (
-    Date,
-    DateTime,
-    Time,
-    MetaData,
-    String,
-    Text,
-    Numeric,
-    Float,
-    literal,
-    Boolean,
-    cast,
-    null,
-    JSON,
-    and_,
-    type_coerce,
-    BigInteger,
-)
-from ..schema import Table, Column
+from ..schema import Column
+from ..schema import Table
 from ... import testing
-import decimal
-import datetime
-from ...util import u
 from ... import util
+from ...util import u
 
 
 class _LiteralRoundTripFixture(object):

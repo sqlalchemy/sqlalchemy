@@ -87,11 +87,17 @@ versioning.
 
 """
 
-from .base import MSExecutionContext, MSDialect, BINARY, VARBINARY
-from ...connectors.pyodbc import PyODBCConnector
-from ... import types as sqltypes, util, exc
 import decimal
 import re
+
+from .base import BINARY
+from .base import MSDialect
+from .base import MSExecutionContext
+from .base import VARBINARY
+from ... import exc
+from ... import types as sqltypes
+from ... import util
+from ...connectors.pyodbc import PyODBCConnector
 
 
 class _ms_numeric_pyodbc(object):

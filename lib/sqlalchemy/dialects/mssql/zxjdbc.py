@@ -17,9 +17,10 @@
        zxjdbc dialect should be considered as experimental.
 
 """
-from ...connectors.zxJDBC import ZxJDBCConnector
-from .base import MSDialect, MSExecutionContext
+from .base import MSDialect
+from .base import MSExecutionContext
 from ... import engine
+from ...connectors.zxJDBC import ZxJDBCConnector
 
 
 class MSExecutionContext_zxjdbc(MSExecutionContext):
