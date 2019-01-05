@@ -246,7 +246,8 @@ integration.   Then, at the point at which SQLAlchemy knows that transaction
 scope is to begin, we emit ``"BEGIN"`` ourselves.
 
 When we take control of ``"BEGIN"``, we can also control directly SQLite's
-locking modes, introduced at `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_,
+locking modes, introduced at
+`BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_,
 by adding the desired locking mode to our ``"BEGIN"``::
 
     @event.listens_for(engine, "begin")
@@ -255,24 +256,27 @@ by adding the desired locking mode to our ``"BEGIN"``::
 
 .. seealso::
 
-    `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_ - on the SQLite site
+    `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_ -
+    on the SQLite site
 
-    `sqlite3 SELECT does not BEGIN a transaction <http://bugs.python.org/issue9924>`_ - on the Python bug tracker
+    `sqlite3 SELECT does not BEGIN a transaction <http://bugs.python.org/issue9924>`_ -
+    on the Python bug tracker
 
-    `sqlite3 module breaks transactions and potentially corrupts data <http://bugs.python.org/issue10740>`_ - on the Python bug tracker
+    `sqlite3 module breaks transactions and potentially corrupts data <http://bugs.python.org/issue10740>`_ -
+    on the Python bug tracker
 
 
-"""
+"""  # noqa
 
 import os
 
-from sqlalchemy import exc
-from sqlalchemy import pool
-from sqlalchemy import types as sqltypes
-from sqlalchemy import util
-from sqlalchemy.dialects.sqlite.base import DATE
-from sqlalchemy.dialects.sqlite.base import DATETIME
-from sqlalchemy.dialects.sqlite.base import SQLiteDialect
+from .base import DATE
+from .base import DATETIME
+from .base import SQLiteDialect
+from ... import exc
+from ... import pool
+from ... import types as sqltypes
+from ... import util
 
 
 class _SQLite_pysqliteTimeStamp(DATETIME):

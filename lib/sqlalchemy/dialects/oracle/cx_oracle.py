@@ -4,13 +4,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
-
+r"""
 .. dialect:: oracle+cx_oracle
     :name: cx-Oracle
     :dbapi: cx_oracle
-    :connectstring: oracle+cx_oracle://user:pass@host:port/dbname\
-[?key=value&key=value...]
+    :connectstring: oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
     :url: http://cx-oracle.sourceforge.net/
 
 Additional Connect Arguments
@@ -26,7 +24,8 @@ Will be used to create the DSN as follows::
 
     >>> import cx_Oracle
     >>> cx_Oracle.makedsn("hostname", 1521, sid="dbname")
-    '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=hostname)(PORT=1521))(CONNECT_DATA=(SID=dbname)))'
+    '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=hostname)(PORT=1521))\
+    (CONNECT_DATA=(SID=dbname)))'
 
 The ``service_name`` parameter, also consumed by ``cx_Oracle.makedsn()``, may
 be specified in the URL query string, e.g. ``?service_name=my_service``.
@@ -51,7 +50,8 @@ There are also options that are consumed by the SQLAlchemy cx_oracle dialect
 itself.  These options are always passed directly to :func:`.create_engine`,
 such as::
 
-    e = create_engine("oracle+cx_oracle://user:pass@dsn", coerce_to_unicode=False)
+    e = create_engine(
+        "oracle+cx_oracle://user:pass@dsn", coerce_to_unicode=False)
 
 The parameters accepted by the cx_oracle dialect are as follows:
 
@@ -149,8 +149,8 @@ For full control over this ``setinputsizes()`` behavior, see the section
 
 .. _cx_oracle_setinputsizes:
 
-Fine grained control over cx_Oracle data binding and performance with setinputsizes
------------------------------------------------------------------------------------
+Fine grained control over cx_Oracle data binding performance with setinputsizes
+-------------------------------------------------------------------------------
 
 The cx_Oracle DBAPI has a deep and fundamental reliance upon the usage of the
 DBAPI ``setinputsizes()`` call.   The purpose of this call is to establish the
@@ -163,13 +163,14 @@ settings can cause profoundly different performance characteristics, while
 altering the type coercion behavior at the same time.
 
 Users of the cx_Oracle dialect are **strongly encouraged** to read through
-cx_Oracle's list of built-in datatype symbols at http://cx-oracle.readthedocs.io/en/latest/module.html#types.
-Note that in some cases, signficant performance degradation can occur when using
-these types vs. not, in particular when specifying ``cx_Oracle.CLOB``.
+cx_Oracle's list of built-in datatype symbols at
+http://cx-oracle.readthedocs.io/en/latest/module.html#types.
+Note that in some cases, signficant performance degradation can occur when
+using these types vs. not, in particular when specifying ``cx_Oracle.CLOB``.
 
-On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event
-can be used both for runtime visibliity (e.g. logging) of the setinputsizes
-step as well as to fully control how ``setinputsizes()`` is used on a per-statement
+On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event can
+be used both for runtime visibliity (e.g. logging) of the setinputsizes step as
+well as to fully control how ``setinputsizes()`` is used on a per-statement
 basis.
 
 .. versionadded:: 1.2.9 Added :meth:`.DialectEvents.setinputsizes`
@@ -178,8 +179,8 @@ basis.
 Example 1 - logging all setinputsizes calls
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following example illustrates how to log the intermediary values from
-a SQLAlchemy perspective before they are converted to the raw ``setinputsizes()``
+The following example illustrates how to log the intermediary values from a
+SQLAlchemy perspective before they are converted to the raw ``setinputsizes()``
 parameter dictionary.  The keys of the dictionary are :class:`.BindParameter`
 objects which have a ``.key`` and a ``.type`` attribute::
 
@@ -297,7 +298,7 @@ SQLAlchemy type (or a subclass of such).
    reworked to take advantage of newer cx_Oracle features as well
    as better integration of outputtypehandlers.
 
-"""
+"""  # noqa
 
 from __future__ import absolute_import
 
@@ -306,20 +307,22 @@ import decimal
 import random
 import re
 
-from sqlalchemy import exc
-from sqlalchemy import processors
-from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from . import base as oracle
 from .base import OracleCompiler
 from .base import OracleDialect
 from .base import OracleExecutionContext
+from ... import exc
+from ... import processors
+from ... import types as sqltypes
+from ... import util
 from ...engine import result as _result
+from ...util import compat
 
 
 class _OracleInteger(sqltypes.Integer):
     def get_dbapi_type(self, dbapi):
-        # see https://github.com/oracle/python-cx_Oracle/issues/208#issuecomment-409715955
+        # see https://github.com/oracle/python-cx_Oracle/issues/
+        # 208#issuecomment-409715955
         return int
 
     def _cx_oracle_var(self, dialect, cursor):
@@ -661,8 +664,8 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
                 for bind, name in self.compiled.bind_names.items():
                     if name in self.out_parameters:
-                        type = bind.type
-                        impl_type = type.dialect_impl(self.dialect)
+                        type_ = bind.type
+                        impl_type = type_.dialect_impl(self.dialect)
                         dbapi_type = impl_type.get_dbapi_type(
                             self.dialect.dbapi
                         )
@@ -1040,8 +1043,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         """
 
-        id = random.randint(0, 2 ** 128)
-        return (0x1234, "%032x" % id, "%032x" % 9)
+        id_ = random.randint(0, 2 ** 128)
+        return (0x1234, "%032x" % id_, "%032x" % 9)
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         if isinstance(parameters, tuple):

@@ -51,7 +51,7 @@ class Insert(StandardInsert):
         set_=None,
         where=None,
     ):
-        """
+        r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
         Either the ``constraint`` or ``index_elements`` argument is
@@ -70,7 +70,7 @@ class Insert(StandardInsert):
          Additional WHERE criterion that can be used to infer a
          conditional target index.
 
-        :param set_:
+        :param set\_:
          Required argument. A dictionary or other mapping object
          with column names as keys and expressions or literals as values,
          specifying the ``SET`` actions to take.

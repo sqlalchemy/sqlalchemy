@@ -6,7 +6,12 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from . import base
-from . import psycopg2
+from . import pg8000  # noqa
+from . import psycopg2  # noqa
+from . import psycopg2cffi  # noqa
+from . import pygresql  # noqa
+from . import pypostgresql  # noqa
+from . import zxjdbc  # noqa
 from .array import All
 from .array import Any
 from .array import ARRAY
@@ -36,6 +41,7 @@ from .base import SMALLINT
 from .base import TEXT
 from .base import TIME
 from .base import TIMESTAMP
+from .base import TSVECTOR
 from .base import UUID
 from .base import VARCHAR
 from .dml import Insert
@@ -46,7 +52,6 @@ from .ext import ExcludeConstraint
 from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
-from .json import json
 from .json import JSONB
 from .ranges import DATERANGE
 from .ranges import INT4RANGE
@@ -93,9 +98,9 @@ __all__ = (
     "INT8RANGE",
     "NUMRANGE",
     "DATERANGE",
+    "TSVECTOR",
     "TSRANGE",
     "TSTZRANGE",
-    "json",
     "JSON",
     "JSONB",
     "Any",

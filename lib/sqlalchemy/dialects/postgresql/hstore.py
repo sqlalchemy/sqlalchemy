@@ -14,6 +14,7 @@ from ... import util
 from ...sql import functions as sqlfunc
 from ...sql import operators
 
+
 __all__ = ("HSTORE", "hstore")
 
 idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]

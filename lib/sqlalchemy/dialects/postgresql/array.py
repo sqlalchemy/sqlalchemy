@@ -12,7 +12,7 @@ from ...sql import expression
 from ...sql import operators
 
 try:
-    from uuid import UUID as _python_UUID
+    from uuid import UUID as _python_UUID  # noqa
 except ImportError:
     _python_UUID = None
 
@@ -143,13 +143,14 @@ class ARRAY(sqltypes.ARRAY):
             )
 
     The :class:`.postgresql.ARRAY` type provides all operations defined on the
-    core :class:`.types.ARRAY` type, including support for "dimensions", indexed
-    access, and simple matching such as :meth:`.types.ARRAY.Comparator.any`
-    and :meth:`.types.ARRAY.Comparator.all`.  :class:`.postgresql.ARRAY` class also
+    core :class:`.types.ARRAY` type, including support for "dimensions",
+    indexed access, and simple matching such as
+    :meth:`.types.ARRAY.Comparator.any` and
+    :meth:`.types.ARRAY.Comparator.all`.  :class:`.postgresql.ARRAY` class also
     provides PostgreSQL-specific methods for containment operations, including
     :meth:`.postgresql.ARRAY.Comparator.contains`
-    :meth:`.postgresql.ARRAY.Comparator.contained_by`,
-    and :meth:`.postgresql.ARRAY.Comparator.overlap`, e.g.::
+    :meth:`.postgresql.ARRAY.Comparator.contained_by`, and
+    :meth:`.postgresql.ARRAY.Comparator.overlap`, e.g.::
 
         mytable.c.data.contains([1, 2])
 

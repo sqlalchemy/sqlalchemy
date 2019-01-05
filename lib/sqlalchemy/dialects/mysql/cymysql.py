@@ -4,17 +4,16 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
-"""
+r"""
 
 .. dialect:: mysql+cymysql
     :name: CyMySQL
     :dbapi: cymysql
-    :connectstring: mysql+cymysql://<username>:<password>@<host>/<dbname>\
-[?<options>]
+    :connectstring: mysql+cymysql://<username>:<password>@<host>/<dbname>[?<options>]
     :url: https://github.com/nakagami/CyMySQL
 
-"""
+"""  # noqa
+
 from .base import BIT
 from .base import MySQLDialect
 from .mysqldb import MySQLDialect_mysqldb

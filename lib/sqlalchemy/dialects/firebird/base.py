@@ -547,11 +547,11 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
         # no syntax for these
         # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
         if create.element.start is not None:
-            raise NotImplemented(
+            raise NotImplementedError(
                 "Firebird SEQUENCE doesn't support START WITH"
             )
         if create.element.increment is not None:
-            raise NotImplemented(
+            raise NotImplementedError(
                 "Firebird SEQUENCE doesn't support INCREMENT BY"
             )
 
@@ -659,9 +659,9 @@ class FBDialect(default.DefaultDialect):
         name = name and name.rstrip()
         if name is None:
             return None
-        elif name.upper() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        elif name.upper() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             return name.lower()
         elif name.lower() == name:
             return quoted_name(name, quote=True)
@@ -671,9 +671,9 @@ class FBDialect(default.DefaultDialect):
     def denormalize_name(self, name):
         if name is None:
             return None
-        elif name.lower() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        elif name.lower() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             return name.upper()
         else:
             return name

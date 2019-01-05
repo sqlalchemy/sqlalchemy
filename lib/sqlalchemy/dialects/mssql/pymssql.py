@@ -9,8 +9,7 @@
 .. dialect:: mssql+pymssql
     :name: pymssql
     :dbapi: pymssql
-    :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>/?\
-charset=utf8
+    :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>/?charset=utf8
     :url: http://pymssql.org/
 
 pymssql is a Python module that provides a Python DBAPI interface around
@@ -20,7 +19,7 @@ Linux, MacOSX and Windows platforms.
 Modern versions of this driver work very well with SQL Server and
 FreeTDS from Linux and is highly recommended.
 
-"""
+"""  # noqa
 import re
 
 from .base import MSDialect

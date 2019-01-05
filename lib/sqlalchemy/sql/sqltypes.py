@@ -25,6 +25,7 @@ from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce
 from .type_api import Emulated
+from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance
 from .type_api import TypeDecorator
 from .type_api import TypeEngine

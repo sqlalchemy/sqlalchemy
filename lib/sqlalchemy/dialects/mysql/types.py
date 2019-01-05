@@ -70,7 +70,7 @@ class _StringType(sqltypes.String):
         self,
         charset=None,
         collation=None,
-        ascii=False,
+        ascii=False,  # noqa
         binary=False,
         unicode=False,
         national=False,

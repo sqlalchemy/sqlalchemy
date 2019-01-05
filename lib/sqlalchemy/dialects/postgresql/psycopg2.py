@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 r"""
 .. dialect:: postgresql+psycopg2
     :name: psycopg2
@@ -77,12 +76,12 @@ in ``/tmp``, or whatever socket directory was specified when PostgreSQL
 was built.  This value can be overridden by passing a pathname to psycopg2,
 using ``host`` as an additional keyword argument::
 
-    create_engine("postgresql+psycopg2://user:password@/dbname?\
-host=/var/lib/postgresql")
+    create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
 
 .. seealso::
 
-    `PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+    `PQconnectdbParams \
+    <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 .. _psycopg2_execution_options:
 
@@ -93,13 +92,13 @@ The following DBAPI-specific options are respected when used with
 :meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
 :meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
 
-* ``isolation_level`` - Set the transaction isolation level for the lifespan of a
-  :class:`.Connection` (can only be set on a connection, not a statement
+* ``isolation_level`` - Set the transaction isolation level for the lifespan
+  of a :class:`.Connection` (can only be set on a connection, not a statement
   or query).   See :ref:`psycopg2_isolation_level`.
 
-* ``stream_results`` - Enable or disable usage of psycopg2 server side cursors -
-  this feature makes use of "named" cursors in combination with special
-  result handling methods so that result rows are not fully buffered.
+* ``stream_results`` - Enable or disable usage of psycopg2 server side
+  cursors - this feature makes use of "named" cursors in combination with
+  special result handling methods so that result rows are not fully buffered.
   If ``None`` or not set, the ``server_side_cursors`` option of the
   :class:`.Engine` is used.
 
@@ -116,7 +115,8 @@ Psycopg2 Batch Mode (Fast Execution)
 ------------------------------------
 
 Modern versions of psycopg2 include a feature known as
-`Fast Execution Helpers <http://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_,
+`Fast Execution Helpers \
+<http://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_,
 which have been shown in benchmarking to improve psycopg2's executemany()
 performance with INSERTS by multiple orders of magnitude.   SQLAlchemy
 allows this extension to be used for all ``executemany()`` style calls
@@ -176,10 +176,9 @@ now supported by libpq directly.   This is enabled when ``client_encoding``
 is passed directly to ``psycopg2.connect()``, and from SQLAlchemy is passed
 using the :paramref:`.create_engine.connect_args` parameter::
 
-    # libpq direct parameter setting;
-    # only works for PostgreSQL **9.1 and above**
-    engine = create_engine("postgresql://user:pass@host/dbname",
-                           connect_args={'client_encoding': 'utf8'})
+    engine = create_engine(
+        "postgresql://user:pass@host/dbname",
+        connect_args={'client_encoding': 'utf8'})
 
     # using the query string is equivalent
     engine = create_engine("postgresql://user:pass@host/dbname?client_encoding=utf8")
@@ -294,13 +293,13 @@ The psycopg2 dialect supports these constants for isolation level:
 NOTICE logging
 ---------------
 
-The psycopg2 dialect will log PostgreSQL NOTICE messages via the
-``sqlalchemy.dialects.postgresql`` logger::
+The psycopg2 dialect will log PostgreSQL NOTICE messages
+via the ``sqlalchemy.dialects.postgresql`` logger::
 
     import logging
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
 
-.. _psycopg2_hstore::
+.. _psycopg2_hstore:
 
 HSTORE type
 ------------
@@ -341,7 +340,7 @@ string format, on both the parameter side and the result side, will take
 place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2``
 which may be more performant.
 
-"""
+"""  # noqa
 from __future__ import absolute_import
 
 import decimal
@@ -366,8 +365,9 @@ from ... import types as sqltypes
 from ... import util
 from ...engine import result as _result
 
+
 try:
-    from uuid import UUID as _python_UUID
+    from uuid import UUID as _python_UUID  # noqa
 except ImportError:
     _python_UUID = None
 
@@ -447,7 +447,6 @@ class _PGJSONB(JSONB):
 class _PGUUID(UUID):
     def bind_processor(self, dialect):
         if not self.as_uuid and dialect.use_native_uuid:
-            nonetype = type(None)
 
             def process(value):
                 if value is not None:

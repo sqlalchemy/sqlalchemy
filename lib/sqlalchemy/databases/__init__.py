@@ -23,6 +23,9 @@ postgres = postgresql
 postgres = postgresql
 
 
+postgres = postgresql
+
+
 __all__ = (
     "firebird",
     "mssql",

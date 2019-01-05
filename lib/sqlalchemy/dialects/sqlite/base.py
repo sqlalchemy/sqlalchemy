@@ -36,7 +36,8 @@ so that the column continues to have textual affinity.
 
 .. seealso::
 
-    `Type Affinity <http://www.sqlite.org/datatype3.html#affinity>`_ - in the SQLite documentation
+    `Type Affinity <http://www.sqlite.org/datatype3.html#affinity>`_ -
+    in the SQLite documentation
 
 .. _sqlite_autoincrement:
 
@@ -71,18 +72,16 @@ construct::
 Allowing autoincrement behavior SQLAlchemy types other than Integer/INTEGER
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-SQLite's typing model is based on naming conventions.  Among
-other things, this means that any type name which contains the
-substring ``"INT"`` will be determined to be of "integer affinity".  A
-type named ``"BIGINT"``, ``"SPECIAL_INT"`` or even ``"XYZINTQPR"``, will be considered by
-SQLite to be of "integer" affinity.  However, **the SQLite
-autoincrement feature, whether implicitly or explicitly enabled,
-requires that the name of the column's type
-is exactly the string "INTEGER"**.  Therefore, if an
-application uses a type like :class:`.BigInteger` for a primary key, on
-SQLite this type will need to be rendered as the name ``"INTEGER"`` when
-emitting the initial ``CREATE TABLE`` statement in order for the autoincrement
-behavior to be available.
+SQLite's typing model is based on naming conventions.  Among other things, this
+means that any type name which contains the substring ``"INT"`` will be
+determined to be of "integer affinity".  A type named ``"BIGINT"``,
+``"SPECIAL_INT"`` or even ``"XYZINTQPR"``, will be considered by SQLite to be
+of "integer" affinity.  However, **the SQLite autoincrement feature, whether
+implicitly or explicitly enabled, requires that the name of the column's type
+is exactly the string "INTEGER"**.  Therefore, if an application uses a type
+like :class:`.BigInteger` for a primary key, on SQLite this type will need to
+be rendered as the name ``"INTEGER"`` when emitting the initial ``CREATE
+TABLE`` statement in order for the autoincrement behavior to be available.
 
 One approach to achieve this is to use :class:`.Integer` on SQLite
 only using :meth:`.TypeEngine.with_variant`::
@@ -92,8 +91,8 @@ only using :meth:`.TypeEngine.with_variant`::
         Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
     )
 
-Another is to use a subclass of :class:`.BigInteger` that overrides its DDL name
-to be ``INTEGER`` when compiled against SQLite::
+Another is to use a subclass of :class:`.BigInteger` that overrides its DDL
+name to be ``INTEGER`` when compiled against SQLite::
 
     from sqlalchemy import BigInteger
     from sqlalchemy.ext.compiler import compiles
@@ -173,7 +172,8 @@ Transaction Isolation Level
 ----------------------------
 
 SQLite supports "transaction isolation" in a non-standard way, along two
-axes.  One is that of the `PRAGMA read_uncommitted <http://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
+axes.  One is that of the
+`PRAGMA read_uncommitted <http://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
 instruction.   This setting can essentially switch SQLite between its
 default mode of ``SERIALIZABLE`` isolation, and a "dirty read" isolation
 mode normally referred to as ``READ UNCOMMITTED``.
@@ -442,12 +442,12 @@ names are still addressable*::
     1
 
 Therefore, the workaround applied by SQLAlchemy only impacts
-:meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()` in the public API.
-In the very specific case where
-an application is forced to use column names that contain dots, and the
-functionality of :meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()`
-is required to return these dotted names unmodified, the ``sqlite_raw_colnames``
-execution option may be provided, either on a per-:class:`.Connection` basis::
+:meth:`.ResultProxy.keys` and :meth:`.RowProxy.keys()` in the public API. In
+the very specific case where an application is forced to use column names that
+contain dots, and the functionality of :meth:`.ResultProxy.keys` and
+:meth:`.RowProxy.keys()` is required to return these dotted names unmodified,
+the ``sqlite_raw_colnames`` execution option may be provided, either on a
+per-:class:`.Connection` basis::
 
     result = conn.execution_options(sqlite_raw_colnames=True).execute('''
         select x.a, x.b from x where a=1
@@ -463,7 +463,7 @@ or on a per-:class:`.Engine` basis::
 When using the per-:class:`.Engine` execution option, note that
 **Core and ORM queries that use UNION may not function properly**.
 
-"""
+"""  # noqa
 
 import datetime
 import re
@@ -477,6 +477,18 @@ from ... import util
 from ...engine import default
 from ...engine import reflection
 from ...sql import compiler
+from ...types import BLOB  # noqa
+from ...types import BOOLEAN  # noqa
+from ...types import CHAR  # noqa
+from ...types import DECIMAL  # noqa
+from ...types import FLOAT  # noqa
+from ...types import INTEGER  # noqa
+from ...types import NUMERIC  # noqa
+from ...types import REAL  # noqa
+from ...types import SMALLINT  # noqa
+from ...types import TEXT  # noqa
+from ...types import TIMESTAMP  # noqa
+from ...types import VARCHAR  # noqa
 
 
 class _DateTimeMixin(object):
@@ -563,7 +575,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
      is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
 
-    """
+    """  # noqa
 
     _storage_format = (
         "%(year)04d-%(month)02d-%(day)02d "
@@ -590,13 +602,13 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
     def bind_processor(self, dialect):
         datetime_datetime = datetime.datetime
         datetime_date = datetime.date
-        format = self._storage_format
+        format_ = self._storage_format
 
         def process(value):
             if value is None:
                 return None
             elif isinstance(value, datetime_datetime):
-                return format % {
+                return format_ % {
                     "year": value.year,
                     "month": value.month,
                     "day": value.day,
@@ -606,7 +618,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
                     "microsecond": value.microsecond,
                 }
             elif isinstance(value, datetime_date):
-                return format % {
+                return format_ % {
                     "year": value.year,
                     "month": value.month,
                     "day": value.day,
@@ -669,13 +681,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
     def bind_processor(self, dialect):
         datetime_date = datetime.date
-        format = self._storage_format
+        format_ = self._storage_format
 
         def process(value):
             if value is None:
                 return None
             elif isinstance(value, datetime_date):
-                return format % {
+                return format_ % {
                     "year": value.year,
                     "month": value.month,
                     "day": value.day,
@@ -747,13 +759,13 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 
     def bind_processor(self, dialect):
         datetime_time = datetime.time
-        format = self._storage_format
+        format_ = self._storage_format
 
         def process(value):
             if value is None:
                 return None
             elif isinstance(value, datetime_time):
-                return format % {
+                return format_ % {
                     "hour": value.hour,
                     "minute": value.minute,
                     "second": value.second,

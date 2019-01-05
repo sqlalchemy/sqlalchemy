@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """
 .. dialect:: mssql
     :name: Microsoft SQL Server
@@ -293,9 +292,10 @@ for these types will be issued as DATETIME.
 Large Text/Binary Type Deprecation
 ----------------------------------
 
-Per `SQL Server 2012/2014 Documentation <http://technet.microsoft.com/en-us/library/ms187993.aspx>`_,
-the ``NTEXT``, ``TEXT`` and ``IMAGE`` datatypes are to be removed from SQL Server
-in a future release.   SQLAlchemy normally relates these types to the
+Per
+`SQL Server 2012/2014 Documentation <http://technet.microsoft.com/en-us/library/ms187993.aspx>`_,
+the ``NTEXT``, ``TEXT`` and ``IMAGE`` datatypes are to be removed from SQL
+Server in a future release.   SQLAlchemy normally relates these types to the
 :class:`.UnicodeText`, :class:`.Text` and :class:`.LargeBinary` datatypes.
 
 In order to accommodate this change, a new flag ``deprecate_large_types``
@@ -317,9 +317,9 @@ behavior of this flag is as follows:
   established.   If the dialect is used to render DDL without the flag being
   set, it is interpreted the same as ``False``.
 
-* On first connection, the dialect detects if SQL Server version 2012 or greater
-  is in use; if the flag is still at ``None``, it sets it to ``True`` or
-  ``False`` based on whether 2012 or greater is detected.
+* On first connection, the dialect detects if SQL Server version 2012 or
+  greater is in use; if the flag is still at ``None``, it sets it to ``True``
+  or ``False`` based on whether 2012 or greater is detected.
 
 * The flag can be set to either ``True`` or ``False`` when the dialect
   is created, typically via :func:`.create_engine`::
@@ -330,8 +330,8 @@ behavior of this flag is as follows:
 * Complete control over whether the "old" or "new" types are rendered is
   available in all SQLAlchemy versions by using the UPPERCASE type objects
   instead: :class:`.NVARCHAR`, :class:`.VARCHAR`, :class:`.types.VARBINARY`,
-  :class:`.TEXT`, :class:`.mssql.NTEXT`, :class:`.mssql.IMAGE` will always remain
-  fixed and always output exactly that type.
+  :class:`.TEXT`, :class:`.mssql.NTEXT`, :class:`.mssql.IMAGE` will always
+  remain fixed and always output exactly that type.
 
 .. versionadded:: 1.0.0
 
@@ -605,8 +605,8 @@ following ALTER DATABASE commands executed at the SQL prompt::
 Background on SQL Server snapshot isolation is available at
 http://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
+"""  # noqa
 
-"""
 import codecs
 import datetime
 import operator
@@ -1322,9 +1322,9 @@ class MSExecutionContext(default.DefaultExecutionContext):
             insert_has_sequence = seq_column is not None
 
             if insert_has_sequence:
-                self._enable_identity_insert = seq_column.key in self.compiled_parameters[
-                    0
-                ] or (
+                self._enable_identity_insert = (
+                    seq_column.key in self.compiled_parameters[0]
+                ) or (
                     self.compiled.statement.parameters
                     and (
                         (
@@ -2402,7 +2402,7 @@ class MSDialect(default.DefaultDialect):
                 break
             (
                 name,
-                type,
+                type_,
                 nullable,
                 charlen,
                 numericprec,
@@ -2419,7 +2419,7 @@ class MSDialect(default.DefaultDialect):
                 row[columns.c.column_default],
                 row[columns.c.collation_name],
             )
-            coltype = self.ischema_names.get(type, None)
+            coltype = self.ischema_names.get(type_, None)
 
             kwargs = {}
             if coltype in (
@@ -2441,7 +2441,8 @@ class MSDialect(default.DefaultDialect):
 
             if coltype is None:
                 util.warn(
-                    "Did not recognize type '%s' of column '%s'" % (type, name)
+                    "Did not recognize type '%s' of column '%s'"
+                    % (type_, name)
                 )
                 coltype = sqltypes.NULLTYPE
             else:

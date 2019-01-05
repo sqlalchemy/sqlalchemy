@@ -19,6 +19,8 @@ from .annotation import _deep_deannotate  # noqa
 from .annotation import _shallow_annotate  # noqa
 from .base import _from_objects
 from .base import ColumnSet
+from .ddl import sort_tables  # noqa
+from .elements import _find_columns  # noqa
 from .elements import _label_reference
 from .elements import _textual_label_reference
 from .elements import BindParameter

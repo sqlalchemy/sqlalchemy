@@ -5,12 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: mysql+mysqlconnector
     :name: MySQL Connector/Python
     :dbapi: myconnpy
-    :connectstring: mysql+mysqlconnector://<user>:<password>@\
-<host>[:<port>]/<dbname>
+    :connectstring: mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
     :url: http://dev.mysql.com/downloads/connector/python/
 
 
@@ -45,7 +44,7 @@ This list should be updated as these issues are resolved either in the
 upstream mysql-connector-python driver or if appropriate usage patterns
 are contributed to SQLAlchemy.
 
-"""
+"""  # noqa
 
 import re
 
@@ -138,9 +137,9 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
         # hack description encoding since mysqlconnector randomly
         # returns bytes or not
-        self._description_decoder = processors.to_conditional_unicode_processor_factory(
-            self.description_encoding
-        )
+        self._description_decoder = (
+            processors.to_conditional_unicode_processor_factory
+        )(self.description_encoding)
 
     def _check_unicode_description(self, connection):
         # hack description encoding since mysqlconnector randomly

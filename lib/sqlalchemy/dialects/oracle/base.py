@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: oracle
     :name: Oracle
 
@@ -74,7 +74,8 @@ LIMIT/OFFSET Support
 Oracle has no support for the LIMIT or OFFSET keywords.  SQLAlchemy uses
 a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology
 is taken from
-http://www.oracle.com/technetwork/issue-archive/2006/06-sep/o56asktom-086197.html .
+http://www.oracle.com/technetwork/issue-archive/2006/06-sep/\
+o56asktom-086197.html .
 
 There are two options which affect its behavior:
 
@@ -348,25 +349,26 @@ columns for non-unique indexes, all but the last column for unique indexes).
 from itertools import groupby
 import re
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import sql
-from sqlalchemy import types as sqltypes
-from sqlalchemy import util
-from sqlalchemy.engine import default
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import compiler
-from sqlalchemy.sql import expression
-from sqlalchemy.sql import util as sql_util
-from sqlalchemy.sql import visitors
-from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy.types import BLOB
-from sqlalchemy.types import CHAR
-from sqlalchemy.types import CLOB
-from sqlalchemy.types import FLOAT
-from sqlalchemy.types import INTEGER
-from sqlalchemy.types import NVARCHAR
-from sqlalchemy.types import TIMESTAMP
-from sqlalchemy.types import VARCHAR
+from ... import schema as sa_schema
+from ... import sql
+from ... import types as sqltypes
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import expression
+from ...sql import util as sql_util
+from ...sql import visitors
+from ...sql.elements import quoted_name
+from ...types import BLOB
+from ...types import CHAR
+from ...types import CLOB
+from ...types import FLOAT
+from ...types import INTEGER
+from ...types import NVARCHAR
+from ...types import TIMESTAMP
+from ...types import VARCHAR
+
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "
@@ -1098,7 +1100,6 @@ class OracleDialect(default.DefaultDialect):
     execution_ctx_cls = OracleExecutionContext
 
     reflection_options = ("oracle_resolve_synonyms",)
-
     construct_arguments = [
         (
             sa_schema.Table,
@@ -1189,9 +1190,9 @@ class OracleDialect(default.DefaultDialect):
         if util.py2k:
             if isinstance(name, str):
                 name = name.decode(self.encoding)
-        if name.upper() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        if name.upper() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             return name.lower()
         elif name.lower() == name:
             return quoted_name(name, quote=True)
@@ -1201,15 +1202,15 @@ class OracleDialect(default.DefaultDialect):
     def denormalize_name(self, name):
         if name is None:
             return None
-        elif name.lower() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        elif name.lower() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             name = name.upper()
         if util.py2k:
             if not self.supports_unicode_binds:
                 name = name.encode(self.encoding)
             else:
-                name = unicode(name)
+                name = unicode(name)  # noqa
         return name
 
     def _get_default_schema_name(self, connection):
@@ -1816,7 +1817,12 @@ class OracleDialect(default.DefaultDialect):
 
                 if not rec["referred_table"]:
                     if resolve_synonyms:
-                        ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = self._resolve_synonym(
+                        (
+                            ref_remote_name,
+                            ref_remote_owner,
+                            ref_dblink,
+                            ref_synonym,
+                        ) = self._resolve_synonym(
                             connection,
                             desired_owner=self.denormalize_name(remote_owner),
                             desired_table=self.denormalize_name(remote_table),
@@ -1871,14 +1877,10 @@ class OracleDialect(default.DefaultDialect):
         unique_keys = filter(lambda x: x[1] == "U", constraint_data)
         uniques_group = groupby(unique_keys, lambda x: x[0])
 
-        index_names = set(
-            [
-                ix["name"]
-                for ix in self.get_indexes(
-                    connection, table_name, schema=schema
-                )
-            ]
-        )
+        index_names = {
+            ix["name"]
+            for ix in self.get_indexes(connection, table_name, schema=schema)
+        }
         return [
             {
                 "name": name,

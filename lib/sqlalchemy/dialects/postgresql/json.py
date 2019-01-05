@@ -12,6 +12,7 @@ from ... import types as sqltypes
 from ... import util
 from ...sql import operators
 
+
 __all__ = ("JSON", "JSONB")
 
 idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]
@@ -133,8 +134,7 @@ class JSON(sqltypes.JSON):
 
     * Path index operations returning text (the ``#>>`` operator)::
 
-        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')].astext == \
-'some value'
+        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')].astext == 'some value'
 
     .. versionchanged:: 1.1  The :meth:`.ColumnElement.cast` operator on
        JSON objects now requires that the :attr:`.JSON.Comparator.astext`
@@ -164,7 +164,7 @@ class JSON(sqltypes.JSON):
 
         :class:`.JSONB`
 
-    """
+    """  # noqa
 
     astext_type = sqltypes.Text()
 

@@ -5,24 +5,25 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.dialects.sqlite.base import BLOB
-from sqlalchemy.dialects.sqlite.base import BOOLEAN
-from sqlalchemy.dialects.sqlite.base import CHAR
-from sqlalchemy.dialects.sqlite.base import DATE
-from sqlalchemy.dialects.sqlite.base import DATETIME
-from sqlalchemy.dialects.sqlite.base import DECIMAL
-from sqlalchemy.dialects.sqlite.base import FLOAT
-from sqlalchemy.dialects.sqlite.base import INTEGER
-from sqlalchemy.dialects.sqlite.base import NUMERIC
-from sqlalchemy.dialects.sqlite.base import REAL
-from sqlalchemy.dialects.sqlite.base import SMALLINT
-from sqlalchemy.dialects.sqlite.base import TEXT
-from sqlalchemy.dialects.sqlite.base import TIME
-from sqlalchemy.dialects.sqlite.base import TIMESTAMP
-from sqlalchemy.dialects.sqlite.base import VARCHAR
 from . import base  # noqa
 from . import pysqlcipher  # noqa
 from . import pysqlite  # noqa
+from .base import BLOB
+from .base import BOOLEAN
+from .base import CHAR
+from .base import DATE
+from .base import DATETIME
+from .base import DECIMAL
+from .base import FLOAT
+from .base import INTEGER
+from .base import NUMERIC
+from .base import REAL
+from .base import SMALLINT
+from .base import TEXT
+from .base import TIME
+from .base import TIMESTAMP
+from .base import VARCHAR
+
 
 # default dialect
 base.dialect = dialect = pysqlite.dialect

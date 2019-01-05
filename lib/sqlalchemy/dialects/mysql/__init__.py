@@ -5,8 +5,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import base
-from . import mysqldb
+from . import base  # noqa
+from . import cymysql  # noqa
+from . import gaerdbms  # noqa
+from . import mysqlconnector  # noqa
+from . import mysqldb  # noqa
+from . import oursql  # noqa
+from . import pymysql  # noqa
+from . import pyodbc  # noqa
+from . import zxjdbc  # noqa
 from .base import BIGINT
 from .base import BINARY
 from .base import BIT
@@ -41,6 +48,8 @@ from .base import TINYTEXT
 from .base import VARBINARY
 from .base import VARCHAR
 from .base import YEAR
+from .dml import insert
+
 
 # default dialect
 base.dialect = dialect = mysqldb.dialect
@@ -84,4 +93,6 @@ __all__ = (
     "VARCHAR",
     "YEAR",
     "dialect",
+    "insert",
+    "Insert",
 )

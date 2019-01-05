@@ -31,12 +31,16 @@ from .base import manager_of_class
 from .base import NEVER_SET
 from .base import NO_AUTOFLUSH
 from .base import NO_VALUE  # noqa
+from .base import NON_PERSISTENT_OK  # noqa
 from .base import PASSIVE_NO_FETCH  # noqa
+from .base import PASSIVE_NO_FETCH_RELATED  # noqa
 from .base import PASSIVE_NO_INITIALIZE
 from .base import PASSIVE_NO_RESULT
 from .base import PASSIVE_OFF
 from .base import PASSIVE_ONLY_PERSISTENT
 from .base import PASSIVE_RETURN_NEVER_SET
+from .base import RELATED_OBJECT_OK  # noqa
+from .base import SQL_OK  # noqa
 from .base import state_str
 from .. import event
 from .. import inspection

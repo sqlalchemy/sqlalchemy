@@ -4,17 +4,16 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """
 .. dialect:: postgresql+pypostgresql
     :name: py-postgresql
     :dbapi: pypostgresql
-    :connectstring: postgresql+pypostgresql://user:password@host:port/dbname\
-[?key=value&key=value...]
+    :connectstring: postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]
     :url: http://python.projects.pgfoundry.org/
 
 
-"""
+"""  # noqa
+
 from .base import PGDialect
 from .base import PGExecutionContext
 from ... import processors
