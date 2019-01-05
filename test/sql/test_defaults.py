@@ -1,39 +1,44 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises_message,
-    assert_raises,
-    AssertsCompiledSQL,
-    expect_warnings,
-)
 import datetime
-from sqlalchemy.schema import CreateSequence, DropSequence, CreateTable
-from sqlalchemy.sql import select, text, literal_column
-import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy.testing import engines
-from sqlalchemy import (
-    MetaData,
-    Integer,
-    String,
-    ForeignKey,
-    Boolean,
-    exc,
-    Sequence,
-    func,
-    literal,
-    Unicode,
-    cast,
-    DateTime,
-)
-from sqlalchemy.types import TypeDecorator, TypeEngine
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.dialects import sqlite
-from sqlalchemy.testing import fixtures
-from sqlalchemy.util import u, b
-from sqlalchemy import util
-from sqlalchemy.testing import mock
 import itertools
-from sqlalchemy.testing.assertsql import CompiledSQL, AllOf, EachOf
+
+import sqlalchemy as sa
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import DateTime
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import Unicode
+from sqlalchemy import util
+from sqlalchemy.dialects import sqlite
+from sqlalchemy.schema import CreateSequence
+from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import DropSequence
+from sqlalchemy.sql import literal_column
+from sqlalchemy.sql import select
+from sqlalchemy.sql import text
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import EachOf
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import TypeEngine
+from sqlalchemy.util import b
+from sqlalchemy.util import u
 
 t = f = f2 = ts = currenttime = metadata = default_generator = None
 

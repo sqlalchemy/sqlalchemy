@@ -1,21 +1,23 @@
 """Evaluating SQL expressions on ORM objects"""
 
-from sqlalchemy import String, Integer, bindparam
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.testing import fixtures
-
-from sqlalchemy import and_, or_, not_
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import not_
+from sqlalchemy import or_
+from sqlalchemy import String
 from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import mapper
-
-from sqlalchemy.orm import relationship, Session
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import is_
-from sqlalchemy import inspect
 from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 compiler = evaluator.EvaluatorCompiler()
 

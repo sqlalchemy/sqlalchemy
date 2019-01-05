@@ -1,44 +1,44 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises_message,
-    assert_raises,
-    in_,
-    not_in_,
-    is_,
-    ne_,
-    le_,
-)
-from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, engines
-from sqlalchemy import util
-from sqlalchemy import (
-    exc,
-    sql,
-    func,
-    select,
-    String,
-    Integer,
-    MetaData,
-    ForeignKey,
-    VARCHAR,
-    INT,
-    CHAR,
-    text,
-    type_coerce,
-    literal_column,
-    TypeDecorator,
-    table,
-    column,
-    literal,
-)
-from sqlalchemy.engine import result as _result
-from sqlalchemy.testing.schema import Table, Column
-import operator
-from sqlalchemy.testing import assertions
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.testing.mock import patch, Mock
 from contextlib import contextmanager
+import operator
+
+from sqlalchemy import CHAR
+from sqlalchemy import column
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import INT
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import type_coerce
+from sqlalchemy import TypeDecorator
+from sqlalchemy import util
+from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
+from sqlalchemy.engine import result as _result
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assertions
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import le_
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing import not_in_
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class ResultProxyTest(fixtures.TablesTest):

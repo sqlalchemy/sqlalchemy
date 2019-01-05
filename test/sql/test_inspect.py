@@ -1,7 +1,10 @@
 """test the inspection registry system."""
 
+from sqlalchemy import Column
 from sqlalchemy import inspect
-from sqlalchemy import Table, Column, Integer, MetaData
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 

@@ -1,43 +1,41 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    assertions,
-    is_true,
-    is_,
-)
-from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.testing import pickleable
-from sqlalchemy.util import pickle
-import inspect
-from sqlalchemy.orm import (
-    create_session,
-    sessionmaker,
-    attributes,
-    make_transient,
-    make_transient_to_detached,
-    Session,
-)
 import sqlalchemy as sa
-from sqlalchemy.testing import engines, config
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import Sequence
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, Sequence
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    backref,
-    joinedload,
-    exc as orm_exc,
-    object_session,
-    was_deleted,
-)
-from sqlalchemy.util import pypy
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import make_transient_to_detached
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import object_session
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import was_deleted
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assertions
+from sqlalchemy.testing import config
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy import event, ForeignKey
-from sqlalchemy.util.compat import inspect_getargspec
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.util import pickle
+from sqlalchemy.util import pypy
+from sqlalchemy.util.compat import inspect_getargspec
+from test.orm import _fixtures
 
 
 class ExecutionTest(_fixtures.FixtureTest):

@@ -1,23 +1,47 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
-import operator
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc, util
-from sqlalchemy.sql import compiler, table, column
-from sqlalchemy.engine import default
-from sqlalchemy.orm import *
-from sqlalchemy.orm import attributes
-
-from sqlalchemy.testing import eq_
-
 import sqlalchemy as sa
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import desc
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import lateral
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import not_
+from sqlalchemy import or_
+from sqlalchemy import outerjoin
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
-from sqlalchemy.testing import AssertsCompiledSQL, engines
+from sqlalchemy import true
+from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import join
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import outerjoin
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm import with_parent
+from sqlalchemy.orm.util import join
+from sqlalchemy.orm.util import outerjoin
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from test.orm import _fixtures
-
-from sqlalchemy.testing import fixtures
-
-from sqlalchemy.orm.util import join, outerjoin, with_parent
 
 
 class QueryTest(_fixtures.FixtureTest):

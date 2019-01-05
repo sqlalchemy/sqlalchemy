@@ -1,20 +1,20 @@
-from sqlalchemy.testing import fixtures, eq_
-from sqlalchemy.testing import AssertsCompiledSQL, assert_raises_message
-from sqlalchemy.sql import (
-    table,
-    column,
-    select,
-    func,
-    literal,
-    exists,
-    and_,
-    bindparam,
-)
 from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
+from sqlalchemy.sql import and_
+from sqlalchemy.sql import bindparam
+from sqlalchemy.sql import column
+from sqlalchemy.sql import exists
+from sqlalchemy.sql import func
+from sqlalchemy.sql import literal
+from sqlalchemy.sql import select
+from sqlalchemy.sql import table
 from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.sql.visitors import cloned_traverse
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 
 
 class CTETest(fixtures.TestBase, AssertsCompiledSQL):

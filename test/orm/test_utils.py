@@ -1,20 +1,26 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.orm import util as orm_util
 from sqlalchemy import Column
-from sqlalchemy import util
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
-from sqlalchemy.orm import aliased, with_polymorphic, synonym
-from sqlalchemy.orm import mapper, create_session, Session
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.testing import eq_, is_
-from sqlalchemy.orm.path_registry import PathRegistry, RootRegistry
-from sqlalchemy import inspect
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy import util
+from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm import util as orm_util
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.orm.path_registry import PathRegistry
+from sqlalchemy.orm.path_registry import RootRegistry
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
-
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 
 

@@ -1,33 +1,35 @@
-from sqlalchemy.testing import eq_, assert_raises_message
-from sqlalchemy import testing
-from sqlalchemy.testing import engines
-from sqlalchemy.testing.schema import Table, Column
-from test.orm import _fixtures
-from sqlalchemy import exc, util
-from sqlalchemy.testing import fixtures, config
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    func,
-    literal,
-    FetchedValue,
-    text,
-    select,
-)
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    backref,
-    create_session,
-    unitofwork,
-    attributes,
-    Session,
-    exc as orm_exc,
-)
-from sqlalchemy.testing.mock import Mock, patch
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import FetchedValue
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import util
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import unitofwork
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
 
 
 class AssertsUOW(object):

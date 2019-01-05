@@ -1,22 +1,24 @@
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    select,
-    ForeignKey,
-    Index,
-    CheckConstraint,
-    inspect,
-    column,
-)
-from sqlalchemy import sql, schema, types as sqltypes
-from sqlalchemy.sql import compiler
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import sql
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.sql.elements import quoted_name, _anonymous_label
-from sqlalchemy.testing.util import picklers
 from sqlalchemy.engine import default
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql.elements import _anonymous_label
+from sqlalchemy.sql.elements import quoted_name
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import picklers
 
 
 class QuoteExecTest(fixtures.TestBase):

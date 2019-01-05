@@ -3,24 +3,21 @@
 
 """
 
-from sqlalchemy import util
 import sys
-from sqlalchemy.testing.requirements import SuiteRequirements
+
+from sqlalchemy import util
 from sqlalchemy.testing import exclusions
-from sqlalchemy.testing.exclusions import (
-    skip,
-    skip_if,
-    only_if,
-    only_on,
-    fails_on_everything_except,
-    fails_on,
-    fails_if,
-    succeeds_if,
-    SpecPredicate,
-    against,
-    LambdaPredicate,
-    requires_tag,
-)
+from sqlalchemy.testing.exclusions import against
+from sqlalchemy.testing.exclusions import fails_if
+from sqlalchemy.testing.exclusions import fails_on
+from sqlalchemy.testing.exclusions import fails_on_everything_except
+from sqlalchemy.testing.exclusions import LambdaPredicate
+from sqlalchemy.testing.exclusions import only_if
+from sqlalchemy.testing.exclusions import only_on
+from sqlalchemy.testing.exclusions import skip_if
+from sqlalchemy.testing.exclusions import SpecPredicate
+from sqlalchemy.testing.exclusions import succeeds_if
+from sqlalchemy.testing.requirements import SuiteRequirements
 
 
 def no_support(db, reason):

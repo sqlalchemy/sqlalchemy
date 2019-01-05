@@ -1,21 +1,36 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
-from sqlalchemy import *
-from sqlalchemy import sql, exc, schema
-from sqlalchemy.util import u
-from sqlalchemy import util
-from sqlalchemy.dialects.mysql import base as mysql
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsCompiledSQL,
-    AssertsExecutionResults,
-)
-from sqlalchemy import testing
+from collections import OrderedDict
 import datetime
 import decimal
+
+from sqlalchemy import BOOLEAN
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import DefaultClause
+from sqlalchemy import Enum
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import TIMESTAMP
 from sqlalchemy import types as sqltypes
-from collections import OrderedDict
+from sqlalchemy import UnicodeText
+from sqlalchemy import util
+from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.util import u
 
 
 class TypesTest(

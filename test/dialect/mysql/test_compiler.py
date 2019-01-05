@@ -1,55 +1,59 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, assert_raises_message, expect_warnings
-from sqlalchemy import sql, exc, schema, types as sqltypes
-from sqlalchemy import (
-    Table,
-    MetaData,
-    Column,
-    select,
-    String,
-    Index,
-    Integer,
-    ForeignKey,
-    PrimaryKeyConstraint,
-    extract,
-    VARCHAR,
-    NVARCHAR,
-    Unicode,
-    UnicodeText,
-    NUMERIC,
-    DECIMAL,
-    Numeric,
-    Float,
-    FLOAT,
-    TIMESTAMP,
-    DATE,
-    DATETIME,
-    TIME,
-    DateTime,
-    Time,
-    Date,
-    Interval,
-    NCHAR,
-    CHAR,
-    CLOB,
-    TEXT,
-    Boolean,
-    BOOLEAN,
-    LargeBinary,
-    BLOB,
-    SmallInteger,
-    INT,
-    func,
-    cast,
-    literal,
-)
-
-from sqlalchemy.dialects.mysql import insert
+from sqlalchemy import BLOB
+from sqlalchemy import BOOLEAN
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import CHAR
+from sqlalchemy import CLOB
+from sqlalchemy import Column
+from sqlalchemy import DATE
+from sqlalchemy import Date
+from sqlalchemy import DATETIME
+from sqlalchemy import DateTime
+from sqlalchemy import DECIMAL
+from sqlalchemy import exc
+from sqlalchemy import extract
+from sqlalchemy import FLOAT
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import INT
+from sqlalchemy import Integer
+from sqlalchemy import Interval
+from sqlalchemy import LargeBinary
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import NCHAR
+from sqlalchemy import NUMERIC
+from sqlalchemy import Numeric
+from sqlalchemy import NVARCHAR
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import SmallInteger
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import TEXT
+from sqlalchemy import TIME
+from sqlalchemy import Time
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import types as sqltypes
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
+from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mysql import base as mysql
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy.sql import table, column
+from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
 from sqlalchemy.sql.expression import literal_column
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

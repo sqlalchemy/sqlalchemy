@@ -1,32 +1,35 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    is_,
-    expect_warnings,
-)
-from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, select, func
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    relationship,
-    create_session,
-    class_mapper,
-    configure_mappers,
-    clear_mappers,
-    deferred,
-    column_property,
-    Session,
-    base as orm_base,
-    synonym,
-)
-from sqlalchemy.util import classproperty
-from sqlalchemy.ext.declarative import declared_attr, declarative_base
+from sqlalchemy.ext import declarative as decl
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import base as orm_base
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
-from sqlalchemy.testing import fixtures, mock
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.util import classproperty
 
 Base = None
 

@@ -1,31 +1,31 @@
-from sqlalchemy.testing import (
-    eq_,
-    ne_,
-    assert_raises,
-    expect_warnings,
-    assert_raises_message,
-)
 import time
-from sqlalchemy import (
-    select,
-    MetaData,
-    Integer,
-    String,
-    create_engine,
-    pool,
-    exc,
-    util,
-)
-from sqlalchemy.testing.schema import Table, Column
+
 import sqlalchemy as tsa
-from sqlalchemy.engine import url
-from sqlalchemy import testing
-from sqlalchemy.testing import mock
-from sqlalchemy.testing import engines
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.mock import Mock, call, patch
+from sqlalchemy import create_engine
 from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import pool
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.engine import url
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 
 

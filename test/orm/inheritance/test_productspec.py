@@ -1,10 +1,23 @@
 from datetime import datetime
-from sqlalchemy import *
-from sqlalchemy.orm import *
 
-from sqlalchemy import testing
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import LargeBinary
+from sqlalchemy import outerjoin
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class InheritTest(fixtures.MappedTest):

@@ -1,35 +1,33 @@
-from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy import Column
 from sqlalchemy import exc
+from sqlalchemy import Float
+from sqlalchemy import func
+from sqlalchemy import insert
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import types as sqltypes
+from sqlalchemy import Unicode
+from sqlalchemy import update
+from sqlalchemy import VARCHAR
 from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.sql import table, column
-from sqlalchemy import types as sqltypes
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-)
-from sqlalchemy import testing
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
-from sqlalchemy import (
-    String,
-    VARCHAR,
-    NVARCHAR,
-    Unicode,
-    Integer,
-    func,
-    insert,
-    update,
-    MetaData,
-    select,
-    Table,
-    Column,
-    text,
-    Sequence,
-    Float,
-)
-from sqlalchemy import schema
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
 
 
 class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):

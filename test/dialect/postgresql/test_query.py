@@ -1,41 +1,39 @@
 # coding: utf-8
 
-from sqlalchemy.testing import (
-    AssertsExecutionResults,
-    eq_,
-    assert_raises_message,
-    AssertsCompiledSQL,
-    expect_warnings,
-    assert_raises,
-)
-from sqlalchemy import (
-    Table,
-    Column,
-    MetaData,
-    Integer,
-    String,
-    bindparam,
-    Sequence,
-    ForeignKey,
-    text,
-    select,
-    func,
-    extract,
-    literal_column,
-    tuple_,
-    DateTime,
-    Time,
-    literal,
-    and_,
-    Date,
-    or_,
-)
-from sqlalchemy.testing import engines, fixtures
-from sqlalchemy.testing.assertsql import DialectSQL, CursorSQL
-from sqlalchemy import testing
-from sqlalchemy import exc
-from sqlalchemy.dialects import postgresql
 import datetime
+
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import exc
+from sqlalchemy import extract
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import Time
+from sqlalchemy import tuple_
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import CursorSQL
+from sqlalchemy.testing.assertsql import DialectSQL
 
 matchtable = cattable = None
 

@@ -1,20 +1,24 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.schema import (
-    DDL,
-    CheckConstraint,
-    AddConstraint,
-    DropConstraint,
-)
-from sqlalchemy import create_engine
-from sqlalchemy import MetaData, Integer, String, event, exc, text
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
 import sqlalchemy as tsa
+from sqlalchemy import create_engine
+from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy.schema import AddConstraint
+from sqlalchemy.schema import CheckConstraint
+from sqlalchemy.schema import DDL
+from sqlalchemy.schema import DropConstraint
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
-from sqlalchemy.testing import AssertsCompiledSQL, eq_
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class DDLEventTest(fixtures.TestBase):

@@ -1,9 +1,12 @@
-from test.orm import _fixtures
-from sqlalchemy import testing
-from sqlalchemy.orm import mapper, relationship, create_session
-from sqlalchemy import util
 import sqlalchemy as sa
-from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from test.orm import _fixtures
 
 
 class DefaultStrategyOptionsTest(_fixtures.FixtureTest):

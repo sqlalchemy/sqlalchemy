@@ -1,23 +1,37 @@
 """basic tests of lazy loaded attributes"""
 
-from sqlalchemy.testing import assert_raises
 import datetime
-from sqlalchemy.orm import attributes, exc as orm_exc, configure_mappers
+
 import sqlalchemy as sa
-from sqlalchemy.orm.interfaces import MapperOption
-from sqlalchemy import testing, and_, bindparam
-from sqlalchemy import Integer, String, ForeignKey, SmallInteger, Boolean
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
-from sqlalchemy.types import TypeDecorator
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
+from sqlalchemy import Integer
 from sqlalchemy import orm
-from sqlalchemy.orm import mapper, relationship, create_session, Session
-from sqlalchemy.testing import eq_, is_true, is_false
+from sqlalchemy import SmallInteger
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.interfaces import MapperOption
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.types import TypeDecorator
+from test.orm import _fixtures
 
 
 class LazyTest(_fixtures.FixtureTest):

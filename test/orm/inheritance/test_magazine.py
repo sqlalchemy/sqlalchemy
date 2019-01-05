@@ -1,10 +1,21 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
-
-from sqlalchemy import testing
-from sqlalchemy.testing.util import function_named
+from sqlalchemy import CHAR
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import outerjoin
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import Text
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import function_named
 
 
 class BaseObject(object):

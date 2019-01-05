@@ -1,7 +1,13 @@
-from sqlalchemy.testing import fixtures
-from sqlalchemy.sql.ddl import SchemaGenerator, SchemaDropper
-from sqlalchemy import MetaData, Table, Column, Integer, Sequence, ForeignKey
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import schema
+from sqlalchemy import Sequence
+from sqlalchemy import Table
+from sqlalchemy.sql.ddl import SchemaDropper
+from sqlalchemy.sql.ddl import SchemaGenerator
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock
 
 

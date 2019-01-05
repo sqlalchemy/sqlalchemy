@@ -4,10 +4,11 @@
 
 
 from sqlalchemy import exc as sa_exceptions
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import eq_
 from sqlalchemy.engine import default
-from sqlalchemy.util import u, compat
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.util import compat
+from sqlalchemy.util import u
 
 
 class Error(Exception):

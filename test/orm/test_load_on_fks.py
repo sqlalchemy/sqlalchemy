@@ -1,13 +1,19 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
-
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.testing import eq_, AssertsExecutionResults, assert_raises
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import outerjoin
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import instance_state
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
 
 engine = testing.db
 

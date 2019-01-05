@@ -6,8 +6,8 @@ This script is an extension to py.test which
 installs SQLAlchemy's testing plugin into the local environment.
 
 """
-import sys
 import os
+import sys
 
 if not sys.flags.no_user_site:
     # this is needed so that test scenarios like "python setup.py test"

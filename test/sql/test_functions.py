@@ -1,35 +1,43 @@
-from sqlalchemy.testing import eq_, is_
 import datetime
-from sqlalchemy import (
-    func,
-    select,
-    Integer,
-    literal,
-    DateTime,
-    Table,
-    Column,
-    Sequence,
-    MetaData,
-    extract,
-    Date,
-    String,
-    bindparam,
-    literal_column,
-    ARRAY,
-    Numeric,
-)
-from sqlalchemy.sql import table, column
-from sqlalchemy import sql, util
-from sqlalchemy.sql.compiler import BIND_TEMPLATES
-from sqlalchemy.testing.engines import all_dialects
-from sqlalchemy import types as sqltypes
-from sqlalchemy.sql import functions
-from sqlalchemy.sql.functions import GenericFunction, FunctionElement
 import decimal
+
+from sqlalchemy import ARRAY
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import extract
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
-from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import oracle
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
+from sqlalchemy.sql import column
+from sqlalchemy.sql import functions
+from sqlalchemy.sql import table
+from sqlalchemy.sql.compiler import BIND_TEMPLATES
+from sqlalchemy.sql.functions import FunctionElement
+from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.engines import all_dialects
 
 table1 = table(
     "mytable",

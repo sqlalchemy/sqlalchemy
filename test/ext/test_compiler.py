@@ -1,21 +1,30 @@
-from sqlalchemy import *
-from sqlalchemy.types import TypeEngine
-from sqlalchemy.sql.expression import (
-    ClauseElement,
-    ColumnClause,
-    FunctionElement,
-    Select,
-    BindParameter,
-    ColumnElement,
-)
-
-from sqlalchemy.schema import DDLElement, CreateColumn, CreateTable
-from sqlalchemy.ext.compiler import compiles, deregister
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import desc
 from sqlalchemy import exc
-from sqlalchemy.testing import eq_
-from sqlalchemy.sql import table, column
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import select
+from sqlalchemy import Table
+from sqlalchemy import table
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.ext.compiler import deregister
+from sqlalchemy.schema import CreateColumn
+from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import DDLElement
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.sql.expression import BindParameter
+from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy.sql.expression import ColumnClause
+from sqlalchemy.sql.expression import FunctionElement
+from sqlalchemy.sql.expression import Select
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.types import TypeEngine
 
 
 class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):

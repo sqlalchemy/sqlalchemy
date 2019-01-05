@@ -1,21 +1,23 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, ne_
-from sqlalchemy import util
 import sqlalchemy as sa
-from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import attributes
-from sqlalchemy.orm.attributes import (
-    set_attribute,
-    get_attribute,
-    del_attribute,
-)
-from sqlalchemy.orm.instrumentation import is_instrumented
-from sqlalchemy.orm import clear_mappers
-from sqlalchemy.testing import fixtures
-from sqlalchemy.ext import instrumentation
-from sqlalchemy.orm.instrumentation import register_class, manager_of_class
-from sqlalchemy.testing.util import decorator
-from sqlalchemy.orm import events
 from sqlalchemy import event
+from sqlalchemy import util
+from sqlalchemy.ext import instrumentation
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import events
+from sqlalchemy.orm.attributes import del_attribute
+from sqlalchemy.orm.attributes import get_attribute
+from sqlalchemy.orm.attributes import set_attribute
+from sqlalchemy.orm.instrumentation import is_instrumented
+from sqlalchemy.orm.instrumentation import manager_of_class
+from sqlalchemy.orm.instrumentation import register_class
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.util import decorator
 
 
 @decorator

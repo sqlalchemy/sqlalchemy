@@ -5,24 +5,29 @@ T1<->T2, with o2m or m2o between them, and a third T3 with o2m/m2o to one/both
 T1/T2.
 
 """
-from sqlalchemy import testing
-from sqlalchemy import event
-from sqlalchemy.testing import mock
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    backref,
-    create_session,
-    sessionmaker,
-    Session,
-)
-from sqlalchemy.testing import eq_, is_
-from sqlalchemy.testing.assertsql import RegexSQL, CompiledSQL, AllOf
-from sqlalchemy.testing import fixtures
 from itertools import count
-from sqlalchemy import select
+
+from sqlalchemy import bindparam
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class SelfReferentialTest(fixtures.MappedTest):
@@ -1677,9 +1682,6 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
                 },
             ),
         )
-
-
-from sqlalchemy import bindparam
 
 
 class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):

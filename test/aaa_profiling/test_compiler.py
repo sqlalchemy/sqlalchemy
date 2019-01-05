@@ -1,6 +1,13 @@
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy.engine import default
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, profiling
-from sqlalchemy import MetaData, Table, Column, Integer, String, select
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import profiling
 
 t1 = t2 = None
 

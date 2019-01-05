@@ -1,18 +1,22 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, select
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    CompositeProperty,
-    aliased,
-    persistence,
-)
-from sqlalchemy.orm import composite, Session, configure_mappers
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import CompositeProperty
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import persistence
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):

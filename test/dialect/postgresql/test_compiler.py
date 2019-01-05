@@ -1,45 +1,51 @@
 # coding: utf-8
 
-from sqlalchemy.testing.assertions import (
-    AssertsCompiledSQL,
-    is_,
-    assert_raises,
-    assert_raises_message,
-    expect_warnings,
-)
-from sqlalchemy.testing import engines, fixtures
+from sqlalchemy import and_
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import delete
+from sqlalchemy import Enum
+from sqlalchemy import exc
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import null
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import (
-    Sequence,
-    Table,
-    Column,
-    Integer,
-    update,
-    String,
-    func,
-    MetaData,
-    Enum,
-    Index,
-    and_,
-    delete,
-    select,
-    cast,
-    text,
-    Text,
-    null,
-)
+from sqlalchemy import Text
+from sqlalchemy import text
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql import ExcludeConstraint, array
-from sqlalchemy import exc, schema
+from sqlalchemy import update
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import TSRANGE
-from sqlalchemy.orm import mapper, aliased, Session
-from sqlalchemy.sql import table, column, operators, literal_column
-from sqlalchemy.sql import util as sql_util
-from sqlalchemy.util import u, OrderedDict
-from sqlalchemy.dialects.postgresql import aggregate_order_by, insert
-from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+from sqlalchemy.dialects.postgresql import array
+from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import column
+from sqlalchemy.sql import literal_column
+from sqlalchemy.sql import operators
+from sqlalchemy.sql import table
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.testing.assertions import is_
+from sqlalchemy.util import OrderedDict
+from sqlalchemy.util import u
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):

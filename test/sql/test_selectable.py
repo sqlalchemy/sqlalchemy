@@ -1,19 +1,52 @@
 """Test various algorithmic properties of selectables."""
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
-from sqlalchemy import *
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsCompiledSQL,
-    AssertsExecutionResults,
-)
-from sqlalchemy.sql import elements
-from sqlalchemy import testing
-from sqlalchemy.sql import util as sql_util, visitors, expression
+from sqlalchemy import alias
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import exc
-from sqlalchemy.sql import table, column, null
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import not_
+from sqlalchemy import null
+from sqlalchemy import or_
+from sqlalchemy import outerjoin
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import type_coerce
+from sqlalchemy import TypeDecorator
+from sqlalchemy import union
 from sqlalchemy import util
-from sqlalchemy.schema import Column, Table, MetaData
+from sqlalchemy.schema import Column
+from sqlalchemy.schema import MetaData
+from sqlalchemy.schema import Table
+from sqlalchemy.sql import column
+from sqlalchemy.sql import elements
+from sqlalchemy.sql import expression
+from sqlalchemy.sql import null
+from sqlalchemy.sql import table
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import visitors
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 metadata = MetaData()
 table1 = Table(

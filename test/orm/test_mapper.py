@@ -1,44 +1,45 @@
 """General mapper operations with an emphasis on selecting/loading."""
 
-from sqlalchemy.testing import assert_raises, assert_raises_message
-import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy import (
-    MetaData,
-    Integer,
-    String,
-    ForeignKey,
-    func,
-    util,
-    select,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.engine import default
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    backref,
-    create_session,
-    class_mapper,
-    configure_mappers,
-    reconstructor,
-    aliased,
-    deferred,
-    synonym,
-    attributes,
-    column_property,
-    composite,
-    dynamic_loader,
-    comparable_property,
-    Session,
-)
-from sqlalchemy.orm.persistence import _sort_states
-from sqlalchemy.testing import eq_, AssertsCompiledSQL, is_
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.testing.assertsql import CompiledSQL
 import logging
 import logging.handlers
+
+import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import comparable_property
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import dynamic_loader
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import reconstructor
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm.persistence import _sort_states
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
 
 
 class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):

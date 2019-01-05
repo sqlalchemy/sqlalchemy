@@ -1,32 +1,29 @@
 #! coding:utf-8
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    MetaData,
-    String,
-    Table,
-    bindparam,
-    exc,
-    func,
-    insert,
-    select,
-    column,
-    text,
-    table,
-    Sequence,
-)
-from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import exc
+from sqlalchemy import func
+from sqlalchemy import insert
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import table
+from sqlalchemy import text
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import default
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    assert_raises_message,
-    fixtures,
-    eq_,
-    expect_warnings,
-    assert_raises,
-)
 from sqlalchemy.sql import crud
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
 
 
 class _InsertTestBase(object):

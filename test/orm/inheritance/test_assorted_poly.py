@@ -3,18 +3,39 @@ These are generally tests derived from specific user issues.
 
 """
 
-from sqlalchemy.testing import eq_
-from sqlalchemy import *
+from sqlalchemy import Column
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import MetaData
+from sqlalchemy import outerjoin
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import Unicode
 from sqlalchemy import util
-from sqlalchemy.orm import *
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import join
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import Query
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsExecutionResults
-from sqlalchemy import testing
-from sqlalchemy.testing.util import function_named
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import function_named
 
 
 class AttrSettable(object):

@@ -1,20 +1,54 @@
-import warnings
-from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc, util, event
-from sqlalchemy.orm import *
-from sqlalchemy.orm.util import instance_str
-from sqlalchemy.orm import exc as orm_exc, attributes
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, RegexSQL, Or
-from sqlalchemy.sql import table, column
-from sqlalchemy import testing
-from sqlalchemy.testing import engines
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import Boolean
+from sqlalchemy import case
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import MetaData
+from sqlalchemy import outerjoin
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import table
+from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import object_mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm.util import instance_str
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Or
+from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class O2MTest(fixtures.MappedTest):

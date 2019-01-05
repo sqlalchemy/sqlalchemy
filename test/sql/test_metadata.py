@@ -1,45 +1,49 @@
+from contextlib import contextmanager
+import pickle
+
+import sqlalchemy as tsa
+from sqlalchemy import ARRAY
+from sqlalchemy import bindparam
+from sqlalchemy import BLANK_SCHEMA
+from sqlalchemy import Boolean
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import ColumnDefault
+from sqlalchemy import Enum
+from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import TypeDecorator
+from sqlalchemy import types as sqltypes
+from sqlalchemy import Unicode
+from sqlalchemy import UniqueConstraint
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.sql import elements
+from sqlalchemy.sql import naming
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
-import pickle
-from sqlalchemy import (
-    Integer,
-    String,
-    UniqueConstraint,
-    CheckConstraint,
-    ForeignKey,
-    MetaData,
-    Sequence,
-    ForeignKeyConstraint,
-    PrimaryKeyConstraint,
-    ColumnDefault,
-    Index,
-    event,
-    events,
-    Unicode,
-    types as sqltypes,
-    bindparam,
-    Table,
-    Column,
-    Boolean,
-    Enum,
-    func,
-    text,
-    TypeDecorator,
-    BLANK_SCHEMA,
-    ARRAY,
-)
-from sqlalchemy import schema, exc
-from sqlalchemy.engine import default
-from sqlalchemy.sql import elements, naming
-import sqlalchemy as tsa
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
-from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
-from sqlalchemy.testing import eq_, is_, mock, is_true, is_false
-from contextlib import contextmanager
-from sqlalchemy import util
-from sqlalchemy.testing import engines
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
 
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):

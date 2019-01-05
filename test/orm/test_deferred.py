@@ -1,43 +1,38 @@
 import sqlalchemy as sa
-from sqlalchemy import testing, util
-from sqlalchemy.orm import (
-    mapper,
-    deferred,
-    defer,
-    undefer,
-    Load,
-    load_only,
-    undefer_group,
-    create_session,
-    synonym,
-    relationship,
-    Session,
-    joinedload,
-    defaultload,
-    aliased,
-    contains_eager,
-    with_polymorphic,
-    query_expression,
-    with_expression,
-    subqueryload,
-)
-from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
-from test.orm import _fixtures
-from sqlalchemy.testing.schema import Column
-from sqlalchemy import Integer, ForeignKey
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import query_expression
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer_group
+from sqlalchemy.orm import with_expression
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-
-
-from .inheritance._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    Boss,
-    Machine,
-    Paperwork,
-    _Polymorphic,
-)
+from sqlalchemy.testing.schema import Column
+from test.orm import _fixtures
+from .inheritance._poly_fixtures import _Polymorphic
+from .inheritance._poly_fixtures import Boss
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Manager
+from .inheritance._poly_fixtures import Person
 
 
 class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):

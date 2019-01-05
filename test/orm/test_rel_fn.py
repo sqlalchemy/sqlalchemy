@@ -1,26 +1,26 @@
-from sqlalchemy.testing import (
-    assert_raises_message,
-    eq_,
-    AssertsCompiledSQL,
-    is_,
-)
+from sqlalchemy import and_
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy.orm import foreign
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationships
+from sqlalchemy.orm import remote
+from sqlalchemy.orm.interfaces import MANYTOONE
+from sqlalchemy.orm.interfaces import ONETOMANY
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.orm import relationships, foreign, remote, relationship
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    ForeignKey,
-    Integer,
-    select,
-    ForeignKeyConstraint,
-    exc,
-    func,
-    and_,
-    String,
-    Boolean,
-)
-from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 
 

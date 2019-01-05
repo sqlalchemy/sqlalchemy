@@ -1,66 +1,61 @@
 # coding: utf-8
-from sqlalchemy.testing.assertions import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    is_,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-    ComparesTables,
-)
-from sqlalchemy.testing import engines, fixtures
-from sqlalchemy import testing
-from sqlalchemy.sql import sqltypes
 import datetime
-from sqlalchemy import (
-    Table,
-    MetaData,
-    Column,
-    Integer,
-    Enum,
-    Float,
-    select,
-    func,
-    DateTime,
-    Numeric,
-    exc,
-    String,
-    cast,
-    REAL,
-    TypeDecorator,
-    Unicode,
-    Text,
-    null,
-    text,
-    column,
-    ARRAY,
-    any_,
-    all_,
-)
-from sqlalchemy.sql import operators
-from sqlalchemy import types
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import (
-    HSTORE,
-    hstore,
-    array,
-    INT4RANGE,
-    INT8RANGE,
-    NUMRANGE,
-    DATERANGE,
-    TSRANGE,
-    TSTZRANGE,
-    JSON,
-    JSONB,
-)
 import decimal
-from sqlalchemy import util
-from sqlalchemy.testing.util import round_decimal
-from sqlalchemy import inspect
+
+import sqlalchemy as sa
+from sqlalchemy import any_
+from sqlalchemy import ARRAY
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import DateTime
+from sqlalchemy import Enum
 from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import Float
+from sqlalchemy import func
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import null
+from sqlalchemy import Numeric
+from sqlalchemy import REAL
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import Text
+from sqlalchemy import text
+from sqlalchemy import TypeDecorator
+from sqlalchemy import types
+from sqlalchemy import Unicode
+from sqlalchemy import util
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import array
+from sqlalchemy.dialects.postgresql import DATERANGE
+from sqlalchemy.dialects.postgresql import HSTORE
+from sqlalchemy.dialects.postgresql import hstore
+from sqlalchemy.dialects.postgresql import INT4RANGE
+from sqlalchemy.dialects.postgresql import INT8RANGE
+from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import NUMRANGE
+from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import operators
+from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import AssertsExecutionResults
+from sqlalchemy.testing.assertions import ComparesTables
+from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import is_
+from sqlalchemy.testing.util import round_decimal
 
 tztable = notztable = metadata = table = None
 

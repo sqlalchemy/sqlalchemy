@@ -1,5 +1,5 @@
-from sqlalchemy.testing import eq_
 from sqlalchemy.connectors import pyodbc
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 

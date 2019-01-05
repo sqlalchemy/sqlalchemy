@@ -1,10 +1,20 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
-
-from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import outerjoin
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm.interfaces import MANYTOONE
+from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 def produce_test(parent, child, direction):

@@ -1,36 +1,34 @@
 import unicodedata
+
 import sqlalchemy as sa
-from sqlalchemy import schema, inspect, sql
-from sqlalchemy import (
-    MetaData,
-    Integer,
-    String,
-    Index,
-    ForeignKey,
-    UniqueConstraint,
-    FetchedValue,
-    DefaultClause,
-)
-from sqlalchemy.testing import (
-    ComparesTables,
-    engines,
-    AssertsCompiledSQL,
-    fixtures,
-    skip,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import (
-    eq_,
-    eq_regex,
-    is_true,
-    assert_raises,
-    assert_raises_message,
-)
+from sqlalchemy import DefaultClause
+from sqlalchemy import FetchedValue
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import schema
+from sqlalchemy import sql
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.util import ue
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import config
-from sqlalchemy.testing import mock
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
+from sqlalchemy.testing import skip
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import ue
 
 metadata, users = None, None
 

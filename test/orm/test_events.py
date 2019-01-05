@@ -1,30 +1,34 @@
-from sqlalchemy.testing import assert_raises_message, assert_raises
 import sqlalchemy as sa
+from sqlalchemy import event
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    class_mapper,
-    Mapper,
-    column_property,
-    query,
-    Session,
-    sessionmaker,
-    attributes,
-    configure_mappers,
-)
-from sqlalchemy.orm.instrumentation import ClassManager
-from sqlalchemy.orm import instrumentation, events
-from sqlalchemy.testing import eq_, is_not_
-from sqlalchemy.testing import fixtures
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import events
+from sqlalchemy.orm import instrumentation
+from sqlalchemy.orm import Mapper
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import query
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing.mock import ANY
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
-from sqlalchemy import event
-from sqlalchemy.testing.mock import Mock, call, ANY
 
 
 class _RemoveListeners(object):

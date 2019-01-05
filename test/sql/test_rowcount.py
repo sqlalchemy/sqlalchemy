@@ -1,7 +1,15 @@
-from sqlalchemy import *
-from sqlalchemy.testing import fixtures, AssertsExecutionResults
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 
 
 class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):

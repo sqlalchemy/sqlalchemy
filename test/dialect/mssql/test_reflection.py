@@ -1,14 +1,30 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, is_, in_
-from sqlalchemy import *
-from sqlalchemy import types, schema, event
-from sqlalchemy.databases import mssql
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, ComparesTables
+from sqlalchemy import Column
+from sqlalchemy import DDL
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import Sequence
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import types
 from sqlalchemy import util
-from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode, tables
+from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import base
+from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
+from sqlalchemy.dialects.mssql.information_schema import tables
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import ComparesTables
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 
 

@@ -1,23 +1,26 @@
-from sqlalchemy.testing import eq_, ne_
-import sys
 from operator import and_
 
+import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import text
+from sqlalchemy import util
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import instrumentation
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 import sqlalchemy.orm.collections as collections
 from sqlalchemy.orm.collections import collection
-
-import sqlalchemy as sa
-from sqlalchemy import Integer, String, ForeignKey, text
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy import util, exc as sa_exc
-from sqlalchemy.orm import (
-    create_session,
-    mapper,
-    relationship,
-    attributes,
-    instrumentation,
-)
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import assert_raises, assert_raises_message
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class Canary(sa.orm.interfaces.AttributeExtension):

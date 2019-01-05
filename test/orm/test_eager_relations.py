@@ -1,46 +1,47 @@
 """tests of joined-eager loaded attributes"""
 
-from sqlalchemy.testing import eq_, is_, is_not_, in_
-import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy.orm import (
-    joinedload,
-    deferred,
-    undefer,
-    joinedload_all,
-    backref,
-    Session,
-    defaultload,
-    Load,
-    load_only,
-    contains_eager,
-)
-from sqlalchemy import (
-    Integer,
-    String,
-    Date,
-    ForeignKey,
-    and_,
-    select,
-    func,
-    text,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    lazyload,
-    aliased,
-    column_property,
-)
-from sqlalchemy.sql import operators
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing import fixtures, expect_warnings
-from test.orm import _fixtures
-from sqlalchemy.util import OrderedDict as odict
 import datetime
+
+import sqlalchemy as sa
+from sqlalchemy import and_
+from sqlalchemy import Date
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import undefer
+from sqlalchemy.sql import operators
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import OrderedDict as odict
+from test.orm import _fixtures
 
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):

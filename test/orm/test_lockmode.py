@@ -1,10 +1,10 @@
+from sqlalchemy import exc
 from sqlalchemy.engine import default
-from sqlalchemy.databases import *
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
-from sqlalchemy.testing import AssertsCompiledSQL, eq_
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy import exc
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from test.orm import _fixtures
 
 

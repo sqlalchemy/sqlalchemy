@@ -1,26 +1,23 @@
 #! coding:utf-8
 
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    delete,
-    select,
-    and_,
-    or_,
-    exists,
-)
+from sqlalchemy import and_
+from sqlalchemy import delete
+from sqlalchemy import exc
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
-from sqlalchemy import testing
-from sqlalchemy import exc
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    fixtures,
-    eq_,
-    assert_raises_message,
-)
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class _DeleteTestBase(object):

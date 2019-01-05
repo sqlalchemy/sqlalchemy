@@ -1,6 +1,9 @@
-from sqlalchemy import *
-from sqlalchemy.testing import eq_
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
 from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock
 

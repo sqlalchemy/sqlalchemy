@@ -1,7 +1,9 @@
 """basic tests of lazy loaded attributes"""
 
-from sqlalchemy import testing
-from sqlalchemy.orm import mapper, relationship, create_session, immediateload
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import immediateload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from test.orm import _fixtures
 

@@ -1,24 +1,22 @@
-from sqlalchemy.testing import eq_
-from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.types import TypeDecorator
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    engines,
-    assert_raises_message,
-)
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import (
-    MetaData,
-    String,
-    Integer,
-    Boolean,
-    func,
-    select,
-    Sequence,
-)
 import itertools
+
+from sqlalchemy import Boolean
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.types import TypeDecorator
 
 table = GoofyType = seq = None
 

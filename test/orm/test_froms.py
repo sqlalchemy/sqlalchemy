@@ -1,54 +1,47 @@
-from sqlalchemy import testing
-from sqlalchemy.testing import (
-    fixtures,
-    eq_,
-    is_,
-    assert_raises,
-    assert_raises_message,
-    AssertsCompiledSQL,
-)
-from sqlalchemy import (
-    exc as sa_exc,
-    util,
-    Integer,
-    Table,
-    String,
-    ForeignKey,
-    select,
-    func,
-    and_,
-    asc,
-    desc,
-    inspect,
-    literal_column,
-    cast,
-    exists,
-    text,
-)
-from sqlalchemy.orm import (
-    configure_mappers,
-    Session,
-    mapper,
-    create_session,
-    relationship,
-    column_property,
-    joinedload_all,
-    contains_eager,
-    contains_alias,
-    joinedload,
-    clear_mappers,
-    backref,
-    relation,
-    aliased,
-)
-from sqlalchemy.sql import table, column
-from sqlalchemy.engine import default
 import sqlalchemy as sa
-from sqlalchemy.testing.schema import Column
-
-from test.orm import _fixtures
-
+from sqlalchemy import and_
+from sqlalchemy import asc
+from sqlalchemy import cast
+from sqlalchemy import desc
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import contains_alias
+from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relation
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.util import join
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from test.orm import _fixtures
 
 
 class QueryTest(_fixtures.FixtureTest):

@@ -1,32 +1,32 @@
 import copy
 
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    exc as sa_exc,
-    util,
-    select,
-    func,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    sessionmaker,
-    class_mapper,
-    backref,
-    Session,
-    util as orm_util,
-    configure_mappers,
-)
-from sqlalchemy.orm.attributes import instance_state
-from sqlalchemy.orm import attributes, exc as orm_exc, object_mapper
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import object_mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import util as orm_util
+from sqlalchemy.orm.attributes import instance_state
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 
 

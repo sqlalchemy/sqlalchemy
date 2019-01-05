@@ -1,29 +1,27 @@
 from __future__ import unicode_literals
 
+import datetime
+
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import outerjoin
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import Table
+from sqlalchemy import Time
+from sqlalchemy import Unicode
+from sqlalchemy.testing import replay_fixture
+
 """Benchmark for SQLAlchemy.
 
 An adaptation of Robert Brewers' ZooMark speed tests. """
-
-
-import datetime
-from sqlalchemy import (
-    Table,
-    Column,
-    Integer,
-    Unicode,
-    Date,
-    DateTime,
-    Time,
-    Float,
-    Sequence,
-    ForeignKey,
-    select,
-    join,
-    and_,
-    outerjoin,
-    func,
-)
-from sqlalchemy.testing import replay_fixture
 
 ITERATIONS = 1
 
