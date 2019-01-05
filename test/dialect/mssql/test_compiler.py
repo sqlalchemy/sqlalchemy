@@ -312,7 +312,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t = table("sometable", column("foo"))
 
-        for expr, compile in [
+        for expr, compiled in [
             (
                 select([literal("x"), literal("y")]),
                 "SELECT 'x' AS anon_1, 'y' AS anon_2",
@@ -324,7 +324,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (t.c.foo.in_([None]), "sometable.foo IN (NULL)"),
         ]:
-            self.assert_compile(expr, compile, dialect=mxodbc_dialect)
+            self.assert_compile(expr, compiled, dialect=mxodbc_dialect)
 
     def test_in_with_subqueries(self):
         """Test removal of legacy behavior that converted "x==subquery"

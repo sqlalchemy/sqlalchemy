@@ -412,7 +412,6 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         self._assert_result(
             stmt, [(2,), (3,), (4,)], params={"q": [(2, 3), (3, 4), (4, 5)]}
         )
-        in_(config.db.execute(stmt).fetchone()[0], (False, 0))
 
 
 class LikeFunctionsTest(fixtures.TablesTest):

@@ -624,7 +624,10 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "nullable": False,
                     "default": None
                     if explicit_defaults_for_timestamp
-                    else "%(current_timestamp)s ON UPDATE %(current_timestamp)s"
+                    else (
+                        "%(current_timestamp)s "
+                        "ON UPDATE %(current_timestamp)s"
+                    )
                     % {"current_timestamp": current_timestamp},
                 },
                 {"name": "s", "nullable": False, "default": current_timestamp},
@@ -635,7 +638,10 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     else False,
                     "default": None
                     if explicit_defaults_for_timestamp
-                    else "%(current_timestamp)s ON UPDATE %(current_timestamp)s"
+                    else (
+                        "%(current_timestamp)s "
+                        "ON UPDATE %(current_timestamp)s"
+                    )
                     % {"current_timestamp": current_timestamp},
                 },
                 {

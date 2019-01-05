@@ -1234,14 +1234,12 @@ class EnumSetTest(
         # latin-1 stuff forcing its way in ?
 
         eq_(
-            t2.c.value.type.enums[0:2],
-            [u("réveillé"), u("drôle")],  # u'S’il') # eh ?
-        )
+            t2.c.value.type.enums[0:2], [u("réveillé"), u("drôle")]
+        )  # u'S’il') # eh ?
 
         eq_(
-            t2.c.value2.type.enums[0:2],
-            [u("réveillé"), u("drôle")],  # u'S’il') # eh ?
-        )
+            t2.c.value2.type.enums[0:2], [u("réveillé"), u("drôle")]
+        )  # u'S’il') # eh ?
 
     def test_enum_compile(self):
         e1 = Enum("x", "y", "z", name="somename")

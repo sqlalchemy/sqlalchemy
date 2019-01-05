@@ -49,6 +49,7 @@ from .base import VARBINARY
 from .base import VARCHAR
 from .base import YEAR
 from .dml import insert
+from .dml import Insert
 
 
 # default dialect

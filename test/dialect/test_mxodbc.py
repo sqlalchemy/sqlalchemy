@@ -45,10 +45,13 @@ class MxODBCTest(fixtures.TestBase):
         )
 
         eq_(
+            # fmt: off
             [
                 c[2]
-                for c in dbapi.connect.return_value.cursor.return_value.execute.mock_calls
+                for c in dbapi.connect.return_value.cursor.
+                return_value.execute.mock_calls
             ],
+            # fmt: on
             [
                 {"direct": True},
                 {"direct": True},
@@ -56,5 +59,5 @@ class MxODBCTest(fixtures.TestBase):
                 {"direct": True},
                 {"direct": False},
                 {"direct": True},
-            ],
+            ]
         )

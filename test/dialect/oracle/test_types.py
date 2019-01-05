@@ -404,7 +404,8 @@ class TypesTest(fixtures.TestBase):
             [("nan",), ("nan",)],
         )
 
-    # needs https://github.com/oracle/python-cx_Oracle/issues/184#issuecomment-391399292
+    # needs https://github.com/oracle/python-cx_Oracle/
+    # issues/184#issuecomment-391399292
     @testing.provide_metadata
     def _dont_test_numeric_nan_decimal(self):
         m = self.metadata

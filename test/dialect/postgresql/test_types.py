@@ -57,6 +57,7 @@ from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.util import round_decimal
 
+
 tztable = notztable = metadata = table = None
 
 
@@ -2570,8 +2571,8 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
             self.tables.data_table.insert(), {"range": self._data_str}
         )
         # select
-        range = self.tables.data_table.c.range
-        data = testing.db.execute(select([range + range])).fetchall()
+        range_ = self.tables.data_table.c.range
+        data = testing.db.execute(select([range_ + range_])).fetchall()
         eq_(data, [(self._data_obj(),)])
 
     def test_intersection_result(self):
@@ -2580,8 +2581,8 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
             self.tables.data_table.insert(), {"range": self._data_str}
         )
         # select
-        range = self.tables.data_table.c.range
-        data = testing.db.execute(select([range * range])).fetchall()
+        range_ = self.tables.data_table.c.range
+        data = testing.db.execute(select([range_ * range_])).fetchall()
         eq_(data, [(self._data_obj(),)])
 
     def test_difference_result(self):
@@ -2590,8 +2591,8 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
             self.tables.data_table.insert(), {"range": self._data_str}
         )
         # select
-        range = self.tables.data_table.c.range
-        data = testing.db.execute(select([range - range])).fetchall()
+        range_ = self.tables.data_table.c.range
+        data = testing.db.execute(select([range_ - range_])).fetchall()
         eq_(data, [(self._data_obj().__class__(empty=True),)])
 
 

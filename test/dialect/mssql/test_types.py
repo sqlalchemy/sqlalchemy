@@ -1072,10 +1072,10 @@ class BinaryTest(fixtures.TestBase):
 
         self._test_round_trip(type_(100), data, expected=paddedstream)
 
-    def _load_stream(self, name, len=3000):
+    def _load_stream(self, name, len_=3000):
         fp = open(
             os.path.join(os.path.dirname(__file__), "..", "..", name), "rb"
         )
-        stream = fp.read(len)
+        stream = fp.read(len_)
         fp.close()
         return stream
