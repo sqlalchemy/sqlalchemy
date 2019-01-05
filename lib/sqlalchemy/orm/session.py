@@ -10,7 +10,8 @@
 import weakref
 from .. import util, sql, engine, exc as sa_exc
 from ..sql import util as sql_util, expression
-from . import SessionExtension, attributes, exc, query, loading, identity
+from . import attributes, exc, query, loading, identity
+from .deprecated_interfaces import SessionExtension
 from ..inspection import inspect
 from .base import (
     object_mapper,

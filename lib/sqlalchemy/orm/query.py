@@ -24,11 +24,11 @@ from itertools import chain
 from . import (
     attributes,
     interfaces,
-    object_mapper,
     persistence,
     exc as orm_exc,
     loading,
 )
+from .util import object_mapper
 from .base import (
     _entity_descriptor,
     _is_aliased_class,

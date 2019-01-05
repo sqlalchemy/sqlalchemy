@@ -13,8 +13,8 @@ documentation for an overview of how this module is used.
 
 """
 
-from . import exc
-from .mapper import (
+from . import exc  # noqa
+from .mapper import (  # noqa
     Mapper,
     _mapper_registry,
     class_mapper,
@@ -22,13 +22,13 @@ from .mapper import (
     reconstructor,
     validates,
 )
-from .interfaces import EXT_CONTINUE, EXT_STOP, PropComparator
-from .deprecated_interfaces import (
+from .interfaces import EXT_CONTINUE, EXT_STOP, PropComparator  # noqa
+from .deprecated_interfaces import (  # noqa
     MapperExtension,
     SessionExtension,
     AttributeExtension,
 )
-from .util import (
+from .util import (  # noqa
     aliased,
     join,
     object_mapper,
@@ -38,28 +38,27 @@ from .util import (
     with_parent,
     with_polymorphic,
 )
-from .properties import ColumnProperty
-from .relationships import RelationshipProperty
-from .descriptor_props import (
+from .properties import ColumnProperty  # noqa
+from .relationships import RelationshipProperty  # noqa
+from .descriptor_props import (  # noqa
     ComparableProperty,
     CompositeProperty,
     SynonymProperty,
 )
-from .relationships import foreign, remote
-from .session import (
+from .relationships import foreign, remote  # noqa
+from .session import (  # noqa
     Session,
     object_session,
     sessionmaker,
     make_transient,
     make_transient_to_detached,
 )
-from .scoping import scoped_session
-from . import mapper as mapperlib
-from .query import AliasOption, Query, Bundle
-from ..util.langhelpers import public_factory
-from .. import util as _sa_util
-from . import strategies as _strategies
-from .. import sql as _sql
+from .scoping import scoped_session  # noqa
+from . import mapper as mapperlib  # noqa
+from .query import AliasOption, Query, Bundle  # noqa
+from ..util.langhelpers import public_factory  # noqa
+from .. import util as _sa_util  # noqa
+from .. import sql as _sql  # noqa
 
 
 def create_session(bind=None, **kwargs):
