@@ -316,7 +316,6 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import result as _result
-from ...util import compat
 
 
 class _OracleInteger(sqltypes.Integer):

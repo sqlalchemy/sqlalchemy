@@ -126,7 +126,7 @@ Remote-Schema Table Introspection and PostgreSQL search_path
 ------------------------------------------------------------
 
 **TL;DR;**: keep the ``search_path`` variable set to its default of ``public``,
-name schemas **other** than ``public`` explicitly within ``Table`` defintitions.
+name schemas **other** than ``public`` explicitly within ``Table`` definitions.
 
 The PostgreSQL dialect can reflect tables from any schema.  The
 :paramref:`.Table.schema` argument, or alternatively the

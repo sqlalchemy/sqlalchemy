@@ -1,4 +1,3 @@
-from ... import exc
 from ... import util
 from ...sql.base import _generative
 from ...sql.dml import Insert as StandardInsert
