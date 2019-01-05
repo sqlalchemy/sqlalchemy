@@ -24,7 +24,10 @@ from .schema import PrimaryKeyConstraint
 from .schema import Table
 from .schema import UniqueConstraint
 from .. import event
+from .. import events  # noqa
 from .. import exc
+
+
 
 
 class ConventionDict(object):

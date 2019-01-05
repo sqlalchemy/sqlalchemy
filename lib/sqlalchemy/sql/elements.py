@@ -457,7 +457,9 @@ class ClauseElement(Visitable):
         if util.py3k:
             return str(self.compile())
         else:
-            return unicode(self.compile()).encode("ascii", "backslashreplace")
+            return unicode(self.compile()).encode(  # noqa
+                "ascii", "backslashreplace"
+            )  # noqa
 
     def __and__(self, other):
         """'and' at the ClauseElement level.
@@ -1239,8 +1241,8 @@ class TypeClause(ClauseElement):
 
     __visit_name__ = "typeclause"
 
-    def __init__(self, type):
-        self.type = type
+    def __init__(self, type_):
+        self.type = type_
 
 
 class TextClause(Executable, ClauseElement):
@@ -1604,10 +1606,10 @@ class TextClause(Executable, ClauseElement):
             for id, name, timestamp in connection.execute(stmt):
                 print(id, name, timestamp)
 
-        The positional form of :meth:`.TextClause.columns` also provides
-        the unique feature of **positional column targeting**, which is
-        particularly useful when using the ORM with complex textual queries.
-        If we specify the columns from our model to :meth:`.TextClause.columns`,
+        The positional form of :meth:`.TextClause.columns` also provides the
+        unique feature of **positional column targeting**, which is
+        particularly useful when using the ORM with complex textual queries. If
+        we specify the columns from our model to :meth:`.TextClause.columns`,
         the result set will match to those columns positionally, meaning the
         name or origin of the column in the textual SQL doesn't matter::
 
@@ -2377,7 +2379,7 @@ class Cast(ColumnElement):
     __visit_name__ = "cast"
 
     def __init__(self, expression, type_):
-        """Produce a ``CAST`` expression.
+        r"""Produce a ``CAST`` expression.
 
         :func:`.cast` returns an instance of :class:`.Cast`.
 
@@ -2416,7 +2418,7 @@ class Cast(ColumnElement):
          expression or a Python string which will be coerced into a bound
          literal value.
 
-        :param type_: A :class:`.TypeEngine` class or instance indicating
+        :param type\_: A :class:`.TypeEngine` class or instance indicating
          the type to which the ``CAST`` should apply.
 
         .. seealso::
@@ -2460,7 +2462,7 @@ class TypeCoerce(ColumnElement):
     __visit_name__ = "type_coerce"
 
     def __init__(self, expression, type_):
-        """Associate a SQL expression with a particular type, without rendering
+        r"""Associate a SQL expression with a particular type, without rendering
         ``CAST``.
 
         E.g.::
@@ -2512,7 +2514,7 @@ class TypeCoerce(ColumnElement):
          expression or a Python string which will be coerced into a bound
          literal value.
 
-        :param type_: A :class:`.TypeEngine` class or instance indicating
+        :param type\_: A :class:`.TypeEngine` class or instance indicating
          the type to which the expression is coerced.
 
         .. seealso::
@@ -3229,7 +3231,7 @@ class Over(ColumnElement):
     def __init__(
         self, element, partition_by=None, order_by=None, range_=None, rows=None
     ):
-        """Produce an :class:`.Over` object against a function.
+        r"""Produce an :class:`.Over` object against a function.
 
         Used against aggregate or so-called "window" functions,
         for database backends that support window functions.
@@ -3248,11 +3250,13 @@ class Over(ColumnElement):
         mutually-exclusive parameters each accept a 2-tuple, which contains
         a combination of integers and None::
 
-            func.row_number().over(order_by=my_table.c.some_column, range_=(None, 0))
+            func.row_number().over(
+                order_by=my_table.c.some_column, range_=(None, 0))
 
         The above would produce::
 
-            ROW_NUMBER() OVER(ORDER BY some_column RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+            ROW_NUMBER() OVER(ORDER BY some_column
+            RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 
         A value of None indicates "unbounded", a
         value of zero indicates "current row", and negative / positive
@@ -3285,7 +3289,7 @@ class Over(ColumnElement):
         :param order_by: a column element or string, or a list
          of such, that will be used as the ORDER BY clause
          of the OVER construct.
-        :param range_: optional range clause for the window.  This is a
+        :param range\_: optional range clause for the window.  This is a
          tuple value which can contain integer values or None, and will
          render a RANGE BETWEEN PRECEDING / FOLLOWING clause
 

@@ -32,6 +32,7 @@ from operator import truediv
 
 from .. import util
 
+
 if util.py2k:
     from operator import div
 else:

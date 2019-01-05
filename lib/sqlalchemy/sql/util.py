@@ -32,11 +32,10 @@ from .selectable import SelectBase
 from .. import exc
 from .. import util
 
+
 join_condition = util.langhelpers.public_factory(
     Join._join_condition, ".sql.util.join_condition"
 )
-
-# names that are still being imported from the outside
 
 
 def find_join_source(clauses, join_to):

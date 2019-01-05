@@ -1008,15 +1008,15 @@ class Join(FromClause):
         to join, or no way to join, an error is raised.
 
         :param ignore_nonexistent_tables:  Deprecated - this
-        flag is no longer used.  Only resolution errors regarding
-        the two given tables are propagated.
+         flag is no longer used.  Only resolution errors regarding
+         the two given tables are propagated.
 
         :param a_subset: An optional expression that is a sub-component
-        of ``a``.  An attempt will be made to join to just this sub-component
-        first before looking at the full ``a`` construct, and if found
-        will be successful even if there are other ways to join to ``a``.
-        This allows the "right side" of a join to be passed thereby
-        providing a "natural join".
+         of ``a``.  An attempt will be made to join to just this sub-component
+         first before looking at the full ``a`` construct, and if found
+         will be successful even if there are other ways to join to ``a``.
+         This allows the "right side" of a join to be passed thereby
+         providing a "natural join".
 
         """
         constraints = cls._joincond_scan_left_right(
@@ -1420,8 +1420,8 @@ class TableSample(Alias):
     """Represent a TABLESAMPLE clause.
 
     This object is constructed from the :func:`~.expression.tablesample` module
-    level function as well as the :meth:`.FromClause.tablesample` method available
-    on all :class:`.FromClause` subclasses.
+    level function as well as the :meth:`.FromClause.tablesample` method
+    available on all :class:`.FromClause` subclasses.
 
     .. versionadded:: 1.1
 
@@ -2792,8 +2792,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
           a numerical value which usually renders as a ``LIMIT``
           expression in the resulting select.  Backends that don't
           support ``LIMIT`` will attempt to provide similar
-          functionality.    This parameter is typically specified more naturally
-          using the :meth:`.Select.limit` method on an existing
+          functionality.    This parameter is typically specified more
+          naturally using the :meth:`.Select.limit` method on an existing
           :class:`.Select`.
 
           .. seealso::

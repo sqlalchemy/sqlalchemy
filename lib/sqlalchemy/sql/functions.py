@@ -613,19 +613,19 @@ class coalesce(ReturnTypeFromArgs):
     pass
 
 
-class max(ReturnTypeFromArgs):
+class max(ReturnTypeFromArgs):  # noqa
     pass
 
 
-class min(ReturnTypeFromArgs):
+class min(ReturnTypeFromArgs):  # noqa
     pass
 
 
-class sum(ReturnTypeFromArgs):
+class sum(ReturnTypeFromArgs):  # noqa
     pass
 
 
-class now(GenericFunction):
+class now(GenericFunction):  # noqa
     type = sqltypes.DateTime
 
 
@@ -708,7 +708,8 @@ class array_agg(GenericFunction):
     .. seealso::
 
         :func:`.postgresql.array_agg` - PostgreSQL-specific version that
-        returns :class:`.postgresql.ARRAY`, which has PG-specific operators added.
+        returns :class:`.postgresql.ARRAY`, which has PG-specific operators
+        added.
 
     """
 
