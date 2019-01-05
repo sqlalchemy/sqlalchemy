@@ -51,7 +51,26 @@ class QueryTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Node, composite_pk_table, users, Keyword, items, Dingaling, order_items, item_keywords, Item, User, dingalings, Address, keywords, CompositePk, nodes, Order, orders, addresses = (
+        (
+            Node,
+            composite_pk_table,
+            users,
+            Keyword,
+            items,
+            Dingaling,
+            order_items,
+            item_keywords,
+            Item,
+            User,
+            dingalings,
+            Address,
+            keywords,
+            CompositePk,
+            nodes,
+            Order,
+            orders,
+            addresses,
+        ) = (
             cls.classes.Node,
             cls.tables.composite_pk_table,
             cls.tables.users,
@@ -984,7 +1003,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_overlapping_paths(self):
         User = self.classes.User
 
-        for aliased in (True, False):
+        for aliased_ in (True, False):
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
             result = (
@@ -1842,7 +1861,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_reset_joinpoint(self):
         User = self.classes.User
 
-        for aliased in (True, False):
+        for aliased_ in (True, False):
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
             result = (

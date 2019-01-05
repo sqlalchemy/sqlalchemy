@@ -2020,9 +2020,10 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
         session.expunge_all()
 
-        id = m.primary_key_from_instance(u)
+        id_ = m.primary_key_from_instance(u)
 
-        u = session.query(User).get(id)
+        u = session.query(User).get(id_)
+>>>>>>> 380f75c05... flake8 refactor - test_orm
         assert u.name == "multitester"
 
         user_rows = (
@@ -2048,7 +2049,7 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(list(address_rows[0].values()), [u.id, u.foo_id, "lala@hey.com"])
 
         session.expunge_all()
-        u = session.query(User).get(id)
+        u = session.query(User).get(id_)
         assert u.name == "imnew"
 
     def test_history_get(self):
@@ -2877,7 +2878,7 @@ class BooleanColTest(fixtures.MappedTest):
         class T(fixtures.ComparableEntity):
             pass
 
-        orm_mapper(T, t1_t)
+        mapper(T, t1_t)
 
         sess = create_session()
         t1 = T(value=True, name="t1")
@@ -3226,8 +3227,8 @@ class TransactionTest(fixtures.MappedTest):
             cls.tables.t1,
         )
 
-        orm_mapper(T1, t1)
-        orm_mapper(T2, t2)
+        mapper(T1, t1)
+        mapper(T2, t2)
 
     def test_close_transaction_on_commit_fail(self):
         T2, t1 = self.classes.T2, self.tables.t1
@@ -3274,7 +3275,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        orm_mapper(cls.classes.T1, cls.tables.t1)
+        mapper(cls.classes.T1, cls.tables.t1)
 
     def test_key_switch(self):
         T1 = self.classes.T1
@@ -3339,3 +3340,4 @@ class PartialNullPKTest(fixtures.MappedTest):
 
         t.col1 = "1"
         s.commit()
+

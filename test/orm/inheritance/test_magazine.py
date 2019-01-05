@@ -1,11 +1,7 @@
 from sqlalchemy import CHAR
-from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import join
-from sqlalchemy import outerjoin
 from sqlalchemy import String
-from sqlalchemy import Table
 from sqlalchemy import Text
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import create_session
@@ -116,9 +112,7 @@ class ClassifiedPage(MagazinePage):
 class MagazineTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global publication_table, issue_table, location_table, location_name_table, magazine_table, page_table, magazine_page_table, classified_page_table, page_size_table
-
-        publication_table = Table(
+        Table(
             "publication",
             metadata,
             Column(
@@ -126,7 +120,7 @@ class MagazineTest(fixtures.MappedTest):
             ),
             Column("name", String(45), default=""),
         )
-        issue_table = Table(
+        Table(
             "issue",
             metadata,
             Column(
@@ -135,7 +129,7 @@ class MagazineTest(fixtures.MappedTest):
             Column("publication_id", Integer, ForeignKey("publication.id")),
             Column("issue", Integer),
         )
-        location_table = Table(
+        Table(
             "location",
             metadata,
             Column(
@@ -147,7 +141,7 @@ class MagazineTest(fixtures.MappedTest):
                 "location_name_id", Integer, ForeignKey("location_name.id")
             ),
         )
-        location_name_table = Table(
+        Table(
             "location_name",
             metadata,
             Column(
@@ -155,7 +149,7 @@ class MagazineTest(fixtures.MappedTest):
             ),
             Column("name", String(45), default=""),
         )
-        magazine_table = Table(
+        Table(
             "magazine",
             metadata,
             Column(
@@ -164,7 +158,7 @@ class MagazineTest(fixtures.MappedTest):
             Column("location_id", Integer, ForeignKey("location.id")),
             Column("page_size_id", Integer, ForeignKey("page_size.id")),
         )
-        page_table = Table(
+        Table(
             "page",
             metadata,
             Column(
@@ -173,7 +167,7 @@ class MagazineTest(fixtures.MappedTest):
             Column("page_no", Integer),
             Column("type", CHAR(1), default="p"),
         )
-        magazine_page_table = Table(
+        Table(
             "magazine_page",
             metadata,
             Column(
@@ -182,7 +176,7 @@ class MagazineTest(fixtures.MappedTest):
             Column("magazine_id", Integer, ForeignKey("magazine.id")),
             Column("orders", Text, default=""),
         )
-        classified_page_table = Table(
+        Table(
             "classified_page",
             metadata,
             Column(
@@ -193,7 +187,7 @@ class MagazineTest(fixtures.MappedTest):
             ),
             Column("titles", String(45), default=""),
         )
-        page_size_table = Table(
+        Table(
             "page_size",
             metadata,
             Column(
@@ -207,11 +201,11 @@ class MagazineTest(fixtures.MappedTest):
 
 def _generate_round_trip_test(use_unions=False, use_joins=False):
     def test_roundtrip(self):
-        publication_mapper = mapper(Publication, publication_table)
+        publication_mapper = mapper(Publication, self.tables.publication)
 
         issue_mapper = mapper(
             Issue,
-            issue_table,
+            self.tables.issue,
             properties={
                 "publication": relationship(
                     Publication,
@@ -220,11 +214,11 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
             },
         )
 
-        location_name_mapper = mapper(LocationName, location_name_table)
+        location_name_mapper = mapper(LocationName, self.tables.location_name)
 
         location_mapper = mapper(
             Location,
-            location_table,
+            self.tables.location,
             properties={
                 "issue": relationship(
                     Issue,
@@ -238,11 +232,11 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
             },
         )
 
-        page_size_mapper = mapper(PageSize, page_size_table)
+        page_size_mapper = mapper(PageSize, self.tables.page_size)
 
         magazine_mapper = mapper(
             Magazine,
-            magazine_table,
+            self.tables.magazine,
             properties={
                 "location": relationship(
                     Location, backref=backref("magazine", uselist=False)
@@ -254,47 +248,49 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
         if use_unions:
             page_join = polymorphic_union(
                 {
-                    "m": page_table.join(magazine_page_table),
-                    "c": page_table.join(magazine_page_table).join(
-                        classified_page_table
+                    "m": self.tables.page.join(self.tables.magazine_page),
+                    "c": self.tables.page.join(self.tables.magazine_page).join(
+                        self.tables.classified_page
                     ),
-                    "p": page_table.select(page_table.c.type == "p"),
+                    "p": self.tables.page.select(
+                        self.tables.page.c.type == "p"
+                    ),
                 },
                 None,
                 "page_join",
             )
             page_mapper = mapper(
                 Page,
-                page_table,
+                self.tables.page,
                 with_polymorphic=("*", page_join),
                 polymorphic_on=page_join.c.type,
                 polymorphic_identity="p",
             )
         elif use_joins:
-            page_join = page_table.outerjoin(magazine_page_table).outerjoin(
-                classified_page_table
-            )
+            page_join = self.tables.page.outerjoin(
+                self.tables.magazine_page
+            ).outerjoin(self.tables.classified_page)
             page_mapper = mapper(
                 Page,
-                page_table,
+                self.tables.page,
                 with_polymorphic=("*", page_join),
-                polymorphic_on=page_table.c.type,
+                polymorphic_on=self.tables.page.c.type,
                 polymorphic_identity="p",
             )
         else:
             page_mapper = mapper(
                 Page,
-                page_table,
-                polymorphic_on=page_table.c.type,
+                self.tables.page,
+                polymorphic_on=self.tables.page.c.type,
                 polymorphic_identity="p",
             )
 
         if use_unions:
             magazine_join = polymorphic_union(
                 {
-                    "m": page_table.join(magazine_page_table),
-                    "c": page_table.join(magazine_page_table).join(
-                        classified_page_table
+                    "m": self.tables.page.join(self.tables.magazine_page),
+                    "c": self.tables.page.join(self.tables.magazine_page).join(
+                        self.tables.classified_page
                     ),
                 },
                 None,
@@ -302,7 +298,7 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
             )
             magazine_page_mapper = mapper(
                 MagazinePage,
-                magazine_page_table,
+                self.tables.magazine_page,
                 with_polymorphic=("*", magazine_join),
                 inherits=page_mapper,
                 polymorphic_identity="m",
@@ -316,12 +312,12 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
                 },
             )
         elif use_joins:
-            magazine_join = page_table.join(magazine_page_table).outerjoin(
-                classified_page_table
-            )
+            magazine_join = self.tables.page.join(
+                self.tables.magazine_page
+            ).outerjoin(self.tables.classified_page)
             magazine_page_mapper = mapper(
                 MagazinePage,
-                magazine_page_table,
+                self.tables.magazine_page,
                 with_polymorphic=("*", magazine_join),
                 inherits=page_mapper,
                 polymorphic_identity="m",
@@ -329,7 +325,7 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
                     "magazine": relationship(
                         Magazine,
                         backref=backref(
-                            "pages", order_by=page_table.c.page_no
+                            "pages", order_by=self.tables.page.c.page_no
                         ),
                     )
                 },
@@ -337,14 +333,14 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
         else:
             magazine_page_mapper = mapper(
                 MagazinePage,
-                magazine_page_table,
+                self.tables.magazine_page,
                 inherits=page_mapper,
                 polymorphic_identity="m",
                 properties={
                     "magazine": relationship(
                         Magazine,
                         backref=backref(
-                            "pages", order_by=page_table.c.page_no
+                            "pages", order_by=self.tables.page.c.page_no
                         ),
                     )
                 },
@@ -352,10 +348,10 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
 
         classified_page_mapper = mapper(
             ClassifiedPage,
-            classified_page_table,
+            self.tables.classified_page,
             inherits=magazine_page_mapper,
             polymorphic_identity="c",
-            primary_key=[page_table.c.id],
+            primary_key=[self.tables.page.c.id],
         )
 
         session = create_session()

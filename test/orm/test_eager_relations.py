@@ -493,7 +493,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_options_pathing(self):
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.orders,
@@ -795,7 +806,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         """Eager loading with two relationships simultaneously,
         from the same table, using aliases."""
 
-        addresses, items, order_items, orders, Item, User, Address, Order, users = (
+        (
+            addresses,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            users,
+        ) = (
             self.tables.addresses,
             self.tables.items,
             self.tables.order_items,
@@ -940,7 +961,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
-        users, items, order_items, orders, Item, User, Address, Order, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,
@@ -1075,7 +1106,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         'wrapped' select statement resulting from the combination of
         eager loading and limit/offset clauses."""
 
-        addresses, items, order_items, orders, Item, User, Address, Order, users = (
+        (
+            addresses,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            users,
+        ) = (
             self.tables.addresses,
             self.tables.items,
             self.tables.order_items,
@@ -1306,7 +1347,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         """test that the subquery wrapping only occurs with
         limit/offset and m2m or o2m joins present."""
 
-        users, items, order_items, Order, Item, User, Address, orders, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            Address,
+            orders,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,
@@ -1740,7 +1791,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
     def test_wide(self):
-        users, items, order_items, Order, Item, User, Address, orders, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            Address,
+            orders,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,
@@ -2273,7 +2334,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         # test eager join chaining to the "nested" join on the left,
         # a new feature as of [ticket:2369]
 
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.orders,
@@ -2290,8 +2362,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             User,
             users,
             properties={
-                "orders": relationship(Order, backref="user")  # o2m, m2o
-            },
+                "orders": relationship(Order, backref="user")
+            },  # o2m, m2o
         )
         mapper(
             Order,
@@ -3476,7 +3548,17 @@ class AddEntityTest(_fixtures.FixtureTest):
         ]
 
     def test_mapper_configured(self):
-        users, items, order_items, Order, Item, User, Address, orders, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            Address,
+            orders,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,
@@ -3526,7 +3608,17 @@ class AddEntityTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_options(self):
-        users, items, order_items, Order, Item, User, Address, orders, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            Address,
+            orders,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,
@@ -4163,7 +4255,20 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @classmethod
     def setup_mappers(cls):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, Order, item_keywords, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            Order,
+            item_keywords,
+            addresses,
+        ) = (
             cls.tables.users,
             cls.classes.Keyword,
             cls.tables.items,

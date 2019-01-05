@@ -1049,7 +1049,8 @@ class M2OUseGetTest(fixtures.MappedTest):
                 # the 'primaryjoin' looks just like "Sub"'s "get" clause
                 # (based on the Base id), and foreign_keys since that join
                 # condition doesn't actually have any fks in it
-                # 'sub':relationship(Sub, primaryjoin=base.c.id==related.c.sub_id,
+                # 'sub':relationship(Sub,
+                # primaryjoin=base.c.id==related.c.sub_id,
                 # foreign_keys=related.c.sub_id)
                 # now we can use this:
                 "sub": relationship(Sub)
@@ -2018,7 +2019,7 @@ class DistinctPKTest(fixtures.MappedTest):
             r"On mapper Mapper\|Employee\|employees, "
             "primary key column 'persons.id' is being "
             "combined with distinct primary key column 'employees.eid' "
-            "in attribute 'id'.  Use explicit properties to give "
+            "in attribute 'id'. Use explicit properties to give "
             "each column its own mapped attribute name.",
             self._do_test,
             True,

@@ -742,16 +742,16 @@ class UOWTest(
             eq_(
                 testing.db.scalar(
                     select([func.count("*")]).where(
-                        addresses.c.user_id == None  # noqa
-                    )
+                        addresses.c.user_id == None
+                    )  # noqa
                 ),
                 6,
             )
             eq_(
                 testing.db.scalar(
                     select([func.count("*")]).where(
-                        addresses.c.user_id != None  # noqa
-                    )
+                        addresses.c.user_id != None
+                    )  # noqa
                 ),
                 0,
             )

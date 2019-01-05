@@ -226,7 +226,16 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        users, Dingaling, Order, User, dingalings, Address, orders, addresses = (
+        (
+            users,
+            Dingaling,
+            Order,
+            User,
+            dingalings,
+            Address,
+            orders,
+            addresses,
+        ) = (
             cls.tables.users,
             cls.classes.Dingaling,
             cls.classes.Order,
@@ -2145,8 +2154,8 @@ class M2MCascadeTest(fixtures.MappedTest):
             A,
             a,
             properties={
-                # if no backref here, delete-orphan failed until [ticket:427] was
-                # fixed
+                # if no backref here, delete-orphan failed until #
+                # [ticket:427] was fixed
                 "bs": relationship(
                     B,
                     secondary=atob,
@@ -3821,7 +3830,14 @@ class SubclassCascadeTest(fixtures.DeclarativeMappedTest):
             __mapper_args__ = {"polymorphic_identity": "java_language"}
 
     def test_cascade_iterator_polymorphic(self):
-        Company, Employee, Engineer, Language, JavaLanguage, MavenBuild = self.classes(
+        (
+            Company,
+            Employee,
+            Engineer,
+            Language,
+            JavaLanguage,
+            MavenBuild,
+        ) = self.classes(
             "Company",
             "Employee",
             "Engineer",
@@ -3854,7 +3870,14 @@ class SubclassCascadeTest(fixtures.DeclarativeMappedTest):
         eq_(set([rec[0] for rec in it]), set([maven_build, lang]))
 
     def test_delete_orphan_round_trip(self):
-        Company, Employee, Engineer, Language, JavaLanguage, MavenBuild = self.classes(
+        (
+            Company,
+            Employee,
+            Engineer,
+            Language,
+            JavaLanguage,
+            MavenBuild,
+        ) = self.classes(
             "Company",
             "Employee",
             "Engineer",

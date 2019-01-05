@@ -232,7 +232,17 @@ class LazyTest(_fixtures.FixtureTest):
     def test_limit(self):
         """test limit operations combined with lazy-load relationships."""
 
-        users, items, order_items, orders, Item, User, Address, Order, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,
@@ -276,7 +286,17 @@ class LazyTest(_fixtures.FixtureTest):
             assert self.static.user_all_result[1:3] == result
 
     def test_distinct(self):
-        users, items, order_items, orders, Item, User, Address, Order, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,

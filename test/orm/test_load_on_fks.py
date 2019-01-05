@@ -186,7 +186,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         # pendings don't autoflush
         assert c3.parent is None
 
-    def test_autoflush_on_pending(self):
+    def test_autoflush_load_on_pending_on_pending(self):
         Child.parent.property.load_on_pending = True
         c3 = Child()
         sess.add(c3)

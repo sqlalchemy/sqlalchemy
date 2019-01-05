@@ -78,8 +78,8 @@ class CollectionsTest(fixtures.ORMTest):
 
     @classmethod
     def dictable_entity(cls, a=None, b=None, c=None):
-        id = cls._entity_id = cls._entity_id + 1
-        return cls.Entity(a or str(id), b or "value %s" % id, c)
+        id_ = cls._entity_id = cls._entity_id + 1
+        return cls.Entity(a or str(id_), b or "value %s" % id, c)
 
     def _test_adapter(self, typecallable, creator=None, to_set=None):
         if creator is None:

@@ -104,9 +104,11 @@ class BaseAndSubFixture(object):
             AllOf(
                 EachOf(
                     CompiledSQL(
-                        "SELECT asub.id AS asub_id, a.id AS a_id, a.type AS a_type, "
+                        "SELECT asub.id AS asub_id, a.id AS a_id, "
+                        "a.type AS a_type, "
                         "asub.asubdata AS asub_asubdata FROM a JOIN asub "
-                        "ON a.id = asub.id WHERE a.id IN ([EXPANDING_primary_keys]) "
+                        "ON a.id = asub.id "
+                        "WHERE a.id IN ([EXPANDING_primary_keys]) "
                         "ORDER BY a.id",
                         {"primary_keys": [2]},
                     ),

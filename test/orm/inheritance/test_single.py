@@ -633,7 +633,15 @@ class RelationshipToSingleTest(
             pass
 
     def test_of_type(self):
-        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (
+        (
+            JuniorEngineer,
+            Company,
+            companies,
+            Manager,
+            Employee,
+            employees,
+            Engineer,
+        ) = (
             self.classes.JuniorEngineer,
             self.classes.Company,
             self.tables.companies,
@@ -1044,7 +1052,15 @@ class RelationshipToSingleTest(
             )
 
     def test_relationship_to_subclass(self):
-        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (
+        (
+            JuniorEngineer,
+            Company,
+            companies,
+            Manager,
+            Employee,
+            employees,
+            Engineer,
+        ) = (
             self.classes.JuniorEngineer,
             self.classes.Company,
             self.tables.companies,

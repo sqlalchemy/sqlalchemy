@@ -517,19 +517,19 @@ def _generate_round_trip_test(
 
 for lazy_relationship in [True, False]:
     for redefine_colprop in [True, False]:
-        for with_polymorphic in ["unions", "joins", "auto", "none"]:
-            if with_polymorphic == "unions":
+        for with_polymorphic_ in ["unions", "joins", "auto", "none"]:
+            if with_polymorphic_ == "unions":
                 for include_base in [True, False]:
                     _generate_round_trip_test(
                         include_base,
                         lazy_relationship,
                         redefine_colprop,
-                        with_polymorphic,
+                        with_polymorphic_,
                     )
             else:
                 _generate_round_trip_test(
                     False,
                     lazy_relationship,
                     redefine_colprop,
-                    with_polymorphic,
+                    with_polymorphic_,
                 )

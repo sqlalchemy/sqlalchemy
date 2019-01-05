@@ -565,7 +565,6 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
         )
 
-
 class DeclarativeEventListenTest(
     _RemoveListeners, fixtures.DeclarativeMappedTest
 ):

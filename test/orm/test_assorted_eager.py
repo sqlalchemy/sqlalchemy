@@ -713,7 +713,16 @@ class EagerTest5(fixtures.MappedTest):
                 self.comment = comment
 
     def test_basic(self):
-        Comment, Derived, derived, comments, DerivedII, Base, base, derivedII = (
+        (
+            Comment,
+            Derived,
+            derived,
+            comments,
+            DerivedII,
+            Base,
+            base,
+            derivedII,
+        ) = (
             self.classes.Comment,
             self.classes.Derived,
             self.tables.derived,
@@ -843,7 +852,16 @@ class EagerTest6(fixtures.MappedTest):
             pass
 
     def test_one(self):
-        Part, inherited_part, design_types, DesignType, parts, design, Design, InheritedPart = (
+        (
+            Part,
+            inherited_part,
+            design_types,
+            DesignType,
+            parts,
+            design,
+            Design,
+            InheritedPart,
+        ) = (
             self.classes.Part,
             self.tables.inherited_part,
             self.tables.design_types,

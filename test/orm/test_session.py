@@ -1384,12 +1384,12 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         # o is still in local scope here, so still present
         self.assert_(len(s.identity_map) == 1)
 
-        id = o.id
+        id_ = o.id
         del o
         eq_(prune(), 1)
         self.assert_(len(s.identity_map) == 0)
 
-        u = s.query(User).get(id)
+        u = s.query(User).get(id_)
         eq_(prune(), 0)
         self.assert_(len(s.identity_map) == 1)
         u.name = "squiznart"
@@ -1408,7 +1408,7 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         eq_(prune(), 1)
         self.assert_(len(s.identity_map) == 0)
 
-        u = s.query(User).get(id)
+        u = s.query(User).get(id_)
         s.delete(u)
         del u
         eq_(prune(), 0)

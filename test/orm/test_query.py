@@ -4739,7 +4739,20 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_mappers(cls):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, Order, item_keywords, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            Order,
+            item_keywords,
+            addresses,
+        ) = (
             cls.tables.users,
             cls.classes.Keyword,
             cls.tables.items,

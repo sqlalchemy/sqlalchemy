@@ -506,8 +506,8 @@ def _generate_test(jointype="join1", usedata=False):
 
 for jointype in ["join1", "join2", "join3", "join4"]:
     for data in (True, False):
-        func = _generate_test(jointype, data)
-        setattr(RelationshipTest3, func.__name__, func)
+        _fn = _generate_test(jointype, data)
+        setattr(RelationshipTest3, _fn.__name__, _fn)
 del func
 
 
@@ -1502,7 +1502,8 @@ class MultiLevelTest(fixtures.MappedTest):
 class ManyToManyPolyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global base_item_table, item_table, base_item_collection_table, collection_table
+        global base_item_table, item_table
+        global base_item_collection_table, collection_table
         base_item_table = Table(
             "base_item",
             metadata,

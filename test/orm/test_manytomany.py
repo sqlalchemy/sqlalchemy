@@ -231,7 +231,16 @@ class M2MTest(fixtures.MappedTest):
         """test that a mapper can have two eager relationships to the same table, via
         two different association tables.  aliases are required."""
 
-        place_input, transition, Transition, PlaceThingy, place, place_thingy, Place, place_output = (
+        (
+            place_input,
+            transition,
+            Transition,
+            PlaceThingy,
+            place,
+            place_thingy,
+            Place,
+            place_output,
+        ) = (
             self.tables.place_input,
             self.tables.transition,
             self.classes.Transition,

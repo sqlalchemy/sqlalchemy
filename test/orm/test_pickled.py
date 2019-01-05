@@ -677,8 +677,8 @@ class TupleLabelTest(_fixtures.FixtureTest):
         )
         mapper(Address, addresses)
         mapper(
-            Order, orders, properties={"address": relationship(Address)}  # m2o
-        )
+            Order, orders, properties={"address": relationship(Address)}
+        )  # m2o
 
     def test_tuple_labeling(self):
         users = self.tables.users

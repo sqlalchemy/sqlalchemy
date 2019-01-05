@@ -86,7 +86,8 @@ class Company(object):
 class ConcreteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global managers_table, engineers_table, hackers_table, companies, employees_table
+        global managers_table, engineers_table, hackers_table
+        global companies, employees_table
         companies = Table(
             "companies",
             metadata,

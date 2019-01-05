@@ -805,15 +805,15 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     this is a very unusual case::
 
-    company         employee
-    ----------      ----------
-    company_id <--- company_id ------+
-    name                ^            |
-                        +------------+
+        company         employee
+        ----------      ----------
+        company_id <--- company_id ------+
+        name                ^            |
+                            +------------+
 
-                    emp_id <---------+
-                    name             |
-                    reports_to_id ---+
+                        emp_id <---------+
+                        name             |
+                        reports_to_id ---+
 
     employee joins to its sub-employees
     both on reports_to_id, *and on company_id to itself*.

@@ -357,7 +357,6 @@ class AttributesTest(fixtures.ORMTest):
             "'Foo.bars' - parent object of type <Foo> "
             "has been garbage collected.",
             lambda: Foo().bars.append(Bar()),
-        )
 
     def test_deferred(self):
         class Foo(object):
@@ -3497,11 +3496,11 @@ class ListenerTest(fixtures.ORMTest):
                 classes[2], "attrib", uselist=False, useobject=False
             )
 
-        def set(state, value, oldvalue, initiator):
+        def set_(state, value, oldvalue, initiator):
             canary.append(value)
 
         def events_a():
-            event.listen(classes[0].attrib, "set", set, propagate=True)
+            event.listen(classes[0].attrib, "set", set_, propagate=True)
 
         def teardown():
             classes[:] = [None, None, None]

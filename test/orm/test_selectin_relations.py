@@ -529,7 +529,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self._do_mapper_test(self._pathing_runs)
 
     def _do_options_test(self, configs):
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.orders,
@@ -589,7 +600,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self._do_query_tests(options, count)
 
     def _do_mapper_test(self, configs):
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.orders,
@@ -843,7 +865,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         """Eager loading with two relationships simultaneously,
         from the same table, using aliases."""
 
-        addresses, items, order_items, orders, Item, User, Address, Order, users = (
+        (
+            addresses,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            users,
+        ) = (
             self.tables.addresses,
             self.tables.items,
             self.tables.order_items,
@@ -949,7 +981,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
-        users, items, order_items, orders, Item, User, Address, Order, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,

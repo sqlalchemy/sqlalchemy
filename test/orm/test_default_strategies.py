@@ -39,7 +39,20 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def _downgrade_fixture(self):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, item_keywords, Order, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.items,
@@ -100,7 +113,20 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         return create_session()
 
     def _upgrade_fixture(self):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, item_keywords, Order, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.items,

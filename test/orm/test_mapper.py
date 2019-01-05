@@ -326,8 +326,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         """
 
         class Foo(object):
-            def __init__(self, id):
-                self.id = id
+            def __init__(self, id_):
+                self.id = id_
 
         m = MetaData()
         foo_t = Table("foo", m, Column("id", String, primary_key=True))
@@ -337,10 +337,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             if util.py2k:
 
                 def __lt__(self, other):
-                    assert not isinstance(other, basestring)
+                    assert not isinstance(other, basestring)  # noqa
                     return int(self) < other
 
-        foos = [Foo(id="f%d" % i) for i in range(5)]
+        foos = [Foo(id_="f%d" % i) for i in range(5)]
         states = [attributes.instance_state(f) for f in foos]
 
         for s in states[0:3]:
@@ -2524,7 +2524,20 @@ class OptionsTest(_fixtures.FixtureTest):
         self.sql_count_(4, go)
 
     def test_eager_degrade_deep(self):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, item_keywords, Order, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.items,
@@ -2677,7 +2690,18 @@ class OptionsTest(_fixtures.FixtureTest):
 class DeepOptionsTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
-        users, Keyword, items, order_items, Order, Item, User, keywords, item_keywords, orders = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+            orders,
+        ) = (
             cls.tables.users,
             cls.classes.Keyword,
             cls.tables.items,
@@ -3702,8 +3726,8 @@ class RequirementsTest(fixtures.MappedTest):
             #  sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
 
     class _ValueBase(object):
-        def __init__(self, value="abc", id=None):
-            self.id = id
+        def __init__(self, value="abc", id_=None):
+            self.id = id_
             self.value = value
 
         def __bool__(self):
@@ -3830,15 +3854,15 @@ class RequirementsTest(fixtures.MappedTest):
         ht2, ht1 = (self.tables.ht2, self.tables.ht1)
 
         class H1(self._ValueBase):
-            def __init__(self, value, id, h2s):
+            def __init__(self, value, id_, h2s):
                 self.value = value
-                self.id = id
+                self.id = id_
                 self.h2s = h2s
 
         class H2(self._ValueBase):
-            def __init__(self, value, id):
+            def __init__(self, value, id_):
                 self.value = value
-                self.id = id
+                self.id = id_
 
         mapper(H1, ht1, properties={"h2s": relationship(H2, backref="h1")})
         mapper(H2, ht2)
@@ -3848,12 +3872,12 @@ class RequirementsTest(fixtures.MappedTest):
                 H1(
                     "abc",
                     1,
-                    h2s=[H2("abc", id=1), H2("def", id=2), H2("def", id=3)],
+                    h2s=[H2("abc", id_=1), H2("def", id_=2), H2("def", id_=3)],
                 ),
                 H1(
                     "def",
                     2,
-                    h2s=[H2("abc", id=4), H2("abc", id=5), H2("def", id=6)],
+                    h2s=[H2("abc", id_=4), H2("abc", id_=5), H2("def", id_=6)],
                 ),
             ]
         )

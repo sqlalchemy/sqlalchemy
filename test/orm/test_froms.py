@@ -51,7 +51,26 @@ class QueryTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Node, composite_pk_table, users, Keyword, items, Dingaling, order_items, item_keywords, Item, User, dingalings, Address, keywords, CompositePk, nodes, Order, orders, addresses = (
+        (
+            Node,
+            composite_pk_table,
+            users,
+            Keyword,
+            items,
+            Dingaling,
+            order_items,
+            item_keywords,
+            Item,
+            User,
+            dingalings,
+            Address,
+            keywords,
+            CompositePk,
+            nodes,
+            Order,
+            orders,
+            addresses,
+        ) = (
             cls.classes.Node,
             cls.tables.composite_pk_table,
             cls.tables.users,
