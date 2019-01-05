@@ -8,14 +8,22 @@
 
 import re
 
-from . import attributes
-from .base import _class_to_mapper
-from .base import class_mapper
-from .base import InspectionAttr
-from .base import object_mapper
-from .interfaces import MapperProperty
-from .interfaces import PropComparator
-from .path_registry import PathRegistry
+from . import attributes  # noqa
+from .base import _class_to_mapper  # noqa
+from .base import _never_set  # noqa
+from .base import _none_set  # noqa
+from .base import attribute_str  # noqa
+from .base import class_mapper  # noqa
+from .base import InspectionAttr  # noqa
+from .base import instance_str  # noqa
+from .base import object_mapper  # noqa
+from .base import object_state  # noqa
+from .base import state_attribute_str  # noqa
+from .base import state_class_str  # noqa
+from .base import state_str  # noqa
+from .interfaces import MapperProperty  # noqa
+from .interfaces import PropComparator  # noqa
+from .path_registry import PathRegistry  # noqa
 from .. import event
 from .. import exc as sa_exc
 from .. import inspection
@@ -23,6 +31,7 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql import util as sql_util
+
 
 all_cascades = frozenset(
     (
@@ -218,14 +227,14 @@ def polymorphic_union(
                 return sql.type_coerce(sql.null(), types[name]).label(name)
 
     result = []
-    for type, table in table_map.items():
+    for type_, table in table_map.items():
         if typecolname is not None:
             result.append(
                 sql.select(
                     [col(name, table) for name in colnames]
                     + [
                         sql.literal_column(
-                            sql_util._quote_ddl_expr(type)
+                            sql_util._quote_ddl_expr(type_)
                         ).label(typecolname)
                     ],
                     from_obj=[table],
@@ -258,7 +267,7 @@ def identity_key(*args, **kwargs):
 
       :param class: mapped class (must be a positional argument)
       :param ident: primary key, may be a scalar or tuple argument.
-      ;param identity_token: optional identity token
+      :param identity_token: optional identity token
 
         .. versionadded:: 1.2 added identity_token
 
@@ -298,7 +307,7 @@ first()
       :param class: mapped class (must be a positional argument)
       :param row: :class:`.RowProxy` row returned by a :class:`.ResultProxy`
        (must be given as a keyword arg)
-      ;param identity_token: optional identity token
+      :param identity_token: optional identity token
 
         .. versionadded:: 1.2 added identity_token
 
@@ -954,7 +963,14 @@ class _ORMJoin(expression.Join):
             else:
                 adapt_from = left_info.selectable
 
-            pj, sj, source, dest, secondary, target_adapter = prop._create_joins(
+            (
+                pj,
+                sj,
+                source,
+                dest,
+                secondary,
+                target_adapter,
+            ) = prop._create_joins(
                 source_selectable=adapt_from,
                 dest_selectable=adapt_to,
                 source_polymorphic=True,
@@ -1122,7 +1138,7 @@ def with_parent(instance, prop, from_entity=None):
     return prop._with_parent(instance, from_entity=from_entity)
 
 
-def has_identity(object):
+def has_identity(object_):
     """Return True if the given object has a database
     identity.
 
@@ -1134,11 +1150,11 @@ def has_identity(object):
         :func:`.was_deleted`
 
     """
-    state = attributes.instance_state(object)
+    state = attributes.instance_state(object_)
     return state.has_identity
 
 
-def was_deleted(object):
+def was_deleted(object_):
     """Return True if the given object was deleted
     within a session flush.
 
@@ -1153,7 +1169,7 @@ def was_deleted(object):
 
     """
 
-    state = attributes.instance_state(object)
+    state = attributes.instance_state(object_)
     return state.was_deleted
 
 

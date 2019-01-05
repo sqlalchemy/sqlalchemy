@@ -207,9 +207,9 @@ class ColumnProperty(StrategizedProperty):
             util.warn(
                 (
                     "On mapper %s, primary key column '%s' is being combined "
-                    "with distinct primary key column '%s' in attribute '%s'.  "
-                    "Use explicit properties to give each column its own mapped "
-                    "attribute name."
+                    "with distinct primary key column '%s' in attribute '%s'. "
+                    "Use explicit properties to give each column its own "
+                    "mapped attribute name."
                 )
                 % (self.parent, self.columns[1], self.columns[0], self.key)
             )

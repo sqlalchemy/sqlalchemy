@@ -25,7 +25,7 @@ from .descriptor_props import SynonymProperty  # noqa
 from .interfaces import EXT_CONTINUE  # noqa
 from .interfaces import EXT_STOP  # noqa
 from .interfaces import PropComparator  # noqa
-from .mapper import _mapper_registry  # noqa
+from .mapper import _mapper_registry
 from .mapper import class_mapper  # noqa
 from .mapper import configure_mappers  # noqa
 from .mapper import Mapper  # noqa
@@ -44,6 +44,7 @@ from .session import make_transient_to_detached  # noqa
 from .session import object_session  # noqa
 from .session import Session  # noqa
 from .session import sessionmaker  # noqa
+from .strategy_options import Load  # noqa
 from .util import aliased  # noqa
 from .util import join  # noqa
 from .util import object_mapper  # noqa
@@ -52,9 +53,9 @@ from .util import polymorphic_union  # noqa
 from .util import was_deleted  # noqa
 from .util import with_parent  # noqa
 from .util import with_polymorphic  # noqa
-from .. import sql as _sql  # noqa
-from .. import util as _sa_util  # noqa
-from ..util.langhelpers import public_factory  # noqa
+from .. import sql as _sql
+from .. import util as _sa_util
+from ..util.langhelpers import public_factory
 
 
 def create_session(bind=None, **kwargs):
@@ -270,10 +271,10 @@ contains_alias = public_factory(AliasOption, ".orm.contains_alias")
 
 def __go(lcls):
     global __all__
-    from .. import util as sa_util
-    from . import dynamic
-    from . import events
-    from . import loading
+    from .. import util as sa_util  # noqa
+    from . import dynamic  # noqa
+    from . import events  # noqa
+    from . import loading  # noqa
     import inspect as _inspect
 
     __all__ = sorted(

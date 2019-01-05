@@ -28,6 +28,7 @@ from .. import exc as sa_exc
 from .. import util
 from ..sql import util as sql_util
 
+
 _new_runid = util.counter()
 
 

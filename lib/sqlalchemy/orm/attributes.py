@@ -30,8 +30,8 @@ from .base import LOAD_AGAINST_COMMITTED
 from .base import manager_of_class
 from .base import NEVER_SET
 from .base import NO_AUTOFLUSH
-from .base import NO_VALUE
-from .base import PASSIVE_NO_FETCH
+from .base import NO_VALUE  # noqa
+from .base import PASSIVE_NO_FETCH  # noqa
 from .base import PASSIVE_NO_INITIALIZE
 from .base import PASSIVE_NO_RESULT
 from .base import PASSIVE_OFF

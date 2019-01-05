@@ -156,8 +156,9 @@ class InstanceState(interfaces.InspectionAttr):
             "detached" states; once the object is :term:`detached`, the
             :attr:`.InstanceState.deleted` attribute **no longer returns
             True**; in order to detect that a state was deleted, regardless
-            of whether or not the object is associated with a :class:`.Session`,
-            use the :attr:`.InstanceState.was_deleted` accessor.
+            of whether or not the object is associated with a
+            :class:`.Session`, use the :attr:`.InstanceState.was_deleted`
+            accessor.
 
         .. versionadded: 1.1
 
@@ -784,10 +785,10 @@ class InstanceState(interfaces.InspectionAttr):
         self._commit_all_states([(self, dict_)], instance_dict)
 
     @classmethod
-    def _commit_all_states(self, iter, instance_dict=None):
+    def _commit_all_states(self, iter_, instance_dict=None):
         """Mass / highly inlined version of commit_all()."""
 
-        for state, dict_ in iter:
+        for state, dict_ in iter_:
             state_dict = state.__dict__
 
             state.committed_state.clear()

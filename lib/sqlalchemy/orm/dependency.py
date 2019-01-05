@@ -1171,9 +1171,9 @@ class ManyToManyDP(DependencyProcessor):
             )
             result = connection.execute(statement, secondary_delete)
 
-            if result.supports_sane_multi_rowcount() and result.rowcount != len(
-                secondary_delete
-            ):
+            if (
+                result.supports_sane_multi_rowcount()
+            ) and result.rowcount != len(secondary_delete):
                 raise exc.StaleDataError(
                     "DELETE statement on table '%s' expected to delete "
                     "%d row(s); Only %d were matched."
@@ -1197,9 +1197,9 @@ class ManyToManyDP(DependencyProcessor):
             )
             result = connection.execute(statement, secondary_update)
 
-            if result.supports_sane_multi_rowcount() and result.rowcount != len(
-                secondary_update
-            ):
+            if (
+                result.supports_sane_multi_rowcount()
+            ) and result.rowcount != len(secondary_update):
                 raise exc.StaleDataError(
                     "UPDATE statement on table '%s' expected to update "
                     "%d row(s); Only %d were matched."

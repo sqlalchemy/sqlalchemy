@@ -10,7 +10,6 @@
 """
 import weakref
 
-from sqlalchemy.util.compat import inspect_getargspec
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
@@ -23,6 +22,7 @@ from .session import sessionmaker
 from .. import event
 from .. import exc
 from .. import util
+from ..util.compat import inspect_getargspec
 
 
 class InstrumentationEvents(event.Events):
@@ -1832,7 +1832,7 @@ class SessionEvents(event.Events):
 
 
 class AttributeEvents(event.Events):
-    """Define events for object attributes.
+    r"""Define events for object attributes.
 
     These are typically defined on the class-bound descriptor for the
     target class.

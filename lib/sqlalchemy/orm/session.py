@@ -585,11 +585,11 @@ class SessionTransaction(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         self._assert_active(deactive_ok=True, prepared_ok=True)
         if self.session.transaction is None:
             return
-        if type is None:
+        if type_ is None:
             try:
                 self.commit()
             except:
@@ -895,9 +895,10 @@ class Session(_SessionClassMethods):
         :param subtransactions: if True, indicates that this
          :meth:`~.Session.begin` can create a "subtransaction".
 
-        :param nested: if True, begins a SAVEPOINT transaction and is equivalent
-         to calling :meth:`~.Session.begin_nested`. For documentation on
-         SAVEPOINT transactions, please see :ref:`session_begin_nested`.
+        :param nested: if True, begins a SAVEPOINT transaction and is
+         equivalent to calling :meth:`~.Session.begin_nested`. For
+         documentation on SAVEPOINT transactions, please see
+         :ref:`session_begin_nested`.
 
         :return: the :class:`.SessionTransaction` object.  Note that
          :class:`.SessionTransaction`

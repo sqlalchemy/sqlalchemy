@@ -371,10 +371,10 @@ class CompositeProperty(DescriptorProperty):
         return self.comparator_factory(self, mapper)
 
     class CompositeBundle(query.Bundle):
-        def __init__(self, property, expr):
-            self.property = property
+        def __init__(self, property_, expr):
+            self.property = property_
             super(CompositeProperty.CompositeBundle, self).__init__(
-                property.key, *expr
+                property_.key, *expr
             )
 
         def create_row_processor(self, query, procs, labels):

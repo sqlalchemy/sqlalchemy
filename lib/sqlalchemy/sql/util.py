@@ -14,6 +14,9 @@ from itertools import chain
 
 from . import operators
 from . import visitors
+from .annotation import _deep_annotate  # noqa
+from .annotation import _deep_deannotate  # noqa
+from .annotation import _shallow_annotate  # noqa
 from .base import _from_objects
 from .base import ColumnSet
 from .elements import _label_reference

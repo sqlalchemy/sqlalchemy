@@ -1107,7 +1107,7 @@ class Query(object):
         """
         self._invoke_all_eagers = value
 
-    def with_parent(self, instance, property=None, from_entity=None):
+    def with_parent(self, instance, property=None, from_entity=None):  # noqa
         """Add filtering criterion that relates the given instance
         to a child object or collection, using its attribute state
         as well as an established :func:`.relationship()`
@@ -1147,7 +1147,7 @@ class Query(object):
                     isinstance(prop, properties.RelationshipProperty)
                     and prop.mapper is entity_zero.mapper
                 ):
-                    property = prop
+                    property = prop  # noqa
                     break
             else:
                 raise sa_exc.InvalidRequestError(
@@ -2994,7 +2994,8 @@ class Query(object):
         (note this may consist of multiple result rows if join-loaded
         collections are present).
 
-        Calling :meth:`.Query.first` results in an execution of the underlying query.
+        Calling :meth:`.Query.first` results in an execution of the underlying
+        query.
 
         .. seealso::
 
@@ -3499,7 +3500,8 @@ class Query(object):
          values or sql expressions as values.   If :ref:`parameter-ordered
          mode <updates_order_parameters>` is desired, the values can be
          passed as a list of 2-tuples;
-         this requires that the :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+         this requires that the
+         :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
          flag is passed to the :paramref:`.Query.update.update_args` dictionary
          as well.
 
@@ -3728,9 +3730,9 @@ class Query(object):
             context.order_by = None
 
         if self._distinct is True and context.order_by:
-            context.primary_columns += sql_util.expand_column_list_from_order_by(
-                context.primary_columns, context.order_by
-            )
+            context.primary_columns += (
+                sql_util.expand_column_list_from_order_by
+            )(context.primary_columns, context.order_by)
         context.froms += tuple(context.eager_joins.values())
 
         statement = sql.select(

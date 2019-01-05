@@ -1090,7 +1090,7 @@ class Mapper(InspectionAttr):
                 self.polymorphic_map[self.polymorphic_identity] = self
 
             if self.polymorphic_load and self.concrete:
-                raise exc.ArgumentError(
+                raise sa_exc.ArgumentError(
                     "polymorphic_load is not currently supported "
                     "with concrete table inheritance"
                 )
@@ -1617,9 +1617,9 @@ class Mapper(InspectionAttr):
                     if self.mapped_table is mapper.mapped_table:
                         self.polymorphic_on = mapper.polymorphic_on
                     else:
-                        self.polymorphic_on = self.mapped_table.corresponding_column(
-                            mapper.polymorphic_on
-                        )
+                        self.polymorphic_on = (
+                            self.mapped_table.corresponding_column
+                        )(mapper.polymorphic_on)
                     # we can use the parent mapper's _set_polymorphic_identity
                     # directly; it ensures the polymorphic_identity of the
                     # instance's mapper is used so is portable to subclasses.
@@ -2487,7 +2487,7 @@ class Mapper(InspectionAttr):
 
     @_memoized_configured_property
     def _equivalent_columns(self):
-        """Create a map of all *equivalent* columns, based on
+        """Create a map of all equivalent columns, based on
         the determination of column pairs that are equated to
         one another based on inherit condition.  This is designed
         to work with the queries that util.polymorphic_union
@@ -2496,14 +2496,14 @@ class Mapper(InspectionAttr):
         only).
 
         The resulting structure is a dictionary of columns mapped
-        to lists of equivalent columns, i.e.
+        to lists of equivalent columns, e.g.::
 
-        {
-            tablea.col1:
-                {tableb.col1, tablec.col1},
-            tablea.col2:
-                {tabled.col2}
-        }
+            {
+                tablea.col1:
+                    {tableb.col1, tablec.col1},
+                tablea.col2:
+                    {tabled.col2}
+            }
 
         """
         result = util.column_dict()
@@ -3028,10 +3028,18 @@ class Mapper(InspectionAttr):
                 if queue:
                     visitables.append((queue, mpp, None, None))
             elif item_type is mpp:
-                instance, instance_mapper, corresponding_state, corresponding_dict = (
-                    iterator.popleft()
+                (
+                    instance,
+                    instance_mapper,
+                    corresponding_state,
+                    corresponding_dict,
+                ) = iterator.popleft()
+                yield (
+                    instance,
+                    instance_mapper,
+                    corresponding_state,
+                    corresponding_dict,
                 )
-                yield instance, instance_mapper, corresponding_state, corresponding_dict
                 visitables.append(
                     (
                         deque(instance_mapper._props.values()),

@@ -91,7 +91,7 @@ def foreign(expr):
 
 
 @log.class_logger
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -598,8 +598,8 @@ class RelationshipProperty(StrategizedProperty):
 
           .. seealso::
 
-            :doc:`/orm/loading_relationships` - Full documentation on relationship loader
-            configuration.
+            :doc:`/orm/loading_relationships` - Full documentation on
+            relationship loader configuration.
 
             :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
 
@@ -985,7 +985,14 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 of_type = None
 
-            pj, sj, source, dest, secondary, target_adapter = self.property._create_joins(
+            (
+                pj,
+                sj,
+                source,
+                dest,
+                secondary,
+                target_adapter,
+            ) = self.property._create_joins(
                 source_selectable=adapt_from,
                 source_polymorphic=True,
                 of_type=of_type,
@@ -1106,7 +1113,14 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 source_selectable = None
 
-            pj, sj, source, dest, secondary, target_adapter = self.property._create_joins(
+            (
+                pj,
+                sj,
+                source,
+                dest,
+                secondary,
+                target_adapter,
+            ) = self.property._create_joins(
                 dest_polymorphic=True,
                 dest_selectable=to_selectable,
                 source_selectable=source_selectable,
@@ -2029,9 +2043,9 @@ class RelationshipProperty(StrategizedProperty):
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
-            self._dependency_processor = dependency.DependencyProcessor.from_relationship(
-                self
-            )
+            self._dependency_processor = (
+                dependency.DependencyProcessor.from_relationship
+            )(self)
 
     @util.memoized_property
     def _use_get(self):
@@ -2076,7 +2090,13 @@ class RelationshipProperty(StrategizedProperty):
         single_crit = dest_mapper._single_table_criterion
         aliased = aliased or (source_selectable is not None)
 
-        primaryjoin, secondaryjoin, secondary, target_adapter, dest_selectable = self._join_condition.join_targets(
+        (
+            primaryjoin,
+            secondaryjoin,
+            secondary,
+            target_adapter,
+            dest_selectable,
+        ) = self._join_condition.join_targets(
             source_selectable, dest_selectable, aliased, single_crit
         )
         if source_selectable is None:

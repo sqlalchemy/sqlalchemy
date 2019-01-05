@@ -169,13 +169,13 @@ for meth in Session.public_methods:
 
 
 def makeprop(name):
-    def set(self, attr):
+    def set_(self, attr):
         setattr(self.registry(), name, attr)
 
     def get(self):
         return getattr(self.registry(), name)
 
-    return property(get, set)
+    return property(get, set_)
 
 
 for prop in (

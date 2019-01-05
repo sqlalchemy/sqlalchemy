@@ -530,9 +530,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             join_condition.create_lazy_clause()
         )
 
-        self._rev_lazywhere, self._rev_bind_to_col, self._rev_equated_columns = join_condition.create_lazy_clause(
-            reverse_direction=True
-        )
+        (
+            self._rev_lazywhere,
+            self._rev_bind_to_col,
+            self._rev_equated_columns,
+        ) = join_condition.create_lazy_clause(reverse_direction=True)
 
         self.logger.info("%s lazy loading clause %s", self, self._lazywhere)
 
@@ -878,9 +880,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # "lazyload" option on a "no load"
             # attribute - "eager" attributes always have a
             # class-level lazyloader installed.
-            set_lazy_callable = InstanceState._instance_level_callable_processor(
-                mapper.class_manager, LoadLazyAttribute(key, self), key
-            )
+            set_lazy_callable = (
+                InstanceState._instance_level_callable_processor
+            )(mapper.class_manager, LoadLazyAttribute(key, self), key)
 
             populators["new"].append((self.key, set_lazy_callable))
         elif context.populate_existing or mapper.always_refresh:
@@ -1011,9 +1013,11 @@ class SubqueryLoader(AbstractRelationshipLoader):
             elif subq_path.contains_mapper(self.mapper):
                 return
 
-        leftmost_mapper, leftmost_attr, leftmost_relationship = self._get_leftmost(
-            subq_path
-        )
+        (
+            leftmost_mapper,
+            leftmost_attr,
+            leftmost_relationship,
+        ) = self._get_leftmost(subq_path)
 
         orig_query = context.attributes.get(
             ("orig_query", SubqueryLoader), context.query
@@ -1442,7 +1446,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         if user_defined_adapter is not False:
-            clauses, adapter, add_to_collection = self._setup_query_on_user_defined_adapter(
+            (
+                clauses,
+                adapter,
+                add_to_collection,
+            ) = self._setup_query_on_user_defined_adapter(
                 context, entity, path, adapter, user_defined_adapter
             )
         else:
@@ -1455,7 +1463,12 @@ class JoinedLoader(AbstractRelationshipLoader):
                 elif path.contains_mapper(self.mapper):
                     return
 
-            clauses, adapter, add_to_collection, chained_from_outerjoin = self._generate_row_adapter(
+            (
+                clauses,
+                adapter,
+                add_to_collection,
+                chained_from_outerjoin,
+            ) = self._generate_row_adapter(
                 context,
                 entity,
                 path,
@@ -1787,9 +1800,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                     context.primary_columns.append(col)
 
         if self.parent_property.order_by:
-            context.eager_order_by += eagerjoin._target_adapter.copy_and_process(
-                util.to_list(self.parent_property.order_by)
-            )
+            context.eager_order_by += (
+                eagerjoin._target_adapter.copy_and_process
+            )(util.to_list(self.parent_property.order_by))
 
     def _splice_nested_inner_join(
         self, path, join_obj, clauses, onclause, splicing=False
