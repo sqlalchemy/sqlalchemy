@@ -52,9 +52,30 @@ url.py
 """
 
 from . import strategies
-    # backwards compat
+from . import util  # noqa
+from .base import Connection  # noqa
+from .base import Engine  # noqa
+from .base import NestedTransaction  # noqa
+from .base import RootTransaction  # noqa
+from .base import Transaction  # noqa
+from .base import TwoPhaseTransaction  # noqa
+from .interfaces import Compiled  # noqa
+from .interfaces import Connectable  # noqa
+from .interfaces import CreateEnginePlugin  # noqa
+from .interfaces import Dialect  # noqa
+from .interfaces import ExceptionContext  # noqa
+from .interfaces import ExecutionContext  # noqa
+from .interfaces import TypeCompiler  # noqa
+from .result import BaseRowProxy  # noqa
+from .result import BufferedColumnResultProxy  # noqa
+from .result import BufferedColumnRow  # noqa
+from .result import BufferedRowResultProxy  # noqa
+from .result import FullyBufferedResultProxy  # noqa
+from .result import ResultProxy  # noqa
+from .result import RowProxy  # noqa
+from .util import connection_memoize  # noqa
+from ..sql import ddl  # noqa
 
-# backwards compat
 
 default_strategy = "plain"
 
@@ -265,8 +286,8 @@ def create_engine(*args, **kwargs):
         Behavior here varies per backend, and
         individual dialects should be consulted directly.
 
-        Note that the isolation level can also be set on a per-:class:`.Connection`
-        basis as well, using the
+        Note that the isolation level can also be set on a
+        per-:class:`.Connection` basis as well, using the
         :paramref:`.Connection.execution_options.isolation_level`
         feature.
 
@@ -407,7 +428,7 @@ def create_engine(*args, **kwargs):
         ``(sql, *multiparams, **params)``, to which the ``mock`` strategy will
         dispatch all statement execution. Used only by ``strategy='mock'``.
 
-    """
+    """  # noqa
 
     strategy = kwargs.pop("strategy", default_strategy)
     strategy = strategies.strategies[strategy]

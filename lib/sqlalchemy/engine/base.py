@@ -19,9 +19,11 @@ from .. import util
 from ..sql import schema
 from ..sql import util as sql_util
 
+
 """Defines :class:`.Connection` and :class:`.Engine`.
 
 """
+
 
 
 class Connection(Connectable):
@@ -176,7 +178,7 @@ class Connection(Connectable):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         self.close()
 
     def execution_options(self, **opt):
@@ -325,7 +327,7 @@ class Connection(Connectable):
 
             :ref:`schema_translating`
 
-        """
+        """  # noqa
         c = self._clone()
         c._execution_options = c._execution_options.union(opt)
         if self._has_events or self.engine._has_events:
@@ -896,15 +898,15 @@ class Connection(Connectable):
         self.__can_reconnect = False
         self.__transaction = None
 
-    def scalar(self, object, *multiparams, **params):
+    def scalar(self, object_, *multiparams, **params):
         """Executes and returns the first column of the first row.
 
         The underlying result/cursor is closed after execution.
         """
 
-        return self.execute(object, *multiparams, **params).scalar()
+        return self.execute(object_, *multiparams, **params).scalar()
 
-    def execute(self, object, *multiparams, **params):
+    def execute(self, object_, *multiparams, **params):
         r"""Executes a SQL statement construct and returns a
         :class:`.ResultProxy`.
 
@@ -963,12 +965,12 @@ class Connection(Connectable):
          DBAPI-agnostic way, use the :func:`~.expression.text` construct.
 
         """
-        if isinstance(object, util.string_types[0]):
-            return self._execute_text(object, multiparams, params)
+        if isinstance(object_, util.string_types[0]):
+            return self._execute_text(object_, multiparams, params)
         try:
-            meth = object._execute_on_connection
+            meth = object_._execute_on_connection
         except AttributeError:
-            raise exc.ObjectNotExecutableError(object)
+            raise exc.ObjectNotExecutableError(object_)
         else:
             return meth(self, multiparams, params)
 
@@ -1702,8 +1704,8 @@ class Transaction(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        if type is None and self.is_active:
+    def __exit__(self, type_, value, traceback):
+        if type_ is None and self.is_active:
             try:
                 self.commit()
             except:
@@ -2009,8 +2011,8 @@ class Engine(Connectable, log.Identified):
         def __enter__(self):
             return self.conn
 
-        def __exit__(self, type, value, traceback):
-            if type is not None:
+        def __exit__(self, type_, value, traceback):
+            if type_ is not None:
                 self.transaction.rollback()
             else:
                 self.transaction.commit()

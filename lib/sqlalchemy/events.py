@@ -915,11 +915,12 @@ class ConnectionEvents(event.Events):
             :meth:`.ConnectionEvents.handle_error` hook.
 
         .. versionchanged:: 1.1 The :meth:`.handle_error` event will now
-           receive all exceptions that inherit from ``BaseException``, including
-           ``SystemExit`` and ``KeyboardInterrupt``.  The setting for
-           :attr:`.ExceptionContext.is_disconnect` is ``True`` in this case
-           and the default for :attr:`.ExceptionContext.invalidate_pool_on_disconnect`
-           is ``False``.
+           receive all exceptions that inherit from ``BaseException``,
+           including ``SystemExit`` and ``KeyboardInterrupt``.  The setting for
+           :attr:`.ExceptionContext.is_disconnect` is ``True`` in this case and
+           the default for
+           :attr:`.ExceptionContext.invalidate_pool_on_disconnect` is
+           ``False``.
 
         .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
            invoked when an :class:`.Engine` fails during the initial
@@ -1194,11 +1195,7 @@ class DialectEvents(event.Events):
 
     @classmethod
     def _listen(cls, event_key, retval=False):
-        target, identifier, fn = (
-            event_key.dispatch_target,
-            event_key.identifier,
-            event_key.fn,
-        )
+        target = event_key.dispatch_target
 
         target._has_events = True
         event_key.base_listen()

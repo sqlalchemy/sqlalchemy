@@ -16,7 +16,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 
 import re
 
-from . import Dialect
+from .interfaces import Dialect
 from .. import exc
 from .. import util
 from ..dialects import plugins

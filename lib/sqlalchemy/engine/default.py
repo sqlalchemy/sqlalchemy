@@ -247,13 +247,13 @@ class DefaultDialect(interfaces.Dialect):
         self.label_length = label_length
 
         if self.description_encoding == "use_encoding":
-            self._description_decoder = processors.to_unicode_processor_factory(
-                encoding
-            )
+            self._description_decoder = (
+                processors.to_unicode_processor_factory
+            )(encoding)
         elif self.description_encoding is not None:
-            self._description_decoder = processors.to_unicode_processor_factory(
-                self.description_encoding
-            )
+            self._description_decoder = (
+                processors.to_unicode_processor_factory
+            )(self.description_encoding)
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
 

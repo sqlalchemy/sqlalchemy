@@ -234,13 +234,11 @@ class _EventKey(object):
         """
         return self._key in _key_to_collection
 
-    def base_listen(self, propagate=False, insert=False, named=False):
+    def base_listen(
+        self, propagate=False, insert=False, named=False, retval=None
+    ):
 
-        target, identifier, fn = (
-            self.dispatch_target,
-            self.identifier,
-            self._listen_fn,
-        )
+        target, identifier = self.dispatch_target, self.identifier
 
         dispatch_collection = getattr(target.dispatch, identifier)
 
