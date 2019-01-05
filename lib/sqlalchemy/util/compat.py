@@ -10,7 +10,7 @@
 import collections
 from collections import namedtuple  # noqa
 from contextlib import contextmanager
-from operator import attrgetter as dottedgetter    # noqa
+from operator import attrgetter as dottedgetter  # noqa
 import sys
 import time
 

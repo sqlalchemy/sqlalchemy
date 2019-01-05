@@ -111,11 +111,8 @@ from .sql.sqltypes import VARBINARY  # noqa
 from .sql.sqltypes import VARCHAR  # noqa
 from .sql.type_api import adapt_type  # noqa
 from .sql.type_api import to_instance  # noqa
-from .sql.type_api import TypeDecorator
 from .sql.type_api import TypeDecorator  # noqa
-from .sql.type_api import TypeEngine
 from .sql.type_api import TypeEngine  # noqa
-from .sql.type_api import UserDefinedType
 from .sql.type_api import UserDefinedType  # noqa
-from .sql.type_api import Variant
 from .sql.type_api import Variant  # noqa
+
