@@ -23,11 +23,11 @@ from __future__ import absolute_import
 import collections
 
 from . import path_registry
-from .base import _MappedAttribute
+from .base import _MappedAttribute  # noqa
 from .base import EXT_CONTINUE
 from .base import EXT_STOP
-from .base import InspectionAttr
-from .base import InspectionAttrInfo
+from .base import InspectionAttr  # noqa
+from .base import InspectionAttrInfo  # noqa
 from .base import MANYTOMANY
 from .base import MANYTOONE
 from .base import NOT_EXTENSION
