@@ -64,7 +64,7 @@ from ..util import pickle, byte_buffer, b64encode, b64decode, text_type
 import re
 
 
-__all__ = ['Serializer', 'Deserializer', 'dumps', 'loads']
+__all__ = ["Serializer", "Deserializer", "dumps", "loads"]
 
 
 def Serializer(*args, **kw):
@@ -79,13 +79,18 @@ def Serializer(*args, **kw):
         elif isinstance(obj, Mapper) and not obj.non_primary:
             id = "mapper:" + b64encode(pickle.dumps(obj.class_))
         elif isinstance(obj, MapperProperty) and not obj.parent.non_primary:
-            id = "mapperprop:" + b64encode(pickle.dumps(obj.parent.class_)) + \
-                ":" + obj.key
+            id = (
+                "mapperprop:"
+                + b64encode(pickle.dumps(obj.parent.class_))
+                + ":"
+                + obj.key
+            )
         elif isinstance(obj, Table):
             id = "table:" + text_type(obj.key)
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
-            id = "column:" + \
-                text_type(obj.table.key) + ":" + text_type(obj.key)
+            id = (
+                "column:" + text_type(obj.table.key) + ":" + text_type(obj.key)
+            )
         elif isinstance(obj, Session):
             id = "session:"
         elif isinstance(obj, Engine):
@@ -97,8 +102,10 @@ def Serializer(*args, **kw):
     pickler.persistent_id = persistent_id
     return pickler
 
+
 our_ids = re.compile(
-    r'(mapperprop|mapper|table|column|session|attribute|engine):(.*)')
+    r"(mapperprop|mapper|table|column|session|attribute|engine):(.*)"
+)
 
 
 def Deserializer(file, metadata=None, scoped_session=None, engine=None):
@@ -120,7 +127,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             return None
         else:
             type_, args = m.group(1, 2)
-            if type_ == 'attribute':
+            if type_ == "attribute":
                 key, clsarg = args.split(":")
                 cls = pickle.loads(b64decode(clsarg))
                 return getattr(cls, key)
@@ -128,13 +135,13 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
                 cls = pickle.loads(b64decode(args))
                 return class_mapper(cls)
             elif type_ == "mapperprop":
-                mapper, keyname = args.split(':')
+                mapper, keyname = args.split(":")
                 cls = pickle.loads(b64decode(mapper))
                 return class_mapper(cls).attrs[keyname]
             elif type_ == "table":
                 return metadata.tables[args]
             elif type_ == "column":
-                table, colname = args.split(':')
+                table, colname = args.split(":")
                 return metadata.tables[table].c[colname]
             elif type_ == "session":
                 return scoped_session()
@@ -142,6 +149,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
                 return get_engine()
             else:
                 raise Exception("Unknown token: %s" % type_)
+
     unpickler.persistent_load = persistent_load
     return unpickler
 

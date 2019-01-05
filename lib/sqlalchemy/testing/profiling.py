@@ -42,17 +42,16 @@ class ProfileStatsFile(object):
 
     def __init__(self, filename):
         self.force_write = (
-            config.options is not None and
-            config.options.force_write_profiles
+            config.options is not None and config.options.force_write_profiles
         )
         self.write = self.force_write or (
-            config.options is not None and
-            config.options.write_profiles
+            config.options is not None and config.options.write_profiles
         )
         self.fname = os.path.abspath(filename)
         self.short_fname = os.path.split(self.fname)[-1]
         self.data = collections.defaultdict(
-            lambda: collections.defaultdict(dict))
+            lambda: collections.defaultdict(dict)
+        )
         self._read()
         if self.write:
             # rewrite for the case where features changed,
@@ -65,7 +64,7 @@ class ProfileStatsFile(object):
         dbapi_key = config.db.name + "_" + config.db.driver
 
         # keep it at 2.7, 3.1, 3.2, etc. for now.
-        py_version = '.'.join([str(v) for v in sys.version_info[0:2]])
+        py_version = ".".join([str(v) for v in sys.version_info[0:2]])
 
         platform_tokens = [py_version]
         platform_tokens.append(dbapi_key)
@@ -87,8 +86,7 @@ class ProfileStatsFile(object):
     def has_stats(self):
         test_key = _current_test
         return (
-            test_key in self.data and
-            self.platform_key in self.data[test_key]
+            test_key in self.data and self.platform_key in self.data[test_key]
         )
 
     def result(self, callcount):
@@ -96,15 +94,15 @@ class ProfileStatsFile(object):
         per_fn = self.data[test_key]
         per_platform = per_fn[self.platform_key]
 
-        if 'counts' not in per_platform:
-            per_platform['counts'] = counts = []
+        if "counts" not in per_platform:
+            per_platform["counts"] = counts = []
         else:
-            counts = per_platform['counts']
+            counts = per_platform["counts"]
 
-        if 'current_count' not in per_platform:
-            per_platform['current_count'] = current_count = 0
+        if "current_count" not in per_platform:
+            per_platform["current_count"] = current_count = 0
         else:
-            current_count = per_platform['current_count']
+            current_count = per_platform["current_count"]
 
         has_count = len(counts) > current_count
 
@@ -114,16 +112,16 @@ class ProfileStatsFile(object):
                 self._write()
             result = None
         else:
-            result = per_platform['lineno'], counts[current_count]
-        per_platform['current_count'] += 1
+            result = per_platform["lineno"], counts[current_count]
+        per_platform["current_count"] += 1
         return result
 
     def replace(self, callcount):
         test_key = _current_test
         per_fn = self.data[test_key]
         per_platform = per_fn[self.platform_key]
-        counts = per_platform['counts']
-        current_count = per_platform['current_count']
+        counts = per_platform["counts"]
+        current_count = per_platform["current_count"]
         if current_count < len(counts):
             counts[current_count - 1] = callcount
         else:
@@ -164,9 +162,9 @@ class ProfileStatsFile(object):
             per_fn = self.data[test_key]
             per_platform = per_fn[platform_key]
             c = [int(count) for count in counts.split(",")]
-            per_platform['counts'] = c
-            per_platform['lineno'] = lineno + 1
-            per_platform['current_count'] = 0
+            per_platform["counts"] = c
+            per_platform["lineno"] = lineno + 1
+            per_platform["current_count"] = 0
         profile_f.close()
 
     def _write(self):
@@ -179,7 +177,7 @@ class ProfileStatsFile(object):
             profile_f.write("\n# TEST: %s\n\n" % test_key)
             for platform_key in sorted(per_fn):
                 per_platform = per_fn[platform_key]
-                c = ",".join(str(count) for count in per_platform['counts'])
+                c = ",".join(str(count) for count in per_platform["counts"])
                 profile_f.write("%s %s %s\n" % (test_key, platform_key, c))
         profile_f.close()
 
@@ -199,7 +197,9 @@ def function_call_count(variance=0.05):
         def wrap(*args, **kw):
             with count_functions(variance=variance):
                 return fn(*args, **kw)
+
         return update_wrapper(wrap, fn)
+
     return decorate
 
 
@@ -213,21 +213,22 @@ def count_functions(variance=0.05):
             "No profiling stats available on this "
             "platform for this function.  Run tests with "
             "--write-profiles to add statistics to %s for "
-            "this platform." % _profile_stats.short_fname)
+            "this platform." % _profile_stats.short_fname
+        )
 
     gc_collect()
 
     pr = cProfile.Profile()
     pr.enable()
-    #began = time.time()
+    # began = time.time()
     yield
-    #ended = time.time()
+    # ended = time.time()
     pr.disable()
 
-    #s = compat.StringIO()
+    # s = compat.StringIO()
     stats = pstats.Stats(pr, stream=sys.stdout)
 
-    #timespent = ended - began
+    # timespent = ended - began
     callcount = stats.total_calls
 
     expected = _profile_stats.result(callcount)
@@ -237,11 +238,7 @@ def count_functions(variance=0.05):
     else:
         line_no, expected_count = expected
 
-    print(("Pstats calls: %d Expected %s" % (
-        callcount,
-        expected_count
-    )
-    ))
+    print(("Pstats calls: %d Expected %s" % (callcount, expected_count)))
     stats.sort_stats("cumulative")
     stats.print_stats()
 
@@ -259,7 +256,9 @@ def count_functions(variance=0.05):
                     "--write-profiles to "
                     "regenerate this callcount."
                     % (
-                        callcount, (variance * 100),
-                        expected_count, _profile_stats.platform_key))
-
-
+                        callcount,
+                        (variance * 100),
+                        expected_count,
+                        _profile_stats.platform_key,
+                    )
+                )

@@ -28,11 +28,17 @@ those additional values.
 
 """
 
-from sqlalchemy import Column, String, Integer, ForeignKey, \
-    create_engine
+from sqlalchemy import Column, String, Integer, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import attributes, relationship, backref, \
-    sessionmaker, make_transient, validates, Session
+from sqlalchemy.orm import (
+    attributes,
+    relationship,
+    backref,
+    sessionmaker,
+    make_transient,
+    validates,
+    Session,
+)
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy import event
@@ -45,14 +51,16 @@ def before_flush(session, flush_context, instances):
 
     """
     for instance in session.dirty:
-        if hasattr(instance, 'new_version') and \
-                session.is_modified(instance, passive=True):
+        if hasattr(instance, "new_version") and session.is_modified(
+            instance, passive=True
+        ):
 
             # make it transient
             instance.new_version(session)
 
             # re-add
             session.add(instance)
+
 
 Base = declarative_base()
 
@@ -67,7 +75,8 @@ class ConfigData(Base):
     string name mapped to a string/int value.
 
     """
-    __tablename__ = 'config'
+
+    __tablename__ = "config"
 
     id = Column(Integer, primary_key=True)
     """Primary key column of this ConfigData."""
@@ -76,7 +85,7 @@ class ConfigData(Base):
         "ConfigValueAssociation",
         collection_class=attribute_mapped_collection("name"),
         backref=backref("config_data"),
-        lazy="subquery"
+        lazy="subquery",
     )
     """Dictionary-backed collection of ConfigValueAssociation objects,
     keyed to the name of the associated ConfigValue.
@@ -97,7 +106,7 @@ class ConfigData(Base):
     def __init__(self, data):
         self.data = data
 
-    @validates('elements')
+    @validates("elements")
     def _associate_with_element(self, key, element):
         """Associate incoming ConfigValues with this
         ConfigData, if not already associated.
@@ -117,11 +126,11 @@ class ConfigData(Base):
 
         # history of the 'elements' collection.
         # this is a tuple of groups: (added, unchanged, deleted)
-        hist = attributes.get_history(self, 'elements')
+        hist = attributes.get_history(self, "elements")
 
         # rewrite the 'elements' collection
         # from scratch, removing all history
-        attributes.set_committed_value(self, 'elements', {})
+        attributes.set_committed_value(self, "elements", {})
 
         # new elements in the "added" group
         # are moved to our new collection.
@@ -133,7 +142,8 @@ class ConfigData(Base):
         # the old ones stay associated with the old ConfigData
         for elem in hist.unchanged:
             self.elements[elem.name] = ConfigValueAssociation(
-                elem.config_value)
+                elem.config_value
+            )
 
         # we also need to expire changes on each ConfigValueAssociation
         # that is to remain associated with the old ConfigData.
@@ -144,12 +154,12 @@ class ConfigData(Base):
 class ConfigValueAssociation(Base):
     """Relate ConfigData objects to associated ConfigValue objects."""
 
-    __tablename__ = 'config_value_association'
+    __tablename__ = "config_value_association"
 
-    config_id = Column(ForeignKey('config.id'), primary_key=True)
+    config_id = Column(ForeignKey("config.id"), primary_key=True)
     """Reference the primary key of the ConfigData object."""
 
-    config_value_id = Column(ForeignKey('config_value.id'), primary_key=True)
+    config_value_id = Column(ForeignKey("config_value.id"), primary_key=True)
     """Reference the primary key of the ConfigValue object."""
 
     config_value = relationship("ConfigValue", lazy="joined", innerjoin=True)
@@ -182,8 +192,7 @@ class ConfigValueAssociation(Base):
 
         """
         if value != self.config_value.value:
-            self.config_data.elements[self.name] = \
-                ConfigValueAssociation(
+            self.config_data.elements[self.name] = ConfigValueAssociation(
                 ConfigValue(self.config_value.name, value)
             )
 
@@ -194,13 +203,14 @@ class ConfigValue(Base):
     ConfigValue is immutable.
 
     """
-    __tablename__ = 'config_value'
+
+    __tablename__ = "config_value"
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
     originating_config_id = Column(
-        Integer, ForeignKey('config.id'),
-        nullable=False)
+        Integer, ForeignKey("config.id"), nullable=False
+    )
     int_value = Column(Integer)
     string_value = Column(String(255))
 
@@ -221,7 +231,7 @@ class ConfigValue(Base):
 
     @property
     def value(self):
-        for k in ('int_value', 'string_value'):
+        for k in ("int_value", "string_value"):
             v = getattr(self, k)
             if v is not None:
                 return v
@@ -237,25 +247,23 @@ class ConfigValue(Base):
             self.string_value = str(value)
             self.int_value = None
 
-if __name__ == '__main__':
-    engine = create_engine('sqlite://', echo=True)
+
+if __name__ == "__main__":
+    engine = create_engine("sqlite://", echo=True)
     Base.metadata.create_all(engine)
     Session = sessionmaker(engine)
 
     sess = Session()
 
-    config = ConfigData({
-        'user_name': 'twitter',
-        'hash_id': '4fedffca37eaf',
-        'x': 27,
-        'y': 450
-    })
+    config = ConfigData(
+        {"user_name": "twitter", "hash_id": "4fedffca37eaf", "x": 27, "y": 450}
+    )
 
     sess.add(config)
     sess.commit()
     version_one = config.id
 
-    config.data['user_name'] = 'yahoo'
+    config.data["user_name"] = "yahoo"
     sess.commit()
 
     version_two = config.id
@@ -265,27 +273,29 @@ if __name__ == '__main__':
     # two versions have been created.
 
     assert config.data == {
-        'user_name': 'yahoo',
-        'hash_id': '4fedffca37eaf',
-        'x': 27,
-        'y': 450
+        "user_name": "yahoo",
+        "hash_id": "4fedffca37eaf",
+        "x": 27,
+        "y": 450,
     }
 
     old_config = sess.query(ConfigData).get(version_one)
     assert old_config.data == {
-        'user_name': 'twitter',
-        'hash_id': '4fedffca37eaf',
-        'x': 27,
-        'y': 450
+        "user_name": "twitter",
+        "hash_id": "4fedffca37eaf",
+        "x": 27,
+        "y": 450,
     }
 
     # the history of any key can be acquired using
     # the originating_config_id attribute
-    history = sess.query(ConfigValue).\
-        filter(ConfigValue.name == 'user_name').\
-        order_by(ConfigValue.originating_config_id).\
-        all()
+    history = (
+        sess.query(ConfigValue)
+        .filter(ConfigValue.name == "user_name")
+        .order_by(ConfigValue.originating_config_id)
+        .all()
+    )
 
     assert [(h.value, h.originating_config_id) for h in history] == (
-        [('twitter', version_one), ('yahoo', version_two)]
+        [("twitter", version_one), ("yahoo", version_two)]
     )

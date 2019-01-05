@@ -30,4 +30,5 @@ class SybaseExecutionContext_mxodbc(SybaseExecutionContext):
 class SybaseDialect_mxodbc(MxODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_mxodbc
 
+
 dialect = SybaseDialect_mxodbc

@@ -73,25 +73,23 @@ from ... import util
 
 
 class FBDialect_fdb(FBDialect_kinterbasdb):
-
-    def __init__(self, enable_rowcount=True,
-                 retaining=False, **kwargs):
+    def __init__(self, enable_rowcount=True, retaining=False, **kwargs):
         super(FBDialect_fdb, self).__init__(
-            enable_rowcount=enable_rowcount,
-            retaining=retaining, **kwargs)
+            enable_rowcount=enable_rowcount, retaining=retaining, **kwargs
+        )
 
     @classmethod
     def dbapi(cls):
-        return __import__('fdb')
+        return __import__("fdb")
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
-        if opts.get('port'):
-            opts['host'] = "%s/%s" % (opts['host'], opts['port'])
-            del opts['port']
+        opts = url.translate_connect_args(username="user")
+        if opts.get("port"):
+            opts["host"] = "%s/%s" % (opts["host"], opts["port"])
+            del opts["port"]
         opts.update(url.query)
 
-        util.coerce_kw_type(opts, 'type_conv', int)
+        util.coerce_kw_type(opts, "type_conv", int)
 
         return ([], opts)
 
@@ -114,5 +112,6 @@ class FBDialect_fdb(FBDialect_kinterbasdb):
         version = fbconn.db_info(isc_info_firebird_version)
 
         return self._parse_version_info(version)
+
 
 dialect = FBDialect_fdb

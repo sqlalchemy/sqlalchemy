@@ -76,8 +76,7 @@ class Annotated(object):
             return self._with_annotations(_values)
 
     def _compiler_dispatch(self, visitor, **kw):
-        return self.__element.__class__._compiler_dispatch(
-            self, visitor, **kw)
+        return self.__element.__class__._compiler_dispatch(self, visitor, **kw)
 
     @property
     def _constructor(self):
@@ -120,10 +119,13 @@ def _deep_annotate(element, annotations, exclude=None):
     Elements within the exclude collection will be cloned but not annotated.
 
     """
+
     def clone(elem):
-        if exclude and \
-                hasattr(elem, 'proxy_set') and \
-                elem.proxy_set.intersection(exclude):
+        if (
+            exclude
+            and hasattr(elem, "proxy_set")
+            and elem.proxy_set.intersection(exclude)
+        ):
             newelem = elem._clone()
         elif annotations != elem._annotations:
             newelem = elem._annotate(annotations)
@@ -191,8 +193,8 @@ def _new_annotation_type(cls, base_cls):
             break
 
     annotated_classes[cls] = anno_cls = type(
-        "Annotated%s" % cls.__name__,
-        (base_cls, cls), {})
+        "Annotated%s" % cls.__name__, (base_cls, cls), {}
+    )
     globals()["Annotated%s" % cls.__name__] = anno_cls
     return anno_cls
 

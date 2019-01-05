@@ -232,7 +232,7 @@ from ..orm.attributes import flag_modified
 from ..ext.hybrid import hybrid_property
 
 
-__all__ = ['index_property']
+__all__ = ["index_property"]
 
 
 class index_property(hybrid_property):  # noqa
@@ -251,8 +251,14 @@ class index_property(hybrid_property):  # noqa
     _NO_DEFAULT_ARGUMENT = object()
 
     def __init__(
-            self, attr_name, index, default=_NO_DEFAULT_ARGUMENT,
-            datatype=None, mutable=True, onebased=True):
+        self,
+        attr_name,
+        index,
+        default=_NO_DEFAULT_ARGUMENT,
+        datatype=None,
+        mutable=True,
+        onebased=True,
+    ):
         """Create a new :class:`.index_property`.
 
         :param attr_name:

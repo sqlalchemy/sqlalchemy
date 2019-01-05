@@ -7,20 +7,15 @@ from sqlalchemy.testing import is_
 
 
 class TestCoreInspection(fixtures.TestBase):
-
     def test_table(self):
-        t = Table('t', MetaData(),
-                  Column('x', Integer)
-                  )
+        t = Table("t", MetaData(), Column("x", Integer))
 
         is_(inspect(t), t)
         assert t.is_selectable
         is_(t.selectable, t)
 
     def test_select(self):
-        t = Table('t', MetaData(),
-                  Column('x', Integer)
-                  )
+        t = Table("t", MetaData(), Column("x", Integer))
         s = t.select()
 
         is_(inspect(s), s)
@@ -28,10 +23,10 @@ class TestCoreInspection(fixtures.TestBase):
         is_(s.selectable, s)
 
     def test_column_expr(self):
-        c = Column('x', Integer)
+        c = Column("x", Integer)
         is_(inspect(c), c)
         assert not c.is_selectable
-        assert not hasattr(c, 'selectable')
+        assert not hasattr(c, "selectable")
 
     def test_no_clause_element_on_clauseelement(self):
         # re [ticket:3802], there are in the wild examples
@@ -39,5 +34,5 @@ class TestCoreInspection(fixtures.TestBase):
         # absence of __clause_element__ as a test for "this is the clause
         # element" must be maintained
 
-        x = Column('foo', Integer)
-        assert not hasattr(x, '__clause_element__')
+        x = Column("foo", Integer)
+        assert not hasattr(x, "__clause_element__")

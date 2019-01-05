@@ -4,12 +4,11 @@ from sqlalchemy import dialects
 
 
 class ImportStarTest(fixtures.TestBase):
-
     def _all_dialect_packages(self):
         return [
             getattr(__import__("sqlalchemy.dialects.%s" % d).dialects, d)
             for d in dialects.__all__
-            if not d.startswith('_')
+            if not d.startswith("_")
         ]
 
     def test_all_import(self):

@@ -502,27 +502,29 @@ class MutableBase(object):
         def pickle(state, state_dict):
             val = state.dict.get(key, None)
             if val is not None:
-                if 'ext.mutable.values' not in state_dict:
-                    state_dict['ext.mutable.values'] = []
-                state_dict['ext.mutable.values'].append(val)
+                if "ext.mutable.values" not in state_dict:
+                    state_dict["ext.mutable.values"] = []
+                state_dict["ext.mutable.values"].append(val)
 
         def unpickle(state, state_dict):
-            if 'ext.mutable.values' in state_dict:
-                for val in state_dict['ext.mutable.values']:
+            if "ext.mutable.values" in state_dict:
+                for val in state_dict["ext.mutable.values"]:
                     val._parents[state.obj()] = key
 
-        event.listen(parent_cls, 'load', load,
-                     raw=True, propagate=True)
-        event.listen(parent_cls, 'refresh', load_attrs,
-                     raw=True, propagate=True)
-        event.listen(parent_cls, 'refresh_flush', load_attrs,
-                     raw=True, propagate=True)
-        event.listen(attribute, 'set', set,
-                     raw=True, retval=True, propagate=True)
-        event.listen(parent_cls, 'pickle', pickle,
-                     raw=True, propagate=True)
-        event.listen(parent_cls, 'unpickle', unpickle,
-                     raw=True, propagate=True)
+        event.listen(parent_cls, "load", load, raw=True, propagate=True)
+        event.listen(
+            parent_cls, "refresh", load_attrs, raw=True, propagate=True
+        )
+        event.listen(
+            parent_cls, "refresh_flush", load_attrs, raw=True, propagate=True
+        )
+        event.listen(
+            attribute, "set", set, raw=True, retval=True, propagate=True
+        )
+        event.listen(parent_cls, "pickle", pickle, raw=True, propagate=True)
+        event.listen(
+            parent_cls, "unpickle", unpickle, raw=True, propagate=True
+        )
 
 
 class Mutable(MutableBase):
@@ -572,7 +574,7 @@ class Mutable(MutableBase):
                 if isinstance(prop.columns[0].type, sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
-        event.listen(mapper, 'mapper_configured', listen_for_type)
+        event.listen(mapper, "mapper_configured", listen_for_type)
 
     @classmethod
     def as_mutable(cls, sqltype):
@@ -613,9 +615,11 @@ class Mutable(MutableBase):
         # and we'll lose our ability to link that type back to the original.
         # so track our original type w/ columns
         if isinstance(sqltype, SchemaEventTarget):
+
             @event.listens_for(sqltype, "before_parent_attach")
             def _add_column_memo(sqltyp, parent):
-                parent.info['_ext_mutable_orig_type'] = sqltyp
+                parent.info["_ext_mutable_orig_type"] = sqltyp
+
             schema_event_check = True
         else:
             schema_event_check = False
@@ -625,16 +629,14 @@ class Mutable(MutableBase):
                 return
             for prop in mapper.column_attrs:
                 if (
-                        schema_event_check and
-                        hasattr(prop.expression, 'info') and
-                        prop.expression.info.get('_ext_mutable_orig_type')
-                        is sqltype
-                ) or (
-                    prop.columns[0].type is sqltype
-                ):
+                    schema_event_check
+                    and hasattr(prop.expression, "info")
+                    and prop.expression.info.get("_ext_mutable_orig_type")
+                    is sqltype
+                ) or (prop.columns[0].type is sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
-        event.listen(mapper, 'mapper_configured', listen_for_type)
+        event.listen(mapper, "mapper_configured", listen_for_type)
 
         return sqltype
 
@@ -659,21 +661,27 @@ class MutableComposite(MutableBase):
 
             prop = object_mapper(parent).get_property(key)
             for value, attr_name in zip(
-                    self.__composite_values__(),
-                    prop._attribute_keys):
+                self.__composite_values__(), prop._attribute_keys
+            ):
                 setattr(parent, attr_name, value)
 
 
 def _setup_composite_listener():
     def _listen_for_type(mapper, class_):
         for prop in mapper.iterate_properties:
-            if (hasattr(prop, 'composite_class') and
-                    isinstance(prop.composite_class, type) and
-                    issubclass(prop.composite_class, MutableComposite)):
+            if (
+                hasattr(prop, "composite_class")
+                and isinstance(prop.composite_class, type)
+                and issubclass(prop.composite_class, MutableComposite)
+            ):
                 prop.composite_class._listen_on_attribute(
-                    getattr(class_, prop.key), False, class_)
+                    getattr(class_, prop.key), False, class_
+                )
+
     if not event.contains(Mapper, "mapper_configured", _listen_for_type):
-        event.listen(Mapper, 'mapper_configured', _listen_for_type)
+        event.listen(Mapper, "mapper_configured", _listen_for_type)
+
+
 _setup_composite_listener()
 
 
@@ -947,4 +955,4 @@ class MutableSet(Mutable, set):
         self.update(state)
 
     def __reduce_ex__(self, proto):
-        return (self.__class__, (list(self), ))
+        return (self.__class__, (list(self),))

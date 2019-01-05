@@ -25,6 +25,7 @@ import sys
 
 from nose.plugins import Plugin
 import nose
+
 fixtures = None
 
 py3k = sys.version_info >= (3, 0)
@@ -33,7 +34,7 @@ py3k = sys.version_info >= (3, 0)
 class NoseSQLAlchemy(Plugin):
     enabled = True
 
-    name = 'sqla_testing'
+    name = "sqla_testing"
     score = 100
 
     def options(self, parser, env=os.environ):
@@ -41,10 +42,14 @@ class NoseSQLAlchemy(Plugin):
         opt = parser.add_option
 
         def make_option(name, **kw):
-            callback_ = kw.pop("callback", None) or kw.pop("zeroarg_callback", None)
+            callback_ = kw.pop("callback", None) or kw.pop(
+                "zeroarg_callback", None
+            )
             if callback_:
+
                 def wrap_(option, opt_str, value, parser):
                     callback_(opt_str, value, parser)
+
                 kw["callback"] = wrap_
             opt(name, **kw)
 
@@ -73,7 +78,7 @@ class NoseSQLAlchemy(Plugin):
 
     def wantMethod(self, fn):
         if py3k:
-            if not hasattr(fn.__self__, 'cls'):
+            if not hasattr(fn.__self__, "cls"):
                 return False
             cls = fn.__self__.cls
         else:
@@ -84,24 +89,24 @@ class NoseSQLAlchemy(Plugin):
         return plugin_base.want_class(cls)
 
     def beforeTest(self, test):
-        if not hasattr(test.test, 'cls'):
+        if not hasattr(test.test, "cls"):
             return
         plugin_base.before_test(
             test,
             test.test.cls.__module__,
-            test.test.cls, test.test.method.__name__)
+            test.test.cls,
+            test.test.method.__name__,
+        )
 
     def afterTest(self, test):
         plugin_base.after_test(test)
 
     def startContext(self, ctx):
-        if not isinstance(ctx, type) \
-                or not issubclass(ctx, fixtures.TestBase):
+        if not isinstance(ctx, type) or not issubclass(ctx, fixtures.TestBase):
             return
         plugin_base.start_test_class(ctx)
 
     def stopContext(self, ctx):
-        if not isinstance(ctx, type) \
-                or not issubclass(ctx, fixtures.TestBase):
+        if not isinstance(ctx, type) or not issubclass(ctx, fixtures.TestBase):
             return
         plugin_base.stop_test_class(ctx)

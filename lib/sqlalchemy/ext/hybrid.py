@@ -778,7 +778,7 @@ there's probably a whole lot of amazing things it can be used for.
 from .. import util
 from ..orm import attributes, interfaces
 
-HYBRID_METHOD = util.symbol('HYBRID_METHOD')
+HYBRID_METHOD = util.symbol("HYBRID_METHOD")
 """Symbol indicating an :class:`InspectionAttr` that's
    of type :class:`.hybrid_method`.
 
@@ -791,7 +791,7 @@ HYBRID_METHOD = util.symbol('HYBRID_METHOD')
 
 """
 
-HYBRID_PROPERTY = util.symbol('HYBRID_PROPERTY')
+HYBRID_PROPERTY = util.symbol("HYBRID_PROPERTY")
 """Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.hybrid_method`.
 
@@ -860,8 +860,14 @@ class hybrid_property(interfaces.InspectionAttrInfo):
     extension_type = HYBRID_PROPERTY
 
     def __init__(
-            self, fget, fset=None, fdel=None,
-            expr=None, custom_comparator=None, update_expr=None):
+        self,
+        fget,
+        fset=None,
+        fdel=None,
+        expr=None,
+        custom_comparator=None,
+        update_expr=None,
+    ):
         """Create a new :class:`.hybrid_property`.
 
         Usage is typically via decorator::
@@ -906,7 +912,8 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         defaults = {
             key: value
             for key, value in self.__dict__.items()
-            if not key.startswith("_")}
+            if not key.startswith("_")
+        }
         defaults.update(**kw)
         return type(self)(**defaults)
 
@@ -1078,9 +1085,9 @@ class hybrid_property(interfaces.InspectionAttrInfo):
             return self._get_expr(self.fget)
 
     def _get_expr(self, expr):
-
         def _expr(cls):
             return ExprComparator(cls, expr(cls), self)
+
         util.update_wrapper(_expr, expr)
 
         return self._get_comparator(_expr)
@@ -1091,8 +1098,13 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
         def expr_comparator(owner):
             return proxy_attr(
-                owner, self.__name__, self, comparator(owner),
-                doc=comparator.__doc__ or self.__doc__)
+                owner,
+                self.__name__,
+                self,
+                comparator(owner),
+                doc=comparator.__doc__ or self.__doc__,
+            )
+
         return expr_comparator
 
 
@@ -1108,7 +1120,7 @@ class Comparator(interfaces.PropComparator):
 
     def __clause_element__(self):
         expr = self.expression
-        if hasattr(expr, '__clause_element__'):
+        if hasattr(expr, "__clause_element__"):
             expr = expr.__clause_element__()
         return expr
 

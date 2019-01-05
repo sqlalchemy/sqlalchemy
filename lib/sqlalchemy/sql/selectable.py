@@ -10,15 +10,39 @@ SQL tables and derived rowsets.
 
 """
 
-from .elements import ClauseElement, TextClause, ClauseList, \
-    and_, Grouping, UnaryExpression, literal_column, BindParameter
-from .elements import _clone, \
-    _literal_as_text, _interpret_as_column_or_from, _expand_cloned,\
-    _select_iterables, _anonymous_label, _clause_element_as_expr,\
-    _cloned_intersection, _cloned_difference, True_, \
-    _literal_as_label_reference, _literal_and_labels_as_label_reference
-from .base import Immutable, Executable, _generative, \
-    ColumnCollection, ColumnSet, _from_objects, Generative
+from .elements import (
+    ClauseElement,
+    TextClause,
+    ClauseList,
+    and_,
+    Grouping,
+    UnaryExpression,
+    literal_column,
+    BindParameter,
+)
+from .elements import (
+    _clone,
+    _literal_as_text,
+    _interpret_as_column_or_from,
+    _expand_cloned,
+    _select_iterables,
+    _anonymous_label,
+    _clause_element_as_expr,
+    _cloned_intersection,
+    _cloned_difference,
+    True_,
+    _literal_as_label_reference,
+    _literal_and_labels_as_label_reference,
+)
+from .base import (
+    Immutable,
+    Executable,
+    _generative,
+    ColumnCollection,
+    ColumnSet,
+    _from_objects,
+    Generative,
+)
 from . import type_api
 from .. import inspection
 from .. import util
@@ -40,7 +64,8 @@ def _interpret_as_from(element):
                 "Textual SQL FROM expression %(expr)r should be "
                 "explicitly declared as text(%(expr)r), "
                 "or use table(%(expr)r) for more specificity",
-                {"expr": util.ellipses_string(element)})
+                {"expr": util.ellipses_string(element)},
+            )
 
             return TextClause(util.text_type(element))
     try:
@@ -73,7 +98,7 @@ def _offset_or_limit_clause(element, name=None, type_=None):
     """
     if element is None:
         return None
-    elif hasattr(element, '__clause_element__'):
+    elif hasattr(element, "__clause_element__"):
         return element.__clause_element__()
     elif isinstance(element, Visitable):
         return element
@@ -97,7 +122,8 @@ def _offset_or_limit_clause_asint(clause, attrname):
     except AttributeError:
         raise exc.CompileError(
             "This SELECT structure does not use a simple "
-            "integer value for %s" % attrname)
+            "integer value for %s" % attrname
+        )
     else:
         return util.asint(value)
 
@@ -225,12 +251,14 @@ def tablesample(selectable, sampling, name=None, seed=None):
 
     """
     return _interpret_as_from(selectable).tablesample(
-        sampling, name=name, seed=seed)
+        sampling, name=name, seed=seed
+    )
 
 
 class Selectable(ClauseElement):
     """mark a class as being selectable"""
-    __visit_name__ = 'selectable'
+
+    __visit_name__ = "selectable"
 
     is_selectable = True
 
@@ -265,15 +293,17 @@ class HasPrefixes(object):
          limit rendering of this prefix to only that dialect.
 
         """
-        dialect = kw.pop('dialect', None)
+        dialect = kw.pop("dialect", None)
         if kw:
-            raise exc.ArgumentError("Unsupported argument(s): %s" %
-                                    ",".join(kw))
+            raise exc.ArgumentError(
+                "Unsupported argument(s): %s" % ",".join(kw)
+            )
         self._setup_prefixes(expr, dialect)
 
     def _setup_prefixes(self, prefixes, dialect=None):
         self._prefixes = self._prefixes + tuple(
-            [(_literal_as_text(p, warn=False), dialect) for p in prefixes])
+            [(_literal_as_text(p, warn=False), dialect) for p in prefixes]
+        )
 
 
 class HasSuffixes(object):
@@ -301,15 +331,17 @@ class HasSuffixes(object):
          limit rendering of this suffix to only that dialect.
 
         """
-        dialect = kw.pop('dialect', None)
+        dialect = kw.pop("dialect", None)
         if kw:
-            raise exc.ArgumentError("Unsupported argument(s): %s" %
-                                    ",".join(kw))
+            raise exc.ArgumentError(
+                "Unsupported argument(s): %s" % ",".join(kw)
+            )
         self._setup_suffixes(expr, dialect)
 
     def _setup_suffixes(self, suffixes, dialect=None):
         self._suffixes = self._suffixes + tuple(
-            [(_literal_as_text(p, warn=False), dialect) for p in suffixes])
+            [(_literal_as_text(p, warn=False), dialect) for p in suffixes]
+        )
 
 
 class FromClause(Selectable):
@@ -330,7 +362,8 @@ class FromClause(Selectable):
 
 
     """
-    __visit_name__ = 'fromclause'
+
+    __visit_name__ = "fromclause"
     named_with_column = False
     _hide_froms = []
 
@@ -359,13 +392,14 @@ class FromClause(Selectable):
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
     @util.deprecated(
-        '1.1',
+        "1.1",
         message="``FromClause.count()`` is deprecated. Counting "
         "rows requires that the correct column expression and "
         "accommodations for joins, DISTINCT, etc. must be made, "
         "otherwise results may not be what's expected. "
         "Please use an appropriate ``func.count()`` expression "
-        "directly.")
+        "directly.",
+    )
     @util.dependencies("sqlalchemy.sql.functions")
     def count(self, functions, whereclause=None, **params):
         """return a SELECT COUNT generated against this
@@ -392,10 +426,11 @@ class FromClause(Selectable):
         else:
             col = list(self.columns)[0]
         return Select(
-            [functions.func.count(col).label('tbl_row_count')],
+            [functions.func.count(col).label("tbl_row_count")],
             whereclause,
             from_obj=[self],
-            **params)
+            **params
+        )
 
     def select(self, whereclause=None, **params):
         """return a SELECT of this :class:`.FromClause`.
@@ -603,8 +638,9 @@ class FromClause(Selectable):
 
         def embedded(expanded_proxy_set, target_set):
             for t in target_set.difference(expanded_proxy_set):
-                if not set(_expand_cloned([t])
-                           ).intersection(expanded_proxy_set):
+                if not set(_expand_cloned([t])).intersection(
+                    expanded_proxy_set
+                ):
                     return False
             return True
 
@@ -617,8 +653,10 @@ class FromClause(Selectable):
         for c in cols:
             expanded_proxy_set = set(_expand_cloned(c.proxy_set))
             i = target_set.intersection(expanded_proxy_set)
-            if i and (not require_embedded
-                      or embedded(expanded_proxy_set, target_set)):
+            if i and (
+                not require_embedded
+                or embedded(expanded_proxy_set, target_set)
+            ):
                 if col is None:
 
                     # no corresponding column yet, pick this one.
@@ -646,12 +684,20 @@ class FromClause(Selectable):
 
                     col_distance = util.reduce(
                         operator.add,
-                        [sc._annotations.get('weight', 1) for sc in
-                         col.proxy_set if sc.shares_lineage(column)])
+                        [
+                            sc._annotations.get("weight", 1)
+                            for sc in col.proxy_set
+                            if sc.shares_lineage(column)
+                        ],
+                    )
                     c_distance = util.reduce(
                         operator.add,
-                        [sc._annotations.get('weight', 1) for sc in
-                         c.proxy_set if sc.shares_lineage(column)])
+                        [
+                            sc._annotations.get("weight", 1)
+                            for sc in c.proxy_set
+                            if sc.shares_lineage(column)
+                        ],
+                    )
                     if c_distance < col_distance:
                         col, intersect = c, i
         return col
@@ -663,7 +709,7 @@ class FromClause(Selectable):
         Used primarily for error message formatting.
 
         """
-        return getattr(self, 'name', self.__class__.__name__ + " object")
+        return getattr(self, "name", self.__class__.__name__ + " object")
 
     def _reset_exported(self):
         """delete memoized collections when a FromClause is cloned."""
@@ -683,7 +729,7 @@ class FromClause(Selectable):
 
         """
 
-        if '_columns' not in self.__dict__:
+        if "_columns" not in self.__dict__:
             self._init_collections()
             self._populate_column_collection()
         return self._columns.as_immutable()
@@ -706,14 +752,16 @@ class FromClause(Selectable):
         self._populate_column_collection()
         return self.foreign_keys
 
-    c = property(attrgetter('columns'),
-                 doc="An alias for the :attr:`.columns` attribute.")
-    _select_iterable = property(attrgetter('columns'))
+    c = property(
+        attrgetter("columns"),
+        doc="An alias for the :attr:`.columns` attribute.",
+    )
+    _select_iterable = property(attrgetter("columns"))
 
     def _init_collections(self):
-        assert '_columns' not in self.__dict__
-        assert 'primary_key' not in self.__dict__
-        assert 'foreign_keys' not in self.__dict__
+        assert "_columns" not in self.__dict__
+        assert "primary_key" not in self.__dict__
+        assert "foreign_keys" not in self.__dict__
 
         self._columns = ColumnCollection()
         self.primary_key = ColumnSet()
@@ -721,7 +769,7 @@ class FromClause(Selectable):
 
     @property
     def _cols_populated(self):
-        return '_columns' in self.__dict__
+        return "_columns" in self.__dict__
 
     def _populate_column_collection(self):
         """Called on subclasses to establish the .c collection.
@@ -758,8 +806,7 @@ class FromClause(Selectable):
         """
         if not self._cols_populated:
             return None
-        elif (column.key in self.columns and
-              self.columns[column.key] is column):
+        elif column.key in self.columns and self.columns[column.key] is column:
             return column
         else:
             return None
@@ -780,7 +827,8 @@ class Join(FromClause):
         :meth:`.FromClause.join`
 
     """
-    __visit_name__ = 'join'
+
+    __visit_name__ = "join"
 
     _is_join = True
 
@@ -829,8 +877,9 @@ class Join(FromClause):
         return cls(left, right, onclause, isouter=True, full=full)
 
     @classmethod
-    def _create_join(cls, left, right, onclause=None, isouter=False,
-                     full=False):
+    def _create_join(
+        cls, left, right, onclause=None, isouter=False, full=False
+    ):
         """Produce a :class:`.Join` object, given two :class:`.FromClause`
         expressions.
 
@@ -882,26 +931,34 @@ class Join(FromClause):
             self.left.description,
             id(self.left),
             self.right.description,
-            id(self.right))
+            id(self.right),
+        )
 
     def is_derived_from(self, fromclause):
-        return fromclause is self or \
-            self.left.is_derived_from(fromclause) or \
-            self.right.is_derived_from(fromclause)
+        return (
+            fromclause is self
+            or self.left.is_derived_from(fromclause)
+            or self.right.is_derived_from(fromclause)
+        )
 
     def self_group(self, against=None):
         return FromGrouping(self)
 
     @util.dependencies("sqlalchemy.sql.util")
     def _populate_column_collection(self, sqlutil):
-        columns = [c for c in self.left.columns] + \
-            [c for c in self.right.columns]
+        columns = [c for c in self.left.columns] + [
+            c for c in self.right.columns
+        ]
 
-        self.primary_key.extend(sqlutil.reduce_columns(
-            (c for c in columns if c.primary_key), self.onclause))
+        self.primary_key.extend(
+            sqlutil.reduce_columns(
+                (c for c in columns if c.primary_key), self.onclause
+            )
+        )
         self._columns.update((col._label, col) for col in columns)
-        self.foreign_keys.update(itertools.chain(
-            *[col.foreign_keys for col in columns]))
+        self.foreign_keys.update(
+            itertools.chain(*[col.foreign_keys for col in columns])
+        )
 
     def _refresh_for_new_column(self, column):
         col = self.left._refresh_for_new_column(column)
@@ -933,9 +990,14 @@ class Join(FromClause):
         return self._join_condition(left, right, a_subset=left_right)
 
     @classmethod
-    def _join_condition(cls, a, b, ignore_nonexistent_tables=False,
-                                a_subset=None,
-                                consider_as_foreign_keys=None):
+    def _join_condition(
+        cls,
+        a,
+        b,
+        ignore_nonexistent_tables=False,
+        a_subset=None,
+        consider_as_foreign_keys=None,
+    ):
         """create a join condition between two tables or selectables.
 
         e.g.::
@@ -963,42 +1025,50 @@ class Join(FromClause):
 
         """
         constraints = cls._joincond_scan_left_right(
-            a, a_subset, b, consider_as_foreign_keys)
+            a, a_subset, b, consider_as_foreign_keys
+        )
 
         if len(constraints) > 1:
             cls._joincond_trim_constraints(
-                a, b, constraints, consider_as_foreign_keys)
+                a, b, constraints, consider_as_foreign_keys
+            )
 
         if len(constraints) == 0:
             if isinstance(b, FromGrouping):
-                hint = " Perhaps you meant to convert the right side to a "\
+                hint = (
+                    " Perhaps you meant to convert the right side to a "
                     "subquery using alias()?"
+                )
             else:
                 hint = ""
             raise exc.NoForeignKeysError(
                 "Can't find any foreign key relationships "
-                "between '%s' and '%s'.%s" %
-                (a.description, b.description, hint))
+                "between '%s' and '%s'.%s"
+                % (a.description, b.description, hint)
+            )
 
         crit = [(x == y) for x, y in list(constraints.values())[0]]
         if len(crit) == 1:
-            return (crit[0])
+            return crit[0]
         else:
             return and_(*crit)
 
     @classmethod
     def _joincond_scan_left_right(
-            cls, a, a_subset, b, consider_as_foreign_keys):
+        cls, a, a_subset, b, consider_as_foreign_keys
+    ):
         constraints = collections.defaultdict(list)
 
         for left in (a_subset, a):
             if left is None:
                 continue
             for fk in sorted(
-                    b.foreign_keys,
-                    key=lambda fk: fk.parent._creation_order):
-                if consider_as_foreign_keys is not None and \
-                        fk.parent not in consider_as_foreign_keys:
+                b.foreign_keys, key=lambda fk: fk.parent._creation_order
+            ):
+                if (
+                    consider_as_foreign_keys is not None
+                    and fk.parent not in consider_as_foreign_keys
+                ):
                     continue
                 try:
                     col = fk.get_referent(left)
@@ -1012,10 +1082,12 @@ class Join(FromClause):
                     constraints[fk.constraint].append((col, fk.parent))
             if left is not b:
                 for fk in sorted(
-                        left.foreign_keys,
-                        key=lambda fk: fk.parent._creation_order):
-                    if consider_as_foreign_keys is not None and \
-                            fk.parent not in consider_as_foreign_keys:
+                    left.foreign_keys, key=lambda fk: fk.parent._creation_order
+                ):
+                    if (
+                        consider_as_foreign_keys is not None
+                        and fk.parent not in consider_as_foreign_keys
+                    ):
                         continue
                     try:
                         col = fk.get_referent(b)
@@ -1033,14 +1105,16 @@ class Join(FromClause):
 
     @classmethod
     def _joincond_trim_constraints(
-            cls, a, b, constraints, consider_as_foreign_keys):
+        cls, a, b, constraints, consider_as_foreign_keys
+    ):
         # more than one constraint matched.  narrow down the list
         # to include just those FKCs that match exactly to
         # "consider_as_foreign_keys".
         if consider_as_foreign_keys:
             for const in list(constraints):
                 if set(f.parent for f in const.elements) != set(
-                        consider_as_foreign_keys):
+                    consider_as_foreign_keys
+                ):
                     del constraints[const]
 
         # if still multiple constraints, but
@@ -1057,7 +1131,8 @@ class Join(FromClause):
                 "tables have more than one foreign key "
                 "constraint relationship between them. "
                 "Please specify the 'onclause' of this "
-                "join explicitly." % (a.description, b.description))
+                "join explicitly." % (a.description, b.description)
+            )
 
     def select(self, whereclause=None, **kwargs):
         r"""Create a :class:`.Select` from this :class:`.Join`.
@@ -1186,27 +1261,37 @@ class Join(FromClause):
         """
         if flat:
             assert name is None, "Can't send name argument with flat"
-            left_a, right_a = self.left.alias(flat=True), \
-                self.right.alias(flat=True)
-            adapter = sqlutil.ClauseAdapter(left_a).\
-                chain(sqlutil.ClauseAdapter(right_a))
+            left_a, right_a = (
+                self.left.alias(flat=True),
+                self.right.alias(flat=True),
+            )
+            adapter = sqlutil.ClauseAdapter(left_a).chain(
+                sqlutil.ClauseAdapter(right_a)
+            )
 
-            return left_a.join(right_a, adapter.traverse(self.onclause),
-                               isouter=self.isouter, full=self.full)
+            return left_a.join(
+                right_a,
+                adapter.traverse(self.onclause),
+                isouter=self.isouter,
+                full=self.full,
+            )
         else:
             return self.select(use_labels=True, correlate=False).alias(name)
 
     @property
     def _hide_froms(self):
-        return itertools.chain(*[_from_objects(x.left, x.right)
-                                 for x in self._cloned_set])
+        return itertools.chain(
+            *[_from_objects(x.left, x.right) for x in self._cloned_set]
+        )
 
     @property
     def _from_objects(self):
-        return [self] + \
-            self.onclause._from_objects + \
-            self.left._from_objects + \
-            self.right._from_objects
+        return (
+            [self]
+            + self.onclause._from_objects
+            + self.left._from_objects
+            + self.right._from_objects
+        )
 
 
 class Alias(FromClause):
@@ -1222,7 +1307,7 @@ class Alias(FromClause):
 
     """
 
-    __visit_name__ = 'alias'
+    __visit_name__ = "alias"
     named_with_column = True
 
     _is_from_container = True
@@ -1238,15 +1323,16 @@ class Alias(FromClause):
         self.element = selectable
         if name is None:
             if self.original.named_with_column:
-                name = getattr(self.original, 'name', None)
-            name = _anonymous_label('%%(%d %s)s' % (id(self), name
-                                                    or 'anon'))
+                name = getattr(self.original, "name", None)
+            name = _anonymous_label("%%(%d %s)s" % (id(self), name or "anon"))
         self.name = name
 
     def self_group(self, against=None):
-        if isinstance(against, CompoundSelect) and \
-            isinstance(self.original, Select) and \
-                self.original._needs_parens_for_grouping():
+        if (
+            isinstance(against, CompoundSelect)
+            and isinstance(self.original, Select)
+            and self.original._needs_parens_for_grouping()
+        ):
             return FromGrouping(self)
 
         return super(Alias, self).self_group(against=against)
@@ -1256,14 +1342,15 @@ class Alias(FromClause):
         if util.py3k:
             return self.name
         else:
-            return self.name.encode('ascii', 'backslashreplace')
+            return self.name.encode("ascii", "backslashreplace")
 
     def as_scalar(self):
         try:
             return self.element.as_scalar()
         except AttributeError:
-            raise AttributeError("Element %s does not support "
-                                 "'as_scalar()'" % self.element)
+            raise AttributeError(
+                "Element %s does not support " "'as_scalar()'" % self.element
+            )
 
     def is_derived_from(self, fromclause):
         if fromclause in self._cloned_set:
@@ -1330,7 +1417,7 @@ class Lateral(Alias):
 
     """
 
-    __visit_name__ = 'lateral'
+    __visit_name__ = "lateral"
     _is_lateral = True
 
 
@@ -1349,11 +1436,9 @@ class TableSample(Alias):
 
     """
 
-    __visit_name__ = 'tablesample'
+    __visit_name__ = "tablesample"
 
-    def __init__(self, selectable, sampling,
-                 name=None,
-                 seed=None):
+    def __init__(self, selectable, sampling, name=None, seed=None):
         self.sampling = sampling
         self.seed = seed
         super(TableSample, self).__init__(selectable, name=name)
@@ -1376,14 +1461,18 @@ class CTE(Generative, HasSuffixes, Alias):
     .. versionadded:: 0.7.6
 
     """
-    __visit_name__ = 'cte'
 
-    def __init__(self, selectable,
-                 name=None,
-                 recursive=False,
-                 _cte_alias=None,
-                 _restates=frozenset(),
-                 _suffixes=None):
+    __visit_name__ = "cte"
+
+    def __init__(
+        self,
+        selectable,
+        name=None,
+        recursive=False,
+        _cte_alias=None,
+        _restates=frozenset(),
+        _suffixes=None,
+    ):
         self.recursive = recursive
         self._cte_alias = _cte_alias
         self._restates = _restates
@@ -1395,9 +1484,9 @@ class CTE(Generative, HasSuffixes, Alias):
         super(CTE, self)._copy_internals(clone, **kw)
         if self._cte_alias is not None:
             self._cte_alias = clone(self._cte_alias, **kw)
-        self._restates = frozenset([
-            clone(elem, **kw) for elem in self._restates
-        ])
+        self._restates = frozenset(
+            [clone(elem, **kw) for elem in self._restates]
+        )
 
     @util.dependencies("sqlalchemy.sql.dml")
     def _populate_column_collection(self, dml):
@@ -1414,7 +1503,7 @@ class CTE(Generative, HasSuffixes, Alias):
             name=name,
             recursive=self.recursive,
             _cte_alias=self,
-            _suffixes=self._suffixes
+            _suffixes=self._suffixes,
         )
 
     def union(self, other):
@@ -1423,7 +1512,7 @@ class CTE(Generative, HasSuffixes, Alias):
             name=self.name,
             recursive=self.recursive,
             _restates=self._restates.union([self]),
-            _suffixes=self._suffixes
+            _suffixes=self._suffixes,
         )
 
     def union_all(self, other):
@@ -1432,7 +1521,7 @@ class CTE(Generative, HasSuffixes, Alias):
             name=self.name,
             recursive=self.recursive,
             _restates=self._restates.union([self]),
-            _suffixes=self._suffixes
+            _suffixes=self._suffixes,
         )
 
 
@@ -1606,7 +1695,8 @@ class HasCTE(object):
 
 class FromGrouping(FromClause):
     """Represent a grouping of a FROM clause"""
-    __visit_name__ = 'grouping'
+
+    __visit_name__ = "grouping"
 
     def __init__(self, element):
         self.element = element
@@ -1637,7 +1727,7 @@ class FromGrouping(FromClause):
         return self.element._hide_froms
 
     def get_children(self, **kwargs):
-        return self.element,
+        return (self.element,)
 
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
@@ -1650,10 +1740,10 @@ class FromGrouping(FromClause):
         return getattr(self.element, attr)
 
     def __getstate__(self):
-        return {'element': self.element}
+        return {"element": self.element}
 
     def __setstate__(self, state):
-        self.element = state['element']
+        self.element = state["element"]
 
 
 class TableClause(Immutable, FromClause):
@@ -1685,7 +1775,7 @@ class TableClause(Immutable, FromClause):
 
     """
 
-    __visit_name__ = 'table'
+    __visit_name__ = "table"
 
     named_with_column = True
 
@@ -1730,7 +1820,7 @@ class TableClause(Immutable, FromClause):
         if util.py3k:
             return self.name
         else:
-            return self.name.encode('ascii', 'backslashreplace')
+            return self.name.encode("ascii", "backslashreplace")
 
     def append_column(self, c):
         self._columns[c.key] = c
@@ -1759,7 +1849,8 @@ class TableClause(Immutable, FromClause):
 
     @util.dependencies("sqlalchemy.sql.dml")
     def update(
-            self, dml, whereclause=None, values=None, inline=False, **kwargs):
+        self, dml, whereclause=None, values=None, inline=False, **kwargs
+    ):
         """Generate an :func:`.update` construct against this
         :class:`.TableClause`.
 
@@ -1771,8 +1862,13 @@ class TableClause(Immutable, FromClause):
 
         """
 
-        return dml.Update(self, whereclause=whereclause,
-                          values=values, inline=inline, **kwargs)
+        return dml.Update(
+            self,
+            whereclause=whereclause,
+            values=values,
+            inline=inline,
+            **kwargs
+        )
 
     @util.dependencies("sqlalchemy.sql.dml")
     def delete(self, dml, whereclause=None, **kwargs):
@@ -1795,7 +1891,6 @@ class TableClause(Immutable, FromClause):
 
 
 class ForUpdateArg(ClauseElement):
-
     @classmethod
     def parse_legacy_select(self, arg):
         """Parse the for_update argument of :func:`.select`.
@@ -1822,11 +1917,11 @@ class ForUpdateArg(ClauseElement):
             return None
 
         nowait = read = False
-        if arg == 'nowait':
+        if arg == "nowait":
             nowait = True
-        elif arg == 'read':
+        elif arg == "read":
             read = True
-        elif arg == 'read_nowait':
+        elif arg == "read_nowait":
             read = nowait = True
         elif arg is not True:
             raise exc.ArgumentError("Unknown for_update argument: %r" % arg)
@@ -1846,12 +1941,12 @@ class ForUpdateArg(ClauseElement):
 
     def __eq__(self, other):
         return (
-            isinstance(other, ForUpdateArg) and
-            other.nowait == self.nowait and
-            other.read == self.read and
-            other.skip_locked == self.skip_locked and
-            other.key_share == self.key_share and
-            other.of is self.of
+            isinstance(other, ForUpdateArg)
+            and other.nowait == self.nowait
+            and other.read == self.read
+            and other.skip_locked == self.skip_locked
+            and other.key_share == self.key_share
+            and other.of is self.of
         )
 
     def __hash__(self):
@@ -1862,8 +1957,13 @@ class ForUpdateArg(ClauseElement):
             self.of = [clone(col, **kw) for col in self.of]
 
     def __init__(
-            self, nowait=False, read=False, of=None,
-            skip_locked=False, key_share=False):
+        self,
+        nowait=False,
+        read=False,
+        of=None,
+        skip_locked=False,
+        key_share=False,
+    ):
         """Represents arguments specified to :meth:`.Select.for_update`.
 
         .. versionadded:: 0.9.0
@@ -1875,8 +1975,9 @@ class ForUpdateArg(ClauseElement):
         self.skip_locked = skip_locked
         self.key_share = key_share
         if of is not None:
-            self.of = [_interpret_as_column_or_from(elem)
-                       for elem in util.to_list(of)]
+            self.of = [
+                _interpret_as_column_or_from(elem) for elem in util.to_list(of)
+            ]
         else:
             self.of = None
 
@@ -1916,17 +2017,20 @@ class SelectBase(HasCTE, Executable, FromClause):
         return self.as_scalar().label(name)
 
     @_generative
-    @util.deprecated('0.6',
-                     message="``autocommit()`` is deprecated. Use "
-                     ":meth:`.Executable.execution_options` with the "
-                     "'autocommit' flag.")
+    @util.deprecated(
+        "0.6",
+        message="``autocommit()`` is deprecated. Use "
+        ":meth:`.Executable.execution_options` with the "
+        "'autocommit' flag.",
+    )
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to
         True.
         """
 
-        self._execution_options = \
-            self._execution_options.union({'autocommit': True})
+        self._execution_options = self._execution_options.union(
+            {"autocommit": True}
+        )
 
     def _generate(self):
         """Override the default _generate() method to also clear out
@@ -1959,34 +2063,38 @@ class GenerativeSelect(SelectBase):
        used for other SELECT-like objects, e.g. :class:`.TextAsFrom`.
 
     """
+
     _order_by_clause = ClauseList()
     _group_by_clause = ClauseList()
     _limit_clause = None
     _offset_clause = None
     _for_update_arg = None
 
-    def __init__(self,
-                 use_labels=False,
-                 for_update=False,
-                 limit=None,
-                 offset=None,
-                 order_by=None,
-                 group_by=None,
-                 bind=None,
-                 autocommit=None):
+    def __init__(
+        self,
+        use_labels=False,
+        for_update=False,
+        limit=None,
+        offset=None,
+        order_by=None,
+        group_by=None,
+        bind=None,
+        autocommit=None,
+    ):
         self.use_labels = use_labels
 
         if for_update is not False:
-            self._for_update_arg = (ForUpdateArg.
-                                    parse_legacy_select(for_update))
+            self._for_update_arg = ForUpdateArg.parse_legacy_select(for_update)
 
         if autocommit is not None:
-            util.warn_deprecated('autocommit on select() is '
-                                 'deprecated.  Use .execution_options(a'
-                                 'utocommit=True)')
-            self._execution_options = \
-                self._execution_options.union(
-                    {'autocommit': autocommit})
+            util.warn_deprecated(
+                "autocommit on select() is "
+                "deprecated.  Use .execution_options(a"
+                "utocommit=True)"
+            )
+            self._execution_options = self._execution_options.union(
+                {"autocommit": autocommit}
+            )
         if limit is not None:
             self._limit_clause = _offset_or_limit_clause(limit)
         if offset is not None:
@@ -1996,11 +2104,13 @@ class GenerativeSelect(SelectBase):
         if order_by is not None:
             self._order_by_clause = ClauseList(
                 *util.to_list(order_by),
-                _literal_as_text=_literal_and_labels_as_label_reference)
+                _literal_as_text=_literal_and_labels_as_label_reference
+            )
         if group_by is not None:
             self._group_by_clause = ClauseList(
                 *util.to_list(group_by),
-                _literal_as_text=_literal_as_label_reference)
+                _literal_as_text=_literal_as_label_reference
+            )
 
     @property
     def for_update(self):
@@ -2016,8 +2126,14 @@ class GenerativeSelect(SelectBase):
         self._for_update_arg = ForUpdateArg.parse_legacy_select(value)
 
     @_generative
-    def with_for_update(self, nowait=False, read=False, of=None,
-                        skip_locked=False, key_share=False):
+    def with_for_update(
+        self,
+        nowait=False,
+        read=False,
+        of=None,
+        skip_locked=False,
+        key_share=False,
+    ):
         """Specify a ``FOR UPDATE`` clause for this :class:`.GenerativeSelect`.
 
         E.g.::
@@ -2065,9 +2181,13 @@ class GenerativeSelect(SelectBase):
          .. versionadded:: 1.1.0
 
         """
-        self._for_update_arg = ForUpdateArg(nowait=nowait, read=read, of=of,
-                                            skip_locked=skip_locked,
-                                            key_share=key_share)
+        self._for_update_arg = ForUpdateArg(
+            nowait=nowait,
+            read=read,
+            of=of,
+            skip_locked=skip_locked,
+            key_share=key_share,
+        )
 
     @_generative
     def apply_labels(self):
@@ -2195,11 +2315,12 @@ class GenerativeSelect(SelectBase):
         if len(clauses) == 1 and clauses[0] is None:
             self._order_by_clause = ClauseList()
         else:
-            if getattr(self, '_order_by_clause', None) is not None:
+            if getattr(self, "_order_by_clause", None) is not None:
                 clauses = list(self._order_by_clause) + list(clauses)
             self._order_by_clause = ClauseList(
                 *clauses,
-                _literal_as_text=_literal_and_labels_as_label_reference)
+                _literal_as_text=_literal_and_labels_as_label_reference
+            )
 
     def append_group_by(self, *clauses):
         """Append the given GROUP BY criterion applied to this selectable.
@@ -2214,10 +2335,11 @@ class GenerativeSelect(SelectBase):
         if len(clauses) == 1 and clauses[0] is None:
             self._group_by_clause = ClauseList()
         else:
-            if getattr(self, '_group_by_clause', None) is not None:
+            if getattr(self, "_group_by_clause", None) is not None:
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(
-                *clauses, _literal_as_text=_literal_as_label_reference)
+                *clauses, _literal_as_text=_literal_as_label_reference
+            )
 
     @property
     def _label_resolve_dict(self):
@@ -2251,19 +2373,19 @@ class CompoundSelect(GenerativeSelect):
 
     """
 
-    __visit_name__ = 'compound_select'
+    __visit_name__ = "compound_select"
 
-    UNION = util.symbol('UNION')
-    UNION_ALL = util.symbol('UNION ALL')
-    EXCEPT = util.symbol('EXCEPT')
-    EXCEPT_ALL = util.symbol('EXCEPT ALL')
-    INTERSECT = util.symbol('INTERSECT')
-    INTERSECT_ALL = util.symbol('INTERSECT ALL')
+    UNION = util.symbol("UNION")
+    UNION_ALL = util.symbol("UNION ALL")
+    EXCEPT = util.symbol("EXCEPT")
+    EXCEPT_ALL = util.symbol("EXCEPT ALL")
+    INTERSECT = util.symbol("INTERSECT")
+    INTERSECT_ALL = util.symbol("INTERSECT ALL")
 
     _is_from_container = True
 
     def __init__(self, keyword, *selects, **kwargs):
-        self._auto_correlate = kwargs.pop('correlate', False)
+        self._auto_correlate = kwargs.pop("correlate", False)
         self.keyword = keyword
         self.selects = []
 
@@ -2277,12 +2399,16 @@ class CompoundSelect(GenerativeSelect):
                 numcols = len(s.c._all_columns)
             elif len(s.c._all_columns) != numcols:
                 raise exc.ArgumentError(
-                    'All selectables passed to '
-                    'CompoundSelect must have identical numbers of '
-                    'columns; select #%d has %d columns, select '
-                    '#%d has %d' %
-                    (1, len(self.selects[0].c._all_columns),
-                     n + 1, len(s.c._all_columns))
+                    "All selectables passed to "
+                    "CompoundSelect must have identical numbers of "
+                    "columns; select #%d has %d columns, select "
+                    "#%d has %d"
+                    % (
+                        1,
+                        len(self.selects[0].c._all_columns),
+                        n + 1,
+                        len(s.c._all_columns),
+                    )
                 )
 
             self.selects.append(s.self_group(against=self))
@@ -2291,9 +2417,7 @@ class CompoundSelect(GenerativeSelect):
 
     @property
     def _label_resolve_dict(self):
-        d = dict(
-            (c.key, c) for c in self.c
-        )
+        d = dict((c.key, c) for c in self.c)
         return d, d, d
 
     @classmethod
@@ -2402,8 +2526,7 @@ class CompoundSelect(GenerativeSelect):
           :func:`select`.
 
         """
-        return CompoundSelect(
-            CompoundSelect.INTERSECT_ALL, *selects, **kwargs)
+        return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects, **kwargs)
 
     def _scalar_type(self):
         return self.selects[0]._scalar_type()
@@ -2431,8 +2554,10 @@ class CompoundSelect(GenerativeSelect):
             # those fks too.
 
             proxy = cols[0]._make_proxy(
-                self, name=cols[0]._label if self.use_labels else None,
-                key=cols[0]._key_label if self.use_labels else None)
+                self,
+                name=cols[0]._label if self.use_labels else None,
+                key=cols[0]._key_label if self.use_labels else None,
+            )
 
             # hand-construct the "_proxies" collection to include all
             # derived columns place a 'weight' annotation corresponding
@@ -2441,7 +2566,8 @@ class CompoundSelect(GenerativeSelect):
             # conflicts
 
             proxy._proxies = [
-                c._annotate({'weight': i + 1}) for (i, c) in enumerate(cols)]
+                c._annotate({"weight": i + 1}) for (i, c) in enumerate(cols)
+            ]
 
     def _refresh_for_new_column(self, column):
         for s in self.selects:
@@ -2450,25 +2576,32 @@ class CompoundSelect(GenerativeSelect):
         if not self._cols_populated:
             return None
 
-        raise NotImplementedError("CompoundSelect constructs don't support "
-                                  "addition of columns to underlying "
-                                  "selectables")
+        raise NotImplementedError(
+            "CompoundSelect constructs don't support "
+            "addition of columns to underlying "
+            "selectables"
+        )
 
     def _copy_internals(self, clone=_clone, **kw):
         super(CompoundSelect, self)._copy_internals(clone, **kw)
         self._reset_exported()
         self.selects = [clone(s, **kw) for s in self.selects]
-        if hasattr(self, '_col_map'):
+        if hasattr(self, "_col_map"):
             del self._col_map
         for attr in (
-                '_order_by_clause', '_group_by_clause', '_for_update_arg'):
+            "_order_by_clause",
+            "_group_by_clause",
+            "_for_update_arg",
+        ):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 
     def get_children(self, column_collections=True, **kwargs):
-        return (column_collections and list(self.c) or []) \
-            + [self._order_by_clause, self._group_by_clause] \
+        return (
+            (column_collections and list(self.c) or [])
+            + [self._order_by_clause, self._group_by_clause]
             + list(self.selects)
+        )
 
     def bind(self):
         if self._bind:
@@ -2482,6 +2615,7 @@ class CompoundSelect(GenerativeSelect):
 
     def _set_bind(self, bind):
         self._bind = bind
+
     bind = property(bind, _set_bind)
 
 
@@ -2490,7 +2624,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     """
 
-    __visit_name__ = 'select'
+    __visit_name__ = "select"
 
     _prefixes = ()
     _suffixes = ()
@@ -2503,16 +2637,18 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     _memoized_property = SelectBase._memoized_property
     _is_select = True
 
-    def __init__(self,
-                 columns=None,
-                 whereclause=None,
-                 from_obj=None,
-                 distinct=False,
-                 having=None,
-                 correlate=True,
-                 prefixes=None,
-                 suffixes=None,
-                 **kwargs):
+    def __init__(
+        self,
+        columns=None,
+        whereclause=None,
+        from_obj=None,
+        distinct=False,
+        having=None,
+        correlate=True,
+        prefixes=None,
+        suffixes=None,
+        **kwargs
+    ):
         """Construct a new :class:`.Select`.
 
         Similar functionality is also available via the
@@ -2715,22 +2851,23 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 self._distinct = True
             else:
                 self._distinct = [
-                    _literal_as_text(e)
-                    for e in util.to_list(distinct)
+                    _literal_as_text(e) for e in util.to_list(distinct)
                 ]
 
         if from_obj is not None:
             self._from_obj = util.OrderedSet(
-                _interpret_as_from(f)
-                for f in util.to_list(from_obj))
+                _interpret_as_from(f) for f in util.to_list(from_obj)
+            )
         else:
             self._from_obj = util.OrderedSet()
 
         try:
             cols_present = bool(columns)
         except TypeError:
-            raise exc.ArgumentError("columns argument to select() must "
-                                    "be a Python list or other iterable")
+            raise exc.ArgumentError(
+                "columns argument to select() must "
+                "be a Python list or other iterable"
+            )
 
         if cols_present:
             self._raw_columns = []
@@ -2743,14 +2880,16 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._raw_columns = []
 
         if whereclause is not None:
-            self._whereclause = _literal_as_text(
-                whereclause).self_group(against=operators._asbool)
+            self._whereclause = _literal_as_text(whereclause).self_group(
+                against=operators._asbool
+            )
         else:
             self._whereclause = None
 
         if having is not None:
-            self._having = _literal_as_text(
-                having).self_group(against=operators._asbool)
+            self._having = _literal_as_text(having).self_group(
+                against=operators._asbool
+            )
         else:
             self._having = None
 
@@ -2775,12 +2914,14 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         for item in itertools.chain(
             _from_objects(*self._raw_columns),
             _from_objects(self._whereclause)
-            if self._whereclause is not None else (),
-            self._from_obj
+            if self._whereclause is not None
+            else (),
+            self._from_obj,
         ):
             if item is self:
                 raise exc.InvalidRequestError(
-                    "select() construct refers to itself as a FROM")
+                    "select() construct refers to itself as a FROM"
+                )
             if translate and item in translate:
                 item = translate[item]
             if not seen.intersection(item._cloned_set):
@@ -2789,8 +2930,9 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         return froms
 
-    def _get_display_froms(self, explicit_correlate_froms=None,
-                           implicit_correlate_froms=None):
+    def _get_display_froms(
+        self, explicit_correlate_froms=None, implicit_correlate_froms=None
+    ):
         """Return the full list of 'from' clauses to be displayed.
 
         Takes into account a set of existing froms which may be
@@ -2801,17 +2943,17 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         """
         froms = self._froms
 
-        toremove = set(itertools.chain(*[
-            _expand_cloned(f._hide_froms)
-            for f in froms]))
+        toremove = set(
+            itertools.chain(*[_expand_cloned(f._hide_froms) for f in froms])
+        )
         if toremove:
             # if we're maintaining clones of froms,
             # add the copies out to the toremove list.  only include
             # clones that are lexical equivalents.
             if self._from_cloned:
                 toremove.update(
-                    self._from_cloned[f] for f in
-                    toremove.intersection(self._from_cloned)
+                    self._from_cloned[f]
+                    for f in toremove.intersection(self._from_cloned)
                     if self._from_cloned[f]._is_lexical_equivalent(f)
                 )
             # filter out to FROM clauses not in the list,
@@ -2822,41 +2964,53 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             to_correlate = self._correlate
             if to_correlate:
                 froms = [
-                    f for f in froms if f not in
-                    _cloned_intersection(
+                    f
+                    for f in froms
+                    if f
+                    not in _cloned_intersection(
                         _cloned_intersection(
-                            froms, explicit_correlate_froms or ()),
-                        to_correlate
+                            froms, explicit_correlate_froms or ()
+                        ),
+                        to_correlate,
                     )
                 ]
 
         if self._correlate_except is not None:
 
             froms = [
-                f for f in froms if f not in
-                _cloned_difference(
+                f
+                for f in froms
+                if f
+                not in _cloned_difference(
                     _cloned_intersection(
-                        froms, explicit_correlate_froms or ()),
-                    self._correlate_except
+                        froms, explicit_correlate_froms or ()
+                    ),
+                    self._correlate_except,
                 )
             ]
 
-        if self._auto_correlate and \
-                implicit_correlate_froms and \
-                len(froms) > 1:
+        if (
+            self._auto_correlate
+            and implicit_correlate_froms
+            and len(froms) > 1
+        ):
 
             froms = [
-                f for f in froms if f not in
-                _cloned_intersection(froms, implicit_correlate_froms)
+                f
+                for f in froms
+                if f
+                not in _cloned_intersection(froms, implicit_correlate_froms)
             ]
 
             if not len(froms):
-                raise exc.InvalidRequestError("Select statement '%s"
-                                              "' returned no FROM clauses "
-                                              "due to auto-correlation; "
-                                              "specify correlate(<tables>) "
-                                              "to control correlation "
-                                              "manually." % self)
+                raise exc.InvalidRequestError(
+                    "Select statement '%s"
+                    "' returned no FROM clauses "
+                    "due to auto-correlation; "
+                    "specify correlate(<tables>) "
+                    "to control correlation "
+                    "manually." % self
+                )
 
         return froms
 
@@ -2871,7 +3025,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         return self._get_display_froms()
 
-    def with_statement_hint(self, text, dialect_name='*'):
+    def with_statement_hint(self, text, dialect_name="*"):
         """add a statement hint to this :class:`.Select`.
 
         This method is similar to :meth:`.Select.with_hint` except that
@@ -2892,7 +3046,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         return self.with_hint(None, text, dialect_name)
 
     @_generative
-    def with_hint(self, selectable, text, dialect_name='*'):
+    def with_hint(self, selectable, text, dialect_name="*"):
         r"""Add an indexing or other executional context hint for the given
         selectable to this :class:`.Select`.
 
@@ -2926,17 +3080,18 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         """
         if selectable is None:
-            self._statement_hints += ((dialect_name, text), )
+            self._statement_hints += ((dialect_name, text),)
         else:
-            self._hints = self._hints.union(
-                {(selectable, dialect_name): text})
+            self._hints = self._hints.union({(selectable, dialect_name): text})
 
     @property
     def type(self):
-        raise exc.InvalidRequestError("Select objects don't have a type.  "
-                                      "Call as_scalar() on this Select "
-                                      "object to return a 'scalar' version "
-                                      "of this Select.")
+        raise exc.InvalidRequestError(
+            "Select objects don't have a type.  "
+            "Call as_scalar() on this Select "
+            "object to return a 'scalar' version "
+            "of this Select."
+        )
 
     @_memoized_property.method
     def locate_all_froms(self):
@@ -2963,10 +3118,13 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         with_cols = dict(
             (c._resolve_label or c._label or c.key, c)
             for c in _select_iterables(self._raw_columns)
-            if c._allow_label_resolve)
+            if c._allow_label_resolve
+        )
         only_froms = dict(
-            (c.key, c) for c in
-            _select_iterables(self.froms) if c._allow_label_resolve)
+            (c.key, c)
+            for c in _select_iterables(self.froms)
+            if c._allow_label_resolve
+        )
         only_cols = with_cols.copy()
         for key, value in only_froms.items():
             with_cols.setdefault(key, value)
@@ -2997,11 +3155,13 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         # gets cleared on each generation.  previously we were "baking"
         # _froms into self._from_obj.
         self._from_cloned = from_cloned = dict(
-            (f, clone(f, **kw)) for f in self._from_obj.union(self._froms))
+            (f, clone(f, **kw)) for f in self._from_obj.union(self._froms)
+        )
 
         # 3. update persistent _from_obj with the cloned versions.
-        self._from_obj = util.OrderedSet(from_cloned[f] for f in
-                                         self._from_obj)
+        self._from_obj = util.OrderedSet(
+            from_cloned[f] for f in self._from_obj
+        )
 
         # the _correlate collection is done separately, what can happen
         # here is the same item is _correlate as in _from_obj but the
@@ -3009,16 +3169,22 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         # RelationshipProperty.Comparator._criterion_exists() does
         # this). Also keep _correlate liberally open with its previous
         # contents, as this set is used for matching, not rendering.
-        self._correlate = set(clone(f) for f in
-                              self._correlate).union(self._correlate)
+        self._correlate = set(clone(f) for f in self._correlate).union(
+            self._correlate
+        )
         # 4. clone other things.   The difficulty here is that Column
         # objects are not actually cloned, and refer to their original
         # .table, resulting in the wrong "from" parent after a clone
         # operation.  Hence _from_cloned and _from_obj supersede what is
         # present here.
         self._raw_columns = [clone(c, **kw) for c in self._raw_columns]
-        for attr in '_whereclause', '_having', '_order_by_clause', \
-                '_group_by_clause', '_for_update_arg':
+        for attr in (
+            "_whereclause",
+            "_having",
+            "_order_by_clause",
+            "_group_by_clause",
+            "_for_update_arg",
+        ):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 
@@ -3029,12 +3195,21 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     def get_children(self, column_collections=True, **kwargs):
         """return child elements as per the ClauseElement specification."""
 
-        return (column_collections and list(self.columns) or []) + \
-            self._raw_columns + list(self._froms) + \
-            [x for x in
-                (self._whereclause, self._having,
-                    self._order_by_clause, self._group_by_clause)
-             if x is not None]
+        return (
+            (column_collections and list(self.columns) or [])
+            + self._raw_columns
+            + list(self._froms)
+            + [
+                x
+                for x in (
+                    self._whereclause,
+                    self._having,
+                    self._order_by_clause,
+                    self._group_by_clause,
+                )
+                if x is not None
+            ]
+        )
 
     @_generative
     def column(self, column):
@@ -3080,7 +3255,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             sqlutil.reduce_columns(
                 self.inner_columns,
                 only_synonyms=only_synonyms,
-                *(self._whereclause, ) + tuple(self._from_obj)
+                *(self._whereclause,) + tuple(self._from_obj)
             )
         )
 
@@ -3293,7 +3468,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._correlate = ()
         else:
             self._correlate = set(self._correlate).union(
-                _interpret_as_from(f) for f in fromclauses)
+                _interpret_as_from(f) for f in fromclauses
+            )
 
     @_generative
     def correlate_except(self, *fromclauses):
@@ -3335,7 +3511,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._correlate_except = ()
         else:
             self._correlate_except = set(self._correlate_except or ()).union(
-                _interpret_as_from(f) for f in fromclauses)
+                _interpret_as_from(f) for f in fromclauses
+            )
 
     def append_correlation(self, fromclause):
         """append the given correlation expression to this select()
@@ -3349,7 +3526,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         self._auto_correlate = False
         self._correlate = set(self._correlate).union(
-            _interpret_as_from(f) for f in fromclause)
+            _interpret_as_from(f) for f in fromclause
+        )
 
     def append_column(self, column):
         """append the given column expression to the columns clause of this
@@ -3401,8 +3579,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         """
 
         self._reset_exported()
-        self._whereclause = and_(
-            True_._ifnone(self._whereclause), whereclause)
+        self._whereclause = and_(True_._ifnone(self._whereclause), whereclause)
 
     def append_having(self, having):
         """append the given expression to this select() construct's HAVING
@@ -3449,19 +3626,17 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
             return [
                 name_for_col(c)
-                for c in util.unique_list(
-                    _select_iterables(self._raw_columns))
+                for c in util.unique_list(_select_iterables(self._raw_columns))
             ]
         else:
             return [
                 (None, c)
-                for c in util.unique_list(
-                    _select_iterables(self._raw_columns))
+                for c in util.unique_list(_select_iterables(self._raw_columns))
             ]
 
     def _populate_column_collection(self):
         for name, c in self._columns_plus_names:
-            if not hasattr(c, '_make_proxy'):
+            if not hasattr(c, "_make_proxy"):
                 continue
             if name is None:
                 key = None
@@ -3472,9 +3647,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             else:
                 key = None
 
-            c._make_proxy(self, key=key,
-                          name=name,
-                          name_is_truncatable=True)
+            c._make_proxy(self, key=key, name=name, name_is_truncatable=True)
 
     def _refresh_for_new_column(self, column):
         for fromclause in self._froms:
@@ -3487,15 +3660,16 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                             self,
                             name=col._label if self.use_labels else None,
                             key=col._key_label if self.use_labels else None,
-                            name_is_truncatable=True)
+                            name_is_truncatable=True,
+                        )
                 return None
         return None
 
     def _needs_parens_for_grouping(self):
         return (
-            self._limit_clause is not None or
-            self._offset_clause is not None or
-            bool(self._order_by_clause.clauses)
+            self._limit_clause is not None
+            or self._offset_clause is not None
+            or bool(self._order_by_clause.clauses)
         )
 
     def self_group(self, against=None):
@@ -3507,8 +3681,10 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         expressions and should not require explicit use.
 
         """
-        if isinstance(against, CompoundSelect) and \
-                not self._needs_parens_for_grouping():
+        if (
+            isinstance(against, CompoundSelect)
+            and not self._needs_parens_for_grouping()
+        ):
             return self
         return FromGrouping(self)
 
@@ -3572,6 +3748,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     def _set_bind(self, bind):
         self._bind = bind
+
     bind = property(bind, _set_bind)
 
 
@@ -3586,9 +3763,12 @@ class ScalarSelect(Generative, Grouping):
 
     @property
     def columns(self):
-        raise exc.InvalidRequestError('Scalar Select expression has no '
-                                      'columns; use this object directly '
-                                      'within a column-level expression.')
+        raise exc.InvalidRequestError(
+            "Scalar Select expression has no "
+            "columns; use this object directly "
+            "within a column-level expression."
+        )
+
     c = columns
 
     @_generative
@@ -3607,6 +3787,7 @@ class Exists(UnaryExpression):
     """Represent an ``EXISTS`` clause.
 
     """
+
     __visit_name__ = UnaryExpression.__visit_name__
     _from_objects = []
 
@@ -3632,12 +3813,16 @@ class Exists(UnaryExpression):
             s = args[0]
         else:
             if not args:
-                args = ([literal_column('*')],)
+                args = ([literal_column("*")],)
             s = Select(*args, **kwargs).as_scalar().self_group()
 
-        UnaryExpression.__init__(self, s, operator=operators.exists,
-                                 type_=type_api.BOOLEANTYPE,
-                                 wraps_column_expression=True)
+        UnaryExpression.__init__(
+            self,
+            s,
+            operator=operators.exists,
+            type_=type_api.BOOLEANTYPE,
+            wraps_column_expression=True,
+        )
 
     def select(self, whereclause=None, **params):
         return Select([self], whereclause, **params)
@@ -3692,6 +3877,7 @@ class TextAsFrom(SelectBase):
         :meth:`.TextClause.columns`
 
     """
+
     __visit_name__ = "text_as_from"
 
     _textual = True

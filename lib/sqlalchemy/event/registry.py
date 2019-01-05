@@ -141,11 +141,15 @@ class _EventKey(object):
     """
 
     __slots__ = (
-        'target', 'identifier', 'fn', 'fn_key', 'fn_wrap', 'dispatch_target'
+        "target",
+        "identifier",
+        "fn",
+        "fn_key",
+        "fn_wrap",
+        "dispatch_target",
     )
 
-    def __init__(self, target, identifier,
-                 fn, dispatch_target, _fn_wrap=None):
+    def __init__(self, target, identifier, fn, dispatch_target, _fn_wrap=None):
         self.target = target
         self.identifier = identifier
         self.fn = fn
@@ -169,7 +173,7 @@ class _EventKey(object):
                 self.identifier,
                 self.fn,
                 self.dispatch_target,
-                _fn_wrap=fn_wrap
+                _fn_wrap=fn_wrap,
             )
 
     def with_dispatch_target(self, dispatch_target):
@@ -181,15 +185,18 @@ class _EventKey(object):
                 self.identifier,
                 self.fn,
                 dispatch_target,
-                _fn_wrap=self.fn_wrap
+                _fn_wrap=self.fn_wrap,
             )
 
     def listen(self, *args, **kw):
         once = kw.pop("once", False)
         named = kw.pop("named", False)
 
-        target, identifier, fn = \
-            self.dispatch_target, self.identifier, self._listen_fn
+        target, identifier, fn = (
+            self.dispatch_target,
+            self.identifier,
+            self._listen_fn,
+        )
 
         dispatch_collection = getattr(target.dispatch, identifier)
 
@@ -198,8 +205,9 @@ class _EventKey(object):
         self = self.with_wrapper(adjusted_fn)
 
         if once:
-            self.with_wrapper(
-                util.only_once(self._listen_fn)).listen(*args, **kw)
+            self.with_wrapper(util.only_once(self._listen_fn)).listen(
+                *args, **kw
+            )
         else:
             self.dispatch_target.dispatch._listen(self, *args, **kw)
 
@@ -208,8 +216,8 @@ class _EventKey(object):
 
         if key not in _key_to_collection:
             raise exc.InvalidRequestError(
-                "No listeners found for event %s / %r / %s " %
-                (self.target, self.identifier, self.fn)
+                "No listeners found for event %s / %r / %s "
+                % (self.target, self.identifier, self.fn)
             )
         dispatch_reg = _key_to_collection.pop(key)
 
@@ -224,20 +232,24 @@ class _EventKey(object):
         """
         return self._key in _key_to_collection
 
-    def base_listen(self, propagate=False, insert=False,
-                    named=False):
+    def base_listen(self, propagate=False, insert=False, named=False):
 
-        target, identifier, fn = \
-            self.dispatch_target, self.identifier, self._listen_fn
+        target, identifier, fn = (
+            self.dispatch_target,
+            self.identifier,
+            self._listen_fn,
+        )
 
         dispatch_collection = getattr(target.dispatch, identifier)
 
         if insert:
-            dispatch_collection.\
-                for_modify(target.dispatch).insert(self, propagate)
+            dispatch_collection.for_modify(target.dispatch).insert(
+                self, propagate
+            )
         else:
-            dispatch_collection.\
-                for_modify(target.dispatch).append(self, propagate)
+            dispatch_collection.for_modify(target.dispatch).append(
+                self, propagate
+            )
 
     @property
     def _listen_fn(self):

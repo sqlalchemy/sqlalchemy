@@ -34,7 +34,7 @@ from ...util import langhelpers, py3k
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
-    driver = 'pymysql'
+    driver = "pymysql"
 
     description_encoding = None
 
@@ -51,7 +51,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     @langhelpers.memoized_property
     def supports_server_side_cursors(self):
         try:
-            cursors = __import__('pymysql.cursors').cursors
+            cursors = __import__("pymysql.cursors").cursors
             self._sscursor = cursors.SSCursor
             return True
         except (ImportError, AttributeError):
@@ -59,12 +59,14 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
 
     @classmethod
     def dbapi(cls):
-        return __import__('pymysql')
+        return __import__("pymysql")
 
     if py3k:
+
         def _extract_error_code(self, exception):
             if isinstance(exception.args[0], Exception):
                 exception = exception.args[0]
             return exception.args[0]
+
 
 dialect = MySQLDialect_pymysql

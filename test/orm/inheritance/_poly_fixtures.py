@@ -1,6 +1,10 @@
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.orm import relationship, mapper, \
-    create_session, polymorphic_union
+from sqlalchemy.orm import (
+    relationship,
+    mapper,
+    create_session,
+    polymorphic_union,
+)
 
 from sqlalchemy.testing import AssertsCompiledSQL, fixtures
 from sqlalchemy.testing.schema import Table, Column
@@ -44,8 +48,8 @@ class Page(fixtures.ComparableEntity):
 
 
 class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
-    run_inserts = 'once'
-    run_setup_mappers = 'once'
+    run_inserts = "once"
+    run_setup_mappers = "once"
     run_deletes = None
 
     @classmethod
@@ -53,57 +57,96 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
         global people, engineers, managers, boss
         global companies, paperwork, machines
 
-        companies = Table('companies', metadata,
-                          Column('company_id', Integer,
-                                 primary_key=True,
-                                 test_needs_autoincrement=True),
-                          Column('name', String(50)))
+        companies = Table(
+            "companies",
+            metadata,
+            Column(
+                "company_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("name", String(50)),
+        )
 
-        people = Table('people', metadata,
-                       Column('person_id', Integer,
-                              primary_key=True,
-                              test_needs_autoincrement=True),
-                       Column('company_id', Integer,
-                              ForeignKey('companies.company_id')),
-                       Column('name', String(50)),
-                       Column('type', String(30)))
+        people = Table(
+            "people",
+            metadata,
+            Column(
+                "person_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("company_id", Integer, ForeignKey("companies.company_id")),
+            Column("name", String(50)),
+            Column("type", String(30)),
+        )
 
-        engineers = Table('engineers', metadata,
-                          Column('person_id', Integer,
-                                 ForeignKey('people.person_id'),
-                                 primary_key=True),
-                          Column('status', String(30)),
-                          Column('engineer_name', String(50)),
-                          Column('primary_language', String(50)))
+        engineers = Table(
+            "engineers",
+            metadata,
+            Column(
+                "person_id",
+                Integer,
+                ForeignKey("people.person_id"),
+                primary_key=True,
+            ),
+            Column("status", String(30)),
+            Column("engineer_name", String(50)),
+            Column("primary_language", String(50)),
+        )
 
-        machines = Table('machines', metadata,
-                         Column('machine_id',
-                                Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-                         Column('name', String(50)),
-                         Column('engineer_id', Integer,
-                                ForeignKey('engineers.person_id')))
+        machines = Table(
+            "machines",
+            metadata,
+            Column(
+                "machine_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("name", String(50)),
+            Column("engineer_id", Integer, ForeignKey("engineers.person_id")),
+        )
 
-        managers = Table('managers', metadata,
-                         Column('person_id', Integer,
-                                ForeignKey('people.person_id'),
-                                primary_key=True),
-                         Column('status', String(30)),
-                         Column('manager_name', String(50)))
+        managers = Table(
+            "managers",
+            metadata,
+            Column(
+                "person_id",
+                Integer,
+                ForeignKey("people.person_id"),
+                primary_key=True,
+            ),
+            Column("status", String(30)),
+            Column("manager_name", String(50)),
+        )
 
-        boss = Table('boss', metadata,
-                     Column('boss_id', Integer,
-                            ForeignKey('managers.person_id'),
-                            primary_key=True),
-                     Column('golf_swing', String(30)))
+        boss = Table(
+            "boss",
+            metadata,
+            Column(
+                "boss_id",
+                Integer,
+                ForeignKey("managers.person_id"),
+                primary_key=True,
+            ),
+            Column("golf_swing", String(30)),
+        )
 
-        paperwork = Table('paperwork', metadata,
-                          Column('paperwork_id', Integer,
-                                 primary_key=True,
-                                 test_needs_autoincrement=True),
-                          Column('description', String(50)),
-                          Column('person_id', Integer,
-                                 ForeignKey('people.person_id')))
+        paperwork = Table(
+            "paperwork",
+            metadata,
+            Column(
+                "paperwork_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("description", String(50)),
+            Column("person_id", Integer, ForeignKey("people.person_id")),
+        )
 
     @classmethod
     def insert_data(cls):
@@ -115,10 +158,10 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             status="regular engineer",
             paperwork=[
                 Paperwork(description="tps report #1"),
-                Paperwork(description="tps report #2")],
-            machines=[
-                Machine(name='IBM ThinkPad'),
-                Machine(name='IPhone')])
+                Paperwork(description="tps report #2"),
+            ],
+            machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")],
+        )
 
         cls.e2 = e2 = Engineer(
             name="wally",
@@ -127,15 +170,18 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             status="regular engineer",
             paperwork=[
                 Paperwork(description="tps report #3"),
-                Paperwork(description="tps report #4")],
-            machines=[Machine(name="Commodore 64")])
+                Paperwork(description="tps report #4"),
+            ],
+            machines=[Machine(name="Commodore 64")],
+        )
 
         cls.b1 = b1 = Boss(
             name="pointy haired boss",
             golf_swing="fore",
             manager_name="pointy",
             status="da boss",
-            paperwork=[Paperwork(description="review #1")])
+            paperwork=[Paperwork(description="review #1")],
+        )
 
         cls.m1 = m1 = Manager(
             name="dogbert",
@@ -143,18 +189,18 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             status="regular manager",
             paperwork=[
                 Paperwork(description="review #2"),
-                Paperwork(description="review #3")])
+                Paperwork(description="review #3"),
+            ],
+        )
 
         cls.e3 = e3 = Engineer(
             name="vlad",
             engineer_name="vlad",
             primary_language="cobol",
             status="elbonian engineer",
-            paperwork=[
-                Paperwork(description='elbonian missive #3')],
-            machines=[
-                Machine(name="Commodore 64"),
-                Machine(name="IBM 3270")])
+            paperwork=[Paperwork(description="elbonian missive #3")],
+            machines=[Machine(name="Commodore 64"), Machine(name="IBM 3270")],
+        )
 
         cls.c1 = c1 = Company(name="MegaCorp, Inc.")
         c1.employees = [e1, e2, b1, m1]
@@ -177,9 +223,7 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             Machine(name="IBM ThinkPad"),
             Machine(name="IPhone"),
         ]
-        fixture[0].employees[1].machines = [
-            Machine(name="Commodore 64")
-        ]
+        fixture[0].employees[1].machines = [Machine(name="Commodore 64")]
         return fixture
 
     def _company_with_emps_fixture(self):
@@ -191,23 +235,27 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
                         name="dilbert",
                         engineer_name="dilbert",
                         primary_language="java",
-                        status="regular engineer"
+                        status="regular engineer",
                     ),
                     Engineer(
                         name="wally",
                         engineer_name="wally",
                         primary_language="c++",
-                        status="regular engineer"),
+                        status="regular engineer",
+                    ),
                     Boss(
                         name="pointy haired boss",
                         golf_swing="fore",
                         manager_name="pointy",
-                        status="da boss"),
+                        status="da boss",
+                    ),
                     Manager(
                         name="dogbert",
                         manager_name="dogbert",
-                        status="regular manager"),
-                ]),
+                        status="regular manager",
+                    ),
+                ],
+            ),
             Company(
                 name="Elbonia, Inc.",
                 employees=[
@@ -215,8 +263,10 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
                         name="vlad",
                         engineer_name="vlad",
                         primary_language="cobol",
-                        status="elbonian engineer")
-                ])
+                        status="elbonian engineer",
+                    )
+                ],
+            ),
         ]
 
     def _emps_wo_relationships_fixture(self):
@@ -225,66 +275,83 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
                 name="dilbert",
                 engineer_name="dilbert",
                 primary_language="java",
-                status="regular engineer"),
+                status="regular engineer",
+            ),
             Engineer(
                 name="wally",
                 engineer_name="wally",
                 primary_language="c++",
-                status="regular engineer"),
+                status="regular engineer",
+            ),
             Boss(
                 name="pointy haired boss",
                 golf_swing="fore",
                 manager_name="pointy",
-                status="da boss"),
+                status="da boss",
+            ),
             Manager(
                 name="dogbert",
                 manager_name="dogbert",
-                status="regular manager"),
+                status="regular manager",
+            ),
             Engineer(
                 name="vlad",
                 engineer_name="vlad",
                 primary_language="cobol",
-                status="elbonian engineer")
+                status="elbonian engineer",
+            ),
         ]
 
     @classmethod
     def setup_mappers(cls):
-        mapper(Company, companies,
-               properties={
-                   'employees': relationship(
-                       Person,
-                       order_by=people.c.person_id)})
+        mapper(
+            Company,
+            companies,
+            properties={
+                "employees": relationship(Person, order_by=people.c.person_id)
+            },
+        )
 
         mapper(Machine, machines)
 
-        person_with_polymorphic,\
-            manager_with_polymorphic = cls._get_polymorphics()
+        person_with_polymorphic, manager_with_polymorphic = (
+            cls._get_polymorphics()
+        )
 
-        mapper(Person, people,
-               with_polymorphic=person_with_polymorphic,
-               polymorphic_on=people.c.type,
-               polymorphic_identity='person',
-               properties={
-                   'paperwork': relationship(
-                       Paperwork,
-                       order_by=paperwork.c.paperwork_id)})
+        mapper(
+            Person,
+            people,
+            with_polymorphic=person_with_polymorphic,
+            polymorphic_on=people.c.type,
+            polymorphic_identity="person",
+            properties={
+                "paperwork": relationship(
+                    Paperwork, order_by=paperwork.c.paperwork_id
+                )
+            },
+        )
 
-        mapper(Engineer, engineers,
-               inherits=Person,
-               polymorphic_identity='engineer',
-               properties={
-                   'machines': relationship(
-                       Machine,
-                       order_by=machines.c.machine_id)})
+        mapper(
+            Engineer,
+            engineers,
+            inherits=Person,
+            polymorphic_identity="engineer",
+            properties={
+                "machines": relationship(
+                    Machine, order_by=machines.c.machine_id
+                )
+            },
+        )
 
-        mapper(Manager, managers,
-               with_polymorphic=manager_with_polymorphic,
-               inherits=Person,
-               polymorphic_identity='manager')
+        mapper(
+            Manager,
+            managers,
+            with_polymorphic=manager_with_polymorphic,
+            inherits=Person,
+            polymorphic_identity="manager",
+        )
 
-        mapper(Boss, boss,
-               inherits=Manager,
-               polymorphic_identity='boss')
+        mapper(Boss, boss, inherits=Manager, polymorphic_identity="boss")
 
         mapper(Paperwork, paperwork)
 
@@ -302,7 +369,7 @@ class _PolymorphicPolymorphic(_PolymorphicFixtureBase):
 
     @classmethod
     def _get_polymorphics(cls):
-        return '*', '*'
+        return "*", "*"
 
 
 class _PolymorphicUnions(_PolymorphicFixtureBase):
@@ -310,19 +377,24 @@ class _PolymorphicUnions(_PolymorphicFixtureBase):
 
     @classmethod
     def _get_polymorphics(cls):
-        people, engineers, managers, boss = \
-            cls.tables.people, cls.tables.engineers, \
-            cls.tables.managers, cls.tables.boss
-        person_join = polymorphic_union({
-            'engineer': people.join(engineers),
-            'manager': people.join(managers)},
-            None, 'pjoin')
+        people, engineers, managers, boss = (
+            cls.tables.people,
+            cls.tables.engineers,
+            cls.tables.managers,
+            cls.tables.boss,
+        )
+        person_join = polymorphic_union(
+            {
+                "engineer": people.join(engineers),
+                "manager": people.join(managers),
+            },
+            None,
+            "pjoin",
+        )
         manager_join = people.join(managers).outerjoin(boss)
-        person_with_polymorphic = (
-            [Person, Manager, Engineer], person_join)
-        manager_with_polymorphic = ('*', manager_join)
-        return person_with_polymorphic,\
-            manager_with_polymorphic
+        person_with_polymorphic = ([Person, Manager, Engineer], person_join)
+        manager_with_polymorphic = ("*", manager_join)
+        return person_with_polymorphic, manager_with_polymorphic
 
 
 class _PolymorphicAliasedJoins(_PolymorphicFixtureBase):
@@ -330,24 +402,27 @@ class _PolymorphicAliasedJoins(_PolymorphicFixtureBase):
 
     @classmethod
     def _get_polymorphics(cls):
-        people, engineers, managers, boss = \
-            cls.tables.people, cls.tables.engineers, \
-            cls.tables.managers, cls.tables.boss
-        person_join = people \
-            .outerjoin(engineers) \
-            .outerjoin(managers) \
-            .select(use_labels=True) \
-            .alias('pjoin')
-        manager_join = people \
-            .join(managers) \
-            .outerjoin(boss) \
-            .select(use_labels=True) \
-            .alias('mjoin')
-        person_with_polymorphic = (
-            [Person, Manager, Engineer], person_join)
-        manager_with_polymorphic = ('*', manager_join)
-        return person_with_polymorphic,\
-            manager_with_polymorphic
+        people, engineers, managers, boss = (
+            cls.tables.people,
+            cls.tables.engineers,
+            cls.tables.managers,
+            cls.tables.boss,
+        )
+        person_join = (
+            people.outerjoin(engineers)
+            .outerjoin(managers)
+            .select(use_labels=True)
+            .alias("pjoin")
+        )
+        manager_join = (
+            people.join(managers)
+            .outerjoin(boss)
+            .select(use_labels=True)
+            .alias("mjoin")
+        )
+        person_with_polymorphic = ([Person, Manager, Engineer], person_join)
+        manager_with_polymorphic = ("*", manager_join)
+        return person_with_polymorphic, manager_with_polymorphic
 
 
 class _PolymorphicJoins(_PolymorphicFixtureBase):
@@ -355,16 +430,17 @@ class _PolymorphicJoins(_PolymorphicFixtureBase):
 
     @classmethod
     def _get_polymorphics(cls):
-        people, engineers, managers, boss = \
-            cls.tables.people, cls.tables.engineers, \
-            cls.tables.managers, cls.tables.boss
+        people, engineers, managers, boss = (
+            cls.tables.people,
+            cls.tables.engineers,
+            cls.tables.managers,
+            cls.tables.boss,
+        )
         person_join = people.outerjoin(engineers).outerjoin(managers)
         manager_join = people.join(managers).outerjoin(boss)
-        person_with_polymorphic = (
-            [Person, Manager, Engineer], person_join)
-        manager_with_polymorphic = ('*', manager_join)
-        return person_with_polymorphic,\
-            manager_with_polymorphic
+        person_with_polymorphic = ([Person, Manager, Engineer], person_join)
+        manager_with_polymorphic = ("*", manager_join)
+        return person_with_polymorphic, manager_with_polymorphic
 
 
 class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
@@ -432,10 +508,10 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
 
     """
 
-    run_create_tables = 'each'
-    run_define_tables = 'each'
-    run_setup_classes = 'each'
-    run_setup_mappers = 'each'
+    run_create_tables = "each"
+    run_define_tables = "each"
+    run_setup_classes = "each"
+    run_setup_mappers = "each"
 
     def _fixture_from_geometry(self, geometry, base=None):
         if not base:
@@ -453,34 +529,30 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
                     "type": type_,
                     "__mapper_args__": {
                         "polymorphic_on": type_,
-                        "polymorphic_identity": key
-                    }
-
+                        "polymorphic_identity": key,
+                    },
                 }
             else:
-                items = {
-                    "__mapper_args__": {
-                        "polymorphic_identity": key
-                    }
-                }
+                items = {"__mapper_args__": {"polymorphic_identity": key}}
 
                 if not value.get("single", False):
                     items["__tablename__"] = key
                     items["id"] = Column(
                         ForeignKey("%s.id" % base.__tablename__),
-                        primary_key=True)
+                        primary_key=True,
+                    )
 
             items["%s_data" % key] = Column(String(50))
 
             # add other mapper options to be transferred here as needed.
-            for mapper_opt in ("polymorphic_load", ):
+            for mapper_opt in ("polymorphic_load",):
                 if mapper_opt in value:
                     items["__mapper_args__"][mapper_opt] = value[mapper_opt]
 
             if is_base:
-                klass = type(key, (fixtures.ComparableEntity, base, ), items)
+                klass = type(key, (fixtures.ComparableEntity, base), items)
             else:
-                klass = type(key, (base, ), items)
+                klass = type(key, (base,), items)
 
             if "subclasses" in value:
                 self._fixture_from_geometry(value["subclasses"], klass)
@@ -488,4 +560,3 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
         if is_base and self.metadata.tables and self.run_create_tables:
             self.tables.update(self.metadata.tables)
             self.metadata.create_all(config.db)
-

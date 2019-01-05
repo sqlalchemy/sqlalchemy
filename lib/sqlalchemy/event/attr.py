@@ -41,7 +41,7 @@ import collections
 
 
 class RefCollection(util.MemoizedSlots):
-    __slots__ = 'ref',
+    __slots__ = ("ref",)
 
     def _memoized_attr_ref(self):
         return weakref.ref(self, registry._collection_gced)
@@ -67,20 +67,27 @@ class _empty_collection(object):
 class _ClsLevelDispatch(RefCollection):
     """Class-level events on :class:`._Dispatch` classes."""
 
-    __slots__ = ('name', 'arg_names', 'has_kw',
-                 'legacy_signatures', '_clslevel', '__weakref__')
+    __slots__ = (
+        "name",
+        "arg_names",
+        "has_kw",
+        "legacy_signatures",
+        "_clslevel",
+        "__weakref__",
+    )
 
     def __init__(self, parent_dispatch_cls, fn):
         self.name = fn.__name__
         argspec = util.inspect_getargspec(fn)
         self.arg_names = argspec.args[1:]
         self.has_kw = bool(argspec.keywords)
-        self.legacy_signatures = list(reversed(
-            sorted(
-                getattr(fn, '_legacy_signatures', []),
-                key=lambda s: s[0]
+        self.legacy_signatures = list(
+            reversed(
+                sorted(
+                    getattr(fn, "_legacy_signatures", []), key=lambda s: s[0]
+                )
             )
-        ))
+        )
         fn.__doc__ = legacy._augment_fn_docs(self, parent_dispatch_cls, fn)
 
         self._clslevel = weakref.WeakKeyDictionary()
@@ -102,15 +109,18 @@ class _ClsLevelDispatch(RefCollection):
             argdict = dict(zip(self.arg_names, args))
             argdict.update(kw)
             return fn(**argdict)
+
         return wrap_kw
 
     def insert(self, event_key, propagate):
         target = event_key.dispatch_target
-        assert isinstance(target, type), \
-            "Class-level Event targets must be classes."
-        if not getattr(target, '_sa_propagate_class_events', True):
+        assert isinstance(
+            target, type
+        ), "Class-level Event targets must be classes."
+        if not getattr(target, "_sa_propagate_class_events", True):
             raise exc.InvalidRequestError(
-                "Can't assign an event directly to the %s class" % target)
+                "Can't assign an event directly to the %s class" % target
+            )
         stack = [target]
         while stack:
             cls = stack.pop(0)
@@ -125,11 +135,13 @@ class _ClsLevelDispatch(RefCollection):
 
     def append(self, event_key, propagate):
         target = event_key.dispatch_target
-        assert isinstance(target, type), \
-            "Class-level Event targets must be classes."
-        if not getattr(target, '_sa_propagate_class_events', True):
+        assert isinstance(
+            target, type
+        ), "Class-level Event targets must be classes."
+        if not getattr(target, "_sa_propagate_class_events", True):
             raise exc.InvalidRequestError(
-                "Can't assign an event directly to the %s class" % target)
+                "Can't assign an event directly to the %s class" % target
+            )
         stack = [target]
         while stack:
             cls = stack.pop(0)
@@ -143,7 +155,7 @@ class _ClsLevelDispatch(RefCollection):
         registry._stored_in_collection(event_key, self)
 
     def _assign_cls_collection(self, target):
-        if getattr(target, '_sa_propagate_class_events', True):
+        if getattr(target, "_sa_propagate_class_events", True):
             self._clslevel[target] = collections.deque()
         else:
             self._clslevel[target] = _empty_collection()
@@ -154,11 +166,9 @@ class _ClsLevelDispatch(RefCollection):
         clslevel = self._clslevel[target]
         for cls in target.__mro__[1:]:
             if cls in self._clslevel:
-                clslevel.extend([
-                    fn for fn
-                    in self._clslevel[cls]
-                    if fn not in clslevel
-                ])
+                clslevel.extend(
+                    [fn for fn in self._clslevel[cls] if fn not in clslevel]
+                )
 
     def remove(self, event_key):
         target = event_key.dispatch_target
@@ -209,7 +219,7 @@ class _EmptyListener(_InstanceLevelDispatch):
     propagate = frozenset()
     listeners = ()
 
-    __slots__ = 'parent', 'parent_listeners', 'name'
+    __slots__ = "parent", "parent_listeners", "name"
 
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
@@ -258,7 +268,7 @@ class _EmptyListener(_InstanceLevelDispatch):
 
 
 class _CompoundListener(_InstanceLevelDispatch):
-    __slots__ = '_exec_once_mutex', '_exec_once'
+    __slots__ = "_exec_once_mutex", "_exec_once"
 
     def _memoized_attr__exec_once_mutex(self):
         return threading.Lock()
@@ -306,8 +316,13 @@ class _ListenerCollection(_CompoundListener):
     """
 
     __slots__ = (
-        'parent_listeners', 'parent', 'name', 'listeners',
-        'propagate', '__weakref__')
+        "parent_listeners",
+        "parent",
+        "name",
+        "listeners",
+        "propagate",
+        "__weakref__",
+    )
 
     def __init__(self, parent, target_cls):
         if target_cls not in parent._clslevel:
@@ -335,11 +350,13 @@ class _ListenerCollection(_CompoundListener):
         existing_listeners = self.listeners
         existing_listener_set = set(existing_listeners)
         self.propagate.update(other.propagate)
-        other_listeners = [l for l
-                           in other.listeners
-                           if l not in existing_listener_set
-                           and not only_propagate or l in self.propagate
-                           ]
+        other_listeners = [
+            l
+            for l in other.listeners
+            if l not in existing_listener_set
+            and not only_propagate
+            or l in self.propagate
+        ]
 
         existing_listeners.extend(other_listeners)
 
@@ -368,7 +385,7 @@ class _ListenerCollection(_CompoundListener):
 
 
 class _JoinedListener(_CompoundListener):
-    __slots__ = 'parent', 'name', 'local', 'parent_listeners'
+    __slots__ = "parent", "name", "local", "parent_listeners"
 
     def __init__(self, parent, name, local):
         self._exec_once = False

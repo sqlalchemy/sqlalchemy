@@ -15,59 +15,112 @@ def produce_test(parent, child, direction):
     the old "no discriminator column" pattern is used.
 
     """
+
     class ABCTest(fixtures.MappedTest):
         @classmethod
         def define_tables(cls, metadata):
             global ta, tb, tc
             ta = ["a", metadata]
-            ta.append(Column('id', Integer, primary_key=True,
-                             test_needs_autoincrement=True)),
-            ta.append(Column('a_data', String(30)))
+            ta.append(
+                Column(
+                    "id",
+                    Integer,
+                    primary_key=True,
+                    test_needs_autoincrement=True,
+                )
+            ),
+            ta.append(Column("a_data", String(30)))
             if "a" == parent and direction == MANYTOONE:
-                ta.append(Column('child_id', Integer, ForeignKey(
-                    "%s.id" % child, use_alter=True, name="foo")))
+                ta.append(
+                    Column(
+                        "child_id",
+                        Integer,
+                        ForeignKey(
+                            "%s.id" % child, use_alter=True, name="foo"
+                        ),
+                    )
+                )
             elif "a" == child and direction == ONETOMANY:
-                ta.append(Column('parent_id', Integer, ForeignKey(
-                    "%s.id" % parent, use_alter=True, name="foo")))
+                ta.append(
+                    Column(
+                        "parent_id",
+                        Integer,
+                        ForeignKey(
+                            "%s.id" % parent, use_alter=True, name="foo"
+                        ),
+                    )
+                )
             ta = Table(*ta)
 
             tb = ["b", metadata]
-            tb.append(Column('id', Integer, ForeignKey(
-                "a.id"), primary_key=True, ))
+            tb.append(
+                Column("id", Integer, ForeignKey("a.id"), primary_key=True)
+            )
 
-            tb.append(Column('b_data', String(30)))
+            tb.append(Column("b_data", String(30)))
 
             if "b" == parent and direction == MANYTOONE:
-                tb.append(Column('child_id', Integer, ForeignKey(
-                    "%s.id" % child, use_alter=True, name="foo")))
+                tb.append(
+                    Column(
+                        "child_id",
+                        Integer,
+                        ForeignKey(
+                            "%s.id" % child, use_alter=True, name="foo"
+                        ),
+                    )
+                )
             elif "b" == child and direction == ONETOMANY:
-                tb.append(Column('parent_id', Integer, ForeignKey(
-                    "%s.id" % parent, use_alter=True, name="foo")))
+                tb.append(
+                    Column(
+                        "parent_id",
+                        Integer,
+                        ForeignKey(
+                            "%s.id" % parent, use_alter=True, name="foo"
+                        ),
+                    )
+                )
             tb = Table(*tb)
 
             tc = ["c", metadata]
-            tc.append(Column('id', Integer, ForeignKey(
-                "b.id"), primary_key=True, ))
+            tc.append(
+                Column("id", Integer, ForeignKey("b.id"), primary_key=True)
+            )
 
-            tc.append(Column('c_data', String(30)))
+            tc.append(Column("c_data", String(30)))
 
             if "c" == parent and direction == MANYTOONE:
-                tc.append(Column('child_id', Integer, ForeignKey(
-                    "%s.id" % child, use_alter=True, name="foo")))
+                tc.append(
+                    Column(
+                        "child_id",
+                        Integer,
+                        ForeignKey(
+                            "%s.id" % child, use_alter=True, name="foo"
+                        ),
+                    )
+                )
             elif "c" == child and direction == ONETOMANY:
-                tc.append(Column('parent_id', Integer, ForeignKey(
-                    "%s.id" % parent, use_alter=True, name="foo")))
+                tc.append(
+                    Column(
+                        "parent_id",
+                        Integer,
+                        ForeignKey(
+                            "%s.id" % parent, use_alter=True, name="foo"
+                        ),
+                    )
+                )
             tc = Table(*tc)
 
         def teardown(self):
             if direction == MANYTOONE:
                 parent_table = {"a": ta, "b": tb, "c": tc}[parent]
                 parent_table.update(
-                    values={parent_table.c.child_id: None}).execute()
+                    values={parent_table.c.child_id: None}
+                ).execute()
             elif direction == ONETOMANY:
                 child_table = {"a": ta, "b": tb, "c": tc}[child]
                 child_table.update(
-                    values={child_table.c.parent_id: None}).execute()
+                    values={child_table.c.parent_id: None}
+                ).execute()
             super(ABCTest, self).teardown()
 
         def test_roundtrip(self):
@@ -92,19 +145,31 @@ def produce_test(parent, child, direction):
                     remote_side = [child_table.c.id]
 
             abcjoin = polymorphic_union(
-                {"a": ta.select(tb.c.id == None,  # noqa
-                                from_obj=[ta.outerjoin(tb, onclause=atob)]),
-                 "b": ta.join(tb, onclause=atob).outerjoin(tc, onclause=btoc)\
-                        .select(tc.c.id == None).reduce_columns(),  # noqa
-                 "c": tc.join(tb, onclause=btoc).join(ta, onclause=atob)},
-                "type", "abcjoin"
+                {
+                    "a": ta.select(
+                        tb.c.id == None,  # noqa
+                        from_obj=[ta.outerjoin(tb, onclause=atob)],
+                    ),
+                    "b": ta.join(tb, onclause=atob)
+                    .outerjoin(tc, onclause=btoc)
+                    .select(tc.c.id == None)
+                    .reduce_columns(),  # noqa
+                    "c": tc.join(tb, onclause=btoc).join(ta, onclause=atob),
+                },
+                "type",
+                "abcjoin",
             )
 
             bcjoin = polymorphic_union(
-                {"b": ta.join(tb, onclause=atob).outerjoin(tc, onclause=btoc)
-                        .select(tc.c.id == None).reduce_columns(),  # noqa
-                 "c": tc.join(tb, onclause=btoc).join(ta, onclause=atob)},
-                "type", "bcjoin"
+                {
+                    "b": ta.join(tb, onclause=atob)
+                    .outerjoin(tc, onclause=btoc)
+                    .select(tc.c.id == None)
+                    .reduce_columns(),  # noqa
+                    "c": tc.join(tb, onclause=btoc).join(ta, onclause=atob),
+                },
+                "type",
+                "bcjoin",
             )
 
             class A(object):
@@ -117,15 +182,29 @@ def produce_test(parent, child, direction):
             class C(B):
                 pass
 
-            mapper(A, ta, polymorphic_on=abcjoin.c.type, with_polymorphic=(
-                '*', abcjoin), polymorphic_identity="a")
-            mapper(B, tb, polymorphic_on=bcjoin.c.type,
-                   with_polymorphic=('*', bcjoin),
-                   polymorphic_identity="b",
-                   inherits=A,
-                   inherit_condition=atob)
-            mapper(C, tc, polymorphic_identity="c",
-                   inherits=B, inherit_condition=btoc)
+            mapper(
+                A,
+                ta,
+                polymorphic_on=abcjoin.c.type,
+                with_polymorphic=("*", abcjoin),
+                polymorphic_identity="a",
+            )
+            mapper(
+                B,
+                tb,
+                polymorphic_on=bcjoin.c.type,
+                with_polymorphic=("*", bcjoin),
+                polymorphic_identity="b",
+                inherits=A,
+                inherit_condition=atob,
+            )
+            mapper(
+                C,
+                tc,
+                polymorphic_identity="c",
+                inherits=B,
+                inherit_condition=btoc,
+            )
 
             parent_mapper = class_mapper({ta: A, tb: B, tc: C}[parent_table])
             child_mapper = class_mapper({ta: A, tb: B, tc: C}[child_table])
@@ -135,19 +214,23 @@ def produce_test(parent, child, direction):
 
             parent_mapper.add_property(
                 "collection",
-                relationship(child_mapper,
-                             primaryjoin=relationshipjoin,
-                             foreign_keys=foreign_keys,
-                             order_by=child_mapper.c.id,
-                             remote_side=remote_side, uselist=True))
+                relationship(
+                    child_mapper,
+                    primaryjoin=relationshipjoin,
+                    foreign_keys=foreign_keys,
+                    order_by=child_mapper.c.id,
+                    remote_side=remote_side,
+                    uselist=True,
+                ),
+            )
 
             sess = create_session()
 
-            parent_obj = parent_class('parent1')
-            child_obj = child_class('child1')
-            somea = A('somea')
-            someb = B('someb')
-            somec = C('somec')
+            parent_obj = parent_class("parent1")
+            child_obj = child_class("child1")
+            somea = A("somea")
+            someb = B("someb")
+            somec = C("somec")
 
             # print "APPENDING", parent.__class__.__name__ , "TO",
             # child.__class__.__name__
@@ -155,11 +238,11 @@ def produce_test(parent, child, direction):
             sess.add(parent_obj)
             parent_obj.collection.append(child_obj)
             if direction == ONETOMANY:
-                child2 = child_class('child2')
+                child2 = child_class("child2")
                 parent_obj.collection.append(child2)
                 sess.add(child2)
             elif direction == MANYTOONE:
-                parent2 = parent_class('parent2')
+                parent2 = parent_class("parent2")
                 parent2.collection.append(child_obj)
                 sess.add(parent2)
             sess.add(somea)
@@ -193,7 +276,10 @@ def produce_test(parent, child, direction):
                 assert result2.collection[0].id == child_obj.id
 
     ABCTest.__name__ = "Test%sTo%s%s" % (
-        parent, child, (direction is ONETOMANY and "O2M" or "M2O"))
+        parent,
+        child,
+        (direction is ONETOMANY and "O2M" or "M2O"),
+    )
     return ABCTest
 
 

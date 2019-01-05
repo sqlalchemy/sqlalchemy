@@ -22,7 +22,7 @@ class SQLAlchemyError(Exception):
     code = None
 
     def __init__(self, *arg, **kw):
-        code = kw.pop('code', None)
+        code = kw.pop("code", None)
         if code is not None:
             self.code = code
         super(SQLAlchemyError, self).__init__(*arg, **kw)
@@ -33,7 +33,7 @@ class SQLAlchemyError(Exception):
         else:
             return (
                 "(Background on this error at: "
-                "http://sqlalche.me/e/%s)" % (self.code, )
+                "http://sqlalche.me/e/%s)" % (self.code,)
             )
 
     def _message(self):
@@ -48,9 +48,7 @@ class SQLAlchemyError(Exception):
         message = self._message()
 
         if self.code:
-            message = (
-                "%s %s" % (message, self._code_str())
-            )
+            message = "%s %s" % (message, self._code_str())
 
         return message
 
@@ -112,6 +110,7 @@ class CircularDependencyError(SQLAlchemyError):
       see :ref:`use_alter`.
 
     """
+
     def __init__(self, message, cycles, edges, msg=None, code=None):
         if msg is None:
             message += " (%s)" % ", ".join(repr(s) for s in cycles)
@@ -122,8 +121,7 @@ class CircularDependencyError(SQLAlchemyError):
         self.edges = edges
 
     def __reduce__(self):
-        return self.__class__, (None, self.cycles,
-                                self.edges, self.args[0])
+        return self.__class__, (None, self.cycles, self.edges, self.args[0])
 
 
 class CompileError(SQLAlchemyError):
@@ -140,8 +138,9 @@ class UnsupportedCompilationError(CompileError):
 
     def __init__(self, compiler, element_type):
         super(UnsupportedCompilationError, self).__init__(
-            "Compiler %r can't render element of type %s" %
-            (compiler, element_type))
+            "Compiler %r can't render element of type %s"
+            % (compiler, element_type)
+        )
 
 
 class IdentifierError(SQLAlchemyError):
@@ -158,6 +157,7 @@ class DisconnectionError(SQLAlchemyError):
     regarding the connection attempt.
 
     """
+
     invalidate_pool = False
 
 
@@ -175,6 +175,7 @@ class InvalidatePoolError(DisconnectionError):
     .. versionadded:: 1.2
 
     """
+
     invalidate_pool = True
 
 
@@ -213,6 +214,7 @@ class NoReferencedTableError(NoReferenceError):
     located.
 
     """
+
     def __init__(self, message, tname):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
@@ -226,14 +228,17 @@ class NoReferencedColumnError(NoReferenceError):
     located.
 
     """
+
     def __init__(self, message, tname, cname):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
         self.column_name = cname
 
     def __reduce__(self):
-        return self.__class__, (self.args[0], self.table_name,
-                                self.column_name)
+        return (
+            self.__class__,
+            (self.args[0], self.table_name, self.column_name),
+        )
 
 
 class NoSuchTableError(InvalidRequestError):
@@ -273,6 +278,7 @@ class DontWrapMixin(object):
 
     """
 
+
 # Moved to orm.exc; compatibility definition installed by orm import until 0.6
 UnmappedColumnError = None
 
@@ -310,8 +316,10 @@ class StatementError(SQLAlchemyError):
         self.detail.append(msg)
 
     def __reduce__(self):
-        return self.__class__, (self.args[0], self.statement,
-                                self.params, self.orig)
+        return (
+            self.__class__,
+            (self.args[0], self.statement, self.params, self.orig),
+        )
 
     def __str__(self):
         from sqlalchemy.sql import util
@@ -325,9 +333,7 @@ class StatementError(SQLAlchemyError):
         code_str = self._code_str()
         if code_str:
             details.append(code_str)
-        return ' '.join([
-            "(%s)" % det for det in self.detail
-        ] + details)
+        return " ".join(["(%s)" % det for det in self.detail] + details)
 
 
 class DBAPIError(StatementError):
@@ -353,18 +359,23 @@ class DBAPIError(StatementError):
 
     """
 
-    code = 'dbapi'
+    code = "dbapi"
 
     @classmethod
-    def instance(cls, statement, params,
-                 orig, dbapi_base_err,
-                 connection_invalidated=False,
-                 dialect=None):
+    def instance(
+        cls,
+        statement,
+        params,
+        orig,
+        dbapi_base_err,
+        connection_invalidated=False,
+        dialect=None,
+    ):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
-        if (isinstance(orig, BaseException) and
-                not isinstance(orig, Exception)) or \
-                isinstance(orig, DontWrapMixin):
+        if (
+            isinstance(orig, BaseException) and not isinstance(orig, Exception)
+        ) or isinstance(orig, DontWrapMixin):
             return orig
 
         if orig is not None:
@@ -372,17 +383,28 @@ class DBAPIError(StatementError):
             # raise a StatementError
             if isinstance(orig, SQLAlchemyError) and statement:
                 return StatementError(
-                    "(%s.%s) %s" %
-                    (orig.__class__.__module__, orig.__class__.__name__,
-                     orig.args[0]),
-                    statement, params, orig, code=orig.code
+                    "(%s.%s) %s"
+                    % (
+                        orig.__class__.__module__,
+                        orig.__class__.__name__,
+                        orig.args[0],
+                    ),
+                    statement,
+                    params,
+                    orig,
+                    code=orig.code,
                 )
             elif not isinstance(orig, dbapi_base_err) and statement:
                 return StatementError(
-                    "(%s.%s) %s" %
-                    (orig.__class__.__module__, orig.__class__.__name__,
-                     orig),
-                    statement, params, orig
+                    "(%s.%s) %s"
+                    % (
+                        orig.__class__.__module__,
+                        orig.__class__.__name__,
+                        orig,
+                    ),
+                    statement,
+                    params,
+                    orig,
                 )
 
             glob = globals()
@@ -390,31 +412,42 @@ class DBAPIError(StatementError):
                 name = super_.__name__
                 if dialect:
                     name = dialect.dbapi_exception_translation_map.get(
-                        name, name)
+                        name, name
+                    )
                 if name in glob and issubclass(glob[name], DBAPIError):
                     cls = glob[name]
                     break
 
-        return cls(statement, params, orig, connection_invalidated,
-                   code=cls.code)
+        return cls(
+            statement, params, orig, connection_invalidated, code=cls.code
+        )
 
     def __reduce__(self):
-        return self.__class__, (self.statement, self.params,
-                                self.orig, self.connection_invalidated)
+        return (
+            self.__class__,
+            (
+                self.statement,
+                self.params,
+                self.orig,
+                self.connection_invalidated,
+            ),
+        )
 
-    def __init__(self, statement, params, orig, connection_invalidated=False,
-                 code=None):
+    def __init__(
+        self, statement, params, orig, connection_invalidated=False, code=None
+    ):
         try:
             text = str(orig)
         except Exception as e:
-            text = 'Error in str() of DB-API-generated exception: ' + str(e)
+            text = "Error in str() of DB-API-generated exception: " + str(e)
         StatementError.__init__(
             self,
-            '(%s.%s) %s' % (
-                orig.__class__.__module__, orig.__class__.__name__, text, ),
+            "(%s.%s) %s"
+            % (orig.__class__.__module__, orig.__class__.__name__, text),
             statement,
             params,
-            orig, code=code
+            orig,
+            code=code,
         )
         self.connection_invalidated = connection_invalidated
 
@@ -466,7 +499,9 @@ class NotSupportedError(DatabaseError):
 
     code = "tw8g"
 
+
 # Warnings
+
 
 class SADeprecationWarning(DeprecationWarning):
     """Issued once per usage of a deprecated API."""

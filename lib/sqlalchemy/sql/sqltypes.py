@@ -15,10 +15,21 @@ import collections
 import json
 
 from . import elements
-from .type_api import TypeEngine, TypeDecorator, to_instance, Variant, \
-    Emulated, NativeForEmulated
-from .elements import quoted_name, TypeCoerce as type_coerce, _defer_name, \
-    Slice, _literal_as_binds
+from .type_api import (
+    TypeEngine,
+    TypeDecorator,
+    to_instance,
+    Variant,
+    Emulated,
+    NativeForEmulated,
+)
+from .elements import (
+    quoted_name,
+    TypeCoerce as type_coerce,
+    _defer_name,
+    Slice,
+    _literal_as_binds,
+)
 from .. import exc, util, processors
 from .base import _bind_or_error, SchemaEventTarget
 from . import operators
@@ -51,14 +62,15 @@ class _LookupExpressionAdapter(object):
         def _adapt_expression(self, op, other_comparator):
             othertype = other_comparator.type._type_affinity
             lookup = self.type._expression_adaptations.get(
-                op, self._blank_dict).get(
-                othertype, self.type)
+                op, self._blank_dict
+            ).get(othertype, self.type)
             if lookup is othertype:
                 return (op, other_comparator.type)
             elif lookup is self.type._type_affinity:
                 return (op, self.type)
             else:
                 return (op, to_instance(lookup))
+
     comparator_factory = Comparator
 
 
@@ -68,17 +80,16 @@ class Concatenable(object):
     typically strings."""
 
     class Comparator(TypeEngine.Comparator):
-
         def _adapt_expression(self, op, other_comparator):
-            if (op is operators.add and
-                    isinstance(
-                        other_comparator,
-                        (Concatenable.Comparator, NullType.Comparator)
-                    )):
+            if op is operators.add and isinstance(
+                other_comparator,
+                (Concatenable.Comparator, NullType.Comparator),
+            ):
                 return operators.concat_op, self.expr.type
             else:
                 return super(Concatenable.Comparator, self)._adapt_expression(
-                    op, other_comparator)
+                    op, other_comparator
+                )
 
     comparator_factory = Comparator
 
@@ -94,17 +105,15 @@ class Indexable(object):
     """
 
     class Comparator(TypeEngine.Comparator):
-
         def _setup_getitem(self, index):
             raise NotImplementedError()
 
         def __getitem__(self, index):
-            adjusted_op, adjusted_right_expr, result_type = \
-                self._setup_getitem(index)
+            adjusted_op, adjusted_right_expr, result_type = self._setup_getitem(
+                index
+            )
             return self.operate(
-                adjusted_op,
-                adjusted_right_expr,
-                result_type=result_type
+                adjusted_op, adjusted_right_expr, result_type=result_type
             )
 
     comparator_factory = Comparator
@@ -124,13 +133,16 @@ class String(Concatenable, TypeEngine):
 
     """
 
-    __visit_name__ = 'string'
+    __visit_name__ = "string"
 
-    def __init__(self, length=None, collation=None,
-                 convert_unicode=False,
-                 unicode_error=None,
-                 _warn_on_bytestring=False
-                 ):
+    def __init__(
+        self,
+        length=None,
+        collation=None,
+        convert_unicode=False,
+        unicode_error=None,
+        _warn_on_bytestring=False,
+    ):
         """
         Create a string-holding type.
 
@@ -207,9 +219,10 @@ class String(Concatenable, TypeEngine):
           strings from a column with varied or corrupted encodings.
 
         """
-        if unicode_error is not None and convert_unicode != 'force':
-            raise exc.ArgumentError("convert_unicode must be 'force' "
-                                    "when unicode_error is set.")
+        if unicode_error is not None and convert_unicode != "force":
+            raise exc.ArgumentError(
+                "convert_unicode must be 'force' " "when unicode_error is set."
+            )
 
         self.length = length
         self.collation = collation
@@ -222,23 +235,29 @@ class String(Concatenable, TypeEngine):
             value = value.replace("'", "''")
 
             if dialect.identifier_preparer._double_percents:
-                value = value.replace('%', '%%')
+                value = value.replace("%", "%%")
 
             return "'%s'" % value
+
         return process
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
-            if dialect.supports_unicode_binds and \
-                    self.convert_unicode != 'force':
+            if (
+                dialect.supports_unicode_binds
+                and self.convert_unicode != "force"
+            ):
                 if self._warn_on_bytestring:
+
                     def process(value):
                         if isinstance(value, util.binary_type):
                             util.warn_limited(
                                 "Unicode type received non-unicode "
                                 "bind param value %r.",
-                                (util.ellipses_string(value),))
+                                (util.ellipses_string(value),),
+                            )
                         return value
+
                     return process
                 else:
                     return None
@@ -253,29 +272,34 @@ class String(Concatenable, TypeEngine):
                         util.warn_limited(
                             "Unicode type received non-unicode bind "
                             "param value %r.",
-                            (util.ellipses_string(value),))
+                            (util.ellipses_string(value),),
+                        )
                     return value
+
             return process
         else:
             return None
 
     def result_processor(self, dialect, coltype):
         wants_unicode = self.convert_unicode or dialect.convert_unicode
-        needs_convert = wants_unicode and \
-            (dialect.returns_unicode_strings is not True or
-             self.convert_unicode in ('force', 'force_nocheck'))
+        needs_convert = wants_unicode and (
+            dialect.returns_unicode_strings is not True
+            or self.convert_unicode in ("force", "force_nocheck")
+        )
         needs_isinstance = (
-            needs_convert and
-            dialect.returns_unicode_strings and
-            self.convert_unicode != 'force_nocheck'
+            needs_convert
+            and dialect.returns_unicode_strings
+            and self.convert_unicode != "force_nocheck"
         )
         if needs_convert:
             if needs_isinstance:
                 return processors.to_conditional_unicode_processor_factory(
-                    dialect.encoding, self.unicode_error)
+                    dialect.encoding, self.unicode_error
+                )
             else:
                 return processors.to_unicode_processor_factory(
-                    dialect.encoding, self.unicode_error)
+                    dialect.encoding, self.unicode_error
+                )
         else:
             return None
 
@@ -301,7 +325,8 @@ class Text(String):
     argument here, it will be rejected by others.
 
     """
-    __visit_name__ = 'text'
+
+    __visit_name__ = "text"
 
 
 class Unicode(String):
@@ -360,7 +385,7 @@ class Unicode(String):
 
     """
 
-    __visit_name__ = 'unicode'
+    __visit_name__ = "unicode"
 
     def __init__(self, length=None, **kwargs):
         """
@@ -371,8 +396,8 @@ class Unicode(String):
         defaults to ``True``.
 
         """
-        kwargs.setdefault('convert_unicode', True)
-        kwargs.setdefault('_warn_on_bytestring', True)
+        kwargs.setdefault("convert_unicode", True)
+        kwargs.setdefault("_warn_on_bytestring", True)
         super(Unicode, self).__init__(length=length, **kwargs)
 
 
@@ -389,7 +414,7 @@ class UnicodeText(Text):
 
     """
 
-    __visit_name__ = 'unicode_text'
+    __visit_name__ = "unicode_text"
 
     def __init__(self, length=None, **kwargs):
         """
@@ -400,8 +425,8 @@ class UnicodeText(Text):
         defaults to ``True``.
 
         """
-        kwargs.setdefault('convert_unicode', True)
-        kwargs.setdefault('_warn_on_bytestring', True)
+        kwargs.setdefault("convert_unicode", True)
+        kwargs.setdefault("_warn_on_bytestring", True)
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
 
@@ -409,7 +434,7 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``int`` integers."""
 
-    __visit_name__ = 'integer'
+    __visit_name__ = "integer"
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
@@ -421,6 +446,7 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
     def literal_processor(self, dialect):
         def process(value):
             return str(value)
+
         return process
 
     @util.memoized_property
@@ -438,18 +464,9 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
                 Integer: self.__class__,
                 Numeric: Numeric,
             },
-            operators.div: {
-                Integer: self.__class__,
-                Numeric: Numeric,
-            },
-            operators.truediv: {
-                Integer: self.__class__,
-                Numeric: Numeric,
-            },
-            operators.sub: {
-                Integer: self.__class__,
-                Numeric: Numeric,
-            },
+            operators.div: {Integer: self.__class__, Numeric: Numeric},
+            operators.truediv: {Integer: self.__class__, Numeric: Numeric},
+            operators.sub: {Integer: self.__class__, Numeric: Numeric},
         }
 
 
@@ -462,7 +479,7 @@ class SmallInteger(Integer):
 
     """
 
-    __visit_name__ = 'small_integer'
+    __visit_name__ = "small_integer"
 
 
 class BigInteger(Integer):
@@ -474,7 +491,7 @@ class BigInteger(Integer):
 
     """
 
-    __visit_name__ = 'big_integer'
+    __visit_name__ = "big_integer"
 
 
 class Numeric(_LookupExpressionAdapter, TypeEngine):
@@ -517,12 +534,17 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
 
     """
 
-    __visit_name__ = 'numeric'
+    __visit_name__ = "numeric"
 
     _default_decimal_return_scale = 10
 
-    def __init__(self, precision=None, scale=None,
-                 decimal_return_scale=None, asdecimal=True):
+    def __init__(
+        self,
+        precision=None,
+        scale=None,
+        decimal_return_scale=None,
+        asdecimal=True,
+    ):
         """
         Construct a Numeric.
 
@@ -587,6 +609,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
     def literal_processor(self, dialect):
         def process(value):
             return str(value)
+
         return process
 
     @property
@@ -608,19 +631,23 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
                 # we're a "numeric", DBAPI will give us Decimal directly
                 return None
             else:
-                util.warn('Dialect %s+%s does *not* support Decimal '
-                          'objects natively, and SQLAlchemy must '
-                          'convert from floating point - rounding '
-                          'errors and other issues may occur. Please '
-                          'consider storing Decimal numbers as strings '
-                          'or integers on this platform for lossless '
-                          'storage.' % (dialect.name, dialect.driver))
+                util.warn(
+                    "Dialect %s+%s does *not* support Decimal "
+                    "objects natively, and SQLAlchemy must "
+                    "convert from floating point - rounding "
+                    "errors and other issues may occur. Please "
+                    "consider storing Decimal numbers as strings "
+                    "or integers on this platform for lossless "
+                    "storage." % (dialect.name, dialect.driver)
+                )
 
                 # we're a "numeric", DBAPI returns floats, convert.
                 return processors.to_decimal_processor_factory(
                     decimal.Decimal,
-                    self.scale if self.scale is not None
-                    else self._default_decimal_return_scale)
+                    self.scale
+                    if self.scale is not None
+                    else self._default_decimal_return_scale,
+                )
         else:
             if dialect.supports_native_decimal:
                 return processors.to_float
@@ -635,22 +662,13 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
                 Numeric: self.__class__,
                 Integer: self.__class__,
             },
-            operators.div: {
-                Numeric: self.__class__,
-                Integer: self.__class__,
-            },
+            operators.div: {Numeric: self.__class__, Integer: self.__class__},
             operators.truediv: {
                 Numeric: self.__class__,
                 Integer: self.__class__,
             },
-            operators.add: {
-                Numeric: self.__class__,
-                Integer: self.__class__,
-            },
-            operators.sub: {
-                Numeric: self.__class__,
-                Integer: self.__class__,
-            }
+            operators.add: {Numeric: self.__class__, Integer: self.__class__},
+            operators.sub: {Numeric: self.__class__, Integer: self.__class__},
         }
 
 
@@ -675,12 +693,17 @@ class Float(Numeric):
 
     """
 
-    __visit_name__ = 'float'
+    __visit_name__ = "float"
 
     scale = None
 
-    def __init__(self, precision=None, asdecimal=False,
-                 decimal_return_scale=None, **kwargs):
+    def __init__(
+        self,
+        precision=None,
+        asdecimal=False,
+        decimal_return_scale=None,
+        **kwargs
+    ):
         r"""
         Construct a Float.
 
@@ -713,14 +736,15 @@ class Float(Numeric):
         self.asdecimal = asdecimal
         self.decimal_return_scale = decimal_return_scale
         if kwargs:
-            util.warn_deprecated("Additional keyword arguments "
-                                 "passed to Float ignored.")
+            util.warn_deprecated(
+                "Additional keyword arguments " "passed to Float ignored."
+            )
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return processors.to_decimal_processor_factory(
-                decimal.Decimal,
-                self._effective_decimal_return_scale)
+                decimal.Decimal, self._effective_decimal_return_scale
+            )
         elif dialect.supports_native_decimal:
             return processors.to_float
         else:
@@ -746,7 +770,7 @@ class DateTime(_LookupExpressionAdapter, TypeEngine):
 
     """
 
-    __visit_name__ = 'datetime'
+    __visit_name__ = "datetime"
 
     def __init__(self, timezone=False):
         """Construct a new :class:`.DateTime`.
@@ -777,13 +801,8 @@ class DateTime(_LookupExpressionAdapter, TypeEngine):
         # static/functions-datetime.html.
 
         return {
-            operators.add: {
-                Interval: self.__class__,
-            },
-            operators.sub: {
-                Interval: self.__class__,
-                DateTime: Interval,
-            },
+            operators.add: {Interval: self.__class__},
+            operators.sub: {Interval: self.__class__, DateTime: Interval},
         }
 
 
@@ -791,7 +810,7 @@ class Date(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``datetime.date()`` objects."""
 
-    __visit_name__ = 'date'
+    __visit_name__ = "date"
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
@@ -814,12 +833,9 @@ class Date(_LookupExpressionAdapter, TypeEngine):
             operators.sub: {
                 # date - integer = date
                 Integer: self.__class__,
-
                 # date - date = integer.
                 Date: Integer,
-
                 Interval: DateTime,
-
                 # date - datetime = interval,
                 # this one is not in the PG docs
                 # but works
@@ -832,7 +848,7 @@ class Time(_LookupExpressionAdapter, TypeEngine):
 
     """A type for ``datetime.time()`` objects."""
 
-    __visit_name__ = 'time'
+    __visit_name__ = "time"
 
     def __init__(self, timezone=False):
         self.timezone = timezone
@@ -850,14 +866,8 @@ class Time(_LookupExpressionAdapter, TypeEngine):
         # static/functions-datetime.html.
 
         return {
-            operators.add: {
-                Date: DateTime,
-                Interval: self.__class__
-            },
-            operators.sub: {
-                Time: Interval,
-                Interval: self.__class__,
-            },
+            operators.add: {Date: DateTime, Interval: self.__class__},
+            operators.sub: {Time: Interval, Interval: self.__class__},
         }
 
 
@@ -872,6 +882,7 @@ class _Binary(TypeEngine):
         def process(value):
             value = value.decode(dialect.encoding).replace("'", "''")
             return "'%s'" % value
+
         return process
 
     @property
@@ -891,14 +902,17 @@ class _Binary(TypeEngine):
                 return DBAPIBinary(value)
             else:
                 return None
+
         return process
 
     # Python 3 has native bytes() type
     # both sqlite3 and pg8000 seem to return it,
     # psycopg2 as of 2.5 returns 'memoryview'
     if util.py2k:
+
         def result_processor(self, dialect, coltype):
             if util.jython:
+
                 def process(value):
                     if value is not None:
                         if isinstance(value, array.array):
@@ -906,15 +920,19 @@ class _Binary(TypeEngine):
                         return str(value)
                     else:
                         return None
+
             else:
                 process = processors.to_str
             return process
+
     else:
+
         def result_processor(self, dialect, coltype):
             def process(value):
                 if value is not None:
                     value = bytes(value)
                 return value
+
             return process
 
     def coerce_compared_value(self, op, value):
@@ -939,7 +957,7 @@ class LargeBinary(_Binary):
 
     """
 
-    __visit_name__ = 'large_binary'
+    __visit_name__ = "large_binary"
 
     def __init__(self, length=None):
         """
@@ -958,8 +976,9 @@ class Binary(LargeBinary):
     """Deprecated.  Renamed to LargeBinary."""
 
     def __init__(self, *arg, **kw):
-        util.warn_deprecated('The Binary type has been renamed to '
-                             'LargeBinary.')
+        util.warn_deprecated(
+            "The Binary type has been renamed to " "LargeBinary."
+        )
         LargeBinary.__init__(self, *arg, **kw)
 
 
@@ -986,8 +1005,15 @@ class SchemaType(SchemaEventTarget):
 
     """
 
-    def __init__(self, name=None, schema=None, metadata=None,
-                 inherit_schema=False, quote=None, _create_events=True):
+    def __init__(
+        self,
+        name=None,
+        schema=None,
+        metadata=None,
+        inherit_schema=False,
+        quote=None,
+        _create_events=True,
+    ):
         if name is not None:
             self.name = quoted_name(name, quote)
         else:
@@ -1001,12 +1027,12 @@ class SchemaType(SchemaEventTarget):
             event.listen(
                 self.metadata,
                 "before_create",
-                util.portable_instancemethod(self._on_metadata_create)
+                util.portable_instancemethod(self._on_metadata_create),
             )
             event.listen(
                 self.metadata,
                 "after_drop",
-                util.portable_instancemethod(self._on_metadata_drop)
+                util.portable_instancemethod(self._on_metadata_drop),
             )
 
     def _translate_schema(self, effective_schema, map_):
@@ -1018,7 +1044,7 @@ class SchemaType(SchemaEventTarget):
     def _variant_mapping_for_set_table(self, column):
         if isinstance(column.type, Variant):
             variant_mapping = column.type.mapping.copy()
-            variant_mapping['_default'] = column.type.impl
+            variant_mapping["_default"] = column.type.impl
         else:
             variant_mapping = None
         return variant_mapping
@@ -1036,15 +1062,15 @@ class SchemaType(SchemaEventTarget):
             table,
             "before_create",
             util.portable_instancemethod(
-                self._on_table_create,
-                {"variant_mapping": variant_mapping})
+                self._on_table_create, {"variant_mapping": variant_mapping}
+            ),
         )
         event.listen(
             table,
             "after_drop",
             util.portable_instancemethod(
-                self._on_table_drop,
-                {"variant_mapping": variant_mapping})
+                self._on_table_drop, {"variant_mapping": variant_mapping}
+            ),
         )
         if self.metadata is None:
             # TODO: what's the difference between self.metadata
@@ -1054,29 +1080,33 @@ class SchemaType(SchemaEventTarget):
                 "before_create",
                 util.portable_instancemethod(
                     self._on_metadata_create,
-                    {"variant_mapping": variant_mapping})
+                    {"variant_mapping": variant_mapping},
+                ),
             )
             event.listen(
                 table.metadata,
                 "after_drop",
                 util.portable_instancemethod(
                     self._on_metadata_drop,
-                    {"variant_mapping": variant_mapping})
+                    {"variant_mapping": variant_mapping},
+                ),
             )
 
     def copy(self, **kw):
         return self.adapt(self.__class__, _create_events=True)
 
     def adapt(self, impltype, **kw):
-        schema = kw.pop('schema', self.schema)
-        metadata = kw.pop('metadata', self.metadata)
-        _create_events = kw.pop('_create_events', False)
-        return impltype(name=self.name,
-                        schema=schema,
-                        inherit_schema=self.inherit_schema,
-                        metadata=metadata,
-                        _create_events=_create_events,
-                        **kw)
+        schema = kw.pop("schema", self.schema)
+        metadata = kw.pop("metadata", self.metadata)
+        _create_events = kw.pop("_create_events", False)
+        return impltype(
+            name=self.name,
+            schema=schema,
+            inherit_schema=self.inherit_schema,
+            metadata=metadata,
+            _create_events=_create_events,
+            **kw
+        )
 
     @property
     def bind(self):
@@ -1133,15 +1163,17 @@ class SchemaType(SchemaEventTarget):
             t._on_metadata_drop(target, bind, **kw)
 
     def _is_impl_for_variant(self, dialect, kw):
-        variant_mapping = kw.pop('variant_mapping', None)
+        variant_mapping = kw.pop("variant_mapping", None)
         if variant_mapping is None:
             return True
 
-        if dialect.name in variant_mapping and \
-                variant_mapping[dialect.name] is self:
+        if (
+            dialect.name in variant_mapping
+            and variant_mapping[dialect.name] is self
+        ):
             return True
         elif dialect.name not in variant_mapping:
-            return variant_mapping['_default'] is self
+            return variant_mapping["_default"] is self
 
 
 class Enum(Emulated, String, SchemaType):
@@ -1221,7 +1253,8 @@ class Enum(Emulated, String, SchemaType):
         :class:`.mysql.ENUM` - MySQL-specific type
 
     """
-    __visit_name__ = 'enum'
+
+    __visit_name__ = "enum"
 
     def __init__(self, *enums, **kw):
         r"""Construct an enum.
@@ -1323,15 +1356,15 @@ class Enum(Emulated, String, SchemaType):
         other arguments in kw to pass through.
 
         """
-        self.native_enum = kw.pop('native_enum', True)
-        self.create_constraint = kw.pop('create_constraint', True)
-        self.values_callable = kw.pop('values_callable', None)
+        self.native_enum = kw.pop("native_enum", True)
+        self.create_constraint = kw.pop("create_constraint", True)
+        self.values_callable = kw.pop("values_callable", None)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
 
-        convert_unicode = kw.pop('convert_unicode', None)
-        self.validate_strings = kw.pop('validate_strings', False)
+        convert_unicode = kw.pop("convert_unicode", None)
+        self.validate_strings = kw.pop("validate_strings", False)
 
         if convert_unicode is None:
             for e in self.enums:
@@ -1348,33 +1381,35 @@ class Enum(Emulated, String, SchemaType):
         self._valid_lookup[None] = self._object_lookup[None] = None
 
         super(Enum, self).__init__(
-            length=length,
-            convert_unicode=convert_unicode,
+            length=length, convert_unicode=convert_unicode
         )
 
         if self.enum_class:
-            kw.setdefault('name', self.enum_class.__name__.lower())
+            kw.setdefault("name", self.enum_class.__name__.lower())
         SchemaType.__init__(
             self,
-            name=kw.pop('name', None),
-            schema=kw.pop('schema', None),
-            metadata=kw.pop('metadata', None),
-            inherit_schema=kw.pop('inherit_schema', False),
-            quote=kw.pop('quote', None),
-            _create_events=kw.pop('_create_events', True)
+            name=kw.pop("name", None),
+            schema=kw.pop("schema", None),
+            metadata=kw.pop("metadata", None),
+            inherit_schema=kw.pop("inherit_schema", False),
+            quote=kw.pop("quote", None),
+            _create_events=kw.pop("_create_events", True),
         )
 
     def _parse_into_values(self, enums, kw):
-        if not enums and '_enums' in kw:
-            enums = kw.pop('_enums')
+        if not enums and "_enums" in kw:
+            enums = kw.pop("_enums")
 
-        if len(enums) == 1 and hasattr(enums[0], '__members__'):
+        if len(enums) == 1 and hasattr(enums[0], "__members__"):
             self.enum_class = enums[0]
             if self.values_callable:
                 values = self.values_callable(self.enum_class)
             else:
                 values = list(self.enum_class.__members__)
-            objects = [self.enum_class.__members__[k] for k in self.enum_class.__members__]
+            objects = [
+                self.enum_class.__members__[k]
+                for k in self.enum_class.__members__
+            ]
             return values, objects
         else:
             self.enum_class = None
@@ -1383,18 +1418,16 @@ class Enum(Emulated, String, SchemaType):
     def _setup_for_values(self, values, objects, kw):
         self.enums = list(values)
 
-        self._valid_lookup = dict(
-            zip(reversed(objects), reversed(values))
-        )
+        self._valid_lookup = dict(zip(reversed(objects), reversed(values)))
 
-        self._object_lookup = dict(
-            zip(values, objects)
-        )
+        self._object_lookup = dict(zip(values, objects))
 
-        self._valid_lookup.update([
-            (value, self._valid_lookup[self._object_lookup[value]])
-            for value in values
-        ])
+        self._valid_lookup.update(
+            [
+                (value, self._valid_lookup[self._object_lookup[value]])
+                for value in values
+            ]
+        )
 
     @property
     def native(self):
@@ -1412,22 +1445,24 @@ class Enum(Emulated, String, SchemaType):
             # here between an INSERT statement and a criteria used in a SELECT,
             # for now we're staying conservative w/ behavioral changes (perhaps
             # someone has a trigger that handles strings on INSERT)
-            if not self.validate_strings and \
-                    isinstance(elem, compat.string_types):
+            if not self.validate_strings and isinstance(
+                elem, compat.string_types
+            ):
                 return elem
             else:
                 raise LookupError(
-                    '"%s" is not among the defined enum values' % elem)
+                    '"%s" is not among the defined enum values' % elem
+                )
 
     class Comparator(String.Comparator):
-
         def _adapt_expression(self, op, other_comparator):
             op, typ = super(Enum.Comparator, self)._adapt_expression(
-                op, other_comparator)
+                op, other_comparator
+            )
             if op is operators.concat_op:
                 typ = String(
-                    self.type.length,
-                    convert_unicode=self.type.convert_unicode)
+                    self.type.length, convert_unicode=self.type.convert_unicode
+                )
             return op, typ
 
     comparator_factory = Comparator
@@ -1437,38 +1472,40 @@ class Enum(Emulated, String, SchemaType):
             return self._object_lookup[elem]
         except KeyError:
             raise LookupError(
-                '"%s" is not among the defined enum values' % elem)
+                '"%s" is not among the defined enum values' % elem
+            )
 
     def __repr__(self):
         return util.generic_repr(
             self,
-            additional_kw=[('native_enum', True)],
+            additional_kw=[("native_enum", True)],
             to_inspect=[Enum, SchemaType],
         )
 
     def adapt_to_emulated(self, impltype, **kw):
         kw.setdefault("convert_unicode", self.convert_unicode)
         kw.setdefault("validate_strings", self.validate_strings)
-        kw.setdefault('name', self.name)
-        kw.setdefault('schema', self.schema)
-        kw.setdefault('inherit_schema', self.inherit_schema)
-        kw.setdefault('metadata', self.metadata)
-        kw.setdefault('_create_events', False)
-        kw.setdefault('native_enum', self.native_enum)
-        kw.setdefault('values_callable', self.values_callable)
-        kw.setdefault('create_constraint', self.create_constraint)
-        assert '_enums' in kw
+        kw.setdefault("name", self.name)
+        kw.setdefault("schema", self.schema)
+        kw.setdefault("inherit_schema", self.inherit_schema)
+        kw.setdefault("metadata", self.metadata)
+        kw.setdefault("_create_events", False)
+        kw.setdefault("native_enum", self.native_enum)
+        kw.setdefault("values_callable", self.values_callable)
+        kw.setdefault("create_constraint", self.create_constraint)
+        assert "_enums" in kw
         return impltype(**kw)
 
     def adapt(self, impltype, **kw):
-        kw['_enums'] = self._enums_argument
+        kw["_enums"] = self._enums_argument
         return super(Enum, self).adapt(impltype, **kw)
 
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
             return False
-        return not self.native_enum or \
-            not compiler.dialect.supports_native_enum
+        return (
+            not self.native_enum or not compiler.dialect.supports_native_enum
+        )
 
     @util.dependencies("sqlalchemy.sql.schema")
     def _set_table(self, schema, column, table):
@@ -1484,20 +1521,21 @@ class Enum(Emulated, String, SchemaType):
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
                 self._should_create_constraint,
-                {"variant_mapping": variant_mapping}),
-            _type_bound=True
+                {"variant_mapping": variant_mapping},
+            ),
+            _type_bound=True,
         )
         assert e.table is table
 
     def literal_processor(self, dialect):
-        parent_processor = super(
-            Enum, self).literal_processor(dialect)
+        parent_processor = super(Enum, self).literal_processor(dialect)
 
         def process(value):
             value = self._db_value_for_elem(value)
             if parent_processor:
                 value = parent_processor(value)
             return value
+
         return process
 
     def bind_processor(self, dialect):
@@ -1511,8 +1549,7 @@ class Enum(Emulated, String, SchemaType):
         return process
 
     def result_processor(self, dialect, coltype):
-        parent_processor = super(Enum, self).result_processor(
-            dialect, coltype)
+        parent_processor = super(Enum, self).result_processor(dialect, coltype)
 
         def process(value):
             if parent_processor:
@@ -1549,8 +1586,9 @@ class PickleType(TypeDecorator):
 
     impl = LargeBinary
 
-    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL,
-                 pickler=None, comparator=None):
+    def __init__(
+        self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, comparator=None
+    ):
         """
         Construct a PickleType.
 
@@ -1571,40 +1609,46 @@ class PickleType(TypeDecorator):
         super(PickleType, self).__init__()
 
     def __reduce__(self):
-        return PickleType, (self.protocol,
-                            None,
-                            self.comparator)
+        return PickleType, (self.protocol, None, self.comparator)
 
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)
         dumps = self.pickler.dumps
         protocol = self.protocol
         if impl_processor:
+
             def process(value):
                 if value is not None:
                     value = dumps(value, protocol)
                 return impl_processor(value)
+
         else:
+
             def process(value):
                 if value is not None:
                     value = dumps(value, protocol)
                 return value
+
         return process
 
     def result_processor(self, dialect, coltype):
         impl_processor = self.impl.result_processor(dialect, coltype)
         loads = self.pickler.loads
         if impl_processor:
+
             def process(value):
                 value = impl_processor(value)
                 if value is None:
                     return None
                 return loads(value)
+
         else:
+
             def process(value):
                 if value is None:
                     return None
                 return loads(value)
+
         return process
 
     def compare_values(self, x, y):
@@ -1636,11 +1680,10 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 
     """
 
-    __visit_name__ = 'boolean'
+    __visit_name__ = "boolean"
     native = True
 
-    def __init__(
-            self, create_constraint=True, name=None, _create_events=True):
+    def __init__(self, create_constraint=True, name=None, _create_events=True):
         """Construct a Boolean.
 
         :param create_constraint: defaults to True.  If the boolean
@@ -1658,8 +1701,10 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
             return False
-        return not compiler.dialect.supports_native_boolean and \
-            compiler.dialect.non_native_boolean_check_constraint
+        return (
+            not compiler.dialect.supports_native_boolean
+            and compiler.dialect.non_native_boolean_check_constraint
+        )
 
     @util.dependencies("sqlalchemy.sql.schema")
     def _set_table(self, schema, column, table):
@@ -1673,8 +1718,9 @@ class Boolean(Emulated, TypeEngine, SchemaType):
             name=_defer_name(self.name),
             _create_rule=util.portable_instancemethod(
                 self._should_create_constraint,
-                {"variant_mapping": variant_mapping}),
-            _type_bound=True
+                {"variant_mapping": variant_mapping},
+            ),
+            _type_bound=True,
         )
         assert e.table is table
 
@@ -1687,11 +1733,11 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     def _strict_as_bool(self, value):
         if value not in self._strict_bools:
             if not isinstance(value, int):
-                raise TypeError(
-                    "Not a boolean value: %r" % value)
+                raise TypeError("Not a boolean value: %r" % value)
             else:
                 raise ValueError(
-                    "Value %r is not None, True, or False" % value)
+                    "Value %r is not None, True, or False" % value
+                )
         return value
 
     def literal_processor(self, dialect):
@@ -1701,6 +1747,7 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 
         def process(value):
             return true if self._strict_as_bool(value) else false
+
         return process
 
     def bind_processor(self, dialect):
@@ -1715,6 +1762,7 @@ class Boolean(Emulated, TypeEngine, SchemaType):
             if value is not None:
                 value = _coerce(value)
             return value
+
         return process
 
     def result_processor(self, dialect, coltype):
@@ -1737,18 +1785,10 @@ class _AbstractInterval(_LookupExpressionAdapter, TypeEngine):
                 DateTime: DateTime,
                 Time: Time,
             },
-            operators.sub: {
-                Interval: self.__class__
-            },
-            operators.mul: {
-                Numeric: self.__class__
-            },
-            operators.truediv: {
-                Numeric: self.__class__
-            },
-            operators.div: {
-                Numeric: self.__class__
-            }
+            operators.sub: {Interval: self.__class__},
+            operators.mul: {Numeric: self.__class__},
+            operators.truediv: {Numeric: self.__class__},
+            operators.div: {Numeric: self.__class__},
         }
 
     @property
@@ -1781,9 +1821,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
     impl = DateTime
     epoch = dt.datetime.utcfromtimestamp(0)
 
-    def __init__(self, native=True,
-                 second_precision=None,
-                 day_precision=None):
+    def __init__(self, native=True, second_precision=None, day_precision=None):
         """Construct an Interval object.
 
         :param native: when True, use the actual
@@ -1816,31 +1854,39 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
         impl_processor = self.impl.bind_processor(dialect)
         epoch = self.epoch
         if impl_processor:
+
             def process(value):
                 if value is not None:
                     value = epoch + value
                 return impl_processor(value)
+
         else:
+
             def process(value):
                 if value is not None:
                     value = epoch + value
                 return value
+
         return process
 
     def result_processor(self, dialect, coltype):
         impl_processor = self.impl.result_processor(dialect, coltype)
         epoch = self.epoch
         if impl_processor:
+
             def process(value):
                 value = impl_processor(value)
                 if value is None:
                     return None
                 return value - epoch
+
         else:
+
             def process(value):
                 if value is None:
                     return None
                 return value - epoch
+
         return process
 
 
@@ -1982,10 +2028,11 @@ class JSON(Indexable, TypeEngine):
 
 
     """
-    __visit_name__ = 'JSON'
+
+    __visit_name__ = "JSON"
 
     hashable = False
-    NULL = util.symbol('JSON_NULL')
+    NULL = util.symbol("JSON_NULL")
     """Describe the json value of NULL.
 
     This value is used to force the JSON value of ``"null"`` to be
@@ -2105,20 +2152,25 @@ class JSON(Indexable, TypeEngine):
     class Comparator(Indexable.Comparator, Concatenable.Comparator):
         """Define comparison operations for :class:`.types.JSON`."""
 
-        @util.dependencies('sqlalchemy.sql.default_comparator')
+        @util.dependencies("sqlalchemy.sql.default_comparator")
         def _setup_getitem(self, default_comparator, index):
-            if not isinstance(index, util.string_types) and \
-                    isinstance(index, compat.collections_abc.Sequence):
+            if not isinstance(index, util.string_types) and isinstance(
+                index, compat.collections_abc.Sequence
+            ):
                 index = default_comparator._check_literal(
-                    self.expr, operators.json_path_getitem_op,
-                    index, bindparam_type=JSON.JSONPathType
+                    self.expr,
+                    operators.json_path_getitem_op,
+                    index,
+                    bindparam_type=JSON.JSONPathType,
                 )
 
                 operator = operators.json_path_getitem_op
             else:
                 index = default_comparator._check_literal(
-                    self.expr, operators.json_getitem_op,
-                    index, bindparam_type=JSON.JSONIndexType
+                    self.expr,
+                    operators.json_getitem_op,
+                    index,
+                    bindparam_type=JSON.JSONIndexType,
                 )
                 operator = operators.json_getitem_op
 
@@ -2168,6 +2220,7 @@ class JSON(Indexable, TypeEngine):
             if string_process:
                 value = string_process(value)
             return json_deserializer(value)
+
         return process
 
 
@@ -2262,7 +2315,8 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
         :class:`.postgresql.ARRAY`
 
     """
-    __visit_name__ = 'ARRAY'
+
+    __visit_name__ = "ARRAY"
 
     zero_indexes = False
     """if True, Python zero-based indexes should be interpreted as one-based
@@ -2281,21 +2335,23 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             if isinstance(index, slice):
                 return_type = self.type
                 if self.type.zero_indexes:
-                    index = slice(
-                        index.start + 1,
-                        index.stop + 1,
-                        index.step
-                    )
+                    index = slice(index.start + 1, index.stop + 1, index.step)
                 index = Slice(
                     _literal_as_binds(
-                        index.start, name=self.expr.key,
-                        type_=type_api.INTEGERTYPE),
+                        index.start,
+                        name=self.expr.key,
+                        type_=type_api.INTEGERTYPE,
+                    ),
                     _literal_as_binds(
-                        index.stop, name=self.expr.key,
-                        type_=type_api.INTEGERTYPE),
+                        index.stop,
+                        name=self.expr.key,
+                        type_=type_api.INTEGERTYPE,
+                    ),
                     _literal_as_binds(
-                        index.step, name=self.expr.key,
-                        type_=type_api.INTEGERTYPE)
+                        index.step,
+                        name=self.expr.key,
+                        type_=type_api.INTEGERTYPE,
+                    ),
                 )
             else:
                 if self.type.zero_indexes:
@@ -2303,16 +2359,18 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 if self.type.dimensions is None or self.type.dimensions == 1:
                     return_type = self.type.item_type
                 else:
-                    adapt_kw = {'dimensions': self.type.dimensions - 1}
+                    adapt_kw = {"dimensions": self.type.dimensions - 1}
                     return_type = self.type.adapt(
-                        self.type.__class__, **adapt_kw)
+                        self.type.__class__, **adapt_kw
+                    )
 
             return operators.getitem, index, return_type
 
         def contains(self, *arg, **kw):
             raise NotImplementedError(
                 "ARRAY.contains() not implemented for the base "
-                "ARRAY type; please use the dialect-specific ARRAY type")
+                "ARRAY type; please use the dialect-specific ARRAY type"
+            )
 
         @util.dependencies("sqlalchemy.sql.elements")
         def any(self, elements, other, operator=None):
@@ -2346,7 +2404,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             operator = operator if operator else operators.eq
             return operator(
                 elements._literal_as_binds(other),
-                elements.CollectionAggregate._create_any(self.expr)
+                elements.CollectionAggregate._create_any(self.expr),
             )
 
         @util.dependencies("sqlalchemy.sql.elements")
@@ -2381,13 +2439,14 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             operator = operator if operator else operators.eq
             return operator(
                 elements._literal_as_binds(other),
-                elements.CollectionAggregate._create_all(self.expr)
+                elements.CollectionAggregate._create_all(self.expr),
             )
 
     comparator_factory = Comparator
 
-    def __init__(self, item_type, as_tuple=False, dimensions=None,
-                 zero_indexes=False):
+    def __init__(
+        self, item_type, as_tuple=False, dimensions=None, zero_indexes=False
+    ):
         """Construct an :class:`.types.ARRAY`.
 
         E.g.::
@@ -2420,8 +2479,10 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
 
         """
         if isinstance(item_type, ARRAY):
-            raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
-                             "handles multi-dimensional arrays of basetype")
+            raise ValueError(
+                "Do not nest ARRAY types; ARRAY(basetype) "
+                "handles multi-dimensional arrays of basetype"
+            )
         if isinstance(item_type, type):
             item_type = item_type()
         self.item_type = item_type
@@ -2459,35 +2520,37 @@ class REAL(Float):
 
     """The SQL REAL type."""
 
-    __visit_name__ = 'REAL'
+    __visit_name__ = "REAL"
 
 
 class FLOAT(Float):
 
     """The SQL FLOAT type."""
 
-    __visit_name__ = 'FLOAT'
+    __visit_name__ = "FLOAT"
 
 
 class NUMERIC(Numeric):
 
     """The SQL NUMERIC type."""
 
-    __visit_name__ = 'NUMERIC'
+    __visit_name__ = "NUMERIC"
 
 
 class DECIMAL(Numeric):
 
     """The SQL DECIMAL type."""
 
-    __visit_name__ = 'DECIMAL'
+    __visit_name__ = "DECIMAL"
 
 
 class INTEGER(Integer):
 
     """The SQL INT or INTEGER type."""
 
-    __visit_name__ = 'INTEGER'
+    __visit_name__ = "INTEGER"
+
+
 INT = INTEGER
 
 
@@ -2495,14 +2558,14 @@ class SMALLINT(SmallInteger):
 
     """The SQL SMALLINT type."""
 
-    __visit_name__ = 'SMALLINT'
+    __visit_name__ = "SMALLINT"
 
 
 class BIGINT(BigInteger):
 
     """The SQL BIGINT type."""
 
-    __visit_name__ = 'BIGINT'
+    __visit_name__ = "BIGINT"
 
 
 class TIMESTAMP(DateTime):
@@ -2516,7 +2579,7 @@ class TIMESTAMP(DateTime):
 
     """
 
-    __visit_name__ = 'TIMESTAMP'
+    __visit_name__ = "TIMESTAMP"
 
     def __init__(self, timezone=False):
         """Construct a new :class:`.TIMESTAMP`.
@@ -2539,28 +2602,28 @@ class DATETIME(DateTime):
 
     """The SQL DATETIME type."""
 
-    __visit_name__ = 'DATETIME'
+    __visit_name__ = "DATETIME"
 
 
 class DATE(Date):
 
     """The SQL DATE type."""
 
-    __visit_name__ = 'DATE'
+    __visit_name__ = "DATE"
 
 
 class TIME(Time):
 
     """The SQL TIME type."""
 
-    __visit_name__ = 'TIME'
+    __visit_name__ = "TIME"
 
 
 class TEXT(Text):
 
     """The SQL TEXT type."""
 
-    __visit_name__ = 'TEXT'
+    __visit_name__ = "TEXT"
 
 
 class CLOB(Text):
@@ -2570,63 +2633,63 @@ class CLOB(Text):
     This type is found in Oracle and Informix.
     """
 
-    __visit_name__ = 'CLOB'
+    __visit_name__ = "CLOB"
 
 
 class VARCHAR(String):
 
     """The SQL VARCHAR type."""
 
-    __visit_name__ = 'VARCHAR'
+    __visit_name__ = "VARCHAR"
 
 
 class NVARCHAR(Unicode):
 
     """The SQL NVARCHAR type."""
 
-    __visit_name__ = 'NVARCHAR'
+    __visit_name__ = "NVARCHAR"
 
 
 class CHAR(String):
 
     """The SQL CHAR type."""
 
-    __visit_name__ = 'CHAR'
+    __visit_name__ = "CHAR"
 
 
 class NCHAR(Unicode):
 
     """The SQL NCHAR type."""
 
-    __visit_name__ = 'NCHAR'
+    __visit_name__ = "NCHAR"
 
 
 class BLOB(LargeBinary):
 
     """The SQL BLOB type."""
 
-    __visit_name__ = 'BLOB'
+    __visit_name__ = "BLOB"
 
 
 class BINARY(_Binary):
 
     """The SQL BINARY type."""
 
-    __visit_name__ = 'BINARY'
+    __visit_name__ = "BINARY"
 
 
 class VARBINARY(_Binary):
 
     """The SQL VARBINARY type."""
 
-    __visit_name__ = 'VARBINARY'
+    __visit_name__ = "VARBINARY"
 
 
 class BOOLEAN(Boolean):
 
     """The SQL BOOLEAN type."""
 
-    __visit_name__ = 'BOOLEAN'
+    __visit_name__ = "BOOLEAN"
 
 
 class NullType(TypeEngine):
@@ -2653,7 +2716,8 @@ class NullType(TypeEngine):
     construct.
 
     """
-    __visit_name__ = 'null'
+
+    __visit_name__ = "null"
 
     _isnull = True
 
@@ -2662,16 +2726,18 @@ class NullType(TypeEngine):
     def literal_processor(self, dialect):
         def process(value):
             return "NULL"
+
         return process
 
     class Comparator(TypeEngine.Comparator):
-
         def _adapt_expression(self, op, other_comparator):
-            if isinstance(other_comparator, NullType.Comparator) or \
-                    not operators.is_commutative(op):
+            if isinstance(
+                other_comparator, NullType.Comparator
+            ) or not operators.is_commutative(op):
                 return op, self.expr.type
             else:
                 return other_comparator._adapt_expression(op, self)
+
     comparator_factory = Comparator
 
 
@@ -2690,6 +2756,7 @@ class MatchType(Boolean):
 
     """
 
+
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
@@ -2705,7 +2772,7 @@ _type_map = {
     dt.datetime: DateTime(),
     dt.time: Time(),
     dt.timedelta: Interval(),
-    util.NoneType: NULLTYPE
+    util.NoneType: NULLTYPE,
 }
 
 if util.py3k:
@@ -2725,19 +2792,23 @@ def _resolve_value_to_type(value):
         # objects.
         insp = inspection.inspect(value, False)
         if (
-                insp is not None and
-                # foil mock.Mock() and other impostors by ensuring
-                # the inspection target itself self-inspects
-                insp.__class__ in inspection._registrars
+            insp is not None
+            and
+            # foil mock.Mock() and other impostors by ensuring
+            # the inspection target itself self-inspects
+            insp.__class__ in inspection._registrars
         ):
             raise exc.ArgumentError(
-                "Object %r is not legal as a SQL literal value" % value)
+                "Object %r is not legal as a SQL literal value" % value
+            )
         return NULLTYPE
     else:
         return _result_type
 
+
 # back-assign to type_api
 from . import type_api
+
 type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE

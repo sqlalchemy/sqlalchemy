@@ -8,6 +8,7 @@ import collections
 import os
 import time
 import logging
+
 log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
@@ -25,6 +26,7 @@ class register(object):
         def decorate(fn):
             self.fns[dbname] = fn
             return self
+
         return decorate
 
     def __call__(self, cfg, *arg):
@@ -38,7 +40,7 @@ class register(object):
         if backend in self.fns:
             return self.fns[backend](cfg, *arg)
         else:
-            return self.fns['*'](cfg, *arg)
+            return self.fns["*"](cfg, *arg)
 
 
 def create_follower_db(follower_ident):
@@ -82,9 +84,7 @@ def _configs_for_db_operation():
     for cfg in config.Config.all_configs():
         url = cfg.db.url
         backend = url.get_backend_name()
-        host_conf = (
-            backend,
-            url.username, url.host, url.database)
+        host_conf = (backend, url.username, url.host, url.database)
 
         if host_conf not in hosts:
             yield cfg
@@ -128,14 +128,13 @@ def _follower_url_from_main(url, ident):
 
 @_update_db_opts.for_db("mssql")
 def _mssql_update_db_opts(db_url, db_opts):
-    db_opts['legacy_schema_aliasing'] = False
-
+    db_opts["legacy_schema_aliasing"] = False
 
 
 @_follower_url_from_main.for_db("sqlite")
 def _sqlite_follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
-    if not url.database or url.database == ':memory:':
+    if not url.database or url.database == ":memory:":
         return url
     else:
         return sa_url.make_url("sqlite:///%s.db" % ident)
@@ -151,19 +150,20 @@ def _sqlite_post_configure_engine(url, engine, follower_ident):
         # as an attached
         if not follower_ident:
             dbapi_connection.execute(
-                'ATTACH DATABASE "test_schema.db" AS test_schema')
+                'ATTACH DATABASE "test_schema.db" AS test_schema'
+            )
         else:
             dbapi_connection.execute(
                 'ATTACH DATABASE "%s_test_schema.db" AS test_schema'
-                % follower_ident)
+                % follower_ident
+            )
 
 
 @_create_db.for_db("postgresql")
 def _pg_create_db(cfg, eng, ident):
     template_db = cfg.options.postgresql_templatedb
 
-    with eng.connect().execution_options(
-            isolation_level="AUTOCOMMIT") as conn:
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         try:
             _pg_drop_db(cfg, conn, ident)
         except Exception:
@@ -173,14 +173,18 @@ def _pg_create_db(cfg, eng, ident):
         for attempt in range(3):
             try:
                 conn.execute(
-                    "CREATE DATABASE %s TEMPLATE %s" % (ident, template_db))
+                    "CREATE DATABASE %s TEMPLATE %s" % (ident, template_db)
+                )
             except exc.OperationalError as err:
                 if "accessed by other users" in str(err):
                     log.info(
                         "Waiting to create %s, URI %r, "
                         "template DB %s is in use sleeping for .5",
-                        ident, eng.url, template_db)
-                    time.sleep(.5)
+                        ident,
+                        eng.url,
+                        template_db,
+                    )
+                    time.sleep(0.5)
             else:
                 break
         else:
@@ -200,9 +204,11 @@ def _mysql_create_db(cfg, eng, ident):
         # 1271, u"Illegal mix of collations for operation 'UNION'"
         conn.execute("CREATE DATABASE %s CHARACTER SET utf8mb3" % ident)
         conn.execute(
-            "CREATE DATABASE %s_test_schema CHARACTER SET utf8mb3" % ident)
+            "CREATE DATABASE %s_test_schema CHARACTER SET utf8mb3" % ident
+        )
         conn.execute(
-            "CREATE DATABASE %s_test_schema_2 CHARACTER SET utf8mb3" % ident)
+            "CREATE DATABASE %s_test_schema_2 CHARACTER SET utf8mb3" % ident
+        )
 
 
 @_configure_follower.for_db("mysql")
@@ -218,14 +224,15 @@ def _sqlite_create_db(cfg, eng, ident):
 
 @_drop_db.for_db("postgresql")
 def _pg_drop_db(cfg, eng, ident):
-    with eng.connect().execution_options(
-            isolation_level="AUTOCOMMIT") as conn:
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.execute(
             text(
                 "select pg_terminate_backend(pid) from pg_stat_activity "
                 "where usename=current_user and pid != pg_backend_pid() "
                 "and datname=:dname"
-            ), dname=ident)
+            ),
+            dname=ident,
+        )
         conn.execute("DROP DATABASE %s" % ident)
 
 
@@ -254,10 +261,11 @@ def _oracle_create_db(cfg, eng, ident):
         conn.execute("create user %s identified by xe" % ident)
         conn.execute("create user %s_ts1 identified by xe" % ident)
         conn.execute("create user %s_ts2 identified by xe" % ident)
-        conn.execute("grant dba to %s" % (ident, ))
+        conn.execute("grant dba to %s" % (ident,))
         conn.execute("grant unlimited tablespace to %s" % ident)
         conn.execute("grant unlimited tablespace to %s_ts1" % ident)
         conn.execute("grant unlimited tablespace to %s_ts2" % ident)
+
 
 @_configure_follower.for_db("oracle")
 def _oracle_configure_follower(config, ident):
@@ -317,6 +325,7 @@ def reap_dbs(idents_file):
         elif backend == "mssql":
             _reap_mssql_dbs(url, ident)
 
+
 def _reap_oracle_dbs(url, idents):
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
@@ -327,8 +336,9 @@ def _reap_oracle_dbs(url, idents):
         to_reap = conn.execute(
             "select u.username from all_users u where username "
             "like 'TEST_%' and not exists (select username "
-            "from v$session where username=u.username)")
-        all_names = {username.lower() for (username, ) in to_reap}
+            "from v$session where username=u.username)"
+        )
+        all_names = {username.lower() for (username,) in to_reap}
         to_drop = set()
         for name in all_names:
             if name.endswith("_ts1") or name.endswith("_ts2"):
@@ -345,28 +355,28 @@ def _reap_oracle_dbs(url, idents):
             if _ora_drop_ignore(conn, username):
                 dropped += 1
         log.info(
-            "Dropped %d out of %d stale databases detected",
-            dropped, total)
-
+            "Dropped %d out of %d stale databases detected", dropped, total
+        )
 
 
 @_follower_url_from_main.for_db("oracle")
 def _oracle_follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
     url.username = ident
-    url.password = 'xe'
+    url.password = "xe"
     return url
 
 
 @_create_db.for_db("mssql")
 def _mssql_create_db(cfg, eng, ident):
-    with eng.connect().execution_options(
-            isolation_level="AUTOCOMMIT") as conn:
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.execute("create database %s" % ident)
         conn.execute(
-            "ALTER DATABASE %s SET ALLOW_SNAPSHOT_ISOLATION ON" % ident)
+            "ALTER DATABASE %s SET ALLOW_SNAPSHOT_ISOLATION ON" % ident
+        )
         conn.execute(
-            "ALTER DATABASE %s SET READ_COMMITTED_SNAPSHOT ON" % ident)
+            "ALTER DATABASE %s SET READ_COMMITTED_SNAPSHOT ON" % ident
+        )
         conn.execute("use %s" % ident)
         conn.execute("create schema test_schema")
         conn.execute("create schema test_schema_2")
@@ -374,9 +384,9 @@ def _mssql_create_db(cfg, eng, ident):
 
 @_drop_db.for_db("mssql")
 def _mssql_drop_db(cfg, eng, ident):
-    with eng.connect().execution_options(
-            isolation_level="AUTOCOMMIT") as conn:
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         _mssql_drop_ignore(conn, ident)
+
 
 def _mssql_drop_ignore(conn, ident):
     try:
@@ -398,8 +408,7 @@ def _mssql_drop_ignore(conn, ident):
 def _reap_mssql_dbs(url, idents):
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
-    with eng.connect().execution_options(
-            isolation_level="AUTOCOMMIT") as conn:
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
 
         log.info("identifiers in file: %s", ", ".join(idents))
 
@@ -407,8 +416,9 @@ def _reap_mssql_dbs(url, idents):
             "select d.name from sys.databases as d where name "
             "like 'TEST_%' and not exists (select session_id "
             "from sys.dm_exec_sessions "
-            "where database_id=d.database_id)")
-        all_names = {dbname.lower() for (dbname, ) in to_reap}
+            "where database_id=d.database_id)"
+        )
+        all_names = {dbname.lower() for (dbname,) in to_reap}
         to_drop = set()
         for name in all_names:
             if name in idents:
@@ -419,5 +429,5 @@ def _reap_mssql_dbs(url, idents):
             if _mssql_drop_ignore(conn, dbname):
                 dropped += 1
         log.info(
-            "Dropped %d out of %d stale databases detected",
-            dropped, total)
+            "Dropped %d out of %d stale databases detected", dropped, total
+        )

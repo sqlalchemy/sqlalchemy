@@ -31,70 +31,257 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import util, sql, exc
 
-from sqlalchemy.types import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
-    TEXT, DATE, DATETIME, FLOAT, NUMERIC,\
-    BIGINT, INT, INTEGER, SMALLINT, BINARY,\
-    VARBINARY, DECIMAL, TIMESTAMP, Unicode,\
-    UnicodeText, REAL
+from sqlalchemy.types import (
+    CHAR,
+    VARCHAR,
+    TIME,
+    NCHAR,
+    NVARCHAR,
+    TEXT,
+    DATE,
+    DATETIME,
+    FLOAT,
+    NUMERIC,
+    BIGINT,
+    INT,
+    INTEGER,
+    SMALLINT,
+    BINARY,
+    VARBINARY,
+    DECIMAL,
+    TIMESTAMP,
+    Unicode,
+    UnicodeText,
+    REAL,
+)
 
-RESERVED_WORDS = set([
-    "add", "all", "alter", "and",
-    "any", "as", "asc", "backup",
-    "begin", "between", "bigint", "binary",
-    "bit", "bottom", "break", "by",
-    "call", "capability", "cascade", "case",
-    "cast", "char", "char_convert", "character",
-    "check", "checkpoint", "close", "comment",
-    "commit", "connect", "constraint", "contains",
-    "continue", "convert", "create", "cross",
-    "cube", "current", "current_timestamp", "current_user",
-    "cursor", "date", "dbspace", "deallocate",
-    "dec", "decimal", "declare", "default",
-    "delete", "deleting", "desc", "distinct",
-    "do", "double", "drop", "dynamic",
-    "else", "elseif", "encrypted", "end",
-    "endif", "escape", "except", "exception",
-    "exec", "execute", "existing", "exists",
-    "externlogin", "fetch", "first", "float",
-    "for", "force", "foreign", "forward",
-    "from", "full", "goto", "grant",
-    "group", "having", "holdlock", "identified",
-    "if", "in", "index", "index_lparen",
-    "inner", "inout", "insensitive", "insert",
-    "inserting", "install", "instead", "int",
-    "integer", "integrated", "intersect", "into",
-    "iq", "is", "isolation", "join",
-    "key", "lateral", "left", "like",
-    "lock", "login", "long", "match",
-    "membership", "message", "mode", "modify",
-    "natural", "new", "no", "noholdlock",
-    "not", "notify", "null", "numeric",
-    "of", "off", "on", "open",
-    "option", "options", "or", "order",
-    "others", "out", "outer", "over",
-    "passthrough", "precision", "prepare", "primary",
-    "print", "privileges", "proc", "procedure",
-    "publication", "raiserror", "readtext", "real",
-    "reference", "references", "release", "remote",
-    "remove", "rename", "reorganize", "resource",
-    "restore", "restrict", "return", "revoke",
-    "right", "rollback", "rollup", "save",
-    "savepoint", "scroll", "select", "sensitive",
-    "session", "set", "setuser", "share",
-    "smallint", "some", "sqlcode", "sqlstate",
-    "start", "stop", "subtrans", "subtransaction",
-    "synchronize", "syntax_error", "table", "temporary",
-    "then", "time", "timestamp", "tinyint",
-    "to", "top", "tran", "trigger",
-    "truncate", "tsequal", "unbounded", "union",
-    "unique", "unknown", "unsigned", "update",
-    "updating", "user", "using", "validate",
-    "values", "varbinary", "varchar", "variable",
-    "varying", "view", "wait", "waitfor",
-    "when", "where", "while", "window",
-    "with", "with_cube", "with_lparen", "with_rollup",
-    "within", "work", "writetext",
-])
+RESERVED_WORDS = set(
+    [
+        "add",
+        "all",
+        "alter",
+        "and",
+        "any",
+        "as",
+        "asc",
+        "backup",
+        "begin",
+        "between",
+        "bigint",
+        "binary",
+        "bit",
+        "bottom",
+        "break",
+        "by",
+        "call",
+        "capability",
+        "cascade",
+        "case",
+        "cast",
+        "char",
+        "char_convert",
+        "character",
+        "check",
+        "checkpoint",
+        "close",
+        "comment",
+        "commit",
+        "connect",
+        "constraint",
+        "contains",
+        "continue",
+        "convert",
+        "create",
+        "cross",
+        "cube",
+        "current",
+        "current_timestamp",
+        "current_user",
+        "cursor",
+        "date",
+        "dbspace",
+        "deallocate",
+        "dec",
+        "decimal",
+        "declare",
+        "default",
+        "delete",
+        "deleting",
+        "desc",
+        "distinct",
+        "do",
+        "double",
+        "drop",
+        "dynamic",
+        "else",
+        "elseif",
+        "encrypted",
+        "end",
+        "endif",
+        "escape",
+        "except",
+        "exception",
+        "exec",
+        "execute",
+        "existing",
+        "exists",
+        "externlogin",
+        "fetch",
+        "first",
+        "float",
+        "for",
+        "force",
+        "foreign",
+        "forward",
+        "from",
+        "full",
+        "goto",
+        "grant",
+        "group",
+        "having",
+        "holdlock",
+        "identified",
+        "if",
+        "in",
+        "index",
+        "index_lparen",
+        "inner",
+        "inout",
+        "insensitive",
+        "insert",
+        "inserting",
+        "install",
+        "instead",
+        "int",
+        "integer",
+        "integrated",
+        "intersect",
+        "into",
+        "iq",
+        "is",
+        "isolation",
+        "join",
+        "key",
+        "lateral",
+        "left",
+        "like",
+        "lock",
+        "login",
+        "long",
+        "match",
+        "membership",
+        "message",
+        "mode",
+        "modify",
+        "natural",
+        "new",
+        "no",
+        "noholdlock",
+        "not",
+        "notify",
+        "null",
+        "numeric",
+        "of",
+        "off",
+        "on",
+        "open",
+        "option",
+        "options",
+        "or",
+        "order",
+        "others",
+        "out",
+        "outer",
+        "over",
+        "passthrough",
+        "precision",
+        "prepare",
+        "primary",
+        "print",
+        "privileges",
+        "proc",
+        "procedure",
+        "publication",
+        "raiserror",
+        "readtext",
+        "real",
+        "reference",
+        "references",
+        "release",
+        "remote",
+        "remove",
+        "rename",
+        "reorganize",
+        "resource",
+        "restore",
+        "restrict",
+        "return",
+        "revoke",
+        "right",
+        "rollback",
+        "rollup",
+        "save",
+        "savepoint",
+        "scroll",
+        "select",
+        "sensitive",
+        "session",
+        "set",
+        "setuser",
+        "share",
+        "smallint",
+        "some",
+        "sqlcode",
+        "sqlstate",
+        "start",
+        "stop",
+        "subtrans",
+        "subtransaction",
+        "synchronize",
+        "syntax_error",
+        "table",
+        "temporary",
+        "then",
+        "time",
+        "timestamp",
+        "tinyint",
+        "to",
+        "top",
+        "tran",
+        "trigger",
+        "truncate",
+        "tsequal",
+        "unbounded",
+        "union",
+        "unique",
+        "unknown",
+        "unsigned",
+        "update",
+        "updating",
+        "user",
+        "using",
+        "validate",
+        "values",
+        "varbinary",
+        "varchar",
+        "variable",
+        "varying",
+        "view",
+        "wait",
+        "waitfor",
+        "when",
+        "where",
+        "while",
+        "window",
+        "with",
+        "with_cube",
+        "with_lparen",
+        "with_rollup",
+        "within",
+        "work",
+        "writetext",
+    ]
+)
 
 
 class _SybaseUnitypeMixin(object):
@@ -106,27 +293,28 @@ class _SybaseUnitypeMixin(object):
                 return str(value)  # decode("ucs-2")
             else:
                 return None
+
         return process
 
 
 class UNICHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
-    __visit_name__ = 'UNICHAR'
+    __visit_name__ = "UNICHAR"
 
 
 class UNIVARCHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
-    __visit_name__ = 'UNIVARCHAR'
+    __visit_name__ = "UNIVARCHAR"
 
 
 class UNITEXT(_SybaseUnitypeMixin, sqltypes.UnicodeText):
-    __visit_name__ = 'UNITEXT'
+    __visit_name__ = "UNITEXT"
 
 
 class TINYINT(sqltypes.Integer):
-    __visit_name__ = 'TINYINT'
+    __visit_name__ = "TINYINT"
 
 
 class BIT(sqltypes.TypeEngine):
-    __visit_name__ = 'BIT'
+    __visit_name__ = "BIT"
 
 
 class MONEY(sqltypes.TypeEngine):
@@ -142,7 +330,7 @@ class UNIQUEIDENTIFIER(sqltypes.TypeEngine):
 
 
 class IMAGE(sqltypes.LargeBinary):
-    __visit_name__ = 'IMAGE'
+    __visit_name__ = "IMAGE"
 
 
 class SybaseTypeCompiler(compiler.GenericTypeCompiler):
@@ -182,67 +370,66 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_UNIQUEIDENTIFIER(self, type_, **kw):
         return "UNIQUEIDENTIFIER"
 
+
 ischema_names = {
-    'bigint': BIGINT,
-    'int': INTEGER,
-    'integer': INTEGER,
-    'smallint': SMALLINT,
-    'tinyint': TINYINT,
-    'unsigned bigint': BIGINT,  # TODO: unsigned flags
-    'unsigned int': INTEGER,  # TODO: unsigned flags
-    'unsigned smallint': SMALLINT,  # TODO: unsigned flags
-    'numeric': NUMERIC,
-    'decimal': DECIMAL,
-    'dec': DECIMAL,
-    'float': FLOAT,
-    'double': NUMERIC,  # TODO
-    'double precision': NUMERIC,  # TODO
-    'real': REAL,
-    'smallmoney': SMALLMONEY,
-    'money': MONEY,
-    'smalldatetime': DATETIME,
-    'datetime': DATETIME,
-    'date': DATE,
-    'time': TIME,
-    'char': CHAR,
-    'character': CHAR,
-    'varchar': VARCHAR,
-    'character varying': VARCHAR,
-    'char varying': VARCHAR,
-    'unichar': UNICHAR,
-    'unicode character': UNIVARCHAR,
-    'nchar': NCHAR,
-    'national char': NCHAR,
-    'national character': NCHAR,
-    'nvarchar': NVARCHAR,
-    'nchar varying': NVARCHAR,
-    'national char varying': NVARCHAR,
-    'national character varying': NVARCHAR,
-    'text': TEXT,
-    'unitext': UNITEXT,
-    'binary': BINARY,
-    'varbinary': VARBINARY,
-    'image': IMAGE,
-    'bit': BIT,
-
+    "bigint": BIGINT,
+    "int": INTEGER,
+    "integer": INTEGER,
+    "smallint": SMALLINT,
+    "tinyint": TINYINT,
+    "unsigned bigint": BIGINT,  # TODO: unsigned flags
+    "unsigned int": INTEGER,  # TODO: unsigned flags
+    "unsigned smallint": SMALLINT,  # TODO: unsigned flags
+    "numeric": NUMERIC,
+    "decimal": DECIMAL,
+    "dec": DECIMAL,
+    "float": FLOAT,
+    "double": NUMERIC,  # TODO
+    "double precision": NUMERIC,  # TODO
+    "real": REAL,
+    "smallmoney": SMALLMONEY,
+    "money": MONEY,
+    "smalldatetime": DATETIME,
+    "datetime": DATETIME,
+    "date": DATE,
+    "time": TIME,
+    "char": CHAR,
+    "character": CHAR,
+    "varchar": VARCHAR,
+    "character varying": VARCHAR,
+    "char varying": VARCHAR,
+    "unichar": UNICHAR,
+    "unicode character": UNIVARCHAR,
+    "nchar": NCHAR,
+    "national char": NCHAR,
+    "national character": NCHAR,
+    "nvarchar": NVARCHAR,
+    "nchar varying": NVARCHAR,
+    "national char varying": NVARCHAR,
+    "national character varying": NVARCHAR,
+    "text": TEXT,
+    "unitext": UNITEXT,
+    "binary": BINARY,
+    "varbinary": VARBINARY,
+    "image": IMAGE,
+    "bit": BIT,
     # not in documentation for ASE 15.7
-    'long varchar': TEXT,  # TODO
-    'timestamp': TIMESTAMP,
-    'uniqueidentifier': UNIQUEIDENTIFIER,
-
+    "long varchar": TEXT,  # TODO
+    "timestamp": TIMESTAMP,
+    "uniqueidentifier": UNIQUEIDENTIFIER,
 }
 
 
 class SybaseInspector(reflection.Inspector):
-
     def __init__(self, conn):
         reflection.Inspector.__init__(self, conn)
 
     def get_table_id(self, table_name, schema=None):
         """Return the table id from `table_name` and `schema`."""
 
-        return self.dialect.get_table_id(self.bind, table_name, schema,
-                                         info_cache=self.info_cache)
+        return self.dialect.get_table_id(
+            self.bind, table_name, schema, info_cache=self.info_cache
+        )
 
 
 class SybaseExecutionContext(default.DefaultExecutionContext):
@@ -267,15 +454,17 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
             insert_has_sequence = seq_column is not None
 
             if insert_has_sequence:
-                self._enable_identity_insert = \
+                self._enable_identity_insert = (
                     seq_column.key in self.compiled_parameters[0]
+                )
             else:
                 self._enable_identity_insert = False
 
             if self._enable_identity_insert:
                 self.cursor.execute(
-                    "SET IDENTITY_INSERT %s ON" %
-                    self.dialect.identifier_preparer.format_table(tbl))
+                    "SET IDENTITY_INSERT %s ON"
+                    % self.dialect.identifier_preparer.format_table(tbl)
+                )
 
         if self.isddl:
             # TODO: to enhance this, we can detect "ddl in tran" on the
@@ -284,14 +473,16 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
             if not self.should_autocommit:
                 raise exc.InvalidRequestError(
                     "The Sybase dialect only supports "
-                    "DDL in 'autocommit' mode at this time.")
+                    "DDL in 'autocommit' mode at this time."
+                )
 
             self.root_connection.engine.logger.info(
-                "AUTOCOMMIT (Assuming no Sybase 'ddl in tran')")
+                "AUTOCOMMIT (Assuming no Sybase 'ddl in tran')"
+            )
 
             self.set_ddl_autocommit(
-                self.root_connection.connection.connection,
-                True)
+                self.root_connection.connection.connection, True
+            )
 
     def post_exec(self):
         if self.isddl:
@@ -299,9 +490,10 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
 
         if self._enable_identity_insert:
             self.cursor.execute(
-                "SET IDENTITY_INSERT %s OFF" %
-                self.dialect.identifier_preparer.
-                format_table(self.compiled.statement.table)
+                "SET IDENTITY_INSERT %s OFF"
+                % self.dialect.identifier_preparer.format_table(
+                    self.compiled.statement.table
+                )
             )
 
     def get_lastrowid(self):
@@ -317,11 +509,8 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     extract_map = util.update_copy(
         compiler.SQLCompiler.extract_map,
-        {
-            'doy': 'dayofyear',
-            'dow': 'weekday',
-            'milliseconds': 'millisecond'
-        })
+        {"doy": "dayofyear", "dow": "weekday", "milliseconds": "millisecond"},
+    )
 
     def get_select_precolumns(self, select, **kw):
         s = select._distinct and "DISTINCT " or ""
@@ -330,9 +519,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         limit = select._limit
         if limit:
             # if select._limit == 1:
-                # s += "FIRST "
+            # s += "FIRST "
             # else:
-                # s += "TOP %s " % (select._limit,)
+            # s += "TOP %s " % (select._limit,)
             s += "TOP %s " % (limit,)
         offset = select._offset
         if offset:
@@ -348,8 +537,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % (
-            field, self.process(extract.expr, **kw))
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr, **kw))
 
     def visit_now_func(self, fn, **kw):
         return "GETDATE()"
@@ -357,10 +545,10 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR"
         # which SQLAlchemy doesn't use
-        return ''
+        return ""
 
     def order_by_clause(self, select, **kw):
-        kw['literal_binds'] = True
+        kw["literal_binds"] = True
         order_by = self.process(select._order_by_clause, **kw)
 
         # SybaseSQL only allows ORDER BY in subqueries if there is a LIMIT
@@ -369,8 +557,7 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         else:
             return ""
 
-    def delete_table_clause(self, delete_stmt, from_table,
-                            extra_froms):
+    def delete_table_clause(self, delete_stmt, from_table, extra_froms):
         """If we have extra froms make sure we render any alias as hint."""
         ashint = False
         if extra_froms:
@@ -379,34 +566,41 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             self, asfrom=True, iscrud=True, ashint=ashint
         )
 
-    def delete_extra_from_clause(self, delete_stmt, from_table,
-                                 extra_froms, from_hints, **kw):
+    def delete_extra_from_clause(
+        self, delete_stmt, from_table, extra_froms, from_hints, **kw
+    ):
         """Render the DELETE .. FROM clause specific to Sybase."""
-        return "FROM " + ', '.join(
-            t._compiler_dispatch(self, asfrom=True,
-                                 fromhints=from_hints, **kw)
-            for t in [from_table] + extra_froms)
+        return "FROM " + ", ".join(
+            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            for t in [from_table] + extra_froms
+        )
 
 
 class SybaseDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + \
-            self.dialect.type_compiler.process(
-                column.type, type_expression=column)
+        colspec = (
+            self.preparer.format_column(column)
+            + " "
+            + self.dialect.type_compiler.process(
+                column.type, type_expression=column
+            )
+        )
 
         if column.table is None:
             raise exc.CompileError(
                 "The Sybase dialect requires Table-bound "
-                "columns in order to generate DDL")
+                "columns in order to generate DDL"
+            )
         seq_col = column.table._autoincrement_column
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if seq_col is column:
-            sequence = isinstance(column.default, sa_schema.Sequence) \
+            sequence = (
+                isinstance(column.default, sa_schema.Sequence)
                 and column.default
+            )
             if sequence:
-                start, increment = sequence.start or 1, \
-                    sequence.increment or 1
+                start, increment = sequence.start or 1, sequence.increment or 1
             else:
                 start, increment = 1, 1
             if (start, increment) == (1, 1):
@@ -431,8 +625,7 @@ class SybaseDDLCompiler(compiler.DDLCompiler):
         index = drop.element
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(index.table.name),
-            self._prepared_index_name(drop.element,
-                                      include_schema=False)
+            self._prepared_index_name(drop.element, include_schema=False),
         )
 
 
@@ -441,7 +634,7 @@ class SybaseIdentifierPreparer(compiler.IdentifierPreparer):
 
 
 class SybaseDialect(default.DefaultDialect):
-    name = 'sybase'
+    name = "sybase"
     supports_unicode_statements = False
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
@@ -463,14 +656,18 @@ class SybaseDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return connection.scalar(
-            text("SELECT user_name() as user_name",
-                 typemap={'user_name': Unicode})
+            text(
+                "SELECT user_name() as user_name",
+                typemap={"user_name": Unicode},
+            )
         )
 
     def initialize(self, connection):
         super(SybaseDialect, self).initialize(connection)
-        if self.server_version_info is not None and\
-                self.server_version_info < (15, ):
+        if (
+            self.server_version_info is not None
+            and self.server_version_info < (15,)
+        ):
             self.max_identifier_length = 30
         else:
             self.max_identifier_length = 255
@@ -488,22 +685,24 @@ class SybaseDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
 
-        TABLEID_SQL = text("""
+        TABLEID_SQL = text(
+            """
           SELECT o.id AS id
           FROM sysobjects o JOIN sysusers u ON o.uid=u.uid
           WHERE u.name = :schema_name
               AND o.name = :table_name
               AND o.type in ('U', 'V')
-        """)
+        """
+        )
 
         if util.py2k:
             if isinstance(schema, unicode):
                 schema = schema.encode("ascii")
             if isinstance(table_name, unicode):
                 table_name = table_name.encode("ascii")
-        result = connection.execute(TABLEID_SQL,
-                                    schema_name=schema,
-                                    table_name=table_name)
+        result = connection.execute(
+            TABLEID_SQL, schema_name=schema, table_name=table_name
+        )
         table_id = result.scalar()
         if table_id is None:
             raise exc.NoSuchTableError(table_name)
@@ -511,10 +710,12 @@ class SybaseDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
-        table_id = self.get_table_id(connection, table_name, schema,
-                                     info_cache=kw.get("info_cache"))
+        table_id = self.get_table_id(
+            connection, table_name, schema, info_cache=kw.get("info_cache")
+        )
 
-        COLUMN_SQL = text("""
+        COLUMN_SQL = text(
+            """
           SELECT col.name AS name,
                  t.name AS type,
                  (col.status & 8) AS nullable,
@@ -528,23 +729,47 @@ class SybaseDialect(default.DefaultDialect):
           WHERE col.usertype = t.usertype
               AND col.id = :table_id
           ORDER BY col.colid
-        """)
+        """
+        )
 
         results = connection.execute(COLUMN_SQL, table_id=table_id)
 
         columns = []
-        for (name, type_, nullable, autoincrement, default, precision, scale,
-             length) in results:
-            col_info = self._get_column_info(name, type_, bool(nullable),
-                                             bool(autoincrement),
-                                             default, precision, scale,
-                                             length)
+        for (
+            name,
+            type_,
+            nullable,
+            autoincrement,
+            default,
+            precision,
+            scale,
+            length,
+        ) in results:
+            col_info = self._get_column_info(
+                name,
+                type_,
+                bool(nullable),
+                bool(autoincrement),
+                default,
+                precision,
+                scale,
+                length,
+            )
             columns.append(col_info)
 
         return columns
 
-    def _get_column_info(self, name, type_, nullable, autoincrement, default,
-                         precision, scale, length):
+    def _get_column_info(
+        self,
+        name,
+        type_,
+        nullable,
+        autoincrement,
+        default,
+        precision,
+        scale,
+        length,
+    ):
 
         coltype = self.ischema_names.get(type_, None)
 
@@ -565,8 +790,9 @@ class SybaseDialect(default.DefaultDialect):
             # if is_array:
             #     coltype = ARRAY(coltype)
         else:
-            util.warn("Did not recognize type '%s' of column '%s'" %
-                      (type_, name))
+            util.warn(
+                "Did not recognize type '%s' of column '%s'" % (type_, name)
+            )
             coltype = sqltypes.NULLTYPE
 
         if default:
@@ -575,15 +801,21 @@ class SybaseDialect(default.DefaultDialect):
         else:
             default = None
 
-        column_info = dict(name=name, type=coltype, nullable=nullable,
-                           default=default, autoincrement=autoincrement)
+        column_info = dict(
+            name=name,
+            type=coltype,
+            nullable=nullable,
+            default=default,
+            autoincrement=autoincrement,
+        )
         return column_info
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
-        table_id = self.get_table_id(connection, table_name, schema,
-                                     info_cache=kw.get("info_cache"))
+        table_id = self.get_table_id(
+            connection, table_name, schema, info_cache=kw.get("info_cache")
+        )
 
         table_cache = {}
         column_cache = {}
@@ -591,11 +823,13 @@ class SybaseDialect(default.DefaultDialect):
 
         table_cache[table_id] = {"name": table_name, "schema": schema}
 
-        COLUMN_SQL = text("""
+        COLUMN_SQL = text(
+            """
           SELECT c.colid AS id, c.name AS name
           FROM syscolumns c
           WHERE c.id = :table_id
-        """)
+        """
+        )
 
         results = connection.execute(COLUMN_SQL, table_id=table_id)
         columns = {}
@@ -603,7 +837,8 @@ class SybaseDialect(default.DefaultDialect):
             columns[col["id"]] = col["name"]
         column_cache[table_id] = columns
 
-        REFCONSTRAINT_SQL = text("""
+        REFCONSTRAINT_SQL = text(
+            """
           SELECT o.name AS name, r.reftabid AS reftable_id,
             r.keycnt AS 'count',
             r.fokey1 AS fokey1, r.fokey2 AS fokey2, r.fokey3 AS fokey3,
@@ -621,15 +856,19 @@ class SybaseDialect(default.DefaultDialect):
             r.refkey16 AS refkey16
           FROM sysreferences r JOIN sysobjects o on r.tableid = o.id
           WHERE r.tableid = :table_id
-        """)
+        """
+        )
         referential_constraints = connection.execute(
-            REFCONSTRAINT_SQL, table_id=table_id).fetchall()
+            REFCONSTRAINT_SQL, table_id=table_id
+        ).fetchall()
 
-        REFTABLE_SQL = text("""
+        REFTABLE_SQL = text(
+            """
           SELECT o.name AS name, u.name AS 'schema'
           FROM sysobjects o JOIN sysusers u ON o.uid = u.uid
           WHERE o.id = :table_id
-        """)
+        """
+        )
 
         for r in referential_constraints:
             reftable_id = r["reftable_id"]
@@ -639,8 +878,10 @@ class SybaseDialect(default.DefaultDialect):
                 reftable = c.fetchone()
                 c.close()
                 table_info = {"name": reftable["name"], "schema": None}
-                if (schema is not None or
-                        reftable["schema"] != self.default_schema_name):
+                if (
+                    schema is not None
+                    or reftable["schema"] != self.default_schema_name
+                ):
                     table_info["schema"] = reftable["schema"]
 
                 table_cache[reftable_id] = table_info
@@ -664,7 +905,7 @@ class SybaseDialect(default.DefaultDialect):
                 "referred_schema": reftable["schema"],
                 "referred_table": reftable["name"],
                 "referred_columns": referred_columns,
-                "name": r["name"]
+                "name": r["name"],
             }
 
             foreign_keys.append(fk_info)
@@ -673,10 +914,12 @@ class SybaseDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
-        table_id = self.get_table_id(connection, table_name, schema,
-                                     info_cache=kw.get("info_cache"))
+        table_id = self.get_table_id(
+            connection, table_name, schema, info_cache=kw.get("info_cache")
+        )
 
-        INDEX_SQL = text("""
+        INDEX_SQL = text(
+            """
           SELECT object_name(i.id) AS table_name,
                  i.keycnt AS 'count',
                  i.name AS name,
@@ -702,7 +945,8 @@ class SybaseDialect(default.DefaultDialect):
             AND o.id = :table_id
             AND (i.status & 2048) = 0
             AND i.indid BETWEEN 1 AND 254
-        """)
+        """
+        )
 
         results = connection.execute(INDEX_SQL, table_id=table_id)
         indexes = []
@@ -710,19 +954,23 @@ class SybaseDialect(default.DefaultDialect):
             column_names = []
             for i in range(1, r["count"]):
                 column_names.append(r["col_%i" % (i,)])
-            index_info = {"name": r["name"],
-                          "unique": bool(r["unique"]),
-                          "column_names": column_names}
+            index_info = {
+                "name": r["name"],
+                "unique": bool(r["unique"]),
+                "column_names": column_names,
+            }
             indexes.append(index_info)
 
         return indexes
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        table_id = self.get_table_id(connection, table_name, schema,
-                                     info_cache=kw.get("info_cache"))
+        table_id = self.get_table_id(
+            connection, table_name, schema, info_cache=kw.get("info_cache")
+        )
 
-        PK_SQL = text("""
+        PK_SQL = text(
+            """
           SELECT object_name(i.id) AS table_name,
                  i.keycnt AS 'count',
                  i.name AS name,
@@ -747,7 +995,8 @@ class SybaseDialect(default.DefaultDialect):
             AND o.id = :table_id
             AND (i.status & 2048) = 2048
             AND i.indid BETWEEN 1 AND 254
-        """)
+        """
+        )
 
         results = connection.execute(PK_SQL, table_id=table_id)
         pks = results.fetchone()
@@ -757,8 +1006,10 @@ class SybaseDialect(default.DefaultDialect):
         if pks:
             for i in range(1, pks["count"] + 1):
                 constrained_columns.append(pks["pk_%i" % (i,)])
-            return {"constrained_columns": constrained_columns,
-                    "name": pks["name"]}
+            return {
+                "constrained_columns": constrained_columns,
+                "name": pks["name"],
+            }
         else:
             return {"constrained_columns": [], "name": None}
 
@@ -776,12 +1027,14 @@ class SybaseDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
 
-        TABLE_SQL = text("""
+        TABLE_SQL = text(
+            """
           SELECT o.name AS name
           FROM sysobjects o JOIN sysusers u ON o.uid = u.uid
           WHERE u.name = :schema_name
             AND o.type = 'U'
-        """)
+        """
+        )
 
         if util.py2k:
             if isinstance(schema, unicode):
@@ -796,12 +1049,14 @@ class SybaseDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
 
-        VIEW_DEF_SQL = text("""
+        VIEW_DEF_SQL = text(
+            """
           SELECT c.text
           FROM syscomments c JOIN sysobjects o ON c.id = o.id
           WHERE o.name = :view_name
             AND o.type = 'V'
-        """)
+        """
+        )
 
         if util.py2k:
             if isinstance(view_name, unicode):
@@ -816,12 +1071,14 @@ class SybaseDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
 
-        VIEW_SQL = text("""
+        VIEW_SQL = text(
+            """
           SELECT o.name AS name
           FROM sysobjects o JOIN sysusers u ON o.uid = u.uid
           WHERE u.name = :schema_name
             AND o.type = 'V'
-        """)
+        """
+        )
 
         if util.py2k:
             if isinstance(schema, unicode):

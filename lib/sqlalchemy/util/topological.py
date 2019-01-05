@@ -10,7 +10,7 @@
 from ..exc import CircularDependencyError
 from .. import util
 
-__all__ = ['sort', 'sort_as_subsets', 'find_cycles']
+__all__ = ["sort", "sort_as_subsets", "find_cycles"]
 
 
 def sort_as_subsets(tuples, allitems, deterministic_order=False):
@@ -33,7 +33,7 @@ def sort_as_subsets(tuples, allitems, deterministic_order=False):
             raise CircularDependencyError(
                 "Circular dependency detected.",
                 find_cycles(tuples, allitems),
-                _gen_edges(edges)
+                _gen_edges(edges),
             )
 
         todo.difference_update(output)
@@ -79,7 +79,7 @@ def find_cycles(tuples, allitems):
             top = stack[-1]
             for node in edges[top]:
                 if node in stack:
-                    cyc = stack[stack.index(node):]
+                    cyc = stack[stack.index(node) :]
                     todo.difference_update(cyc)
                     output.update(cyc)
 
@@ -93,8 +93,4 @@ def find_cycles(tuples, allitems):
 
 
 def _gen_edges(edges):
-    return set([
-        (right, left)
-        for left in edges
-        for right in edges[left]
-    ])
+    return set([(right, left) for left in edges for right in edges[left]])

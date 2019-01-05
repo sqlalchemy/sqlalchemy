@@ -3,8 +3,16 @@ to support SQLite's lack of right-nested joins.  SQlite as of
 version 3.7.16 no longer has this limitation.
 
 """
-from sqlalchemy import Table, Column, Integer, MetaData, ForeignKey, \
-    select, exists, union
+from sqlalchemy import (
+    Table,
+    Column,
+    Integer,
+    MetaData,
+    ForeignKey,
+    select,
+    exists,
+    union,
+)
 from sqlalchemy.testing import fixtures, AssertsCompiledSQL
 from sqlalchemy import util
 from sqlalchemy.engine import default
@@ -14,70 +22,74 @@ from sqlalchemy import testing
 m = MetaData()
 
 
-a = Table('a', m,
-          Column('id', Integer, primary_key=True)
-          )
+a = Table("a", m, Column("id", Integer, primary_key=True))
 
-b = Table('b', m,
-          Column('id', Integer, primary_key=True),
-          Column('a_id', Integer, ForeignKey('a.id'))
-          )
+b = Table(
+    "b",
+    m,
+    Column("id", Integer, primary_key=True),
+    Column("a_id", Integer, ForeignKey("a.id")),
+)
 
-b_a = Table('b_a', m,
-            Column('id', Integer, primary_key=True),
-            )
+b_a = Table("b_a", m, Column("id", Integer, primary_key=True))
 
-b1 = Table('b1', m,
-           Column('id', Integer, primary_key=True),
-           Column('a_id', Integer, ForeignKey('a.id'))
-           )
+b1 = Table(
+    "b1",
+    m,
+    Column("id", Integer, primary_key=True),
+    Column("a_id", Integer, ForeignKey("a.id")),
+)
 
-b2 = Table('b2', m,
-           Column('id', Integer, primary_key=True),
-           Column('a_id', Integer, ForeignKey('a.id'))
-           )
+b2 = Table(
+    "b2",
+    m,
+    Column("id", Integer, primary_key=True),
+    Column("a_id", Integer, ForeignKey("a.id")),
+)
 
-a_to_b = Table('a_to_b', m,
-               Column('a_id', Integer, ForeignKey('a.id')),
-               Column('b_id', Integer, ForeignKey('b.id')),
-               )
+a_to_b = Table(
+    "a_to_b",
+    m,
+    Column("a_id", Integer, ForeignKey("a.id")),
+    Column("b_id", Integer, ForeignKey("b.id")),
+)
 
-c = Table('c', m,
-          Column('id', Integer, primary_key=True),
-          Column('b_id', Integer, ForeignKey('b.id'))
-          )
+c = Table(
+    "c",
+    m,
+    Column("id", Integer, primary_key=True),
+    Column("b_id", Integer, ForeignKey("b.id")),
+)
 
-d = Table('d', m,
-          Column('id', Integer, primary_key=True),
-          Column('c_id', Integer, ForeignKey('c.id'))
-          )
+d = Table(
+    "d",
+    m,
+    Column("id", Integer, primary_key=True),
+    Column("c_id", Integer, ForeignKey("c.id")),
+)
 
-e = Table('e', m,
-          Column('id', Integer, primary_key=True)
-          )
+e = Table("e", m, Column("id", Integer, primary_key=True))
 
-f = Table('f', m,
-          Column('id', Integer, primary_key=True),
-          Column('a_id', ForeignKey('a.id'))
-          )
+f = Table(
+    "f",
+    m,
+    Column("id", Integer, primary_key=True),
+    Column("a_id", ForeignKey("a.id")),
+)
 
-b_key = Table('b_key', m,
-              Column('id', Integer, primary_key=True, key='bid'),
-              )
+b_key = Table("b_key", m, Column("id", Integer, primary_key=True, key="bid"))
 
-a_to_b_key = Table('a_to_b_key', m,
-                   Column('aid', Integer, ForeignKey('a.id')),
-                   Column('bid', Integer, ForeignKey('b_key.bid')),
-                   )
+a_to_b_key = Table(
+    "a_to_b_key",
+    m,
+    Column("aid", Integer, ForeignKey("a.id")),
+    Column("bid", Integer, ForeignKey("b_key.bid")),
+)
 
 
 class _JoinRewriteTestBase(AssertsCompiledSQL):
-
     def _test(self, s, assert_):
-        self.assert_compile(
-            s,
-            assert_
-        )
+        self.assert_compile(s, assert_)
 
         compiled = s.compile(dialect=self.__dialect__)
 
@@ -107,10 +119,13 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         # TODO: do this test also with individual cols, things change
         # lots based on how you go with this
 
-        s = select([a, b, c], use_labels=True).\
-            select_from(j2).\
-            where(b.c.id == 2).\
-            where(c.c.id == 3).order_by(a.c.id, b.c.id, c.c.id)
+        s = (
+            select([a, b, c], use_labels=True)
+            .select_from(j2)
+            .where(b.c.id == 2)
+            .where(c.c.id == 3)
+            .order_by(a.c.id, b.c.id, c.c.id)
+        )
 
         self._test(s, self._a_bc)
 
@@ -118,8 +133,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         j1 = b_key.join(a_to_b_key)
         j2 = a.join(j1)
 
-        s = select([a, b_key.c.bid], use_labels=True).\
-            select_from(j2)
+        s = select([a, b_key.c.bid], use_labels=True).select_from(j2)
 
         self._test(s, self._a_bkeyassoc)
 
@@ -130,8 +144,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         j1 = bkey_alias.join(a_to_b_key_alias)
         j2 = a.join(j1)
 
-        s = select([a, bkey_alias.c.bid], use_labels=True).\
-            select_from(j2)
+        s = select([a, bkey_alias.c.bid], use_labels=True).select_from(j2)
 
         self._test(s, self._a_bkeyassoc_aliased)
 
@@ -140,17 +153,16 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         j2 = b.join(j1)
         j3 = a.join(j2)
 
-        s = select([a, b, c, d], use_labels=True).\
-            select_from(j3).\
-            where(b.c.id == 2).\
-            where(c.c.id == 3).\
-            where(d.c.id == 4).\
-            order_by(a.c.id, b.c.id, c.c.id, d.c.id)
-
-        self._test(
-            s,
-            self._a__b_dc
+        s = (
+            select([a, b, c, d], use_labels=True)
+            .select_from(j3)
+            .where(b.c.id == 2)
+            .where(c.c.id == 3)
+            .where(d.c.id == 4)
+            .order_by(a.c.id, b.c.id, c.c.id, d.c.id)
         )
+
+        self._test(s, self._a__b_dc)
 
     def test_a_bc_comma_a1_selbc(self):
         # test here we're emulating is
@@ -162,13 +174,14 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         a_a = a.alias()
         j4 = a_a.join(j2)
 
-        s = select([a, a_a, b, c, j2], use_labels=True).\
-            select_from(j3).select_from(j4).order_by(j2.c.b_id)
-
-        self._test(
-            s,
-            self._a_bc_comma_a1_selbc
+        s = (
+            select([a, a_a, b, c, j2], use_labels=True)
+            .select_from(j3)
+            .select_from(j4)
+            .order_by(j2.c.b_id)
         )
+
+        self._test(s, self._a_bc_comma_a1_selbc)
 
     def test_a_atobalias_balias_c_w_exists(self):
         a_to_b_alias = a_to_b.alias()
@@ -179,19 +192,22 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
         # TODO: if we put straight a_to_b_alias here,
         # it fails to alias the columns clause.
-        s = select([a,
-                    a_to_b_alias.c.a_id,
-                    a_to_b_alias.c.b_id,
-                    b_alias.c.id,
-                    b_alias.c.a_id,
-                    exists().select_from(c).
-                    where(c.c.b_id == b_alias.c.id).label(None)],
-                   use_labels=True).select_from(j2)
+        s = select(
+            [
+                a,
+                a_to_b_alias.c.a_id,
+                a_to_b_alias.c.b_id,
+                b_alias.c.id,
+                b_alias.c.a_id,
+                exists()
+                .select_from(c)
+                .where(c.c.b_id == b_alias.c.id)
+                .label(None),
+            ],
+            use_labels=True,
+        ).select_from(j2)
 
-        self._test(
-            s,
-            self._a_atobalias_balias_c_w_exists
-        )
+        self._test(s, self._a_atobalias_balias_c_w_exists)
 
     def test_a_atobalias_balias(self):
         a_to_b_alias = a_to_b.alias()
@@ -202,10 +218,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
         s = select([a, a_to_b_alias, b_alias], use_labels=True).select_from(j2)
 
-        self._test(
-            s,
-            self._a_atobalias_balias
-        )
+        self._test(s, self._a_atobalias_balias)
 
     def test_b_ab1_union_b_ab2(self):
         j1 = a.join(b1)
@@ -215,14 +228,10 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         b_j2 = b.join(j2)
 
         s = union(
-            select([b_j1], use_labels=True),
-            select([b_j2], use_labels=True)
+            select([b_j1], use_labels=True), select([b_j2], use_labels=True)
         ).select(use_labels=True)
 
-        self._test(
-            s,
-            self._b_ab1_union_c_ab2
-        )
+        self._test(s, self._b_ab1_union_c_ab2)
 
     def test_b_a_id_double_overlap_annotated(self):
         # test issue #3057
@@ -231,17 +240,14 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         annot = [
             b.c.id._annotate({}),
             b.c.a_id._annotate({}),
-            b_a.c.id._annotate({})
+            b_a.c.id._annotate({}),
         ]
 
         s = select(annot).select_from(j1).apply_labels().alias()
 
         s = select(list(s.c)).apply_labels()
 
-        self._test(
-            s,
-            self._b_a_id_double_overlap_annotated
-        )
+        self._test(s, self._b_a_id_double_overlap_annotated)
 
     def test_f_b1a_where_in_b2a(self):
         # test issue #3130
@@ -251,20 +257,14 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         s = select([f]).select_from(f.join(b1a)).where(b1.c.id.in_(subq))
 
         s = s.apply_labels()
-        self._test(
-            s,
-            self._f_b1a_where_in_b2a
-        )
+        self._test(s, self._f_b1a_where_in_b2a)
 
     def test_anon_scalar_subqueries(self):
         s1 = select([1]).as_scalar()
         s2 = select([2]).as_scalar()
 
         s = select([s1, s2]).apply_labels()
-        self._test(
-            s,
-            self._anon_scalar_subqueries
-        )
+        self._test(s, self._anon_scalar_subqueries)
 
 
 class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
@@ -350,7 +350,8 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM (SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
         "FROM a_to_b_key) AS anon_1 "
         "JOIN b_key ON b_key.id = anon_1.bid) AS anon_2 "
-        "ON a.id = anon_2.anon_1_aid")
+        "ON a.id = anon_2.anon_1_aid"
+    )
 
     _a_atobalias_balias_c_w_exists = (
         "SELECT a.id AS a_id, "
@@ -363,7 +364,8 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "b_1.a_id AS b_1_a_id "
         "FROM a_to_b AS a_to_b_1 "
         "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 "
-        "ON a.id = anon_1.a_to_b_1_a_id")
+        "ON a.id = anon_1.a_to_b_1_a_id"
+    )
 
     _a_atobalias_balias = (
         "SELECT a.id AS a_id, anon_1.a_to_b_1_a_id AS a_to_b_1_a_id, "
@@ -373,7 +375,8 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "a_to_b_1.b_id AS a_to_b_1_b_id, "
         "b_1.id AS b_1_id, b_1.a_id AS b_1_a_id FROM a_to_b AS a_to_b_1 "
         "JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) AS anon_1 "
-        "ON a.id = anon_1.a_to_b_1_a_id")
+        "ON a.id = anon_1.a_to_b_1_a_id"
+    )
 
     _b_ab1_union_c_ab2 = (
         "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
@@ -412,6 +415,7 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
 class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     """test rendering of each join with normal nesting."""
+
     @util.classproperty
     def __dialect__(cls):
         dialect = default.DefaultDialect()
@@ -480,7 +484,8 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "EXISTS (SELECT * FROM c WHERE c.b_id = b_1.id) AS anon_1 "
         "FROM a LEFT OUTER JOIN "
         "(a_to_b AS a_to_b_1 JOIN b AS b_1 ON b_1.id = a_to_b_1.b_id) "
-        "ON a.id = a_to_b_1.a_id")
+        "ON a.id = a_to_b_1.a_id"
+    )
 
     _a_atobalias_balias = (
         "SELECT a.id AS a_id, a_to_b_1.a_id AS a_to_b_1_a_id, "
@@ -500,7 +505,8 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "UNION "
         "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
         "b2.a_id AS b2_a_id FROM b "
-        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)")
+        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
+    )
 
     _b_a_id_double_overlap_annotated = (
         "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
@@ -522,7 +528,6 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
 
 class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
-
     @util.classproperty
     def __dialect__(cls):
         dialect = default.DefaultDialect()
@@ -531,10 +536,7 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     def _test(self, s, assert_):
         s.use_labels = False
-        self.assert_compile(
-            s,
-            assert_
-        )
+        self.assert_compile(s, assert_)
 
     _a_bkeyselect_bkey = (
         "SELECT a.id, b_key.id FROM a JOIN ((SELECT a_to_b_key.aid AS aid, "
@@ -639,11 +641,23 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     __backend__ = True
 
-    _a_bc = _a_bc_comma_a1_selbc = _a__b_dc = _a_bkeyassoc = \
-        _a_bkeyassoc_aliased = _a_atobalias_balias_c_w_exists = \
-        _a_atobalias_balias = _b_ab1_union_c_ab2 = \
-        _b_a_id_double_overlap_annotated = _f_b1a_where_in_b2a = \
-        _anon_scalar_subqueries = None
+    _a_bc = (
+        _a_bc_comma_a1_selbc
+    ) = (
+        _a__b_dc
+    ) = (
+        _a_bkeyassoc
+    ) = (
+        _a_bkeyassoc_aliased
+    ) = (
+        _a_atobalias_balias_c_w_exists
+    ) = (
+        _a_atobalias_balias
+    ) = (
+        _b_ab1_union_c_ab2
+    ) = (
+        _b_a_id_double_overlap_annotated
+    ) = _f_b1a_where_in_b2a = _anon_scalar_subqueries = None
 
     @classmethod
     def setup_class(cls):
@@ -660,8 +674,9 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
             assert col in result._metadata._keymap
 
     @testing.skip_if("oracle", "oracle's cranky")
-    @testing.skip_if("mssql", "can't query EXISTS in the columns "
-                     "clause w/o subquery")
+    @testing.skip_if(
+        "mssql", "can't query EXISTS in the columns " "clause w/o subquery"
+    )
     def test_a_atobalias_balias_c_w_exists(self):
         super(JoinExecTest, self).test_a_atobalias_balias_c_w_exists()
 
@@ -669,13 +684,13 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
         "sqlite",
         "non-standard aliasing rules used at the moment, "
         "possibly fix this or add another test that uses "
-        "cross-compatible aliasing")
+        "cross-compatible aliasing",
+    )
     def test_b_ab1_union_b_ab2(self):
         super(JoinExecTest, self).test_b_ab1_union_b_ab2()
 
 
 class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
-
     def test_dialect_flag(self):
         d1 = default.DefaultDialect(supports_right_nested_joins=True)
         d2 = default.DefaultDialect(supports_right_nested_joins=False)
@@ -683,8 +698,7 @@ class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
         j1 = b.join(c)
         j2 = a.join(j1)
 
-        s = select([a, b, c], use_labels=True).\
-            select_from(j2)
+        s = select([a, b, c], use_labels=True).select_from(j2)
 
         self.assert_compile(
             s,
@@ -692,12 +706,16 @@ class DialectFlagTest(fixtures.TestBase, AssertsCompiledSQL):
             "c.id AS c_id, "
             "c.b_id AS c_b_id FROM a JOIN (b JOIN c ON b.id = c.b_id) "
             "ON a.id = b.a_id",
-            dialect=d1)
+            dialect=d1,
+        )
         self.assert_compile(
-            s, "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
+            s,
+            "SELECT a.id AS a_id, anon_1.b_id AS b_id, "
             "anon_1.b_a_id AS b_a_id, "
             "anon_1.c_id AS c_id, anon_1.c_b_id AS c_b_id "
             "FROM a JOIN (SELECT b.id AS b_id, b.a_id AS b_a_id, "
             "c.id AS c_id, "
             "c.b_id AS c_b_id FROM b JOIN c ON b.id = c.b_id) AS anon_1 "
-            "ON a.id = anon_1.b_a_id", dialect=d2)
+            "ON a.id = anon_1.b_a_id",
+            dialect=d2,
+        )

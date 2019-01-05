@@ -15,42 +15,63 @@ styles of persistence are identical, as is the structure of the main Document cl
 """
 
 ################################# PART I - Imports/Coniguration ####################################
-from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
-    Unicode, and_, create_engine)
+from sqlalchemy import (
+    MetaData,
+    Table,
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    Unicode,
+    and_,
+    create_engine,
+)
 from sqlalchemy.orm import mapper, relationship, Session, lazyload
 
 import sys, os, io, re
 
 from xml.etree import ElementTree
 
-e = create_engine('sqlite://')
+e = create_engine("sqlite://")
 meta = MetaData()
 
 ################################# PART II - Table Metadata #########################################
 
 # stores a top level record of an XML document.
-documents = Table('documents', meta,
-    Column('document_id', Integer, primary_key=True),
-    Column('filename', String(30), unique=True),
-    Column('element_id', Integer, ForeignKey('elements.element_id'))
+documents = Table(
+    "documents",
+    meta,
+    Column("document_id", Integer, primary_key=True),
+    Column("filename", String(30), unique=True),
+    Column("element_id", Integer, ForeignKey("elements.element_id")),
 )
 
 # stores XML nodes in an adjacency list model.  This corresponds to
 # Element and SubElement objects.
-elements = Table('elements', meta,
-    Column('element_id', Integer, primary_key=True),
-    Column('parent_id', Integer, ForeignKey('elements.element_id')),
-    Column('tag', Unicode(30), nullable=False),
-    Column('text', Unicode),
-    Column('tail', Unicode)
-    )
+elements = Table(
+    "elements",
+    meta,
+    Column("element_id", Integer, primary_key=True),
+    Column("parent_id", Integer, ForeignKey("elements.element_id")),
+    Column("tag", Unicode(30), nullable=False),
+    Column("text", Unicode),
+    Column("tail", Unicode),
+)
 
 # stores attributes.  This corresponds to the dictionary of attributes
 # stored by an Element or SubElement.
-attributes = Table('attributes', meta,
-    Column('element_id', Integer, ForeignKey('elements.element_id'), primary_key=True),
-    Column('name', Unicode(100), nullable=False, primary_key=True),
-    Column('value', Unicode(255)))
+attributes = Table(
+    "attributes",
+    meta,
+    Column(
+        "element_id",
+        Integer,
+        ForeignKey("elements.element_id"),
+        primary_key=True,
+    ),
+    Column("name", Unicode(100), nullable=False, primary_key=True),
+    Column("value", Unicode(255)),
+)
 
 meta.create_all(e)
 
@@ -68,6 +89,7 @@ class Document(object):
         self.element.write(buf)
         return buf.getvalue()
 
+
 #################################### PART IV - Persistence Mapping #################################
 
 # Node class.  a non-public class which will represent
@@ -78,6 +100,7 @@ class Document(object):
 class _Node(object):
     pass
 
+
 # Attribute class.  also internal, this will represent the key/value attributes stored for
 # a particular Node.
 class _Attribute(object):
@@ -85,16 +108,25 @@ class _Attribute(object):
         self.name = name
         self.value = value
 
-# setup mappers.  Document will eagerly load a list of _Node objects.
-mapper(Document, documents, properties={
-    '_root':relationship(_Node, lazy='joined', cascade="all")
-})
 
-mapper(_Node, elements, properties={
-    'children':relationship(_Node, cascade="all"),
-    # eagerly load attributes
-    'attributes':relationship(_Attribute, lazy='joined', cascade="all, delete-orphan"),
-})
+# setup mappers.  Document will eagerly load a list of _Node objects.
+mapper(
+    Document,
+    documents,
+    properties={"_root": relationship(_Node, lazy="joined", cascade="all")},
+)
+
+mapper(
+    _Node,
+    elements,
+    properties={
+        "children": relationship(_Node, cascade="all"),
+        # eagerly load attributes
+        "attributes": relationship(
+            _Attribute, lazy="joined", cascade="all, delete-orphan"
+        ),
+    },
+)
 
 mapper(_Attribute, attributes)
 
@@ -106,7 +138,7 @@ class ElementTreeMarshal(object):
         if document is None:
             return self
 
-        if hasattr(document, '_element'):
+        if hasattr(document, "_element"):
             return document._element
 
         def traverse(node, parent=None):
@@ -132,7 +164,9 @@ class ElementTreeMarshal(object):
             n.text = str(node.text)
             n.tail = str(node.tail)
             n.children = [traverse(n2) for n2 in node]
-            n.attributes = [_Attribute(str(k), str(v)) for k, v in node.attrib.items()]
+            n.attributes = [
+                _Attribute(str(k), str(v)) for k, v in node.attrib.items()
+            ]
             return n
 
         document._root = traverse(element.getroot())
@@ -141,6 +175,7 @@ class ElementTreeMarshal(object):
     def __delete__(self, document):
         del document._element
         document._root = []
+
 
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
@@ -153,7 +188,7 @@ line = "\n--------------------------------------------------------"
 session = Session(e)
 
 # get ElementTree documents
-for file in ('test.xml', 'test2.xml', 'test3.xml'):
+for file in ("test.xml", "test2.xml", "test3.xml"):
     filename = os.path.join(os.path.dirname(__file__), file)
     doc = ElementTree.parse(filename)
     session.add(Document(file, doc))
@@ -170,10 +205,16 @@ print(document)
 ############################################ PART VI - Searching for Paths #########################
 
 # manually search for a document which contains "/somefile/header/field1:hi"
-d = session.query(Document).join('_root', aliased=True).filter(_Node.tag=='somefile').\
-    join('children', aliased=True, from_joinpoint=True).filter(_Node.tag=='header').\
-    join('children', aliased=True, from_joinpoint=True).filter(
-            and_(_Node.tag=='field1', _Node.text=='hi')).one()
+d = (
+    session.query(Document)
+    .join("_root", aliased=True)
+    .filter(_Node.tag == "somefile")
+    .join("children", aliased=True, from_joinpoint=True)
+    .filter(_Node.tag == "header")
+    .join("children", aliased=True, from_joinpoint=True)
+    .filter(and_(_Node.tag == "field1", _Node.text == "hi"))
+    .one()
+)
 print(d)
 
 # generalize the above approach into an extremely impoverished xpath function:
@@ -181,26 +222,39 @@ def find_document(path, compareto):
     j = documents
     prev_elements = None
     query = session.query(Document)
-    attribute = '_root'
-    for i, match in enumerate(re.finditer(r'/([\w_]+)(?:\[@([\w_]+)(?:=(.*))?\])?', path)):
+    attribute = "_root"
+    for i, match in enumerate(
+        re.finditer(r"/([\w_]+)(?:\[@([\w_]+)(?:=(.*))?\])?", path)
+    ):
         (token, attrname, attrvalue) = match.group(1, 2, 3)
-        query = query.join(attribute, aliased=True, from_joinpoint=True).filter(_Node.tag==token)
-        attribute = 'children'
+        query = query.join(
+            attribute, aliased=True, from_joinpoint=True
+        ).filter(_Node.tag == token)
+        attribute = "children"
         if attrname:
             if attrvalue:
-                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(
-                        and_(_Attribute.name==attrname, _Attribute.value==attrvalue))
+                query = query.join(
+                    "attributes", aliased=True, from_joinpoint=True
+                ).filter(
+                    and_(
+                        _Attribute.name == attrname,
+                        _Attribute.value == attrvalue,
+                    )
+                )
             else:
-                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(
-                        _Attribute.name==attrname)
-    return query.options(lazyload('_root')).filter(_Node.text==compareto).all()
+                query = query.join(
+                    "attributes", aliased=True, from_joinpoint=True
+                ).filter(_Attribute.name == attrname)
+    return (
+        query.options(lazyload("_root")).filter(_Node.text == compareto).all()
+    )
+
 
 for path, compareto in (
-        ('/somefile/header/field1', 'hi'),
-        ('/somefile/field1', 'hi'),
-        ('/somefile/header/field2', 'there'),
-        ('/somefile/header/field2[@attr=foo]', 'there')
-    ):
+    ("/somefile/header/field1", "hi"),
+    ("/somefile/field1", "hi"),
+    ("/somefile/header/field2", "there"),
+    ("/somefile/header/field2[@attr=foo]", "there"),
+):
     print("\nDocuments containing '%s=%s':" % (path, compareto), line)
     print([d.filename for d in find_document(path, compareto)])
-

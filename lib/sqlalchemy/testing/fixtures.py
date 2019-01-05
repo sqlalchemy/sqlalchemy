@@ -54,19 +54,19 @@ class TestBase(object):
 class TablesTest(TestBase):
 
     # 'once', None
-    run_setup_bind = 'once'
+    run_setup_bind = "once"
 
     # 'once', 'each', None
-    run_define_tables = 'once'
+    run_define_tables = "once"
 
     # 'once', 'each', None
-    run_create_tables = 'once'
+    run_create_tables = "once"
 
     # 'once', 'each', None
-    run_inserts = 'each'
+    run_inserts = "each"
 
     # 'each', None
-    run_deletes = 'each'
+    run_deletes = "each"
 
     # 'once', None
     run_dispose_bind = None
@@ -86,10 +86,10 @@ class TablesTest(TestBase):
 
     @classmethod
     def _init_class(cls):
-        if cls.run_define_tables == 'each':
-            if cls.run_create_tables == 'once':
-                cls.run_create_tables = 'each'
-            assert cls.run_inserts in ('each', None)
+        if cls.run_define_tables == "each":
+            if cls.run_create_tables == "once":
+                cls.run_create_tables = "each"
+            assert cls.run_inserts in ("each", None)
 
         cls.other = adict()
         cls.tables = adict()
@@ -100,40 +100,40 @@ class TablesTest(TestBase):
 
     @classmethod
     def _setup_once_inserts(cls):
-        if cls.run_inserts == 'once':
+        if cls.run_inserts == "once":
             cls._load_fixtures()
             cls.insert_data()
 
     @classmethod
     def _setup_once_tables(cls):
-        if cls.run_define_tables == 'once':
+        if cls.run_define_tables == "once":
             cls.define_tables(cls.metadata)
-            if cls.run_create_tables == 'once':
+            if cls.run_create_tables == "once":
                 cls.metadata.create_all(cls.bind)
             cls.tables.update(cls.metadata.tables)
 
     def _setup_each_tables(self):
-        if self.run_define_tables == 'each':
+        if self.run_define_tables == "each":
             self.tables.clear()
-            if self.run_create_tables == 'each':
+            if self.run_create_tables == "each":
                 drop_all_tables(self.metadata, self.bind)
             self.metadata.clear()
             self.define_tables(self.metadata)
-            if self.run_create_tables == 'each':
+            if self.run_create_tables == "each":
                 self.metadata.create_all(self.bind)
             self.tables.update(self.metadata.tables)
-        elif self.run_create_tables == 'each':
+        elif self.run_create_tables == "each":
             drop_all_tables(self.metadata, self.bind)
             self.metadata.create_all(self.bind)
 
     def _setup_each_inserts(self):
-        if self.run_inserts == 'each':
+        if self.run_inserts == "each":
             self._load_fixtures()
             self.insert_data()
 
     def _teardown_each_tables(self):
         # no need to run deletes if tables are recreated on setup
-        if self.run_define_tables != 'each' and self.run_deletes == 'each':
+        if self.run_define_tables != "each" and self.run_deletes == "each":
             with self.bind.connect() as conn:
                 for table in reversed(self.metadata.sorted_tables):
                     try:
@@ -141,7 +141,8 @@ class TablesTest(TestBase):
                     except sa.exc.DBAPIError as ex:
                         util.print_(
                             ("Error emptying table %s: %r" % (table, ex)),
-                            file=sys.stderr)
+                            file=sys.stderr,
+                        )
 
     def setup(self):
         self._setup_each_tables()
@@ -155,7 +156,7 @@ class TablesTest(TestBase):
         if cls.run_create_tables:
             drop_all_tables(cls.metadata, cls.bind)
 
-        if cls.run_dispose_bind == 'once':
+        if cls.run_dispose_bind == "once":
             cls.dispose_bind(cls.bind)
 
         cls.metadata.bind = None
@@ -173,9 +174,9 @@ class TablesTest(TestBase):
 
     @classmethod
     def dispose_bind(cls, bind):
-        if hasattr(bind, 'dispose'):
+        if hasattr(bind, "dispose"):
             bind.dispose()
-        elif hasattr(bind, 'close'):
+        elif hasattr(bind, "close"):
             bind.close()
 
     @classmethod
@@ -212,8 +213,12 @@ class TablesTest(TestBase):
                 continue
             cls.bind.execute(
                 table.insert(),
-                [dict(zip(headers[table], column_values))
-                 for column_values in rows[table]])
+                [
+                    dict(zip(headers[table], column_values))
+                    for column_values in rows[table]
+                ],
+            )
+
 
 from sqlalchemy import event
 
@@ -236,7 +241,6 @@ class RemovesEvents(object):
 
 
 class _ORMTest(object):
-
     @classmethod
     def teardown_class(cls):
         sa.orm.session.Session.close_all()
@@ -249,10 +253,10 @@ class ORMTest(_ORMTest, TestBase):
 
 class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     # 'once', 'each', None
-    run_setup_classes = 'once'
+    run_setup_classes = "once"
 
     # 'once', 'each', None
-    run_setup_mappers = 'each'
+    run_setup_mappers = "each"
 
     classes = None
 
@@ -292,20 +296,20 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
 
     @classmethod
     def _setup_once_classes(cls):
-        if cls.run_setup_classes == 'once':
+        if cls.run_setup_classes == "once":
             cls._with_register_classes(cls.setup_classes)
 
     @classmethod
     def _setup_once_mappers(cls):
-        if cls.run_setup_mappers == 'once':
+        if cls.run_setup_mappers == "once":
             cls._with_register_classes(cls.setup_mappers)
 
     def _setup_each_mappers(self):
-        if self.run_setup_mappers == 'each':
+        if self.run_setup_mappers == "each":
             self._with_register_classes(self.setup_mappers)
 
     def _setup_each_classes(self):
-        if self.run_setup_classes == 'each':
+        if self.run_setup_classes == "each":
             self._with_register_classes(self.setup_classes)
 
     @classmethod
@@ -339,11 +343,11 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
         # some tests create mappers in the test bodies
         # and will define setup_mappers as None -
         # clear mappers in any case
-        if self.run_setup_mappers != 'once':
+        if self.run_setup_mappers != "once":
             sa.orm.clear_mappers()
 
     def _teardown_each_classes(self):
-        if self.run_setup_classes != 'once':
+        if self.run_setup_classes != "once":
             self.classes.clear()
 
     @classmethod
@@ -356,8 +360,8 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
 
 
 class DeclarativeMappedTest(MappedTest):
-    run_setup_classes = 'once'
-    run_setup_mappers = 'once'
+    run_setup_classes = "once"
+    run_setup_mappers = "once"
 
     @classmethod
     def _setup_once_tables(cls):
@@ -370,15 +374,16 @@ class DeclarativeMappedTest(MappedTest):
         class FindFixtureDeclarative(DeclarativeMeta):
             def __init__(cls, classname, bases, dict_):
                 cls_registry[classname] = cls
-                return DeclarativeMeta.__init__(
-                    cls, classname, bases, dict_)
+                return DeclarativeMeta.__init__(cls, classname, bases, dict_)
 
         class DeclarativeBasic(object):
             __table_cls__ = schema.Table
 
-        _DeclBase = declarative_base(metadata=cls.metadata,
-                                     metaclass=FindFixtureDeclarative,
-                                     cls=DeclarativeBasic)
+        _DeclBase = declarative_base(
+            metadata=cls.metadata,
+            metaclass=FindFixtureDeclarative,
+            cls=DeclarativeBasic,
+        )
         cls.DeclarativeBasic = _DeclBase
         fn()
 

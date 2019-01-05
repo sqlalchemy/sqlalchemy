@@ -76,7 +76,7 @@ def association_proxy(target_collection, attr, **kw):
     return AssociationProxy(target_collection, attr, **kw)
 
 
-ASSOCIATION_PROXY = util.symbol('ASSOCIATION_PROXY')
+ASSOCIATION_PROXY = util.symbol("ASSOCIATION_PROXY")
 """Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.AssociationProxy`.
 
@@ -92,9 +92,16 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
     is_attribute = False
     extension_type = ASSOCIATION_PROXY
 
-    def __init__(self, target_collection, attr, creator=None,
-                 getset_factory=None, proxy_factory=None,
-                 proxy_bulk_set=None, info=None):
+    def __init__(
+        self,
+        target_collection,
+        attr,
+        creator=None,
+        getset_factory=None,
+        proxy_factory=None,
+        proxy_bulk_set=None,
+        info=None,
+    ):
         """Construct a new :class:`.AssociationProxy`.
 
         The :func:`.association_proxy` function is provided as the usual
@@ -152,8 +159,11 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         self.proxy_bulk_set = proxy_bulk_set
 
         self.owning_class = None
-        self.key = '_%s_%s_%s' % (
-            type(self).__name__, target_collection, id(self))
+        self.key = "_%s_%s_%s" % (
+            type(self).__name__,
+            target_collection,
+            id(self),
+        )
         self.collection_class = None
         if info:
             self.info = info
@@ -215,9 +225,11 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         if owning_class is None:
             raise exc.InvalidRequestError(
                 "This association proxy has no mapped owning class; "
-                "can't locate a mapped property")
-        return (orm.class_mapper(owning_class).
-                get_property(self.target_collection))
+                "can't locate a mapped property"
+            )
+        return orm.class_mapper(owning_class).get_property(
+            self.target_collection
+        )
 
     @util.memoized_property
     def target_class(self):
@@ -241,8 +253,11 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     @util.memoized_property
     def _value_is_scalar(self):
-        return not self._get_property().\
-            mapper.get_property(self.value_attr).uselist
+        return (
+            not self._get_property()
+            .mapper.get_property(self.value_attr)
+            .uselist
+        )
 
     @util.memoized_property
     def _target_is_object(self):
@@ -338,11 +353,15 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
             return _getter(target) if target is not None else None
 
         if collection_class is dict:
+
             def setter(o, k, v):
                 setattr(o, attr, v)
+
         else:
+
             def setter(o, v):
                 setattr(o, attr, v)
+
         return getter, setter
 
     def _new(self, lazy_collection):
@@ -351,7 +370,8 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
         if self.proxy_factory:
             return self.proxy_factory(
-                lazy_collection, creator, self.value_attr, self)
+                lazy_collection, creator, self.value_attr, self
+            )
 
         if self.getset_factory:
             getter, setter = self.getset_factory(self.collection_class, self)
@@ -360,19 +380,23 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
         if self.collection_class is list:
             return _AssociationList(
-                lazy_collection, creator, getter, setter, self)
+                lazy_collection, creator, getter, setter, self
+            )
         elif self.collection_class is dict:
             return _AssociationDict(
-                lazy_collection, creator, getter, setter, self)
+                lazy_collection, creator, getter, setter, self
+            )
         elif self.collection_class is set:
             return _AssociationSet(
-                lazy_collection, creator, getter, setter, self)
+                lazy_collection, creator, getter, setter, self
+            )
         else:
             raise exc.ArgumentError(
-                'could not guess which interface to use for '
+                "could not guess which interface to use for "
                 'collection_class "%s" backing "%s"; specify a '
-                'proxy_factory and proxy_bulk_set manually' %
-                (self.collection_class.__name__, self.target_collection))
+                "proxy_factory and proxy_bulk_set manually"
+                % (self.collection_class.__name__, self.target_collection)
+            )
 
     def _inflate(self, proxy):
         creator = self.creator and self.creator or self.target_class
@@ -397,8 +421,9 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
             proxy.update(values)
         else:
             raise exc.ArgumentError(
-                'no proxy_bulk_set supplied for custom '
-                'collection_class implementation')
+                "no proxy_bulk_set supplied for custom "
+                "collection_class implementation"
+            )
 
     @property
     def _comparator(self):
@@ -412,12 +437,13 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         return None
 
     def _criterion_exists(self, criterion=None, **kwargs):
-        is_has = kwargs.pop('is_has', None)
+        is_has = kwargs.pop("is_has", None)
 
         target_assoc = self._unwrap_target_assoc_proxy
         if target_assoc is not None:
             inner = target_assoc._criterion_exists(
-                criterion=criterion, **kwargs)
+                criterion=criterion, **kwargs
+            )
             return self._comparator._criterion_exists(inner)
 
         if self._target_is_object:
@@ -449,15 +475,15 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
         """
         if self._unwrap_target_assoc_proxy is None and (
-            self.scalar and (
-                not self._target_is_object or self._value_is_scalar)
+            self.scalar
+            and (not self._target_is_object or self._value_is_scalar)
         ):
             raise exc.InvalidRequestError(
-                "'any()' not implemented for scalar "
-                "attributes. Use has()."
+                "'any()' not implemented for scalar " "attributes. Use has()."
             )
         return self._criterion_exists(
-            criterion=criterion, is_has=False, **kwargs)
+            criterion=criterion, is_has=False, **kwargs
+        )
 
     def has(self, criterion=None, **kwargs):
         """Produce a proxied 'has' expression using EXISTS.
@@ -469,14 +495,15 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
         """
         if self._unwrap_target_assoc_proxy is None and (
-                not self.scalar or (
-                self._target_is_object and not self._value_is_scalar)
+            not self.scalar
+            or (self._target_is_object and not self._value_is_scalar)
         ):
             raise exc.InvalidRequestError(
-                "'has()' not implemented for collections.  "
-                "Use any().")
+                "'has()' not implemented for collections.  " "Use any()."
+            )
         return self._criterion_exists(
-            criterion=criterion, is_has=True, **kwargs)
+            criterion=criterion, is_has=True, **kwargs
+        )
 
     def contains(self, obj):
         """Produce a proxied 'contains' expression using EXISTS.
@@ -492,17 +519,21 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         if target_assoc is not None:
             return self._comparator._criterion_exists(
                 target_assoc.contains(obj)
-                if not target_assoc.scalar else target_assoc == obj
+                if not target_assoc.scalar
+                else target_assoc == obj
             )
-        elif self._target_is_object and self.scalar and \
-                not self._value_is_scalar:
+        elif (
+            self._target_is_object
+            and self.scalar
+            and not self._value_is_scalar
+        ):
             return self._comparator.has(
                 getattr(self.target_class, self.value_attr).contains(obj)
             )
-        elif self._target_is_object and self.scalar and \
-                self._value_is_scalar:
+        elif self._target_is_object and self.scalar and self._value_is_scalar:
             raise exc.InvalidRequestError(
-                "contains() doesn't apply to a scalar endpoint; use ==")
+                "contains() doesn't apply to a scalar endpoint; use =="
+            )
         else:
 
             return self._comparator._criterion_exists(**{self.value_attr: obj})
@@ -513,7 +544,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         if obj is None:
             return or_(
                 self._comparator.has(**{self.value_attr: obj}),
-                self._comparator == None
+                self._comparator == None,
             )
         else:
             return self._comparator.has(**{self.value_attr: obj})
@@ -522,11 +553,14 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         # note the has() here will fail for collections; eq_()
         # is only allowed with a scalar.
         return self._comparator.has(
-            getattr(self.target_class, self.value_attr) != obj)
+            getattr(self.target_class, self.value_attr) != obj
+        )
 
     def __repr__(self):
         return "AssociationProxy(%r, %r)" % (
-            self.target_collection, self.value_attr)
+            self.target_collection,
+            self.value_attr,
+        )
 
 
 class _lazy_collection(object):
@@ -539,15 +573,16 @@ class _lazy_collection(object):
         if obj is None:
             raise exc.InvalidRequestError(
                 "stale association proxy, parent object has gone out of "
-                "scope")
+                "scope"
+            )
         return getattr(obj, self.target)
 
     def __getstate__(self):
-        return {'obj': self.ref(), 'target': self.target}
+        return {"obj": self.ref(), "target": self.target}
 
     def __setstate__(self, state):
-        self.ref = weakref.ref(state['obj'])
-        self.target = state['target']
+        self.ref = weakref.ref(state["obj"])
+        self.target = state["target"]
 
 
 class _AssociationCollection(object):
@@ -593,11 +628,11 @@ class _AssociationCollection(object):
     __nonzero__ = __bool__
 
     def __getstate__(self):
-        return {'parent': self.parent, 'lazy_collection': self.lazy_collection}
+        return {"parent": self.parent, "lazy_collection": self.lazy_collection}
 
     def __setstate__(self, state):
-        self.parent = state['parent']
-        self.lazy_collection = state['lazy_collection']
+        self.parent = state["parent"]
+        self.lazy_collection = state["lazy_collection"]
         self.parent._inflate(self)
 
 
@@ -644,8 +679,8 @@ class _AssociationList(_AssociationCollection):
                 if len(value) != len(rng):
                     raise ValueError(
                         "attempt to assign sequence of size %s to "
-                        "extended slice of size %s" % (len(value),
-                                                       len(rng)))
+                        "extended slice of size %s" % (len(value), len(rng))
+                    )
                 for i, item in zip(rng, value):
                     self._set(self.col[i], item)
 
@@ -687,8 +722,14 @@ class _AssociationList(_AssociationCollection):
         col.append(item)
 
     def count(self, value):
-        return sum([1 for _ in
-                    util.itertools_filter(lambda v: v == value, iter(self))])
+        return sum(
+            [
+                1
+                for _ in util.itertools_filter(
+                    lambda v: v == value, iter(self)
+                )
+            ]
+        )
 
     def extend(self, values):
         for v in values:
@@ -718,7 +759,7 @@ class _AssociationList(_AssociationCollection):
         raise NotImplementedError
 
     def clear(self):
-        del self.col[0:len(self.col)]
+        del self.col[0 : len(self.col)]
 
     def __eq__(self, other):
         return list(self) == other
@@ -759,6 +800,7 @@ class _AssociationList(_AssociationCollection):
         if not isinstance(n, int):
             return NotImplemented
         return list(self) * n
+
     __rmul__ = __mul__
 
     def __iadd__(self, iterable):
@@ -791,13 +833,17 @@ class _AssociationList(_AssociationCollection):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
     for func_name, func in list(locals().items()):
-        if (util.callable(func) and func.__name__ == func_name and
-                not func.__doc__ and hasattr(list, func_name)):
+        if (
+            util.callable(func)
+            and func.__name__ == func_name
+            and not func.__doc__
+            and hasattr(list, func_name)
+        ):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
 
 
-_NotProvided = util.symbol('_NotProvided')
+_NotProvided = util.symbol("_NotProvided")
 
 
 class _AssociationDict(_AssociationCollection):
@@ -879,6 +925,7 @@ class _AssociationDict(_AssociationCollection):
         return self.col.keys()
 
     if util.py2k:
+
         def iteritems(self):
             return ((key, self._get(self.col[key])) for key in self.col)
 
@@ -893,7 +940,9 @@ class _AssociationDict(_AssociationCollection):
 
         def items(self):
             return [(k, self._get(self.col[k])) for k in self]
+
     else:
+
         def items(self):
             return ((key, self._get(self.col[key])) for key in self.col)
 
@@ -913,14 +962,15 @@ class _AssociationDict(_AssociationCollection):
 
     def update(self, *a, **kw):
         if len(a) > 1:
-            raise TypeError('update expected at most 1 arguments, got %i' %
-                            len(a))
+            raise TypeError(
+                "update expected at most 1 arguments, got %i" % len(a)
+            )
         elif len(a) == 1:
             seq_or_map = a[0]
             # discern dict from sequence - took the advice from
             # http://www.voidspace.org.uk/python/articles/duck_typing.shtml
             # still not perfect :(
-            if hasattr(seq_or_map, 'keys'):
+            if hasattr(seq_or_map, "keys"):
                 for item in seq_or_map:
                     self[item] = seq_or_map[item]
             else:
@@ -930,7 +980,8 @@ class _AssociationDict(_AssociationCollection):
                 except ValueError:
                     raise ValueError(
                         "dictionary update sequence "
-                        "requires 2-element tuples")
+                        "requires 2-element tuples"
+                    )
 
         for key, value in kw:
             self[key] = value
@@ -942,8 +993,12 @@ class _AssociationDict(_AssociationCollection):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
     for func_name, func in list(locals().items()):
-        if (util.callable(func) and func.__name__ == func_name and
-                not func.__doc__ and hasattr(dict, func_name)):
+        if (
+            util.callable(func)
+            and func.__name__ == func_name
+            and not func.__doc__
+            and hasattr(dict, func_name)
+        ):
             func.__doc__ = getattr(dict, func_name).__doc__
     del func_name, func
 
@@ -1007,7 +1062,7 @@ class _AssociationSet(_AssociationCollection):
 
     def pop(self):
         if not self.col:
-            raise KeyError('pop from an empty set')
+            raise KeyError("pop from an empty set")
         member = self.col.pop()
         return self._get(member)
 
@@ -1139,7 +1194,11 @@ class _AssociationSet(_AssociationCollection):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
     for func_name, func in list(locals().items()):
-        if (util.callable(func) and func.__name__ == func_name and
-                not func.__doc__ and hasattr(set, func_name)):
+        if (
+            util.callable(func)
+            and func.__name__ == func_name
+            and not func.__doc__
+            and hasattr(set, func_name)
+        ):
             func.__doc__ = getattr(set, func_name).__doc__
     del func_name, func

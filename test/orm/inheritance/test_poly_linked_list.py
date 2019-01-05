@@ -7,41 +7,45 @@ from sqlalchemy.testing.schema import Table, Column
 
 
 class PolymorphicCircularTest(fixtures.MappedTest):
-    run_setup_mappers = 'once'
+    run_setup_mappers = "once"
 
     @classmethod
     def define_tables(cls, metadata):
-        global Table1, Table1B, Table2, Table3,  Data
+        global Table1, Table1B, Table2, Table3, Data
         table1 = Table(
-            'table1', metadata,
+            "table1",
+            metadata,
             Column(
-                'id', Integer, primary_key=True,
-                test_needs_autoincrement=True),
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column(
-                'related_id', Integer, ForeignKey('table1.id'),
-                nullable=True),
-            Column('type', String(30)),
-            Column('name', String(30)))
+                "related_id", Integer, ForeignKey("table1.id"), nullable=True
+            ),
+            Column("type", String(30)),
+            Column("name", String(30)),
+        )
 
         table2 = Table(
-            'table2', metadata,
-            Column(
-                'id', Integer, ForeignKey('table1.id'),
-                primary_key=True),)
+            "table2",
+            metadata,
+            Column("id", Integer, ForeignKey("table1.id"), primary_key=True),
+        )
 
         table3 = Table(
-            'table3', metadata,
-            Column(
-                'id', Integer, ForeignKey('table1.id'),
-                primary_key=True),)
+            "table3",
+            metadata,
+            Column("id", Integer, ForeignKey("table1.id"), primary_key=True),
+        )
 
         data = Table(
-            'data', metadata,
+            "data",
+            metadata,
             Column(
-                'id', Integer, primary_key=True,
-                test_needs_autoincrement=True),
-            Column('node_id', Integer, ForeignKey('table1.id')),
-            Column('data', String(30)))
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("node_id", Integer, ForeignKey("table1.id")),
+            Column("data", String(30)),
+        )
 
         # join = polymorphic_union(
         #   {
@@ -50,7 +54,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         #   'table1' : table1.select(table1.c.type.in_(['table1', 'table1b'])),
         #   }, None, 'pjoin')
 
-        join = table1.outerjoin(table2).outerjoin(table3).alias('pjoin')
+        join = table1.outerjoin(table2).outerjoin(table3).alias("pjoin")
         # join = None
 
         class Table1(object):
@@ -61,8 +65,11 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
             def __repr__(self):
                 return "%s(%s, %s, %s)" % (
-                    self.__class__.__name__, self.id, repr(str(self.name)),
-                    repr(self.data))
+                    self.__class__.__name__,
+                    self.id,
+                    repr(str(self.name)),
+                    repr(self.data),
+                )
 
         class Table1B(Table1):
             pass
@@ -79,25 +86,32 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
             def __repr__(self):
                 return "%s(%s, %s)" % (
-                    self.__class__.__name__, self.id, repr(str(self.data)))
+                    self.__class__.__name__,
+                    self.id,
+                    repr(str(self.data)),
+                )
 
         try:
             # this is how the mapping used to work.  ensure that this raises an
             # error now
             table1_mapper = mapper(
-                Table1, table1, select_table=join,
+                Table1,
+                table1,
+                select_table=join,
                 polymorphic_on=table1.c.type,
-                polymorphic_identity='table1',
+                polymorphic_identity="table1",
                 properties={
-                    'nxt': relationship(
+                    "nxt": relationship(
                         Table1,
-                        backref=backref('prev',
-                                        foreignkey=join.c.id,
-                                        uselist=False),
+                        backref=backref(
+                            "prev", foreignkey=join.c.id, uselist=False
+                        ),
                         uselist=False,
-                        primaryjoin=join.c.id == join.c.related_id),
-                    'data': relationship(mapper(Data, data))
-                })
+                        primaryjoin=join.c.id == join.c.related_id,
+                    ),
+                    "data": relationship(mapper(Data, data)),
+                },
+            )
             configure_mappers()
             assert False
         except Exception:
@@ -114,36 +128,48 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         # NOTE: using "nxt" instead of "next" to avoid 2to3 turning it into
         # __next__() for some reason.
         table1_mapper = mapper(
-            Table1, table1,
+            Table1,
+            table1,
             # select_table=join,
             polymorphic_on=table1.c.type,
-            polymorphic_identity='table1',
+            polymorphic_identity="table1",
             properties={
-                'nxt': relationship(
+                "nxt": relationship(
                     Table1,
                     backref=backref(
-                        'prev', remote_side=table1.c.id, uselist=False),
+                        "prev", remote_side=table1.c.id, uselist=False
+                    ),
                     uselist=False,
-                    primaryjoin=table1.c.id == table1.c.related_id),
-                'data': relationship(mapper(Data, data), lazy='joined',
-                                     order_by=data.c.id)
-            }
+                    primaryjoin=table1.c.id == table1.c.related_id,
+                ),
+                "data": relationship(
+                    mapper(Data, data), lazy="joined", order_by=data.c.id
+                ),
+            },
         )
 
         table1b_mapper = mapper(
-            Table1B, inherits=table1_mapper, polymorphic_identity='table1b')
+            Table1B, inherits=table1_mapper, polymorphic_identity="table1b"
+        )
 
-        table2_mapper = mapper(Table2, table2,
-                               inherits=table1_mapper,
-                               polymorphic_identity='table2')
+        table2_mapper = mapper(
+            Table2,
+            table2,
+            inherits=table1_mapper,
+            polymorphic_identity="table2",
+        )
 
         table3_mapper = mapper(
-            Table3, table3, inherits=table1_mapper,
-            polymorphic_identity='table3')
+            Table3,
+            table3,
+            inherits=table1_mapper,
+            polymorphic_identity="table3",
+        )
 
         configure_mappers()
         assert table1_mapper.primary_key == (
-            table1.c.id,), table1_mapper.primary_key
+            table1.c.id,
+        ), table1_mapper.primary_key
 
     def test_one(self):
         self._testlist([Table1, Table2, Table1, Table2])
@@ -152,16 +178,29 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         self._testlist([Table3])
 
     def test_three(self):
-        self._testlist([Table2, Table1, Table1B, Table3,
-                        Table3, Table1B, Table1B, Table2, Table1])
+        self._testlist(
+            [
+                Table2,
+                Table1,
+                Table1B,
+                Table3,
+                Table3,
+                Table1B,
+                Table1B,
+                Table2,
+                Table1,
+            ]
+        )
 
     def test_four(self):
-        self._testlist([
-            Table2('t2', [Data('data1'), Data('data2')]),
-            Table1('t1', []),
-            Table3('t3', [Data('data3')]),
-            Table1B('t1b', [Data('data4'), Data('data5')])
-        ])
+        self._testlist(
+            [
+                Table2("t2", [Data("data1"), Data("data2")]),
+                Table1("t1", []),
+                Table3("t3", [Data("data3")]),
+                Table1B("t1b", [Data("data4"), Data("data5")]),
+            ]
+        )
 
     def _testlist(self, classes):
         sess = create_session()
@@ -171,7 +210,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         obj = None
         for c in classes:
             if isinstance(c, type):
-                newobj = c('item %d' % count)
+                newobj = c("item %d" % count)
                 count += 1
             else:
                 newobj = c
@@ -188,7 +227,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         # string version of the saved list
         assertlist = []
         node = t
-        while (node):
+        while node:
             assertlist.append(node)
             n = node.nxt
             if n is not None:
@@ -198,10 +237,14 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
         # clear and query forwards
         sess.expunge_all()
-        node = sess.query(Table1).order_by(Table1.id).\
-            filter(Table1.id == t.id).first()
+        node = (
+            sess.query(Table1)
+            .order_by(Table1.id)
+            .filter(Table1.id == t.id)
+            .first()
+        )
         assertlist = []
-        while (node):
+        while node:
             assertlist.append(node)
             n = node.nxt
             if n is not None:
@@ -211,10 +254,14 @@ class PolymorphicCircularTest(fixtures.MappedTest):
 
         # clear and query backwards
         sess.expunge_all()
-        node = sess.query(Table1).order_by(Table1.id).\
-            filter(Table1.id == obj.id).first()
+        node = (
+            sess.query(Table1)
+            .order_by(Table1.id)
+            .filter(Table1.id == obj.id)
+            .first()
+        )
         assertlist = []
-        while (node):
+        while node:
             assertlist.insert(0, node)
             n = node.prev
             if n is not None:

@@ -14,6 +14,7 @@ import sys
 import types
 
 if jython:
+
     def jython_gc_collect(*args):
         """aggressive gc.collect for tests."""
         gc.collect()
@@ -25,9 +26,11 @@ if jython:
     # "lazy" gc, for VM's that don't GC on refcount == 0
     gc_collect = lazy_gc = jython_gc_collect
 elif pypy:
+
     def pypy_gc_collect(*args):
         gc.collect()
         gc.collect()
+
     gc_collect = lazy_gc = pypy_gc_collect
 else:
     # assume CPython - straight gc.collect, lazy_gc() is a pass
@@ -42,11 +45,13 @@ def picklers():
     if py2k:
         try:
             import cPickle
+
             picklers.add(cPickle)
         except ImportError:
             pass
 
     import pickle
+
     picklers.add(pickle)
 
     # yes, this thing needs this much testing
@@ -60,9 +65,9 @@ def round_decimal(value, prec):
         return round(value, prec)
 
     # can also use shift() here but that is 2.6 only
-    return (value * decimal.Decimal("1" + "0" * prec)
-            ).to_integral(decimal.ROUND_FLOOR) / \
-        pow(10, prec)
+    return (value * decimal.Decimal("1" + "0" * prec)).to_integral(
+        decimal.ROUND_FLOOR
+    ) / pow(10, prec)
 
 
 class RandomSet(set):
@@ -137,8 +142,9 @@ def function_named(fn, name):
     try:
         fn.__name__ = name
     except TypeError:
-        fn = types.FunctionType(fn.__code__, fn.__globals__, name,
-                                fn.__defaults__, fn.__closure__)
+        fn = types.FunctionType(
+            fn.__code__, fn.__globals__, name, fn.__defaults__, fn.__closure__
+        )
     return fn
 
 
@@ -190,7 +196,7 @@ def provide_metadata(fn, *args, **kw):
 
     metadata = schema.MetaData(config.db)
     self = args[0]
-    prev_meta = getattr(self, 'metadata', None)
+    prev_meta = getattr(self, "metadata", None)
     self.metadata = metadata
     try:
         return fn(*args, **kw)
@@ -213,8 +219,8 @@ def force_drop_names(*names):
         try:
             return fn(*args, **kw)
         finally:
-            drop_all_tables(
-                config.db, inspect(config.db), include_names=names)
+            drop_all_tables(config.db, inspect(config.db), include_names=names)
+
     return go
 
 
@@ -234,8 +240,13 @@ class adict(dict):
 
 
 def drop_all_tables(engine, inspector, schema=None, include_names=None):
-    from sqlalchemy import Column, Table, Integer, MetaData, \
-        ForeignKeyConstraint
+    from sqlalchemy import (
+        Column,
+        Table,
+        Integer,
+        MetaData,
+        ForeignKeyConstraint,
+    )
     from sqlalchemy.schema import DropTable, DropConstraint
 
     if include_names is not None:
@@ -243,30 +254,35 @@ def drop_all_tables(engine, inspector, schema=None, include_names=None):
 
     with engine.connect() as conn:
         for tname, fkcs in reversed(
-                inspector.get_sorted_table_and_fkc_names(schema=schema)):
+            inspector.get_sorted_table_and_fkc_names(schema=schema)
+        ):
             if tname:
                 if include_names is not None and tname not in include_names:
                     continue
-                conn.execute(DropTable(
-                    Table(tname, MetaData(), schema=schema)
-                ))
+                conn.execute(
+                    DropTable(Table(tname, MetaData(), schema=schema))
+                )
             elif fkcs:
                 if not engine.dialect.supports_alter:
                     continue
                 for tname, fkc in fkcs:
-                    if include_names is not None and \
-                            tname not in include_names:
+                    if (
+                        include_names is not None
+                        and tname not in include_names
+                    ):
                         continue
                     tb = Table(
-                        tname, MetaData(),
-                        Column('x', Integer),
-                        Column('y', Integer),
-                        schema=schema
+                        tname,
+                        MetaData(),
+                        Column("x", Integer),
+                        Column("y", Integer),
+                        schema=schema,
                     )
-                    conn.execute(DropConstraint(
-                        ForeignKeyConstraint(
-                            [tb.c.x], [tb.c.y], name=fkc)
-                    ))
+                    conn.execute(
+                        DropConstraint(
+                            ForeignKeyConstraint([tb.c.x], [tb.c.y], name=fkc)
+                        )
+                    )
 
 
 def teardown_events(event_cls):
@@ -276,5 +292,5 @@ def teardown_events(event_cls):
             return fn(*arg, **kw)
         finally:
             event_cls._clear()
-    return decorate
 
+    return decorate

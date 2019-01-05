@@ -12,7 +12,8 @@ from sqlalchemy.orm import joinedload
 import os
 
 for p in Session.query(Person).options(
-        joinedload(Person.addresses), cache_address_bits):
+    joinedload(Person.addresses), cache_address_bits
+):
     print(p.format_full())
 
 
@@ -25,5 +26,5 @@ print(
     "related data is pulled from cache.\n"
     "To clear the cache, delete the file %r.  \n"
     "This will cause a re-load of cities, postal codes and countries on "
-    "the next run.\n"
-    % os.path.join(root, 'cache.dbm'))
+    "the next run.\n" % os.path.join(root, "cache.dbm")
+)

@@ -6,12 +6,23 @@ to only the most recent version.
 """
 
 from sqlalchemy import (
-    create_engine, Integer, String, event, Column, DateTime,
-    inspect, literal
+    create_engine,
+    Integer,
+    String,
+    event,
+    Column,
+    DateTime,
+    inspect,
+    literal,
 )
 from sqlalchemy.orm import (
-    make_transient, Session, relationship, attributes, backref,
-    make_transient_to_detached, Query
+    make_transient,
+    Session,
+    relationship,
+    attributes,
+    backref,
+    make_transient_to_detached,
+    Query,
 )
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
@@ -50,7 +61,8 @@ class VersionedStartEnd(object):
         # make the "old" version of us, which we will turn into an
         # UPDATE
         old_copy_of_us = self.__class__(
-            id=self.id, start=self.start, end=self.end)
+            id=self.id, start=self.start, end=self.end
+        )
 
         # turn old_copy_of_us into an UPDATE
         make_transient_to_detached(old_copy_of_us)
@@ -95,11 +107,11 @@ def before_compile(query):
     """ensure all queries for VersionedStartEnd include criteria """
 
     for ent in query.column_descriptions:
-        entity = ent['entity']
+        entity = ent["entity"]
         if entity is None:
             continue
-        insp = inspect(ent['entity'])
-        mapper = getattr(insp, 'mapper', None)
+        insp = inspect(ent["entity"])
+        mapper = getattr(insp, "mapper", None)
         if mapper and issubclass(mapper.class_, VersionedStartEnd):
             query = query.enable_assertions(False).filter(
                 # using a literal "now" because SQLite's "between"
@@ -107,14 +119,14 @@ def before_compile(query):
                 # ``func.now()`` and we'd be using PostgreSQL
                 literal(
                     current_time() + datetime.timedelta(seconds=1)
-                ).between(ent['entity'].start, ent['entity'].end)
+                ).between(ent["entity"].start, ent["entity"].end)
             )
 
     return query
 
 
 class Parent(VersionedStartEnd, Base):
-    __tablename__ = 'parent'
+    __tablename__ = "parent"
     id = Column(Integer, primary_key=True)
     start = Column(DateTime, primary_key=True)
     end = Column(DateTime, primary_key=True)
@@ -124,10 +136,7 @@ class Parent(VersionedStartEnd, Base):
 
     child = relationship(
         "Child",
-        primaryjoin=(
-            "Child.id == foreign(Parent.child_n)"
-        ),
-
+        primaryjoin=("Child.id == foreign(Parent.child_n)"),
         # note the primaryjoin can also be:
         #
         #  "and_(Child.id == foreign(Parent.child_n), "
@@ -138,14 +147,13 @@ class Parent(VersionedStartEnd, Base):
         # as well, it just means the criteria will be present twice for most
         # parent->child load operations
         #
-
         uselist=False,
-        backref=backref('parent', uselist=False)
+        backref=backref("parent", uselist=False),
     )
 
 
 class Child(VersionedStartEnd, Base):
-    __tablename__ = 'child'
+    __tablename__ = "child"
 
     id = Column(Integer, primary_key=True)
     start = Column(DateTime, primary_key=True)
@@ -155,13 +163,14 @@ class Child(VersionedStartEnd, Base):
     def new_version(self, session):
 
         # expire parent's reference to us
-        session.expire(self.parent, ['child'])
+        session.expire(self.parent, ["child"])
 
         # create new version
         VersionedStartEnd.new_version(self, session)
 
         # re-add ourselves to the parent
         self.parent.child = self
+
 
 times = []
 
@@ -185,27 +194,37 @@ def time_passes(s):
         assert times[-1] > times[-2]
     return times[-1]
 
-e = create_engine("sqlite://", echo='debug')
+
+e = create_engine("sqlite://", echo="debug")
 Base.metadata.create_all(e)
 
 s = Session(e)
 
 now = time_passes(s)
 
-c1 = Child(id=1, data='child 1')
-p1 = Parent(id=1, data='c1', child=c1)
+c1 = Child(id=1, data="child 1")
+p1 = Parent(id=1, data="c1", child=c1)
 
 s.add(p1)
 s.commit()
 
 # assert raw DB data
 assert s.query(Parent.__table__).all() == [
-    (1, times[0] - datetime.timedelta(days=3),
-        times[0] + datetime.timedelta(days=3), 'c1', 1)
+    (
+        1,
+        times[0] - datetime.timedelta(days=3),
+        times[0] + datetime.timedelta(days=3),
+        "c1",
+        1,
+    )
 ]
 assert s.query(Child.__table__).all() == [
-    (1, times[0] - datetime.timedelta(days=3),
-        times[0] + datetime.timedelta(days=3), 'child 1')
+    (
+        1,
+        times[0] - datetime.timedelta(days=3),
+        times[0] + datetime.timedelta(days=3),
+        "child 1",
+    )
 ]
 
 now = time_passes(s)
@@ -214,7 +233,7 @@ p1_check = s.query(Parent).first()
 assert p1_check is p1
 assert p1_check.child is c1
 
-p1.child.data = 'elvis presley'
+p1.child.data = "elvis presley"
 
 s.commit()
 
@@ -226,40 +245,51 @@ c2_check = p2_check.child
 assert p2_check.child is c1
 
 # new data
-assert c1.data == 'elvis presley'
+assert c1.data == "elvis presley"
 
 # new end time
 assert c1.end == now + datetime.timedelta(days=2)
 
 # assert raw DB data
 assert s.query(Parent.__table__).all() == [
-    (1, times[0] - datetime.timedelta(days=3),
-     times[0] + datetime.timedelta(days=3), 'c1', 1)
+    (
+        1,
+        times[0] - datetime.timedelta(days=3),
+        times[0] + datetime.timedelta(days=3),
+        "c1",
+        1,
+    )
 ]
 assert s.query(Child.__table__).order_by(Child.end).all() == [
-    (1, times[0] - datetime.timedelta(days=3), times[1], 'child 1'),
-    (1, times[1], times[1] + datetime.timedelta(days=2), 'elvis presley')
+    (1, times[0] - datetime.timedelta(days=3), times[1], "child 1"),
+    (1, times[1], times[1] + datetime.timedelta(days=2), "elvis presley"),
 ]
 
 now = time_passes(s)
 
-p1.data = 'c2 elvis presley'
+p1.data = "c2 elvis presley"
 
 s.commit()
 
 # assert raw DB data.  now there are two parent rows.
 assert s.query(Parent.__table__).order_by(Parent.end).all() == [
-    (1, times[0] - datetime.timedelta(days=3), times[2], 'c1', 1),
-    (1, times[2], times[2] + datetime.timedelta(days=2), 'c2 elvis presley', 1)
+    (1, times[0] - datetime.timedelta(days=3), times[2], "c1", 1),
+    (
+        1,
+        times[2],
+        times[2] + datetime.timedelta(days=2),
+        "c2 elvis presley",
+        1,
+    ),
 ]
 assert s.query(Child.__table__).order_by(Child.end).all() == [
-    (1, times[0] - datetime.timedelta(days=3), times[1], 'child 1'),
-    (1, times[1], times[1] + datetime.timedelta(days=2), 'elvis presley')
+    (1, times[0] - datetime.timedelta(days=3), times[1], "child 1"),
+    (1, times[1], times[1] + datetime.timedelta(days=2), "elvis presley"),
 ]
 
 # add some more rows to test that these aren't coming back for
 # queries
-s.add(Parent(id=2, data='unrelated', child=Child(id=2, data='unrelated')))
+s.add(Parent(id=2, data="unrelated", child=Child(id=2, data="unrelated")))
 s.commit()
 
 
@@ -274,6 +304,6 @@ c3_check = s.query(Child).filter(Child.parent == p3_check).one()
 assert c3_check is c1
 
 # one child one parent....
-c3_check = s.query(Child).join(Parent.child).filter(
-    Parent.id == p3_check.id).one()
-
+c3_check = (
+    s.query(Child).join(Parent.child).filter(Parent.id == p3_check.id).one()
+)

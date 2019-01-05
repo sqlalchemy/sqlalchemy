@@ -7,7 +7,7 @@
 from .base import ischema_names
 from ... import types as sqltypes
 
-__all__ = ('INT4RANGE', 'INT8RANGE', 'NUMRANGE')
+__all__ = ("INT4RANGE", "INT8RANGE", "NUMRANGE")
 
 
 class RangeOperators(object):
@@ -34,35 +34,36 @@ class RangeOperators(object):
         def __ne__(self, other):
             "Boolean expression. Returns true if two ranges are not equal"
             if other is None:
-                return super(
-                    RangeOperators.comparator_factory, self).__ne__(other)
+                return super(RangeOperators.comparator_factory, self).__ne__(
+                    other
+                )
             else:
-                return self.expr.op('<>')(other)
+                return self.expr.op("<>")(other)
 
         def contains(self, other, **kw):
             """Boolean expression. Returns true if the right hand operand,
             which can be an element or a range, is contained within the
             column.
             """
-            return self.expr.op('@>')(other)
+            return self.expr.op("@>")(other)
 
         def contained_by(self, other):
             """Boolean expression. Returns true if the column is contained
             within the right hand operand.
             """
-            return self.expr.op('<@')(other)
+            return self.expr.op("<@")(other)
 
         def overlaps(self, other):
             """Boolean expression. Returns true if the column overlaps
             (has points in common with) the right hand operand.
             """
-            return self.expr.op('&&')(other)
+            return self.expr.op("&&")(other)
 
         def strictly_left_of(self, other):
             """Boolean expression. Returns true if the column is strictly
             left of the right hand operand.
             """
-            return self.expr.op('<<')(other)
+            return self.expr.op("<<")(other)
 
         __lshift__ = strictly_left_of
 
@@ -70,7 +71,7 @@ class RangeOperators(object):
             """Boolean expression. Returns true if the column is strictly
             right of the right hand operand.
             """
-            return self.expr.op('>>')(other)
+            return self.expr.op(">>")(other)
 
         __rshift__ = strictly_right_of
 
@@ -78,26 +79,26 @@ class RangeOperators(object):
             """Boolean expression. Returns true if the range in the column
             does not extend right of the range in the operand.
             """
-            return self.expr.op('&<')(other)
+            return self.expr.op("&<")(other)
 
         def not_extend_left_of(self, other):
             """Boolean expression. Returns true if the range in the column
             does not extend left of the range in the operand.
             """
-            return self.expr.op('&>')(other)
+            return self.expr.op("&>")(other)
 
         def adjacent_to(self, other):
             """Boolean expression. Returns true if the range in the column
             is adjacent to the range in the operand.
             """
-            return self.expr.op('-|-')(other)
+            return self.expr.op("-|-")(other)
 
         def __add__(self, other):
             """Range expression. Returns the union of the two ranges.
             Will raise an exception if the resulting range is not
             contigous.
             """
-            return self.expr.op('+')(other)
+            return self.expr.op("+")(other)
 
 
 class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
@@ -107,9 +108,10 @@ class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'INT4RANGE'
+    __visit_name__ = "INT4RANGE"
 
-ischema_names['int4range'] = INT4RANGE
+
+ischema_names["int4range"] = INT4RANGE
 
 
 class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
@@ -119,9 +121,10 @@ class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'INT8RANGE'
+    __visit_name__ = "INT8RANGE"
 
-ischema_names['int8range'] = INT8RANGE
+
+ischema_names["int8range"] = INT8RANGE
 
 
 class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
@@ -131,9 +134,10 @@ class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'NUMRANGE'
+    __visit_name__ = "NUMRANGE"
 
-ischema_names['numrange'] = NUMRANGE
+
+ischema_names["numrange"] = NUMRANGE
 
 
 class DATERANGE(RangeOperators, sqltypes.TypeEngine):
@@ -143,9 +147,10 @@ class DATERANGE(RangeOperators, sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'DATERANGE'
+    __visit_name__ = "DATERANGE"
 
-ischema_names['daterange'] = DATERANGE
+
+ischema_names["daterange"] = DATERANGE
 
 
 class TSRANGE(RangeOperators, sqltypes.TypeEngine):
@@ -155,9 +160,10 @@ class TSRANGE(RangeOperators, sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'TSRANGE'
+    __visit_name__ = "TSRANGE"
 
-ischema_names['tsrange'] = TSRANGE
+
+ischema_names["tsrange"] = TSRANGE
 
 
 class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
@@ -167,6 +173,7 @@ class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'TSTZRANGE'
+    __visit_name__ = "TSTZRANGE"
 
-ischema_names['tstzrange'] = TSTZRANGE
+
+ischema_names["tstzrange"] = TSTZRANGE

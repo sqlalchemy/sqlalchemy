@@ -301,20 +301,20 @@ class _SQLite_pysqliteDate(DATE):
 
 
 class SQLiteDialect_pysqlite(SQLiteDialect):
-    default_paramstyle = 'qmark'
+    default_paramstyle = "qmark"
 
     colspecs = util.update_copy(
         SQLiteDialect.colspecs,
         {
             sqltypes.Date: _SQLite_pysqliteDate,
             sqltypes.TIMESTAMP: _SQLite_pysqliteTimeStamp,
-        }
+        },
     )
 
     if not util.py2k:
         description_encoding = None
 
-    driver = 'pysqlite'
+    driver = "pysqlite"
 
     def __init__(self, **kwargs):
         SQLiteDialect.__init__(self, **kwargs)
@@ -323,10 +323,13 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             sqlite_ver = self.dbapi.version_info
             if sqlite_ver < (2, 1, 3):
                 util.warn(
-                    ("The installed version of pysqlite2 (%s) is out-dated "
-                     "and will cause errors in some cases.  Version 2.1.3 "
-                     "or greater is recommended.") %
-                    '.'.join([str(subver) for subver in sqlite_ver]))
+                    (
+                        "The installed version of pysqlite2 (%s) is out-dated "
+                        "and will cause errors in some cases.  Version 2.1.3 "
+                        "or greater is recommended."
+                    )
+                    % ".".join([str(subver) for subver in sqlite_ver])
+                )
 
     @classmethod
     def dbapi(cls):
@@ -341,7 +344,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
     @classmethod
     def get_pool_class(cls, url):
-        if url.database and url.database != ':memory:':
+        if url.database and url.database != ":memory:":
             return pool.NullPool
         else:
             return pool.SingletonThreadPool
@@ -356,22 +359,25 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 "Valid SQLite URL forms are:\n"
                 " sqlite:///:memory: (or, sqlite://)\n"
                 " sqlite:///relative/path/to/file.db\n"
-                " sqlite:////absolute/path/to/file.db" % (url,))
-        filename = url.database or ':memory:'
-        if filename != ':memory:':
+                " sqlite:////absolute/path/to/file.db" % (url,)
+            )
+        filename = url.database or ":memory:"
+        if filename != ":memory:":
             filename = os.path.abspath(filename)
 
         opts = url.query.copy()
-        util.coerce_kw_type(opts, 'timeout', float)
-        util.coerce_kw_type(opts, 'isolation_level', str)
-        util.coerce_kw_type(opts, 'detect_types', int)
-        util.coerce_kw_type(opts, 'check_same_thread', bool)
-        util.coerce_kw_type(opts, 'cached_statements', int)
+        util.coerce_kw_type(opts, "timeout", float)
+        util.coerce_kw_type(opts, "isolation_level", str)
+        util.coerce_kw_type(opts, "detect_types", int)
+        util.coerce_kw_type(opts, "check_same_thread", bool)
+        util.coerce_kw_type(opts, "cached_statements", int)
 
         return ([filename], opts)
 
     def is_disconnect(self, e, connection, cursor):
-        return isinstance(e, self.dbapi.ProgrammingError) and \
-            "Cannot operate on a closed database." in str(e)
+        return isinstance(
+            e, self.dbapi.ProgrammingError
+        ) and "Cannot operate on a closed database." in str(e)
+
 
 dialect = SQLiteDialect_pysqlite

@@ -10,8 +10,11 @@ This system allows specification of classes and expressions used in
 :func:`.relationship` using strings.
 
 """
-from ...orm.properties import ColumnProperty, RelationshipProperty, \
-    SynonymProperty
+from ...orm.properties import (
+    ColumnProperty,
+    RelationshipProperty,
+    SynonymProperty,
+)
 from ...schema import _get_table_key
 from ...orm import class_mapper, interfaces
 from ... import util
@@ -35,17 +38,18 @@ def add_class(classname, cls):
         # class already exists.
         existing = cls._decl_class_registry[classname]
         if not isinstance(existing, _MultipleClassMarker):
-            existing = \
-                cls._decl_class_registry[classname] = \
-                _MultipleClassMarker([cls, existing])
+            existing = cls._decl_class_registry[
+                classname
+            ] = _MultipleClassMarker([cls, existing])
     else:
         cls._decl_class_registry[classname] = cls
 
     try:
-        root_module = cls._decl_class_registry['_sa_module_registry']
+        root_module = cls._decl_class_registry["_sa_module_registry"]
     except KeyError:
-        cls._decl_class_registry['_sa_module_registry'] = \
-            root_module = _ModuleMarker('_sa_module_registry', None)
+        cls._decl_class_registry[
+            "_sa_module_registry"
+        ] = root_module = _ModuleMarker("_sa_module_registry", None)
 
     tokens = cls.__module__.split(".")
 
@@ -71,12 +75,13 @@ class _MultipleClassMarker(object):
 
     """
 
-    __slots__ = 'on_remove', 'contents', '__weakref__'
+    __slots__ = "on_remove", "contents", "__weakref__"
 
     def __init__(self, classes, on_remove=None):
         self.on_remove = on_remove
-        self.contents = set([
-            weakref.ref(item, self._remove_item) for item in classes])
+        self.contents = set(
+            [weakref.ref(item, self._remove_item) for item in classes]
+        )
         _registries.add(self)
 
     def __iter__(self):
@@ -85,10 +90,10 @@ class _MultipleClassMarker(object):
     def attempt_get(self, path, key):
         if len(self.contents) > 1:
             raise exc.InvalidRequestError(
-                "Multiple classes found for path \"%s\" "
+                'Multiple classes found for path "%s" '
                 "in the registry of this declarative "
-                "base. Please use a fully module-qualified path." %
-                (".".join(path + [key]))
+                "base. Please use a fully module-qualified path."
+                % (".".join(path + [key]))
             )
         else:
             ref = list(self.contents)[0]
@@ -108,17 +113,19 @@ class _MultipleClassMarker(object):
         # protect against class registration race condition against
         # asynchronous garbage collection calling _remove_item,
         # [ticket:3208]
-        modules = set([
-            cls.__module__ for cls in
-            [ref() for ref in self.contents] if cls is not None])
+        modules = set(
+            [
+                cls.__module__
+                for cls in [ref() for ref in self.contents]
+                if cls is not None
+            ]
+        )
         if item.__module__ in modules:
             util.warn(
                 "This declarative base already contains a class with the "
                 "same class name and module name as %s.%s, and will "
-                "be replaced in the string-lookup table." % (
-                    item.__module__,
-                    item.__name__
-                )
+                "be replaced in the string-lookup table."
+                % (item.__module__, item.__name__)
             )
         self.contents.add(weakref.ref(item, self._remove_item))
 
@@ -129,7 +136,7 @@ class _ModuleMarker(object):
 
     """
 
-    __slots__ = 'parent', 'name', 'contents', 'mod_ns', 'path', '__weakref__'
+    __slots__ = "parent", "name", "contents", "mod_ns", "path", "__weakref__"
 
     def __init__(self, name, parent):
         self.parent = parent
@@ -170,13 +177,13 @@ class _ModuleMarker(object):
             existing = self.contents[name]
             existing.add_item(cls)
         else:
-            existing = self.contents[name] = \
-                _MultipleClassMarker([cls],
-                                     on_remove=lambda: self._remove_item(name))
+            existing = self.contents[name] = _MultipleClassMarker(
+                [cls], on_remove=lambda: self._remove_item(name)
+            )
 
 
 class _ModNS(object):
-    __slots__ = '__parent',
+    __slots__ = ("__parent",)
 
     def __init__(self, parent):
         self.__parent = parent
@@ -193,13 +200,14 @@ class _ModNS(object):
                 else:
                     assert isinstance(value, _MultipleClassMarker)
                     return value.attempt_get(self.__parent.path, key)
-        raise AttributeError("Module %r has no mapped classes "
-                             "registered under the name %r" % (
-                                 self.__parent.name, key))
+        raise AttributeError(
+            "Module %r has no mapped classes "
+            "registered under the name %r" % (self.__parent.name, key)
+        )
 
 
 class _GetColumns(object):
-    __slots__ = 'cls',
+    __slots__ = ("cls",)
 
     def __init__(self, cls):
         self.cls = cls
@@ -210,7 +218,8 @@ class _GetColumns(object):
             if key not in mp.all_orm_descriptors:
                 raise exc.InvalidRequestError(
                     "Class %r does not have a mapped column named %r"
-                    % (self.cls, key))
+                    % (self.cls, key)
+                )
 
             desc = mp.all_orm_descriptors[key]
             if desc.extension_type is interfaces.NOT_EXTENSION:
@@ -221,24 +230,25 @@ class _GetColumns(object):
                     raise exc.InvalidRequestError(
                         "Property %r is not an instance of"
                         " ColumnProperty (i.e. does not correspond"
-                        " directly to a Column)." % key)
+                        " directly to a Column)." % key
+                    )
         return getattr(self.cls, key)
 
+
 inspection._inspects(_GetColumns)(
-    lambda target: inspection.inspect(target.cls))
+    lambda target: inspection.inspect(target.cls)
+)
 
 
 class _GetTable(object):
-    __slots__ = 'key', 'metadata'
+    __slots__ = "key", "metadata"
 
     def __init__(self, key, metadata):
         self.key = key
         self.metadata = metadata
 
     def __getattr__(self, key):
-        return self.metadata.tables[
-            _get_table_key(key, self.key)
-        ]
+        return self.metadata.tables[_get_table_key(key, self.key)]
 
 
 def _determine_container(key, value):
@@ -264,9 +274,11 @@ class _class_resolver(object):
             return cls.metadata.tables[key]
         elif key in cls.metadata._schemas:
             return _GetTable(key, cls.metadata)
-        elif '_sa_module_registry' in cls._decl_class_registry and \
-                key in cls._decl_class_registry['_sa_module_registry']:
-            registry = cls._decl_class_registry['_sa_module_registry']
+        elif (
+            "_sa_module_registry" in cls._decl_class_registry
+            and key in cls._decl_class_registry["_sa_module_registry"]
+        ):
+            registry = cls._decl_class_registry["_sa_module_registry"]
             return registry.resolve_attr(key)
         elif self._resolvers:
             for resolv in self._resolvers:
@@ -289,8 +301,8 @@ class _class_resolver(object):
                 "When initializing mapper %s, expression %r failed to "
                 "locate a name (%r). If this is a class name, consider "
                 "adding this relationship() to the %r class after "
-                "both dependent classes have been defined." %
-                (self.prop.parent, self.arg, n.args[0], self.cls)
+                "both dependent classes have been defined."
+                % (self.prop.parent, self.arg, n.args[0], self.cls)
             )
 
 
@@ -299,10 +311,11 @@ def _resolver(cls, prop):
     from sqlalchemy.orm import foreign, remote
 
     fallback = sqlalchemy.__dict__.copy()
-    fallback.update({'foreign': foreign, 'remote': remote})
+    fallback.update({"foreign": foreign, "remote": remote})
 
     def resolve_arg(arg):
         return _class_resolver(cls, prop, fallback, arg)
+
     return resolve_arg
 
 
@@ -311,18 +324,32 @@ def _deferred_relationship(cls, prop):
     if isinstance(prop, RelationshipProperty):
         resolve_arg = _resolver(cls, prop)
 
-        for attr in ('argument', 'order_by', 'primaryjoin', 'secondaryjoin',
-                     'secondary', '_user_defined_foreign_keys', 'remote_side'):
+        for attr in (
+            "argument",
+            "order_by",
+            "primaryjoin",
+            "secondaryjoin",
+            "secondary",
+            "_user_defined_foreign_keys",
+            "remote_side",
+        ):
             v = getattr(prop, attr)
             if isinstance(v, util.string_types):
                 setattr(prop, attr, resolve_arg(v))
 
         if prop.backref and isinstance(prop.backref, tuple):
             key, kwargs = prop.backref
-            for attr in ('primaryjoin', 'secondaryjoin', 'secondary',
-                         'foreign_keys', 'remote_side', 'order_by'):
-                if attr in kwargs and isinstance(kwargs[attr],
-                                                 util.string_types):
+            for attr in (
+                "primaryjoin",
+                "secondaryjoin",
+                "secondary",
+                "foreign_keys",
+                "remote_side",
+                "order_by",
+            ):
+                if attr in kwargs and isinstance(
+                    kwargs[attr], util.string_types
+                ):
                     kwargs[attr] = resolve_arg(kwargs[attr])
 
     return prop

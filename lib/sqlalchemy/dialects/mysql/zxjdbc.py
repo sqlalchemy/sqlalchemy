@@ -37,6 +37,7 @@ from .base import BIT, MySQLDialect, MySQLExecutionContext
 class _ZxJDBCBit(BIT):
     def result_processor(self, dialect, coltype):
         """Converts boolean or byte arrays from MySQL Connector/J to longs."""
+
         def process(value):
             if value is None:
                 return value
@@ -44,9 +45,10 @@ class _ZxJDBCBit(BIT):
                 return int(value)
             v = 0
             for i in value:
-                v = v << 8 | (i & 0xff)
+                v = v << 8 | (i & 0xFF)
             value = v
             return value
+
         return process
 
 
@@ -60,17 +62,13 @@ class MySQLExecutionContext_zxjdbc(MySQLExecutionContext):
 
 
 class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
-    jdbc_db_name = 'mysql'
-    jdbc_driver_name = 'com.mysql.jdbc.Driver'
+    jdbc_db_name = "mysql"
+    jdbc_driver_name = "com.mysql.jdbc.Driver"
 
     execution_ctx_cls = MySQLExecutionContext_zxjdbc
 
     colspecs = util.update_copy(
-        MySQLDialect.colspecs,
-        {
-            sqltypes.Time: sqltypes.Time,
-            BIT: _ZxJDBCBit
-        }
+        MySQLDialect.colspecs, {sqltypes.Time: sqltypes.Time, BIT: _ZxJDBCBit}
     )
 
     def _detect_charset(self, connection):
@@ -83,17 +81,19 @@ class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
         # this can prefer the driver value.
         rs = connection.execute("SHOW VARIABLES LIKE 'character_set%%'")
         opts = {row[0]: row[1] for row in self._compat_fetchall(rs)}
-        for key in ('character_set_connection', 'character_set'):
+        for key in ("character_set_connection", "character_set"):
             if opts.get(key, None):
                 return opts[key]
 
-        util.warn("Could not detect the connection character set.  "
-                  "Assuming latin1.")
-        return 'latin1'
+        util.warn(
+            "Could not detect the connection character set.  "
+            "Assuming latin1."
+        )
+        return "latin1"
 
     def _driver_kwargs(self):
         """return kw arg dict to be sent to connect()."""
-        return dict(characterEncoding='UTF-8', yearIsDateType='false')
+        return dict(characterEncoding="UTF-8", yearIsDateType="false")
 
     def _extract_error_code(self, exception):
         # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist
@@ -106,12 +106,13 @@ class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
-        r = re.compile(r'[.\-]')
+        r = re.compile(r"[.\-]")
         for n in r.split(dbapi_con.dbversion):
             try:
                 version.append(int(n))
             except ValueError:
                 version.append(n)
         return tuple(version)
+
 
 dialect = MySQLDialect_zxjdbc

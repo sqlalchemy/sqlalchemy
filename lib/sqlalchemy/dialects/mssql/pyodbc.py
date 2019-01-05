@@ -105,15 +105,13 @@ class _ms_numeric_pyodbc(object):
 
     def bind_processor(self, dialect):
 
-        super_process = super(_ms_numeric_pyodbc, self).\
-            bind_processor(dialect)
+        super_process = super(_ms_numeric_pyodbc, self).bind_processor(dialect)
 
         if not dialect._need_decimal_fix:
             return super_process
 
         def process(value):
-            if self.asdecimal and \
-                    isinstance(value, decimal.Decimal):
+            if self.asdecimal and isinstance(value, decimal.Decimal):
                 adjusted = value.adjusted()
                 if adjusted < 0:
                     return self._small_dec_to_string(value)
@@ -124,6 +122,7 @@ class _ms_numeric_pyodbc(object):
                 return super_process(value)
             else:
                 return value
+
         return process
 
     # these routines needed for older versions of pyodbc.
@@ -131,30 +130,31 @@ class _ms_numeric_pyodbc(object):
 
     def _small_dec_to_string(self, value):
         return "%s0.%s%s" % (
-            (value < 0 and '-' or ''),
-            '0' * (abs(value.adjusted()) - 1),
-            "".join([str(nint) for nint in value.as_tuple()[1]]))
+            (value < 0 and "-" or ""),
+            "0" * (abs(value.adjusted()) - 1),
+            "".join([str(nint) for nint in value.as_tuple()[1]]),
+        )
 
     def _large_dec_to_string(self, value):
         _int = value.as_tuple()[1]
-        if 'E' in str(value):
+        if "E" in str(value):
             result = "%s%s%s" % (
-                (value < 0 and '-' or ''),
+                (value < 0 and "-" or ""),
                 "".join([str(s) for s in _int]),
-                "0" * (value.adjusted() - (len(_int) - 1)))
+                "0" * (value.adjusted() - (len(_int) - 1)),
+            )
         else:
             if (len(_int) - 1) > value.adjusted():
                 result = "%s%s.%s" % (
-                    (value < 0 and '-' or ''),
-                    "".join(
-                        [str(s) for s in _int][0:value.adjusted() + 1]),
-                    "".join(
-                        [str(s) for s in _int][value.adjusted() + 1:]))
+                    (value < 0 and "-" or ""),
+                    "".join([str(s) for s in _int][0 : value.adjusted() + 1]),
+                    "".join([str(s) for s in _int][value.adjusted() + 1 :]),
+                )
             else:
                 result = "%s%s" % (
-                    (value < 0 and '-' or ''),
-                    "".join(
-                        [str(s) for s in _int][0:value.adjusted() + 1]))
+                    (value < 0 and "-" or ""),
+                    "".join([str(s) for s in _int][0 : value.adjusted() + 1]),
+                )
         return result
 
 
@@ -185,6 +185,7 @@ class _ms_binary_pyodbc(object):
             else:
                 # pyodbc-specific
                 return dialect.dbapi.BinaryNull
+
         return process
 
 
@@ -216,9 +217,11 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
         # don't embed the scope_identity select into an
         # "INSERT .. DEFAULT VALUES"
-        if self._select_lastrowid and \
-                self.dialect.use_scope_identity and \
-                len(self.parameters[0]):
+        if (
+            self._select_lastrowid
+            and self.dialect.use_scope_identity
+            and len(self.parameters[0])
+        ):
             self._embedded_scope_identity = True
 
             self.statement += "; select scope_identity()"
@@ -254,41 +257,47 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             sqltypes.Numeric: _MSNumeric_pyodbc,
             sqltypes.Float: _MSFloat_pyodbc,
             BINARY: _BINARY_pyodbc,
-
             # SQL Server dialect has a VARBINARY that is just to support
             # "deprecate_large_types" w/ VARBINARY(max), but also we must
             # handle the usual SQL standard VARBINARY
             VARBINARY: _VARBINARY_pyodbc,
             sqltypes.VARBINARY: _VARBINARY_pyodbc,
             sqltypes.LargeBinary: _VARBINARY_pyodbc,
-        }
+        },
     )
 
     def __init__(self, description_encoding=None, **params):
-        if 'description_encoding' in params:
-            self.description_encoding = params.pop('description_encoding')
+        if "description_encoding" in params:
+            self.description_encoding = params.pop("description_encoding")
         super(MSDialect_pyodbc, self).__init__(**params)
-        self.use_scope_identity = self.use_scope_identity and \
-            self.dbapi and \
-            hasattr(self.dbapi.Cursor, 'nextset')
-        self._need_decimal_fix = self.dbapi and \
-            self._dbapi_version() < (2, 1, 8)
+        self.use_scope_identity = (
+            self.use_scope_identity
+            and self.dbapi
+            and hasattr(self.dbapi.Cursor, "nextset")
+        )
+        self._need_decimal_fix = self.dbapi and self._dbapi_version() < (
+            2,
+            1,
+            8,
+        )
 
     def _get_server_version_info(self, connection):
         try:
             # "Version of the instance of SQL Server, in the form
             # of 'major.minor.build.revision'"
             raw = connection.scalar(
-                "SELECT CAST(SERVERPROPERTY('ProductVersion') AS VARCHAR)")
+                "SELECT CAST(SERVERPROPERTY('ProductVersion') AS VARCHAR)"
+            )
         except exc.DBAPIError:
             # SQL Server docs indicate this function isn't present prior to
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also
             # fail on this query.
-            return super(MSDialect_pyodbc, self).\
-                _get_server_version_info(connection, allow_chars=False)
+            return super(MSDialect_pyodbc, self)._get_server_version_info(
+                connection, allow_chars=False
+            )
         else:
             version = []
-            r = re.compile(r'[.\-]')
+            r = re.compile(r"[.\-]")
             for n in r.split(raw):
                 try:
                     version.append(int(n))
@@ -299,12 +308,21 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
             for code in (
-                    '08S01', '01002', '08003', '08007',
-                    '08S02', '08001', 'HYT00', 'HY010',
-                    '10054'):
+                "08S01",
+                "01002",
+                "08003",
+                "08007",
+                "08S02",
+                "08001",
+                "HYT00",
+                "HY010",
+                "10054",
+            ):
                 if code in str(e):
                     return True
         return super(MSDialect_pyodbc, self).is_disconnect(
-            e, connection, cursor)
+            e, connection, cursor
+        )
+
 
 dialect = MSDialect_pyodbc

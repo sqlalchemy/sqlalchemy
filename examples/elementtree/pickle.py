@@ -6,15 +6,22 @@ structure in distinct rows using two additional mapped entities.  Note that the 
 styles of persistence are identical, as is the structure of the main Document class.
 """
 
-from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, String,
-    PickleType)
+from sqlalchemy import (
+    create_engine,
+    MetaData,
+    Table,
+    Column,
+    Integer,
+    String,
+    PickleType,
+)
 from sqlalchemy.orm import mapper, Session
 
 import sys, os
 
 from xml.etree import ElementTree
 
-e = create_engine('sqlite://')
+e = create_engine("sqlite://")
 meta = MetaData()
 
 # setup a comparator for the PickleType since it's a mutable
@@ -22,12 +29,15 @@ meta = MetaData()
 def are_elements_equal(x, y):
     return x == y
 
+
 # stores a top level record of an XML document.
 # the "element" column will store the ElementTree document as a BLOB.
-documents = Table('documents', meta,
-    Column('document_id', Integer, primary_key=True),
-    Column('filename', String(30), unique=True),
-    Column('element', PickleType(comparator=are_elements_equal))
+documents = Table(
+    "documents",
+    meta,
+    Column("document_id", Integer, primary_key=True),
+    Column("filename", String(30), unique=True),
+    Column("element", PickleType(comparator=are_elements_equal)),
 )
 
 meta.create_all(e)
@@ -38,6 +48,7 @@ class Document(object):
     def __init__(self, name, element):
         self.filename = name
         self.element = element
+
 
 # setup mapper.
 mapper(Document, documents)
@@ -58,4 +69,3 @@ document = session.query(Document).filter_by(filename="test.xml").first()
 
 # print
 document.element.write(sys.stdout)
-

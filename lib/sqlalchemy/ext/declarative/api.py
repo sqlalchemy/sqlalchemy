@@ -8,9 +8,13 @@
 
 
 from ...schema import Table, MetaData, Column
-from ...orm import synonym as _orm_synonym, \
-    comparable_property,\
-    interfaces, properties, attributes
+from ...orm import (
+    synonym as _orm_synonym,
+    comparable_property,
+    interfaces,
+    properties,
+    attributes,
+)
 from ...orm.util import polymorphic_union
 from ...orm.base import _mapper_or_none
 from ...util import OrderedDict, hybridmethod, hybridproperty
@@ -19,9 +23,12 @@ from ... import exc
 import weakref
 import re
 
-from .base import _as_declarative, \
-    _declarative_constructor,\
-    _DeferredMapperConfig, _add_attribute
+from .base import (
+    _as_declarative,
+    _declarative_constructor,
+    _DeferredMapperConfig,
+    _add_attribute,
+)
 from .clsregistry import _class_resolver
 
 
@@ -31,10 +38,10 @@ def instrument_declarative(cls, registry, metadata):
     MetaData object.
 
     """
-    if '_decl_class_registry' in cls.__dict__:
+    if "_decl_class_registry" in cls.__dict__:
         raise exc.InvalidRequestError(
-            "Class %r already has been "
-            "instrumented declaratively" % cls)
+            "Class %r already has been " "instrumented declaratively" % cls
+        )
     cls._decl_class_registry = registry
     cls.metadata = metadata
     _as_declarative(cls, cls.__name__, cls.__dict__)
@@ -54,14 +61,14 @@ def has_inherited_table(cls):
 
     """
     for class_ in cls.__mro__[1:]:
-        if getattr(class_, '__table__', None) is not None:
+        if getattr(class_, "__table__", None) is not None:
             return True
     return False
 
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
-        if '_decl_class_registry' not in cls.__dict__:
+        if "_decl_class_registry" not in cls.__dict__:
             _as_declarative(cls, classname, cls.__dict__)
         type.__init__(cls, classname, bases, dict_)
 
@@ -102,8 +109,10 @@ def synonym_for(name, map_column=False):
         can be achieved with synonyms.
 
     """
+
     def decorate(fn):
         return _orm_synonym(name, map_column=map_column, descriptor=fn)
+
     return decorate
 
 
@@ -125,8 +134,10 @@ def comparable_using(comparator_factory):
       prop = comparable_property(MyComparatorType)
 
     """
+
     def decorate(fn):
         return comparable_property(comparator_factory, fn)
+
     return decorate
 
 
@@ -188,14 +199,16 @@ class declared_attr(interfaces._MappedAttribute, property):
         self._cascading = cascading
 
     def __get__(desc, self, cls):
-        reg = cls.__dict__.get('_sa_declared_attr_reg', None)
+        reg = cls.__dict__.get("_sa_declared_attr_reg", None)
         if reg is None:
-            if not re.match(r'^__.+__$', desc.fget.__name__) and \
-                    attributes.manager_of_class(cls) is None:
+            if (
+                not re.match(r"^__.+__$", desc.fget.__name__)
+                and attributes.manager_of_class(cls) is None
+            ):
                 util.warn(
                     "Unmanaged access of declarative attribute %s from "
-                    "non-mapped class %s" %
-                    (desc.fget.__name__, cls.__name__))
+                    "non-mapped class %s" % (desc.fget.__name__, cls.__name__)
+                )
             return desc.fget(cls)
         elif desc in reg:
             return reg[desc]
@@ -281,10 +294,16 @@ class _stateful_declared_attr(declared_attr):
         return declared_attr(fn, **self.kw)
 
 
-def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
-                     name='Base', constructor=_declarative_constructor,
-                     class_registry=None,
-                     metaclass=DeclarativeMeta):
+def declarative_base(
+    bind=None,
+    metadata=None,
+    mapper=None,
+    cls=object,
+    name="Base",
+    constructor=_declarative_constructor,
+    class_registry=None,
+    metaclass=DeclarativeMeta,
+):
     r"""Construct a base class for declarative class definitions.
 
     The new base class will be given a metaclass that produces
@@ -355,16 +374,17 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
         class_registry = weakref.WeakValueDictionary()
 
     bases = not isinstance(cls, tuple) and (cls,) or cls
-    class_dict = dict(_decl_class_registry=class_registry,
-                      metadata=lcl_metadata)
+    class_dict = dict(
+        _decl_class_registry=class_registry, metadata=lcl_metadata
+    )
 
     if isinstance(cls, type):
-        class_dict['__doc__'] = cls.__doc__
+        class_dict["__doc__"] = cls.__doc__
 
     if constructor:
-        class_dict['__init__'] = constructor
+        class_dict["__init__"] = constructor
     if mapper:
-        class_dict['__mapper_cls__'] = mapper
+        class_dict["__mapper_cls__"] = mapper
 
     return metaclass(name, bases, class_dict)
 
@@ -399,9 +419,10 @@ def as_declarative(**kw):
         :func:`.declarative_base`
 
     """
+
     def decorate(cls):
-        kw['cls'] = cls
-        kw['name'] = cls.__name__
+        kw["cls"] = cls
+        kw["name"] = cls.__name__
         return declarative_base(**kw)
 
     return decorate
@@ -454,10 +475,13 @@ class ConcreteBase(object):
 
     @classmethod
     def _create_polymorphic_union(cls, mappers):
-        return polymorphic_union(OrderedDict(
-            (mp.polymorphic_identity, mp.local_table)
-            for mp in mappers
-        ), 'type', 'pjoin')
+        return polymorphic_union(
+            OrderedDict(
+                (mp.polymorphic_identity, mp.local_table) for mp in mappers
+            ),
+            "type",
+            "pjoin",
+        )
 
     @classmethod
     def __declare_first__(cls):
@@ -566,7 +590,7 @@ class AbstractConcreteBase(ConcreteBase):
 
     @classmethod
     def _sa_decl_prepare_nocascade(cls):
-        if getattr(cls, '__mapper__', None):
+        if getattr(cls, "__mapper__", None):
             return
 
         to_map = _DeferredMapperConfig.config_for_cls(cls)
@@ -602,8 +626,9 @@ class AbstractConcreteBase(ConcreteBase):
 
         def mapper_args():
             args = m_args()
-            args['polymorphic_on'] = pjoin.c.type
+            args["polymorphic_on"] = pjoin.c.type
             return args
+
         to_map.mapper_args_fn = mapper_args
 
         m = to_map.map()
@@ -682,6 +707,7 @@ class DeferredReflection(object):
     .. versionadded:: 0.8
 
     """
+
     @classmethod
     def prepare(cls, engine):
         """Reflect all :class:`.Table` objects for all current
@@ -694,8 +720,10 @@ class DeferredReflection(object):
             mapper = thingy.cls.__mapper__
             metadata = mapper.class_.metadata
             for rel in mapper._props.values():
-                if isinstance(rel, properties.RelationshipProperty) and \
-                        rel.secondary is not None:
+                if (
+                    isinstance(rel, properties.RelationshipProperty)
+                    and rel.secondary is not None
+                ):
                     if isinstance(rel.secondary, Table):
                         cls._reflect_table(rel.secondary, engine)
                     elif isinstance(rel.secondary, _class_resolver):
@@ -709,6 +737,7 @@ class DeferredReflection(object):
             t1 = Table(key, metadata)
             cls._reflect_table(t1, engine)
             return t1
+
         return _resolve
 
     @classmethod
@@ -722,10 +751,12 @@ class DeferredReflection(object):
 
     @classmethod
     def _reflect_table(cls, table, engine):
-        Table(table.name,
-              table.metadata,
-              extend_existing=True,
-              autoload_replace=False,
-              autoload=True,
-              autoload_with=engine,
-              schema=table.schema)
+        Table(
+            table.name,
+            table.metadata,
+            extend_existing=True,
+            autoload_replace=False,
+            autoload=True,
+            autoload_with=engine,
+            schema=table.schema,
+        )

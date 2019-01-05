@@ -9,19 +9,27 @@ from sqlalchemy.testing import fixtures
 class O2OTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('jack', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('number', String(50)),
-              Column('status', String(20)),
-              Column('subroom', String(5)))
+        Table(
+            "jack",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("number", String(50)),
+            Column("status", String(20)),
+            Column("subroom", String(5)),
+        )
 
-        Table('port', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('name', String(30)),
-              Column('description', String(100)),
-              Column('jack_id', Integer, ForeignKey("jack.id")))
+        Table(
+            "port",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30)),
+            Column("description", String(100)),
+            Column("jack_id", Integer, ForeignKey("jack.id")),
+        )
 
     @classmethod
     def setup_mappers(cls):
@@ -32,21 +40,27 @@ class O2OTest(fixtures.MappedTest):
             pass
 
     def test_basic(self):
-        Port, port, jack, Jack = (self.classes.Port,
-                                  self.tables.port,
-                                  self.tables.jack,
-                                  self.classes.Jack)
+        Port, port, jack, Jack = (
+            self.classes.Port,
+            self.tables.port,
+            self.tables.jack,
+            self.classes.Jack,
+        )
 
         mapper(Port, port)
-        mapper(Jack, jack,
-               properties=dict(
-                   port=relationship(Port, backref='jack', uselist=False)))
+        mapper(
+            Jack,
+            jack,
+            properties=dict(
+                port=relationship(Port, backref="jack", uselist=False)
+            ),
+        )
 
         session = create_session()
 
-        j = Jack(number='101')
+        j = Jack(number="101")
         session.add(j)
-        p = Port(name='fa0/1')
+        p = Port(name="fa0/1")
         session.add(p)
 
         j.port = p

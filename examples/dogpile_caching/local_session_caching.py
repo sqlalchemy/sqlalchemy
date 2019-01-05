@@ -30,7 +30,7 @@ class ScopedSessionBackend(CacheBackend):
     """
 
     def __init__(self, arguments):
-        self.scoped_session = arguments['scoped_session']
+        self.scoped_session = arguments["scoped_session"]
 
     def get(self, key):
         return self._cache_dictionary.get(key, NO_VALUE)
@@ -52,10 +52,11 @@ class ScopedSessionBackend(CacheBackend):
             sess._cache_dictionary = cache_dict = {}
         return cache_dict
 
+
 register_backend("sqlalchemy.session", __name__, "ScopedSessionBackend")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from .environment import Session, regions
     from .caching_query import FromCache
     from dogpile.cache import make_region
@@ -63,20 +64,19 @@ if __name__ == '__main__':
     # set up a region based on the ScopedSessionBackend,
     # pointing to the scoped_session declared in the example
     # environment.
-    regions['local_session'] = make_region().configure(
-        'sqlalchemy.session',
-        arguments={
-            "scoped_session": Session
-        }
+    regions["local_session"] = make_region().configure(
+        "sqlalchemy.session", arguments={"scoped_session": Session}
     )
 
     from .model import Person
 
     # query to load Person by name, with criterion
     # of "person 10"
-    q = Session.query(Person).\
-        options(FromCache("local_session")).\
-        filter(Person.name == "person 10")
+    q = (
+        Session.query(Person)
+        .options(FromCache("local_session"))
+        .filter(Person.name == "person 10")
+    )
 
     # load from DB
     person10 = q.one()
