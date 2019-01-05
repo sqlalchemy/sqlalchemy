@@ -28,8 +28,6 @@ from .. import events  # noqa
 from .. import exc
 
 
-
-
 class ConventionDict(object):
     def __init__(self, const, table, convention):
         self.const = const

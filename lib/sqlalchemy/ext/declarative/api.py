@@ -75,7 +75,6 @@ class DeclarativeMeta(type):
         _add_attribute(cls, key, value)
 
 
-
 def synonym_for(name, map_column=False):
     """Decorator that produces an :func:`.orm.synonym` attribute in conjunction
     with a Python descriptor.

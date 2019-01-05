@@ -25,7 +25,6 @@ from ..sql import util as sql_util
 """
 
 
-
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
 

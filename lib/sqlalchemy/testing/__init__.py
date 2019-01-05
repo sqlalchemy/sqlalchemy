@@ -59,4 +59,5 @@ from .warnings import assert_warnings  # noqa
 def against(*queries):
     return _against(config._current, *queries)
 
+
 crashes = skip

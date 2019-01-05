@@ -1069,4 +1069,3 @@ def _iter_id(iterable):
 
     for item in iterable:
         yield id(item), item
-

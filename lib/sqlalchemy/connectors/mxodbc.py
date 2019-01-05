@@ -50,7 +50,7 @@ class MxODBCConnector(Connector):
             from mx.ODBC import iODBC as Module
         else:
             raise ImportError("Unrecognized platform for mxODBC import")
-        return module
+        return Module
 
     @classmethod
     def _load_mx_exceptions(cls):

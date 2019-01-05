@@ -384,8 +384,6 @@ class ExpandingBoundInTest(fixtures.TablesTest):
     def _assert_result(self, select, result, params=()):
         eq_(config.db.execute(select, params).fetchall(), result)
 
-        self._assert_result(stmt, [], params={"q": []})
-
     def test_bound_in_scalar(self):
         table = self.tables.some_table
 

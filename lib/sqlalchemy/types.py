@@ -115,4 +115,3 @@ from .sql.type_api import TypeDecorator  # noqa
 from .sql.type_api import TypeEngine  # noqa
 from .sql.type_api import UserDefinedType  # noqa
 from .sql.type_api import Variant  # noqa
-

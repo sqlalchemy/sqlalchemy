@@ -344,10 +344,10 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
     def _initialize_scalar_accessors(self):
         if self.getset_factory:
-            get, set = self.getset_factory(None, self)
+            get, set_ = self.getset_factory(None, self)
         else:
-            get, set = self._default_getset(None)
-        self._scalar_get, self._scalar_set = get, set
+            get, set_ = self._default_getset(None)
+        self._scalar_get, self._scalar_set = get, set_
 
     def _default_getset(self, collection_class):
         attr = self.value_attr

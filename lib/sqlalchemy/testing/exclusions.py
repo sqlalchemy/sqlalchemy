@@ -16,7 +16,6 @@ from ..util import decorator
 from ..util.compat import inspect_getargspec
 
 
-
 def skip_if(predicate, reason=None):
     rule = compound()
     pred = _as_predicate(predicate, reason)

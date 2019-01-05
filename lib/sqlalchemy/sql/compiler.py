@@ -1724,9 +1724,11 @@ class SQLCompiler(Compiled):
 
         if column.type._has_column_expression and populate_result_map:
             col_expr = column.type.column_expression(column)
-            add_to_result_map = lambda keyname, name, objects, type_: self._add_to_result_map(
-                keyname, name, (column,) + objects, type_
-            )
+
+            def add_to_result_map(keyname, name, objects, type_):
+                self._add_to_result_map(
+                    keyname, name, (column,) + objects, type_
+                )
         else:
             col_expr = column
             if populate_result_map:

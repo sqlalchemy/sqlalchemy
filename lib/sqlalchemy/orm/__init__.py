@@ -235,6 +235,7 @@ def clear_mappers():
     finally:
         mapperlib._CONFIGURE_MUTEX.release()
 
+
 joinedload = strategy_options.joinedload._unbound_fn
 joinedload_all = strategy_options.joinedload._unbound_all_fn
 contains_eager = strategy_options.contains_eager._unbound_fn

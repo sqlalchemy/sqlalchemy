@@ -31,7 +31,7 @@ pypy = hasattr(sys, "pypy_version_info")
 win32 = sys.platform.startswith("win")
 cpython = not pypy and not jython  # TODO: something better for this ?
 
-next = next    # noqa
+next = next  # noqa
 
 if py3k:
     import pickle
@@ -39,11 +39,11 @@ else:
     try:
         import cPickle as pickle
     except ImportError:
-        import pickle    # noqa
+        import pickle  # noqa
 
 # work around http://bugs.python.org/issue2646
 if py265:
-    safe_kwarg = lambda arg: arg    # noqa
+    safe_kwarg = lambda arg: arg  # noqa
 else:
     safe_kwarg = str
 
@@ -87,10 +87,10 @@ if py3k:
         return s.encode("latin-1")
 
     if py32:
-        callable = callable   # noqa
+        callable = callable  # noqa
     else:
 
-        def callable(fn):    # noqa
+        def callable(fn):  # noqa
             return hasattr(fn, "__call__")
 
     def cmp(a, b):
@@ -122,17 +122,17 @@ else:
     from inspect import getargspec as inspect_getfullargspec
 
     inspect_getargspec = inspect_getfullargspec
-    from urllib import quote_plus, unquote_plus, quote, unquote    # noqa
-    from urlparse import parse_qsl    # noqa
-    import ConfigParser as configparser    # noqa
-    from StringIO import StringIO    # noqa
-    from cStringIO import StringIO as byte_buffer    # noqa
+    from urllib import quote_plus, unquote_plus, quote, unquote  # noqa
+    from urlparse import parse_qsl  # noqa
+    import ConfigParser as configparser  # noqa
+    from StringIO import StringIO  # noqa
+    from cStringIO import StringIO as byte_buffer  # noqa
 
-    string_types = (basestring,)    # noqa
+    string_types = (basestring,)  # noqa
     binary_types = (bytes,)
     binary_type = str
-    text_type = unicode    # noqa
-    int_types = int, long    # noqa
+    text_type = unicode  # noqa
+    int_types = int, long  # noqa
 
     def iterbytes(buf):
         return (ord(byte) for byte in buf)
@@ -142,10 +142,10 @@ else:
         # strings - we only use u() with
         # literal source strings, and all our source files with non-ascii
         # in them (all are tests) are utf-8 encoded.
-        return unicode(s, "utf-8")    # noqa
+        return unicode(s, "utf-8")  # noqa
 
     def ue(s):
-        return unicode(s, "unicode_escape")    # noqa
+        return unicode(s, "unicode_escape")  # noqa
 
     def b(s):
         return s
@@ -155,7 +155,7 @@ else:
             args = args[0:3] + ([str(arg) for arg in args[3]],)
         return __import__(*args)
 
-    callable = callable    # noqa
+    callable = callable  # noqa
     cmp = cmp
     reduce = reduce
 
@@ -169,7 +169,7 @@ else:
         if fp is None:
             return
         for arg in enumerate(args):
-            if not isinstance(arg, basestring):    # noqa
+            if not isinstance(arg, basestring):  # noqa
                 arg = str(arg)
             fp.write(arg)
 
@@ -178,7 +178,7 @@ else:
     itertools_filterfalse = itertools.ifilterfalse
     itertools_filter = itertools.ifilter
     itertools_imap = itertools.imap
-    from itertools import izip_longest as zip_longest    # noqa
+    from itertools import izip_longest as zip_longest  # noqa
 
 if py35:
     from inspect import formatannotation
@@ -246,7 +246,7 @@ if py35:
 
 
 else:
-    from inspect import formatargspec as inspect_formatargspec    # noqa
+    from inspect import formatargspec as inspect_formatargspec  # noqa
 
 if win32 or jython:
     time_func = time.clock
@@ -355,4 +355,4 @@ def nested(*managers):
 if py33:
     import collections.abc as collections_abc
 else:
-    import collections as collections_abc    # noqa
+    import collections as collections_abc  # noqa
