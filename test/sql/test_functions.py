@@ -730,7 +730,7 @@ class ExecuteTest(fixtures.TestBase):
             type = Date()
 
         @compiles(myfunc)
-        def compile(elem, compiler, **kw):
+        def compile_(elem, compiler, **kw):
             return compiler.process(func.current_date())
 
         conn = testing.db.connect()
@@ -757,6 +757,7 @@ class ExecuteTest(fixtures.TestBase):
         ret.close()
 
     @engines.close_first
+    @testing.provide_metadata
     def test_update(self):
         """
         Tests sending functions and SQL expressions to the VALUES and SET
@@ -789,56 +790,52 @@ class ExecuteTest(fixtures.TestBase):
             Column("stuff", String(20), onupdate="thisisstuff"),
         )
         meta.create_all()
-        try:
-            t.insert(values=dict(value=func.length("one"))).execute()
-            assert t.select().execute().first()["value"] == 3
-            t.update(values=dict(value=func.length("asfda"))).execute()
-            assert t.select().execute().first()["value"] == 5
+        t.insert(values=dict(value=func.length("one"))).execute()
+        assert t.select().execute().first()["value"] == 3
+        t.update(values=dict(value=func.length("asfda"))).execute()
+        assert t.select().execute().first()["value"] == 5
 
-            r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
-            id = r.inserted_primary_key[0]
-            assert t.select(t.c.id == id).execute().first()["value"] == 9
-            t.update(values={t.c.value: func.length("asdf")}).execute()
-            assert t.select().execute().first()["value"] == 4
-            t2.insert().execute()
-            t2.insert(values=dict(value=func.length("one"))).execute()
-            t2.insert(values=dict(value=func.length("asfda") + -19)).execute(
-                stuff="hi"
-            )
+        r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
+        id_ = r.inserted_primary_key[0]
+        assert t.select(t.c.id == id_).execute().first()["value"] == 9
+        t.update(values={t.c.value: func.length("asdf")}).execute()
+        assert t.select().execute().first()["value"] == 4
+        t2.insert().execute()
+        t2.insert(values=dict(value=func.length("one"))).execute()
+        t2.insert(values=dict(value=func.length("asfda") + -19)).execute(
+            stuff="hi"
+        )
 
-            res = exec_sorted(select([t2.c.value, t2.c.stuff]))
-            eq_(res, [(-14, "hi"), (3, None), (7, None)])
+        res = exec_sorted(select([t2.c.value, t2.c.stuff]))
+        eq_(res, [(-14, "hi"), (3, None), (7, None)])
 
-            t2.update(values=dict(value=func.length("asdsafasd"))).execute(
-                stuff="some stuff"
-            )
-            assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [
-                (9, "some stuff"),
-                (9, "some stuff"),
-                (9, "some stuff"),
-            ]
+        t2.update(values=dict(value=func.length("asdsafasd"))).execute(
+            stuff="some stuff"
+        )
+        assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [
+            (9, "some stuff"),
+            (9, "some stuff"),
+            (9, "some stuff"),
+        ]
 
-            t2.delete().execute()
+        t2.delete().execute()
 
-            t2.insert(values=dict(value=func.length("one") + 8)).execute()
-            assert t2.select().execute().first()["value"] == 11
+        t2.insert(values=dict(value=func.length("one") + 8)).execute()
+        assert t2.select().execute().first()["value"] == 11
 
-            t2.update(values=dict(value=func.length("asfda"))).execute()
-            eq_(
-                select([t2.c.value, t2.c.stuff]).execute().first(),
-                (5, "thisisstuff"),
-            )
+        t2.update(values=dict(value=func.length("asfda"))).execute()
+        eq_(
+            select([t2.c.value, t2.c.stuff]).execute().first(),
+            (5, "thisisstuff"),
+        )
 
-            t2.update(
-                values={
-                    t2.c.value: func.length("asfdaasdf"),
-                    t2.c.stuff: "foo",
-                }
-            ).execute()
-            print("HI", select([t2.c.value, t2.c.stuff]).execute().first())
-            eq_(select([t2.c.value, t2.c.stuff]).execute().first(), (9, "foo"))
-        finally:
-            meta.drop_all()
+        t2.update(
+            values={
+                t2.c.value: func.length("asfdaasdf"),
+                t2.c.stuff: "foo",
+            }
+        ).execute()
+        eq_(select([t2.c.value, t2.c.stuff]).execute().first(), (9, "foo"))
 
     @testing.fails_on_everything_except("postgresql")
     def test_as_from(self):

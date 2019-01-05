@@ -1,12 +1,10 @@
 # coding: utf-8
 """verrrrry basic unicode column name testing"""
 
-from sqlalchemy import Column
 from sqlalchemy import desc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
-from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -198,7 +196,8 @@ class UnicodeSchemaTest(fixtures.TestBase):
             repr(t),
             (
                 "Table('\\u6e2c\\u8a66', MetaData(bind=None), "
-                "Column('\\u6e2c\\u8a66_id', Integer(), table=<\u6e2c\u8a66>), "
+                "Column('\\u6e2c\\u8a66_id', Integer(), "
+                "table=<\u6e2c\u8a66>), "
                 "schema=None)"
             ),
         )

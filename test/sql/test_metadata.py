@@ -530,7 +530,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             (
                 name,
                 metadata,
-                schema,
+                schema_,
                 quote_schema,
                 exp_schema,
                 exp_quote_schema,
@@ -558,8 +558,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             ]
         ):
             kw = {}
-            if schema is not None:
-                kw["schema"] = schema
+            if schema_ is not None:
+                kw["schema"] = schema_
             if quote_schema is not None:
                 kw["quote_schema"] = quote_schema
             t = Table(name, metadata, **kw)
@@ -3516,12 +3516,12 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         from sqlalchemy.sql import select
 
         class MyColumn(Column):
-            def _constructor(self, name, type, **kw):
+            def _constructor(self, name, type_, **kw):
                 kw["name"] = name
-                return MyColumn(type, **kw)
+                return MyColumn(type_, **kw)
 
-            def __init__(self, type, **kw):
-                Column.__init__(self, type, **kw)
+            def __init__(self, type_, **kw):
+                Column.__init__(self, type_, **kw)
 
             def my_goofy_thing(self):
                 return "hi"
@@ -3531,11 +3531,11 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             s = compiler.visit_column(element, **kw)
             return s + "-"
 
-        id = MyColumn(Integer, primary_key=True)
-        id.name = "id"
+        id_ = MyColumn(Integer, primary_key=True)
+        id_.name = "id"
         name = MyColumn(String)
         name.name = "name"
-        t1 = Table("foo", MetaData(), id, name)
+        t1 = Table("foo", MetaData(), id_, name)
 
         # goofy thing
         eq_(t1.c.name.my_goofy_thing(), "hi")
@@ -3559,14 +3559,14 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         from sqlalchemy.sql import select
 
         class MyColumn(Column):
-            def __init__(self, type, **kw):
-                Column.__init__(self, type, **kw)
+            def __init__(self, type_, **kw):
+                Column.__init__(self, type_, **kw)
 
-        id = MyColumn(Integer, primary_key=True)
-        id.name = "id"
+        id_ = MyColumn(Integer, primary_key=True)
+        id_.name = "id"
         name = MyColumn(String)
         name.name = "name"
-        t1 = Table("foo", MetaData(), id, name)
+        t1 = Table("foo", MetaData(), id_, name)
         assert_raises_message(
             TypeError,
             "Could not create a copy of this <class "
@@ -3581,7 +3581,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         from sqlalchemy.ext.compiler import compiles, deregister
 
         @compiles(schema.CreateColumn)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             column = element.element
 
             if "special" not in column.info:

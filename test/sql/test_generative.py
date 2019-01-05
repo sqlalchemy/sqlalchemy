@@ -226,9 +226,9 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         assert CustomObj.__visit_name__ == Column.__visit_name__ == "column"
 
         foo, bar = CustomObj("foo", String), CustomObj("bar", String)
-        bin = foo == bar
-        set(ClauseVisitor().iterate(bin))
-        assert set(ClauseVisitor().iterate(bin)) == set([foo, bar, bin])
+        bin_ = foo == bar
+        set(ClauseVisitor().iterate(bin_))
+        assert set(ClauseVisitor().iterate(bin_)) == set([foo, bar, bin_])
 
 
 class BinaryEndpointTraversalTest(fixtures.TestBase):

@@ -3,8 +3,8 @@ import operator
 
 from sqlalchemy import CHAR
 from sqlalchemy import column
-from sqlalchemy import exc as sa_exc
 from sqlalchemy import exc
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import INT

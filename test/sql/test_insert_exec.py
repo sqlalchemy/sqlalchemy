@@ -96,16 +96,16 @@ class InsertExecTest(fixtures.TablesTest):
             result = engine.execute(table_.insert(), **values)
             ret = values.copy()
 
-            for col, id in zip(
+            for col, id_ in zip(
                 table_.primary_key, result.inserted_primary_key
             ):
-                ret[col.key] = id
+                ret[col.key] = id_
 
             if result.lastrow_has_defaults():
                 criterion = and_(
                     *[
-                        col == id
-                        for col, id in zip(
+                        col == id_
+                        for col, id_ in zip(
                             table_.primary_key, result.inserted_primary_key
                         )
                     ]

@@ -64,6 +64,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import ddl
 from sqlalchemy.sql import null
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import visitors
 from sqlalchemy.testing import assert_raises
@@ -199,8 +200,6 @@ class AdaptTest(fixtures.TestBase):
                         and "sqlalchemy" in subcl.__module__
                     ):
                         yield True, subcl, [typ]
-
-        from sqlalchemy.sql import sqltypes
 
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
@@ -2756,8 +2755,8 @@ class NumericRawSQLTest(fixtures.TestBase):
 
     """
 
-    def _fixture(self, metadata, type, data):
-        t = Table("t", metadata, Column("val", type))
+    def _fixture(self, metadata, type_, data):
+        t = Table("t", metadata, Column("val", type_))
         metadata.create_all()
         t.insert().execute(val=data)
 
@@ -3120,14 +3119,6 @@ class BooleanTest(
         )
         assert_raises_message(
             TypeError, "Not a boolean value: 'foo'", proc, "foo"
-        )
-
-    def test_literal_processor_coercion_native_int_out_of_range(self):
-        proc = Boolean().literal_processor(
-            default.DefaultDialect(supports_native_boolean=True)
-        )
-        assert_raises_message(
-            ValueError, "Value 15 is not None, True, or False", proc, 15
         )
 
 

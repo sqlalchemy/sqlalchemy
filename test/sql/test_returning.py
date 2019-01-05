@@ -311,7 +311,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             pass
 
         @compiles(IncDefault)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             return str(next(counter))
 
         Table(

@@ -358,9 +358,8 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
                     list(
                         self.session.query(Zoo).filter(
                             and_(
-                                Zoo.Founded != None,  # noqa
-                                Zoo.Founded < func.now(),
-                            )
+                                Zoo.Founded != None, Zoo.Founded < func.now()
+                            )  # noqa
                         )
                     )
                 )

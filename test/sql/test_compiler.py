@@ -959,14 +959,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "zips", column("zipcode"), column("latitude"), column("longitude")
         )
         places = table("places", column("id"), column("nm"))
-        zip = "12345"
+        zipcode = "12345"
         qlat = (
-            select([zips.c.latitude], zips.c.zipcode == zip)
+            select([zips.c.latitude], zips.c.zipcode == zipcode)
             .correlate(None)
             .as_scalar()
         )
         qlng = (
-            select([zips.c.longitude], zips.c.zipcode == zip)
+            select([zips.c.longitude], zips.c.zipcode == zipcode)
             .correlate(None)
             .as_scalar()
         )
@@ -978,7 +978,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 zips.c.zipcode,
                 func.latlondist(qlat, qlng).label("dist"),
             ],
-            zips.c.zipcode == zip,
+            zips.c.zipcode == zipcode,
             order_by=["dist", places.c.nm],
         )
 
@@ -3370,7 +3370,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             pass
 
         @compiles(MyType)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             raise exc.CompileError("Couldn't compile type")
 
         return MyType
