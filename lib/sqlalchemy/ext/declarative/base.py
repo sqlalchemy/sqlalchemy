@@ -235,9 +235,9 @@ class _MapperConfig(object):
                         # make a copy of it so a class-level dictionary
                         # is not overwritten when we update column-based
                         # arguments.
-                        mapper_args_fn = lambda: dict(
-                            cls.__mapper_args__
-                        )  # noqa
+                        def mapper_args_fn():
+                            return dict(cls.__mapper_args__)
+
                 elif name == "__tablename__":
                     check_decl = _check_declared_props_nocascade(
                         obj, name, cls
@@ -290,8 +290,9 @@ class _MapperConfig(object):
                                 # defined attribute here to allow a clean
                                 # override, if there's another
                                 # subclass below then it still tries to use
-                                # this.  not sure if there is enough information
-                                # here to add this as a feature later on.
+                                # this.  not sure if there is enough
+                                # information here to add this as a feature
+                                # later on.
                                 util.warn(
                                     "Attribute '%s' on class %s cannot be "
                                     "processed due to "

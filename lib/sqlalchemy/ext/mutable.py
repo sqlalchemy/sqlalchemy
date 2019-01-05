@@ -483,7 +483,7 @@ class MutableBase(object):
             if not attrs or listen_keys.intersection(attrs):
                 load(state)
 
-        def set(target, value, oldvalue, initiator):
+        def set_(target, value, oldvalue, initiator):
             """Listen for set/replace events on the target
             data member.
 
@@ -523,7 +523,7 @@ class MutableBase(object):
             parent_cls, "refresh_flush", load_attrs, raw=True, propagate=True
         )
         event.listen(
-            attribute, "set", set, raw=True, retval=True, propagate=True
+            attribute, "set", set_, raw=True, retval=True, propagate=True
         )
         event.listen(parent_cls, "pickle", pickle, raw=True, propagate=True)
         event.listen(

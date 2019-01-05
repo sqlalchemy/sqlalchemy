@@ -81,29 +81,29 @@ def Serializer(*args, **kw):
         if isinstance(obj, QueryableAttribute):
             cls = obj.impl.class_
             key = obj.impl.key
-            id = "attribute:" + key + ":" + b64encode(pickle.dumps(cls))
+            id_ = "attribute:" + key + ":" + b64encode(pickle.dumps(cls))
         elif isinstance(obj, Mapper) and not obj.non_primary:
-            id = "mapper:" + b64encode(pickle.dumps(obj.class_))
+            id_ = "mapper:" + b64encode(pickle.dumps(obj.class_))
         elif isinstance(obj, MapperProperty) and not obj.parent.non_primary:
-            id = (
+            id_ = (
                 "mapperprop:"
                 + b64encode(pickle.dumps(obj.parent.class_))
                 + ":"
                 + obj.key
             )
         elif isinstance(obj, Table):
-            id = "table:" + text_type(obj.key)
+            id_ = "table:" + text_type(obj.key)
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
-            id = (
+            id_ = (
                 "column:" + text_type(obj.table.key) + ":" + text_type(obj.key)
             )
         elif isinstance(obj, Session):
-            id = "session:"
+            id_ = "session:"
         elif isinstance(obj, Engine):
-            id = "engine:"
+            id_ = "engine:"
         else:
             return None
-        return id
+        return id_
 
     pickler.persistent_id = persistent_id
     return pickler
@@ -127,8 +127,8 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
         else:
             return None
 
-    def persistent_load(id):
-        m = our_ids.match(text_type(id))
+    def persistent_load(id_):
+        m = our_ids.match(text_type(id_))
         if not m:
             return None
         else:

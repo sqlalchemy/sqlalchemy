@@ -27,6 +27,7 @@ from .base import _MappedAttribute
 from .base import EXT_CONTINUE
 from .base import EXT_STOP
 from .base import InspectionAttr
+from .base import InspectionAttrInfo
 from .base import MANYTOMANY
 from .base import MANYTOONE
 from .base import NOT_EXTENSION

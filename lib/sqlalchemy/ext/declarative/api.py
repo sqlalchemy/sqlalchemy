@@ -75,6 +75,7 @@ class DeclarativeMeta(type):
         _add_attribute(cls, key, value)
 
 
+
 def synonym_for(name, map_column=False):
     """Decorator that produces an :func:`.orm.synonym` attribute in conjunction
     with a Python descriptor.
@@ -253,7 +254,8 @@ class declared_attr(interfaces._MappedAttribute, property):
                 @declared_attr.cascading
                 def id(cls):
                     if has_inherited_table(cls):
-                        return Column(ForeignKey('myclass.id'), primary_key=True)
+                        return Column(
+                            ForeignKey('myclass.id'), primary_key=True)
                     else:
                         return Column(Integer, primary_key=True)
 
@@ -357,8 +359,9 @@ def declarative_base(
       compatible callable to use as the meta type of the generated
       declarative base class.
 
-    .. versionchanged:: 1.1 if :paramref:`.declarative_base.cls` is a single class (rather
-         than a tuple), the constructed base class will inherit its docstring.
+    .. versionchanged:: 1.1 if :paramref:`.declarative_base.cls` is a
+         single class (rather than a tuple), the constructed base class will
+         inherit its docstring.
 
     .. seealso::
 
