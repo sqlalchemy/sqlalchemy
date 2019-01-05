@@ -708,9 +708,12 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         engine = create_engine(
             testing.db.name + "://", strategy="mock", executor=executor
         )
-        engine.dialect.identifier_preparer = tsa.sql.compiler.IdentifierPreparer(
-            engine.dialect
-        )
+        # fmt: off
+        engine.dialect.identifier_preparer = \
+            tsa.sql.compiler.IdentifierPreparer(
+                engine.dialect
+            )
+        # fmt: on
         return engine
 
     def test_tokens(self):

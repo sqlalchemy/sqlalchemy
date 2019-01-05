@@ -147,7 +147,8 @@ class DefaultRequirements(SuiteRequirements):
             [
                 LambdaPredicate(
                     lambda config: against(config, "mssql"),
-                    "SQL Server drivers / odbc seem to change their mind on this",
+                    "SQL Server drivers / odbc seem to change "
+                    "their mind on this",
                 ),
                 LambdaPredicate(
                     lambda config: config.db.dialect.supports_native_boolean,
@@ -382,12 +383,13 @@ class DefaultRequirements(SuiteRequirements):
         present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
-        such as:
+        such as::
 
-        UPDATE documents SET flag=1 WHERE documents.title IN
-            (SELECT max(documents.title) AS title
-                FROM documents GROUP BY documents.user_id
-            )
+            UPDATE documents SET flag=1 WHERE documents.title IN
+                (SELECT max(documents.title) AS title
+                    FROM documents GROUP BY documents.user_id
+                )
+
         """
         return fails_if(
             self._mysql_not_mariadb_103,
@@ -883,7 +885,8 @@ class DefaultRequirements(SuiteRequirements):
                     "sybase+pyodbc",
                     None,
                     None,
-                    "Don't know how do get these values through FreeTDS + Sybase",
+                    "Don't know how do get these values through "
+                    "FreeTDS + Sybase",
                 ),
                 ("firebird", None, None, "Precision must be from 1 to 18"),
             ]

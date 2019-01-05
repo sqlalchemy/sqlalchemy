@@ -282,7 +282,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             1,
         )
         if (
-            testing.requires.unique_constraint_reflection_no_index_overlap.enabled
+            # fmt: off
+            testing.requires.
+            unique_constraint_reflection_no_index_overlap.enabled
+            # fmt: on
         ):
             eq_(
                 len(

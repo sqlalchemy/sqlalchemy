@@ -727,16 +727,16 @@ class ColumnCollectionTest(testing.AssertsCompiledSQL, fixtures.TestBase):
 class LRUTest(fixtures.TestBase):
     def test_lru(self):
         class item(object):
-            def __init__(self, id):
-                self.id = id
+            def __init__(self, id_):
+                self.id = id_
 
             def __str__(self):
                 return "item id %d" % self.id
 
         lru = util.LRUCache(10, threshold=0.2)
 
-        for id in range(1, 20):
-            lru[id] = item(id)
+        for id_ in range(1, 20):
+            lru[id_] = item(id_)
 
         # first couple of items should be gone
         assert 1 not in lru

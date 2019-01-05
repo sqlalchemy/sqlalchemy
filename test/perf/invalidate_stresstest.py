@@ -1,17 +1,23 @@
-import gevent.monkey
-gevent.monkey.patch_all()  # noqa
+from __future__ import print_function
 
 import logging
-logging.basicConfig()  # noqa
-# logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
-from sqlalchemy import event
 import random
 import sys
-from sqlalchemy import create_engine
-import traceback
 
-engine = create_engine('mysql+pymysql://scott:tiger@localhost/test',
-                       pool_size=50, max_overflow=0)
+import gevent.monkey
+
+from sqlalchemy import create_engine
+from sqlalchemy import event
+
+
+gevent.monkey.patch_all()  # noqa
+
+logging.basicConfig()  # noqa
+# logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
+
+engine = create_engine(
+    "mysql+pymysql://scott:tiger@localhost/test", pool_size=50, max_overflow=0
+)
 
 
 @event.listens_for(engine, "connect")
@@ -30,10 +36,10 @@ def worker():
 
         except Exception:
             # traceback.print_exc()
-            sys.stderr.write('X')
+            sys.stderr.write("X")
         else:
             conn.close()
-            sys.stderr.write('.')
+            sys.stderr.write(".")
 
 
 def main():
