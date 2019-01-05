@@ -7,10 +7,15 @@ PostalCode --(has a)--> City
 City --(has a)--> Country
 
 """
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.orm import relationship
+
 from .caching_query import RelationshipCache
-from .environment import Base, bootstrap
+from .environment import Base
+from .environment import bootstrap
 
 
 class Country(Base):

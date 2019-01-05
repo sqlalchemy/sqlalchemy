@@ -34,8 +34,8 @@ a Query (or a :func:`.relationship`).
 
 """
 from sqlalchemy import *
-from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import *
 
 Base = declarative_base()
 

@@ -3,20 +3,20 @@ record by primary key
 
 
 """
-from . import Profiler
-
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    create_engine,
-    bindparam,
-    select,
-)
-from sqlalchemy.orm import Session, deferred
-from sqlalchemy.ext import baked
 import random
+
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy.ext import baked
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import Session
+
+from . import Profiler
 
 Base = declarative_base()
 engine = None

@@ -10,7 +10,8 @@ with the basic operation of CachingQuery.
 
 """
 
-from dogpile.cache.api import CacheBackend, NO_VALUE
+from dogpile.cache.api import CacheBackend
+from dogpile.cache.api import NO_VALUE
 from dogpile.cache.region import register_backend
 
 

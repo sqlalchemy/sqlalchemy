@@ -1,11 +1,19 @@
 """Versioned mixin class and other utilities."""
 
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import mapper, attributes, object_mapper
-from sqlalchemy.orm.exc import UnmappedColumnError
-from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer, DateTime
-from sqlalchemy import event, util
 import datetime
+
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import event
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import Integer
+from sqlalchemy import Table
+from sqlalchemy import util
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import object_mapper
+from sqlalchemy.orm.exc import UnmappedColumnError
 from sqlalchemy.orm.properties import RelationshipProperty
 
 

@@ -1,8 +1,12 @@
 """a directed graph example."""
 
-from sqlalchemy import Column, Integer, ForeignKey, create_engine
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 

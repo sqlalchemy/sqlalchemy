@@ -220,11 +220,11 @@ As well as see RunSnake output for an individual test::
 """
 import argparse
 import cProfile
-import pstats
 import os
-import time
+import pstats
 import re
 import sys
+import time
 
 
 class Profiler(object):

@@ -6,20 +6,19 @@ structure in distinct rows using two additional mapped entities.  Note that the 
 styles of persistence are identical, as is the structure of the main Document class.
 """
 
-from sqlalchemy import (
-    create_engine,
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    String,
-    PickleType,
-)
-from sqlalchemy.orm import mapper, Session
-
-import sys, os
-
+import os
+import sys
 from xml.etree import ElementTree
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import PickleType
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
 
 e = create_engine("sqlite://")
 meta = MetaData()

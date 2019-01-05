@@ -13,11 +13,15 @@ full blown ORM doesn't do terribly either even though mapped objects
 provide a huge amount of functionality.
 
 """
-from . import Profiler
-
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import Session, Bundle
+from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import Session
+
+from . import Profiler
 
 Base = declarative_base()
 engine = None

@@ -30,8 +30,8 @@ in order to note to the ORM that ``B.a_id`` should be treated like the
 
 """
 from sqlalchemy import *
-from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import *
 
 Base = declarative_base()
 

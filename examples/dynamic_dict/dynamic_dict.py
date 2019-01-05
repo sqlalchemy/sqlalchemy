@@ -29,9 +29,14 @@ class ProxyDict(object):
         self.collection.append(value)
 
 
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker
 
 engine = create_engine("sqlite://", echo=True)
 Base = declarative_base(engine)

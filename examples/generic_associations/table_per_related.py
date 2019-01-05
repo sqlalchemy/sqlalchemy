@@ -16,9 +16,15 @@ but there really isn't any - the management and targeting of these tables
 is completely automated.
 
 """
-from sqlalchemy.ext.declarative import as_declarative, declared_attr
-from sqlalchemy import create_engine, Integer, Column, String, ForeignKey
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import as_declarative
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 
 @as_declarative()

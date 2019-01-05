@@ -1,6 +1,13 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
-from sqlalchemy.orm import Session, relationship, backref, joinedload_all
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 

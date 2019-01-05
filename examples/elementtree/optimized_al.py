@@ -8,22 +8,24 @@
 """
 
 ##################### PART I - Imports/Configuration #########################
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    Unicode,
-    and_,
-    create_engine,
-)
-from sqlalchemy.orm import mapper, relationship, Session, lazyload
-
-import sys, os, io, re
-
+import io
+import os
+import re
 from xml.etree import ElementTree
+
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import Unicode
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 e = create_engine("sqlite://", echo=True)
 meta = MetaData()

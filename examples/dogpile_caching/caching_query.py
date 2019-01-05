@@ -17,9 +17,9 @@ The rest of what's here are standard SQLAlchemy and
 dogpile.cache constructs.
 
 """
+from dogpile.cache.api import NO_VALUE
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.orm.query import Query
-from dogpile.cache.api import NO_VALUE
 
 
 class CachingQuery(Query):

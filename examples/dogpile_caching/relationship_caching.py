@@ -6,10 +6,14 @@ related PostalCode, City, Country objects should be pulled from long
 term cache.
 
 """
-from .environment import Session, root
-from .model import Person, cache_address_bits
-from sqlalchemy.orm import joinedload
 import os
+
+from sqlalchemy.orm import joinedload
+
+from .environment import root
+from .environment import Session
+from .model import cache_address_bits
+from .model import Person
 
 for p in Session.query(Person).options(
     joinedload(Person.addresses), cache_address_bits

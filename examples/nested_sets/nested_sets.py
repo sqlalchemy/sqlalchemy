@@ -4,18 +4,17 @@ http://www.intelligententerprise.com/001020/celko.jhtml
 
 """
 
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    select,
-    case,
-    func,
-)
-from sqlalchemy.orm import Session, aliased
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import case
+from sqlalchemy import Column
+from sqlalchemy import create_engine
 from sqlalchemy import event
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Session
 
 Base = declarative_base()
 

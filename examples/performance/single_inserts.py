@@ -4,11 +4,16 @@ within a distinct transaction, and afterwards returns to essentially a
 a database connection, inserts the row, commits and closes.
 
 """
-from . import Profiler
-
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import pool
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine, bindparam, pool
 from sqlalchemy.orm import Session
+
+from . import Profiler
 
 Base = declarative_base()
 engine = None

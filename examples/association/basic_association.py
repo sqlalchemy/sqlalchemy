@@ -12,18 +12,17 @@ of "items", with a particular price paid associated with each "item".
 
 from datetime import datetime
 
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Float,
-    ForeignKey,
-    and_,
-)
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 Base = declarative_base()
 

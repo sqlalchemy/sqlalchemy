@@ -1,7 +1,10 @@
-from sqlalchemy.types import UserDefinedType, _Binary, TypeDecorator
-from sqlalchemy.sql import expression, type_coerce
-from sqlalchemy import event, Table
 import binascii
+
+from sqlalchemy import event
+from sqlalchemy import Table
+from sqlalchemy.sql import expression
+from sqlalchemy.sql import type_coerce
+from sqlalchemy.types import UserDefinedType
 
 # Python datatypes
 
