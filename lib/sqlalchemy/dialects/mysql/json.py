@@ -7,8 +7,6 @@
 
 from __future__ import absolute_import
 
-import json
-
 from ...sql import elements
 from ... import types as sqltypes
 from ... import util

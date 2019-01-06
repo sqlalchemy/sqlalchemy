@@ -170,11 +170,16 @@ def _pg_create_db(cfg, eng, ident):
             pass
         if not template_db:
             template_db = conn.scalar("select current_database()")
-        for attempt in range(3):
+
+        attempt = 0
+        while True:
             try:
                 conn.execute(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, template_db))
             except exc.OperationalError as err:
+                attempt += 1
+                if attempt >= 3:
+                    raise
                 if "accessed by other users" in str(err):
                     log.info(
                         "Waiting to create %s, URI %r, "
@@ -183,8 +188,6 @@ def _pg_create_db(cfg, eng, ident):
                     time.sleep(.5)
             else:
                 break
-        else:
-            raise err
 
 
 @_create_db.for_db("mysql")

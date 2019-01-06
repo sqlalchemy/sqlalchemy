@@ -4,6 +4,13 @@ Collects specimens of old ORM code and explicitly covers the recommended
 modern (i.e. not deprecated) alternative to them.  The tests snippets here can
 be migrated directly to the wiki, docs, etc.
 
+.. deprecated::
+
+    This test suite is interested in extremely old (pre 0.5) patterns
+    and in modern use illustrates trivial use cases that don't need
+    an additional test suite.
+
+
 """
 from sqlalchemy import Integer, String, ForeignKey, func, text
 from sqlalchemy.testing.schema import Table

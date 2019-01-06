@@ -1758,13 +1758,6 @@ class HistoryTest(fixtures.TestBase):
         self._commit_someattr(f)
         eq_(self._someattr_history(f), ((), ['old'], ()))
 
-    def test_scalar_set_None(self):
-        Foo = self._fixture(uselist=False, useobject=False,
-                            active_history=False)
-        f = Foo()
-        f.someattr = None
-        eq_(self._someattr_history(f), ([None], (), ()))
-
     def test_scalar_set_None_from_dict_set(self):
         Foo = self._fixture(uselist=False, useobject=False,
                             active_history=False)

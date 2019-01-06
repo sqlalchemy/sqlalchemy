@@ -6,6 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import collections
+from unittest import SkipTest as _skip_test_exception
 
 requirements = None
 db = None
@@ -15,11 +16,6 @@ file_config = None
 test_schema = None
 test_schema_2 = None
 _current = None
-
-try:
-    from unittest import SkipTest as _skip_test_exception
-except ImportError:
-    _skip_test_exception = None
 
 
 class Config(object):
