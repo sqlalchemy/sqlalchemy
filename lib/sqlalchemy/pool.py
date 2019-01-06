@@ -17,15 +17,20 @@ regular DB-API connect() methods to be transparently managed by a
 SQLAlchemy connection pool.
 """
 
+from collections import deque
 import time
 import traceback
 import weakref
 
-from . import exc, log, event, interfaces, util
+from . import event
+from . import exc
+from . import interfaces
+from . import log
+from . import util
+from .util import chop_traceback
+from .util import memoized_property
 from .util import queue as sqla_queue
-from .util import threading, memoized_property, chop_traceback
-
-from collections import deque
+from .util import threading
 
 proxies = {}
 

@@ -1,35 +1,35 @@
 # coding: utf-8
 """Tests unitofwork operations."""
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import datetime
 
 import sqlalchemy as sa
-from sqlalchemy.util import u, ue, b
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    literal_column,
-    event,
-    Boolean,
-    select,
-    func,
-)
+from sqlalchemy import Boolean
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    column_property,
-    Session,
-    exc as orm_exc,
-)
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import u
+from sqlalchemy.util import ue
 from test.orm import _fixtures
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
 
 
 class UnitOfWorkTest(object):
@@ -2019,9 +2019,9 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
         session.expunge_all()
 
-        id = m.primary_key_from_instance(u)
+        id_ = m.primary_key_from_instance(u)
 
-        u = session.query(User).get(id)
+        u = session.query(User).get(id_)
         assert u.name == "multitester"
 
         user_rows = (
@@ -2047,7 +2047,7 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(list(address_rows[0].values()), [u.id, u.foo_id, "lala@hey.com"])
 
         session.expunge_all()
-        u = session.query(User).get(id)
+        u = session.query(User).get(id_)
         assert u.name == "imnew"
 
     def test_history_get(self):

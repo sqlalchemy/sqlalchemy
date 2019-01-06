@@ -1,6 +1,9 @@
-from sqlalchemy import *
-from sqlalchemy.testing import eq_
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
 from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock
 
@@ -42,10 +45,13 @@ class MxODBCTest(fixtures.TestBase):
         )
 
         eq_(
+            # fmt: off
             [
                 c[2]
-                for c in dbapi.connect.return_value.cursor.return_value.execute.mock_calls
+                for c in dbapi.connect.return_value.cursor.
+                return_value.execute.mock_calls
             ],
+            # fmt: on
             [
                 {"direct": True},
                 {"direct": True},
@@ -53,5 +59,5 @@ class MxODBCTest(fixtures.TestBase):
                 {"direct": True},
                 {"direct": False},
                 {"direct": True},
-            ],
+            ]
         )

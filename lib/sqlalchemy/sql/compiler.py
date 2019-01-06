@@ -24,19 +24,19 @@ To generate user-defined SQL strings, see
 """
 
 import contextlib
-import re
-from . import (
-    schema,
-    sqltypes,
-    operators,
-    functions,
-    visitors,
-    elements,
-    selectable,
-    crud,
-)
-from .. import util, exc
 import itertools
+import re
+
+from . import crud
+from . import elements
+from . import functions
+from . import operators
+from . import schema
+from . import selectable
+from . import sqltypes
+from . import visitors
+from .. import exc
+from .. import util
 
 RESERVED_WORDS = set(
     [
@@ -1724,9 +1724,12 @@ class SQLCompiler(Compiled):
 
         if column.type._has_column_expression and populate_result_map:
             col_expr = column.type.column_expression(column)
-            add_to_result_map = lambda keyname, name, objects, type_: self._add_to_result_map(
-                keyname, name, (column,) + objects, type_
-            )
+
+            def add_to_result_map(keyname, name, objects, type_):
+                self._add_to_result_map(
+                    keyname, name, (column,) + objects, type_
+                )
+
         else:
             col_expr = column
             if populate_result_map:

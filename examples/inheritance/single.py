@@ -1,16 +1,18 @@
 """Single-table (table-per-hierarchy) inheritance example."""
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    create_engine,
-    inspect,
-    or_,
-)
-from sqlalchemy.orm import relationship, Session, with_polymorphic
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import or_
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
+
 
 Base = declarative_base()
 

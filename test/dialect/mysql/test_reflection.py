@@ -1,38 +1,40 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, is_
-from sqlalchemy import (
-    Column,
-    Table,
-    DDL,
-    MetaData,
-    TIMESTAMP,
-    DefaultClause,
-    String,
-    Integer,
-    Text,
-    UnicodeText,
-    SmallInteger,
-    NCHAR,
-    LargeBinary,
-    DateTime,
-    select,
-    UniqueConstraint,
-    Unicode,
-    BigInteger,
-    Index,
-    ForeignKey,
-)
+import re
+
+from sqlalchemy import BigInteger
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import DDL
+from sqlalchemy import DefaultClause
 from sqlalchemy import event
-from sqlalchemy import sql
 from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import LargeBinary
+from sqlalchemy import MetaData
+from sqlalchemy import NCHAR
+from sqlalchemy import select
+from sqlalchemy import SmallInteger
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import Text
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import reflection as _reflection
-from sqlalchemy.testing import fixtures, AssertsExecutionResults
-from sqlalchemy import testing
-from sqlalchemy.testing import assert_raises_message, expect_warnings
-import re
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 
 class TypeReflectionTest(fixtures.TestBase):
@@ -622,7 +624,10 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "nullable": False,
                     "default": None
                     if explicit_defaults_for_timestamp
-                    else "%(current_timestamp)s ON UPDATE %(current_timestamp)s"
+                    else (
+                        "%(current_timestamp)s "
+                        "ON UPDATE %(current_timestamp)s"
+                    )
                     % {"current_timestamp": current_timestamp},
                 },
                 {"name": "s", "nullable": False, "default": current_timestamp},
@@ -633,7 +638,10 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     else False,
                     "default": None
                     if explicit_defaults_for_timestamp
-                    else "%(current_timestamp)s ON UPDATE %(current_timestamp)s"
+                    else (
+                        "%(current_timestamp)s "
+                        "ON UPDATE %(current_timestamp)s"
+                    )
                     % {"current_timestamp": current_timestamp},
                 },
                 {

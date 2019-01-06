@@ -5,11 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from ...sql import expression
+from .array import ARRAY
 from ...sql import elements
+from ...sql import expression
 from ...sql import functions
 from ...sql.schema import ColumnCollectionConstraint
-from .array import ARRAY
 
 
 class aggregate_order_by(expression.ColumnElement):
@@ -83,9 +83,9 @@ class ExcludeConstraint(ColumnCollectionConstraint):
     Defines an EXCLUDE constraint as described in the `postgres
     documentation`__.
 
-    __ http://www.postgresql.org/docs/9.0/\
-static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
-    """
+    __ http://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+
+    """  # noqa
 
     __visit_name__ = "exclude_constraint"
 

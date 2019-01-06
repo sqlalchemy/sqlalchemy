@@ -72,26 +72,26 @@ the SQLAlchemy ``returning()`` method, such as::
 
 import datetime
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import exc, types as sqltypes, sql, util
-from sqlalchemy.sql import expression
-from sqlalchemy.engine import base, default, reflection
+from sqlalchemy import exc
+from sqlalchemy import sql
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import reflection
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql import expression
 from sqlalchemy.sql.elements import quoted_name
-
-from sqlalchemy.types import (
-    BIGINT,
-    BLOB,
-    DATE,
-    FLOAT,
-    INTEGER,
-    NUMERIC,
-    SMALLINT,
-    TEXT,
-    TIME,
-    TIMESTAMP,
-    Integer,
-)
+from sqlalchemy.types import BIGINT
+from sqlalchemy.types import BLOB
+from sqlalchemy.types import DATE
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import Integer
+from sqlalchemy.types import NUMERIC
+from sqlalchemy.types import SMALLINT
+from sqlalchemy.types import TEXT
+from sqlalchemy.types import TIME
+from sqlalchemy.types import TIMESTAMP
 
 
 RESERVED_WORDS = set(
@@ -547,11 +547,11 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
         # no syntax for these
         # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
         if create.element.start is not None:
-            raise NotImplemented(
+            raise NotImplementedError(
                 "Firebird SEQUENCE doesn't support START WITH"
             )
         if create.element.increment is not None:
-            raise NotImplemented(
+            raise NotImplementedError(
                 "Firebird SEQUENCE doesn't support INCREMENT BY"
             )
 
@@ -659,9 +659,9 @@ class FBDialect(default.DefaultDialect):
         name = name and name.rstrip()
         if name is None:
             return None
-        elif name.upper() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        elif name.upper() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             return name.lower()
         elif name.lower() == name:
             return quoted_name(name, quote=True)
@@ -671,9 +671,9 @@ class FBDialect(default.DefaultDialect):
     def denormalize_name(self, name):
         if name is None:
             return None
-        elif name.lower() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        elif name.lower() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             return name.upper()
         else:
             return name

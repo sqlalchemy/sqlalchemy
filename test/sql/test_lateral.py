@@ -1,10 +1,16 @@
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import AssertsCompiledSQL, assert_raises_message
-from sqlalchemy.sql import select, func
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import lateral
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import true
 from sqlalchemy.engine import default
-from sqlalchemy import exc
-from sqlalchemy import Table, Integer, String, ForeignKey, Column, true
-from sqlalchemy import lateral, outerjoin, join
+from sqlalchemy.sql import func
+from sqlalchemy.sql import select
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
 
 
 class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):

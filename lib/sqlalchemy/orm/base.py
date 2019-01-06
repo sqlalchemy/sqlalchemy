@@ -9,10 +9,13 @@
 
 """
 
-from .. import util, inspection, exc as sa_exc
-from ..sql import expression
-from . import exc
 import operator
+
+from . import exc
+from .. import exc as sa_exc
+from .. import inspection
+from .. import util
+from ..sql import expression
 
 PASSIVE_NO_RESULT = util.symbol(
     "PASSIVE_NO_RESULT",

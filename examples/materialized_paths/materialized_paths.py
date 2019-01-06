@@ -26,11 +26,20 @@ already stored in the path itself. Updates require going through all
 descendants and changing the prefix.
 
 """
-from sqlalchemy import Column, Integer, String, func, select, create_engine
-from sqlalchemy.orm import remote, foreign, relationship, Session
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql.expression import cast
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import foreign
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import remote
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import cast
+
 
 Base = declarative_base()
 

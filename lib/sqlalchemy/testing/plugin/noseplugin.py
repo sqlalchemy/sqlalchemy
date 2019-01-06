@@ -23,8 +23,8 @@ except ImportError:
 import os
 import sys
 
-from nose.plugins import Plugin
 import nose
+from nose.plugins import Plugin
 
 fixtures = None
 

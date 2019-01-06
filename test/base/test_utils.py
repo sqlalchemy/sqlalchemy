@@ -1,14 +1,28 @@
 import copy
+import inspect
 import sys
 
-from sqlalchemy import util, sql, exc, testing
-from sqlalchemy.testing import assert_raises, assert_raises_message, fixtures
-from sqlalchemy.testing import eq_, is_, ne_, fails_if, mock, expect_warnings
-from sqlalchemy.testing.util import picklers, gc_collect
-from sqlalchemy.util import classproperty, WeakSequence, get_callable_argspec
+from sqlalchemy import exc
+from sqlalchemy import sql
+from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.sql import column
-from sqlalchemy.util import langhelpers, compat
-import inspect
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fails_if
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing.util import picklers
+from sqlalchemy.util import classproperty
+from sqlalchemy.util import compat
+from sqlalchemy.util import get_callable_argspec
+from sqlalchemy.util import langhelpers
+from sqlalchemy.util import WeakSequence
 
 
 class _KeyedTupleTest(object):
@@ -713,16 +727,16 @@ class ColumnCollectionTest(testing.AssertsCompiledSQL, fixtures.TestBase):
 class LRUTest(fixtures.TestBase):
     def test_lru(self):
         class item(object):
-            def __init__(self, id):
-                self.id = id
+            def __init__(self, id_):
+                self.id = id_
 
             def __str__(self):
                 return "item id %d" % self.id
 
         lru = util.LRUCache(10, threshold=0.2)
 
-        for id in range(1, 20):
-            lru[id] = item(id)
+        for id_ in range(1, 20):
+            lru[id_] = item(id_)
 
         # first couple of items should be gone
         assert 1 not in lru

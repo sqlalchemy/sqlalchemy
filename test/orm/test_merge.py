@@ -1,32 +1,40 @@
-from sqlalchemy.testing import assert_raises_message
-import sqlalchemy as sa
-from sqlalchemy import Integer, PickleType, String, ForeignKey, Text
 import operator
+
+import sqlalchemy as sa
+from sqlalchemy import and_
+from sqlalchemy import case
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import PickleType
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.util import OrderedSet
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    PropComparator,
-    synonym,
-    comparable_property,
-    sessionmaker,
-    attributes,
-    Session,
-    backref,
-    configure_mappers,
-    foreign,
-    deferred,
-    defer,
-)
+from sqlalchemy import Text
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import comparable_property
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import foreign
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import PropComparator
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import synonym
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
-from sqlalchemy.testing import eq_, in_, not_in_
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import not_in_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import OrderedSet
 from test.orm import _fixtures
-from sqlalchemy import event, and_, case
-from sqlalchemy.testing.schema import Table, Column
 
 
 class MergeTest(_fixtures.FixtureTest):

@@ -30,9 +30,12 @@ alternate instrumentation forms.
 """
 
 
-from . import exc, collections, interfaces, state
-from .. import util
 from . import base
+from . import collections
+from . import exc
+from . import interfaces
+from . import state
+from .. import util
 
 
 _memoized_key_collection = util.group_expirable_memoized_property()
@@ -69,8 +72,8 @@ class ClassManager(dict):
             if mgr is not None
         ]
 
-        for base in self._bases:
-            self.update(base)
+        for base_ in self._bases:
+            self.update(base_)
 
         self.dispatch._events._new_classmanager_instance(class_, self)
         # events._InstanceEventsHold.populate(class_, self)

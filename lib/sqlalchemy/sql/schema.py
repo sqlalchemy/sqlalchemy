@@ -30,25 +30,29 @@ as components in SQL expressions.
 """
 from __future__ import absolute_import
 
-from .. import exc, util, event, inspection
-from .base import SchemaEventTarget, DialectKWArgs
-import operator
-from . import visitors
-from . import type_api
-from .base import _bind_or_error, ColumnCollection
-from .elements import (
-    ClauseElement,
-    ColumnClause,
-    _as_truncated,
-    TextClause,
-    _literal_as_text,
-    ColumnElement,
-    quoted_name,
-)
-from .selectable import TableClause
 import collections
+import operator
+
 import sqlalchemy
 from . import ddl
+from . import type_api
+from . import visitors
+from .base import _bind_or_error
+from .base import ColumnCollection
+from .base import DialectKWArgs
+from .base import SchemaEventTarget
+from .elements import _as_truncated
+from .elements import _literal_as_text
+from .elements import ClauseElement
+from .elements import ColumnClause
+from .elements import ColumnElement
+from .elements import quoted_name
+from .elements import TextClause
+from .selectable import TableClause
+from .. import event
+from .. import exc
+from .. import inspection
+from .. import util
 
 RETAIN_SCHEMA = util.symbol("retain_schema")
 
@@ -373,11 +377,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         the table resides in a schema other than the default selected schema
         for the engine's database connection.  Defaults to ``None``.
 
-        If the owning :class:`.MetaData` of this :class:`.Table` specifies
-        its own :paramref:`.MetaData.schema` parameter, then that schema
-        name will be applied to this :class:`.Table` if the schema parameter
-        here is set to ``None``.  To set a blank schema name on a :class:`.Table`
-        that would otherwise use the schema set on the owning :class:`.MetaData`,
+        If the owning :class:`.MetaData` of this :class:`.Table` specifies its
+        own :paramref:`.MetaData.schema` parameter, then that schema name will
+        be applied to this :class:`.Table` if the schema parameter here is set
+        to ``None``.  To set a blank schema name on a :class:`.Table` that
+        would otherwise use the schema set on the owning :class:`.MetaData`,
         specify the special symbol :attr:`.BLANK_SCHEMA`.
 
         .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
@@ -386,10 +390,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         The quoting rules for the schema name are the same as those for the
         ``name`` parameter, in that quoting is applied for reserved words or
-        case-sensitive names; to enable unconditional quoting for the
-        schema name, specify the flag
-        ``quote_schema=True`` to the constructor, or use the
-        :class:`.quoted_name` construct to specify the name.
+        case-sensitive names; to enable unconditional quoting for the schema
+        name, specify the flag ``quote_schema=True`` to the constructor, or use
+        the :class:`.quoted_name` construct to specify the name.
 
     :param useexisting: Deprecated.  Use :paramref:`.Table.extend_existing`.
 
@@ -1070,9 +1073,9 @@ class Column(SchemaItem, ColumnClause):
                 Column('id', ForeignKey('other.id'),
                             primary_key=True, autoincrement='ignore_fk')
 
-            It is typically not desirable to have "autoincrement" enabled
-            on a column that refers to another via foreign key, as such a column
-            is required to refer to a value that originates from elsewhere.
+            It is typically not desirable to have "autoincrement" enabled on a
+            column that refers to another via foreign key, as such a column is
+            required to refer to a value that originates from elsewhere.
 
           The setting has these two effects on columns that meet the
           above criteria:
@@ -4002,8 +4005,8 @@ class MetaData(SchemaItem):
             To resolve these cycles, either the
             :paramref:`.ForeignKeyConstraint.use_alter` parameter may be appled
             to those constraints, or use the
-            :func:`.schema.sort_tables_and_constraints` function which will break
-            out foreign key constraints involved in cycles separately.
+            :func:`.schema.sort_tables_and_constraints` function which will
+            break out foreign key constraints involved in cycles separately.
 
         .. seealso::
 

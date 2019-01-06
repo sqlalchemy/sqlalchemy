@@ -174,10 +174,6 @@ data structure does not exist, and a set operation is called:
   rules.
 
 
-
-
-
-
 Subclassing
 ===========
 
@@ -224,12 +220,12 @@ The above query will render::
     FROM person
     WHERE CAST(person.data ->> %(data_1)s AS INTEGER) < %(param_1)s
 
-"""
+"""  # noqa
 from __future__ import absolute_import
 
 from sqlalchemy import inspect
-from ..orm.attributes import flag_modified
 from ..ext.hybrid import hybrid_property
+from ..orm.attributes import flag_modified
 
 
 __all__ = ["index_property"]

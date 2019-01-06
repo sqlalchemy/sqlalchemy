@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 .. dialect:: oracle
     :name: Oracle
 
@@ -343,27 +343,31 @@ columns for non-unique indexes, all but the last column for unique indexes).
 
 .. versionadded:: 1.0.0
 
-"""
+"""  # noqa
 
+from itertools import groupby
 import re
 
-from sqlalchemy import util, sql
-from sqlalchemy.engine import default, reflection
-from sqlalchemy.sql import compiler, visitors, expression, util as sql_util
-from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy import types as sqltypes, schema as sa_schema
-from sqlalchemy.types import (
-    VARCHAR,
-    NVARCHAR,
-    CHAR,
-    BLOB,
-    CLOB,
-    TIMESTAMP,
-    FLOAT,
-    INTEGER,
-)
-from itertools import groupby
+from ... import schema as sa_schema
+from ... import sql
+from ... import types as sqltypes
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import expression
+from ...sql import util as sql_util
+from ...sql import visitors
+from ...sql.elements import quoted_name
+from ...types import BLOB
+from ...types import CHAR
+from ...types import CLOB
+from ...types import FLOAT
+from ...types import INTEGER
+from ...types import NVARCHAR
+from ...types import TIMESTAMP
+from ...types import VARCHAR
+
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "
@@ -1095,7 +1099,6 @@ class OracleDialect(default.DefaultDialect):
     execution_ctx_cls = OracleExecutionContext
 
     reflection_options = ("oracle_resolve_synonyms",)
-
     construct_arguments = [
         (
             sa_schema.Table,
@@ -1186,9 +1189,9 @@ class OracleDialect(default.DefaultDialect):
         if util.py2k:
             if isinstance(name, str):
                 name = name.decode(self.encoding)
-        if name.upper() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        if name.upper() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             return name.lower()
         elif name.lower() == name:
             return quoted_name(name, quote=True)
@@ -1198,15 +1201,15 @@ class OracleDialect(default.DefaultDialect):
     def denormalize_name(self, name):
         if name is None:
             return None
-        elif name.lower() == name and not self.identifier_preparer._requires_quotes(
-            name.lower()
-        ):
+        elif name.lower() == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name.lower()):
             name = name.upper()
         if util.py2k:
             if not self.supports_unicode_binds:
                 name = name.encode(self.encoding)
             else:
-                name = unicode(name)
+                name = unicode(name)  # noqa
         return name
 
     def _get_default_schema_name(self, connection):
@@ -1813,7 +1816,12 @@ class OracleDialect(default.DefaultDialect):
 
                 if not rec["referred_table"]:
                     if resolve_synonyms:
-                        ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = self._resolve_synonym(
+                        (
+                            ref_remote_name,
+                            ref_remote_owner,
+                            ref_dblink,
+                            ref_synonym,
+                        ) = self._resolve_synonym(
                             connection,
                             desired_owner=self.denormalize_name(remote_owner),
                             desired_table=self.denormalize_name(remote_table),
@@ -1868,14 +1876,10 @@ class OracleDialect(default.DefaultDialect):
         unique_keys = filter(lambda x: x[1] == "U", constraint_data)
         uniques_group = groupby(unique_keys, lambda x: x[0])
 
-        index_names = set(
-            [
-                ix["name"]
-                for ix in self.get_indexes(
-                    connection, table_name, schema=schema
-                )
-            ]
-        )
+        index_names = {
+            ix["name"]
+            for ix in self.get_indexes(connection, table_name, schema=schema)
+        }
         return [
             {
                 "name": name,

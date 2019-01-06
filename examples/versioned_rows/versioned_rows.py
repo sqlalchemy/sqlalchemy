@@ -3,17 +3,19 @@ an UPDATE statement on a single row into an INSERT statement, so that a new
 row is inserted with the new data, keeping the old row intact.
 
 """
-from sqlalchemy.orm import (
-    sessionmaker,
-    relationship,
-    make_transient,
-    backref,
-    Session,
-)
-from sqlalchemy import Column, ForeignKey, create_engine, Integer, String
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
-from sqlalchemy import event
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 
 class Versioned(object):

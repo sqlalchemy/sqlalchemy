@@ -1,11 +1,17 @@
-"""Installs some sample data.   Here we have a handful of postal codes for a few US/
-Canadian cities.   Then, 100 Person records are installed, each with a
-randomly selected postal code.
+"""Installs some sample data.   Here we have a handful of postal codes for
+a few US/Canadian cities.   Then, 100 Person records are installed, each
+with a randomly selected postal code.
 
 """
-from .environment import Session, Base
-from .model import City, Country, PostalCode, Person, Address
 import random
+
+from .environment import Base
+from .environment import Session
+from .model import Address
+from .model import City
+from .model import Country
+from .model import Person
+from .model import PostalCode
 
 
 def install():

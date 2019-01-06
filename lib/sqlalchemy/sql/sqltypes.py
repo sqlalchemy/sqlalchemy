@@ -9,35 +9,34 @@
 
 """
 
-import datetime as dt
 import codecs
-import collections
+import datetime as dt
+import decimal
 import json
 
 from . import elements
-from .type_api import (
-    TypeEngine,
-    TypeDecorator,
-    to_instance,
-    Variant,
-    Emulated,
-    NativeForEmulated,
-)
-from .elements import (
-    quoted_name,
-    TypeCoerce as type_coerce,
-    _defer_name,
-    Slice,
-    _literal_as_binds,
-)
-from .. import exc, util, processors
-from .base import _bind_or_error, SchemaEventTarget
 from . import operators
-from .. import inspection
+from . import type_api
+from .base import _bind_or_error
+from .base import SchemaEventTarget
+from .elements import _defer_name
+from .elements import _literal_as_binds
+from .elements import quoted_name
+from .elements import Slice
+from .elements import TypeCoerce as type_coerce
+from .type_api import Emulated
+from .type_api import NativeForEmulated  # noqa
+from .type_api import to_instance
+from .type_api import TypeDecorator
+from .type_api import TypeEngine
+from .type_api import Variant
 from .. import event
-from ..util import pickle
+from .. import exc
+from .. import inspection
+from .. import processors
+from .. import util
 from ..util import compat
-import decimal
+from ..util import pickle
 
 if util.jython:
     import array
@@ -109,9 +108,11 @@ class Indexable(object):
             raise NotImplementedError()
 
         def __getitem__(self, index):
-            adjusted_op, adjusted_right_expr, result_type = self._setup_getitem(
-                index
-            )
+            (
+                adjusted_op,
+                adjusted_right_expr,
+                result_type,
+            ) = self._setup_getitem(index)
             return self.operate(
                 adjusted_op, adjusted_right_expr, result_type=result_type
             )
@@ -1662,8 +1663,8 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 
     """A bool datatype.
 
-    :class:`.Boolean` typically uses BOOLEAN or SMALLINT on the DDL side, and on
-    the Python side deals in ``True`` or ``False``.
+    :class:`.Boolean` typically uses BOOLEAN or SMALLINT on the DDL side,
+    and on the Python side deals in ``True`` or ``False``.
 
     The :class:`.Boolean` datatype currently has two levels of assertion
     that the values persisted are simple true/false values.  For all
@@ -1934,16 +1935,17 @@ class JSON(Indexable, TypeEngine):
     just the basic type.
 
     Index operations return an expression object whose type defaults to
-    :class:`.JSON` by default, so that further JSON-oriented instructions
-    may be called upon the result type.   Note that there are backend-specific
-    idiosyncracies here, including that the PostgreSQL database does not generally
-    compare a "json" to a "json" structure without type casts.  These idiosyncracies
-    can be accommodated in a backend-neutral way by making explicit use
-    of the :func:`.cast` and :func:`.type_coerce` constructs.
-    Comparison of specific index elements of a :class:`.JSON` object
-    to other objects works best if the **left hand side is CAST to a string**
-    and the **right hand side is rendered as a JSON string**; a future SQLAlchemy
-    feature such as a generic "astext" modifier may simplify this at some point:
+    :class:`.JSON` by default, so that further JSON-oriented instructions may
+    be called upon the result type.   Note that there are backend-specific
+    idiosyncracies here, including that the PostgreSQL database does not
+    generally compare a "json" to a "json" structure without type casts.  These
+    idiosyncracies can be accommodated in a backend-neutral way by making
+    explicit use of the :func:`.cast` and :func:`.type_coerce` constructs.
+    Comparison of specific index elements of a :class:`.JSON` object to other
+    objects works best if the **left hand side is CAST to a string** and the
+    **right hand side is rendered as a JSON string**; a future SQLAlchemy
+    feature such as a generic "astext" modifier may simplify this at some
+    point:
 
     * **Compare an element of a JSON structure to a string**::
 
@@ -1969,9 +1971,9 @@ class JSON(Indexable, TypeEngine):
             data_table.c.data['some_key'], String
         ) == type_coerce(55, JSON)
 
-    * **Compare an element of a JSON structure to some other JSON structure** - note
-      that Python dictionaries are typically not ordered so care should be taken
-      here to assert that the JSON structures are identical::
+    * **Compare an element of a JSON structure to some other JSON structure**
+      - note that Python dictionaries are typically not ordered so care should
+      be taken here to assert that the JSON structures are identical::
 
         from sqlalchemy import cast, type_coerce
         from sqlalchemy import String, JSON
@@ -2046,8 +2048,11 @@ class JSON(Indexable, TypeEngine):
         from sqlalchemy import null
         from sqlalchemy.dialects.postgresql import JSON
 
-        obj1 = MyObject(json_value=null())  # will *always* insert SQL NULL
-        obj2 = MyObject(json_value=JSON.NULL)  # will *always* insert JSON string "null"
+        # will *always* insert SQL NULL
+        obj1 = MyObject(json_value=null())
+
+        # will *always* insert JSON string "null"
+        obj2 = MyObject(json_value=JSON.NULL)
 
         session.add_all([obj1, obj2])
         session.commit()
@@ -2085,8 +2090,8 @@ class JSON(Indexable, TypeEngine):
 
               :paramref:`.JSON.none_as_null` does **not** apply to the
               values passed to :paramref:`.Column.default` and
-              :paramref:`.Column.server_default`; a value of ``None`` passed for
-              these parameters means "no default present".
+              :paramref:`.Column.server_default`; a value of ``None``
+              passed for these parameters means "no default present".
 
          .. seealso::
 
@@ -2234,11 +2239,11 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
        with PostgreSQL, as it provides additional operators specific
        to that backend.
 
-    :class:`.types.ARRAY` is part of the Core in support of various SQL standard
-    functions such as :class:`.array_agg` which explicitly involve arrays;
-    however, with the exception of the PostgreSQL backend and possibly
-    some third-party dialects, no other SQLAlchemy built-in dialect has
-    support for this type.
+    :class:`.types.ARRAY` is part of the Core in support of various SQL
+    standard functions such as :class:`.array_agg` which explicitly involve
+    arrays; however, with the exception of the PostgreSQL backend and possibly
+    some third-party dialects, no other SQLAlchemy built-in dialect has support
+    for this type.
 
     An :class:`.types.ARRAY` type is constructed given the "type"
     of element::
@@ -2280,8 +2285,8 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
       serves to define the kind of type that the ``[]`` operator should
       return, e.g. for an ARRAY of INTEGER with two dimensions::
 
-            >>> expr = table.c.column[5]  # returns ARRAY(Integer, dimensions=1)
-            >>> expr = expr[6]  # returns Integer
+          >>> expr = table.c.column[5]  # returns ARRAY(Integer, dimensions=1)
+          >>> expr = expr[6]  # returns Integer
 
     For 1-dimensional arrays, an :class:`.types.ARRAY` instance with no
     dimension parameter will generally assume single-dimensional behaviors.
@@ -2304,9 +2309,9 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
         })
 
     The :class:`.types.ARRAY` type also provides for the operators
-    :meth:`.types.ARRAY.Comparator.any` and :meth:`.types.ARRAY.Comparator.all`.
-    The PostgreSQL-specific version of :class:`.types.ARRAY` also provides additional
-    operators.
+    :meth:`.types.ARRAY.Comparator.any` and
+    :meth:`.types.ARRAY.Comparator.all`. The PostgreSQL-specific version of
+    :class:`.types.ARRAY` also provides additional operators.
 
     .. versionadded:: 1.1.0
 
@@ -2776,10 +2781,10 @@ _type_map = {
 }
 
 if util.py3k:
-    _type_map[bytes] = LargeBinary()
+    _type_map[bytes] = LargeBinary()  # noqa
     _type_map[str] = Unicode()
 else:
-    _type_map[unicode] = Unicode()
+    _type_map[unicode] = Unicode()  # noqa
     _type_map[str] = String()
 
 _type_map_get = _type_map.get
@@ -2807,8 +2812,6 @@ def _resolve_value_to_type(value):
 
 
 # back-assign to type_api
-from . import type_api
-
 type_api.BOOLEANTYPE = BOOLEANTYPE
 type_api.STRINGTYPE = STRINGTYPE
 type_api.INTEGERTYPE = INTEGERTYPE

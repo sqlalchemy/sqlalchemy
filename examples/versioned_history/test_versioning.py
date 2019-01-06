@@ -2,28 +2,29 @@
 module functions."""
 
 from unittest import TestCase
-from sqlalchemy.ext.declarative import declarative_base
-from .history_meta import Versioned, versioned_session
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    Boolean,
-    select,
-)
-from sqlalchemy.orm import (
-    clear_mappers,
-    Session,
-    deferred,
-    relationship,
-    column_property,
-)
-from sqlalchemy.testing import AssertsCompiledSQL, eq_, assert_raises, ne_
-from sqlalchemy.testing.entities import ComparableEntity
-from sqlalchemy.orm import exc as orm_exc
 import warnings
+
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.entities import ComparableEntity
+from .history_meta import Versioned
+from .history_meta import versioned_session
 
 warnings.simplefilter("error")
 

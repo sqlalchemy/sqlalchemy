@@ -3,9 +3,11 @@ including front-end loading, cache invalidation and collection caching.
 
 """
 
+from .caching_query import FromCache
+from .caching_query import RelationshipCache
 from .environment import Session
-from .model import Person, cache_address_bits
-from .caching_query import FromCache, RelationshipCache
+from .model import cache_address_bits
+from .model import Person
 
 
 def load_name_range(start, end, invalidate=False):
@@ -68,7 +70,8 @@ print(", ".join([p.name for p in load_name_range(25, 40, True)]))
 # illustrate the address loading from either cache/already
 # on the Person
 print(
-    "\n\nPeople plus addresses, two through twelve, addresses possibly from cache"
+    "\n\nPeople plus addresses, two through twelve, addresses "
+    "possibly from cache"
 )
 for p in load_name_range(2, 12):
     print(p.format_full())

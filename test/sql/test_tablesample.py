@@ -1,10 +1,14 @@
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import AssertsCompiledSQL, assert_raises_message
-from sqlalchemy.sql import select, func, text
-from sqlalchemy.engine import default
-from sqlalchemy import exc
-from sqlalchemy import Table, Integer, String, Column
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import tablesample
+from sqlalchemy.engine import default
+from sqlalchemy.sql import func
+from sqlalchemy.sql import select
+from sqlalchemy.sql import text
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
 
 
 class TableSampleTest(fixtures.TablesTest, AssertsCompiledSQL):

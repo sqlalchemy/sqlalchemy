@@ -1,21 +1,28 @@
-from sqlalchemy import *
-from sqlalchemy.types import TypeEngine
-from sqlalchemy.sql.expression import (
-    ClauseElement,
-    ColumnClause,
-    FunctionElement,
-    Select,
-    BindParameter,
-    ColumnElement,
-)
-
-from sqlalchemy.schema import DDLElement, CreateColumn, CreateTable
-from sqlalchemy.ext.compiler import compiles, deregister
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import desc
 from sqlalchemy import exc
-from sqlalchemy.testing import eq_
-from sqlalchemy.sql import table, column
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import select
+from sqlalchemy import Table
+from sqlalchemy import table
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.ext.compiler import deregister
+from sqlalchemy.schema import CreateColumn
+from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import DDLElement
+from sqlalchemy.sql.expression import BindParameter
+from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy.sql.expression import ColumnClause
+from sqlalchemy.sql.expression import FunctionElement
+from sqlalchemy.sql.expression import Select
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.types import TypeEngine
 
 
 class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -64,11 +71,11 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             pass
 
         @compiles(MyType, "sqlite")
-        def visit_type(type, compiler, **kw):
+        def visit_sqlite_type(type_, compiler, **kw):
             return "SQLITE_FOO"
 
         @compiles(MyType, "postgresql")
-        def visit_type(type, compiler, **kw):
+        def visit_pg_type(type_, compiler, **kw):
             return "POSTGRES_FOO"
 
         from sqlalchemy.dialects.sqlite import base as sqlite
@@ -190,7 +197,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         try:
 
             @compiles(Select)
-            def compile(element, compiler, **kw):
+            def compile_(element, compiler, **kw):
                 return "OVERRIDE"
 
             s1 = select([t1])
@@ -209,7 +216,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             __visit_name__ = "drop_thingy"
 
         @compiles(AddThingy, "sqlite")
-        def visit_add_thingy(thingy, compiler, **kw):
+        def visit_add_thingy_sqlite(thingy, compiler, **kw):
             return "ADD SPECIAL SL THINGY"
 
         @compiles(AddThingy)
@@ -235,7 +242,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         @compiles(DropThingy, "sqlite")
-        def visit_drop_thingy(thingy, compiler, **kw):
+        def visit_drop_thingy_sqlite(thingy, compiler, **kw):
             return "DROP SPECIAL SL THINGY"
 
         self.assert_compile(
@@ -255,7 +262,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return "utcnow()"
 
         @compiles(MyUtcFunction, "postgresql")
-        def visit_myfunc(element, compiler, **kw):
+        def visit_myfunc_pg(element, compiler, **kw):
             return "timezone('utc', current_timestamp)"
 
         self.assert_compile(
@@ -315,7 +322,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return element.name
 
         @compiles(Sub1)
-        def visit_base(element, compiler, **kw):
+        def visit_sub1(element, compiler, **kw):
             return "FOO" + element.name
 
         self.assert_compile(
@@ -348,7 +355,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         @compiles(Sub1)
-        def visit_base(element, compiler, **kw):
+        def visit_sub1(element, compiler, **kw):
             return "FOO" + element.name
 
         self.assert_compile(
@@ -371,7 +378,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t1", column("c1"), column("c2"))
 
         @compiles(Select, "sqlite")
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             return "OVERRIDE"
 
         s1 = select([t1])

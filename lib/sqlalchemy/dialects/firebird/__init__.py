@@ -5,21 +5,20 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import base, kinterbasdb, fdb  # noqa
-
-from sqlalchemy.dialects.firebird.base import (
-    SMALLINT,
-    BIGINT,
-    FLOAT,
-    DATE,
-    TIME,
-    TEXT,
-    NUMERIC,
-    TIMESTAMP,
-    VARCHAR,
-    CHAR,
-    BLOB,
-)
+from sqlalchemy.dialects.firebird.base import BIGINT
+from sqlalchemy.dialects.firebird.base import BLOB
+from sqlalchemy.dialects.firebird.base import CHAR
+from sqlalchemy.dialects.firebird.base import DATE
+from sqlalchemy.dialects.firebird.base import FLOAT
+from sqlalchemy.dialects.firebird.base import NUMERIC
+from sqlalchemy.dialects.firebird.base import SMALLINT
+from sqlalchemy.dialects.firebird.base import TEXT
+from sqlalchemy.dialects.firebird.base import TIME
+from sqlalchemy.dialects.firebird.base import TIMESTAMP
+from sqlalchemy.dialects.firebird.base import VARCHAR
+from . import base  # noqa
+from . import fdb  # noqa
+from . import kinterbasdb  # noqa
 
 base.dialect = dialect = fdb.dialect
 

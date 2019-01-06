@@ -1,51 +1,50 @@
 # coding: utf-8
 
-import weakref
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    config,
-    is_,
-    is_not_,
-    le_,
-    expect_warnings,
-)
-import re
-from sqlalchemy.testing.util import picklers
-from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.interfaces import ConnectionProxy
-from sqlalchemy import (
-    MetaData,
-    Integer,
-    String,
-    INT,
-    VARCHAR,
-    func,
-    bindparam,
-    select,
-    event,
-    TypeDecorator,
-    create_engine,
-    Sequence,
-    LargeBinary,
-)
-from sqlalchemy.sql import column, literal
-from sqlalchemy.testing.schema import Table, Column
-import sqlalchemy as tsa
-from sqlalchemy import testing
-from sqlalchemy.testing import engines
-from sqlalchemy import util
-from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
-from sqlalchemy.engine import result as _result, default
-from sqlalchemy.engine.base import Engine
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.mock import Mock, call, patch
-from sqlalchemy.testing import mock
 from contextlib import contextmanager
-from sqlalchemy.util import nested
+import re
+import weakref
+
+import sqlalchemy as tsa
+from sqlalchemy import bindparam
+from sqlalchemy import create_engine
+from sqlalchemy import event
+from sqlalchemy import func
+from sqlalchemy import INT
+from sqlalchemy import Integer
+from sqlalchemy import LargeBinary
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
+from sqlalchemy import util
+from sqlalchemy import VARCHAR
+from sqlalchemy.engine import default
+from sqlalchemy.engine.base import Engine
+from sqlalchemy.interfaces import ConnectionProxy
+from sqlalchemy.sql import column
+from sqlalchemy.sql import literal
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing.util import picklers
+from sqlalchemy.util import nested
 
 
 users, metadata, users_autoinc = None, None, None

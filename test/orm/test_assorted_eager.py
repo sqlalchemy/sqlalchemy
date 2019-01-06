@@ -9,12 +9,19 @@ be cleaned up and modernized.
 import datetime
 
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, table, text
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, backref, create_session
+from sqlalchemy import text
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class EagerTest(fixtures.MappedTest):
@@ -706,7 +713,16 @@ class EagerTest5(fixtures.MappedTest):
                 self.comment = comment
 
     def test_basic(self):
-        Comment, Derived, derived, comments, DerivedII, Base, base, derivedII = (
+        (
+            Comment,
+            Derived,
+            derived,
+            comments,
+            DerivedII,
+            Base,
+            base,
+            derivedII,
+        ) = (
             self.classes.Comment,
             self.classes.Derived,
             self.tables.derived,
@@ -836,7 +852,16 @@ class EagerTest6(fixtures.MappedTest):
             pass
 
     def test_one(self):
-        Part, inherited_part, design_types, DesignType, parts, design, Design, InheritedPart = (
+        (
+            Part,
+            inherited_part,
+            design_types,
+            DesignType,
+            parts,
+            design,
+            Design,
+            InheritedPart,
+        ) = (
             self.classes.Part,
             self.tables.inherited_part,
             self.tables.design_types,

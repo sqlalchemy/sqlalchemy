@@ -1,43 +1,38 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises_message,
-    assert_raises,
-    is_,
-    in_,
-    not_in_,
-)
+from sqlalchemy import and_
+from sqlalchemy import asc
+from sqlalchemy import bindparam
+from sqlalchemy import cast
+from sqlalchemy import desc
+from sqlalchemy import exc
+from sqlalchemy import except_
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import INT
+from sqlalchemy import Integer
+from sqlalchemy import intersect
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import not_
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import sql
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, engines
-from sqlalchemy import (
-    exc,
-    sql,
-    func,
-    select,
-    String,
-    Integer,
-    MetaData,
-    and_,
-    ForeignKey,
-    union,
-    intersect,
-    except_,
-    union_all,
-    VARCHAR,
-    INT,
-    text,
-    bindparam,
-    literal,
-    not_,
-    literal_column,
-    desc,
-    asc,
-    TypeDecorator,
-    or_,
-    cast,
-    tuple_,
-)
+from sqlalchemy import text
+from sqlalchemy import tuple_
+from sqlalchemy import TypeDecorator
+from sqlalchemy import union
+from sqlalchemy import union_all
+from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 # ongoing - these are old tests.  those which are of general use
 # to test a dialect are being slowly migrated to

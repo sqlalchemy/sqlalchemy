@@ -1,10 +1,19 @@
-from sqlalchemy.testing import fixtures, eq_
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import Bundle, Session
-from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy import Integer, select, ForeignKey, String, func
-from sqlalchemy.orm import mapper, relationship, aliased
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ClauseList
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):

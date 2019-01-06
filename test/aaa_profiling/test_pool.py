@@ -1,6 +1,8 @@
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, profiling
-from sqlalchemy.pool import QueuePool
 from sqlalchemy import pool as pool_module
+from sqlalchemy.pool import QueuePool
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import profiling
 
 pool = None
 

@@ -9,17 +9,17 @@
 .. dialect:: mssql+zxjdbc
     :name: zxJDBC for Jython
     :dbapi: zxjdbc
-    :connectstring: mssql+zxjdbc://user:pass@host:port/dbname\
-[?key=value&key=value...]
+    :connectstring: mssql+zxjdbc://user:pass@host:port/dbname[?key=value&key=value...]
     :driverurl: http://jtds.sourceforge.net/
 
     .. note:: Jython is not supported by current versions of SQLAlchemy.  The
        zxjdbc dialect should be considered as experimental.
 
-"""
-from ...connectors.zxJDBC import ZxJDBCConnector
-from .base import MSDialect, MSExecutionContext
+"""  # noqa
+from .base import MSDialect
+from .base import MSExecutionContext
 from ... import engine
+from ...connectors.zxJDBC import ZxJDBCConnector
 
 
 class MSExecutionContext_zxjdbc(MSExecutionContext):

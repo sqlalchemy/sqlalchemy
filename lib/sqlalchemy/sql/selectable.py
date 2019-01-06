@@ -10,50 +10,45 @@ SQL tables and derived rowsets.
 
 """
 
-from .elements import (
-    ClauseElement,
-    TextClause,
-    ClauseList,
-    and_,
-    Grouping,
-    UnaryExpression,
-    literal_column,
-    BindParameter,
-)
-from .elements import (
-    _clone,
-    _literal_as_text,
-    _interpret_as_column_or_from,
-    _expand_cloned,
-    _select_iterables,
-    _anonymous_label,
-    _clause_element_as_expr,
-    _cloned_intersection,
-    _cloned_difference,
-    True_,
-    _literal_as_label_reference,
-    _literal_and_labels_as_label_reference,
-)
-from .base import (
-    Immutable,
-    Executable,
-    _generative,
-    ColumnCollection,
-    ColumnSet,
-    _from_objects,
-    Generative,
-)
+import collections
+import itertools
+import operator
+from operator import attrgetter
+
+from sqlalchemy.sql.visitors import Visitable
+from . import operators
 from . import type_api
+from .annotation import Annotated
+from .base import _from_objects
+from .base import _generative
+from .base import ColumnCollection
+from .base import ColumnSet
+from .base import Executable
+from .base import Generative
+from .base import Immutable
+from .elements import _anonymous_label
+from .elements import _clause_element_as_expr
+from .elements import _clone
+from .elements import _cloned_difference
+from .elements import _cloned_intersection
+from .elements import _expand_cloned
+from .elements import _interpret_as_column_or_from
+from .elements import _literal_and_labels_as_label_reference
+from .elements import _literal_as_label_reference
+from .elements import _literal_as_text
+from .elements import _select_iterables
+from .elements import and_
+from .elements import BindParameter
+from .elements import ClauseElement
+from .elements import ClauseList
+from .elements import Grouping
+from .elements import literal_column
+from .elements import TextClause
+from .elements import True_
+from .elements import UnaryExpression
+from .. import exc
 from .. import inspection
 from .. import util
-from .. import exc
-from operator import attrgetter
-from . import operators
-import operator
-import collections
-from .annotation import Annotated
-import itertools
-from sqlalchemy.sql.visitors import Visitable
 
 
 def _interpret_as_from(element):
@@ -1013,15 +1008,15 @@ class Join(FromClause):
         to join, or no way to join, an error is raised.
 
         :param ignore_nonexistent_tables:  Deprecated - this
-        flag is no longer used.  Only resolution errors regarding
-        the two given tables are propagated.
+         flag is no longer used.  Only resolution errors regarding
+         the two given tables are propagated.
 
         :param a_subset: An optional expression that is a sub-component
-        of ``a``.  An attempt will be made to join to just this sub-component
-        first before looking at the full ``a`` construct, and if found
-        will be successful even if there are other ways to join to ``a``.
-        This allows the "right side" of a join to be passed thereby
-        providing a "natural join".
+         of ``a``.  An attempt will be made to join to just this sub-component
+         first before looking at the full ``a`` construct, and if found
+         will be successful even if there are other ways to join to ``a``.
+         This allows the "right side" of a join to be passed thereby
+         providing a "natural join".
 
         """
         constraints = cls._joincond_scan_left_right(
@@ -1425,8 +1420,8 @@ class TableSample(Alias):
     """Represent a TABLESAMPLE clause.
 
     This object is constructed from the :func:`~.expression.tablesample` module
-    level function as well as the :meth:`.FromClause.tablesample` method available
-    on all :class:`.FromClause` subclasses.
+    level function as well as the :meth:`.FromClause.tablesample` method
+    available on all :class:`.FromClause` subclasses.
 
     .. versionadded:: 1.1
 
@@ -2797,8 +2792,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
           a numerical value which usually renders as a ``LIMIT``
           expression in the resulting select.  Backends that don't
           support ``LIMIT`` will attempt to provide similar
-          functionality.    This parameter is typically specified more naturally
-          using the :meth:`.Select.limit` method on an existing
+          functionality.    This parameter is typically specified more
+          naturally using the :meth:`.Select.limit` method on an existing
           :class:`.Select`.
 
           .. seealso::

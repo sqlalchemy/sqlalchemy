@@ -1,48 +1,52 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, engines, pickleable, assert_raises_message
-from sqlalchemy.testing import is_, is_not_
-import datetime
-import os
-from sqlalchemy import (
-    Table,
-    Column,
-    MetaData,
-    Float,
-    Integer,
-    String,
-    Boolean,
-    Sequence,
-    Numeric,
-    select,
-    Date,
-    Time,
-    DateTime,
-    DefaultClause,
-    PickleType,
-    text,
-    Text,
-    UnicodeText,
-    LargeBinary,
-)
-from sqlalchemy.dialects.mssql import TIMESTAMP, ROWVERSION
-from sqlalchemy import types, schema
-from sqlalchemy import util
-from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql.base import TIME, _MSDate
-from sqlalchemy.dialects.mssql.base import MS_2005_VERSION, MS_2008_VERSION
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    ComparesTables,
-)
-from sqlalchemy import testing
-from sqlalchemy.testing import emits_warning_on
-import decimal
-from sqlalchemy.util import b
-from sqlalchemy import inspect
-from sqlalchemy.sql import sqltypes
-import sqlalchemy as sa
 import codecs
+import datetime
+import decimal
+import os
+
+import sqlalchemy as sa
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import DefaultClause
+from sqlalchemy import Float
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import LargeBinary
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import PickleType
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import Text
+from sqlalchemy import text
+from sqlalchemy import Time
+from sqlalchemy import types
+from sqlalchemy import UnicodeText
+from sqlalchemy.databases import mssql
+from sqlalchemy.dialects.mssql import ROWVERSION
+from sqlalchemy.dialects.mssql import TIMESTAMP
+from sqlalchemy.dialects.mssql.base import _MSDate
+from sqlalchemy.dialects.mssql.base import MS_2005_VERSION
+from sqlalchemy.dialects.mssql.base import MS_2008_VERSION
+from sqlalchemy.dialects.mssql.base import TIME
+from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import ComparesTables
+from sqlalchemy.testing import emits_warning_on
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import pickleable
+from sqlalchemy.util import b
 
 
 class TimeTypeTest(fixtures.TestBase):
@@ -1068,10 +1072,10 @@ class BinaryTest(fixtures.TestBase):
 
         self._test_round_trip(type_(100), data, expected=paddedstream)
 
-    def _load_stream(self, name, len=3000):
+    def _load_stream(self, name, len_=3000):
         fp = open(
             os.path.join(os.path.dirname(__file__), "..", "..", name), "rb"
         )
-        stream = fp.read(len)
+        stream = fp.read(len_)
         fp.close()
         return stream

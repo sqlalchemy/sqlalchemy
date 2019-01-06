@@ -9,11 +9,12 @@
 within INSERT and UPDATE statements.
 
 """
-from .. import util
-from .. import exc
+import operator
+
 from . import dml
 from . import elements
-import operator
+from .. import exc
+from .. import util
 
 REQUIRED = util.symbol(
     "REQUIRED",
@@ -97,9 +98,11 @@ def _get_crud_params(compiler, stmt, **kw):
     # getters - these are normally just column.key,
     # but in the case of mysql multi-table update, the rules for
     # .key must conditionally take tablename into account
-    _column_as_key, _getattr_col_key, _col_bind_name = _key_getters_for_crud_column(
-        compiler, stmt
-    )
+    (
+        _column_as_key,
+        _getattr_col_key,
+        _col_bind_name,
+    ) = _key_getters_for_crud_column(compiler, stmt)
 
     # if we have statement parameters - set defaults in the
     # compiled params
@@ -241,9 +244,12 @@ def _scan_insert_from_select_cols(
     kw,
 ):
 
-    need_pks, implicit_returning, implicit_return_defaults, postfetch_lastrowid = _get_returning_modifiers(
-        compiler, stmt
-    )
+    (
+        need_pks,
+        implicit_returning,
+        implicit_return_defaults,
+        postfetch_lastrowid,
+    ) = _get_returning_modifiers(compiler, stmt)
 
     cols = [stmt.table.c[_column_as_key(name)] for name in stmt.select_names]
 
@@ -286,9 +292,12 @@ def _scan_cols(
     kw,
 ):
 
-    need_pks, implicit_returning, implicit_return_defaults, postfetch_lastrowid = _get_returning_modifiers(
-        compiler, stmt
-    )
+    (
+        need_pks,
+        implicit_returning,
+        implicit_return_defaults,
+        postfetch_lastrowid,
+    ) = _get_returning_modifiers(compiler, stmt)
 
     if stmt._parameter_ordering:
         parameter_ordering = [

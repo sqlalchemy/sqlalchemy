@@ -7,26 +7,33 @@
 """Provides the Session class and related utilities."""
 
 
-import weakref
-from .. import util, sql, engine, exc as sa_exc
-from ..sql import util as sql_util, expression
-from . import SessionExtension, attributes, exc, query, loading, identity
-from ..inspection import inspect
-from .base import (
-    object_mapper,
-    class_mapper,
-    _class_to_mapper,
-    _state_mapper,
-    object_state,
-    _none_set,
-    state_str,
-    instance_str,
-)
 import itertools
-from . import persistence
-from .unitofwork import UOWTransaction
-from . import state as statelib
 import sys
+import weakref
+
+from . import attributes
+from . import exc
+from . import identity
+from . import loading
+from . import persistence
+from . import query
+from . import state as statelib
+from .base import _class_to_mapper
+from .base import _none_set
+from .base import _state_mapper
+from .base import instance_str
+from .base import object_mapper
+from .base import object_state
+from .base import state_str
+from .deprecated_interfaces import SessionExtension
+from .unitofwork import UOWTransaction
+from .. import engine
+from .. import exc as sa_exc
+from .. import sql
+from .. import util
+from ..inspection import inspect
+from ..sql import expression
+from ..sql import util as sql_util
 
 __all__ = ["Session", "SessionTransaction", "SessionExtension", "sessionmaker"]
 
@@ -578,11 +585,11 @@ class SessionTransaction(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         self._assert_active(deactive_ok=True, prepared_ok=True)
         if self.session.transaction is None:
             return
-        if type is None:
+        if type_ is None:
             try:
                 self.commit()
             except:
@@ -888,9 +895,10 @@ class Session(_SessionClassMethods):
         :param subtransactions: if True, indicates that this
          :meth:`~.Session.begin` can create a "subtransaction".
 
-        :param nested: if True, begins a SAVEPOINT transaction and is equivalent
-         to calling :meth:`~.Session.begin_nested`. For documentation on
-         SAVEPOINT transactions, please see :ref:`session_begin_nested`.
+        :param nested: if True, begins a SAVEPOINT transaction and is
+         equivalent to calling :meth:`~.Session.begin_nested`. For
+         documentation on SAVEPOINT transactions, please see
+         :ref:`session_begin_nested`.
 
         :return: the :class:`.SessionTransaction` object.  Note that
          :class:`.SessionTransaction`

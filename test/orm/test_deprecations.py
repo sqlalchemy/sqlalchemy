@@ -10,17 +10,23 @@ be migrated directly to the wiki, docs, etc.
     and in modern use illustrates trivial use cases that don't need
     an additional test suite.
 
-
 """
-from sqlalchemy import Integer, String, ForeignKey, func, text
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session, sessionmaker
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import text
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class QueryAlternativesTest(fixtures.MappedTest):
-    '''Collects modern idioms for Queries
+    r'''Collects modern idioms for Queries
 
     The docstring for each test case serves as miniature documentation about
     the deprecated use case, and the test body illustrates (and covers) the
@@ -30,22 +36,22 @@ class QueryAlternativesTest(fixtures.MappedTest):
     cases remain useful to readers even after the deprecated method has been
     removed from the modern codebase.
 
-    Format:
+    Format::
 
-    def test_deprecated_thing(self):
-        """Query.methodname(old, arg, **signature)
+        def test_deprecated_thing(self):
+            """Query.methodname(old, arg, **signature)
 
-        output = session.query(User).deprecatedmethod(inputs)
+            output = session.query(User).deprecatedmethod(inputs)
 
-        """
+            """
 
-        # 0.4+
-        output = session.query(User).newway(inputs)
-        assert output is correct
+            # 0.4+
+            output = session.query(User).newway(inputs)
+            assert output is correct
 
-        # 0.5+
-        output = session.query(User).evennewerway(inputs)
-        assert output is correct
+            # 0.5+
+            output = session.query(User).evennewerway(inputs)
+            assert output is correct
 
     '''
 
@@ -169,11 +175,11 @@ class QueryAlternativesTest(fixtures.MappedTest):
 
         # 0.5.0
         maxes = list(session.query(Address).values(func.max(Address.bounces)))
-        max = maxes[0][0]
-        assert max == 10
+        max_ = maxes[0][0]
+        assert max_ == 10
 
-        max = session.query(func.max(Address.bounces)).one()[0]
-        assert max == 10
+        max_ = session.query(func.max(Address.bounces)).one()[0]
+        assert max_ == 10
 
     def test_apply_min(self):
         """Query.apply_min(col)
@@ -188,11 +194,11 @@ class QueryAlternativesTest(fixtures.MappedTest):
 
         # 0.5.0
         mins = list(session.query(Address).values(func.min(Address.bounces)))
-        min = mins[0][0]
-        assert min == 0
+        min_ = mins[0][0]
+        assert min_ == 0
 
-        min = session.query(func.min(Address.bounces)).one()[0]
-        assert min == 0
+        min_ = session.query(func.min(Address.bounces)).one()[0]
+        assert min_ == 0
 
     def test_apply_avg(self):
         """Query.apply_avg(col)
@@ -231,7 +237,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert avg == 11
 
     def test_count_by(self):
-        """Query.count_by(*args, **params)
+        r"""Query.count_by(\*args, \**params)
 
         num = session.query(Address).count_by(purpose='Personal')
 
@@ -255,7 +261,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert num == 3, num
 
     def test_count_whereclause(self):
-        """Query.count(whereclause=None, params=None, **kwargs)
+        r"""Query.count(whereclause=None, params=None, \**kwargs)
 
         num = session.query(Address).count(address_table.c.bounces > 1)
 
@@ -269,7 +275,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert num == 1, num
 
     def test_execute(self):
-        """Query.execute(clauseelement, params=None, *args, **kwargs)
+        r"""Query.execute(clauseelement, params=None, \*args, \**kwargs)
 
         users = session.query(User).execute(users_table.select())
 
@@ -283,7 +289,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 4
 
     def test_get_by(self):
-        """Query.get_by(*args, **params)
+        r"""Query.get_by(\*args, \**params)
 
         user = session.query(User).get_by(name='ed')
 
@@ -316,7 +322,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert user.name == "fred"
 
     def test_instances_entities(self):
-        """Query.instances(cursor, *mappers_or_columns, **kwargs)
+        r"""Query.instances(cursor, \*mappers_or_columns, \**kwargs)
 
         sel = users_table.join(addresses_table).select(use_labels=True)
         res = session.query(User).instances(sel.execute(), Address)
@@ -340,7 +346,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert isinstance(cola, User) and isinstance(colb, Address)
 
     def test_join_by(self):
-        """Query.join_by(*args, **params)
+        r"""Query.join_by(\*args, \**params)
 
         TODO
         """
@@ -392,7 +398,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert user.id == 1
 
     def test_select(self):
-        """Query.select(arg=None, **kwargs)
+        r"""Query.select(arg=None, \**kwargs)
 
         users = session.query(User).select(users_table.c.name != None)
 
@@ -406,11 +412,11 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 4
 
     def test_select_by(self):
-        """Query.select_by(*args, **params)
+        r"""Query.select_by(\*args, \**params)
 
         users = session.query(User).select_by(name='fred')
 
-        # 0.3 magic join on *_by methods
+        # 0.3 magic join on \*_by methods
         users = session.query(User).select_by(email_address='fred@the.fred')
 
         """
@@ -442,7 +448,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 1
 
     def test_selectfirst(self):
-        """Query.selectfirst(arg=None, **kwargs)
+        r"""Query.selectfirst(arg=None, \**kwargs)
 
         bounced = session.query(Address).selectfirst(
           addresses_table.c.bounces > 0)
@@ -457,7 +463,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert bounced.bounces > 0
 
     def test_selectfirst_by(self):
-        """Query.selectfirst_by(*args, **params)
+        r"""Query.selectfirst_by(\*args, \**params)
 
         onebounce = session.query(Address).selectfirst_by(bounces=1)
 
@@ -491,7 +497,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert onebounce_user.name == "jack"
 
     def test_selectone(self):
-        """Query.selectone(arg=None, **kwargs)
+        r"""Query.selectone(arg=None, \**kwargs)
 
         ed = session.query(User).selectone(users_table.c.name == 'ed')
 
@@ -535,7 +541,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         )
 
     def test_select_statement(self):
-        """Query.select_statement(statement, **params)
+        r"""Query.select_statement(statement, \**params)
 
         users = session.query(User).select_statement(users_table.select())
 
@@ -549,7 +555,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 4
 
     def test_select_text(self):
-        """Query.select_text(text, **params)
+        r"""Query.select_text(text, \**params)
 
         users = session.query(User).select_text('SELECT * FROM users_table')
 
@@ -567,7 +573,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 4
 
     def test_select_whereclause(self):
-        """Query.select_whereclause(whereclause=None, params=None, **kwargs)
+        r"""Query.select_whereclause(whereclause=None, params=None, \**kwargs)
 
 
         users = session,query(User).select_whereclause(users.c.name=='ed')

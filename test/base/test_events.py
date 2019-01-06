@@ -1,17 +1,17 @@
 """Test event registration and listening."""
 
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    is_,
-    is_not_,
-)
-from sqlalchemy import event, exc
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.testing.mock import Mock, call
+from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import testing
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.util import gc_collect
 
 
 class EventsTest(fixtures.TestBase):

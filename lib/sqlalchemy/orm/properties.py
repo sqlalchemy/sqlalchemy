@@ -13,12 +13,13 @@ mapped attributes.
 """
 from __future__ import absolute_import
 
-from .. import util, log
-from ..sql import expression
 from . import attributes
+from .interfaces import PropComparator
+from .interfaces import StrategizedProperty
 from .util import _orm_full_deannotate
-
-from .interfaces import PropComparator, StrategizedProperty
+from .. import log
+from .. import util
+from ..sql import expression
 
 __all__ = ["ColumnProperty"]
 
@@ -206,9 +207,9 @@ class ColumnProperty(StrategizedProperty):
             util.warn(
                 (
                     "On mapper %s, primary key column '%s' is being combined "
-                    "with distinct primary key column '%s' in attribute '%s'.  "
-                    "Use explicit properties to give each column its own mapped "
-                    "attribute name."
+                    "with distinct primary key column '%s' in attribute '%s'. "
+                    "Use explicit properties to give each column its own "
+                    "mapped attribute name."
                 )
                 % (self.parent, self.columns[1], self.columns[0], self.key)
             )

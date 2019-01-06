@@ -1,15 +1,19 @@
 """tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
 
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy import engine, exc
-from sqlalchemy import MetaData, ThreadLocalMetaData
-from sqlalchemy import Integer, text
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
 import sqlalchemy as sa
+from sqlalchemy import engine
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import ThreadLocalMetaData
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class BindTest(fixtures.TestBase):

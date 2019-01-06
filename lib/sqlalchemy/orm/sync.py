@@ -10,7 +10,9 @@ between instances based on join conditions.
 
 """
 
-from . import exc, util as orm_util, attributes
+from . import attributes
+from . import exc
+from . import util as orm_util
 
 
 def populate(

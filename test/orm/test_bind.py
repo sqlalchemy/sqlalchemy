@@ -1,14 +1,23 @@
-from sqlalchemy.testing import assert_raises_message
-from sqlalchemy import MetaData, Integer, ForeignKey
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import mapper, create_session
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, eq_, engines, is_
-from sqlalchemy.orm import relationship, Session, backref, sessionmaker
-from test.orm import _fixtures
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
 
 
 class BindIntegrationTest(_fixtures.FixtureTest):

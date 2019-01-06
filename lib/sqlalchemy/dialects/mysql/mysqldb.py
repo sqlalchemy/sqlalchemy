@@ -45,16 +45,13 @@ The mysqldb dialect supports server-side cursors. See :ref:`mysql_ss_cursors`.
 
 """
 
-from .base import (
-    MySQLDialect,
-    MySQLExecutionContext,
-    MySQLCompiler,
-    MySQLIdentifierPreparer,
-)
+from .base import MySQLCompiler
+from .base import MySQLDialect
+from .base import MySQLExecutionContext
+from .base import MySQLIdentifierPreparer
 from .base import TEXT
 from ... import sql
 from ... import util
-import re
 
 
 class MySQLExecutionContext_mysqldb(MySQLExecutionContext):

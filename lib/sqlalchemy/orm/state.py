@@ -13,22 +13,22 @@ defines a large part of the ORM's interactivity.
 """
 
 import weakref
-from .. import util
-from .. import inspection
-from .. import exc as sa_exc
-from . import exc as orm_exc, interfaces
-from .path_registry import PathRegistry
-from .base import (
-    PASSIVE_NO_RESULT,
-    SQL_OK,
-    NEVER_SET,
-    ATTR_WAS_SET,
-    NO_VALUE,
-    PASSIVE_NO_INITIALIZE,
-    INIT_OK,
-    PASSIVE_OFF,
-)
+
 from . import base
+from . import exc as orm_exc
+from . import interfaces
+from .base import ATTR_WAS_SET
+from .base import INIT_OK
+from .base import NEVER_SET
+from .base import NO_VALUE
+from .base import PASSIVE_NO_INITIALIZE
+from .base import PASSIVE_NO_RESULT
+from .base import PASSIVE_OFF
+from .base import SQL_OK
+from .path_registry import PathRegistry
+from .. import exc as sa_exc
+from .. import inspection
+from .. import util
 
 
 @inspection._self_inspects
@@ -156,8 +156,9 @@ class InstanceState(interfaces.InspectionAttr):
             "detached" states; once the object is :term:`detached`, the
             :attr:`.InstanceState.deleted` attribute **no longer returns
             True**; in order to detect that a state was deleted, regardless
-            of whether or not the object is associated with a :class:`.Session`,
-            use the :attr:`.InstanceState.was_deleted` accessor.
+            of whether or not the object is associated with a
+            :class:`.Session`, use the :attr:`.InstanceState.was_deleted`
+            accessor.
 
         .. versionadded: 1.1
 
@@ -784,10 +785,10 @@ class InstanceState(interfaces.InspectionAttr):
         self._commit_all_states([(self, dict_)], instance_dict)
 
     @classmethod
-    def _commit_all_states(self, iter, instance_dict=None):
+    def _commit_all_states(self, iter_, instance_dict=None):
         """Mass / highly inlined version of commit_all()."""
 
-        for state, dict_ in iter:
+        for state, dict_ in iter_:
             state_dict = state.__dict__
 
             state.committed_state.clear()

@@ -1,62 +1,35 @@
 # coding: utf-8
 
 
-from sqlalchemy.testing import eq_, is_
 from sqlalchemy import exc
-from sqlalchemy.sql import table
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import FLOAT
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import INTEGER
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import (
-    Integer,
-    Text,
-    LargeBinary,
-    Unicode,
-    UniqueConstraint,
-    Index,
-    MetaData,
-    select,
-    inspect,
-    ForeignKey,
-    String,
-    func,
-    TypeDecorator,
-    bindparam,
-    Numeric,
-    TIMESTAMP,
-    CHAR,
-    text,
-    literal_column,
-    VARCHAR,
-    create_engine,
-    Date,
-    NVARCHAR,
-    ForeignKeyConstraint,
-    Sequence,
-    Float,
-    DateTime,
-    cast,
-    UnicodeText,
-    union,
-    except_,
-    type_coerce,
-    or_,
-    outerjoin,
-    DATE,
-    NCHAR,
-    outparam,
-    PrimaryKeyConstraint,
-    FLOAT,
-    INTEGER,
-)
-from sqlalchemy.dialects.oracle.base import (
-    NUMBER,
-    BINARY_DOUBLE,
-    BINARY_FLOAT,
-    DOUBLE_PRECISION,
-)
+from sqlalchemy import text
+from sqlalchemy import Unicode
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
+from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
+from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
+from sqlalchemy.dialects.oracle.base import NUMBER
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):

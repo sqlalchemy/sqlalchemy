@@ -126,7 +126,7 @@ Remote-Schema Table Introspection and PostgreSQL search_path
 ------------------------------------------------------------
 
 **TL;DR;**: keep the ``search_path`` variable set to its default of ``public``,
-name schemas **other** than ``public`` explicitly within ``Table`` defintitions.
+name schemas **other** than ``public`` explicitly within ``Table`` definitions.
 
 The PostgreSQL dialect can reflect tables from any schema.  The
 :paramref:`.Table.schema` argument, or alternatively the
@@ -290,13 +290,13 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
 INSERT...ON CONFLICT (Upsert)
 ------------------------------
 
-Starting with version 9.5, PostgreSQL allows "upserts" (update or insert)
-of rows into a table via the ``ON CONFLICT`` clause of the ``INSERT`` statement.
-A candidate row will only be inserted if that row does not violate
-any unique constraints.  In the case of a unique constraint violation,
-a secondary action can occur which can be either "DO UPDATE", indicating
-that the data in the target row should be updated, or "DO NOTHING",
-which indicates to silently skip this row.
+Starting with version 9.5, PostgreSQL allows "upserts" (update or insert) of
+rows into a table via the ``ON CONFLICT`` clause of the ``INSERT`` statement. A
+candidate row will only be inserted if that row does not violate any unique
+constraints.  In the case of a unique constraint violation, a secondary action
+can occur which can be either "DO UPDATE", indicating that the data in the
+target row should be updated, or "DO NOTHING", which indicates to silently skip
+this row.
 
 Conflicts are determined using existing unique constraints and indexes.  These
 constraints may be identified either using their name as stated in DDL,
@@ -331,8 +331,9 @@ Both methods supply the "target" of the conflict using either the
 named constraint or by column inference:
 
 * The :paramref:`.Insert.on_conflict_do_update.index_elements` argument
-  specifies a sequence containing string column names, :class:`.Column` objects,
-  and/or SQL expression elements, which would identify a unique index::
+  specifies a sequence containing string column names, :class:`.Column`
+  objects, and/or SQL expression elements, which would identify a unique
+  index::
 
     do_update_stmt = insert_stmt.on_conflict_do_update(
         index_elements=['id'],
@@ -915,34 +916,37 @@ E.g.::
 
 """
 from collections import defaultdict
-import re
 import datetime as dt
+import re
 
-
-from sqlalchemy.sql import elements
-from ... import sql, schema, exc, util
-from ...engine import default, reflection
-from ...sql import compiler, expression
+from ... import exc
+from ... import schema
+from ... import sql
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import elements
+from ...sql import expression
 from ...sql import sqltypes
+from ...types import BIGINT
+from ...types import BOOLEAN
+from ...types import CHAR
+from ...types import DATE
+from ...types import FLOAT
+from ...types import INTEGER
+from ...types import NUMERIC
+from ...types import REAL
+from ...types import SMALLINT
+from ...types import TEXT
+from ...types import VARCHAR
+
 
 try:
-    from uuid import UUID as _python_UUID
+    from uuid import UUID as _python_UUID  # noqa
 except ImportError:
     _python_UUID = None
 
-from sqlalchemy.types import (
-    INTEGER,
-    BIGINT,
-    SMALLINT,
-    VARCHAR,
-    CHAR,
-    TEXT,
-    FLOAT,
-    NUMERIC,
-    DATE,
-    BOOLEAN,
-    REAL,
-)
 
 AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|GRANT|REVOKE|"
@@ -1802,7 +1806,7 @@ class PGCompiler(compiler.SQLCompiler):
     def delete_extra_from_clause(
         self, delete_stmt, from_table, extra_froms, from_hints, **kw
     ):
-        """Render the DELETE .. USING clause specific to PostgresSQL."""
+        """Render the DELETE .. USING clause specific to PostgreSQL."""
         return "USING " + ", ".join(
             t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
             for t in extra_froms
@@ -2008,7 +2012,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
-    def visit_TSVECTOR(self, type, **kw):
+    def visit_TSVECTOR(self, type_, **kw):
         return "TSVECTOR"
 
     def visit_INET(self, type_, **kw):
@@ -3072,9 +3076,21 @@ class PGDialect(default.DefaultDialect):
         for conname, condef, conschema in c.fetchall():
             m = re.search(FK_REGEX, condef).groups()
 
-            constrained_columns, referred_schema, referred_table, referred_columns, _, match, _, onupdate, _, ondelete, deferrable, _, initially = (
-                m
-            )
+            (
+                constrained_columns,
+                referred_schema,
+                referred_table,
+                referred_columns,
+                _,
+                match,
+                _,
+                onupdate,
+                _,
+                ondelete,
+                deferrable,
+                _,
+                initially,
+            ) = m
 
             if deferrable is not None:
                 deferrable = True if deferrable == "DEFERRABLE" else False

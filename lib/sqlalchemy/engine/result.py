@@ -9,10 +9,14 @@
 and :class:`.RowProxy."""
 
 
-from .. import exc, util
-from ..sql import expression, sqltypes, util as sql_util
 import collections
 import operator
+
+from .. import exc
+from .. import util
+from ..sql import expression
+from ..sql import sqltypes
+from ..sql import util as sql_util
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.
@@ -443,7 +447,14 @@ class ResultMetaData(object):
                     obj,
                     untranslated,
                 )
-                for idx, colname, mapped_type, coltype, obj, untranslated in raw_iterator
+                for (
+                    idx,
+                    colname,
+                    mapped_type,
+                    coltype,
+                    obj,
+                    untranslated,
+                ) in raw_iterator
             ]
 
     def _colnames_from_description(self, context, cursor_description):
@@ -575,10 +586,10 @@ class ResultMetaData(object):
         return d
 
     def _key_fallback(self, key, raiseerr=True):
-        map = self._keymap
+        map_ = self._keymap
         result = None
         if isinstance(key, util.string_types):
-            result = map.get(key if self.case_sensitive else key.lower())
+            result = map_.get(key if self.case_sensitive else key.lower())
         # fallback for targeting a ColumnElement to a textual expression
         # this is a rare use case which only occurs when matching text()
         # or colummn('name') constructs to ColumnElements, or after a
@@ -587,18 +598,18 @@ class ResultMetaData(object):
             if (
                 key._label
                 and (key._label if self.case_sensitive else key._label.lower())
-                in map
+                in map_
             ):
-                result = map[
+                result = map_[
                     key._label if self.case_sensitive else key._label.lower()
                 ]
             elif (
                 hasattr(key, "name")
                 and (key.name if self.case_sensitive else key.name.lower())
-                in map
+                in map_
             ):
                 # match is only on name.
-                result = map[
+                result = map_[
                     key.name if self.case_sensitive else key.name.lower()
                 ]
             # search extra hard to make sure this
@@ -620,7 +631,7 @@ class ResultMetaData(object):
             else:
                 return None
         else:
-            map[key] = result
+            map_[key] = result
         return result
 
     def _has_key(self, key):

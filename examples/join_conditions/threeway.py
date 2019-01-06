@@ -33,9 +33,18 @@ a Query (or a :func:`.relationship`).
 
 
 """
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import foreign
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+
 
 Base = declarative_base()
 

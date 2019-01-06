@@ -1,13 +1,15 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
-
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.testing import eq_, AssertsExecutionResults, assert_raises
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import instance_state
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
 
 engine = testing.db
 
@@ -180,7 +182,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         # pendings don't autoflush
         assert c3.parent is None
 
-    def test_autoflush_on_pending(self):
+    def test_autoflush_load_on_pending_on_pending(self):
         Child.parent.property.load_on_pending = True
         c3 = Child()
         sess.add(c3)

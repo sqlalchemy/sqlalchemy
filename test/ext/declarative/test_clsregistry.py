@@ -1,9 +1,13 @@
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.testing import assert_raises_message, is_, eq_
-from sqlalchemy import exc, MetaData
-from sqlalchemy.ext.declarative import clsregistry
 import weakref
+
+from sqlalchemy import exc
+from sqlalchemy import MetaData
+from sqlalchemy.ext.declarative import clsregistry
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.util import gc_collect
 
 
 class MockClass(object):

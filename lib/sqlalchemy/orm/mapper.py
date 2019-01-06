@@ -16,28 +16,38 @@ available in :class:`~sqlalchemy.orm.`.
 """
 from __future__ import absolute_import
 
+from collections import deque
+from itertools import chain
+import sys
 import types
 import weakref
-from itertools import chain
-from collections import deque
 
-from .. import sql, util, log, exc as sa_exc, event, schema, inspection
-from ..sql import expression, visitors, operators, util as sql_util
-from . import instrumentation, attributes, exc as orm_exc, loading
+from . import attributes
+from . import exc as orm_exc
+from . import instrumentation
+from . import loading
 from . import properties
 from . import util as orm_util
-from .interfaces import MapperProperty, InspectionAttr, _MappedAttribute
-
-from .base import (
-    _class_to_mapper,
-    _state_mapper,
-    class_mapper,
-    state_str,
-    _INSTRUMENTOR,
-)
+from .base import _class_to_mapper
+from .base import _INSTRUMENTOR
+from .base import _state_mapper
+from .base import class_mapper
+from .base import state_str
+from .interfaces import _MappedAttribute
+from .interfaces import InspectionAttr
+from .interfaces import MapperProperty
 from .path_registry import PathRegistry
-
-import sys
+from .. import event
+from .. import exc as sa_exc
+from .. import inspection
+from .. import log
+from .. import schema
+from .. import sql
+from .. import util
+from ..sql import expression
+from ..sql import operators
+from ..sql import util as sql_util
+from ..sql import visitors
 
 
 _mapper_registry = weakref.WeakKeyDictionary()
@@ -1080,7 +1090,7 @@ class Mapper(InspectionAttr):
                 self.polymorphic_map[self.polymorphic_identity] = self
 
             if self.polymorphic_load and self.concrete:
-                raise exc.ArgumentError(
+                raise sa_exc.ArgumentError(
                     "polymorphic_load is not currently supported "
                     "with concrete table inheritance"
                 )
@@ -1607,9 +1617,9 @@ class Mapper(InspectionAttr):
                     if self.mapped_table is mapper.mapped_table:
                         self.polymorphic_on = mapper.polymorphic_on
                     else:
-                        self.polymorphic_on = self.mapped_table.corresponding_column(
-                            mapper.polymorphic_on
-                        )
+                        self.polymorphic_on = (
+                            self.mapped_table.corresponding_column
+                        )(mapper.polymorphic_on)
                     # we can use the parent mapper's _set_polymorphic_identity
                     # directly; it ensures the polymorphic_identity of the
                     # instance's mapper is used so is portable to subclasses.
@@ -2477,7 +2487,7 @@ class Mapper(InspectionAttr):
 
     @_memoized_configured_property
     def _equivalent_columns(self):
-        """Create a map of all *equivalent* columns, based on
+        """Create a map of all equivalent columns, based on
         the determination of column pairs that are equated to
         one another based on inherit condition.  This is designed
         to work with the queries that util.polymorphic_union
@@ -2486,14 +2496,14 @@ class Mapper(InspectionAttr):
         only).
 
         The resulting structure is a dictionary of columns mapped
-        to lists of equivalent columns, i.e.
+        to lists of equivalent columns, e.g.::
 
-        {
-            tablea.col1:
-                {tableb.col1, tablec.col1},
-            tablea.col2:
-                {tabled.col2}
-        }
+            {
+                tablea.col1:
+                    {tableb.col1, tablec.col1},
+                tablea.col2:
+                    {tabled.col2}
+            }
 
         """
         result = util.column_dict()
@@ -3018,10 +3028,18 @@ class Mapper(InspectionAttr):
                 if queue:
                     visitables.append((queue, mpp, None, None))
             elif item_type is mpp:
-                instance, instance_mapper, corresponding_state, corresponding_dict = (
-                    iterator.popleft()
+                (
+                    instance,
+                    instance_mapper,
+                    corresponding_state,
+                    corresponding_dict,
+                ) = iterator.popleft()
+                yield (
+                    instance,
+                    instance_mapper,
+                    corresponding_state,
+                    corresponding_dict,
                 )
-                yield instance, instance_mapper, corresponding_state, corresponding_dict
                 visitables.append(
                     (
                         deque(instance_mapper._props.values()),

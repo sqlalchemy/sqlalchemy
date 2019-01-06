@@ -1,13 +1,8 @@
 """
-Illustrates how to embed `dogpile.cache <https://dogpilecache.readthedocs.io/>`_
-functionality within
-the :class:`.Query` object, allowing full cache control as well as the
-ability to pull "lazy loaded" attributes from long term cache
-as well.
-
-.. versionchanged:: 0.8 The example was modernized to use
-   dogpile.cache, replacing Beaker as the caching library in
-   use.
+Illustrates how to embed
+`dogpile.cache <https://dogpilecache.readthedocs.io/>`_
+functionality within the :class:`.Query` object, allowing full cache control
+as well as the ability to pull "lazy loaded" attributes from long term cache.
 
 In this demo, the following techniques are illustrated:
 

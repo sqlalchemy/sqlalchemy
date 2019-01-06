@@ -1,12 +1,19 @@
 """Generic mapping to Select statements"""
-from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
+from sqlalchemy import column
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import String, Integer, select, column
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import mapper, Session
-from sqlalchemy.testing import eq_, AssertsCompiledSQL
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 # TODO: more tests mapping to selects

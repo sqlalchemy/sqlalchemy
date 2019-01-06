@@ -1,10 +1,16 @@
-from sqlalchemy import Integer, ForeignKey, String, MetaData
-from sqlalchemy.orm import relationship, mapper, create_session
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.ext.orderinglist import ordering_list
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
 
 
@@ -165,11 +171,11 @@ class OrderingListTest(fixtures.TestBase):
         session.add(s1)
         session.flush()
 
-        id = s1.id
+        id_ = s1.id
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id)
+        srt = session.query(Slide).get(id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 4)
@@ -230,11 +236,11 @@ class OrderingListTest(fixtures.TestBase):
         session.add(s1)
         session.flush()
 
-        id = s1.id
+        id_ = s1.id
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id)
+        srt = session.query(Slide).get(id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 5)
@@ -248,7 +254,7 @@ class OrderingListTest(fixtures.TestBase):
         session.flush()
         session.expunge_all()
 
-        srt = session.query(Slide).get(id)
+        srt = session.query(Slide).get(id_)
         titles = ["s1/b1", "s1/b2", "s1/b100", "s1/b4", "raw", "raw2"]
         found = [b.text for b in srt.bullets]
         eq_(titles, found)
@@ -287,11 +293,11 @@ class OrderingListTest(fixtures.TestBase):
         session.add(s1)
         session.flush()
 
-        id = s1.id
+        id_ = s1.id
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id)
+        srt = session.query(Slide).get(id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 6)
@@ -336,11 +342,11 @@ class OrderingListTest(fixtures.TestBase):
         session.add(s1)
         session.flush()
 
-        id = s1.id
+        id_ = s1.id
         session.expunge_all()
         del s1
 
-        srt = session.query(Slide).get(id)
+        srt = session.query(Slide).get(id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 3)
@@ -373,12 +379,12 @@ class OrderingListTest(fixtures.TestBase):
         self.assert_(new_bullet.position == 1)
         self.assert_(len(s1.bullets) == 3)
 
-        id = s1.id
+        id_ = s1.id
 
         session.flush()
         session.expunge_all()
 
-        srt = session.query(Slide).get(id)
+        srt = session.query(Slide).get(id_)
 
         self.assert_(srt.bullets)
         self.assert_(len(srt.bullets) == 3)

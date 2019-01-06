@@ -14,17 +14,20 @@ as well as some of the attribute loading strategies.
 """
 from __future__ import absolute_import
 
-from .. import util
-from . import attributes, exc as orm_exc
-from ..sql import util as sql_util
-from . import strategy_options
-from . import path_registry
-from .. import sql
-
-from .util import _none_set, state_str
-from .base import _SET_DEFERRED_EXPIRED, _DEFER_FOR_STATE
-from .. import exc as sa_exc
 import collections
+
+from . import attributes
+from . import exc as orm_exc
+from . import path_registry
+from . import strategy_options
+from .base import _DEFER_FOR_STATE
+from .base import _SET_DEFERRED_EXPIRED
+from .util import _none_set
+from .util import state_str
+from .. import exc as sa_exc
+from .. import util
+from ..sql import util as sql_util
+
 
 _new_runid = util.counter()
 

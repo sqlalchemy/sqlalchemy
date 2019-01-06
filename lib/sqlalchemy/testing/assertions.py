@@ -7,19 +7,26 @@
 
 from __future__ import absolute_import
 
-from . import util as testutil
-from sqlalchemy import pool, orm, util
-from sqlalchemy.engine import default, url
-from sqlalchemy.util import decorator, compat
-from sqlalchemy import types as sqltypes, schema, exc as sa_exc
-import warnings
+import contextlib
 import re
-from .exclusions import db_spec
+import warnings
+
 from . import assertsql
 from . import config
-from .util import fail
-import contextlib
 from . import mock
+from . import util as testutil
+from .exclusions import db_spec
+from .util import fail
+from .. import exc as sa_exc
+from .. import orm
+from .. import pool
+from .. import schema
+from .. import types as sqltypes
+from .. import util
+from ..engine import default
+from ..engine import url
+from ..util import compat
+from ..util import decorator
 
 
 def expect_warnings(*messages, **kw):
@@ -442,15 +449,15 @@ class AssertsExecutionResults(object):
         print(repr(result))
         self.assert_list(result, class_, objects)
 
-    def assert_list(self, result, class_, list):
+    def assert_list(self, result, class_, list_):
         self.assert_(
-            len(result) == len(list),
+            len(result) == len(list_),
             "result list is not the same size as test list, "
             + "for class "
             + class_.__name__,
         )
-        for i in range(0, len(list)):
-            self.assert_row(class_, result[i], list[i])
+        for i in range(0, len(list_)):
+            self.assert_row(class_, result[i], list_[i])
 
     def assert_row(self, class_, rowobj, desc):
         self.assert_(

@@ -9,8 +9,7 @@
 .. dialect:: sybase+pyodbc
     :name: PyODBC
     :dbapi: pyodbc
-    :connectstring: sybase+pyodbc://<username>:<password>@<dsnname>\
-[/<database>]
+    :connectstring: sybase+pyodbc://<username>:<password>@<dsnname>[/<database>]
     :url: http://pypi.python.org/pypi/pyodbc/
 
 
@@ -32,15 +31,15 @@ Currently *not* supported are::
     UNITEXT
     UNIVARCHAR
 
-"""
+"""  # noqa
 
-from sqlalchemy.dialects.sybase.base import (
-    SybaseDialect,
-    SybaseExecutionContext,
-)
-from sqlalchemy.connectors.pyodbc import PyODBCConnector
-from sqlalchemy import types as sqltypes, processors
 import decimal
+
+from sqlalchemy import processors
+from sqlalchemy import types as sqltypes
+from sqlalchemy.connectors.pyodbc import PyODBCConnector
+from sqlalchemy.dialects.sybase.base import SybaseDialect
+from sqlalchemy.dialects.sybase.base import SybaseExecutionContext
 
 
 class _SybNumeric_pyodbc(sqltypes.Numeric):

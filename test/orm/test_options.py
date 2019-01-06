@@ -1,34 +1,29 @@
-from sqlalchemy import inspect
-from sqlalchemy.orm import (
-    attributes,
-    mapper,
-    relationship,
-    backref,
-    configure_mappers,
-    create_session,
-    synonym,
-    Session,
-    class_mapper,
-    aliased,
-    column_property,
-    joinedload_all,
-    joinedload,
-    Query,
-    util as orm_util,
-    Load,
-    defer,
-    defaultload,
-    lazyload,
-)
-from sqlalchemy.orm.query import QueryContext
-from sqlalchemy.orm import strategy_options
 import sqlalchemy as sa
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing.assertions import eq_, assert_raises_message
-from test.orm import _fixtures
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import util as orm_util
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import eq_
+from test.orm import _fixtures
 
 
 class QueryTest(_fixtures.FixtureTest):

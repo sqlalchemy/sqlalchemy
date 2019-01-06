@@ -5,13 +5,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 
 .. dialect:: mysql+zxjdbc
     :name: zxjdbc for Jython
     :dbapi: zxjdbc
-    :connectstring: mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/\
-<database>
+    :connectstring: mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/<database>
     :driverurl: http://dev.mysql.com/downloads/connector/j/
 
     .. note:: Jython is not supported by current versions of SQLAlchemy.  The
@@ -26,12 +25,15 @@ MySQL Connector/J JDBC driver, by default SQLAlchemy sets its
 ``characterEncoding`` connection property to ``UTF-8``. It may be
 overridden via a ``create_engine`` URL parameter.
 
-"""
+"""  # noqa
 import re
 
-from ... import types as sqltypes, util
+from .base import BIT
+from .base import MySQLDialect
+from .base import MySQLExecutionContext
+from ... import types as sqltypes
+from ... import util
 from ...connectors.zxJDBC import ZxJDBCConnector
-from .base import BIT, MySQLDialect, MySQLExecutionContext
 
 
 class _ZxJDBCBit(BIT):

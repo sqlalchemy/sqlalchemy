@@ -1,8 +1,12 @@
-from sqlalchemy.testing.assertions import eq_, assert_raises
-from sqlalchemy.testing import fixtures
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import Table, Column, Integer, String
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import eq_
 
 
 class OnDuplicateTest(fixtures.TablesTest):

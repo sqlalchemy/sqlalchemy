@@ -15,4 +15,4 @@ are modernized versions of recipes presented in the 2007 blog post
 
 .. autosource::
 
-"""
+"""  # noqa

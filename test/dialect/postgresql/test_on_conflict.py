@@ -1,11 +1,18 @@
 # coding: utf-8
 
-from sqlalchemy.testing.assertions import eq_, assert_raises
-from sqlalchemy.testing import fixtures
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import schema
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import Table, Column, Integer, String
-from sqlalchemy import exc, schema, types as sqltypes, sql
+from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import eq_
 
 
 class OnConflictTest(fixtures.TablesTest):

@@ -1,15 +1,14 @@
-from sqlalchemy import MetaData, Integer, String, ForeignKey
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import util
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import (
-    attributes,
-    mapper,
-    relationship,
-    backref,
-    configure_mappers,
-)
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 __all__ = ()
 
@@ -56,7 +55,26 @@ class FixtureTest(fixtures.MappedTest):
 
     @classmethod
     def _setup_stock_mapping(cls):
-        Node, composite_pk_table, users, Keyword, items, Dingaling, order_items, item_keywords, Item, User, dingalings, Address, keywords, CompositePk, nodes, Order, orders, addresses = (
+        (
+            Node,
+            composite_pk_table,
+            users,
+            Keyword,
+            items,
+            Dingaling,
+            order_items,
+            item_keywords,
+            Item,
+            User,
+            dingalings,
+            Address,
+            keywords,
+            CompositePk,
+            nodes,
+            Order,
+            orders,
+            addresses,
+        ) = (
             cls.classes.Node,
             cls.tables.composite_pk_table,
             cls.tables.users,

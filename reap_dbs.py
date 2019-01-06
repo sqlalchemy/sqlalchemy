@@ -10,9 +10,11 @@ running a kill of all detected sessions does not seem to release the
 database in process.
 
 """
-from sqlalchemy.testing import provision
 import logging
 import sys
+
+from sqlalchemy.testing import provision
+
 
 logging.basicConfig()
 logging.getLogger(provision.__name__).setLevel(logging.INFO)

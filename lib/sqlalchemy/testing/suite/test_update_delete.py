@@ -1,8 +1,10 @@
-from .. import fixtures, config
+from .. import config
+from .. import fixtures
 from ..assertions import eq_
-
-from sqlalchemy import Integer, String
-from ..schema import Table, Column
+from ..schema import Column
+from ..schema import Table
+from ... import Integer
+from ... import String
 
 
 class SimpleUpdateDeleteTest(fixtures.TablesTest):

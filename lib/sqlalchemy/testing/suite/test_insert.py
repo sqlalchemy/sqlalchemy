@@ -1,12 +1,15 @@
-from .. import fixtures, config
-from ..config import requirements
-from .. import exclusions
-from ..assertions import eq_
+from .. import config
 from .. import engines
-
-from sqlalchemy import Integer, String, select, literal_column, literal
-
-from ..schema import Table, Column
+from .. import fixtures
+from ..assertions import eq_
+from ..config import requirements
+from ..schema import Column
+from ..schema import Table
+from ... import Integer
+from ... import literal
+from ... import literal_column
+from ... import select
+from ... import String
 
 
 class LastrowidTest(fixtures.TablesTest):

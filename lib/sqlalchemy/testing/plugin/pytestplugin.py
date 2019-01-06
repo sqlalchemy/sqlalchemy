@@ -5,11 +5,12 @@ except ImportError:
     # assume we're a package, use traditional import
     from . import plugin_base
 
-import pytest
 import argparse
-import inspect
 import collections
+import inspect
 import os
+
+import pytest
 
 try:
     import xdist  # noqa
@@ -44,7 +45,7 @@ def pytest_addoption(parser):
                     dest,
                     default=False,
                     required=False,
-                    help=None,
+                    help=None,  # noqa
                 ):
                     super(CallableAction, self).__init__(
                         option_strings=option_strings,

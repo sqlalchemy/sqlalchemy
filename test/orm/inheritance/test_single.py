@@ -1,12 +1,26 @@
-from sqlalchemy.testing import eq_
-from sqlalchemy import *
-from sqlalchemy.orm import *
-
-from sqlalchemy import testing
-from test.orm import _fixtures
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
@@ -615,7 +629,15 @@ class RelationshipToSingleTest(
             pass
 
     def test_of_type(self):
-        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (
+        (
+            JuniorEngineer,
+            Company,
+            companies,
+            Manager,
+            Employee,
+            employees,
+            Engineer,
+        ) = (
             self.classes.JuniorEngineer,
             self.classes.Company,
             self.tables.companies,
@@ -1026,7 +1048,15 @@ class RelationshipToSingleTest(
             )
 
     def test_relationship_to_subclass(self):
-        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (
+        (
+            JuniorEngineer,
+            Company,
+            companies,
+            Manager,
+            Employee,
+            employees,
+            Engineer,
+        ) = (
             self.classes.JuniorEngineer,
             self.classes.Company,
             self.tables.companies,

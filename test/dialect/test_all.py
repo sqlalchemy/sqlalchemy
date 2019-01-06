@@ -1,6 +1,6 @@
+from sqlalchemy import dialects
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not_
-from sqlalchemy import dialects
 
 
 class ImportStarTest(fixtures.TestBase):

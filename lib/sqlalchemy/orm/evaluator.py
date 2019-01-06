@@ -6,9 +6,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import operator
-from ..sql import operators
+
 from .. import inspect
 from .. import util
+from ..sql import operators
 
 
 class UnevaluatableError(Exception):

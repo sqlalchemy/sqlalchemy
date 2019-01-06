@@ -1,19 +1,47 @@
 """Test various algorithmic properties of selectables."""
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
-from sqlalchemy import *
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsCompiledSQL,
-    AssertsExecutionResults,
-)
-from sqlalchemy.sql import elements
-from sqlalchemy import testing
-from sqlalchemy.sql import util as sql_util, visitors, expression
+from sqlalchemy import alias
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import Column
 from sqlalchemy import exc
-from sqlalchemy.sql import table, column, null
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import not_
+from sqlalchemy import null
+from sqlalchemy import or_
+from sqlalchemy import outerjoin
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import type_coerce
+from sqlalchemy import TypeDecorator
+from sqlalchemy import union
 from sqlalchemy import util
-from sqlalchemy.schema import Column, Table, MetaData
+from sqlalchemy.sql import column
+from sqlalchemy.sql import elements
+from sqlalchemy.sql import expression
+from sqlalchemy.sql import table
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import visitors
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+
 
 metadata = MetaData()
 table1 = Table(
@@ -691,7 +719,8 @@ class SelectableTest(
         assert s.c.b is not None
         self.assert_compile(
             s.select(),
-            "SELECT b FROM (SELECT (SELECT table1.col1 AS a FROM table1) AS b)",
+            "SELECT b FROM "
+            "(SELECT (SELECT table1.col1 AS a FROM table1) AS b)",
         )
 
         s2 = select([s.label("c")])
@@ -1980,17 +2009,17 @@ class AnnotationsTest(fixtures.TestBase):
     def test_annotated_visit(self):
         table1 = table("table1", column("col1"), column("col2"))
 
-        bin = table1.c.col1 == bindparam("foo", value=None)
-        assert str(bin) == "table1.col1 = :foo"
+        bin_ = table1.c.col1 == bindparam("foo", value=None)
+        assert str(bin_) == "table1.col1 = :foo"
 
         def visit_binary(b):
             b.right = table1.c.col2
 
-        b2 = visitors.cloned_traverse(bin, {}, {"binary": visit_binary})
+        b2 = visitors.cloned_traverse(bin_, {}, {"binary": visit_binary})
         assert str(b2) == "table1.col1 = table1.col2"
 
         b3 = visitors.cloned_traverse(
-            bin._annotate({}), {}, {"binary": visit_binary}
+            bin_._annotate({}), {}, {"binary": visit_binary}
         )
         assert str(b3) == "table1.col1 = table1.col2"
 
@@ -2041,11 +2070,11 @@ class AnnotationsTest(fixtures.TestBase):
     def test_deannotate(self):
         table1 = table("table1", column("col1"), column("col2"))
 
-        bin = table1.c.col1 == bindparam("foo", value=None)
+        bin_ = table1.c.col1 == bindparam("foo", value=None)
 
-        b2 = sql_util._deep_annotate(bin, {"_orm_adapt": True})
+        b2 = sql_util._deep_annotate(bin_, {"_orm_adapt": True})
         b3 = sql_util._deep_deannotate(b2)
-        b4 = sql_util._deep_deannotate(bin)
+        b4 = sql_util._deep_deannotate(bin_)
 
         for elem in (b2._annotations, b2.left._annotations):
             assert "_orm_adapt" in elem
@@ -2058,12 +2087,12 @@ class AnnotationsTest(fixtures.TestBase):
         ):
             assert elem == {}
 
-        assert b2.left is not bin.left
-        assert b3.left is not b2.left and b2.left is not bin.left
-        assert b4.left is bin.left  # since column is immutable
+        assert b2.left is not bin_.left
+        assert b3.left is not b2.left and b2.left is not bin_.left
+        assert b4.left is bin_.left  # since column is immutable
         # deannotate copies the element
         assert (
-            bin.right is not b2.right
+            bin_.right is not b2.right
             and b2.right is not b3.right
             and b3.right is not b4.right
         )

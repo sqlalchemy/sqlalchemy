@@ -1,14 +1,15 @@
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.orm import (
-    relationship,
-    mapper,
-    create_session,
-    polymorphic_union,
-)
-
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import relationship
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class Company(fixtures.ComparableEntity):

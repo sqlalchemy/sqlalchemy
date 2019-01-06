@@ -14,8 +14,9 @@
 
 
 """
+from .base import PGDialect
+from .base import PGExecutionContext
 from ...connectors.zxJDBC import ZxJDBCConnector
-from .base import PGDialect, PGExecutionContext
 
 
 class PGExecutionContext_zxjdbc(PGExecutionContext):

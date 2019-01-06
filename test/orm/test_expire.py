@@ -1,31 +1,33 @@
 """Attribute/instance expiration, deferral of attributes, etc."""
 
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.testing.util import gc_collect
 import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import FetchedValue
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc, FetchedValue
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    attributes,
-    deferred,
-    exc as orm_exc,
-    defer,
-    undefer,
-    strategies,
-    state,
-    lazyload,
-    backref,
-    Session,
-)
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.sql import select
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import make_transient_to_detached
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import strategies
+from sqlalchemy.orm import undefer
+from sqlalchemy.sql import select
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
+from test.orm import _fixtures
 
 
 class ExpireTest(_fixtures.FixtureTest):
@@ -1395,7 +1397,7 @@ class PolymorphicExpireTest(fixtures.MappedTest):
         sess.add(e1)
         assert e1.name == "engineer1"
 
-    def test_no_instance_key(self):
+    def test_no_instance_key_pk_absent(self):
         Engineer = self.classes.Engineer
 
         # same as test_no_instance_key, but the PK columns

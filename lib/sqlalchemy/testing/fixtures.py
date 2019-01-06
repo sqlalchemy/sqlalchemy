@@ -5,15 +5,21 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import config
-from . import assertions, schema
-from .util import adict
-from .. import util
-from .engines import drop_all_tables
-from .entities import BasicEntity, ComparableEntity
 import sys
+
 import sqlalchemy as sa
-from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
+from . import assertions
+from . import config
+from . import schema
+from .engines import drop_all_tables
+from .entities import BasicEntity
+from .entities import ComparableEntity
+from .util import adict
+from .. import event
+from .. import util
+from ..ext.declarative import declarative_base
+from ..ext.declarative import DeclarativeMeta
+
 
 # whether or not we use unittest changes things dramatically,
 # as far as how py.test collection works.
@@ -218,9 +224,6 @@ class TablesTest(TestBase):
                     for column_values in rows[table]
                 ],
             )
-
-
-from sqlalchemy import event
 
 
 class RemovesEvents(object):

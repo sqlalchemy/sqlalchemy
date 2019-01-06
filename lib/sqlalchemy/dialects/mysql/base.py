@@ -118,14 +118,13 @@ to be used.
 Transaction Isolation Level
 ---------------------------
 
-All MySQL dialects support setting of transaction isolation level
-both via a dialect-specific parameter :paramref:`.create_engine.isolation_level`
-accepted by :func:`.create_engine`,
-as well as the :paramref:`.Connection.execution_options.isolation_level`
-argument as passed to :meth:`.Connection.execution_options`.
-This feature works by issuing the command
-``SET SESSION TRANSACTION ISOLATION LEVEL <level>`` for
-each new connection.  For the special AUTOCOMMIT isolation level, DBAPI-specific
+All MySQL dialects support setting of transaction isolation level both via a
+dialect-specific parameter :paramref:`.create_engine.isolation_level` accepted
+by :func:`.create_engine`, as well as the
+:paramref:`.Connection.execution_options.isolation_level` argument as passed to
+:meth:`.Connection.execution_options`. This feature works by issuing the
+command ``SET SESSION TRANSACTION ISOLATION LEVEL <level>`` for each new
+connection.  For the special AUTOCOMMIT isolation level, DBAPI-specific
 techniques are used.
 
 To set isolation level using :func:`.create_engine`::
@@ -258,31 +257,35 @@ emit a warning when attempting to pass binary data to the database, while a
 character set encoding is also in place, when the binary data itself is not
 valid for that encoding::
 
-    default.py:509: Warning: (1300, "Invalid utf8mb4 character string: 'F9876A'")
+    default.py:509: Warning: (1300, "Invalid utf8mb4 character string:
+    'F9876A'")
       cursor.execute(statement, parameters)
 
 This warning is due to the fact that the MySQL client library is attempting to
-interpret the binary string as a unicode object even if a datatype such as
-:class:`.LargeBinary` is in use.   To resolve this, the SQL statement requires
+interpret the binary string as a unicode object even if a datatype such
+as :class:`.LargeBinary` is in use.   To resolve this, the SQL statement requires
 a binary "character set introducer" be present before any non-NULL value
 that renders like this::
 
     INSERT INTO table (data) VALUES (_binary %s)
 
-These character set introducers are provided by the DBAPI driver, assuming
-the use of mysqlclient or PyMySQL (both of which are recommended).  Add the
-query string parameter ``binary_prefix=true`` to the URL to repair this warning::
+These character set introducers are provided by the DBAPI driver, assuming the
+use of mysqlclient or PyMySQL (both of which are recommended).  Add the query
+string parameter ``binary_prefix=true`` to the URL to repair this warning::
 
     # mysqlclient
-    engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+    engine = create_engine(
+        "mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
 
     # PyMySQL
-    engine = create_engine("mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+    engine = create_engine(
+        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+
 
 The ``binary_prefix`` flag may or may not be supported by other MySQL drivers.
 
-SQLAlchemy itself cannot render this ``_binary`` prefix reliably, as it does not
-work with the NULL value, which is valid to be sent as a bound parameter.
+SQLAlchemy itself cannot render this ``_binary`` prefix reliably, as it does
+not work with the NULL value, which is valid to be sent as a bound parameter.
 As the MySQL driver renders parameters directly into the SQL string, it's the
 most efficient place for this additional keyword to be passed.
 
@@ -320,7 +323,8 @@ And of course any valid MySQL statement can be executed as a string as well.
 Some limited direct support for MySQL extensions to SQL is currently
 available.
 
-* INSERT..ON DUPLICATE KEY UPDATE:  See :ref:`mysql_insert_on_duplicate_key_update`
+* INSERT..ON DUPLICATE KEY UPDATE:  See
+  :ref:`mysql_insert_on_duplicate_key_update`
 
 * SELECT pragma::
 
@@ -505,8 +509,7 @@ storage engine.
 
 .. seealso::
 
-    `CREATE INDEX <http://dev.mysql.com/doc/refman/5.0/en/create-index.html>`_ - \
-    MySQL documentation
+    `CREATE INDEX <http://dev.mysql.com/doc/refman/5.0/en/create-index.html>`_ - MySQL documentation
 
 Index Types
 ~~~~~~~~~~~~~
@@ -658,8 +661,8 @@ any other datatype on the MySQL side with regards to defaults and nullability.
 
 However, to accommodate the vast majority of MySQL databases that do not
 specify this new flag, SQLAlchemy emits the "NULL" specifier explicitly with
-any TIMESTAMP column that does not specify ``nullable=False``.   In order
-to accommodate newer databases that specify ``explicit_defaults_for_timestamp``,
+any TIMESTAMP column that does not specify ``nullable=False``.   In order to
+accommodate newer databases that specify ``explicit_defaults_for_timestamp``,
 SQLAlchemy also emits NOT NULL for TIMESTAMP columns that do specify
 ``nullable=False``.   The following example illustrates::
 
@@ -693,61 +696,66 @@ output::
    ``explicit_defaults_for_timestamp``.  Prior to this version, it will
    not render "NOT NULL" for a TIMESTAMP column that is ``nullable=False``.
 
-"""
+"""  # noqa
 
+from array import array as _array
 from collections import defaultdict
 import re
 import sys
 
-from ... import schema as sa_schema
-from ... import exc, log, sql, util
-from ...sql import compiler, elements
-from array import array as _array
-
-from ...engine import reflection
-from ...engine import default
-from ... import types as sqltypes
-from ...util import topological
-from ...types import DATE, BOOLEAN, BLOB, BINARY, VARBINARY
-
 from . import reflection as _reflection
-from .types import (
-    BIGINT,
-    BIT,
-    CHAR,
-    DECIMAL,
-    DATETIME,
-    DOUBLE,
-    FLOAT,
-    INTEGER,
-    LONGBLOB,
-    LONGTEXT,
-    MEDIUMBLOB,
-    MEDIUMINT,
-    MEDIUMTEXT,
-    NCHAR,
-    NUMERIC,
-    NVARCHAR,
-    REAL,
-    SMALLINT,
-    TEXT,
-    TIME,
-    TIMESTAMP,
-    TINYBLOB,
-    TINYINT,
-    TINYTEXT,
-    VARCHAR,
-    YEAR,
-)
-from .types import (
-    _StringType,
-    _IntegerType,
-    _NumericType,
-    _FloatType,
-    _MatchType,
-)
-from .enumerated import ENUM, SET
-from .json import JSON, JSONIndexType, JSONPathType
+from .enumerated import ENUM
+from .enumerated import SET
+from .json import JSON
+from .json import JSONIndexType
+from .json import JSONPathType
+from .types import _FloatType
+from .types import _IntegerType
+from .types import _MatchType
+from .types import _NumericType
+from .types import _StringType
+from .types import BIGINT
+from .types import BIT
+from .types import CHAR
+from .types import DATETIME
+from .types import DECIMAL
+from .types import DOUBLE
+from .types import FLOAT
+from .types import INTEGER
+from .types import LONGBLOB
+from .types import LONGTEXT
+from .types import MEDIUMBLOB
+from .types import MEDIUMINT
+from .types import MEDIUMTEXT
+from .types import NCHAR
+from .types import NUMERIC
+from .types import NVARCHAR
+from .types import REAL
+from .types import SMALLINT
+from .types import TEXT
+from .types import TIME
+from .types import TIMESTAMP
+from .types import TINYBLOB
+from .types import TINYINT
+from .types import TINYTEXT
+from .types import VARCHAR
+from .types import YEAR
+from ... import exc
+from ... import log
+from ... import schema as sa_schema
+from ... import sql
+from ... import types as sqltypes
+from ... import util
+from ...engine import default
+from ...engine import reflection
+from ...sql import compiler
+from ...sql import elements
+from ...types import BINARY
+from ...types import BLOB
+from ...types import BOOLEAN
+from ...types import DATE
+from ...types import VARBINARY
+from ...util import topological
 
 
 RESERVED_WORDS = set(
@@ -1955,7 +1963,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             "SET", type_, type_._enumerated_values
         )
 
-    def visit_BOOLEAN(self, type, **kw):
+    def visit_BOOLEAN(self, type_, **kw):
         return "BOOL"
 
 

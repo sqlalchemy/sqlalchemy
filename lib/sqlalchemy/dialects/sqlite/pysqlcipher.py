@@ -25,7 +25,8 @@
 Driver
 ------
 
-The driver here is the `pysqlcipher <https://pypi.python.org/pypi/pysqlcipher>`_
+The driver here is the
+`pysqlcipher <https://pypi.python.org/pypi/pysqlcipher>`_
 driver, which makes use of the SQLCipher engine.  This system essentially
 introduces new PRAGMA commands to SQLite which allows the setting of a
 passphrase and other encryption parameters, allowing the database
@@ -74,11 +75,13 @@ to prevent unencrypted connections from being held open for long periods of
 time, at the expense of slower startup time for new connections.
 
 
-"""
+"""  # noqa
+
 from __future__ import absolute_import
+
 from .pysqlite import SQLiteDialect_pysqlite
-from ...engine import url as _url
 from ... import pool
+from ...engine import url as _url
 
 
 class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):

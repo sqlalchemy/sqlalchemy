@@ -1,23 +1,39 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
-import operator
-from sqlalchemy import *
-from sqlalchemy import exc as sa_exc, util
-from sqlalchemy.sql import compiler, table, column
-from sqlalchemy.engine import default
-from sqlalchemy.orm import *
-from sqlalchemy.orm import attributes
-
-from sqlalchemy.testing import eq_
-
 import sqlalchemy as sa
+from sqlalchemy import and_
+from sqlalchemy import desc
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import lateral
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import not_
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.testing import AssertsCompiledSQL, engines
+from sqlalchemy import true
+from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import join
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import outerjoin
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from test.orm import _fixtures
-
-from sqlalchemy.testing import fixtures
-
-from sqlalchemy.orm.util import join, outerjoin, with_parent
 
 
 class QueryTest(_fixtures.FixtureTest):
@@ -27,7 +43,26 @@ class QueryTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Node, composite_pk_table, users, Keyword, items, Dingaling, order_items, item_keywords, Item, User, dingalings, Address, keywords, CompositePk, nodes, Order, orders, addresses = (
+        (
+            Node,
+            composite_pk_table,
+            users,
+            Keyword,
+            items,
+            Dingaling,
+            order_items,
+            item_keywords,
+            Item,
+            User,
+            dingalings,
+            Address,
+            keywords,
+            CompositePk,
+            nodes,
+            Order,
+            orders,
+            addresses,
+        ) = (
             cls.classes.Node,
             cls.tables.composite_pk_table,
             cls.tables.users,
@@ -744,7 +779,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(User).join(oalias1.user),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM orders AS orders_1 JOIN users ON users.id = orders_1.user_id",
+            "FROM orders AS orders_1 JOIN users "
+            "ON users.id = orders_1.user_id",
         )
 
     def test_single_prop_4(self):
@@ -960,15 +996,15 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_overlapping_paths(self):
         User = self.classes.User
 
-        for aliased in (True, False):
+        for aliased_ in (True, False):
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
             result = (
                 create_session()
                 .query(User)
-                .join("orders", "items", aliased=aliased)
+                .join("orders", "items", aliased=aliased_)
                 .filter_by(id=3)
-                .join("orders", "address", aliased=aliased)
+                .join("orders", "address", aliased=aliased_)
                 .filter_by(id=1)
                 .all()
             )
@@ -1818,16 +1854,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_reset_joinpoint(self):
         User = self.classes.User
 
-        for aliased in (True, False):
+        for aliased_ in (True, False):
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
             result = (
                 create_session()
                 .query(User)
-                .join("orders", "items", aliased=aliased)
+                .join("orders", "items", aliased=aliased_)
                 .filter_by(id=3)
                 .reset_joinpoint()
-                .join("orders", "address", aliased=aliased)
+                .join("orders", "address", aliased=aliased_)
                 .filter_by(id=1)
                 .all()
             )
@@ -1836,10 +1872,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             result = (
                 create_session()
                 .query(User)
-                .join("orders", "items", aliased=aliased, isouter=True)
+                .join("orders", "items", aliased=aliased_, isouter=True)
                 .filter_by(id=3)
                 .reset_joinpoint()
-                .join("orders", "address", aliased=aliased, isouter=True)
+                .join("orders", "address", aliased=aliased_, isouter=True)
                 .filter_by(id=1)
                 .all()
             )
@@ -1848,10 +1884,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             result = (
                 create_session()
                 .query(User)
-                .outerjoin("orders", "items", aliased=aliased)
+                .outerjoin("orders", "items", aliased=aliased_)
                 .filter_by(id=3)
                 .reset_joinpoint()
-                .outerjoin("orders", "address", aliased=aliased)
+                .outerjoin("orders", "address", aliased=aliased_)
                 .filter_by(id=1)
                 .all()
             )

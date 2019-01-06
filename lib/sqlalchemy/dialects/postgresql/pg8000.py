@@ -4,13 +4,11 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
-"""
+r"""
 .. dialect:: postgresql+pg8000
     :name: pg8000
     :dbapi: pg8000
-    :connectstring: \
-postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
+    :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://pythonhosted.org/pg8000/
 
 
@@ -63,27 +61,28 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
     :ref:`psycopg2_isolation_level`
 
 
-"""
-from ... import util, exc
+"""  # noqa
 import decimal
+import re
+
+from .base import _DECIMAL_TYPES
+from .base import _FLOAT_TYPES
+from .base import _INT_TYPES
+from .base import PGCompiler
+from .base import PGDialect
+from .base import PGExecutionContext
+from .base import PGIdentifierPreparer
+from .base import UUID
+from .json import JSON
+from ... import exc
 from ... import processors
 from ... import types as sqltypes
-from .base import (
-    PGDialect,
-    PGCompiler,
-    PGIdentifierPreparer,
-    PGExecutionContext,
-    _DECIMAL_TYPES,
-    _FLOAT_TYPES,
-    _INT_TYPES,
-    UUID,
-)
-import re
-from sqlalchemy.dialects.postgresql.json import JSON
+from ... import util
 from ...sql.elements import quoted_name
 
+
 try:
-    from uuid import UUID as _python_UUID
+    from uuid import UUID as _python_UUID  # noqa
 except ImportError:
     _python_UUID = None
 

@@ -1,20 +1,29 @@
-import sqlalchemy as sa
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import types as sql_types
-from sqlalchemy import inspect
-from sqlalchemy import MetaData, Integer, String, func
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.testing import engines, fixtures
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import eq_, is_, assert_raises_message
-from sqlalchemy import testing
-from .. import config
 import operator
-from sqlalchemy.schema import DDL, Index
-from sqlalchemy import event
-from sqlalchemy.sql.elements import quoted_name
-from sqlalchemy import ForeignKey
 import re
+
+import sqlalchemy as sa
+from .. import assert_raises_message
+from .. import config
+from .. import engines
+from .. import eq_
+from .. import fixtures
+from .. import is_
+from ..schema import Column
+from ..schema import Table
+from ... import event
+from ... import exc as sa_exc
+from ... import ForeignKey
+from ... import inspect
+from ... import Integer
+from ... import MetaData
+from ... import String
+from ... import testing
+from ... import types as sql_types
+from ...engine.reflection import Inspector
+from ...schema import DDL
+from ...schema import Index
+from ...sql.elements import quoted_name
+
 
 metadata, users = None, None
 
@@ -367,7 +376,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 {"comment": "id comment", "name": "id"},
                 {"comment": "data % comment", "name": "data"},
                 {
-                    "comment": r"""Comment types type speedily ' " \ '' Fun!""",
+                    "comment": (
+                        r"""Comment types type speedily ' " \ '' Fun!"""
+                    ),
                     "name": "d2",
                 },
             ],

@@ -6,10 +6,15 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import re
-from ... import log, util
+
+from .enumerated import _EnumeratedValues
+from .enumerated import SET
+from .types import DATETIME
+from .types import TIME
+from .types import TIMESTAMP
+from ... import log
 from ... import types as sqltypes
-from .enumerated import _EnumeratedValues, SET
-from .types import DATETIME, TIME, TIMESTAMP
+from ... import util
 
 
 class ReflectedState(object):

@@ -1,4 +1,18 @@
+from decimal import Decimal
+import os
+import random
 import warnings
+
+from sqlalchemy import __version__
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import Numeric
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 warnings.filterwarnings("ignore", r".*Decimal objects natively")  # noqa
 
@@ -10,23 +24,6 @@ try:
     sys.modules["decimal"] = cdecimal
 except ImportError:
     pass
-
-from sqlalchemy import __version__
-from sqlalchemy import (
-    Column,
-    Integer,
-    create_engine,
-    ForeignKey,
-    String,
-    Numeric,
-)
-
-from sqlalchemy.orm import Session, relationship
-
-from sqlalchemy.ext.declarative import declarative_base
-import random
-import os
-from decimal import Decimal
 
 Base = declarative_base()
 

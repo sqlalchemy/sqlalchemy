@@ -1,13 +1,14 @@
-from . import fixtures
-from . import profiling
-from .. import util
-import types
 from collections import deque
 import contextlib
+import types
+
 from . import config
-from sqlalchemy import MetaData
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from . import fixtures
+from . import profiling
+from .. import create_engine
+from .. import MetaData
+from .. import util
+from ..orm import Session
 
 
 class ReplayFixtureTest(fixtures.TestBase):
@@ -19,7 +20,10 @@ class ReplayFixtureTest(fixtures.TestBase):
 
         dbapi_session = ReplayableSession()
         creator = config.db.pool._creator
-        recorder = lambda: dbapi_session.recorder(creator())
+
+        def recorder():
+            return dbapi_session.recorder(creator())
+
         engine = create_engine(
             config.db.url, creator=recorder, use_native_hstore=False
         )
@@ -34,7 +38,9 @@ class ReplayFixtureTest(fixtures.TestBase):
             self.teardown_engine()
             engine.dispose()
 
-        player = lambda: dbapi_session.player()
+        def player():
+            return dbapi_session.player()
+
         engine = create_engine(
             config.db.url, creator=player, use_native_hstore=False
         )

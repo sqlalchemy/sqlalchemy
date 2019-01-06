@@ -1,17 +1,24 @@
-from sqlalchemy.testing import fixtures
-from ..orm._fixtures import FixtureTest
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import relationship, interfaces, configure_mappers
-from sqlalchemy.ext.automap import generate_relationship
-from sqlalchemy.testing.mock import Mock, patch
-from sqlalchemy import String, Integer, ForeignKey, MetaData
-from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
-
-from sqlalchemy import create_engine
+import random
 import threading
 import time
-import random
+
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.ext.automap import generate_relationship
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import interfaces
+from sqlalchemy.orm import relationship
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from ..orm._fixtures import FixtureTest
 
 
 class AutomapTest(fixtures.MappedTest):

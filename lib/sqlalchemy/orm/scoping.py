@@ -5,10 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .. import exc as sa_exc
-from ..util import ScopedRegistry, ThreadLocalRegistry, warn
-from . import class_mapper, exc as orm_exc
+from . import class_mapper
+from . import exc as orm_exc
 from .session import Session
+from .. import exc as sa_exc
+from ..util import ScopedRegistry
+from ..util import ThreadLocalRegistry
+from ..util import warn
 
 
 __all__ = ["scoped_session"]
@@ -166,13 +169,13 @@ for meth in Session.public_methods:
 
 
 def makeprop(name):
-    def set(self, attr):
+    def set_(self, attr):
         setattr(self.registry(), name, attr)
 
     def get(self):
         return getattr(self.registry(), name)
 
-    return property(get, set)
+    return property(get, set_)
 
 
 for prop in (

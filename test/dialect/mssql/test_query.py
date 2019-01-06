@@ -1,29 +1,31 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, engines
-from sqlalchemy.sql import table, column
-from sqlalchemy.databases import mssql
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, assertions
-from sqlalchemy import testing
-from sqlalchemy.util import ue
-from sqlalchemy import util
-from sqlalchemy.testing.assertsql import CursorSQL, DialectSQL
-from sqlalchemy import (
-    Integer,
-    String,
-    Table,
-    Column,
-    select,
-    MetaData,
-    func,
-    PrimaryKeyConstraint,
-    desc,
-    Sequence,
-    DDL,
-    ForeignKey,
-    or_,
-    and_,
-)
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import DDL
+from sqlalchemy import desc
 from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import or_
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.databases import mssql
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import CursorSQL
+from sqlalchemy.testing.assertsql import DialectSQL
+from sqlalchemy.util import ue
 
 metadata = None
 cattable = None

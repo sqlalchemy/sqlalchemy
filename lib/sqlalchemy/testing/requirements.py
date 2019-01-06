@@ -243,7 +243,9 @@ class SuiteRequirements(Requirements):
     @property
     def sane_rowcount_w_returning(self):
         return exclusions.fails_if(
-            lambda config: not config.db.dialect.supports_sane_rowcount_returning,
+            lambda config: not (
+                config.db.dialect.supports_sane_rowcount_returning
+            ),
             "driver doesn't support 'sane' rowcount when returning is on",
         )
 
@@ -737,12 +739,13 @@ class SuiteRequirements(Requirements):
         present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
-        such as:
+        such as::
 
-        UPDATE documents SET flag=1 WHERE documents.title IN
-            (SELECT max(documents.title) AS title
-                FROM documents GROUP BY documents.user_id
-            )
+            UPDATE documents SET flag=1 WHERE documents.title IN
+                (SELECT max(documents.title) AS title
+                    FROM documents GROUP BY documents.user_id
+                )
+
         """
         return exclusions.open()
 
@@ -923,7 +926,7 @@ class SuiteRequirements(Requirements):
 
     def _has_cextensions(self):
         try:
-            from sqlalchemy import cresultproxy, cprocessors
+            from sqlalchemy import cresultproxy, cprocessors  # noqa
 
             return True
         except ImportError:

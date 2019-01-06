@@ -5,14 +5,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from ...sql.elements import ClauseElement, _literal_as_binds
-from ...sql.dml import Insert as StandardInsert
-from ...sql.expression import alias
-from ...sql import schema
-from ...util.langhelpers import public_factory
-from ...sql.base import _generative
-from ... import util
 from . import ext
+from ... import util
+from ...sql import schema
+from ...sql.base import _generative
+from ...sql.dml import Insert as StandardInsert
+from ...sql.elements import ClauseElement
+from ...sql.expression import alias
+from ...util.langhelpers import public_factory
 
 __all__ = ("Insert", "insert")
 
@@ -51,7 +51,7 @@ class Insert(StandardInsert):
         set_=None,
         where=None,
     ):
-        """
+        r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
         Either the ``constraint`` or ``index_elements`` argument is
@@ -70,7 +70,7 @@ class Insert(StandardInsert):
          Additional WHERE criterion that can be used to infer a
          conditional target index.
 
-        :param set_:
+        :param set\_:
          Required argument. A dictionary or other mapping object
          with column names as keys and expressions or literals as values,
          specifying the ``SET`` actions to take.

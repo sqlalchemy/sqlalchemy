@@ -13,15 +13,23 @@ as the base class for their own corresponding classes.
 
 """
 
-import re
-import random
-from . import reflection, interfaces, result
-from ..sql import compiler, expression, schema
-from .. import types as sqltypes
-from .. import exc, util, pool, processors
 import codecs
+import random
+import re
 import weakref
+
+from . import interfaces
+from . import reflection
+from . import result
 from .. import event
+from .. import exc
+from .. import pool
+from .. import processors
+from .. import types as sqltypes
+from .. import util
+from ..sql import compiler
+from ..sql import expression
+from ..sql import schema
 
 AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)", re.I | re.UNICODE
@@ -239,13 +247,13 @@ class DefaultDialect(interfaces.Dialect):
         self.label_length = label_length
 
         if self.description_encoding == "use_encoding":
-            self._description_decoder = processors.to_unicode_processor_factory(
-                encoding
-            )
+            self._description_decoder = (
+                processors.to_unicode_processor_factory
+            )(encoding)
         elif self.description_encoding is not None:
-            self._description_decoder = processors.to_unicode_processor_factory(
-                self.description_encoding
-            )
+            self._description_decoder = (
+                processors.to_unicode_processor_factory
+            )(self.description_encoding)
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
 

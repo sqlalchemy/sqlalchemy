@@ -1,14 +1,16 @@
-from test.orm import _fixtures
-from sqlalchemy.testing import (
-    fixtures,
-    assert_raises,
-    eq_,
-    ne_,
-    assert_raises_message,
-)
-from sqlalchemy.orm import mapper, Session, validates, relationship
-from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy import exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import validates
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from test.orm import _fixtures
 
 
 class ValidatorTest(_fixtures.FixtureTest):

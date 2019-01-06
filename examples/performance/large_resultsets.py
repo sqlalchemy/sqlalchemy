@@ -13,11 +13,15 @@ full blown ORM doesn't do terribly either even though mapped objects
 provide a huge amount of functionality.
 
 """
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import Session
 from . import Profiler
 
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import Session, Bundle
 
 Base = declarative_base()
 engine = None
@@ -165,8 +169,8 @@ def _test_dbapi_raw(n, make_objects):
         # going to do this, so see how this pushes you right back into
         # ORM land anyway :)
         class SimpleCustomer(object):
-            def __init__(self, id, name, description):
-                self.id = id
+            def __init__(self, id_, name, description):
+                self.id = id_
                 self.name = name
                 self.description = description
 

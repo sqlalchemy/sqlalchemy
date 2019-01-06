@@ -21,39 +21,37 @@
     caveats not currently handled.
 
 """
-import operator
+
 import re
 
-from sqlalchemy.sql import compiler, expression, text, bindparam
-from sqlalchemy.engine import default, base, reflection
-from sqlalchemy import types as sqltypes
-from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy import exc
 from sqlalchemy import schema as sa_schema
-from sqlalchemy import util, sql, exc
-
-from sqlalchemy.types import (
-    CHAR,
-    VARCHAR,
-    TIME,
-    NCHAR,
-    NVARCHAR,
-    TEXT,
-    DATE,
-    DATETIME,
-    FLOAT,
-    NUMERIC,
-    BIGINT,
-    INT,
-    INTEGER,
-    SMALLINT,
-    BINARY,
-    VARBINARY,
-    DECIMAL,
-    TIMESTAMP,
-    Unicode,
-    UnicodeText,
-    REAL,
-)
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql import text
+from sqlalchemy.types import BIGINT
+from sqlalchemy.types import BINARY
+from sqlalchemy.types import CHAR
+from sqlalchemy.types import DATE
+from sqlalchemy.types import DATETIME
+from sqlalchemy.types import DECIMAL
+from sqlalchemy.types import FLOAT
+from sqlalchemy.types import INT  # noqa
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import NCHAR
+from sqlalchemy.types import NUMERIC
+from sqlalchemy.types import NVARCHAR
+from sqlalchemy.types import REAL
+from sqlalchemy.types import SMALLINT
+from sqlalchemy.types import TEXT
+from sqlalchemy.types import TIME
+from sqlalchemy.types import TIMESTAMP
+from sqlalchemy.types import Unicode
+from sqlalchemy.types import VARBINARY
+from sqlalchemy.types import VARCHAR
 
 RESERVED_WORDS = set(
     [
@@ -696,9 +694,9 @@ class SybaseDialect(default.DefaultDialect):
         )
 
         if util.py2k:
-            if isinstance(schema, unicode):
+            if isinstance(schema, unicode):  # noqa
                 schema = schema.encode("ascii")
-            if isinstance(table_name, unicode):
+            if isinstance(table_name, unicode):  # noqa
                 table_name = table_name.encode("ascii")
         result = connection.execute(
             TABLEID_SQL, schema_name=schema, table_name=table_name
@@ -740,7 +738,7 @@ class SybaseDialect(default.DefaultDialect):
             type_,
             nullable,
             autoincrement,
-            default,
+            default_,
             precision,
             scale,
             length,
@@ -750,7 +748,7 @@ class SybaseDialect(default.DefaultDialect):
                 type_,
                 bool(nullable),
                 bool(autoincrement),
-                default,
+                default_,
                 precision,
                 scale,
                 length,
@@ -1037,7 +1035,7 @@ class SybaseDialect(default.DefaultDialect):
         )
 
         if util.py2k:
-            if isinstance(schema, unicode):
+            if isinstance(schema, unicode):  # noqa
                 schema = schema.encode("ascii")
 
         tables = connection.execute(TABLE_SQL, schema_name=schema)
@@ -1059,7 +1057,7 @@ class SybaseDialect(default.DefaultDialect):
         )
 
         if util.py2k:
-            if isinstance(view_name, unicode):
+            if isinstance(view_name, unicode):  # noqa
                 view_name = view_name.encode("ascii")
 
         view = connection.execute(VIEW_DEF_SQL, view_name=view_name)
@@ -1081,7 +1079,7 @@ class SybaseDialect(default.DefaultDialect):
         )
 
         if util.py2k:
-            if isinstance(schema, unicode):
+            if isinstance(schema, unicode):  # noqa
                 schema = schema.encode("ascii")
         views = connection.execute(VIEW_SQL, schema_name=schema)
 

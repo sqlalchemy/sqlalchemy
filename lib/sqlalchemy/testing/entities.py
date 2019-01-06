@@ -6,7 +6,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sqlalchemy as sa
-from sqlalchemy import exc as sa_exc
+from .. import exc as sa_exc
+
 
 _repr_stack = set()
 

@@ -10,17 +10,17 @@ This system allows specification of classes and expressions used in
 :func:`.relationship` using strings.
 
 """
-from ...orm.properties import (
-    ColumnProperty,
-    RelationshipProperty,
-    SynonymProperty,
-)
-from ...schema import _get_table_key
-from ...orm import class_mapper, interfaces
-from ... import util
-from ... import inspection
-from ... import exc
 import weakref
+
+from ... import exc
+from ... import inspection
+from ... import util
+from ...orm import class_mapper
+from ...orm import interfaces
+from ...orm.properties import ColumnProperty
+from ...orm.properties import RelationshipProperty
+from ...orm.properties import SynonymProperty
+from ...schema import _get_table_key
 
 # strong references to registries which we place in
 # the _decl_class_registry, which is usually weak referencing.

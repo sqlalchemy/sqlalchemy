@@ -1,46 +1,45 @@
 # coding: utf-8
 
-from sqlalchemy.testing.assertions import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-)
-from sqlalchemy.testing import engines, fixtures
-from sqlalchemy import testing
 import datetime
-from sqlalchemy import (
-    Table,
-    Column,
-    select,
-    MetaData,
-    text,
-    Integer,
-    String,
-    Sequence,
-    Numeric,
-    DateTime,
-    BigInteger,
-    func,
-    extract,
-    SmallInteger,
-    TypeDecorator,
-    literal,
-    cast,
-    bindparam,
-)
-from sqlalchemy import exc, schema
-from sqlalchemy.dialects.postgresql import base as postgresql
 import logging
 import logging.handlers
-from sqlalchemy.testing.mock import Mock
+
+from sqlalchemy import BigInteger
+from sqlalchemy import bindparam
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import dialects
+from sqlalchemy import exc
+from sqlalchemy import extract
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import SmallInteger
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import TypeDecorator
+from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
-from sqlalchemy.testing import is_
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import expect_deprecated
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import AssertsExecutionResults
+from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.mock import Mock
 from ...engine import test_execute
-from sqlalchemy import dialects
 
 
 class DialectTest(fixtures.TestBase):

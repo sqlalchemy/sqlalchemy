@@ -18,9 +18,9 @@
 
 
 """
+from sqlalchemy.connectors.mxodbc import MxODBCConnector
 from sqlalchemy.dialects.sybase.base import SybaseDialect
 from sqlalchemy.dialects.sybase.base import SybaseExecutionContext
-from sqlalchemy.connectors.mxodbc import MxODBCConnector
 
 
 class SybaseExecutionContext_mxodbc(SybaseExecutionContext):

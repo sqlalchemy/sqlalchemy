@@ -43,17 +43,15 @@ of ``False`` will unconditionally use string-escaped parameters.
 """
 
 
+from .base import _MSDate
+from .base import _MSDateTime
+from .base import _MSTime
+from .base import MSDialect
+from .base import VARBINARY
+from .pyodbc import _MSNumeric_pyodbc
+from .pyodbc import MSExecutionContext_pyodbc
 from ... import types as sqltypes
 from ...connectors.mxodbc import MxODBCConnector
-from .pyodbc import MSExecutionContext_pyodbc, _MSNumeric_pyodbc
-from .base import (
-    MSDialect,
-    MSSQLStrictCompiler,
-    VARBINARY,
-    _MSDateTime,
-    _MSDate,
-    _MSTime,
-)
 
 
 class _MSNumeric_mxodbc(_MSNumeric_pyodbc):

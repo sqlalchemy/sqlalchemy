@@ -3,20 +3,19 @@ to support SQLite's lack of right-nested joins.  SQlite as of
 version 3.7.16 no longer has this limitation.
 
 """
-from sqlalchemy import (
-    Table,
-    Column,
-    Integer,
-    MetaData,
-    ForeignKey,
-    select,
-    exists,
-    union,
-)
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import Column
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
-from sqlalchemy import testing
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
 
 
 m = MetaData()

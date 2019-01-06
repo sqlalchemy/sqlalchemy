@@ -1,25 +1,27 @@
-from sqlalchemy import String, Integer, Column, ForeignKey
-from sqlalchemy.orm import (
-    relationship,
-    Session,
-    joinedload,
-    selectin_polymorphic,
-    selectinload,
-    with_polymorphic,
-    backref,
-)
-from sqlalchemy.testing import fixtures
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectin_polymorphic
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, EachOf, Or
-from ._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    _Polymorphic,
-    GeometryFixtureBase,
-)
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import EachOf
+from sqlalchemy.testing.assertsql import Or
+from ._poly_fixtures import _Polymorphic
+from ._poly_fixtures import Company
+from ._poly_fixtures import Engineer
+from ._poly_fixtures import GeometryFixtureBase
+from ._poly_fixtures import Manager
+from ._poly_fixtures import Person
 
 
 class BaseAndSubFixture(object):
@@ -102,15 +104,18 @@ class BaseAndSubFixture(object):
             AllOf(
                 EachOf(
                     CompiledSQL(
-                        "SELECT asub.id AS asub_id, a.id AS a_id, a.type AS a_type, "
+                        "SELECT asub.id AS asub_id, a.id AS a_id, "
+                        "a.type AS a_type, "
                         "asub.asubdata AS asub_asubdata FROM a JOIN asub "
-                        "ON a.id = asub.id WHERE a.id IN ([EXPANDING_primary_keys]) "
+                        "ON a.id = asub.id "
+                        "WHERE a.id IN ([EXPANDING_primary_keys]) "
                         "ORDER BY a.id",
                         {"primary_keys": [2]},
                     ),
                     CompiledSQL(
                         "SELECT anon_1.a_id AS anon_1_a_id, c.id AS c_id, "
-                        "c.a_sub_id AS c_a_sub_id FROM (SELECT a.id AS a_id, a.adata "
+                        "c.a_sub_id AS c_a_sub_id FROM (SELECT a.id AS a_id, "
+                        "a.adata "
                         "AS a_adata, a.type AS a_type, asub.id AS asub_id, "
                         "asub.asubdata AS asub_asubdata FROM a JOIN asub "
                         "ON a.id = asub.id) AS anon_1 JOIN c "
@@ -123,7 +128,8 @@ class BaseAndSubFixture(object):
                 CompiledSQL(
                     "SELECT a_1.id AS a_1_id, b.id AS b_id, b.a_id AS b_a_id "
                     "FROM a AS a_1 JOIN b ON a_1.id = b.a_id "
-                    "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                    "WHERE a_1.id IN ([EXPANDING_primary_keys]) "
+                    "ORDER BY a_1.id",
                     {"primary_keys": [1, 2]},
                 ),
             ),

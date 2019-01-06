@@ -6,7 +6,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """SQLAlchemy ORM exceptions."""
-from .. import exc as sa_exc, util
+from .. import exc as sa_exc
+from .. import util
 
 NO_STATE = (AttributeError, KeyError)
 """Exception types that may be raised by instrumentation implementations."""

@@ -1,42 +1,19 @@
-from sqlalchemy import Integer, String, ForeignKey, func, desc, and_, or_
-from sqlalchemy.orm import (
-    interfaces,
-    relationship,
-    mapper,
-    clear_mappers,
-    create_session,
-    joinedload,
-    joinedload_all,
-    subqueryload,
-    subqueryload_all,
-    polymorphic_union,
-    aliased,
-    class_mapper,
-    with_polymorphic,
-)
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.engine import default
-
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures
+from sqlalchemy import and_
+from sqlalchemy import or_
 from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import assert_raises, eq_
-
-from ._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    Boss,
-    Machine,
-    Paperwork,
-    _PolymorphicFixtureBase,
-    _Polymorphic,
-    _PolymorphicPolymorphic,
-    _PolymorphicUnions,
-    _PolymorphicJoins,
-    _PolymorphicAliasedJoins,
-)
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.testing import eq_
+from ._poly_fixtures import _Polymorphic
+from ._poly_fixtures import _PolymorphicAliasedJoins
+from ._poly_fixtures import _PolymorphicFixtureBase
+from ._poly_fixtures import _PolymorphicJoins
+from ._poly_fixtures import _PolymorphicPolymorphic
+from ._poly_fixtures import _PolymorphicUnions
+from ._poly_fixtures import Boss
+from ._poly_fixtures import Engineer
+from ._poly_fixtures import Manager
+from ._poly_fixtures import Person
 
 
 class _WithPolymorphicBase(_PolymorphicFixtureBase):

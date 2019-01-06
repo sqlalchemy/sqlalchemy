@@ -1,45 +1,41 @@
-from sqlalchemy.sql import table, column, ClauseElement, operators
-from sqlalchemy.sql.expression import _clone, _from_objects
-from sqlalchemy import (
-    func,
-    select,
-    Integer,
-    Table,
-    Column,
-    MetaData,
-    extract,
-    String,
-    bindparam,
-    tuple_,
-    and_,
-    union,
-    text,
-    case,
-    ForeignKey,
-    literal_column,
-)
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-)
-from sqlalchemy import testing
-from sqlalchemy.sql.visitors import (
-    ClauseVisitor,
-    CloningVisitor,
-    cloned_traverse,
-    ReplacingCloningVisitor,
-)
-from sqlalchemy.sql import visitors
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import case
+from sqlalchemy import Column
 from sqlalchemy import exc
+from sqlalchemy import extract
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import tuple_
+from sqlalchemy import union
+from sqlalchemy.sql import ClauseElement
+from sqlalchemy.sql import column
+from sqlalchemy.sql import operators
+from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.testing import (
-    eq_,
-    is_,
-    is_not_,
-    assert_raises,
-    assert_raises_message,
-)
+from sqlalchemy.sql import visitors
+from sqlalchemy.sql.expression import _clone
+from sqlalchemy.sql.expression import _from_objects
+from sqlalchemy.sql.visitors import ClauseVisitor
+from sqlalchemy.sql.visitors import cloned_traverse
+from sqlalchemy.sql.visitors import CloningVisitor
+from sqlalchemy.sql.visitors import ReplacingCloningVisitor
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
@@ -230,9 +226,9 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         assert CustomObj.__visit_name__ == Column.__visit_name__ == "column"
 
         foo, bar = CustomObj("foo", String), CustomObj("bar", String)
-        bin = foo == bar
-        set(ClauseVisitor().iterate(bin))
-        assert set(ClauseVisitor().iterate(bin)) == set([foo, bar, bin])
+        bin_ = foo == bar
+        set(ClauseVisitor().iterate(bin_))
+        assert set(ClauseVisitor().iterate(bin_)) == set([foo, bar, bin_])
 
 
 class BinaryEndpointTraversalTest(fixtures.TestBase):

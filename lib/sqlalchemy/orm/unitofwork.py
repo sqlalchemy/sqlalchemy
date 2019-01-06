@@ -13,11 +13,13 @@ organizes them in order of dependency, and executes.
 
 """
 
-from .. import util, event
-from ..util import topological
-from . import attributes, persistence, util as orm_util
+from . import attributes
 from . import exc as orm_exc
-import itertools
+from . import persistence
+from . import util as orm_util
+from .. import event
+from .. import util
+from ..util import topological
 
 
 def track_cascade_events(descriptor, prop):

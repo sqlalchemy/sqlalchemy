@@ -1,33 +1,40 @@
 # coding: utf-8
 
-from .. import fixtures, config
+import datetime
+import decimal
+
+from .. import config
+from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
-from sqlalchemy import Integer, Unicode, UnicodeText, select, TIMESTAMP
-from sqlalchemy import (
-    Date,
-    DateTime,
-    Time,
-    MetaData,
-    String,
-    Text,
-    Numeric,
-    Float,
-    literal,
-    Boolean,
-    cast,
-    null,
-    JSON,
-    and_,
-    type_coerce,
-    BigInteger,
-)
-from ..schema import Table, Column
+from ..schema import Column
+from ..schema import Table
+from ... import and_
+from ... import BigInteger
+from ... import Boolean
+from ... import cast
+from ... import Date
+from ... import DateTime
+from ... import Float
+from ... import Integer
+from ... import JSON
+from ... import literal
+from ... import MetaData
+from ... import null
+from ... import Numeric
+from ... import select
+from ... import String
 from ... import testing
-import decimal
-import datetime
-from ...util import u
+from ... import Text
+from ... import Time
+from ... import TIMESTAMP
+from ... import type_coerce
+from ... import Unicode
+from ... import UnicodeText
 from ... import util
+from ...ext.declarative import declarative_base
+from ...orm import Session
+from ...util import u
 
 
 class _LiteralRoundTripFixture(object):
@@ -341,7 +348,7 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
         if util.py3k:
             assert isinstance(row[0], int)
         else:
-            assert isinstance(row[0], (long, int))
+            assert isinstance(row[0], (long, int))  # noqa
 
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
@@ -863,8 +870,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
     def test_eval_none_flag_orm(self):
-        from sqlalchemy.ext.declarative import declarative_base
-        from sqlalchemy.orm import Session
 
         Base = declarative_base()
 

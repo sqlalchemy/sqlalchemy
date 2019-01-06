@@ -1,17 +1,23 @@
-from sqlalchemy import func, Integer, Numeric, String, ForeignKey
-from sqlalchemy.orm import relationship, Session, aliased, persistence
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext import hybrid
-from sqlalchemy.testing import (
-    eq_,
-    is_,
-    AssertsCompiledSQL,
-    assert_raises_message,
-)
-from sqlalchemy.testing import fixtures
-from sqlalchemy import inspect
 from decimal import Decimal
+
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import Numeric
+from sqlalchemy import String
+from sqlalchemy.ext import hybrid
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import persistence
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
 
 
 class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):

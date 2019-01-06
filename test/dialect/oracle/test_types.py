@@ -1,73 +1,52 @@
 # coding: utf-8
 
 
-from sqlalchemy.testing import eq_
-from sqlalchemy import types as sqltypes, exc, schema
-from sqlalchemy.sql import table, column
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-)
-from sqlalchemy import testing
-from sqlalchemy import (
-    Integer,
-    Text,
-    LargeBinary,
-    Unicode,
-    UniqueConstraint,
-    Index,
-    MetaData,
-    select,
-    inspect,
-    ForeignKey,
-    String,
-    func,
-    TypeDecorator,
-    bindparam,
-    Numeric,
-    TIMESTAMP,
-    CHAR,
-    text,
-    SmallInteger,
-    literal_column,
-    VARCHAR,
-    create_engine,
-    Date,
-    NVARCHAR,
-    ForeignKeyConstraint,
-    Sequence,
-    Float,
-    DateTime,
-    cast,
-    UnicodeText,
-    union,
-    except_,
-    type_coerce,
-    or_,
-    outerjoin,
-    DATE,
-    NCHAR,
-    outparam,
-    PrimaryKeyConstraint,
-    FLOAT,
-)
-from sqlalchemy.sql.sqltypes import NullType
-from sqlalchemy.util import u, b
-from sqlalchemy import util
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
-from sqlalchemy.engine import default
-import decimal
-from sqlalchemy.engine import url
-from sqlalchemy.testing.schema import Table, Column
 import datetime
+import decimal
 import os
-from sqlalchemy import sql
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing import mock
+
+from sqlalchemy import bindparam
+from sqlalchemy import cast
+from sqlalchemy import CHAR
+from sqlalchemy import DATE
+from sqlalchemy import Date
+from sqlalchemy import DateTime
 from sqlalchemy import event
+from sqlalchemy import FLOAT
+from sqlalchemy import Float
+from sqlalchemy import Integer
+from sqlalchemy import LargeBinary
+from sqlalchemy import MetaData
+from sqlalchemy import NCHAR
+from sqlalchemy import Numeric
+from sqlalchemy import NVARCHAR
+from sqlalchemy import select
+from sqlalchemy import SmallInteger
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import Text
+from sqlalchemy import text
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import TypeDecorator
+from sqlalchemy import types as sqltypes
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
+from sqlalchemy import util
+from sqlalchemy import VARCHAR
+from sqlalchemy.dialects.oracle import base as oracle
+from sqlalchemy.dialects.oracle import cx_oracle
+from sqlalchemy.sql import column
+from sqlalchemy.sql.sqltypes import NullType
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import b
+from sqlalchemy.util import u
 
 
 class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -425,7 +404,8 @@ class TypesTest(fixtures.TestBase):
             [("nan",), ("nan",)],
         )
 
-    # needs https://github.com/oracle/python-cx_Oracle/issues/184#issuecomment-391399292
+    # needs https://github.com/oracle/python-cx_Oracle/
+    # issues/184#issuecomment-391399292
     @testing.provide_metadata
     def _dont_test_numeric_nan_decimal(self):
         m = self.metadata

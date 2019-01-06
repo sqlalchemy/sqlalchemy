@@ -1,4 +1,6 @@
-"""Illustrates an explicit way to persist an XML document expressed using ElementTree.
+"""
+Illustrates an explicit way to persist an XML document expressed using
+ElementTree.
 
 Each DOM node is stored in an individual
 table row, with attributes   represented in a separate table.  The
@@ -8,34 +10,36 @@ along any path with a given   structure of attributes, basically a
 (very narrow) subset of xpath.
 
 This example explicitly marshals/unmarshals the ElementTree document into
-mapped entities which have their own tables.  Compare to pickle.py which
-uses pickle to accomplish the same task.  Note that the usage of both
-styles of persistence are identical, as is the structure of the main Document class.
+mapped entities which have their own tables.  Compare to pickle.py which uses
+pickle to accomplish the same task.  Note that the usage of both styles of
+persistence are identical, as is the structure of the main Document class.
 
 """
 
-################################# PART I - Imports/Coniguration ####################################
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    Unicode,
-    and_,
-    create_engine,
-)
-from sqlalchemy.orm import mapper, relationship, Session, lazyload
-
-import sys, os, io, re
-
+# PART I - Imports/Configuration
+import io
+import os
+import re
 from xml.etree import ElementTree
+
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import Unicode
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 e = create_engine("sqlite://")
 meta = MetaData()
 
-################################# PART II - Table Metadata #########################################
+# PART II - Table Metadata
 
 # stores a top level record of an XML document.
 documents = Table(
@@ -75,10 +79,12 @@ attributes = Table(
 
 meta.create_all(e)
 
-#################################### PART III - Model #############################################
+# PART III - Model
 
 # our document class.  contains a string name,
 # and the ElementTree root element.
+
+
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
@@ -90,19 +96,22 @@ class Document(object):
         return buf.getvalue()
 
 
-#################################### PART IV - Persistence Mapping #################################
+# PART IV - Persistence Mapping
 
-# Node class.  a non-public class which will represent
-# the DB-persisted Element/SubElement object.  We cannot create mappers for
-# ElementTree elements directly because they are at the very least not new-style
-# classes, and also may be backed by native implementations.
-# so here we construct an adapter.
+# Node class.  a non-public class which will represent the DB-persisted
+# Element/SubElement object.  We cannot create mappers for ElementTree elements
+# directly because they are at the very least not new-style classes, and also
+# may be backed by native implementations. so here we construct an adapter.
+
+
 class _Node(object):
     pass
 
 
-# Attribute class.  also internal, this will represent the key/value attributes stored for
-# a particular Node.
+# Attribute class.  also internal, this will represent the key/value attributes
+# stored for a particular Node.
+
+
 class _Attribute(object):
     def __init__(self, name, value):
         self.name = name
@@ -130,9 +139,12 @@ mapper(
 
 mapper(_Attribute, attributes)
 
-# define marshalling functions that convert from _Node/_Attribute to/from ElementTree objects.
-# this will set the ElementTree element as "document._element", and append the root _Node
-# object to the "_root" mapped collection.
+# define marshalling functions that convert from _Node/_Attribute to/from
+# ElementTree objects. this will set the ElementTree element as
+# "document._element", and append the root _Node object to the "_root" mapped
+# collection.
+
+
 class ElementTreeMarshal(object):
     def __get__(self, document, owner):
         if document is None:
@@ -180,7 +192,7 @@ class ElementTreeMarshal(object):
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
 
-########################################### PART V - Basic Persistence Example #####################
+# PART V - Basic Persistence Example
 
 line = "\n--------------------------------------------------------"
 
@@ -202,7 +214,7 @@ document = session.query(Document).filter_by(filename="test.xml").first()
 
 print(document)
 
-############################################ PART VI - Searching for Paths #########################
+# PART VI - Searching for Paths
 
 # manually search for a document which contains "/somefile/header/field1:hi"
 d = (
@@ -218,6 +230,8 @@ d = (
 print(d)
 
 # generalize the above approach into an extremely impoverished xpath function:
+
+
 def find_document(path, compareto):
     j = documents
     prev_elements = None

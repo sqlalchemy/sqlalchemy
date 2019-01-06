@@ -6,10 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import weakref
+
 from . import attributes
-from .. import util
-from .. import exc as sa_exc
 from . import util as orm_util
+from .. import exc as sa_exc
+from .. import util
 
 
 class IdentityMap(object):
@@ -32,7 +33,7 @@ class IdentityMap(object):
         in the map"""
         self.add(state)
 
-    def update(self, dict):
+    def update(self, dict_):
         raise NotImplementedError("IdentityMap uses add() to insert data")
 
     def clear(self):

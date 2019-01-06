@@ -1,15 +1,33 @@
 import datetime
 import os
-from sqlalchemy import *
+
+from sqlalchemy import Column
+from sqlalchemy import DateTime
 from sqlalchemy import event
-from sqlalchemy import sql, util
-from sqlalchemy.orm import *
-from sqlalchemy.ext.horizontal_shard import ShardedSession
-from sqlalchemy.sql import operators
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing import eq_
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.ext.horizontal_shard import ShardedSession
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import operators
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import provision
+from sqlalchemy.testing.engines import testing_engine
 
 # TODO: ShardTest can be turned into a base for further subclasses
 
@@ -346,9 +364,6 @@ class ShardTest(object):
 
         t = get_tokyo(sess2)
         eq_(t.city, tokyo.city)
-
-
-from sqlalchemy.testing import provision
 
 
 class DistinctEngineShardTest(ShardTest, fixtures.TestBase):

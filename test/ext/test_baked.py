@@ -1,25 +1,27 @@
-from sqlalchemy.orm import (
-    Session,
-    subqueryload,
-    mapper,
-    relationship,
-    lazyload,
-    backref,
-    aliased,
-    Load,
-    defaultload,
-)
-from sqlalchemy.testing import eq_, is_, is_not_
-from sqlalchemy.testing import assert_raises_message
-from sqlalchemy import testing
-from test.orm import _fixtures
-from sqlalchemy.ext import baked
-from sqlalchemy import bindparam, func
-from sqlalchemy.orm import exc as orm_exc
+import contextlib
 import itertools
+
+from sqlalchemy import bindparam
+from sqlalchemy import func
+from sqlalchemy import testing
+from sqlalchemy.ext import baked
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
-import contextlib
+from test.orm import _fixtures
 
 
 class BakedTest(_fixtures.FixtureTest):

@@ -1,30 +1,27 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    ne_,
-    expect_warnings,
-)
 import sys
+
+from sqlalchemy import create_engine
 from sqlalchemy import event
-from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy import (
-    create_engine,
-    MetaData,
-    INT,
-    VARCHAR,
-    Sequence,
-    select,
-    Integer,
-    String,
-    func,
-    text,
-    exc,
-)
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
+from sqlalchemy import exc
+from sqlalchemy import func
+from sqlalchemy import INT
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import VARCHAR
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 users, metadata = None, None

@@ -1,45 +1,49 @@
+from contextlib import contextmanager
+import pickle
+
+import sqlalchemy as tsa
+from sqlalchemy import ARRAY
+from sqlalchemy import bindparam
+from sqlalchemy import BLANK_SCHEMA
+from sqlalchemy import Boolean
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import ColumnDefault
+from sqlalchemy import Enum
+from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import TypeDecorator
+from sqlalchemy import types as sqltypes
+from sqlalchemy import Unicode
+from sqlalchemy import UniqueConstraint
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.sql import elements
+from sqlalchemy.sql import naming
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
-import pickle
-from sqlalchemy import (
-    Integer,
-    String,
-    UniqueConstraint,
-    CheckConstraint,
-    ForeignKey,
-    MetaData,
-    Sequence,
-    ForeignKeyConstraint,
-    PrimaryKeyConstraint,
-    ColumnDefault,
-    Index,
-    event,
-    events,
-    Unicode,
-    types as sqltypes,
-    bindparam,
-    Table,
-    Column,
-    Boolean,
-    Enum,
-    func,
-    text,
-    TypeDecorator,
-    BLANK_SCHEMA,
-    ARRAY,
-)
-from sqlalchemy import schema, exc
-from sqlalchemy.engine import default
-from sqlalchemy.sql import elements, naming
-import sqlalchemy as tsa
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
-from sqlalchemy.testing import ComparesTables, AssertsCompiledSQL
-from sqlalchemy.testing import eq_, is_, mock, is_true, is_false
-from contextlib import contextmanager
-from sqlalchemy import util
-from sqlalchemy.testing import engines
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
 
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
@@ -526,7 +530,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             (
                 name,
                 metadata,
-                schema,
+                schema_,
                 quote_schema,
                 exp_schema,
                 exp_quote_schema,
@@ -554,8 +558,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             ]
         ):
             kw = {}
-            if schema is not None:
-                kw["schema"] = schema
+            if schema_ is not None:
+                kw["schema"] = schema_
             if quote_schema is not None:
                 kw["quote_schema"] = quote_schema
             t = Table(name, metadata, **kw)
@@ -3512,12 +3516,12 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         from sqlalchemy.sql import select
 
         class MyColumn(Column):
-            def _constructor(self, name, type, **kw):
+            def _constructor(self, name, type_, **kw):
                 kw["name"] = name
-                return MyColumn(type, **kw)
+                return MyColumn(type_, **kw)
 
-            def __init__(self, type, **kw):
-                Column.__init__(self, type, **kw)
+            def __init__(self, type_, **kw):
+                Column.__init__(self, type_, **kw)
 
             def my_goofy_thing(self):
                 return "hi"
@@ -3527,11 +3531,11 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             s = compiler.visit_column(element, **kw)
             return s + "-"
 
-        id = MyColumn(Integer, primary_key=True)
-        id.name = "id"
+        id_ = MyColumn(Integer, primary_key=True)
+        id_.name = "id"
         name = MyColumn(String)
         name.name = "name"
-        t1 = Table("foo", MetaData(), id, name)
+        t1 = Table("foo", MetaData(), id_, name)
 
         # goofy thing
         eq_(t1.c.name.my_goofy_thing(), "hi")
@@ -3555,14 +3559,14 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         from sqlalchemy.sql import select
 
         class MyColumn(Column):
-            def __init__(self, type, **kw):
-                Column.__init__(self, type, **kw)
+            def __init__(self, type_, **kw):
+                Column.__init__(self, type_, **kw)
 
-        id = MyColumn(Integer, primary_key=True)
-        id.name = "id"
+        id_ = MyColumn(Integer, primary_key=True)
+        id_.name = "id"
         name = MyColumn(String)
         name.name = "name"
-        t1 = Table("foo", MetaData(), id, name)
+        t1 = Table("foo", MetaData(), id_, name)
         assert_raises_message(
             TypeError,
             "Could not create a copy of this <class "
@@ -3577,7 +3581,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         from sqlalchemy.ext.compiler import compiles, deregister
 
         @compiles(schema.CreateColumn)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             column = element.element
 
             if "special" not in column.info:

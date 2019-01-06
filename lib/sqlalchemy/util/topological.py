@@ -7,8 +7,8 @@
 
 """Topological sorting algorithms."""
 
-from ..exc import CircularDependencyError
 from .. import util
+from ..exc import CircularDependencyError
 
 __all__ = ["sort", "sort_as_subsets", "find_cycles"]
 

@@ -1,13 +1,20 @@
-from .. import fixtures, config
-from ..config import requirements
-from .. import exclusions
-from ..assertions import eq_
-from .. import engines
-from ... import testing
-
-from sqlalchemy import Integer, String, select, util, sql, DateTime, text, func
 import datetime
-from ..schema import Table, Column
+
+from .. import config
+from .. import engines
+from .. import fixtures
+from ..assertions import eq_
+from ..config import requirements
+from ..schema import Column
+from ..schema import Table
+from ... import DateTime
+from ... import func
+from ... import Integer
+from ... import select
+from ... import sql
+from ... import String
+from ... import testing
+from ... import text
 
 
 class RowFetchTest(fixtures.TablesTest):

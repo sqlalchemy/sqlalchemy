@@ -19,8 +19,8 @@ For more info on mxODBC, see http://www.egenix.com/
 
 """
 
-import sys
 import re
+import sys
 import warnings
 
 from . import Connector
@@ -42,15 +42,15 @@ class MxODBCConnector(Connector):
         cls._load_mx_exceptions()
         platform = sys.platform
         if platform == "win32":
-            from mx.ODBC import Windows as module
+            from mx.ODBC import Windows as Module
         # this can be the string "linux2", and possibly others
         elif "linux" in platform:
-            from mx.ODBC import unixODBC as module
+            from mx.ODBC import unixODBC as Module
         elif platform == "darwin":
-            from mx.ODBC import iODBC as module
+            from mx.ODBC import iODBC as Module
         else:
             raise ImportError("Unrecognized platform for mxODBC import")
-        return module
+        return Module
 
     @classmethod
     def _load_mx_exceptions(cls):
@@ -89,7 +89,7 @@ class MxODBCConnector(Connector):
         return error_handler
 
     def create_connect_args(self, url):
-        """ Return a tuple of *args,**kwargs for creating a connection.
+        r"""Return a tuple of \*args, \**kwargs for creating a connection.
 
         The mxODBC 3.x connection constructor looks like this:
 

@@ -1,18 +1,19 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    Session,
-    exc as orm_exc,
-    sessionmaker,
-    backref,
-)
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class M2MTest(fixtures.MappedTest):
@@ -230,7 +231,16 @@ class M2MTest(fixtures.MappedTest):
         """test that a mapper can have two eager relationships to the same table, via
         two different association tables.  aliases are required."""
 
-        place_input, transition, Transition, PlaceThingy, place, place_thingy, Place, place_output = (
+        (
+            place_input,
+            transition,
+            Transition,
+            PlaceThingy,
+            place,
+            place_thingy,
+            Place,
+            place_output,
+        ) = (
             self.tables.place_input,
             self.tables.transition,
             self.classes.Transition,

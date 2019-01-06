@@ -7,13 +7,17 @@
 
 """Handle Python version/platform incompatibilities."""
 
-import sys
+import collections
+from collections import namedtuple  # noqa
 from contextlib import contextmanager
+from operator import attrgetter as dottedgetter  # noqa
+import sys
+import time
 
 try:
     import threading
 except ImportError:
-    import dummy_threading as threading
+    import dummy_threading as threading  # noqa
 
 py36 = sys.version_info >= (3, 6)
 py33 = sys.version_info >= (3, 3)
@@ -27,9 +31,7 @@ pypy = hasattr(sys, "pypy_version_info")
 win32 = sys.platform.startswith("win")
 cpython = not pypy and not jython  # TODO: something better for this ?
 
-import collections
-
-next = next
+next = next  # noqa
 
 if py3k:
     import pickle
@@ -37,11 +39,11 @@ else:
     try:
         import cPickle as pickle
     except ImportError:
-        import pickle
+        import pickle  # noqa
 
 # work around http://bugs.python.org/issue2646
 if py265:
-    safe_kwarg = lambda arg: arg
+    safe_kwarg = lambda arg: arg  # noqa
 else:
     safe_kwarg = str
 
@@ -85,10 +87,10 @@ if py3k:
         return s.encode("latin-1")
 
     if py32:
-        callable = callable
+        callable = callable  # noqa
     else:
 
-        def callable(fn):
+        def callable(fn):  # noqa
             return hasattr(fn, "__call__")
 
     def cmp(a, b):
@@ -120,17 +122,17 @@ else:
     from inspect import getargspec as inspect_getfullargspec
 
     inspect_getargspec = inspect_getfullargspec
-    from urllib import quote_plus, unquote_plus, quote, unquote
-    from urlparse import parse_qsl
-    import ConfigParser as configparser
-    from StringIO import StringIO
-    from cStringIO import StringIO as byte_buffer
+    from urllib import quote_plus, unquote_plus, quote, unquote  # noqa
+    from urlparse import parse_qsl  # noqa
+    import ConfigParser as configparser  # noqa
+    from StringIO import StringIO  # noqa
+    from cStringIO import StringIO as byte_buffer  # noqa
 
-    string_types = (basestring,)
+    string_types = (basestring,)  # noqa
     binary_types = (bytes,)
     binary_type = str
-    text_type = unicode
-    int_types = int, long
+    text_type = unicode  # noqa
+    int_types = int, long  # noqa
 
     def iterbytes(buf):
         return (ord(byte) for byte in buf)
@@ -140,10 +142,10 @@ else:
         # strings - we only use u() with
         # literal source strings, and all our source files with non-ascii
         # in them (all are tests) are utf-8 encoded.
-        return unicode(s, "utf-8")
+        return unicode(s, "utf-8")  # noqa
 
     def ue(s):
-        return unicode(s, "unicode_escape")
+        return unicode(s, "unicode_escape")  # noqa
 
     def b(s):
         return s
@@ -153,7 +155,7 @@ else:
             args = args[0:3] + ([str(arg) for arg in args[3]],)
         return __import__(*args)
 
-    callable = callable
+    callable = callable  # noqa
     cmp = cmp
     reduce = reduce
 
@@ -167,7 +169,7 @@ else:
         if fp is None:
             return
         for arg in enumerate(args):
-            if not isinstance(arg, basestring):
+            if not isinstance(arg, basestring):  # noqa
                 arg = str(arg)
             fp.write(arg)
 
@@ -176,7 +178,7 @@ else:
     itertools_filterfalse = itertools.ifilterfalse
     itertools_filter = itertools.ifilter
     itertools_imap = itertools.imap
-    from itertools import izip_longest as zip_longest
+    from itertools import izip_longest as zip_longest  # noqa
 
 if py35:
     from inspect import formatannotation
@@ -244,18 +246,12 @@ if py35:
 
 
 else:
-    from inspect import formatargspec as inspect_formatargspec
-
-
-import time
+    from inspect import formatargspec as inspect_formatargspec  # noqa
 
 if win32 or jython:
     time_func = time.clock
 else:
     time_func = time.time
-
-from collections import namedtuple
-from operator import attrgetter as dottedgetter
 
 
 if py3k:
@@ -332,22 +328,22 @@ def nested(*managers):
     """
 
     exits = []
-    vars = []
+    vars_ = []
     exc = (None, None, None)
     try:
         for mgr in managers:
-            exit = mgr.__exit__
+            exit_ = mgr.__exit__
             enter = mgr.__enter__
-            vars.append(enter())
-            exits.append(exit)
-        yield vars
+            vars_.append(enter())
+            exits.append(exit_)
+        yield vars_
     except:
         exc = sys.exc_info()
     finally:
         while exits:
-            exit = exits.pop()
+            exit_ = exits.pop()
             try:
-                if exit(*exc):
+                if exit_(*exc):
                     exc = (None, None, None)
             except:
                 exc = sys.exc_info()
@@ -360,4 +356,4 @@ def nested(*managers):
 if py33:
     import collections.abc as collections_abc
 else:
-    import collections as collections_abc
+    import collections as collections_abc  # noqa
