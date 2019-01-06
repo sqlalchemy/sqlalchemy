@@ -122,7 +122,7 @@ start numbering at 1 or some other integer, provide ``count_from=1``.
 from ..orm.collections import collection, collection_adapter
 from .. import util
 
-__all__ = ['ordering_list']
+__all__ = ["ordering_list"]
 
 
 def ordering_list(attr, count_from=None, **kw):
@@ -180,8 +180,9 @@ def count_from_n_factory(start):
 
     def f(index, collection):
         return index + start
+
     try:
-        f.__name__ = 'count_from_%i' % start
+        f.__name__ = "count_from_%i" % start
     except TypeError:
         pass
     return f
@@ -194,14 +195,14 @@ def _unsugar_count_from(**kw):
     ``count_from`` argument, otherwise passes ``ordering_func`` on unchanged.
     """
 
-    count_from = kw.pop('count_from', None)
-    if kw.get('ordering_func', None) is None and count_from is not None:
+    count_from = kw.pop("count_from", None)
+    if kw.get("ordering_func", None) is None and count_from is not None:
         if count_from == 0:
-            kw['ordering_func'] = count_from_0
+            kw["ordering_func"] = count_from_0
         elif count_from == 1:
-            kw['ordering_func'] = count_from_1
+            kw["ordering_func"] = count_from_1
         else:
-            kw['ordering_func'] = count_from_n_factory(count_from)
+            kw["ordering_func"] = count_from_n_factory(count_from)
     return kw
 
 
@@ -214,8 +215,9 @@ class OrderingList(list):
 
     """
 
-    def __init__(self, ordering_attr=None, ordering_func=None,
-                 reorder_on_append=False):
+    def __init__(
+        self, ordering_attr=None, ordering_func=None, reorder_on_append=False
+    ):
         """A custom list that manages position information for its children.
 
         ``OrderingList`` is a ``collection_class`` list implementation that
@@ -311,6 +313,7 @@ class OrderingList(list):
         """Append without any ordering behavior."""
 
         super(OrderingList, self).append(entity)
+
     _raw_append = collection.adds(1)(_raw_append)
 
     def insert(self, index, entity):
@@ -361,8 +364,12 @@ class OrderingList(list):
         return _reconstitute, (self.__class__, self.__dict__, list(self))
 
     for func_name, func in list(locals().items()):
-        if (util.callable(func) and func.__name__ == func_name and
-                not func.__doc__ and hasattr(list, func_name)):
+        if (
+            util.callable(func)
+            and func.__name__ == func_name
+            and not func.__doc__
+            and hasattr(list, func_name)
+        ):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
 

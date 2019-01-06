@@ -72,7 +72,7 @@ from .expression import (
     union,
     union_all,
     update,
-    within_group
+    within_group,
 )
 
 from .visitors import ClauseVisitor
@@ -84,12 +84,16 @@ def __go(lcls):
 
     import inspect as _inspect
 
-    __all__ = sorted(name for name, obj in lcls.items()
-                     if not (name.startswith('_') or _inspect.ismodule(obj)))
+    __all__ = sorted(
+        name
+        for name, obj in lcls.items()
+        if not (name.startswith("_") or _inspect.ismodule(obj))
+    )
 
     from .annotation import _prepare_annotations, Annotated
     from .elements import AnnotatedColumnElement, ClauseList
     from .selectable import AnnotatedFromClause
+
     _prepare_annotations(ColumnElement, AnnotatedColumnElement)
     _prepare_annotations(FromClause, AnnotatedFromClause)
     _prepare_annotations(ClauseList, Annotated)
@@ -97,5 +101,6 @@ def __go(lcls):
     _sa_util.dependencies.resolve_all("sqlalchemy.sql")
 
     from . import naming
+
 
 __go(locals())

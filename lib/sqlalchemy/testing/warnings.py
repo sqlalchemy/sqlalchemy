@@ -15,17 +15,20 @@ from . import assertions
 def setup_filters():
     """Set global warning behavior for the test suite."""
 
-    warnings.filterwarnings('ignore',
-                            category=sa_exc.SAPendingDeprecationWarning)
-    warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
-    warnings.filterwarnings('error', category=sa_exc.SAWarning)
+    warnings.filterwarnings(
+        "ignore", category=sa_exc.SAPendingDeprecationWarning
+    )
+    warnings.filterwarnings("error", category=sa_exc.SADeprecationWarning)
+    warnings.filterwarnings("error", category=sa_exc.SAWarning)
 
     # some selected deprecations...
-    warnings.filterwarnings('error', category=DeprecationWarning)
+    warnings.filterwarnings("error", category=DeprecationWarning)
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=".*StopIteration")
+        "ignore", category=DeprecationWarning, message=".*StopIteration"
+    )
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=".*inspect.getargspec")
+        "ignore", category=DeprecationWarning, message=".*inspect.getargspec"
+    )
 
 
 def assert_warnings(fn, warning_msgs, regex=False):
@@ -36,6 +39,6 @@ def assert_warnings(fn, warning_msgs, regex=False):
     """
 
     with assertions._expect_warnings(
-            sa_exc.SAWarning, warning_msgs, regex=regex):
+        sa_exc.SAWarning, warning_msgs, regex=regex
+    ):
         return fn()
-

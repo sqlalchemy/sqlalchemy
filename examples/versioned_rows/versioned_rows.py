@@ -3,8 +3,13 @@ an UPDATE statement on a single row into an INSERT statement, so that a new
 row is inserted with the new data, keeping the old row intact.
 
 """
-from sqlalchemy.orm import sessionmaker, relationship, make_transient, \
-    backref, Session
+from sqlalchemy.orm import (
+    sessionmaker,
+    relationship,
+    make_transient,
+    backref,
+    Session,
+)
 from sqlalchemy import Column, ForeignKey, create_engine, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
@@ -38,9 +43,10 @@ def before_flush(session, flush_context, instances):
         # re-add
         session.add(instance)
 
+
 Base = declarative_base()
 
-engine = create_engine('sqlite://', echo=True)
+engine = create_engine("sqlite://", echo=True)
 
 Session = sessionmaker(engine)
 
@@ -48,43 +54,44 @@ Session = sessionmaker(engine)
 
 
 class Example(Versioned, Base):
-    __tablename__ = 'example'
+    __tablename__ = "example"
     id = Column(Integer, primary_key=True)
     data = Column(String)
+
 
 Base.metadata.create_all(engine)
 
 session = Session()
-e1 = Example(data='e1')
+e1 = Example(data="e1")
 session.add(e1)
 session.commit()
 
-e1.data = 'e2'
+e1.data = "e2"
 session.commit()
 
 assert session.query(Example.id, Example.data).order_by(Example.id).all() == (
-    [(1, 'e1'), (2, 'e2')]
+    [(1, "e1"), (2, "e2")]
 )
 
 # example 2, versioning with a parent
 
 
 class Parent(Base):
-    __tablename__ = 'parent'
+    __tablename__ = "parent"
     id = Column(Integer, primary_key=True)
-    child_id = Column(Integer, ForeignKey('child.id'))
-    child = relationship("Child", backref=backref('parent', uselist=False))
+    child_id = Column(Integer, ForeignKey("child.id"))
+    child = relationship("Child", backref=backref("parent", uselist=False))
 
 
 class Child(Versioned, Base):
-    __tablename__ = 'child'
+    __tablename__ = "child"
 
     id = Column(Integer, primary_key=True)
     data = Column(String)
 
     def new_version(self, session):
         # expire parent's reference to us
-        session.expire(self.parent, ['child'])
+        session.expire(self.parent, ["child"])
 
         # create new version
         Versioned.new_version(self, session)
@@ -92,18 +99,19 @@ class Child(Versioned, Base):
         # re-add ourselves to the parent
         self.parent.child = self
 
+
 Base.metadata.create_all(engine)
 
 session = Session()
 
-p1 = Parent(child=Child(data='c1'))
+p1 = Parent(child=Child(data="c1"))
 session.add(p1)
 session.commit()
 
-p1.child.data = 'c2'
+p1.child.data = "c2"
 session.commit()
 
 assert p1.child_id == 2
 assert session.query(Child.id, Child.data).order_by(Child.id).all() == (
-    [(1, 'c1'), (2, 'c2')]
+    [(1, "c1"), (2, "c2")]
 )

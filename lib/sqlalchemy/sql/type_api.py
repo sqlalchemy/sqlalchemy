@@ -49,7 +49,8 @@ class TypeEngine(Visitable):
 
 
         """
-        __slots__ = 'expr', 'type'
+
+        __slots__ = "expr", "type"
 
         default_comparator = None
 
@@ -57,16 +58,15 @@ class TypeEngine(Visitable):
             self.expr = expr
             self.type = expr.type
 
-        @util.dependencies('sqlalchemy.sql.default_comparator')
+        @util.dependencies("sqlalchemy.sql.default_comparator")
         def operate(self, default_comparator, op, *other, **kwargs):
             o = default_comparator.operator_lookup[op.__name__]
             return o[0](self.expr, op, *(other + o[1:]), **kwargs)
 
-        @util.dependencies('sqlalchemy.sql.default_comparator')
+        @util.dependencies("sqlalchemy.sql.default_comparator")
         def reverse_operate(self, default_comparator, op, other, **kwargs):
             o = default_comparator.operator_lookup[op.__name__]
-            return o[0](self.expr, op, other,
-                        reverse=True, *o[1:], **kwargs)
+            return o[0](self.expr, op, other, reverse=True, *o[1:], **kwargs)
 
         def _adapt_expression(self, op, other_comparator):
             """evaluate the return type of <self> <op> <othertype>,
@@ -97,7 +97,7 @@ class TypeEngine(Visitable):
             return op, self.type
 
         def __reduce__(self):
-            return _reconstitute_comparator, (self.expr, )
+            return _reconstitute_comparator, (self.expr,)
 
     hashable = True
     """Flag, if False, means values from this type aren't hashable.
@@ -313,8 +313,10 @@ class TypeEngine(Visitable):
 
         """
 
-        return self.__class__.column_expression.__code__ \
+        return (
+            self.__class__.column_expression.__code__
             is not TypeEngine.column_expression.__code__
+        )
 
     def bind_expression(self, bindvalue):
         """"Given a bind value (i.e. a :class:`.BindParameter` instance),
@@ -351,8 +353,10 @@ class TypeEngine(Visitable):
 
         """
 
-        return self.__class__.bind_expression.__code__ \
+        return (
+            self.__class__.bind_expression.__code__
             is not TypeEngine.bind_expression.__code__
+        )
 
     @staticmethod
     def _to_instance(cls_or_self):
@@ -441,9 +445,9 @@ class TypeEngine(Visitable):
 
         """
         try:
-            return dialect._type_memos[self]['impl']
+            return dialect._type_memos[self]["impl"]
         except KeyError:
-            return self._dialect_info(dialect)['impl']
+            return self._dialect_info(dialect)["impl"]
 
     def _unwrapped_dialect_impl(self, dialect):
         """Return the 'unwrapped' dialect impl for this type.
@@ -462,20 +466,20 @@ class TypeEngine(Visitable):
     def _cached_literal_processor(self, dialect):
         """Return a dialect-specific literal processor for this type."""
         try:
-            return dialect._type_memos[self]['literal']
+            return dialect._type_memos[self]["literal"]
         except KeyError:
             d = self._dialect_info(dialect)
-            d['literal'] = lp = d['impl'].literal_processor(dialect)
+            d["literal"] = lp = d["impl"].literal_processor(dialect)
             return lp
 
     def _cached_bind_processor(self, dialect):
         """Return a dialect-specific bind processor for this type."""
 
         try:
-            return dialect._type_memos[self]['bind']
+            return dialect._type_memos[self]["bind"]
         except KeyError:
             d = self._dialect_info(dialect)
-            d['bind'] = bp = d['impl'].bind_processor(dialect)
+            d["bind"] = bp = d["impl"].bind_processor(dialect)
             return bp
 
     def _cached_result_processor(self, dialect, coltype):
@@ -488,7 +492,7 @@ class TypeEngine(Visitable):
             # key assumption: DBAPI type codes are
             # constants.  Else this dictionary would
             # grow unbounded.
-            d[coltype] = rp = d['impl'].result_processor(dialect, coltype)
+            d[coltype] = rp = d["impl"].result_processor(dialect, coltype)
             return rp
 
     def _cached_custom_processor(self, dialect, key, fn):
@@ -496,7 +500,7 @@ class TypeEngine(Visitable):
             return dialect._type_memos[self][key]
         except KeyError:
             d = self._dialect_info(dialect)
-            impl = d['impl']
+            impl = d["impl"]
             d[key] = result = fn(impl)
             return result
 
@@ -513,7 +517,7 @@ class TypeEngine(Visitable):
                 impl = self.adapt(type(self))
             # this can't be self, else we create a cycle
             assert impl is not self
-            dialect._type_memos[self] = d = {'impl': impl}
+            dialect._type_memos[self] = d = {"impl": impl}
             return d
 
     def _gen_dialect_impl(self, dialect):
@@ -549,8 +553,10 @@ class TypeEngine(Visitable):
 
         """
         _coerced_type = _resolve_value_to_type(value)
-        if _coerced_type is NULLTYPE or _coerced_type._type_affinity \
-                is self._type_affinity:
+        if (
+            _coerced_type is NULLTYPE
+            or _coerced_type._type_affinity is self._type_affinity
+        ):
             return self
         else:
             return _coerced_type
@@ -586,8 +592,7 @@ class TypeEngine(Visitable):
 
     def __str__(self):
         if util.py2k:
-            return unicode(self.compile()).\
-                encode('ascii', 'backslashreplace')
+            return unicode(self.compile()).encode("ascii", "backslashreplace")
         else:
             return str(self.compile())
 
@@ -645,15 +650,16 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
        ``type_expression``, if it receives ``**kw`` in its signature.
 
     """
+
     __visit_name__ = "user_defined"
 
-    ensure_kwarg = 'get_col_spec'
+    ensure_kwarg = "get_col_spec"
 
     class Comparator(TypeEngine.Comparator):
         __slots__ = ()
 
         def _adapt_expression(self, op, other_comparator):
-            if hasattr(self.type, 'adapt_operator'):
+            if hasattr(self.type, "adapt_operator"):
                 util.warn_deprecated(
                     "UserDefinedType.adapt_operator is deprecated.  Create "
                     "a UserDefinedType.Comparator subclass instead which "
@@ -854,6 +860,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
        will cause the index value ``'foo'`` to be JSON encoded.
 
     """
+
     __visit_name__ = "type_decorator"
 
     def __init__(self, *args, **kwargs):
@@ -874,14 +881,16 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
 
-        if not hasattr(self.__class__, 'impl'):
-            raise AssertionError("TypeDecorator implementations "
-                                 "require a class-level variable "
-                                 "'impl' which refers to the class of "
-                                 "type being decorated")
+        if not hasattr(self.__class__, "impl"):
+            raise AssertionError(
+                "TypeDecorator implementations "
+                "require a class-level variable "
+                "'impl' which refers to the class of "
+                "type being decorated"
+            )
         self.impl = to_instance(self.__class__.impl, *args, **kwargs)
 
-    coerce_to_is_types = (util.NoneType, )
+    coerce_to_is_types = (util.NoneType,)
     """Specify those Python types which should be coerced at the expression
     level to "IS <constant>" when compared using ``==`` (and same for
     ``IS NOT`` in conjunction with ``!=``.
@@ -906,24 +915,27 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         __slots__ = ()
 
         def operate(self, op, *other, **kwargs):
-            kwargs['_python_is_types'] = self.expr.type.coerce_to_is_types
+            kwargs["_python_is_types"] = self.expr.type.coerce_to_is_types
             return super(TypeDecorator.Comparator, self).operate(
-                op, *other, **kwargs)
+                op, *other, **kwargs
+            )
 
         def reverse_operate(self, op, other, **kwargs):
-            kwargs['_python_is_types'] = self.expr.type.coerce_to_is_types
+            kwargs["_python_is_types"] = self.expr.type.coerce_to_is_types
             return super(TypeDecorator.Comparator, self).reverse_operate(
-                op, other, **kwargs)
+                op, other, **kwargs
+            )
 
     @property
     def comparator_factory(self):
         if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:
             return self.impl.comparator_factory
         else:
-            return type("TDComparator",
-                        (TypeDecorator.Comparator,
-                         self.impl.comparator_factory),
-                        {})
+            return type(
+                "TDComparator",
+                (TypeDecorator.Comparator, self.impl.comparator_factory),
+                {},
+            )
 
     def _gen_dialect_impl(self, dialect):
         """
@@ -939,10 +951,11 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         typedesc = self._unwrapped_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
-            raise AssertionError('Type object %s does not properly '
-                                 'implement the copy() method, it must '
-                                 'return an object of type %s' %
-                                 (self, self.__class__))
+            raise AssertionError(
+                "Type object %s does not properly "
+                "implement the copy() method, it must "
+                "return an object of type %s" % (self, self.__class__)
+            )
         tt.impl = typedesc
         return tt
 
@@ -1099,8 +1112,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
 
-        return self.__class__.process_bind_param.__code__ \
+        return (
+            self.__class__.process_bind_param.__code__
             is not TypeDecorator.process_bind_param.__code__
+        )
 
     @util.memoized_property
     def _has_literal_processor(self):
@@ -1109,8 +1124,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
 
-        return self.__class__.process_literal_param.__code__ \
+        return (
+            self.__class__.process_literal_param.__code__
             is not TypeDecorator.process_literal_param.__code__
+        )
 
     def literal_processor(self, dialect):
         """Provide a literal processing function for the given
@@ -1147,9 +1164,12 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         if process_param:
             impl_processor = self.impl.literal_processor(dialect)
             if impl_processor:
+
                 def process(value):
                     return impl_processor(process_param(value, dialect))
+
             else:
+
                 def process(value):
                     return process_param(value, dialect)
 
@@ -1180,10 +1200,12 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
             process_param = self.process_bind_param
             impl_processor = self.impl.bind_processor(dialect)
             if impl_processor:
+
                 def process(value):
                     return impl_processor(process_param(value, dialect))
 
             else:
+
                 def process(value):
                     return process_param(value, dialect)
 
@@ -1200,8 +1222,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         exception throw.
 
         """
-        return self.__class__.process_result_value.__code__ \
+        return (
+            self.__class__.process_result_value.__code__
             is not TypeDecorator.process_result_value.__code__
+        )
 
     def result_processor(self, dialect, coltype):
         """Provide a result value processing function for the given
@@ -1225,13 +1249,14 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         """
         if self._has_result_processor:
             process_value = self.process_result_value
-            impl_processor = self.impl.result_processor(dialect,
-                                                        coltype)
+            impl_processor = self.impl.result_processor(dialect, coltype)
             if impl_processor:
+
                 def process(value):
                     return process_value(impl_processor(value), dialect)
 
             else:
+
                 def process(value):
                     return process_value(value, dialect)
 
@@ -1397,7 +1422,8 @@ class Variant(TypeDecorator):
         if dialect_name in self.mapping:
             raise exc.ArgumentError(
                 "Dialect '%s' is already present in "
-                "the mapping for this Variant" % dialect_name)
+                "the mapping for this Variant" % dialect_name
+            )
         mapping = self.mapping.copy()
         mapping[dialect_name] = type_
         return Variant(self.impl, mapping)
@@ -1439,6 +1465,6 @@ def adapt_type(typeobj, colspecs):
     # but it turns out the originally given "generic" type
     # is actually a subclass of our resulting type, then we were already
     # given a more specific type than that required; so use that.
-    if (issubclass(typeobj.__class__, impltype)):
+    if issubclass(typeobj.__class__, impltype):
         return typeobj
     return typeobj.adapt(impltype)

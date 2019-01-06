@@ -1,9 +1,11 @@
 from __future__ import print_function
 
 import gevent.monkey
+
 gevent.monkey.patch_all()  # noqa
 
 import logging
+
 logging.basicConfig()  # noqa
 # logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
 from sqlalchemy import event
@@ -12,8 +14,9 @@ import sys
 from sqlalchemy import create_engine
 import traceback
 
-engine = create_engine('mysql+pymysql://scott:tiger@localhost/test',
-                       pool_size=50, max_overflow=0)
+engine = create_engine(
+    "mysql+pymysql://scott:tiger@localhost/test", pool_size=50, max_overflow=0
+)
 
 
 @event.listens_for(engine, "connect")
@@ -32,10 +35,10 @@ def worker():
 
         except Exception:
             # traceback.print_exc()
-            sys.stderr.write('X')
+            sys.stderr.write("X")
         else:
             conn.close()
-            sys.stderr.write('.')
+            sys.stderr.write(".")
 
 
 def main():

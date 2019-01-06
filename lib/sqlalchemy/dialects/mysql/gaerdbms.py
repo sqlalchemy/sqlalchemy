@@ -44,11 +44,10 @@ from sqlalchemy.util import warn_deprecated
 
 
 def _is_dev_environment():
-    return os.environ.get('SERVER_SOFTWARE', '').startswith('Development/')
+    return os.environ.get("SERVER_SOFTWARE", "").startswith("Development/")
 
 
 class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
-
     @classmethod
     def dbapi(cls):
 
@@ -69,12 +68,15 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
         if _is_dev_environment():
             from google.appengine.api import rdbms_mysqldb
+
             return rdbms_mysqldb
-        elif apiproxy_stub_map.apiproxy.GetStub('rdbms'):
+        elif apiproxy_stub_map.apiproxy.GetStub("rdbms"):
             from google.storage.speckle.python.api import rdbms_apiproxy
+
             return rdbms_apiproxy
         else:
             from google.storage.speckle.python.api import rdbms_googleapi
+
             return rdbms_googleapi
 
     @classmethod
@@ -87,8 +89,8 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         if not _is_dev_environment():
             # 'dsn' and 'instance' are because we are skipping
             # the traditional google.api.rdbms wrapper
-            opts['dsn'] = ''
-            opts['instance'] = url.query['instance']
+            opts["dsn"] = ""
+            opts["instance"] = url.query["instance"]
         return [], opts
 
     def _extract_error_code(self, exception):
@@ -98,5 +100,6 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         code = match.group(1) or match.group(2) if match else None
         if code:
             return int(code)
+
 
 dialect = MySQLDialect_gaerdbms

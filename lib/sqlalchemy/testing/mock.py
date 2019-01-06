@@ -18,4 +18,5 @@ else:
     except ImportError:
         raise ImportError(
             "SQLAlchemy's test suite requires the "
-            "'mock' library as of 0.8.2.")
+            "'mock' library as of 0.8.2."
+        )

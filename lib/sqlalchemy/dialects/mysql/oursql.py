@@ -24,7 +24,7 @@ handling.
 
 import re
 
-from .base import (BIT, MySQLDialect, MySQLExecutionContext)
+from .base import BIT, MySQLDialect, MySQLExecutionContext
 from ... import types as sqltypes, util
 
 
@@ -36,14 +36,13 @@ class _oursqlBIT(BIT):
 
 
 class MySQLExecutionContext_oursql(MySQLExecutionContext):
-
     @property
     def plain_query(self):
-        return self.execution_options.get('_oursql_plain_query', False)
+        return self.execution_options.get("_oursql_plain_query", False)
 
 
 class MySQLDialect_oursql(MySQLDialect):
-    driver = 'oursql'
+    driver = "oursql"
 
     if util.py2k:
         supports_unicode_binds = True
@@ -56,16 +55,12 @@ class MySQLDialect_oursql(MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_oursql
 
     colspecs = util.update_copy(
-        MySQLDialect.colspecs,
-        {
-            sqltypes.Time: sqltypes.Time,
-            BIT: _oursqlBIT,
-        }
+        MySQLDialect.colspecs, {sqltypes.Time: sqltypes.Time, BIT: _oursqlBIT}
     )
 
     @classmethod
     def dbapi(cls):
-        return __import__('oursql')
+        return __import__("oursql")
 
     def do_execute(self, cursor, statement, parameters, context=None):
         """Provide an implementation of
@@ -77,7 +72,7 @@ class MySQLDialect_oursql(MySQLDialect):
             cursor.execute(statement, parameters)
 
     def do_begin(self, connection):
-        connection.cursor().execute('BEGIN', plain_query=True)
+        connection.cursor().execute("BEGIN", plain_query=True)
 
     def _xa_query(self, connection, query, xid):
         if util.py2k:
@@ -85,10 +80,12 @@ class MySQLDialect_oursql(MySQLDialect):
         else:
             charset = self._connection_charset
             arg = connection.connection._escape_string(
-                xid.encode(charset)).decode(charset)
+                xid.encode(charset)
+            ).decode(charset)
         arg = "'%s'" % arg
-        connection.execution_options(
-            _oursql_plain_query=True).execute(query % arg)
+        connection.execution_options(_oursql_plain_query=True).execute(
+            query % arg
+        )
 
     # Because mysql is bad, these methods have to be
     # reimplemented to use _PlainQuery. Basically, some queries
@@ -96,23 +93,25 @@ class MySQLDialect_oursql(MySQLDialect):
     # the parameterized query API, or refuse to be parameterized
     # in the first place.
     def do_begin_twophase(self, connection, xid):
-        self._xa_query(connection, 'XA BEGIN %s', xid)
+        self._xa_query(connection, "XA BEGIN %s", xid)
 
     def do_prepare_twophase(self, connection, xid):
-        self._xa_query(connection, 'XA END %s', xid)
-        self._xa_query(connection, 'XA PREPARE %s', xid)
+        self._xa_query(connection, "XA END %s", xid)
+        self._xa_query(connection, "XA PREPARE %s", xid)
 
-    def do_rollback_twophase(self, connection, xid, is_prepared=True,
-                             recover=False):
+    def do_rollback_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
         if not is_prepared:
-            self._xa_query(connection, 'XA END %s', xid)
-        self._xa_query(connection, 'XA ROLLBACK %s', xid)
+            self._xa_query(connection, "XA END %s", xid)
+        self._xa_query(connection, "XA ROLLBACK %s", xid)
 
-    def do_commit_twophase(self, connection, xid, is_prepared=True,
-                           recover=False):
+    def do_commit_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
         if not is_prepared:
             self.do_prepare_twophase(connection, xid)
-        self._xa_query(connection, 'XA COMMIT %s', xid)
+        self._xa_query(connection, "XA COMMIT %s", xid)
 
     # Q: why didn't we need all these "plain_query" overrides earlier ?
     # am i on a newer/older version of OurSQL ?
@@ -121,7 +120,7 @@ class MySQLDialect_oursql(MySQLDialect):
             self,
             connection.connect().execution_options(_oursql_plain_query=True),
             table_name,
-            schema
+            schema,
         )
 
     def get_table_options(self, connection, table_name, schema=None, **kw):
@@ -154,7 +153,7 @@ class MySQLDialect_oursql(MySQLDialect):
         return MySQLDialect.get_table_names(
             self,
             connection.connect().execution_options(_oursql_plain_query=True),
-            schema
+            schema,
         )
 
     def get_schema_names(self, connection, **kw):
@@ -166,57 +165,69 @@ class MySQLDialect_oursql(MySQLDialect):
 
     def initialize(self, connection):
         return MySQLDialect.initialize(
-            self,
-            connection.execution_options(_oursql_plain_query=True)
+            self, connection.execution_options(_oursql_plain_query=True)
         )
 
-    def _show_create_table(self, connection, table, charset=None,
-                           full_name=None):
+    def _show_create_table(
+        self, connection, table, charset=None, full_name=None
+    ):
         return MySQLDialect._show_create_table(
             self,
-            connection.contextual_connect(close_with_result=True).
-            execution_options(_oursql_plain_query=True),
-            table, charset, full_name
+            connection.contextual_connect(
+                close_with_result=True
+            ).execution_options(_oursql_plain_query=True),
+            table,
+            charset,
+            full_name,
         )
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.ProgrammingError):
-            return e.errno is None and 'cursor' not in e.args[1] \
-                and e.args[1].endswith('closed')
+            return (
+                e.errno is None
+                and "cursor" not in e.args[1]
+                and e.args[1].endswith("closed")
+            )
         else:
             return e.errno in (2006, 2013, 2014, 2045, 2055)
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(database='db', username='user',
-                                          password='passwd')
+        opts = url.translate_connect_args(
+            database="db", username="user", password="passwd"
+        )
         opts.update(url.query)
 
-        util.coerce_kw_type(opts, 'port', int)
-        util.coerce_kw_type(opts, 'compress', bool)
-        util.coerce_kw_type(opts, 'autoping', bool)
-        util.coerce_kw_type(opts, 'raise_on_warnings', bool)
+        util.coerce_kw_type(opts, "port", int)
+        util.coerce_kw_type(opts, "compress", bool)
+        util.coerce_kw_type(opts, "autoping", bool)
+        util.coerce_kw_type(opts, "raise_on_warnings", bool)
 
-        util.coerce_kw_type(opts, 'default_charset', bool)
-        if opts.pop('default_charset', False):
-            opts['charset'] = None
+        util.coerce_kw_type(opts, "default_charset", bool)
+        if opts.pop("default_charset", False):
+            opts["charset"] = None
         else:
-            util.coerce_kw_type(opts, 'charset', str)
-        opts['use_unicode'] = opts.get('use_unicode', True)
-        util.coerce_kw_type(opts, 'use_unicode', bool)
+            util.coerce_kw_type(opts, "charset", str)
+        opts["use_unicode"] = opts.get("use_unicode", True)
+        util.coerce_kw_type(opts, "use_unicode", bool)
 
         # FOUND_ROWS must be set in CLIENT_FLAGS to enable
         # supports_sane_rowcount.
-        opts.setdefault('found_rows', True)
+        opts.setdefault("found_rows", True)
 
         ssl = {}
-        for key in ['ssl_ca', 'ssl_key', 'ssl_cert',
-                    'ssl_capath', 'ssl_cipher']:
+        for key in [
+            "ssl_ca",
+            "ssl_key",
+            "ssl_cert",
+            "ssl_capath",
+            "ssl_cipher",
+        ]:
             if key in opts:
                 ssl[key[4:]] = opts[key]
                 util.coerce_kw_type(ssl, key[4:], str)
                 del opts[key]
         if ssl:
-            opts['ssl'] = ssl
+            opts["ssl"] = ssl
 
         return [[], opts]
 

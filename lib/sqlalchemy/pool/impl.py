@@ -30,8 +30,15 @@ class QueuePool(Pool):
 
     """
 
-    def __init__(self, creator, pool_size=5, max_overflow=10, timeout=30, use_lifo=False,
-                 **kw):
+    def __init__(
+        self,
+        creator,
+        pool_size=5,
+        max_overflow=10,
+        timeout=30,
+        use_lifo=False,
+        **kw
+    ):
         r"""
         Construct a QueuePool.
 
@@ -117,8 +124,10 @@ class QueuePool(Pool):
             else:
                 raise exc.TimeoutError(
                     "QueuePool limit of size %d overflow %d reached, "
-                    "connection timed out, timeout %d" %
-                    (self.size(), self.overflow(), self._timeout), code="3o7r")
+                    "connection timed out, timeout %d"
+                    % (self.size(), self.overflow(), self._timeout),
+                    code="3o7r",
+                )
 
         if self._inc_overflow():
             try:
@@ -150,15 +159,19 @@ class QueuePool(Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(self._creator, pool_size=self._pool.maxsize,
-                              max_overflow=self._max_overflow,
-                              timeout=self._timeout,
-                              recycle=self._recycle, echo=self.echo,
-                              logging_name=self._orig_logging_name,
-                              use_threadlocal=self._use_threadlocal,
-                              reset_on_return=self._reset_on_return,
-                              _dispatch=self.dispatch,
-                              dialect=self._dialect)
+        return self.__class__(
+            self._creator,
+            pool_size=self._pool.maxsize,
+            max_overflow=self._max_overflow,
+            timeout=self._timeout,
+            recycle=self._recycle,
+            echo=self.echo,
+            logging_name=self._orig_logging_name,
+            use_threadlocal=self._use_threadlocal,
+            reset_on_return=self._reset_on_return,
+            _dispatch=self.dispatch,
+            dialect=self._dialect,
+        )
 
     def dispose(self):
         while True:
@@ -172,12 +185,17 @@ class QueuePool(Pool):
         self.logger.info("Pool disposed. %s", self.status())
 
     def status(self):
-        return "Pool size: %d  Connections in pool: %d "\
-            "Current Overflow: %d Current Checked out "\
-            "connections: %d" % (self.size(),
-                                 self.checkedin(),
-                                 self.overflow(),
-                                 self.checkedout())
+        return (
+            "Pool size: %d  Connections in pool: %d "
+            "Current Overflow: %d Current Checked out "
+            "connections: %d"
+            % (
+                self.size(),
+                self.checkedin(),
+                self.overflow(),
+                self.checkedout(),
+            )
+        )
 
     def size(self):
         return self._pool.maxsize
@@ -221,14 +239,16 @@ class NullPool(Pool):
     def recreate(self):
         self.logger.info("Pool recreating")
 
-        return self.__class__(self._creator,
-                              recycle=self._recycle,
-                              echo=self.echo,
-                              logging_name=self._orig_logging_name,
-                              use_threadlocal=self._use_threadlocal,
-                              reset_on_return=self._reset_on_return,
-                              _dispatch=self.dispatch,
-                              dialect=self._dialect)
+        return self.__class__(
+            self._creator,
+            recycle=self._recycle,
+            echo=self.echo,
+            logging_name=self._orig_logging_name,
+            use_threadlocal=self._use_threadlocal,
+            reset_on_return=self._reset_on_return,
+            _dispatch=self.dispatch,
+            dialect=self._dialect,
+        )
 
     def dispose(self):
         pass
@@ -266,7 +286,7 @@ class SingletonThreadPool(Pool):
     """
 
     def __init__(self, creator, pool_size=5, **kw):
-        kw['use_threadlocal'] = True
+        kw["use_threadlocal"] = True
         Pool.__init__(self, creator, **kw)
         self._conn = threading.local()
         self._all_conns = set()
@@ -274,15 +294,17 @@ class SingletonThreadPool(Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(self._creator,
-                              pool_size=self.size,
-                              recycle=self._recycle,
-                              echo=self.echo,
-                              logging_name=self._orig_logging_name,
-                              use_threadlocal=self._use_threadlocal,
-                              reset_on_return=self._reset_on_return,
-                              _dispatch=self.dispatch,
-                              dialect=self._dialect)
+        return self.__class__(
+            self._creator,
+            pool_size=self.size,
+            recycle=self._recycle,
+            echo=self.echo,
+            logging_name=self._orig_logging_name,
+            use_threadlocal=self._use_threadlocal,
+            reset_on_return=self._reset_on_return,
+            _dispatch=self.dispatch,
+            dialect=self._dialect,
+        )
 
     def dispose(self):
         """Dispose of this pool."""
@@ -303,8 +325,10 @@ class SingletonThreadPool(Pool):
             c.close()
 
     def status(self):
-        return "SingletonThreadPool id:%d size: %d" % \
-            (id(self), len(self._all_conns))
+        return "SingletonThreadPool id:%d size: %d" % (
+            id(self),
+            len(self._all_conns),
+        )
 
     def _do_return_conn(self, conn):
         pass
@@ -347,20 +371,22 @@ class StaticPool(Pool):
         return "StaticPool"
 
     def dispose(self):
-        if '_conn' in self.__dict__:
+        if "_conn" in self.__dict__:
             self._conn.close()
             self._conn = None
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(creator=self._creator,
-                              recycle=self._recycle,
-                              use_threadlocal=self._use_threadlocal,
-                              reset_on_return=self._reset_on_return,
-                              echo=self.echo,
-                              logging_name=self._orig_logging_name,
-                              _dispatch=self.dispatch,
-                              dialect=self._dialect)
+        return self.__class__(
+            creator=self._creator,
+            recycle=self._recycle,
+            use_threadlocal=self._use_threadlocal,
+            reset_on_return=self._reset_on_return,
+            echo=self.echo,
+            logging_name=self._orig_logging_name,
+            _dispatch=self.dispatch,
+            dialect=self._dialect,
+        )
 
     def _create_connection(self):
         return self._conn
@@ -391,7 +417,7 @@ class AssertionPool(Pool):
     def __init__(self, *args, **kw):
         self._conn = None
         self._checked_out = False
-        self._store_traceback = kw.pop('store_traceback', True)
+        self._store_traceback = kw.pop("store_traceback", True)
         self._checkout_traceback = None
         Pool.__init__(self, *args, **kw)
 
@@ -411,18 +437,22 @@ class AssertionPool(Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return self.__class__(self._creator, echo=self.echo,
-                              logging_name=self._orig_logging_name,
-                              _dispatch=self.dispatch,
-                              dialect=self._dialect)
+        return self.__class__(
+            self._creator,
+            echo=self.echo,
+            logging_name=self._orig_logging_name,
+            _dispatch=self.dispatch,
+            dialect=self._dialect,
+        )
 
     def _do_get(self):
         if self._checked_out:
             if self._checkout_traceback:
-                suffix = ' at:\n%s' % ''.join(
-                    chop_traceback(self._checkout_traceback))
+                suffix = " at:\n%s" % "".join(
+                    chop_traceback(self._checkout_traceback)
+                )
             else:
-                suffix = ''
+                suffix = ""
             raise AssertionError("connection is already checked out" + suffix)
 
         if not self._conn:

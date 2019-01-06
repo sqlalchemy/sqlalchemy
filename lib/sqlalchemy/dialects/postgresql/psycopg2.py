@@ -353,10 +353,17 @@ from ... import processors
 from ...engine import result as _result
 from ...sql import expression
 from ... import types as sqltypes
-from .base import PGDialect, PGCompiler, \
-    PGIdentifierPreparer, PGExecutionContext, \
-    ENUM, _DECIMAL_TYPES, _FLOAT_TYPES,\
-    _INT_TYPES, UUID
+from .base import (
+    PGDialect,
+    PGCompiler,
+    PGIdentifierPreparer,
+    PGExecutionContext,
+    ENUM,
+    _DECIMAL_TYPES,
+    _FLOAT_TYPES,
+    _INT_TYPES,
+    UUID,
+)
 from .hstore import HSTORE
 from .json import JSON, JSONB
 
@@ -366,7 +373,7 @@ except ImportError:
     _python_UUID = None
 
 
-logger = logging.getLogger('sqlalchemy.dialects.postgresql')
+logger = logging.getLogger("sqlalchemy.dialects.postgresql")
 
 
 class _PGNumeric(sqltypes.Numeric):
@@ -377,14 +384,15 @@ class _PGNumeric(sqltypes.Numeric):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(
-                    decimal.Decimal,
-                    self._effective_decimal_return_scale)
+                    decimal.Decimal, self._effective_decimal_return_scale
+                )
             elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
                 raise exc.InvalidRequestError(
-                    "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype
+                )
         else:
             if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
@@ -393,7 +401,8 @@ class _PGNumeric(sqltypes.Numeric):
                 return processors.to_float
             else:
                 raise exc.InvalidRequestError(
-                    "Unknown PG numeric type: %d" % coltype)
+                    "Unknown PG numeric type: %d" % coltype
+                )
 
 
 class _PGEnum(ENUM):
@@ -421,7 +430,6 @@ class _PGHStore(HSTORE):
 
 
 class _PGJSON(JSON):
-
     def result_processor(self, dialect, coltype):
         if dialect._has_native_json:
             return None
@@ -430,7 +438,6 @@ class _PGJSON(JSON):
 
 
 class _PGJSONB(JSONB):
-
     def result_processor(self, dialect, coltype):
         if dialect._has_native_jsonb:
             return None
@@ -447,14 +454,17 @@ class _PGUUID(UUID):
                 if value is not None:
                     value = _python_UUID(value)
                 return value
+
             return process
 
     def result_processor(self, dialect, coltype):
         if not self.as_uuid and dialect.use_native_uuid:
+
             def process(value):
                 if value is not None:
                     value = str(value)
                 return value
+
             return process
 
 
@@ -465,8 +475,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
     def create_server_side_cursor(self):
         # use server-side cursors:
         # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-        ident = "c_%s_%s" % (hex(id(self))[2:],
-                             hex(_server_side_id())[2:])
+        ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
         return self._dbapi_connection.cursor(ident)
 
     def get_result_proxy(self):
@@ -497,13 +506,13 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
 
 
 class PGDialect_psycopg2(PGDialect):
-    driver = 'psycopg2'
+    driver = "psycopg2"
     if util.py2k:
         supports_unicode_statements = False
 
     supports_server_side_cursors = True
 
-    default_paramstyle = 'pyformat'
+    default_paramstyle = "pyformat"
     # set to true based on psycopg2 version
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2
@@ -516,16 +525,16 @@ class PGDialect_psycopg2(PGDialect):
         native_jsonb=(2, 5, 4),
         sane_multi_rowcount=(2, 0, 9),
         array_oid=(2, 4, 3),
-        hstore_adapter=(2, 4)
+        hstore_adapter=(2, 4),
     )
 
     _has_native_hstore = False
     _has_native_json = False
     _has_native_jsonb = False
 
-    engine_config_types = PGDialect.engine_config_types.union([
-        ('use_native_unicode', util.asbool),
-    ])
+    engine_config_types = PGDialect.engine_config_types.union(
+        [("use_native_unicode", util.asbool)]
+    )
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -537,15 +546,20 @@ class PGDialect_psycopg2(PGDialect):
             JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
-            UUID: _PGUUID
-        }
+            UUID: _PGUUID,
+        },
     )
 
-    def __init__(self, server_side_cursors=False, use_native_unicode=True,
-                 client_encoding=None,
-                 use_native_hstore=True, use_native_uuid=True,
-                 use_batch_mode=False,
-                 **kwargs):
+    def __init__(
+        self,
+        server_side_cursors=False,
+        use_native_unicode=True,
+        client_encoding=None,
+        use_native_hstore=True,
+        use_native_uuid=True,
+        use_batch_mode=False,
+        **kwargs
+    ):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
@@ -554,65 +568,70 @@ class PGDialect_psycopg2(PGDialect):
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
         self.psycopg2_batch_mode = use_batch_mode
-        if self.dbapi and hasattr(self.dbapi, '__version__'):
-            m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?',
-                         self.dbapi.__version__)
+        if self.dbapi and hasattr(self.dbapi, "__version__"):
+            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
             if m:
                 self.psycopg2_version = tuple(
-                    int(x)
-                    for x in m.group(1, 2, 3)
-                    if x is not None)
+                    int(x) for x in m.group(1, 2, 3) if x is not None
+                )
 
     def initialize(self, connection):
         super(PGDialect_psycopg2, self).initialize(connection)
-        self._has_native_hstore = self.use_native_hstore and \
-            self._hstore_oids(connection.connection) \
-            is not None
-        self._has_native_json = \
-            self.psycopg2_version >= self.FEATURE_VERSION_MAP['native_json']
-        self._has_native_jsonb = \
-            self.psycopg2_version >= self.FEATURE_VERSION_MAP['native_jsonb']
+        self._has_native_hstore = (
+            self.use_native_hstore
+            and self._hstore_oids(connection.connection) is not None
+        )
+        self._has_native_json = (
+            self.psycopg2_version >= self.FEATURE_VERSION_MAP["native_json"]
+        )
+        self._has_native_jsonb = (
+            self.psycopg2_version >= self.FEATURE_VERSION_MAP["native_jsonb"]
+        )
 
         # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
-        self.supports_sane_multi_rowcount = \
-            self.psycopg2_version >= \
-            self.FEATURE_VERSION_MAP['sane_multi_rowcount'] and \
-            not self.psycopg2_batch_mode
+        self.supports_sane_multi_rowcount = (
+            self.psycopg2_version
+            >= self.FEATURE_VERSION_MAP["sane_multi_rowcount"]
+            and not self.psycopg2_batch_mode
+        )
 
     @classmethod
     def dbapi(cls):
         import psycopg2
+
         return psycopg2
 
     @classmethod
     def _psycopg2_extensions(cls):
         from psycopg2 import extensions
+
         return extensions
 
     @classmethod
     def _psycopg2_extras(cls):
         from psycopg2 import extras
+
         return extras
 
     @util.memoized_property
     def _isolation_lookup(self):
         extensions = self._psycopg2_extensions()
         return {
-            'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT,
-            'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
-            'READ UNCOMMITTED': extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
-            'REPEATABLE READ': extensions.ISOLATION_LEVEL_REPEATABLE_READ,
-            'SERIALIZABLE': extensions.ISOLATION_LEVEL_SERIALIZABLE
+            "AUTOCOMMIT": extensions.ISOLATION_LEVEL_AUTOCOMMIT,
+            "READ COMMITTED": extensions.ISOLATION_LEVEL_READ_COMMITTED,
+            "READ UNCOMMITTED": extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
+            "REPEATABLE READ": extensions.ISOLATION_LEVEL_REPEATABLE_READ,
+            "SERIALIZABLE": extensions.ISOLATION_LEVEL_SERIALIZABLE,
         }
 
     def set_isolation_level(self, connection, level):
         try:
-            level = self._isolation_lookup[level.replace('_', ' ')]
+            level = self._isolation_lookup[level.replace("_", " ")]
         except KeyError:
             raise exc.ArgumentError(
                 "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s" %
-                (level, self.name, ", ".join(self._isolation_lookup))
+                "Valid isolation levels for %s are %s"
+                % (level, self.name, ", ".join(self._isolation_lookup))
             )
 
         connection.set_isolation_level(level)
@@ -623,54 +642,72 @@ class PGDialect_psycopg2(PGDialect):
 
         fns = []
         if self.client_encoding is not None:
+
             def on_connect(conn):
                 conn.set_client_encoding(self.client_encoding)
+
             fns.append(on_connect)
 
         if self.isolation_level is not None:
+
             def on_connect(conn):
                 self.set_isolation_level(conn, self.isolation_level)
+
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_uuid:
+
             def on_connect(conn):
                 extras.register_uuid(None, conn)
+
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_unicode:
+
             def on_connect(conn):
                 extensions.register_type(extensions.UNICODE, conn)
                 extensions.register_type(extensions.UNICODEARRAY, conn)
+
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_hstore:
+
             def on_connect(conn):
                 hstore_oids = self._hstore_oids(conn)
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
-                    kw = {'oid': oid}
+                    kw = {"oid": oid}
                     if util.py2k:
-                        kw['unicode'] = True
-                    if self.psycopg2_version >= \
-                            self.FEATURE_VERSION_MAP['array_oid']:
-                        kw['array_oid'] = array_oid
+                        kw["unicode"] = True
+                    if (
+                        self.psycopg2_version
+                        >= self.FEATURE_VERSION_MAP["array_oid"]
+                    ):
+                        kw["array_oid"] = array_oid
                     extras.register_hstore(conn, **kw)
+
             fns.append(on_connect)
 
         if self.dbapi and self._json_deserializer:
+
             def on_connect(conn):
                 if self._has_native_json:
                     extras.register_default_json(
-                        conn, loads=self._json_deserializer)
+                        conn, loads=self._json_deserializer
+                    )
                 if self._has_native_jsonb:
                     extras.register_default_jsonb(
-                        conn, loads=self._json_deserializer)
+                        conn, loads=self._json_deserializer
+                    )
+
             fns.append(on_connect)
 
         if fns:
+
             def on_connect(conn):
                 for fn in fns:
                     fn(conn)
+
             return on_connect
         else:
             return None
@@ -684,7 +721,7 @@ class PGDialect_psycopg2(PGDialect):
 
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
-        if self.psycopg2_version >= self.FEATURE_VERSION_MAP['hstore_adapter']:
+        if self.psycopg2_version >= self.FEATURE_VERSION_MAP["hstore_adapter"]:
             extras = self._psycopg2_extras()
             oids = extras.HstoreAdapter.get_oids(conn)
             if oids is not None and oids[0]:
@@ -692,9 +729,9 @@ class PGDialect_psycopg2(PGDialect):
         return None
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
-        if 'port' in opts:
-            opts['port'] = int(opts['port'])
+        opts = url.translate_connect_args(username="user")
+        if "port" in opts:
+            opts["port"] = int(opts["port"])
         opts.update(url.query)
         return ([], opts)
 
@@ -704,7 +741,7 @@ class PGDialect_psycopg2(PGDialect):
             # present on old psycopg2 versions.   Also,
             # this flag doesn't actually help in a lot of disconnect
             # situations, so don't rely on it.
-            if getattr(connection, 'closed', False):
+            if getattr(connection, "closed", False):
                 return True
 
             # checks based on strings.  in the case that .closed
@@ -713,28 +750,29 @@ class PGDialect_psycopg2(PGDialect):
             for msg in [
                 # these error messages from libpq: interfaces/libpq/fe-misc.c
                 # and interfaces/libpq/fe-secure.c.
-                'terminating connection',
-                'closed the connection',
-                'connection not open',
-                'could not receive data from server',
-                'could not send data to server',
+                "terminating connection",
+                "closed the connection",
+                "connection not open",
+                "could not receive data from server",
+                "could not send data to server",
                 # psycopg2 client errors, psycopg2/conenction.h,
                 # psycopg2/cursor.h
-                'connection already closed',
-                'cursor already closed',
+                "connection already closed",
+                "cursor already closed",
                 # not sure where this path is originally from, it may
                 # be obsolete.   It really says "losed", not "closed".
-                'losed the connection unexpectedly',
+                "losed the connection unexpectedly",
                 # these can occur in newer SSL
-                'connection has been closed unexpectedly',
-                'SSL SYSCALL error: Bad file descriptor',
-                'SSL SYSCALL error: EOF detected',
-                'SSL error: decryption failed or bad record mac',
-                'SSL SYSCALL error: Operation timed out',
+                "connection has been closed unexpectedly",
+                "SSL SYSCALL error: Bad file descriptor",
+                "SSL SYSCALL error: EOF detected",
+                "SSL error: decryption failed or bad record mac",
+                "SSL SYSCALL error: Operation timed out",
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
                     return True
         return False
+
 
 dialect = PGDialect_psycopg2

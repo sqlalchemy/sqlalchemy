@@ -1,10 +1,28 @@
 # coding: utf-8
 
 from sqlalchemy.testing import eq_, is_
-from sqlalchemy import Column, Table, DDL, MetaData, TIMESTAMP, \
-    DefaultClause, String, Integer, Text, UnicodeText, SmallInteger,\
-    NCHAR, LargeBinary, DateTime, select, UniqueConstraint, Unicode,\
-    BigInteger, Index, ForeignKey
+from sqlalchemy import (
+    Column,
+    Table,
+    DDL,
+    MetaData,
+    TIMESTAMP,
+    DefaultClause,
+    String,
+    Integer,
+    Text,
+    UnicodeText,
+    SmallInteger,
+    NCHAR,
+    LargeBinary,
+    DateTime,
+    select,
+    UniqueConstraint,
+    Unicode,
+    BigInteger,
+    Index,
+    ForeignKey,
+)
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy import event
 from sqlalchemy import sql
@@ -19,39 +37,38 @@ import re
 
 
 class TypeReflectionTest(fixtures.TestBase):
-    __only_on__ = 'mysql'
+    __only_on__ = "mysql"
     __backend__ = True
 
     @testing.provide_metadata
     def _run_test(self, specs, attributes):
-        columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
+        columns = [Column("c%i" % (i + 1), t[0]) for i, t in enumerate(specs)]
 
         # Early 5.0 releases seem to report more "general" for columns
         # in a view, e.g. char -> varchar, tinyblob -> mediumblob
         use_views = testing.db.dialect.server_version_info > (5, 0, 10)
 
         m = self.metadata
-        Table('mysql_types', m, *columns)
+        Table("mysql_types", m, *columns)
 
         if use_views:
             event.listen(
-                m, 'after_create',
+                m,
+                "after_create",
                 DDL(
-                    'CREATE OR REPLACE VIEW mysql_types_v '
-                    'AS SELECT * from mysql_types')
+                    "CREATE OR REPLACE VIEW mysql_types_v "
+                    "AS SELECT * from mysql_types"
+                ),
             )
             event.listen(
-                m, 'before_drop',
-                DDL("DROP VIEW IF EXISTS mysql_types_v")
+                m, "before_drop", DDL("DROP VIEW IF EXISTS mysql_types_v")
             )
         m.create_all()
 
         m2 = MetaData(testing.db)
-        tables = [
-            Table('mysql_types', m2, autoload=True)
-        ]
+        tables = [Table("mysql_types", m2, autoload=True)]
         if use_views:
-            tables.append(Table('mysql_types_v', m2, autoload=True))
+            tables.append(Table("mysql_types_v", m2, autoload=True))
 
         for table in tables:
             for i, (reflected_col, spec) in enumerate(zip(table.c, specs)):
@@ -64,13 +81,14 @@ class TypeReflectionTest(fixtures.TestBase):
                         getattr(reflected_type, attr),
                         getattr(expected_spec, attr),
                         "Column %s: Attribute %s value of %s does not "
-                        "match %s for type %s" % (
+                        "match %s for type %s"
+                        % (
                             "c%i" % (i + 1),
                             attr,
                             getattr(reflected_type, attr),
                             getattr(expected_spec, attr),
-                            spec[0]
-                        )
+                            spec[0],
+                        ),
                     )
 
     def test_time_types(self):
@@ -91,13 +109,12 @@ class TypeReflectionTest(fixtures.TestBase):
                 else:
                     specs.append((type_(), type_()))
 
-        specs.extend([
-            (TIMESTAMP(), mysql.TIMESTAMP()),
-            (DateTime(), mysql.DATETIME()),
-        ])
+        specs.extend(
+            [(TIMESTAMP(), mysql.TIMESTAMP()), (DateTime(), mysql.DATETIME())]
+        )
 
         # note 'timezone' should always be None on both
-        self._run_test(specs, ['fsp', 'timezone'])
+        self._run_test(specs, ["fsp", "timezone"])
 
     def test_year_types(self):
         specs = [
@@ -105,7 +122,7 @@ class TypeReflectionTest(fixtures.TestBase):
             (mysql.YEAR(display_width=4), mysql.YEAR(display_width=4)),
         ]
 
-        self._run_test(specs, ['display_width'])
+        self._run_test(specs, ["display_width"])
 
     def test_string_types(self):
         specs = [
@@ -119,25 +136,29 @@ class TypeReflectionTest(fixtures.TestBase):
             (mysql.MSChar(3), mysql.MSChar(3)),
             (NCHAR(2), mysql.MSChar(2)),
             (mysql.MSNChar(2), mysql.MSChar(2)),
-            (mysql.MSNVarChar(22), mysql.MSString(22),),
+            (mysql.MSNVarChar(22), mysql.MSString(22)),
         ]
-        self._run_test(specs, ['length'])
+        self._run_test(specs, ["length"])
 
     def test_integer_types(self):
         specs = []
         for type_ in [
-                mysql.TINYINT, mysql.SMALLINT,
-                mysql.MEDIUMINT, mysql.INTEGER, mysql.BIGINT]:
+            mysql.TINYINT,
+            mysql.SMALLINT,
+            mysql.MEDIUMINT,
+            mysql.INTEGER,
+            mysql.BIGINT,
+        ]:
             for display_width in [None, 4, 7]:
                 for unsigned in [False, True]:
                     for zerofill in [None, True]:
                         kw = {}
                         if display_width:
-                            kw['display_width'] = display_width
+                            kw["display_width"] = display_width
                         if unsigned is not None:
-                            kw['unsigned'] = unsigned
+                            kw["unsigned"] = unsigned
                         if zerofill is not None:
-                            kw['zerofill'] = zerofill
+                            kw["zerofill"] = zerofill
 
                         zerofill = bool(zerofill)
                         source_type = type_(**kw)
@@ -148,7 +169,7 @@ class TypeReflectionTest(fixtures.TestBase):
                                 mysql.SMALLINT: 6,
                                 mysql.TINYINT: 4,
                                 mysql.INTEGER: 11,
-                                mysql.BIGINT: 20
+                                mysql.BIGINT: 20,
                             }[type_]
 
                         if zerofill:
@@ -157,24 +178,24 @@ class TypeReflectionTest(fixtures.TestBase):
                         expected_type = type_(
                             display_width=display_width,
                             unsigned=unsigned,
-                            zerofill=zerofill
+                            zerofill=zerofill,
                         )
-                        specs.append(
-                            (source_type, expected_type)
-                        )
+                        specs.append((source_type, expected_type))
 
-        specs.extend([
-            (SmallInteger(), mysql.SMALLINT(display_width=6)),
-            (Integer(), mysql.INTEGER(display_width=11)),
-            (BigInteger, mysql.BIGINT(display_width=20))
-        ])
-        self._run_test(specs, ['display_width', 'unsigned', 'zerofill'])
+        specs.extend(
+            [
+                (SmallInteger(), mysql.SMALLINT(display_width=6)),
+                (Integer(), mysql.INTEGER(display_width=11)),
+                (BigInteger, mysql.BIGINT(display_width=20)),
+            ]
+        )
+        self._run_test(specs, ["display_width", "unsigned", "zerofill"])
 
     def test_binary_types(self):
         specs = [
-            (LargeBinary(3), mysql.TINYBLOB(), ),
+            (LargeBinary(3), mysql.TINYBLOB()),
             (LargeBinary(), mysql.BLOB()),
-            (mysql.MSBinary(3), mysql.MSBinary(3), ),
+            (mysql.MSBinary(3), mysql.MSBinary(3)),
             (mysql.MSVarBinary(3), mysql.MSVarBinary(3)),
             (mysql.MSTinyBlob(), mysql.MSTinyBlob()),
             (mysql.MSBlob(), mysql.MSBlob()),
@@ -184,118 +205,127 @@ class TypeReflectionTest(fixtures.TestBase):
         ]
         self._run_test(specs, [])
 
-    @testing.uses_deprecated('Manually quoting ENUM value literals')
+    @testing.uses_deprecated("Manually quoting ENUM value literals")
     def test_legacy_enum_types(self):
 
-        specs = [
-            (mysql.ENUM("''", "'fleem'"), mysql.ENUM("''", "'fleem'")),
-        ]
+        specs = [(mysql.ENUM("''", "'fleem'"), mysql.ENUM("''", "'fleem'"))]
 
-        self._run_test(specs, ['enums'])
+        self._run_test(specs, ["enums"])
 
 
 class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    __only_on__ = 'mysql'
+    __only_on__ = "mysql"
     __backend__ = True
 
     def test_default_reflection(self):
         """Test reflection of column defaults."""
 
         from sqlalchemy.dialects.mysql import VARCHAR
+
         def_table = Table(
-            'mysql_def',
+            "mysql_def",
             MetaData(testing.db),
-            Column('c1', VARCHAR(10, collation='utf8_unicode_ci'),
-                   DefaultClause(''), nullable=False),
-            Column('c2', String(10), DefaultClause('0')),
-            Column('c3', String(10), DefaultClause('abc')),
-            Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00')),
-            Column('c5', TIMESTAMP),
-            Column('c6', TIMESTAMP,
-                   DefaultClause(sql.text("CURRENT_TIMESTAMP "
-                                          "ON UPDATE CURRENT_TIMESTAMP"))),
+            Column(
+                "c1",
+                VARCHAR(10, collation="utf8_unicode_ci"),
+                DefaultClause(""),
+                nullable=False,
+            ),
+            Column("c2", String(10), DefaultClause("0")),
+            Column("c3", String(10), DefaultClause("abc")),
+            Column("c4", TIMESTAMP, DefaultClause("2009-04-05 12:00:00")),
+            Column("c5", TIMESTAMP),
+            Column(
+                "c6",
+                TIMESTAMP,
+                DefaultClause(
+                    sql.text(
+                        "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
+                    )
+                ),
+            ),
         )
         def_table.create()
         try:
-            reflected = Table('mysql_def', MetaData(testing.db),
-                              autoload=True)
+            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
         finally:
             def_table.drop()
-        assert def_table.c.c1.server_default.arg == ''
-        assert def_table.c.c2.server_default.arg == '0'
-        assert def_table.c.c3.server_default.arg == 'abc'
-        assert def_table.c.c4.server_default.arg \
-            == '2009-04-05 12:00:00'
+        assert def_table.c.c1.server_default.arg == ""
+        assert def_table.c.c2.server_default.arg == "0"
+        assert def_table.c.c3.server_default.arg == "abc"
+        assert def_table.c.c4.server_default.arg == "2009-04-05 12:00:00"
         assert str(reflected.c.c1.server_default.arg) == "''"
         assert str(reflected.c.c2.server_default.arg) == "'0'"
         assert str(reflected.c.c3.server_default.arg) == "'abc'"
-        assert str(reflected.c.c4.server_default.arg) \
-            == "'2009-04-05 12:00:00'"
+        assert (
+            str(reflected.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
+        )
         assert reflected.c.c5.default is None
         assert reflected.c.c5.server_default is None
         assert reflected.c.c6.default is None
         assert re.match(
             r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
-            str(reflected.c.c6.server_default.arg).upper()
+            str(reflected.c.c6.server_default.arg).upper(),
         )
         reflected.create()
         try:
-            reflected2 = Table('mysql_def', MetaData(testing.db),
-                               autoload=True)
+            reflected2 = Table(
+                "mysql_def", MetaData(testing.db), autoload=True
+            )
         finally:
             reflected.drop()
         assert str(reflected2.c.c1.server_default.arg) == "''"
         assert str(reflected2.c.c2.server_default.arg) == "'0'"
         assert str(reflected2.c.c3.server_default.arg) == "'abc'"
-        assert str(reflected2.c.c4.server_default.arg) \
-            == "'2009-04-05 12:00:00'"
+        assert (
+            str(reflected2.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
+        )
         assert reflected.c.c5.default is None
         assert reflected.c.c5.server_default is None
         assert reflected.c.c6.default is None
         assert re.match(
             r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
-            str(reflected.c.c6.server_default.arg).upper()
+            str(reflected.c.c6.server_default.arg).upper(),
         )
 
     def test_reflection_with_table_options(self):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
 
         def_table = Table(
-            'mysql_def', MetaData(testing.db),
-            Column('c1', Integer()),
-            mysql_engine='MEMORY',
+            "mysql_def",
+            MetaData(testing.db),
+            Column("c1", Integer()),
+            mysql_engine="MEMORY",
             comment=comment,
-            mysql_default_charset='utf8',
-            mysql_auto_increment='5',
-            mysql_avg_row_length='3',
-            mysql_password='secret',
-            mysql_connection='fish',
+            mysql_default_charset="utf8",
+            mysql_auto_increment="5",
+            mysql_avg_row_length="3",
+            mysql_password="secret",
+            mysql_connection="fish",
         )
 
         def_table.create()
         try:
-            reflected = Table(
-                'mysql_def', MetaData(testing.db),
-                autoload=True)
+            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
         finally:
             def_table.drop()
 
-        assert def_table.kwargs['mysql_engine'] == 'MEMORY'
+        assert def_table.kwargs["mysql_engine"] == "MEMORY"
         assert def_table.comment == comment
-        assert def_table.kwargs['mysql_default_charset'] == 'utf8'
-        assert def_table.kwargs['mysql_auto_increment'] == '5'
-        assert def_table.kwargs['mysql_avg_row_length'] == '3'
-        assert def_table.kwargs['mysql_password'] == 'secret'
-        assert def_table.kwargs['mysql_connection'] == 'fish'
+        assert def_table.kwargs["mysql_default_charset"] == "utf8"
+        assert def_table.kwargs["mysql_auto_increment"] == "5"
+        assert def_table.kwargs["mysql_avg_row_length"] == "3"
+        assert def_table.kwargs["mysql_password"] == "secret"
+        assert def_table.kwargs["mysql_connection"] == "fish"
 
-        assert reflected.kwargs['mysql_engine'] == 'MEMORY'
+        assert reflected.kwargs["mysql_engine"] == "MEMORY"
 
         assert reflected.comment == comment
-        assert reflected.kwargs['mysql_comment'] == comment
-        assert reflected.kwargs['mysql_default charset'] == 'utf8'
-        assert reflected.kwargs['mysql_avg_row_length'] == '3'
-        assert reflected.kwargs['mysql_connection'] == 'fish'
+        assert reflected.kwargs["mysql_comment"] == comment
+        assert reflected.kwargs["mysql_default charset"] == "utf8"
+        assert reflected.kwargs["mysql_avg_row_length"] == "3"
+        assert reflected.kwargs["mysql_connection"] == "fish"
 
         # This field doesn't seem to be returned by mysql itself.
         # assert reflected.kwargs['mysql_password'] == 'secret'
@@ -307,23 +337,32 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         """Test reflection of include_columns to be sure they respect case."""
 
         case_table = Table(
-            'mysql_case', MetaData(testing.db),
-            Column('c1', String(10)),
-            Column('C2', String(10)),
-            Column('C3', String(10)))
+            "mysql_case",
+            MetaData(testing.db),
+            Column("c1", String(10)),
+            Column("C2", String(10)),
+            Column("C3", String(10)),
+        )
 
         try:
             case_table.create()
-            reflected = Table('mysql_case', MetaData(testing.db),
-                              autoload=True, include_columns=['c1', 'C2'])
+            reflected = Table(
+                "mysql_case",
+                MetaData(testing.db),
+                autoload=True,
+                include_columns=["c1", "C2"],
+            )
             for t in case_table, reflected:
-                assert 'c1' in t.c.keys()
-                assert 'C2' in t.c.keys()
+                assert "c1" in t.c.keys()
+                assert "C2" in t.c.keys()
             reflected2 = Table(
-                'mysql_case', MetaData(testing.db),
-                autoload=True, include_columns=['c1', 'c2'])
-            assert 'c1' in reflected2.c.keys()
-            for c in ['c2', 'C2', 'C3']:
+                "mysql_case",
+                MetaData(testing.db),
+                autoload=True,
+                include_columns=["c1", "c2"],
+            )
+            assert "c1" in reflected2.c.keys()
+            for c in ["c2", "C2", "C3"]:
                 assert c not in reflected2.c.keys()
         finally:
             case_table.drop()
@@ -331,71 +370,110 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_autoincrement(self):
         meta = MetaData(testing.db)
         try:
-            Table('ai_1', meta,
-                  Column('int_y', Integer, primary_key=True,
-                         autoincrement=True),
-                  Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True),
-                  mysql_engine='MyISAM')
-            Table('ai_2', meta,
-                  Column('int_y', Integer, primary_key=True,
-                         autoincrement=True),
-                  Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True),
-                  mysql_engine='MyISAM')
-            Table('ai_3', meta,
-                  Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True, autoincrement=False),
-                  Column('int_y', Integer, primary_key=True,
-                         autoincrement=True),
-                  mysql_engine='MyISAM')
-            Table('ai_4', meta,
-                  Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True, autoincrement=False),
-                  Column('int_n2', Integer, DefaultClause('0'),
-                         primary_key=True, autoincrement=False),
-                  mysql_engine='MyISAM')
-            Table('ai_5', meta,
-                  Column('int_y', Integer, primary_key=True,
-                         autoincrement=True),
-                  Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True, autoincrement=False),
-                  mysql_engine='MyISAM')
-            Table('ai_6', meta,
-                  Column('o1', String(1), DefaultClause('x'),
-                         primary_key=True),
-                  Column('int_y', Integer, primary_key=True,
-                         autoincrement=True),
-                  mysql_engine='MyISAM')
-            Table('ai_7', meta,
-                  Column('o1', String(1), DefaultClause('x'),
-                         primary_key=True),
-                  Column('o2', String(1), DefaultClause('x'),
-                         primary_key=True),
-                  Column('int_y', Integer, primary_key=True,
-                         autoincrement=True),
-                  mysql_engine='MyISAM')
-            Table('ai_8', meta,
-                  Column('o1', String(1), DefaultClause('x'),
-                         primary_key=True),
-                  Column('o2', String(1), DefaultClause('x'),
-                         primary_key=True),
-                  mysql_engine='MyISAM')
+            Table(
+                "ai_1",
+                meta,
+                Column("int_y", Integer, primary_key=True, autoincrement=True),
+                Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_2",
+                meta,
+                Column("int_y", Integer, primary_key=True, autoincrement=True),
+                Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_3",
+                meta,
+                Column(
+                    "int_n",
+                    Integer,
+                    DefaultClause("0"),
+                    primary_key=True,
+                    autoincrement=False,
+                ),
+                Column("int_y", Integer, primary_key=True, autoincrement=True),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_4",
+                meta,
+                Column(
+                    "int_n",
+                    Integer,
+                    DefaultClause("0"),
+                    primary_key=True,
+                    autoincrement=False,
+                ),
+                Column(
+                    "int_n2",
+                    Integer,
+                    DefaultClause("0"),
+                    primary_key=True,
+                    autoincrement=False,
+                ),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_5",
+                meta,
+                Column("int_y", Integer, primary_key=True, autoincrement=True),
+                Column(
+                    "int_n",
+                    Integer,
+                    DefaultClause("0"),
+                    primary_key=True,
+                    autoincrement=False,
+                ),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_6",
+                meta,
+                Column("o1", String(1), DefaultClause("x"), primary_key=True),
+                Column("int_y", Integer, primary_key=True, autoincrement=True),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_7",
+                meta,
+                Column("o1", String(1), DefaultClause("x"), primary_key=True),
+                Column("o2", String(1), DefaultClause("x"), primary_key=True),
+                Column("int_y", Integer, primary_key=True, autoincrement=True),
+                mysql_engine="MyISAM",
+            )
+            Table(
+                "ai_8",
+                meta,
+                Column("o1", String(1), DefaultClause("x"), primary_key=True),
+                Column("o2", String(1), DefaultClause("x"), primary_key=True),
+                mysql_engine="MyISAM",
+            )
             meta.create_all()
 
-            table_names = ['ai_1', 'ai_2', 'ai_3', 'ai_4',
-                           'ai_5', 'ai_6', 'ai_7', 'ai_8']
+            table_names = [
+                "ai_1",
+                "ai_2",
+                "ai_3",
+                "ai_4",
+                "ai_5",
+                "ai_6",
+                "ai_7",
+                "ai_8",
+            ]
             mr = MetaData(testing.db)
             mr.reflect(only=table_names)
 
             for tbl in [mr.tables[name] for name in table_names]:
                 for c in tbl.c:
-                    if c.name.startswith('int_y'):
+                    if c.name.startswith("int_y"):
                         assert c.autoincrement
-                    elif c.name.startswith('int_n'):
+                    elif c.name.startswith("int_n"):
                         assert not c.autoincrement
                 tbl.insert().execute()
-                if 'int_y' in tbl.c:
+                if "int_y" in tbl.c:
                     assert select([tbl.c.int_y]).scalar() == 1
                     assert list(tbl.select().execute().first()).count(1) == 1
                 else:
@@ -405,35 +483,35 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_view_reflection(self):
-        Table('x',
-              self.metadata,
-              Column('a', Integer),
-              Column('b', String(50)))
+        Table(
+            "x", self.metadata, Column("a", Integer), Column("b", String(50))
+        )
         self.metadata.create_all()
 
         with testing.db.connect() as conn:
             conn.execute("CREATE VIEW v1 AS SELECT * FROM x")
+            conn.execute("CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x")
             conn.execute(
-                "CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x")
+                "CREATE ALGORITHM=UNDEFINED VIEW v3 AS SELECT * FROM x"
+            )
             conn.execute(
-                "CREATE ALGORITHM=UNDEFINED VIEW v3 AS SELECT * FROM x")
-            conn.execute(
-                "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x")
+                "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x"
+            )
 
         @event.listens_for(self.metadata, "before_drop")
         def cleanup(*arg, **kw):
             with testing.db.connect() as conn:
-                for v in ['v1', 'v2', 'v3', 'v4']:
+                for v in ["v1", "v2", "v3", "v4"]:
                     conn.execute("DROP VIEW %s" % v)
 
         insp = inspect(testing.db)
-        for v in ['v1', 'v2', 'v3', 'v4']:
+        for v in ["v1", "v2", "v3", "v4"]:
             eq_(
                 [
-                    (col['name'], col['type'].__class__)
+                    (col["name"], col["type"].__class__)
                     for col in insp.get_columns(v)
                 ],
-                [('a', mysql.INTEGER), ('b', mysql.VARCHAR)]
+                [("a", mysql.INTEGER), ("b", mysql.VARCHAR)],
             )
 
     @testing.provide_metadata
@@ -448,7 +526,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.db.connect() as conn:
             conn.execute("CREATE TABLE test_t1 (id INTEGER)")
             conn.execute("CREATE TABLE test_t2 (id INTEGER)")
-            conn.execute("CREATE VIEW test_v AS SELECT id FROM test_t1" )
+            conn.execute("CREATE VIEW test_v AS SELECT id FROM test_t1")
             conn.execute("DROP TABLE test_t1")
 
             m = MetaData()
@@ -457,20 +535,23 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 "reflected: .* references invalid table"
             ):
                 m.reflect(views=True, bind=conn)
-            eq_(m.tables['test_t2'].name, "test_t2")
+            eq_(m.tables["test_t2"].name, "test_t2")
 
             assert_raises_message(
                 exc.UnreflectableTableError,
                 "references invalid table",
-                Table, 'test_v', MetaData(), autoload_with=conn
+                Table,
+                "test_v",
+                MetaData(),
+                autoload_with=conn,
             )
 
-    @testing.exclude('mysql', '<', (5, 0, 0), 'no information_schema support')
+    @testing.exclude("mysql", "<", (5, 0, 0), "no information_schema support")
     def test_system_views(self):
         dialect = testing.db.dialect
         connection = testing.db.connect()
         view_names = dialect.get_view_names(connection, "information_schema")
-        self.assert_('TABLES' in view_names)
+        self.assert_("TABLES" in view_names)
 
     @testing.provide_metadata
     def test_nullable_reflection(self):
@@ -486,35 +567,41 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         row = testing.db.execute(
             "show variables like '%%explicit_defaults_for_timestamp%%'"
         ).first()
-        explicit_defaults_for_timestamp = row[1].lower() in ('on', '1', 'true')
+        explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
 
         reflected = []
-        for idx, cols in enumerate([
+        for idx, cols in enumerate(
             [
-                "x INTEGER NULL",
-                "y INTEGER NOT NULL",
-                "z INTEGER",
-                "q TIMESTAMP NULL"
-            ],
-
-            ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
-            ["r TIMESTAMP NOT NULL"],
-            ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
-            ["t TIMESTAMP"],
-            ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"]
-        ]):
+                [
+                    "x INTEGER NULL",
+                    "y INTEGER NOT NULL",
+                    "z INTEGER",
+                    "q TIMESTAMP NULL",
+                ],
+                ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
+                ["r TIMESTAMP NOT NULL"],
+                ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
+                ["t TIMESTAMP"],
+                ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
+            ]
+        ):
             Table("nn_t%d" % idx, meta)  # to allow DROP
 
-            testing.db.execute("""
+            testing.db.execute(
+                """
                 CREATE TABLE nn_t%d (
                     %s
                 )
-            """ % (idx, ", \n".join(cols)))
+            """
+                % (idx, ", \n".join(cols))
+            )
 
             reflected.extend(
                 {
-                    "name": d['name'], "nullable": d['nullable'],
-                    "default": d['default']}
+                    "name": d["name"],
+                    "nullable": d["nullable"],
+                    "default": d["default"],
+                }
                 for d in inspect(testing.db).get_columns("nn_t%d" % idx)
             )
 
@@ -526,29 +613,38 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             reflected,
             [
-                {'name': 'x', 'nullable': True, 'default': None},
-                {'name': 'y', 'nullable': False, 'default': None},
-                {'name': 'z', 'nullable': True, 'default': None},
-                {'name': 'q', 'nullable': True, 'default': None},
-                {'name': 'p', 'nullable': True,
-                 'default': current_timestamp},
-                {'name': 'r', 'nullable': False,
-                 'default': None if explicit_defaults_for_timestamp else
-                 "%(current_timestamp)s ON UPDATE %(current_timestamp)s" %
-                 {"current_timestamp": current_timestamp}},
-                {'name': 's', 'nullable': False,
-                 'default': current_timestamp},
-                {'name': 't',
-                 'nullable': True if explicit_defaults_for_timestamp else
-                 False,
-                 'default': None if explicit_defaults_for_timestamp else
-                 "%(current_timestamp)s ON UPDATE %(current_timestamp)s" %
-                 {"current_timestamp": current_timestamp}},
-                {'name': 'u',
-                 'nullable': True if explicit_defaults_for_timestamp else
-                 False,
-                 'default': current_timestamp},
-            ]
+                {"name": "x", "nullable": True, "default": None},
+                {"name": "y", "nullable": False, "default": None},
+                {"name": "z", "nullable": True, "default": None},
+                {"name": "q", "nullable": True, "default": None},
+                {"name": "p", "nullable": True, "default": current_timestamp},
+                {
+                    "name": "r",
+                    "nullable": False,
+                    "default": None
+                    if explicit_defaults_for_timestamp
+                    else "%(current_timestamp)s ON UPDATE %(current_timestamp)s"
+                    % {"current_timestamp": current_timestamp},
+                },
+                {"name": "s", "nullable": False, "default": current_timestamp},
+                {
+                    "name": "t",
+                    "nullable": True
+                    if explicit_defaults_for_timestamp
+                    else False,
+                    "default": None
+                    if explicit_defaults_for_timestamp
+                    else "%(current_timestamp)s ON UPDATE %(current_timestamp)s"
+                    % {"current_timestamp": current_timestamp},
+                },
+                {
+                    "name": "u",
+                    "nullable": True
+                    if explicit_defaults_for_timestamp
+                    else False,
+                    "default": current_timestamp,
+                },
+            ],
         )
 
     @testing.provide_metadata
@@ -556,95 +652,101 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         insp = inspect(testing.db)
 
         meta = self.metadata
-        uc_table = Table('mysql_uc', meta,
-                         Column('a', String(10)),
-                         UniqueConstraint('a', name='uc_a'))
+        uc_table = Table(
+            "mysql_uc",
+            meta,
+            Column("a", String(10)),
+            UniqueConstraint("a", name="uc_a"),
+        )
 
         uc_table.create()
 
         # MySQL converts unique constraints into unique indexes.
         # separately we get both
-        indexes = dict((i['name'], i) for i in insp.get_indexes('mysql_uc'))
-        constraints = set(i['name']
-                          for i in insp.get_unique_constraints('mysql_uc'))
+        indexes = dict((i["name"], i) for i in insp.get_indexes("mysql_uc"))
+        constraints = set(
+            i["name"] for i in insp.get_unique_constraints("mysql_uc")
+        )
 
-        self.assert_('uc_a' in indexes)
-        self.assert_(indexes['uc_a']['unique'])
-        self.assert_('uc_a' in constraints)
+        self.assert_("uc_a" in indexes)
+        self.assert_(indexes["uc_a"]["unique"])
+        self.assert_("uc_a" in constraints)
 
         # reflection here favors the unique index, as that's the
         # more "official" MySQL construct
-        reflected = Table('mysql_uc', MetaData(testing.db), autoload=True)
+        reflected = Table("mysql_uc", MetaData(testing.db), autoload=True)
 
         indexes = dict((i.name, i) for i in reflected.indexes)
         constraints = set(uc.name for uc in reflected.constraints)
 
-        self.assert_('uc_a' in indexes)
-        self.assert_(indexes['uc_a'].unique)
-        self.assert_('uc_a' not in constraints)
+        self.assert_("uc_a" in indexes)
+        self.assert_(indexes["uc_a"].unique)
+        self.assert_("uc_a" not in constraints)
 
     @testing.provide_metadata
     def test_reflect_fulltext(self):
         mt = Table(
-            "mytable", self.metadata,
+            "mytable",
+            self.metadata,
             Column("id", Integer, primary_key=True),
             Column("textdata", String(50)),
-            mysql_engine='InnoDB'
+            mysql_engine="InnoDB",
         )
         Index("textdata_ix", mt.c.textdata, mysql_prefix="FULLTEXT")
         self.metadata.create_all(testing.db)
 
-        mt = Table(
-            "mytable", MetaData(), autoload_with=testing.db
-        )
+        mt = Table("mytable", MetaData(), autoload_with=testing.db)
         idx = list(mt.indexes)[0]
         eq_(idx.name, "textdata_ix")
-        eq_(idx.dialect_options['mysql']['prefix'], "FULLTEXT")
+        eq_(idx.dialect_options["mysql"]["prefix"], "FULLTEXT")
         self.assert_compile(
             CreateIndex(idx),
-            "CREATE FULLTEXT INDEX textdata_ix ON mytable (textdata)"
+            "CREATE FULLTEXT INDEX textdata_ix ON mytable (textdata)",
         )
 
     @testing.requires.mysql_ngram_fulltext
     @testing.provide_metadata
     def test_reflect_fulltext_comment(self):
         mt = Table(
-            "mytable", self.metadata,
+            "mytable",
+            self.metadata,
             Column("id", Integer, primary_key=True),
             Column("textdata", String(50)),
-            mysql_engine='InnoDB'
+            mysql_engine="InnoDB",
         )
         Index(
-            "textdata_ix", mt.c.textdata,
-            mysql_prefix="FULLTEXT", mysql_with_parser="ngram")
+            "textdata_ix",
+            mt.c.textdata,
+            mysql_prefix="FULLTEXT",
+            mysql_with_parser="ngram",
+        )
 
         self.metadata.create_all(testing.db)
 
-        mt = Table(
-            "mytable", MetaData(), autoload_with=testing.db
-        )
+        mt = Table("mytable", MetaData(), autoload_with=testing.db)
         idx = list(mt.indexes)[0]
         eq_(idx.name, "textdata_ix")
-        eq_(idx.dialect_options['mysql']['prefix'], "FULLTEXT")
-        eq_(idx.dialect_options['mysql']['with_parser'], "ngram")
+        eq_(idx.dialect_options["mysql"]["prefix"], "FULLTEXT")
+        eq_(idx.dialect_options["mysql"]["with_parser"], "ngram")
         self.assert_compile(
             CreateIndex(idx),
             "CREATE FULLTEXT INDEX textdata_ix ON mytable "
-            "(textdata) WITH PARSER ngram"
+            "(textdata) WITH PARSER ngram",
         )
 
     @testing.provide_metadata
     def test_non_column_index(self):
         m1 = self.metadata
         t1 = Table(
-            'add_ix', m1, Column('x', String(50)), mysql_engine='InnoDB')
-        Index('foo_idx', t1.c.x.desc())
+            "add_ix", m1, Column("x", String(50)), mysql_engine="InnoDB"
+        )
+        Index("foo_idx", t1.c.x.desc())
         m1.create_all()
 
         insp = inspect(testing.db)
         eq_(
             insp.get_indexes("add_ix"),
-            [{'name': 'foo_idx', 'column_names': ['x'], 'unique': False}]
+            [{"name": "foo_idx", "column_names": ["x"], "unique": False}],
         )
 
     @testing.provide_metadata
@@ -655,60 +757,80 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         m1 = self.metadata
 
         Table(
-            'Track', m1, Column('TrackID', Integer, primary_key=True),
-            mysql_engine='InnoDB'
+            "Track",
+            m1,
+            Column("TrackID", Integer, primary_key=True),
+            mysql_engine="InnoDB",
         )
         Table(
-            'Track', m1, Column('TrackID', Integer, primary_key=True),
+            "Track",
+            m1,
+            Column("TrackID", Integer, primary_key=True),
             schema=testing.config.test_schema,
-            mysql_engine='InnoDB'
+            mysql_engine="InnoDB",
         )
         Table(
-            'PlaylistTrack', m1, Column('id', Integer, primary_key=True),
-            Column('TrackID',
-                   ForeignKey('Track.TrackID', name='FK_PlaylistTrackId')),
+            "PlaylistTrack",
+            m1,
+            Column("id", Integer, primary_key=True),
             Column(
-                'TTrackID',
-                ForeignKey(
-                    '%s.Track.TrackID' % (testing.config.test_schema,),
-                    name='FK_PlaylistTTrackId'
-                )
+                "TrackID",
+                ForeignKey("Track.TrackID", name="FK_PlaylistTrackId"),
             ),
-            mysql_engine='InnoDB'
+            Column(
+                "TTrackID",
+                ForeignKey(
+                    "%s.Track.TrackID" % (testing.config.test_schema,),
+                    name="FK_PlaylistTTrackId",
+                ),
+            ),
+            mysql_engine="InnoDB",
         )
         m1.create_all()
 
         if testing.db.dialect._casing in (1, 2):
             eq_(
-                inspect(testing.db).get_foreign_keys('PlaylistTrack'),
+                inspect(testing.db).get_foreign_keys("PlaylistTrack"),
                 [
-                    {'name': 'FK_PlaylistTTrackId',
-                     'constrained_columns': ['TTrackID'],
-                     'referred_schema': testing.config.test_schema,
-                     'referred_table': 'track',
-                     'referred_columns': ['TrackID'], 'options': {}},
-                    {'name': 'FK_PlaylistTrackId',
-                     'constrained_columns': ['TrackID'],
-                     'referred_schema': None,
-                     'referred_table': 'track',
-                     'referred_columns': ['TrackID'], 'options': {}}
-                ]
+                    {
+                        "name": "FK_PlaylistTTrackId",
+                        "constrained_columns": ["TTrackID"],
+                        "referred_schema": testing.config.test_schema,
+                        "referred_table": "track",
+                        "referred_columns": ["TrackID"],
+                        "options": {},
+                    },
+                    {
+                        "name": "FK_PlaylistTrackId",
+                        "constrained_columns": ["TrackID"],
+                        "referred_schema": None,
+                        "referred_table": "track",
+                        "referred_columns": ["TrackID"],
+                        "options": {},
+                    },
+                ],
             )
         else:
             eq_(
-                inspect(testing.db).get_foreign_keys('PlaylistTrack'),
+                inspect(testing.db).get_foreign_keys("PlaylistTrack"),
                 [
-                    {'name': 'FK_PlaylistTTrackId',
-                     'constrained_columns': ['TTrackID'],
-                     'referred_schema': testing.config.test_schema,
-                     'referred_table': 'Track',
-                     'referred_columns': ['TrackID'], 'options': {}},
-                    {'name': 'FK_PlaylistTrackId',
-                     'constrained_columns': ['TrackID'],
-                     'referred_schema': None,
-                     'referred_table': 'Track',
-                     'referred_columns': ['TrackID'], 'options': {}}
-                ]
+                    {
+                        "name": "FK_PlaylistTTrackId",
+                        "constrained_columns": ["TTrackID"],
+                        "referred_schema": testing.config.test_schema,
+                        "referred_table": "Track",
+                        "referred_columns": ["TrackID"],
+                        "options": {},
+                    },
+                    {
+                        "name": "FK_PlaylistTrackId",
+                        "constrained_columns": ["TrackID"],
+                        "referred_schema": None,
+                        "referred_table": "Track",
+                        "referred_columns": ["TrackID"],
+                        "options": {},
+                    },
+                ],
             )
 
     @testing.requires.mysql_fully_case_sensitive
@@ -719,48 +841,52 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         # is case sensitive
         m = self.metadata
         Table(
-            't1', m,
-            Column('some_id', Integer, primary_key=True),
-            mysql_engine='InnoDB'
-
+            "t1",
+            m,
+            Column("some_id", Integer, primary_key=True),
+            mysql_engine="InnoDB",
         )
 
         Table(
-            'T1', m,
-            Column('Some_Id', Integer, primary_key=True),
-            mysql_engine='InnoDB'
+            "T1",
+            m,
+            Column("Some_Id", Integer, primary_key=True),
+            mysql_engine="InnoDB",
         )
 
         Table(
-            't2', m,
-            Column('id', Integer, primary_key=True),
-            Column('t1id', ForeignKey('t1.some_id', name='t1id_fk')),
-            Column('cap_t1id', ForeignKey('T1.Some_Id', name='cap_t1id_fk')),
-            mysql_engine='InnoDB'
+            "t2",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("t1id", ForeignKey("t1.some_id", name="t1id_fk")),
+            Column("cap_t1id", ForeignKey("T1.Some_Id", name="cap_t1id_fk")),
+            mysql_engine="InnoDB",
         )
         m.create_all(testing.db)
 
         eq_(
             dict(
-                (rec['name'], rec)
-                for rec in inspect(testing.db).get_foreign_keys('t2')
+                (rec["name"], rec)
+                for rec in inspect(testing.db).get_foreign_keys("t2")
             ),
             {
-                'cap_t1id_fk': {
-                    'name': 'cap_t1id_fk',
-                    'constrained_columns': ['cap_t1id'],
-                    'referred_schema': None,
-                    'referred_table': 'T1',
-                    'referred_columns': ['Some_Id'], 'options': {}
+                "cap_t1id_fk": {
+                    "name": "cap_t1id_fk",
+                    "constrained_columns": ["cap_t1id"],
+                    "referred_schema": None,
+                    "referred_table": "T1",
+                    "referred_columns": ["Some_Id"],
+                    "options": {},
                 },
-                't1id_fk': {
-                    'name': 't1id_fk',
-                    'constrained_columns': ['t1id'],
-                    'referred_schema': None,
-                    'referred_table': 't1',
-                    'referred_columns': ['some_id'], 'options': {}
+                "t1id_fk": {
+                    "name": "t1id_fk",
+                    "constrained_columns": ["t1id"],
+                    "referred_schema": None,
+                    "referred_table": "t1",
+                    "referred_columns": ["some_id"],
+                    "options": {},
                 },
-            }
+            },
         )
 
 
@@ -770,37 +896,39 @@ class RawReflectionTest(fixtures.TestBase):
     def setup(self):
         dialect = mysql.dialect()
         self.parser = _reflection.MySQLTableDefinitionParser(
-            dialect, dialect.identifier_preparer)
+            dialect, dialect.identifier_preparer
+        )
 
     def test_key_reflection(self):
         regex = self.parser._re_key
 
-        assert regex.match('  PRIMARY KEY (`id`),')
-        assert regex.match('  PRIMARY KEY USING BTREE (`id`),')
-        assert regex.match('  PRIMARY KEY (`id`) USING BTREE,')
-        assert regex.match('  PRIMARY KEY (`id`)')
-        assert regex.match('  PRIMARY KEY USING BTREE (`id`)')
-        assert regex.match('  PRIMARY KEY (`id`) USING BTREE')
+        assert regex.match("  PRIMARY KEY (`id`),")
+        assert regex.match("  PRIMARY KEY USING BTREE (`id`),")
+        assert regex.match("  PRIMARY KEY (`id`) USING BTREE,")
+        assert regex.match("  PRIMARY KEY (`id`)")
+        assert regex.match("  PRIMARY KEY USING BTREE (`id`)")
+        assert regex.match("  PRIMARY KEY (`id`) USING BTREE")
         assert regex.match(
-            '  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE 16')
+            "  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE 16"
+        )
         assert regex.match(
-            '  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE=16')
+            "  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE=16"
+        )
         assert regex.match(
-            '  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE  = 16')
+            "  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE  = 16"
+        )
         assert not regex.match(
-            '  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE = = 16')
-        assert regex.match(
-            "  KEY (`id`) USING BTREE COMMENT 'comment'")
+            "  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE = = 16"
+        )
+        assert regex.match("  KEY (`id`) USING BTREE COMMENT 'comment'")
         # `SHOW CREATE TABLE` returns COMMENT '''comment'
         # after creating table with COMMENT '\'comment'
+        assert regex.match("  KEY (`id`) USING BTREE COMMENT '''comment'")
+        assert regex.match("  KEY (`id`) USING BTREE COMMENT 'comment'''")
+        assert regex.match("  KEY (`id`) USING BTREE COMMENT 'prefix''suffix'")
         assert regex.match(
-            "  KEY (`id`) USING BTREE COMMENT '''comment'")
-        assert regex.match(
-            "  KEY (`id`) USING BTREE COMMENT 'comment'''")
-        assert regex.match(
-            "  KEY (`id`) USING BTREE COMMENT 'prefix''suffix'")
-        assert regex.match(
-            "  KEY (`id`) USING BTREE COMMENT 'prefix''text''suffix'")
+            "  KEY (`id`) USING BTREE COMMENT 'prefix''text''suffix'"
+        )
         # https://forums.mysql.com/read.php?20,567102,567111#msg-567111
         # "It means if the MySQL version >= 501, execute what's in the comment"
         assert regex.match(
@@ -811,65 +939,74 @@ class RawReflectionTest(fixtures.TestBase):
     def test_key_reflection_columns(self):
         regex = self.parser._re_key
         exprs = self.parser._re_keyexprs
-        m = regex.match(
-            "  KEY (`id`) USING BTREE COMMENT '''comment'")
-        eq_(m.group("columns"), '`id`')
+        m = regex.match("  KEY (`id`) USING BTREE COMMENT '''comment'")
+        eq_(m.group("columns"), "`id`")
 
-        m = regex.match(
-            "  KEY (`x`, `y`) USING BTREE")
-        eq_(m.group("columns"), '`x`, `y`')
+        m = regex.match("  KEY (`x`, `y`) USING BTREE")
+        eq_(m.group("columns"), "`x`, `y`")
 
+        eq_(exprs.findall(m.group("columns")), [("x", "", ""), ("y", "", "")])
+
+        m = regex.match("  KEY (`x`(25), `y`(15)) USING BTREE")
+        eq_(m.group("columns"), "`x`(25), `y`(15)")
         eq_(
             exprs.findall(m.group("columns")),
-            [("x", "", ""), ("y", "", "")]
+            [("x", "25", ""), ("y", "15", "")],
         )
 
-        m = regex.match(
-            "  KEY (`x`(25), `y`(15)) USING BTREE")
-        eq_(m.group("columns"), '`x`(25), `y`(15)')
+        m = regex.match("  KEY (`x`(25) DESC, `y`(15) ASC) USING BTREE")
+        eq_(m.group("columns"), "`x`(25) DESC, `y`(15) ASC")
         eq_(
             exprs.findall(m.group("columns")),
-            [("x", "25", ""), ("y", "15", "")]
+            [("x", "25", "DESC"), ("y", "15", "ASC")],
         )
 
-        m = regex.match(
-            "  KEY (`x`(25) DESC, `y`(15) ASC) USING BTREE")
-        eq_(m.group("columns"), '`x`(25) DESC, `y`(15) ASC')
-        eq_(
-            exprs.findall(m.group("columns")),
-            [("x", "25", "DESC"), ("y", "15", "ASC")]
-        )
+        m = regex.match("  KEY `foo_idx` (`x` DESC)")
+        eq_(m.group("columns"), "`x` DESC")
+        eq_(exprs.findall(m.group("columns")), [("x", "", "DESC")])
 
-        m = regex.match(
-            "  KEY `foo_idx` (`x` DESC)")
-        eq_(m.group("columns"), '`x` DESC')
-        eq_(
-            exprs.findall(m.group("columns")),
-            [("x", "", "DESC")]
-        )
+        eq_(exprs.findall(m.group("columns")), [("x", "", "DESC")])
 
-        eq_(
-            exprs.findall(m.group("columns")),
-            [("x", "", "DESC")]
-        )
-
-        m = regex.match(
-            "  KEY `foo_idx` (`x` DESC, `y` ASC)")
-        eq_(m.group("columns"), '`x` DESC, `y` ASC')
+        m = regex.match("  KEY `foo_idx` (`x` DESC, `y` ASC)")
+        eq_(m.group("columns"), "`x` DESC, `y` ASC")
 
     def test_fk_reflection(self):
         regex = self.parser._re_fk_constraint
 
-        m = regex.match('  CONSTRAINT `addresses_user_id_fkey` '
-                        'FOREIGN KEY (`user_id`) '
-                        'REFERENCES `users` (`id`) '
-                        'ON DELETE CASCADE ON UPDATE CASCADE')
-        eq_(m.groups(), ('addresses_user_id_fkey', '`user_id`',
-                         '`users`', '`id`', None, 'CASCADE', 'CASCADE'))
+        m = regex.match(
+            "  CONSTRAINT `addresses_user_id_fkey` "
+            "FOREIGN KEY (`user_id`) "
+            "REFERENCES `users` (`id`) "
+            "ON DELETE CASCADE ON UPDATE CASCADE"
+        )
+        eq_(
+            m.groups(),
+            (
+                "addresses_user_id_fkey",
+                "`user_id`",
+                "`users`",
+                "`id`",
+                None,
+                "CASCADE",
+                "CASCADE",
+            ),
+        )
 
-        m = regex.match('  CONSTRAINT `addresses_user_id_fkey` '
-                        'FOREIGN KEY (`user_id`) '
-                        'REFERENCES `users` (`id`) '
-                        'ON DELETE CASCADE ON UPDATE SET NULL')
-        eq_(m.groups(), ('addresses_user_id_fkey', '`user_id`',
-                         '`users`', '`id`', None, 'CASCADE', 'SET NULL'))
+        m = regex.match(
+            "  CONSTRAINT `addresses_user_id_fkey` "
+            "FOREIGN KEY (`user_id`) "
+            "REFERENCES `users` (`id`) "
+            "ON DELETE CASCADE ON UPDATE SET NULL"
+        )
+        eq_(
+            m.groups(),
+            (
+                "addresses_user_id_fkey",
+                "`user_id`",
+                "`users`",
+                "`id`",
+                None,
+                "CASCADE",
+                "SET NULL",
+            ),
+        )

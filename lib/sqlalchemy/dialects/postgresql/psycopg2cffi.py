@@ -28,7 +28,7 @@ from .psycopg2 import PGDialect_psycopg2
 
 
 class PGDialect_psycopg2cffi(PGDialect_psycopg2):
-    driver = 'psycopg2cffi'
+    driver = "psycopg2cffi"
     supports_unicode_statements = True
 
     # psycopg2cffi's first release is 2.5.0, but reports
@@ -40,21 +40,21 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
         native_jsonb=(2, 7, 1),
         sane_multi_rowcount=(2, 4, 4),
         array_oid=(2, 4, 4),
-        hstore_adapter=(2, 4, 4)
+        hstore_adapter=(2, 4, 4),
     )
 
     @classmethod
     def dbapi(cls):
-        return __import__('psycopg2cffi')
+        return __import__("psycopg2cffi")
 
     @classmethod
     def _psycopg2_extensions(cls):
-        root = __import__('psycopg2cffi', fromlist=['extensions'])
+        root = __import__("psycopg2cffi", fromlist=["extensions"])
         return root.extensions
 
     @classmethod
     def _psycopg2_extras(cls):
-        root = __import__('psycopg2cffi', fromlist=['extras'])
+        root = __import__("psycopg2cffi", fromlist=["extras"])
         return root.extras
 
 

@@ -9,34 +9,17 @@ from sqlalchemy.sql import util as sql_util
 class CompareClausesTest(fixtures.TestBase):
     def setup(self):
         m = MetaData()
-        self.a = Table(
-            'a', m,
-            Column('x', Integer),
-            Column('y', Integer)
-        )
+        self.a = Table("a", m, Column("x", Integer), Column("y", Integer))
 
-        self.b = Table(
-            'b', m,
-            Column('y', Integer),
-            Column('z', Integer)
-        )
+        self.b = Table("b", m, Column("y", Integer), Column("z", Integer))
 
     def test_compare_clauselist_associative(self):
 
-        l1 = and_(
-            self.a.c.x == self.b.c.y,
-            self.a.c.y == self.b.c.z
-        )
+        l1 = and_(self.a.c.x == self.b.c.y, self.a.c.y == self.b.c.z)
 
-        l2 = and_(
-            self.a.c.y == self.b.c.z,
-            self.a.c.x == self.b.c.y,
-        )
+        l2 = and_(self.a.c.y == self.b.c.z, self.a.c.x == self.b.c.y)
 
-        l3 = and_(
-            self.a.c.x == self.b.c.z,
-            self.a.c.y == self.b.c.y
-        )
+        l3 = and_(self.a.c.x == self.b.c.z, self.a.c.y == self.b.c.y)
 
         is_true(l1.compare(l1))
         is_true(l1.compare(l2))
@@ -45,35 +28,33 @@ class CompareClausesTest(fixtures.TestBase):
     def test_compare_clauselist_not_associative(self):
 
         l1 = ClauseList(
-            self.a.c.x, self.a.c.y, self.b.c.y, operator=operators.sub)
+            self.a.c.x, self.a.c.y, self.b.c.y, operator=operators.sub
+        )
 
         l2 = ClauseList(
-            self.b.c.y, self.a.c.x, self.a.c.y, operator=operators.sub)
+            self.b.c.y, self.a.c.x, self.a.c.y, operator=operators.sub
+        )
 
         is_true(l1.compare(l1))
         is_false(l1.compare(l2))
 
     def test_compare_clauselist_assoc_different_operator(self):
 
-        l1 = and_(
-            self.a.c.x == self.b.c.y,
-            self.a.c.y == self.b.c.z
-        )
+        l1 = and_(self.a.c.x == self.b.c.y, self.a.c.y == self.b.c.z)
 
-        l2 = or_(
-            self.a.c.y == self.b.c.z,
-            self.a.c.x == self.b.c.y,
-        )
+        l2 = or_(self.a.c.y == self.b.c.z, self.a.c.x == self.b.c.y)
 
         is_false(l1.compare(l2))
 
     def test_compare_clauselist_not_assoc_different_operator(self):
 
         l1 = ClauseList(
-            self.a.c.x, self.a.c.y, self.b.c.y, operator=operators.sub)
+            self.a.c.x, self.a.c.y, self.b.c.y, operator=operators.sub
+        )
 
         l2 = ClauseList(
-            self.a.c.x, self.a.c.y, self.b.c.y, operator=operators.div)
+            self.a.c.x, self.a.c.y, self.b.c.y, operator=operators.div
+        )
 
         is_false(l1.compare(l2))
 
@@ -83,9 +64,11 @@ class CompareClausesTest(fixtures.TestBase):
         b3 = bindparam("bar", type_=Integer())
         b4 = bindparam("foo", type_=String())
 
-        def c1(): return 5
+        def c1():
+            return 5
 
-        def c2(): return 6
+        def c2():
+            return 6
 
         b5 = bindparam("foo", type_=Integer(), callable_=c1)
         b6 = bindparam("foo", type_=Integer(), callable_=c2)
@@ -114,7 +97,4 @@ class MiscTest(fixtures.TestBase):
         class MyElement(ColumnElement):
             pass
 
-        eq_(
-            sql_util.find_tables(MyElement(), check_columns=True),
-            []
-        )
+        eq_(sql_util.find_tables(MyElement(), check_columns=True), [])

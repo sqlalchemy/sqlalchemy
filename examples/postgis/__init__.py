@@ -36,4 +36,3 @@ E.g.::
 .. autosource::
 
 """
-

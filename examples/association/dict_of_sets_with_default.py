@@ -37,7 +37,9 @@ class A(Base):
     __tablename__ = "a"
     associations = relationship(
         "B",
-        collection_class=lambda: GenDefaultCollection(operator.attrgetter("key"))
+        collection_class=lambda: GenDefaultCollection(
+            operator.attrgetter("key")
+        ),
     )
 
     collections = association_proxy("associations", "values")
@@ -71,19 +73,15 @@ class C(Base):
         self.value = value
 
 
-if __name__ == '__main__':
-    engine = create_engine('sqlite://', echo=True)
+if __name__ == "__main__":
+    engine = create_engine("sqlite://", echo=True)
     Base.metadata.create_all(engine)
     session = Session(engine)
 
     # only "A" is referenced explicitly.  Using "collections",
     # we deal with a dict of key/sets of integers directly.
 
-    session.add_all([
-        A(collections={
-            "1": set([1, 2, 3]),
-        })
-    ])
+    session.add_all([A(collections={"1": set([1, 2, 3])})])
     session.commit()
 
     a1 = session.query(A).first()

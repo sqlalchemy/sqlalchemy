@@ -20,7 +20,12 @@ SQLAlchemy connection pool.
 from .base import _refs  # noqa
 from .base import Pool  # noqa
 from .impl import (  # noqa
-    QueuePool, StaticPool, NullPool, AssertionPool, SingletonThreadPool)
+    QueuePool,
+    StaticPool,
+    NullPool,
+    AssertionPool,
+    SingletonThreadPool,
+)
 from .dbapi_proxy import manage, clear_managers  # noqa
 
 from .base import reset_rollback, reset_commit, reset_none  # noqa

@@ -32,12 +32,16 @@ def setup_database(dburl, echo, num):
 
     s = Session(engine)
     for chunk in range(0, num, 10000):
-        s.bulk_insert_mappings(Customer, [
-            {
-                'name': 'customer name %d' % i,
-                'description': 'customer description %d' % i
-            } for i in range(chunk, chunk + 10000)
-        ])
+        s.bulk_insert_mappings(
+            Customer,
+            [
+                {
+                    "name": "customer name %d" % i,
+                    "description": "customer description %d" % i,
+                }
+                for i in range(chunk, chunk + 10000)
+            ],
+        )
     s.commit()
 
 
@@ -46,8 +50,11 @@ def test_orm_flush(n):
     """UPDATE statements via the ORM flush process."""
     session = Session(bind=engine)
     for chunk in range(0, n, 1000):
-        customers = session.query(Customer).\
-            filter(Customer.id.between(chunk, chunk + 1000)).all()
+        customers = (
+            session.query(Customer)
+            .filter(Customer.id.between(chunk, chunk + 1000))
+            .all()
+        )
         for customer in customers:
             customer.description += "updated"
         session.flush()

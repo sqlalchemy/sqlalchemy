@@ -30,7 +30,7 @@ def _history_mapper(local_mapper):
         getattr(local_mapper.class_, prop.key).impl.active_history = True
 
     super_mapper = local_mapper.inherits
-    super_history_mapper = getattr(cls, '__history_mapper__', None)
+    super_history_mapper = getattr(cls, "__history_mapper__", None)
 
     polymorphic_on = None
     super_fks = []
@@ -38,18 +38,20 @@ def _history_mapper(local_mapper):
     def _col_copy(col):
         orig = col
         col = col.copy()
-        orig.info['history_copy'] = col
+        orig.info["history_copy"] = col
         col.unique = False
         col.default = col.server_default = None
         col.autoincrement = False
         return col
 
     properties = util.OrderedDict()
-    if not super_mapper or \
-            local_mapper.local_table is not super_mapper.local_table:
+    if (
+        not super_mapper
+        or local_mapper.local_table is not super_mapper.local_table
+    ):
         cols = []
         version_meta = {"version_meta": True}  # add column.info to identify
-                                               # columns specific to versioning
+        # columns specific to versioning
 
         for column in local_mapper.local_table.c:
             if _is_versioning_col(column):
@@ -57,12 +59,13 @@ def _history_mapper(local_mapper):
 
             col = _col_copy(column)
 
-            if super_mapper and \
-                    col_references_table(column, super_mapper.local_table):
+            if super_mapper and col_references_table(
+                column, super_mapper.local_table
+            ):
                 super_fks.append(
                     (
                         col.key,
-                        list(super_history_mapper.local_table.primary_key)[0]
+                        list(super_history_mapper.local_table.primary_key)[0],
                     )
                 )
 
@@ -73,38 +76,48 @@ def _history_mapper(local_mapper):
 
             orig_prop = local_mapper.get_property_by_column(column)
             # carry over column re-mappings
-            if len(orig_prop.columns) > 1 or \
-                    orig_prop.columns[0].key != orig_prop.key:
+            if (
+                len(orig_prop.columns) > 1
+                or orig_prop.columns[0].key != orig_prop.key
+            ):
                 properties[orig_prop.key] = tuple(
-                    col.info['history_copy'] for col in orig_prop.columns)
+                    col.info["history_copy"] for col in orig_prop.columns
+                )
 
         if super_mapper:
             super_fks.append(
-                (
-                    'version', super_history_mapper.local_table.c.version
-                )
+                ("version", super_history_mapper.local_table.c.version)
             )
 
         # "version" stores the integer version id.  This column is
         # required.
         cols.append(
             Column(
-                'version', Integer, primary_key=True,
-                autoincrement=False, info=version_meta))
+                "version",
+                Integer,
+                primary_key=True,
+                autoincrement=False,
+                info=version_meta,
+            )
+        )
 
         # "changed" column stores the UTC timestamp of when the
         # history row was created.
         # This column is optional and can be omitted.
-        cols.append(Column(
-            'changed', DateTime,
-            default=datetime.datetime.utcnow,
-            info=version_meta))
+        cols.append(
+            Column(
+                "changed",
+                DateTime,
+                default=datetime.datetime.utcnow,
+                info=version_meta,
+            )
+        )
 
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
 
         table = Table(
-            local_mapper.local_table.name + '_history',
+            local_mapper.local_table.name + "_history",
             local_mapper.local_table.metadata,
             *cols,
             schema=local_mapper.local_table.schema
@@ -122,9 +135,8 @@ def _history_mapper(local_mapper):
         bases = (super_history_mapper.class_,)
 
         if table is not None:
-            properties['changed'] = (
-                (table.c.changed, ) +
-                tuple(super_history_mapper.attrs.changed.columns)
+            properties["changed"] = (table.c.changed,) + tuple(
+                super_history_mapper.attrs.changed.columns
             )
 
     else:
@@ -137,16 +149,17 @@ def _history_mapper(local_mapper):
         inherits=super_history_mapper,
         polymorphic_on=polymorphic_on,
         polymorphic_identity=local_mapper.polymorphic_identity,
-        properties=properties
+        properties=properties,
     )
     cls.__history_mapper__ = m
 
     if not super_history_mapper:
         local_mapper.local_table.append_column(
-            Column('version', Integer, default=1, nullable=False)
+            Column("version", Integer, default=1, nullable=False)
         )
         local_mapper.add_property(
-            "version", local_mapper.local_table.c.version)
+            "version", local_mapper.local_table.c.version
+        )
 
 
 class Versioned(object):
@@ -156,16 +169,17 @@ class Versioned(object):
             mp = mapper(cls, *arg, **kw)
             _history_mapper(mp)
             return mp
+
         return map
 
-    __table_args__ = {'sqlite_autoincrement': True}
+    __table_args__ = {"sqlite_autoincrement": True}
     """Use sqlite_autoincrement, to ensure unique integer values
     are used for new rows even for rows taht have been deleted."""
 
 
 def versioned_objects(iter):
     for obj in iter:
-        if hasattr(obj, '__history_mapper__'):
+        if hasattr(obj, "__history_mapper__"):
             yield obj
 
 
@@ -181,8 +195,7 @@ def create_version(obj, session, deleted=False):
     obj_changed = False
 
     for om, hm in zip(
-            obj_mapper.iterate_to_root(),
-            history_mapper.iterate_to_root()
+        obj_mapper.iterate_to_root(), history_mapper.iterate_to_root()
     ):
         if hm.single:
             continue
@@ -228,10 +241,12 @@ def create_version(obj, session, deleted=False):
         # not changed, but we have relationships.  OK
         # check those too
         for prop in obj_mapper.iterate_properties:
-            if isinstance(prop, RelationshipProperty) and \
-                attributes.get_history(
-                    obj, prop.key,
-                    passive=attributes.PASSIVE_NO_INITIALIZE).has_changes():
+            if (
+                isinstance(prop, RelationshipProperty)
+                and attributes.get_history(
+                    obj, prop.key, passive=attributes.PASSIVE_NO_INITIALIZE
+                ).has_changes()
+            ):
                 for p in prop.local_columns:
                     if p.foreign_keys:
                         obj_changed = True
@@ -242,7 +257,7 @@ def create_version(obj, session, deleted=False):
     if not obj_changed and not deleted:
         return
 
-    attr['version'] = obj.version
+    attr["version"] = obj.version
     hist = history_cls()
     for key, value in attr.items():
         setattr(hist, key, value)
@@ -251,7 +266,7 @@ def create_version(obj, session, deleted=False):
 
 
 def versioned_session(session):
-    @event.listens_for(session, 'before_flush')
+    @event.listens_for(session, "before_flush")
     def before_flush(session, flush_context, instances):
         for obj in versioned_objects(session.dirty):
             create_version(obj, session)

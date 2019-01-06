@@ -13,121 +13,137 @@ from sqlalchemy.dialects import mysql
 
 class DialectTest(fixtures.TestBase):
     __backend__ = True
-    __only_on__ = 'mysql'
+    __only_on__ = "mysql"
 
     def test_ssl_arguments_mysqldb(self):
         from sqlalchemy.dialects.mysql import mysqldb
+
         dialect = mysqldb.dialect()
         self._test_ssl_arguments(dialect)
 
     def test_ssl_arguments_oursql(self):
         from sqlalchemy.dialects.mysql import oursql
+
         dialect = oursql.dialect()
         self._test_ssl_arguments(dialect)
 
     def _test_ssl_arguments(self, dialect):
         kwarg = dialect.create_connect_args(
-            make_url("mysql://scott:tiger@localhost:3306/test"
-                     "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem")
+            make_url(
+                "mysql://scott:tiger@localhost:3306/test"
+                "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem"
+            )
         )[1]
         # args that differ among mysqldb and oursql
-        for k in ('use_unicode', 'found_rows', 'client_flag'):
+        for k in ("use_unicode", "found_rows", "client_flag"):
             kwarg.pop(k, None)
         eq_(
             kwarg,
             {
-                'passwd': 'tiger', 'db': 'test',
-                'ssl': {'ca': '/ca.pem', 'cert': '/cert.pem',
-                        'key': '/key.pem'},
-                'host': 'localhost', 'user': 'scott',
-                'port': 3306
-            }
+                "passwd": "tiger",
+                "db": "test",
+                "ssl": {
+                    "ca": "/ca.pem",
+                    "cert": "/cert.pem",
+                    "key": "/key.pem",
+                },
+                "host": "localhost",
+                "user": "scott",
+                "port": 3306,
+            },
         )
 
     def test_normal_arguments_mysqldb(self):
         from sqlalchemy.dialects.mysql import mysqldb
+
         dialect = mysqldb.dialect()
         self._test_normal_arguments(dialect)
 
     def _test_normal_arguments(self, dialect):
         for kwarg, value in [
-            ('compress', True),
-            ('connect_timeout', 30),
-            ('read_timeout', 30),
-            ('write_timeout', 30),
-            ('client_flag', 1234),
-            ('local_infile', 1234),
-            ('use_unicode', False),
-            ('charset', 'hello')
+            ("compress", True),
+            ("connect_timeout", 30),
+            ("read_timeout", 30),
+            ("write_timeout", 30),
+            ("client_flag", 1234),
+            ("local_infile", 1234),
+            ("use_unicode", False),
+            ("charset", "hello"),
         ]:
             connect_args = dialect.create_connect_args(
-                make_url("mysql://scott:tiger@localhost:3306/test"
-                         "?%s=%s" % (kwarg, value))
+                make_url(
+                    "mysql://scott:tiger@localhost:3306/test"
+                    "?%s=%s" % (kwarg, value)
+                )
             )
 
             eq_(connect_args[1][kwarg], value)
 
     def test_mysqlconnector_buffered_arg(self):
         from sqlalchemy.dialects.mysql import mysqlconnector
+
         dialect = mysqlconnector.dialect()
         kw = dialect.create_connect_args(
-                make_url("mysql+mysqlconnector://u:p@host/db?buffered=true")
-            )[1]
-        eq_(kw['buffered'], True)
+            make_url("mysql+mysqlconnector://u:p@host/db?buffered=true")
+        )[1]
+        eq_(kw["buffered"], True)
 
         kw = dialect.create_connect_args(
-                make_url("mysql+mysqlconnector://u:p@host/db?buffered=false")
-            )[1]
-        eq_(kw['buffered'], False)
+            make_url("mysql+mysqlconnector://u:p@host/db?buffered=false")
+        )[1]
+        eq_(kw["buffered"], False)
 
         kw = dialect.create_connect_args(
-                make_url("mysql+mysqlconnector://u:p@host/db")
-            )[1]
-        eq_(kw['buffered'], True)
+            make_url("mysql+mysqlconnector://u:p@host/db")
+        )[1]
+        eq_(kw["buffered"], True)
 
     def test_mysqlconnector_raise_on_warnings_arg(self):
         from sqlalchemy.dialects.mysql import mysqlconnector
+
         dialect = mysqlconnector.dialect()
         kw = dialect.create_connect_args(
             make_url(
                 "mysql+mysqlconnector://u:p@host/db?raise_on_warnings=true"
             )
         )[1]
-        eq_(kw['raise_on_warnings'], True)
+        eq_(kw["raise_on_warnings"], True)
 
         kw = dialect.create_connect_args(
             make_url(
                 "mysql+mysqlconnector://u:p@host/db?raise_on_warnings=false"
             )
         )[1]
-        eq_(kw['raise_on_warnings'], False)
+        eq_(kw["raise_on_warnings"], False)
 
         kw = dialect.create_connect_args(
-                make_url("mysql+mysqlconnector://u:p@host/db")
-            )[1]
+            make_url("mysql+mysqlconnector://u:p@host/db")
+        )[1]
         assert "raise_on_warnings" not in kw
 
-    @testing.only_on('mysql')
+    @testing.only_on("mysql")
     def test_random_arg(self):
         dialect = testing.db.dialect
         kw = dialect.create_connect_args(
-                make_url("mysql://u:p@host/db?foo=true")
-            )[1]
-        eq_(kw['foo'], "true")
+            make_url("mysql://u:p@host/db?foo=true")
+        )[1]
+        eq_(kw["foo"], "true")
 
-    @testing.only_on('mysql')
-    @testing.skip_if('mysql+mysqlconnector', "totally broken for the moment")
-    @testing.fails_on('mysql+oursql', "unsupported")
+    @testing.only_on("mysql")
+    @testing.skip_if("mysql+mysqlconnector", "totally broken for the moment")
+    @testing.fails_on("mysql+oursql", "unsupported")
     def test_special_encodings(self):
 
-        for enc in ['utf8mb4', 'utf8']:
+        for enc in ["utf8mb4", "utf8"]:
             eng = engines.testing_engine(
-                options={"connect_args": {'charset': enc, 'use_unicode': 0}})
+                options={"connect_args": {"charset": enc, "use_unicode": 0}}
+            )
             conn = eng.connect()
             eq_(conn.dialect._connection_charset, enc)
 
     def test_no_show_variables(self):
         from sqlalchemy.testing import mock
+
         engine = engines.testing_engine()
 
         def my_execute(self, statement, *args, **kw):
@@ -137,7 +153,8 @@ class DialectTest(fixtures.TestBase):
 
         real_exec = engine._connection_cls._execute_text
         with mock.patch.object(
-                engine._connection_cls, "_execute_text", my_execute):
+            engine._connection_cls, "_execute_text", my_execute
+        ):
             with expect_warnings(
                 "Could not retrieve SQL_MODE; please ensure the "
                 "MySQL user has permissions to SHOW VARIABLES"
@@ -146,63 +163,59 @@ class DialectTest(fixtures.TestBase):
 
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(
-            isolation_level='AUTOCOMMIT'
+            isolation_level="AUTOCOMMIT"
         )
-        assert c.execute('SELECT @@autocommit;').scalar()
+        assert c.execute("SELECT @@autocommit;").scalar()
 
-        c = c.execution_options(isolation_level='READ COMMITTED')
-        assert not c.execute('SELECT @@autocommit;').scalar()
+        c = c.execution_options(isolation_level="READ COMMITTED")
+        assert not c.execute("SELECT @@autocommit;").scalar()
 
     def test_isolation_level(self):
         values = [
-            'READ UNCOMMITTED',
-            'READ COMMITTED',
-            'REPEATABLE READ',
-            'SERIALIZABLE'
+            "READ UNCOMMITTED",
+            "READ COMMITTED",
+            "REPEATABLE READ",
+            "SERIALIZABLE",
         ]
         for value in values:
-            c = testing.db.connect().execution_options(
-                isolation_level=value
-            )
-            eq_(
-                testing.db.dialect.get_isolation_level(c.connection),
-                value)
+            c = testing.db.connect().execution_options(isolation_level=value)
+            eq_(testing.db.dialect.get_isolation_level(c.connection), value)
 
 
 class ParseVersionTest(fixtures.TestBase):
     def test_mariadb_normalized_version(self):
         for expected, version in [
-            ((10, 2, 7), (10, 2, 7, 'MariaDB')),
-            ((10, 2, 7), (5, 6, 15, 10, 2, 7, 'MariaDB')),
-            ((10, 2, 10), (10, 2, 10, 'MariaDB')),
+            ((10, 2, 7), (10, 2, 7, "MariaDB")),
+            ((10, 2, 7), (5, 6, 15, 10, 2, 7, "MariaDB")),
+            ((10, 2, 10), (10, 2, 10, "MariaDB")),
             ((5, 7, 20), (5, 7, 20)),
             ((5, 6, 15), (5, 6, 15)),
-            ((10, 2, 6),
-             (10, 2, 6, 'MariaDB', 10, 2, '6+maria~stretch', 'log')),
+            (
+                (10, 2, 6),
+                (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log"),
+            ),
         ]:
             dialect = mysql.dialect()
             dialect.server_version_info = version
-            eq_(
-                dialect._mariadb_normalized_version_info,
-                expected
-            )
+            eq_(dialect._mariadb_normalized_version_info, expected)
 
     def test_mariadb_check_warning(self):
 
         for expect_, version in [
-            (True, (10, 2, 7, 'MariaDB')),
-            (True, (5, 6, 15, 10, 2, 7, 'MariaDB')),
-            (False, (10, 2, 10, 'MariaDB')),
+            (True, (10, 2, 7, "MariaDB")),
+            (True, (5, 6, 15, 10, 2, 7, "MariaDB")),
+            (False, (10, 2, 10, "MariaDB")),
             (False, (5, 7, 20)),
             (False, (5, 6, 15)),
-            (True, (10, 2, 6, 'MariaDB', 10, 2, '6+maria~stretch', 'log')),
+            (True, (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log")),
         ]:
             dialect = mysql.dialect()
             dialect.server_version_info = version
             if expect_:
                 with expect_warnings(
-                        ".*before 10.2.9 has known issues regarding "
-                        "CHECK constraints"):
+                    ".*before 10.2.9 has known issues regarding "
+                    "CHECK constraints"
+                ):
                     dialect._warn_for_known_db_issues()
             else:
                 dialect._warn_for_known_db_issues()
@@ -218,31 +231,34 @@ class RemoveUTCTimestampTest(fixtures.TablesTest):
     [ticket:3966]
 
     """
-    __only_on__ = 'mysql'
+
+    __only_on__ = "mysql"
     __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
         Table(
-            't', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            Column('data', DateTime)
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("data", DateTime),
         )
 
         Table(
-            't_default', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            Column('idata', DateTime, default=func.utc_timestamp()),
-            Column('udata', DateTime, onupdate=func.utc_timestamp())
+            "t_default",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("idata", DateTime, default=func.utc_timestamp()),
+            Column("udata", DateTime, onupdate=func.utc_timestamp()),
         )
 
     def test_insert_executemany(self):
         with testing.db.connect() as conn:
             conn.execute(
                 self.tables.t.insert().values(data=func.utc_timestamp()),
-                [{"x": 5}, {"x": 6}, {"x": 7}]
+                [{"x": 5}, {"x": 6}, {"x": 7}],
             )
 
     def test_update_executemany(self):
@@ -253,21 +269,21 @@ class RemoveUTCTimestampTest(fixtures.TablesTest):
                 [
                     {"x": 5, "data": timestamp},
                     {"x": 6, "data": timestamp},
-                    {"x": 7, "data": timestamp}]
+                    {"x": 7, "data": timestamp},
+                ],
             )
 
             conn.execute(
-                self.tables.t.update().
-                values(data=func.utc_timestamp()).
-                where(self.tables.t.c.x == bindparam('xval')),
-                [{"xval": 5}, {"xval": 6}, {"xval": 7}]
+                self.tables.t.update()
+                .values(data=func.utc_timestamp())
+                .where(self.tables.t.c.x == bindparam("xval")),
+                [{"xval": 5}, {"xval": 6}, {"xval": 7}],
             )
 
     def test_insert_executemany_w_default(self):
         with testing.db.connect() as conn:
             conn.execute(
-                self.tables.t_default.insert(),
-                [{"x": 5}, {"x": 6}, {"x": 7}]
+                self.tables.t_default.insert(), [{"x": 5}, {"x": 6}, {"x": 7}]
             )
 
     def test_update_executemany_w_default(self):
@@ -278,35 +294,39 @@ class RemoveUTCTimestampTest(fixtures.TablesTest):
                 [
                     {"x": 5, "idata": timestamp},
                     {"x": 6, "idata": timestamp},
-                    {"x": 7, "idata": timestamp}]
+                    {"x": 7, "idata": timestamp},
+                ],
             )
 
             conn.execute(
-                self.tables.t_default.update().
-                values(idata=func.utc_timestamp()).
-                where(self.tables.t_default.c.x == bindparam('xval')),
-                [{"xval": 5}, {"xval": 6}, {"xval": 7}]
+                self.tables.t_default.update()
+                .values(idata=func.utc_timestamp())
+                .where(self.tables.t_default.c.x == bindparam("xval")),
+                [{"xval": 5}, {"xval": 6}, {"xval": 7}],
             )
 
 
 class SQLModeDetectionTest(fixtures.TestBase):
-    __only_on__ = 'mysql'
+    __only_on__ = "mysql"
     __backend__ = True
 
     def _options(self, modes):
         def connect(con, record):
             cursor = con.cursor()
             cursor.execute("set sql_mode='%s'" % (",".join(modes)))
-        e = engines.testing_engine(options={
-            'pool_events': [
-                (connect, 'first_connect'),
-                (connect, 'connect')
-            ]
-        })
+
+        e = engines.testing_engine(
+            options={
+                "pool_events": [
+                    (connect, "first_connect"),
+                    (connect, "connect"),
+                ]
+            }
+        )
         return e
 
     def test_backslash_escapes(self):
-        engine = self._options(['NO_BACKSLASH_ESCAPES'])
+        engine = self._options(["NO_BACKSLASH_ESCAPES"])
         c = engine.connect()
         assert not engine.dialect._backslash_escapes
         c.close()
@@ -319,14 +339,14 @@ class SQLModeDetectionTest(fixtures.TestBase):
         engine.dispose()
 
     def test_ansi_quotes(self):
-        engine = self._options(['ANSI_QUOTES'])
+        engine = self._options(["ANSI_QUOTES"])
         c = engine.connect()
         assert engine.dialect._server_ansiquotes
         c.close()
         engine.dispose()
 
     def test_combination(self):
-        engine = self._options(['ANSI_QUOTES,NO_BACKSLASH_ESCAPES'])
+        engine = self._options(["ANSI_QUOTES,NO_BACKSLASH_ESCAPES"])
         c = engine.connect()
         assert engine.dialect._server_ansiquotes
         assert not engine.dialect._backslash_escapes
@@ -337,7 +357,7 @@ class SQLModeDetectionTest(fixtures.TestBase):
 class ExecutionTest(fixtures.TestBase):
     """Various MySQL execution special cases."""
 
-    __only_on__ = 'mysql'
+    __only_on__ = "mysql"
     __backend__ = True
 
     def test_charset_caching(self):
@@ -357,7 +377,7 @@ class ExecutionTest(fixtures.TestBase):
 
 
 class AutocommitTextTest(test_execute.AutocommitTextTest):
-    __only_on__ = 'mysql'
+    __only_on__ = "mysql"
 
     def test_load_data(self):
         self._test_keyword("LOAD DATA STUFF")

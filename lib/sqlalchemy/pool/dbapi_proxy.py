@@ -101,9 +101,10 @@ class _DBProxy(object):
             self._create_pool_mutex.acquire()
             try:
                 if key not in self.pools:
-                    kw.pop('sa_pool_key', None)
+                    kw.pop("sa_pool_key", None)
                     pool = self.poolclass(
-                        lambda: self.module.connect(*args, **kw), **self.kw)
+                        lambda: self.module.connect(*args, **kw), **self.kw
+                    )
                     self.pools[key] = pool
                     return pool
                 else:
@@ -138,9 +139,6 @@ class _DBProxy(object):
 
     def _serialize(self, *args, **kw):
         if "sa_pool_key" in kw:
-            return kw['sa_pool_key']
+            return kw["sa_pool_key"]
 
-        return tuple(
-            list(args) +
-            [(k, kw[k]) for k in sorted(kw)]
-        )
+        return tuple(list(args) + [(k, kw[k]) for k in sorted(kw)])

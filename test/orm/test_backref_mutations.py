@@ -13,8 +13,15 @@ from sqlalchemy.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, exc as sa_exc
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session, \
-    class_mapper, backref, sessionmaker, Session
+from sqlalchemy.orm import (
+    mapper,
+    relationship,
+    create_session,
+    class_mapper,
+    backref,
+    sessionmaker,
+    Session,
+)
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_, is_
@@ -27,15 +34,19 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Address, addresses, users, User = (cls.classes.Address,
-                                           cls.tables.addresses,
-                                           cls.tables.users,
-                                           cls.classes.User)
+        Address, addresses, users, User = (
+            cls.classes.Address,
+            cls.tables.addresses,
+            cls.tables.users,
+            cls.classes.User,
+        )
 
         mapper(Address, addresses)
-        mapper(User, users, properties=dict(
-            addresses=relationship(Address, backref="user"),
-        ))
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, backref="user")),
+        )
 
     def test_collection_move_hitslazy(self):
         User, Address = self.classes.User, self.classes.Address
@@ -44,8 +55,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
         a3 = Address(email_address="address3")
-        u1 = User(name='jack', addresses=[a1, a2, a3])
-        u2 = User(name='ed')
+        u1 = User(name="jack", addresses=[a1, a2, a3])
+        u2 = User(name="ed")
         sess.add_all([u1, a1, a2, a3])
         sess.commit()
 
@@ -55,6 +66,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
             u2.addresses.append(a1)
             u2.addresses.append(a2)
             u2.addresses.append(a3)
+
         self.assert_sql_count(testing.db, go, 0)
 
     def test_collection_move_preloaded(self):
@@ -62,9 +74,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', addresses=[a1])
+        u1 = User(name="jack", addresses=[a1])
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -85,9 +97,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', addresses=[a1])
+        u1 = User(name="jack", addresses=[a1])
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -106,9 +118,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', addresses=[a1])
+        u1 = User(name="jack", addresses=[a1])
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -131,9 +143,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
 
-        u1 = User(name='jack')
-        u2 = User(name='ed')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        u2 = User(name="ed")
+        a1 = Address(email_address="a1")
         a1.user = u1
         sess.add_all([u1, u2, a1])
         sess.commit()
@@ -157,9 +169,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         sess = sessionmaker()()
-        u1 = User(name='jack')
-        u2 = User(name='ed')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        u2 = User(name="ed")
+        a1 = Address(email_address="a1")
         a1.user = u1
         sess.add_all([u1, u2, a1])
         sess.commit()
@@ -169,6 +181,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         # PASSIVE_NO_FETCH flag.
         def go():
             a1.user = u2
+
         self.assert_sql_count(testing.db, go, 0)
 
         assert a1 not in u1.addresses
@@ -178,8 +191,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         sess = sessionmaker()()
-        u1 = User(name='jack')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        a1 = Address(email_address="a1")
         a1.user = u1
         sess.add_all([u1, a1])
         sess.commit()
@@ -187,6 +200,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         # works for None too
         def go():
             a1.user = None
+
         self.assert_sql_count(testing.db, go, 0)
 
         assert a1 not in u1.addresses
@@ -196,9 +210,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
 
-        u1 = User(name='jack')
-        u2 = User(name='ed')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        u2 = User(name="ed")
+        a1 = Address(email_address="a1")
         a1.user = u1
         sess.add_all([u1, u2, a1])
         sess.commit()
@@ -216,9 +230,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
 
-        u1 = User(name='jack')
-        u2 = User(name='ed')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        u2 = User(name="ed")
+        a1 = Address(email_address="a1")
         a1.user = u1
         sess.add_all([u1, u2, a1])
         sess.commit()
@@ -238,9 +252,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_assignment_mutates_previous_one(self):
         User, Address = self.classes.User, self.classes.Address
 
-        u1 = User(name='jack')
-        u2 = User(name='ed')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        u2 = User(name="ed")
+        a1 = Address(email_address="a1")
         u1.addresses.append(a1)
 
         is_(a1.user, u1)
@@ -254,8 +268,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_assignment_mutates_previous_two(self):
         User, Address = self.classes.User, self.classes.Address
 
-        u1 = User(name='jack')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        a1 = Address(email_address="a1")
 
         u1.addresses.append(a1)
 
@@ -267,8 +281,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_del_from_collection(self):
         User, Address = self.classes.User, self.classes.Address
 
-        u1 = User(name='jack')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        a1 = Address(email_address="a1")
 
         u1.addresses.append(a1)
 
@@ -281,8 +295,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_del_from_scalar(self):
         User, Address = self.classes.User, self.classes.Address
 
-        u1 = User(name='jack')
-        a1 = Address(email_address='a1')
+        u1 = User(name="jack")
+        a1 = Address(email_address="a1")
 
         u1.addresses.append(a1)
 
@@ -308,10 +322,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         assert a3.user is u1
 
-        eq_(
-            u1.addresses,
-            [a1, a3, a2]
-        )
+        eq_(u1.addresses, [a1, a3, a2])
 
     def test_straight_remove(self):
         User, Address = self.classes.User, self.classes.Address
@@ -328,10 +339,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         del u1.addresses[2]
 
         assert a3.user is None
-        eq_(
-            u1.addresses,
-            [a1, a2]
-        )
+        eq_(u1.addresses, [a1, a2])
 
     def test_append_del(self):
         User, Address = self.classes.User, self.classes.Address
@@ -349,10 +357,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         del u1.addresses[1]
 
         assert a2.user is u1
-        eq_(
-            u1.addresses,
-            [a1, a3, a2]
-        )
+        eq_(u1.addresses, [a1, a3, a2])
 
     def test_bulk_replace(self):
         User, Address = self.classes.User, self.classes.Address
@@ -372,10 +377,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         u1.addresses = [a1, a2, a1]
 
         assert a3.user is None
-        eq_(
-            u1.addresses,
-            [a1, a2, a1]
-        )
+        eq_(u1.addresses, [a1, a2, a1])
 
 
 class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
@@ -383,25 +385,32 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Address, addresses, users, User = (cls.classes.Address,
-                                           cls.tables.addresses,
-                                           cls.tables.users,
-                                           cls.classes.User)
+        Address, addresses, users, User = (
+            cls.classes.Address,
+            cls.tables.addresses,
+            cls.tables.users,
+            cls.classes.User,
+        )
 
         mapper(Address, addresses)
-        mapper(User, users, properties={
-            'address': relationship(Address, backref=backref("user"),
-                                    uselist=False)
-        })
+        mapper(
+            User,
+            users,
+            properties={
+                "address": relationship(
+                    Address, backref=backref("user"), uselist=False
+                )
+            },
+        )
 
     def test_collection_move_preloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -426,7 +435,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
         sess.add_all([u1, a1, a2])
         sess.commit()  # everything is expired
@@ -449,9 +458,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -472,7 +481,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
         sess.add_all([u1, a1, a2])
         sess.commit()  # everything is expired
@@ -492,9 +501,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -520,7 +529,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
         sess.add_all([u1, a1, a2])
         sess.commit()  # everything is expired
@@ -549,24 +558,28 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Address, addresses, users, User = (cls.classes.Address,
-                                           cls.tables.addresses,
-                                           cls.tables.users,
-                                           cls.classes.User)
+        Address, addresses, users, User = (
+            cls.classes.Address,
+            cls.tables.addresses,
+            cls.tables.users,
+            cls.classes.User,
+        )
 
         mapper(Address, addresses)
-        mapper(User, users, properties={
-            'address': relationship(Address, uselist=False)
-        })
+        mapper(
+            User,
+            users,
+            properties={"address": relationship(Address, uselist=False)},
+        )
 
     def test_collection_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         sess.add_all([u1, u2])
         sess.commit()  # everything is expired
 
@@ -589,31 +602,42 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Address, addresses, users, User = (cls.classes.Address,
-                                           cls.tables.addresses,
-                                           cls.tables.users,
-                                           cls.classes.User)
+        Address, addresses, users, User = (
+            cls.classes.Address,
+            cls.tables.addresses,
+            cls.tables.users,
+            cls.classes.User,
+        )
 
         mapper(Address, addresses)
-        mapper(User, users, properties={
-            'address': relationship(
-                Address, uselist=False,
-                backref=backref('user', single_parent=True,
-                                cascade="all, delete-orphan"))
-        })
+        mapper(
+            User,
+            users,
+            properties={
+                "address": relationship(
+                    Address,
+                    uselist=False,
+                    backref=backref(
+                        "user",
+                        single_parent=True,
+                        cascade="all, delete-orphan",
+                    ),
+                )
+            },
+        )
 
     def test_m2o_event(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
-        u1 = User(name='jack', address=a1)
+        u1 = User(name="jack", address=a1)
 
         sess.add(u1)
         sess.commit()
         sess.expunge(u1)
 
-        u2 = User(name='ed')
+        u2 = User(name="ed")
         # the _SingleParent extension sets the backref get to "active" !
         # u1 gets loaded and deleted
         u2.address = a1
@@ -626,17 +650,23 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        keywords, items, item_keywords, \
-            Keyword, Item = (cls.tables.keywords,
-                             cls.tables.items,
-                             cls.tables.item_keywords,
-                             cls.classes.Keyword,
-                             cls.classes.Item)
+        keywords, items, item_keywords, Keyword, Item = (
+            cls.tables.keywords,
+            cls.tables.items,
+            cls.tables.item_keywords,
+            cls.classes.Keyword,
+            cls.classes.Item,
+        )
 
-        mapper(Item, items, properties={
-            'keywords': relationship(Keyword, secondary=item_keywords,
-                                     backref='items')
-        })
+        mapper(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords, backref="items"
+                )
+            },
+        )
         mapper(Keyword, keywords)
 
     def test_add_remove_pending_backref(self):
@@ -646,13 +676,13 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         session = Session(autoflush=False)
 
-        i1 = Item(description='i1')
+        i1 = Item(description="i1")
         session.add(i1)
         session.commit()
 
-        session.expire(i1, ['keywords'])
+        session.expire(i1, ["keywords"])
 
-        k1 = Keyword(name='k1')
+        k1 = Keyword(name="k1")
         k1.items.append(i1)
         k1.items.remove(i1)
         eq_(i1.keywords, [])
@@ -664,12 +694,12 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         session = Session(autoflush=False)
 
-        k1 = Keyword(name='k1')
-        i1 = Item(description='i1', keywords=[k1])
+        k1 = Keyword(name="k1")
+        i1 = Item(description="i1", keywords=[k1])
         session.add(i1)
         session.commit()
 
-        session.expire(i1, ['keywords'])
+        session.expire(i1, ["keywords"])
 
         k1.items.remove(i1)
         k1.items.append(i1)
@@ -682,9 +712,9 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         session = Session(testing.db, autoflush=False)
 
-        k1 = Keyword(name='k1')
-        k2 = Keyword(name='k2')
-        i1 = Item(description='i1', keywords=[k1])
+        k1 = Keyword(name="k1")
+        k2 = Keyword(name="k2")
+        i1 = Item(description="i1", keywords=[k1])
         session.add(i1)
         session.add(k2)
         session.commit()
@@ -693,9 +723,12 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         # the pending
         # list is still here.
         eq_(
-            set(attributes.instance_state(i1).
-                _pending_mutations['keywords'].added_items),
-            set([k2])
+            set(
+                attributes.instance_state(i1)
+                ._pending_mutations["keywords"]
+                .added_items
+            ),
+            set([k2]),
         )
         # because autoflush is off, k2 is still
         # coming in from pending
@@ -705,28 +738,28 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         eq_(session.scalar("select count(*) from item_keywords"), 1)
 
         # the pending collection was removed
-        assert 'keywords' not in attributes.\
-            instance_state(i1).\
-            _pending_mutations
+        assert (
+            "keywords" not in attributes.instance_state(i1)._pending_mutations
+        )
 
     def test_duplicate_adds(self):
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
 
         session = Session(testing.db, autoflush=False)
 
-        k1 = Keyword(name='k1')
-        i1 = Item(description='i1', keywords=[k1])
+        k1 = Keyword(name="k1")
+        i1 = Item(description="i1", keywords=[k1])
         session.add(i1)
         session.commit()
 
         k1.items.append(i1)
         eq_(i1.keywords, [k1, k1])
 
-        session.expire(i1, ['keywords'])
+        session.expire(i1, ["keywords"])
         k1.items.append(i1)
         eq_(i1.keywords, [k1, k1])
 
-        session.expire(i1, ['keywords'])
+        session.expire(i1, ["keywords"])
         k1.items.append(i1)
         eq_(i1.keywords, [k1, k1])
 
@@ -737,11 +770,11 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
     def test_bulk_replace(self):
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
 
-        k1 = Keyword(name='k1')
-        k2 = Keyword(name='k2')
-        k3 = Keyword(name='k3')
-        i1 = Item(description='i1', keywords=[k1, k2])
-        i2 = Item(description='i2', keywords=[k3])
+        k1 = Keyword(name="k1")
+        k2 = Keyword(name="k2")
+        k3 = Keyword(name="k3")
+        i1 = Item(description="i1", keywords=[k1, k2])
+        i2 = Item(description="i2", keywords=[k3])
 
         i1.keywords = [k2, k3]
         assert i1 in k3.items
@@ -754,18 +787,26 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        keywords, items, item_keywords, \
-            Keyword, Item = (cls.tables.keywords,
-                             cls.tables.items,
-                             cls.tables.item_keywords,
-                             cls.classes.Keyword,
-                             cls.classes.Item)
+        keywords, items, item_keywords, Keyword, Item = (
+            cls.tables.keywords,
+            cls.tables.items,
+            cls.tables.item_keywords,
+            cls.classes.Keyword,
+            cls.classes.Item,
+        )
 
-        mapper(Item, items, properties={
-            'keyword': relationship(Keyword, secondary=item_keywords,
-                                    uselist=False,
-                                    backref=backref("item", uselist=False))
-        })
+        mapper(
+            Item,
+            items,
+            properties={
+                "keyword": relationship(
+                    Keyword,
+                    secondary=item_keywords,
+                    uselist=False,
+                    backref=backref("item", uselist=False),
+                )
+            },
+        )
         mapper(Keyword, keywords)
 
     def test_collection_move_preloaded(self):
@@ -773,9 +814,9 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
 
-        k1 = Keyword(name='k1')
-        i1 = Item(description='i1', keyword=k1)
-        i2 = Item(description='i2')
+        k1 = Keyword(name="k1")
+        i1 = Item(description="i1", keyword=k1)
+        i2 = Item(description="i2")
 
         sess.add_all([i1, i2, k1])
         sess.commit()  # everything is expired
@@ -796,9 +837,9 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
 
-        k1 = Keyword(name='k1')
-        i1 = Item(description='i1', keyword=k1)
-        i2 = Item(description='i2')
+        k1 = Keyword(name="k1")
+        i1 = Item(description="i1", keyword=k1)
+        i2 = Item(description="i2")
 
         sess.add_all([i1, i2, k1])
         sess.commit()  # everything is expired
@@ -815,9 +856,9 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
 
         sess = sessionmaker()()
 
-        k1 = Keyword(name='k1')
-        i1 = Item(description='i1', keyword=k1)
-        i2 = Item(description='i2')
+        k1 = Keyword(name="k1")
+        i1 = Item(description="i1", keyword=k1)
+        i2 = Item(description="i2")
 
         sess.add_all([i1, i2, k1])
         sess.commit()  # everything is expired
@@ -839,15 +880,19 @@ class O2MStaleBackrefTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        Address, addresses, users, User = (cls.classes.Address,
-                                           cls.tables.addresses,
-                                           cls.tables.users,
-                                           cls.classes.User)
+        Address, addresses, users, User = (
+            cls.classes.Address,
+            cls.tables.addresses,
+            cls.tables.users,
+            cls.classes.User,
+        )
 
         mapper(Address, addresses)
-        mapper(User, users, properties=dict(
-            addresses=relationship(Address, backref="user"),
-        ))
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, backref="user")),
+        )
 
     def test_backref_pop_m2o(self):
         User, Address = self.classes.User, self.classes.Address
@@ -870,17 +915,23 @@ class M2MStaleBackrefTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
-        keywords, items, item_keywords, \
-            Keyword, Item = (cls.tables.keywords,
-                             cls.tables.items,
-                             cls.tables.item_keywords,
-                             cls.classes.Keyword,
-                             cls.classes.Item)
+        keywords, items, item_keywords, Keyword, Item = (
+            cls.tables.keywords,
+            cls.tables.items,
+            cls.tables.item_keywords,
+            cls.classes.Keyword,
+            cls.classes.Item,
+        )
 
-        mapper(Item, items, properties={
-            'keywords': relationship(Keyword, secondary=item_keywords,
-                                     backref='items')
-        })
+        mapper(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords, backref="items"
+                )
+            },
+        )
         mapper(Keyword, keywords)
 
     def test_backref_pop_m2m(self):
@@ -895,4 +946,3 @@ class M2MStaleBackrefTest(_fixtures.FixtureTest):
         i1.keywords = []
         k2.items.remove(i1)
         assert len(k2.items) == 0
-

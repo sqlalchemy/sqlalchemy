@@ -11,14 +11,19 @@ from sqlalchemy.testing import fixtures
 
 # TODO: more tests mapping to selects
 
+
 class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
-        Table('common', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('data', Integer),
-              Column('extra', String(45)))
+        Table(
+            "common",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", Integer),
+            Column("extra", String(45)),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -35,7 +40,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
             Session().query(Subset),
             "SELECT anon_1.x AS anon_1_x, anon_1.y AS anon_1_y, "
             "anon_1.z AS anon_1_z FROM (SELECT x, y, z) AS anon_1",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_no_table_needs_pl(self):
@@ -45,15 +50,18 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert_raises_message(
             sa.exc.ArgumentError,
             "could not assemble any primary key columns",
-            mapper, Subset, selectable
+            mapper,
+            Subset,
+            selectable,
         )
 
     def test_no_selects(self):
         Subset, common = self.classes.Subset, self.tables.common
 
         subset_select = select([common.c.id, common.c.data])
-        assert_raises(sa.exc.InvalidRequestError,
-                      mapper, Subset, subset_select)
+        assert_raises(
+            sa.exc.InvalidRequestError, mapper, Subset, subset_select
+        )
 
     def test_basic(self):
         Subset, common = self.classes.Subset, self.tables.common
@@ -70,5 +78,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         eq_(sess.query(Subset).filter(Subset.data != 1).first(), None)
 
         subset_select = sa.orm.class_mapper(Subset).mapped_table
-        eq_(sess.query(Subset).filter(subset_select.c.data == 1).one(),
-            Subset(data=1))
+        eq_(
+            sess.query(Subset).filter(subset_select.c.data == 1).one(),
+            Subset(data=1),
+        )

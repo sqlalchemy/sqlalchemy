@@ -10,8 +10,9 @@ from sqlalchemy.testing import eq_
 
 
 class TestDescriptor(descriptor_props.DescriptorProperty):
-    def __init__(self, cls, key, descriptor=None, doc=None,
-                 comparator_factory=None):
+    def __init__(
+        self, cls, key, descriptor=None, doc=None, comparator_factory=None
+    ):
         self.parent = cls.__mapper__
         self.key = key
         self.doc = doc
@@ -27,7 +28,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         Base = declarative_base()
 
         class Foo(Base):
-            __tablename__ = 'foo'
+            __tablename__ = "foo"
             id = Column(Integer, primary_key=True)
 
         return Foo
@@ -35,7 +36,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
     def test_fixture(self):
         Foo = self._fixture()
 
-        d = TestDescriptor(Foo, 'foo')
+        d = TestDescriptor(Foo, "foo")
         d.instrument_class(Foo.__mapper__)
 
         assert Foo.foo
@@ -45,7 +46,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         prop = property(lambda self: None)
         Foo.foo = prop
 
-        d = TestDescriptor(Foo, 'foo')
+        d = TestDescriptor(Foo, "foo")
         d.instrument_class(Foo.__mapper__)
 
         assert Foo().foo is None
@@ -55,7 +56,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         Foo = self._fixture()
 
         class myprop(property):
-            attr = 'bar'
+            attr = "bar"
 
             def method1(self):
                 return "method1"
@@ -63,19 +64,19 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         prop = myprop(lambda self: None)
         Foo.foo = prop
 
-        d = TestDescriptor(Foo, 'foo')
+        d = TestDescriptor(Foo, "foo")
         d.instrument_class(Foo.__mapper__)
 
         assert Foo().foo is None
         assert Foo.foo is not prop
-        assert Foo.foo.attr == 'bar'
-        assert Foo.foo.method1() == 'method1'
+        assert Foo.foo.attr == "bar"
+        assert Foo.foo.method1() == "method1"
 
     def test_comparator(self):
         class Comparator(PropComparator):
             __hash__ = None
 
-            attr = 'bar'
+            attr = "bar"
 
             def method1(self):
                 return "method1"
@@ -84,46 +85,41 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
                 return "method2"
 
             def __getitem__(self, key):
-                return 'value'
+                return "value"
 
             def __eq__(self, other):
-                return column('foo') == func.upper(other)
+                return column("foo") == func.upper(other)
 
         Foo = self._fixture()
-        d = TestDescriptor(Foo, 'foo', comparator_factory=Comparator)
+        d = TestDescriptor(Foo, "foo", comparator_factory=Comparator)
         d.instrument_class(Foo.__mapper__)
         eq_(Foo.foo.method1(), "method1")
-        eq_(Foo.foo.method2('x'), "method2")
-        assert Foo.foo.attr == 'bar'
-        assert Foo.foo['bar'] == 'value'
-        eq_(
-            (Foo.foo == 'bar').__str__(),
-            "foo = upper(:upper_1)"
-        )
+        eq_(Foo.foo.method2("x"), "method2")
+        assert Foo.foo.attr == "bar"
+        assert Foo.foo["bar"] == "value"
+        eq_((Foo.foo == "bar").__str__(), "foo = upper(:upper_1)")
 
     def test_aliased_comparator(self):
         class Comparator(ColumnProperty.Comparator):
             __hash__ = None
 
             def __eq__(self, other):
-                return func.foobar(self.__clause_element__()) ==\
-                    func.foobar(other)
+                return func.foobar(self.__clause_element__()) == func.foobar(
+                    other
+                )
 
         Foo = self._fixture()
-        Foo._name = Column('name', String)
+        Foo._name = Column("name", String)
 
         def comparator_factory(self, mapper):
-            prop = mapper._props['_name']
+            prop = mapper._props["_name"]
             return Comparator(prop, mapper)
 
-        d = TestDescriptor(Foo, 'foo', comparator_factory=comparator_factory)
+        d = TestDescriptor(Foo, "foo", comparator_factory=comparator_factory)
         d.instrument_class(Foo.__mapper__)
 
+        eq_(str(Foo.foo == "ed"), "foobar(foo.name) = foobar(:foobar_1)")
         eq_(
-            str(Foo.foo == 'ed'),
-            "foobar(foo.name) = foobar(:foobar_1)"
-        )
-        eq_(
-            str(aliased(Foo).foo == 'ed'),
-            "foobar(foo_1.name) = foobar(:foobar_1)"
+            str(aliased(Foo).foo == "ed"),
+            "foobar(foo_1.name) = foobar(:foobar_1)",
         )

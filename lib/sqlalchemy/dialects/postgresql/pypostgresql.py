@@ -37,12 +37,12 @@ class PGExecutionContext_pypostgresql(PGExecutionContext):
 
 
 class PGDialect_pypostgresql(PGDialect):
-    driver = 'pypostgresql'
+    driver = "pypostgresql"
 
     supports_unicode_statements = True
     supports_unicode_binds = True
     description_encoding = None
-    default_paramstyle = 'pyformat'
+    default_paramstyle = "pyformat"
 
     # requires trunk version to support sane rowcounts
     # TODO: use dbapi version information to set this flag appropriately
@@ -54,22 +54,27 @@ class PGDialect_pypostgresql(PGDialect):
         PGDialect.colspecs,
         {
             sqltypes.Numeric: PGNumeric,
-
             # prevents PGNumeric from being used
             sqltypes.Float: sqltypes.Float,
-        }
+        },
     )
 
     @classmethod
     def dbapi(cls):
         from postgresql.driver import dbapi20
+
         return dbapi20
 
     _DBAPI_ERROR_NAMES = [
         "Error",
-        "InterfaceError", "DatabaseError", "DataError",
-        "OperationalError", "IntegrityError", "InternalError",
-        "ProgrammingError", "NotSupportedError"
+        "InterfaceError",
+        "DatabaseError",
+        "DataError",
+        "OperationalError",
+        "IntegrityError",
+        "InternalError",
+        "ProgrammingError",
+        "NotSupportedError",
     ]
 
     @util.memoized_property
@@ -83,15 +88,16 @@ class PGDialect_pypostgresql(PGDialect):
         )
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
-        if 'port' in opts:
-            opts['port'] = int(opts['port'])
+        opts = url.translate_connect_args(username="user")
+        if "port" in opts:
+            opts["port"] = int(opts["port"])
         else:
-            opts['port'] = 5432
+            opts["port"] = 5432
         opts.update(url.query)
         return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
         return "connection is closed" in str(e)
+
 
 dialect = PGDialect_pypostgresql

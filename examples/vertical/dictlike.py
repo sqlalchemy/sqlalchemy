@@ -32,6 +32,7 @@ can be used with many common vertical schemas as-is or with minor adaptations.
 """
 from __future__ import unicode_literals
 
+
 class ProxiedDictMixin(object):
     """Adds obj[key] access to a mapped class.
 
@@ -60,9 +61,16 @@ class ProxiedDictMixin(object):
         del self._proxied[key]
 
 
-if __name__ == '__main__':
-    from sqlalchemy import (Column, Integer, Unicode,
-        ForeignKey, UnicodeText, and_, create_engine)
+if __name__ == "__main__":
+    from sqlalchemy import (
+        Column,
+        Integer,
+        Unicode,
+        ForeignKey,
+        UnicodeText,
+        and_,
+        create_engine,
+    )
     from sqlalchemy.orm import relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
     from sqlalchemy.ext.declarative import declarative_base
@@ -73,26 +81,29 @@ if __name__ == '__main__':
     class AnimalFact(Base):
         """A fact about an animal."""
 
-        __tablename__ = 'animal_fact'
+        __tablename__ = "animal_fact"
 
-        animal_id = Column(ForeignKey('animal.id'), primary_key=True)
+        animal_id = Column(ForeignKey("animal.id"), primary_key=True)
         key = Column(Unicode(64), primary_key=True)
         value = Column(UnicodeText)
 
     class Animal(ProxiedDictMixin, Base):
         """an Animal"""
 
-        __tablename__ = 'animal'
+        __tablename__ = "animal"
 
         id = Column(Integer, primary_key=True)
         name = Column(Unicode(100))
 
-        facts = relationship("AnimalFact",
-                    collection_class=attribute_mapped_collection('key'))
+        facts = relationship(
+            "AnimalFact", collection_class=attribute_mapped_collection("key")
+        )
 
-        _proxied = association_proxy("facts", "value",
-                            creator=
-                            lambda key, value: AnimalFact(key=key, value=value))
+        _proxied = association_proxy(
+            "facts",
+            "value",
+            creator=lambda key, value: AnimalFact(key=key, value=value),
+        )
 
         def __init__(self, name):
             self.name = name
@@ -109,57 +120,56 @@ if __name__ == '__main__':
 
     session = Session(bind=engine)
 
-    stoat = Animal('stoat')
-    stoat['color'] = 'reddish'
-    stoat['cuteness'] = 'somewhat'
+    stoat = Animal("stoat")
+    stoat["color"] = "reddish"
+    stoat["cuteness"] = "somewhat"
 
     # dict-like assignment transparently creates entries in the
     # stoat.facts collection:
-    print(stoat.facts['color'])
+    print(stoat.facts["color"])
 
     session.add(stoat)
     session.commit()
 
-    critter = session.query(Animal).filter(Animal.name == 'stoat').one()
-    print(critter['color'])
-    print(critter['cuteness'])
+    critter = session.query(Animal).filter(Animal.name == "stoat").one()
+    print(critter["color"])
+    print(critter["cuteness"])
 
-    critter['cuteness'] = 'very'
+    critter["cuteness"] = "very"
 
-    print('changing cuteness:')
+    print("changing cuteness:")
 
-    marten = Animal('marten')
-    marten['color'] = 'brown'
-    marten['cuteness'] = 'somewhat'
+    marten = Animal("marten")
+    marten["color"] = "brown"
+    marten["cuteness"] = "somewhat"
     session.add(marten)
 
-    shrew = Animal('shrew')
-    shrew['cuteness'] = 'somewhat'
-    shrew['poisonous-part'] = 'saliva'
+    shrew = Animal("shrew")
+    shrew["cuteness"] = "somewhat"
+    shrew["poisonous-part"] = "saliva"
     session.add(shrew)
 
-    loris = Animal('slow loris')
-    loris['cuteness'] = 'fairly'
-    loris['poisonous-part'] = 'elbows'
+    loris = Animal("slow loris")
+    loris["cuteness"] = "fairly"
+    loris["poisonous-part"] = "elbows"
     session.add(loris)
 
-    q = (session.query(Animal).
-         filter(Animal.facts.any(
-           and_(AnimalFact.key == 'color',
-                AnimalFact.value == 'reddish'))))
-    print('reddish animals', q.all())
+    q = session.query(Animal).filter(
+        Animal.facts.any(
+            and_(AnimalFact.key == "color", AnimalFact.value == "reddish")
+        )
+    )
+    print("reddish animals", q.all())
 
-    q = session.query(Animal).\
-            filter(Animal.with_characteristic("color", 'brown'))
-    print('brown animals', q.all())
+    q = session.query(Animal).filter(
+        Animal.with_characteristic("color", "brown")
+    )
+    print("brown animals", q.all())
 
-    q = session.query(Animal).\
-           filter(~Animal.with_characteristic("poisonous-part", 'elbows'))
-    print('animals without poisonous-part == elbows', q.all())
+    q = session.query(Animal).filter(
+        ~Animal.with_characteristic("poisonous-part", "elbows")
+    )
+    print("animals without poisonous-part == elbows", q.all())
 
-    q = (session.query(Animal).
-         filter(Animal.facts.any(value='somewhat')))
+    q = session.query(Animal).filter(Animal.facts.any(value="somewhat"))
     print('any animal with any .value of "somewhat"', q.all())
-
-
-

@@ -34,8 +34,10 @@ Currently *not* supported are::
 
 """
 
-from sqlalchemy.dialects.sybase.base import SybaseDialect,\
-    SybaseExecutionContext
+from sqlalchemy.dialects.sybase.base import (
+    SybaseDialect,
+    SybaseExecutionContext,
+)
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy import types as sqltypes, processors
 import decimal
@@ -51,12 +53,10 @@ class _SybNumeric_pyodbc(sqltypes.Numeric):
     """
 
     def bind_processor(self, dialect):
-        super_process = super(_SybNumeric_pyodbc, self).\
-            bind_processor(dialect)
+        super_process = super(_SybNumeric_pyodbc, self).bind_processor(dialect)
 
         def process(value):
-            if self.asdecimal and \
-                    isinstance(value, decimal.Decimal):
+            if self.asdecimal and isinstance(value, decimal.Decimal):
 
                 if value.adjusted() < -6:
                     return processors.to_float(value)
@@ -65,6 +65,7 @@ class _SybNumeric_pyodbc(sqltypes.Numeric):
                 return super_process(value)
             else:
                 return value
+
         return process
 
 
@@ -79,8 +80,7 @@ class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
 class SybaseDialect_pyodbc(PyODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pyodbc
 
-    colspecs = {
-        sqltypes.Numeric: _SybNumeric_pyodbc,
-    }
+    colspecs = {sqltypes.Numeric: _SybNumeric_pyodbc}
+
 
 dialect = SybaseDialect_pyodbc

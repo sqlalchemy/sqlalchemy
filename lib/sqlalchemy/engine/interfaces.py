@@ -198,7 +198,8 @@ class Dialect(object):
         pass
 
     def reflecttable(
-            self, connection, table, include_columns, exclude_columns):
+        self, connection, table, include_columns, exclude_columns
+    ):
         """Load table description from the database.
 
         Given a :class:`.Connection` and a
@@ -367,7 +368,8 @@ class Dialect(object):
         raise NotImplementedError()
 
     def get_unique_constraints(
-            self, connection, table_name, schema=None, **kw):
+        self, connection, table_name, schema=None, **kw
+    ):
         r"""Return information about unique constraints in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
@@ -389,8 +391,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_check_constraints(
-            self, connection, table_name, schema=None, **kw):
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
         r"""Return information about check constraints in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
@@ -412,8 +413,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_table_comment(
-            self, connection, table_name, schema=None, **kw):
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
         r"""Return the "comment" for the table identified by `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
@@ -613,8 +613,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_rollback_twophase(self, connection, xid, is_prepared=True,
-                             recover=False):
+    def do_rollback_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
         """Rollback a two phase transaction on the given connection.
 
         :param connection: a :class:`.Connection`.
@@ -627,8 +628,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_commit_twophase(self, connection, xid, is_prepared=True,
-                           recover=False):
+    def do_commit_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
         """Commit a two phase transaction on the given connection.
 
 
@@ -664,8 +666,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def do_execute_no_params(self, cursor, statement, parameters,
-                             context=None):
+    def do_execute_no_params(
+        self, cursor, statement, parameters, context=None
+    ):
         """Provide an implementation of ``cursor.execute(statement)``.
 
         The parameter collection should not be sent.
@@ -899,6 +902,7 @@ class CreateEnginePlugin(object):
     .. versionadded:: 1.1
 
     """
+
     def __init__(self, url, kwargs):
         """Contruct a new :class:`.CreateEnginePlugin`.
 
@@ -1129,20 +1133,24 @@ class Connectable(object):
 
         raise NotImplementedError()
 
-    @util.deprecated("0.7",
-                     "Use the create() method on the given schema "
-                     "object directly, i.e. :meth:`.Table.create`, "
-                     ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
+    @util.deprecated(
+        "0.7",
+        "Use the create() method on the given schema "
+        "object directly, i.e. :meth:`.Table.create`, "
+        ":meth:`.Index.create`, :meth:`.MetaData.create_all`",
+    )
     def create(self, entity, **kwargs):
         """Emit CREATE statements for the given schema entity.
         """
 
         raise NotImplementedError()
 
-    @util.deprecated("0.7",
-                     "Use the drop() method on the given schema "
-                     "object directly, i.e. :meth:`.Table.drop`, "
-                     ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
+    @util.deprecated(
+        "0.7",
+        "Use the drop() method on the given schema "
+        "object directly, i.e. :meth:`.Table.drop`, "
+        ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`",
+    )
     def drop(self, entity, **kwargs):
         """Emit DROP statements for the given schema entity.
         """
@@ -1160,8 +1168,7 @@ class Connectable(object):
         """
         raise NotImplementedError()
 
-    def _run_visitor(self, visitorcallable, element,
-                     **kwargs):
+    def _run_visitor(self, visitorcallable, element, **kwargs):
         raise NotImplementedError()
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):

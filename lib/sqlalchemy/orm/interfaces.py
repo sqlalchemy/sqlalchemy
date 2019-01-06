@@ -22,8 +22,15 @@ from __future__ import absolute_import
 
 from .. import util
 from ..sql import operators
-from .base import (ONETOMANY, MANYTOONE, MANYTOMANY,
-                   EXT_CONTINUE, EXT_STOP, EXT_SKIP, NOT_EXTENSION)
+from .base import (
+    ONETOMANY,
+    MANYTOONE,
+    MANYTOMANY,
+    EXT_CONTINUE,
+    EXT_STOP,
+    EXT_SKIP,
+    NOT_EXTENSION,
+)
 from .base import InspectionAttr, InspectionAttrInfo, _MappedAttribute
 import collections
 from .. import inspect
@@ -33,21 +40,21 @@ from . import path_registry
 MapperExtension = SessionExtension = AttributeExtension = None
 
 __all__ = (
-    'AttributeExtension',
-    'EXT_CONTINUE',
-    'EXT_STOP',
-    'EXT_SKIP',
-    'ONETOMANY',
-    'MANYTOMANY',
-    'MANYTOONE',
-    'NOT_EXTENSION',
-    'LoaderStrategy',
-    'MapperExtension',
-    'MapperOption',
-    'MapperProperty',
-    'PropComparator',
-    'SessionExtension',
-    'StrategizedProperty',
+    "AttributeExtension",
+    "EXT_CONTINUE",
+    "EXT_STOP",
+    "EXT_SKIP",
+    "ONETOMANY",
+    "MANYTOMANY",
+    "MANYTOONE",
+    "NOT_EXTENSION",
+    "LoaderStrategy",
+    "MapperExtension",
+    "MapperOption",
+    "MapperProperty",
+    "PropComparator",
+    "SessionExtension",
+    "StrategizedProperty",
 )
 
 
@@ -64,8 +71,11 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
     """
 
     __slots__ = (
-        '_configure_started', '_configure_finished', 'parent', 'key',
-        'info'
+        "_configure_started",
+        "_configure_finished",
+        "parent",
+        "key",
+        "info",
     )
 
     cascade = frozenset()
@@ -118,15 +128,17 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
 
         """
 
-    def create_row_processor(self, context, path,
-                             mapper, result, adapter, populators):
+    def create_row_processor(
+        self, context, path, mapper, result, adapter, populators
+    ):
         """Produce row processing functions and append to the given
         set of populators lists.
 
         """
 
-    def cascade_iterator(self, type_, state, visited_instances=None,
-                         halt_on=None):
+    def cascade_iterator(
+        self, type_, state, visited_instances=None, halt_on=None
+    ):
         """Iterate through instances related to the given instance for
         a particular 'cascade', starting with this MapperProperty.
 
@@ -234,17 +246,28 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
 
         """
 
-    def merge(self, session, source_state, source_dict, dest_state,
-              dest_dict, load, _recursive, _resolve_conflict_map):
+    def merge(
+        self,
+        session,
+        source_state,
+        source_dict,
+        dest_state,
+        dest_dict,
+        load,
+        _recursive,
+        _resolve_conflict_map,
+    ):
         """Merge the attribute represented by this ``MapperProperty``
         from source to destination object.
 
         """
 
     def __repr__(self):
-        return '<%s at 0x%x; %s>' % (
+        return "<%s at 0x%x; %s>" % (
             self.__class__.__name__,
-            id(self), getattr(self, 'key', 'no key'))
+            id(self),
+            getattr(self, "key", "no key"),
+        )
 
 
 class PropComparator(operators.ColumnOperators):
@@ -335,7 +358,7 @@ class PropComparator(operators.ColumnOperators):
 
     """
 
-    __slots__ = 'prop', 'property', '_parententity', '_adapt_to_entity'
+    __slots__ = "prop", "property", "_parententity", "_adapt_to_entity"
 
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
         self.prop = self.property = prop
@@ -467,21 +490,27 @@ class StrategizedProperty(MapperProperty):
     """
 
     __slots__ = (
-        '_strategies', 'strategy',
-        '_wildcard_token', '_default_path_loader_key'
+        "_strategies",
+        "strategy",
+        "_wildcard_token",
+        "_default_path_loader_key",
     )
 
     strategy_wildcard_key = None
 
     def _memoized_attr__wildcard_token(self):
-        return ("%s:%s" % (
-            self.strategy_wildcard_key, path_registry._WILDCARD_TOKEN), )
+        return (
+            "%s:%s"
+            % (self.strategy_wildcard_key, path_registry._WILDCARD_TOKEN),
+        )
 
     def _memoized_attr__default_path_loader_key(self):
         return (
             "loader",
-            ("%s:%s" % (
-                self.strategy_wildcard_key, path_registry._DEFAULT_TOKEN), )
+            (
+                "%s:%s"
+                % (self.strategy_wildcard_key, path_registry._DEFAULT_TOKEN),
+            ),
         )
 
     def _get_context_loader(self, context, path):
@@ -496,7 +525,7 @@ class StrategizedProperty(MapperProperty):
         for path_key in (
             search_path._loader_key,
             search_path._wildcard_path_loader_key,
-            search_path._default_path_loader_key
+            search_path._default_path_loader_key,
         ):
             if path_key in context.attributes:
                 load = context.attributes[path_key]
@@ -509,12 +538,12 @@ class StrategizedProperty(MapperProperty):
             return self._strategies[key]
         except KeyError:
             cls = self._strategy_lookup(*key)
-            self._strategies[key] = self._strategies[
-                cls] = strategy = cls(self, key)
+            self._strategies[key] = self._strategies[cls] = strategy = cls(
+                self, key
+            )
             return strategy
 
-    def setup(
-            self, context, entity, path, adapter, **kwargs):
+    def setup(self, context, entity, path, adapter, **kwargs):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
             strat = self._get_strategy(loader.strategy)
@@ -523,24 +552,26 @@ class StrategizedProperty(MapperProperty):
         strat.setup_query(context, entity, path, loader, adapter, **kwargs)
 
     def create_row_processor(
-            self, context, path, mapper,
-            result, adapter, populators):
+        self, context, path, mapper, result, adapter, populators
+    ):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
             strat = self._get_strategy(loader.strategy)
         else:
             strat = self.strategy
         strat.create_row_processor(
-            context, path, loader,
-            mapper, result, adapter, populators)
+            context, path, loader, mapper, result, adapter, populators
+        )
 
     def do_init(self):
         self._strategies = {}
         self.strategy = self._get_strategy(self.strategy_key)
 
     def post_instrument_class(self, mapper):
-        if not self.parent.non_primary and \
-                not mapper.class_manager._attr_has_impl(self.key):
+        if (
+            not self.parent.non_primary
+            and not mapper.class_manager._attr_has_impl(self.key)
+        ):
             self.strategy.init_class_attribute(mapper)
 
     _all_strategies = collections.defaultdict(dict)
@@ -550,12 +581,13 @@ class StrategizedProperty(MapperProperty):
         def decorate(dec_cls):
             # ensure each subclass of the strategy has its
             # own _strategy_keys collection
-            if '_strategy_keys' not in dec_cls.__dict__:
+            if "_strategy_keys" not in dec_cls.__dict__:
                 dec_cls._strategy_keys = []
             key = tuple(sorted(kw.items()))
             cls._all_strategies[cls][key] = dec_cls
             dec_cls._strategy_keys.append(key)
             return dec_cls
+
         return decorate
 
     @classmethod
@@ -671,8 +703,14 @@ class LoaderStrategy(object):
 
     """
 
-    __slots__ = 'parent_property', 'is_class_level', 'parent', 'key', \
-        'strategy_key', 'strategy_opts'
+    __slots__ = (
+        "parent_property",
+        "is_class_level",
+        "parent",
+        "key",
+        "strategy_key",
+        "strategy_opts",
+    )
 
     def __init__(self, parent, strategy_key):
         self.parent_property = parent
@@ -695,8 +733,9 @@ class LoaderStrategy(object):
 
         """
 
-    def create_row_processor(self, context, path, loadopt, mapper,
-                             result, adapter, populators):
+    def create_row_processor(
+        self, context, path, loadopt, mapper, result, adapter, populators
+    ):
         """Establish row processing functions for a given QueryContext.
 
         This method fulfills the contract specified by

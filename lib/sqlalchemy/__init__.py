@@ -56,7 +56,7 @@ from .sql import (
     union_all,
     update,
     within_group,
-    )
+)
 
 from .types import (
     ARRAY,
@@ -102,7 +102,7 @@ from .types import (
     UnicodeText,
     VARBINARY,
     VARCHAR,
-    )
+)
 
 
 from .schema import (
@@ -123,14 +123,14 @@ from .schema import (
     ThreadLocalMetaData,
     UniqueConstraint,
     DDL,
-    BLANK_SCHEMA
+    BLANK_SCHEMA,
 )
 
 
 from .inspection import inspect
 from .engine import create_engine, engine_from_config
 
-__version__ = '1.3.0b2'
+__version__ = "1.3.0b2"
 
 
 def __go(lcls):
@@ -141,8 +141,13 @@ def __go(lcls):
 
     import inspect as _inspect
 
-    __all__ = sorted(name for name, obj in lcls.items()
-                     if not (name.startswith('_') or _inspect.ismodule(obj)))
+    __all__ = sorted(
+        name
+        for name, obj in lcls.items()
+        if not (name.startswith("_") or _inspect.ismodule(obj))
+    )
 
     _sa_util.dependencies.resolve_all("sqlalchemy")
+
+
 __go(locals())

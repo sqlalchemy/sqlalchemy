@@ -57,10 +57,9 @@ from .interfaces import (
     Dialect,
     ExecutionContext,
     ExceptionContext,
-
     # backwards compat
     Compiled,
-    TypeCompiler
+    TypeCompiler,
 )
 
 from .base import (
@@ -82,9 +81,7 @@ from .result import (
     RowProxy,
 )
 
-from .util import (
-    connection_memoize
-)
+from .util import connection_memoize
 
 
 from . import util, strategies
@@ -92,7 +89,7 @@ from . import util, strategies
 # backwards compat
 from ..sql import ddl
 
-default_strategy = 'plain'
+default_strategy = "plain"
 
 
 def create_engine(*args, **kwargs):
@@ -460,12 +457,12 @@ def create_engine(*args, **kwargs):
 
     """
 
-    strategy = kwargs.pop('strategy', default_strategy)
+    strategy = kwargs.pop("strategy", default_strategy)
     strategy = strategies.strategies[strategy]
     return strategy.create(*args, **kwargs)
 
 
-def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
+def engine_from_config(configuration, prefix="sqlalchemy.", **kwargs):
     """Create a new Engine instance using a configuration dictionary.
 
     The dictionary is typically produced from a config file.
@@ -497,16 +494,15 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
 
     """
 
-    options = dict((key[len(prefix):], configuration[key])
-                   for key in configuration
-                   if key.startswith(prefix))
-    options['_coerce_config'] = True
+    options = dict(
+        (key[len(prefix) :], configuration[key])
+        for key in configuration
+        if key.startswith(prefix)
+    )
+    options["_coerce_config"] = True
     options.update(kwargs)
-    url = options.pop('url')
+    url = options.pop("url")
     return create_engine(url, **options)
 
 
-__all__ = (
-    'create_engine',
-    'engine_from_config',
-)
+__all__ = ("create_engine", "engine_from_config")

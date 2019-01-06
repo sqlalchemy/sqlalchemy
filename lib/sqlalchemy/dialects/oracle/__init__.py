@@ -7,18 +7,51 @@
 
 from . import base, cx_oracle, zxjdbc  # noqa
 
-from .base import \
-    VARCHAR, NVARCHAR, CHAR, DATE, NUMBER,\
-    BLOB, BFILE, BINARY_FLOAT, BINARY_DOUBLE, CLOB, NCLOB, TIMESTAMP, RAW,\
-    FLOAT, DOUBLE_PRECISION, LONG, INTERVAL,\
-    VARCHAR2, NVARCHAR2, ROWID
+from .base import (
+    VARCHAR,
+    NVARCHAR,
+    CHAR,
+    DATE,
+    NUMBER,
+    BLOB,
+    BFILE,
+    BINARY_FLOAT,
+    BINARY_DOUBLE,
+    CLOB,
+    NCLOB,
+    TIMESTAMP,
+    RAW,
+    FLOAT,
+    DOUBLE_PRECISION,
+    LONG,
+    INTERVAL,
+    VARCHAR2,
+    NVARCHAR2,
+    ROWID,
+)
 
 base.dialect = dialect = cx_oracle.dialect
 
 __all__ = (
-    'VARCHAR', 'NVARCHAR', 'CHAR', 'DATE', 'NUMBER',
-    'BLOB', 'BFILE', 'CLOB', 'NCLOB', 'TIMESTAMP', 'RAW',
-    'FLOAT', 'DOUBLE_PRECISION', 'BINARY_DOUBLE', 'BINARY_FLOAT',
-    'LONG', 'dialect', 'INTERVAL',
-    'VARCHAR2', 'NVARCHAR2', 'ROWID'
+    "VARCHAR",
+    "NVARCHAR",
+    "CHAR",
+    "DATE",
+    "NUMBER",
+    "BLOB",
+    "BFILE",
+    "CLOB",
+    "NCLOB",
+    "TIMESTAMP",
+    "RAW",
+    "FLOAT",
+    "DOUBLE_PRECISION",
+    "BINARY_DOUBLE",
+    "BINARY_FLOAT",
+    "LONG",
+    "dialect",
+    "INTERVAL",
+    "VARCHAR2",
+    "NVARCHAR2",
+    "ROWID",
 )

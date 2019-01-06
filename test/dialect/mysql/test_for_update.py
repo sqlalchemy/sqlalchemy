@@ -15,15 +15,15 @@ from sqlalchemy import testing
 
 class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     __backend__ = True
-    __only_on__ = 'mysql'
-    __requires__ = 'mysql_for_update',
+    __only_on__ = "mysql"
+    __requires__ = ("mysql_for_update",)
 
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
             y = Column(Integer)
@@ -31,9 +31,9 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             __table_args__ = {"mysql_engine": "InnoDB"}
 
         class B(Base):
-            __tablename__ = 'b'
+            __tablename__ = "b"
             id = Column(Integer, primary_key=True)
-            a_id = Column(ForeignKey('a.id'))
+            a_id = Column(ForeignKey("a.id"))
             x = Column(Integer)
             y = Column(Integer)
             __table_args__ = {"mysql_engine": "InnoDB"}
@@ -48,7 +48,7 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
         s.add_all(
             [
                 A(x=5, y=5, bs=[B(x=4, y=4), B(x=2, y=8), B(x=7, y=1)]),
-                A(x=7, y=5, bs=[B(x=4, y=4), B(x=5, y=8)])
+                A(x=7, y=5, bs=[B(x=4, y=4), B(x=5, y=8)]),
             ]
         )
         s.commit()
@@ -70,9 +70,7 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             alt_trans.execute("set innodb_lock_wait_timeout=1")
             # set x/y > 10
             try:
-                alt_trans.execute(
-                    update(A).values(x=15, y=19)
-                )
+                alt_trans.execute(update(A).values(x=15, y=19))
             except (exc.InternalError, exc.OperationalError) as err:
                 assert "Lock wait timeout exceeded" in str(err)
                 assert should_be_locked
@@ -85,9 +83,7 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             alt_trans.execute("set innodb_lock_wait_timeout=1")
             # set x/y > 10
             try:
-                alt_trans.execute(
-                    update(B).values(x=15, y=19)
-                )
+                alt_trans.execute(update(B).values(x=15, y=19))
             except (exc.InternalError, exc.OperationalError) as err:
                 assert "Lock wait timeout exceeded" in str(err)
                 assert should_be_locked

@@ -47,7 +47,7 @@ class aggregate_order_by(expression.ColumnElement):
 
     """
 
-    __visit_name__ = 'aggregate_order_by'
+    __visit_name__ = "aggregate_order_by"
 
     def __init__(self, target, *order_by):
         self.target = elements._literal_as_binds(target)
@@ -59,8 +59,8 @@ class aggregate_order_by(expression.ColumnElement):
             self.order_by = elements._literal_as_binds(order_by[0])
         else:
             self.order_by = elements.ClauseList(
-                *order_by,
-                _literal_as_text=elements._literal_as_binds)
+                *order_by, _literal_as_text=elements._literal_as_binds
+            )
 
     def self_group(self, against=None):
         return self
@@ -87,7 +87,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
 static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
     """
 
-    __visit_name__ = 'exclude_constraint'
+    __visit_name__ = "exclude_constraint"
 
     where = None
 
@@ -173,8 +173,7 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
         expressions, operators = zip(*elements)
 
         for (expr, column, strname, add_element), operator in zip(
-                self._extract_col_expression_collection(expressions),
-                operators
+            self._extract_col_expression_collection(expressions), operators
         ):
             if add_element is not None:
                 columns.append(add_element)
@@ -187,32 +186,31 @@ static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 
             expr = expression._literal_as_text(expr)
 
-            render_exprs.append(
-                (expr, name, operator)
-            )
+            render_exprs.append((expr, name, operator))
 
         self._render_exprs = render_exprs
         ColumnCollectionConstraint.__init__(
             self,
             *columns,
-            name=kw.get('name'),
-            deferrable=kw.get('deferrable'),
-            initially=kw.get('initially')
+            name=kw.get("name"),
+            deferrable=kw.get("deferrable"),
+            initially=kw.get("initially")
         )
-        self.using = kw.get('using', 'gist')
-        where = kw.get('where')
+        self.using = kw.get("using", "gist")
+        where = kw.get("where")
         if where is not None:
             self.where = expression._literal_as_text(where)
 
     def copy(self, **kw):
-        elements = [(col, self.operators[col])
-                    for col in self.columns.keys()]
-        c = self.__class__(*elements,
-                           name=self.name,
-                           deferrable=self.deferrable,
-                           initially=self.initially,
-                           where=self.where,
-                           using=self.using)
+        elements = [(col, self.operators[col]) for col in self.columns.keys()]
+        c = self.__class__(
+            *elements,
+            name=self.name,
+            deferrable=self.deferrable,
+            initially=self.initially,
+            where=self.where,
+            using=self.using
+        )
         c.dispatch._update(self.dispatch)
         return c
 
@@ -226,5 +224,5 @@ def array_agg(*arg, **kw):
     .. versionadded:: 1.1
 
     """
-    kw['_default_array_type'] = ARRAY
+    kw["_default_array_type"] = ARRAY
     return functions.func.array_agg(*arg, **kw)

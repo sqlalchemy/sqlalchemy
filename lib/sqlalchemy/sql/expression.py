@@ -15,43 +15,142 @@ class.
 """
 
 __all__ = [
-    'Alias', 'any_', 'all_', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
-    'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Lateral',
-    'Select',
-    'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc', 'between',
-    'bindparam', 'case', 'cast', 'column', 'delete', 'desc', 'distinct',
-    'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
-    'collate', 'insert', 'intersect', 'intersect_all', 'join', 'label',
-    'lateral', 'literal', 'literal_column', 'not_', 'null', 'nullsfirst',
-    'nullslast',
-    'or_', 'outparam', 'outerjoin', 'over', 'select', 'subquery',
-    'table', 'text',
-    'tuple_', 'type_coerce', 'quoted_name', 'union', 'union_all', 'update',
-    'within_group',
-    'TableSample', 'tablesample']
+    "Alias",
+    "any_",
+    "all_",
+    "ClauseElement",
+    "ColumnCollection",
+    "ColumnElement",
+    "CompoundSelect",
+    "Delete",
+    "FromClause",
+    "Insert",
+    "Join",
+    "Lateral",
+    "Select",
+    "Selectable",
+    "TableClause",
+    "Update",
+    "alias",
+    "and_",
+    "asc",
+    "between",
+    "bindparam",
+    "case",
+    "cast",
+    "column",
+    "delete",
+    "desc",
+    "distinct",
+    "except_",
+    "except_all",
+    "exists",
+    "extract",
+    "func",
+    "modifier",
+    "collate",
+    "insert",
+    "intersect",
+    "intersect_all",
+    "join",
+    "label",
+    "lateral",
+    "literal",
+    "literal_column",
+    "not_",
+    "null",
+    "nullsfirst",
+    "nullslast",
+    "or_",
+    "outparam",
+    "outerjoin",
+    "over",
+    "select",
+    "subquery",
+    "table",
+    "text",
+    "tuple_",
+    "type_coerce",
+    "quoted_name",
+    "union",
+    "union_all",
+    "update",
+    "within_group",
+    "TableSample",
+    "tablesample",
+]
 
 
 from .visitors import Visitable
 from .functions import func, modifier, FunctionElement, Function
 from ..util.langhelpers import public_factory
-from .elements import ClauseElement, ColumnElement,\
-    BindParameter, CollectionAggregate, UnaryExpression, BooleanClauseList, \
-    Label, Cast, Case, ColumnClause, TextClause, Over, Null, \
-    True_, False_, BinaryExpression, Tuple, TypeClause, Extract, \
-    Grouping, WithinGroup, not_, quoted_name, \
-    collate, literal_column, between,\
-    literal, outparam, TypeCoerce, ClauseList, FunctionFilter
+from .elements import (
+    ClauseElement,
+    ColumnElement,
+    BindParameter,
+    CollectionAggregate,
+    UnaryExpression,
+    BooleanClauseList,
+    Label,
+    Cast,
+    Case,
+    ColumnClause,
+    TextClause,
+    Over,
+    Null,
+    True_,
+    False_,
+    BinaryExpression,
+    Tuple,
+    TypeClause,
+    Extract,
+    Grouping,
+    WithinGroup,
+    not_,
+    quoted_name,
+    collate,
+    literal_column,
+    between,
+    literal,
+    outparam,
+    TypeCoerce,
+    ClauseList,
+    FunctionFilter,
+)
 
-from .elements import SavepointClause, RollbackToSavepointClause, \
-    ReleaseSavepointClause
+from .elements import (
+    SavepointClause,
+    RollbackToSavepointClause,
+    ReleaseSavepointClause,
+)
 
-from .base import ColumnCollection, Generative, Executable, \
-    PARSE_AUTOCOMMIT
+from .base import ColumnCollection, Generative, Executable, PARSE_AUTOCOMMIT
 
-from .selectable import Alias, Join, Select, Selectable, TableClause, \
-    CompoundSelect, CTE, FromClause, FromGrouping, Lateral, SelectBase, \
-    alias, GenerativeSelect, subquery, HasCTE, HasPrefixes, HasSuffixes, \
-    lateral, Exists, ScalarSelect, TextAsFrom, TableSample, tablesample
+from .selectable import (
+    Alias,
+    Join,
+    Select,
+    Selectable,
+    TableClause,
+    CompoundSelect,
+    CTE,
+    FromClause,
+    FromGrouping,
+    Lateral,
+    SelectBase,
+    alias,
+    GenerativeSelect,
+    subquery,
+    HasCTE,
+    HasPrefixes,
+    HasSuffixes,
+    lateral,
+    Exists,
+    ScalarSelect,
+    TextAsFrom,
+    TableSample,
+    tablesample,
+)
 
 
 from .dml import Insert, Update, Delete, UpdateBase, ValuesBase
@@ -79,23 +178,30 @@ extract = public_factory(Extract, ".expression.extract")
 tuple_ = public_factory(Tuple, ".expression.tuple_")
 except_ = public_factory(CompoundSelect._create_except, ".expression.except_")
 except_all = public_factory(
-    CompoundSelect._create_except_all, ".expression.except_all")
+    CompoundSelect._create_except_all, ".expression.except_all"
+)
 intersect = public_factory(
-    CompoundSelect._create_intersect, ".expression.intersect")
+    CompoundSelect._create_intersect, ".expression.intersect"
+)
 intersect_all = public_factory(
-    CompoundSelect._create_intersect_all, ".expression.intersect_all")
+    CompoundSelect._create_intersect_all, ".expression.intersect_all"
+)
 union = public_factory(CompoundSelect._create_union, ".expression.union")
 union_all = public_factory(
-    CompoundSelect._create_union_all, ".expression.union_all")
+    CompoundSelect._create_union_all, ".expression.union_all"
+)
 exists = public_factory(Exists, ".expression.exists")
 nullsfirst = public_factory(
-    UnaryExpression._create_nullsfirst, ".expression.nullsfirst")
+    UnaryExpression._create_nullsfirst, ".expression.nullsfirst"
+)
 nullslast = public_factory(
-    UnaryExpression._create_nullslast, ".expression.nullslast")
+    UnaryExpression._create_nullslast, ".expression.nullslast"
+)
 asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
 distinct = public_factory(
-    UnaryExpression._create_distinct, ".expression.distinct")
+    UnaryExpression._create_distinct, ".expression.distinct"
+)
 type_coerce = public_factory(TypeCoerce, ".expression.type_coerce")
 true = public_factory(True_._instance, ".expression.true")
 false = public_factory(False_._instance, ".expression.false")
@@ -105,19 +211,30 @@ outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
 insert = public_factory(Insert, ".expression.insert")
 update = public_factory(Update, ".expression.update")
 delete = public_factory(Delete, ".expression.delete")
-funcfilter = public_factory(
-    FunctionFilter, ".expression.funcfilter")
+funcfilter = public_factory(FunctionFilter, ".expression.funcfilter")
 
 
 # internal functions still being called from tests and the ORM,
 # these might be better off in some other namespace
 from .base import _from_objects
-from .elements import _literal_as_text, _clause_element_as_expr,\
-    _is_column, _labeled, _only_column_elements, _string_or_unprintable, \
-    _truncated_label, _clone, _cloned_difference, _cloned_intersection,\
-    _column_as_key, _literal_as_binds, _select_iterables, \
-    _corresponding_column_or_error, _literal_as_label_reference, \
-    _expression_literal_as_text
+from .elements import (
+    _literal_as_text,
+    _clause_element_as_expr,
+    _is_column,
+    _labeled,
+    _only_column_elements,
+    _string_or_unprintable,
+    _truncated_label,
+    _clone,
+    _cloned_difference,
+    _cloned_intersection,
+    _column_as_key,
+    _literal_as_binds,
+    _select_iterables,
+    _corresponding_column_or_error,
+    _literal_as_label_reference,
+    _expression_literal_as_text,
+)
 from .selectable import _interpret_as_from
 
 

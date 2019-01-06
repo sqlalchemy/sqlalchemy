@@ -20,7 +20,7 @@ from .util import _orm_full_deannotate
 
 from .interfaces import PropComparator, StrategizedProperty
 
-__all__ = ['ColumnProperty']
+__all__ = ["ColumnProperty"]
 
 
 @log.class_logger
@@ -31,14 +31,27 @@ class ColumnProperty(StrategizedProperty):
 
     """
 
-    strategy_wildcard_key = 'column'
+    strategy_wildcard_key = "column"
 
     __slots__ = (
-        '_orig_columns', 'columns', 'group', 'deferred',
-        'instrument', 'comparator_factory', 'descriptor', 'extension',
-        'active_history', 'expire_on_flush', 'info', 'doc',
-        'strategy_key', '_creation_order', '_is_polymorphic_discriminator',
-        '_mapped_by_synonym', '_deferred_column_loader')
+        "_orig_columns",
+        "columns",
+        "group",
+        "deferred",
+        "instrument",
+        "comparator_factory",
+        "descriptor",
+        "extension",
+        "active_history",
+        "expire_on_flush",
+        "info",
+        "doc",
+        "strategy_key",
+        "_creation_order",
+        "_is_polymorphic_discriminator",
+        "_mapped_by_synonym",
+        "_deferred_column_loader",
+    )
 
     def __init__(self, *columns, **kwargs):
         r"""Provide a column-level property for use with a Mapper.
@@ -117,26 +130,28 @@ class ColumnProperty(StrategizedProperty):
         """
         super(ColumnProperty, self).__init__()
         self._orig_columns = [expression._labeled(c) for c in columns]
-        self.columns = [expression._labeled(_orm_full_deannotate(c))
-                        for c in columns]
-        self.group = kwargs.pop('group', None)
-        self.deferred = kwargs.pop('deferred', False)
-        self.instrument = kwargs.pop('_instrument', True)
-        self.comparator_factory = kwargs.pop('comparator_factory',
-                                             self.__class__.Comparator)
-        self.descriptor = kwargs.pop('descriptor', None)
-        self.extension = kwargs.pop('extension', None)
-        self.active_history = kwargs.pop('active_history', False)
-        self.expire_on_flush = kwargs.pop('expire_on_flush', True)
+        self.columns = [
+            expression._labeled(_orm_full_deannotate(c)) for c in columns
+        ]
+        self.group = kwargs.pop("group", None)
+        self.deferred = kwargs.pop("deferred", False)
+        self.instrument = kwargs.pop("_instrument", True)
+        self.comparator_factory = kwargs.pop(
+            "comparator_factory", self.__class__.Comparator
+        )
+        self.descriptor = kwargs.pop("descriptor", None)
+        self.extension = kwargs.pop("extension", None)
+        self.active_history = kwargs.pop("active_history", False)
+        self.expire_on_flush = kwargs.pop("expire_on_flush", True)
 
-        if 'info' in kwargs:
-            self.info = kwargs.pop('info')
+        if "info" in kwargs:
+            self.info = kwargs.pop("info")
 
-        if 'doc' in kwargs:
-            self.doc = kwargs.pop('doc')
+        if "doc" in kwargs:
+            self.doc = kwargs.pop("doc")
         else:
             for col in reversed(self.columns):
-                doc = getattr(col, 'doc', None)
+                doc = getattr(col, "doc", None)
                 if doc is not None:
                     self.doc = doc
                     break
@@ -145,22 +160,24 @@ class ColumnProperty(StrategizedProperty):
 
         if kwargs:
             raise TypeError(
-                "%s received unexpected keyword argument(s): %s" % (
-                    self.__class__.__name__,
-                    ', '.join(sorted(kwargs.keys()))))
+                "%s received unexpected keyword argument(s): %s"
+                % (self.__class__.__name__, ", ".join(sorted(kwargs.keys())))
+            )
 
         util.set_creation_order(self)
 
         self.strategy_key = (
             ("deferred", self.deferred),
-            ("instrument", self.instrument)
+            ("instrument", self.instrument),
         )
 
     @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
     def _memoized_attr__deferred_column_loader(self, state, strategies):
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
-            strategies.LoadDeferredColumns(self.key), self.key)
+            strategies.LoadDeferredColumns(self.key),
+            self.key,
+        )
 
     def __clause_element__(self):
         """Allow the ColumnProperty to work in expression before it is turned
@@ -185,34 +202,50 @@ class ColumnProperty(StrategizedProperty):
             self.key,
             comparator=self.comparator_factory(self, mapper),
             parententity=mapper,
-            doc=self.doc
+            doc=self.doc,
         )
 
     def do_init(self):
         super(ColumnProperty, self).do_init()
-        if len(self.columns) > 1 and \
-                set(self.parent.primary_key).issuperset(self.columns):
+        if len(self.columns) > 1 and set(self.parent.primary_key).issuperset(
+            self.columns
+        ):
             util.warn(
-                ("On mapper %s, primary key column '%s' is being combined "
-                 "with distinct primary key column '%s' in attribute '%s'.  "
-                 "Use explicit properties to give each column its own mapped "
-                 "attribute name.") % (self.parent, self.columns[1],
-                                       self.columns[0], self.key))
+                (
+                    "On mapper %s, primary key column '%s' is being combined "
+                    "with distinct primary key column '%s' in attribute '%s'.  "
+                    "Use explicit properties to give each column its own mapped "
+                    "attribute name."
+                )
+                % (self.parent, self.columns[1], self.columns[0], self.key)
+            )
 
     def copy(self):
         return ColumnProperty(
             deferred=self.deferred,
             group=self.group,
             active_history=self.active_history,
-            *self.columns)
+            *self.columns
+        )
 
-    def _getcommitted(self, state, dict_, column,
-                      passive=attributes.PASSIVE_OFF):
-        return state.get_impl(self.key).\
-            get_committed_value(state, dict_, passive=passive)
+    def _getcommitted(
+        self, state, dict_, column, passive=attributes.PASSIVE_OFF
+    ):
+        return state.get_impl(self.key).get_committed_value(
+            state, dict_, passive=passive
+        )
 
-    def merge(self, session, source_state, source_dict, dest_state,
-              dest_dict, load, _recursive, _resolve_conflict_map):
+    def merge(
+        self,
+        session,
+        source_state,
+        source_dict,
+        dest_state,
+        dest_dict,
+        load,
+        _recursive,
+        _resolve_conflict_map,
+    ):
         if not self.instrument:
             return
         elif self.key in source_dict:
@@ -225,7 +258,8 @@ class ColumnProperty(StrategizedProperty):
                 impl.set(dest_state, dest_dict, value, None)
         elif dest_state.has_identity and self.key not in dest_dict:
             dest_state._expire_attributes(
-                dest_dict, [self.key], no_loader=True)
+                dest_dict, [self.key], no_loader=True
+            )
 
     class Comparator(util.MemoizedSlots, PropComparator):
         """Produce boolean, comparison, and other operators for
@@ -246,7 +280,7 @@ class ColumnProperty(StrategizedProperty):
 
         """
 
-        __slots__ = '__clause_element__', 'info'
+        __slots__ = "__clause_element__", "info"
 
         def _memoized_method___clause_element__(self):
             if self.adapter:
@@ -254,9 +288,12 @@ class ColumnProperty(StrategizedProperty):
             else:
                 # no adapter, so we aren't aliased
                 # assert self._parententity is self._parentmapper
-                return self.prop.columns[0]._annotate({
-                    "parententity": self._parententity,
-                    "parentmapper": self._parententity})
+                return self.prop.columns[0]._annotate(
+                    {
+                        "parententity": self._parententity,
+                        "parentmapper": self._parententity,
+                    }
+                )
 
         def _memoized_attr_info(self):
             ce = self.__clause_element__()

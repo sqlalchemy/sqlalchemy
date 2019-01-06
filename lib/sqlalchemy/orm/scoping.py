@@ -11,7 +11,7 @@ from . import class_mapper, exc as orm_exc
 from .session import Session
 
 
-__all__ = ['scoped_session']
+__all__ = ["scoped_session"]
 
 
 class scoped_session(object):
@@ -65,7 +65,8 @@ class scoped_session(object):
             if self.registry.has():
                 raise sa_exc.InvalidRequestError(
                     "Scoped session is already present; "
-                    "no new arguments may be specified.")
+                    "no new arguments may be specified."
+                )
             else:
                 sess = self.session_factory(**kw)
                 self.registry.set(sess)
@@ -99,9 +100,11 @@ class scoped_session(object):
         """
 
         if self.registry.has():
-            warn('At least one scoped session is already present. '
-                 ' configure() can not affect sessions that have '
-                 'already been created.')
+            warn(
+                "At least one scoped session is already present. "
+                " configure() can not affect sessions that have "
+                "already been created."
+            )
 
         self.session_factory.configure(**kwargs)
 
@@ -129,6 +132,7 @@ class scoped_session(object):
         a class.
 
         """
+
         class query(object):
             def __get__(s, instance, owner):
                 try:
@@ -142,7 +146,9 @@ class scoped_session(object):
                             return self.registry().query(mapper)
                 except orm_exc.UnmappedClassError:
                     return None
+
         return query()
+
 
 ScopedSession = scoped_session
 """Old name for backwards compatibility."""
@@ -151,7 +157,9 @@ ScopedSession = scoped_session
 def instrument(name):
     def do(self, *args, **kwargs):
         return getattr(self.registry(), name)(*args, **kwargs)
+
     return do
+
 
 for meth in Session.public_methods:
     setattr(scoped_session, meth, instrument(meth))
@@ -166,16 +174,28 @@ def makeprop(name):
 
     return property(get, set)
 
-for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map',
-             'is_active', 'autoflush', 'no_autoflush', 'info',
-             'autocommit'):
+
+for prop in (
+    "bind",
+    "dirty",
+    "deleted",
+    "new",
+    "identity_map",
+    "is_active",
+    "autoflush",
+    "no_autoflush",
+    "info",
+    "autocommit",
+):
     setattr(scoped_session, prop, makeprop(prop))
 
 
 def clslevel(name):
     def do(cls, *args, **kwargs):
         return getattr(Session, name)(*args, **kwargs)
+
     return classmethod(do)
 
-for prop in ('close_all', 'object_session', 'identity_key'):
+
+for prop in ("close_all", "object_session", "identity_key"):
     setattr(scoped_session, prop, clslevel(prop))

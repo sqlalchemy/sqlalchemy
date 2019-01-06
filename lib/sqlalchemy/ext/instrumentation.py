@@ -28,15 +28,18 @@ see the example :ref:`examples_instrumentation`.
 """
 from ..orm import instrumentation as orm_instrumentation
 from ..orm.instrumentation import (
-    ClassManager, InstrumentationFactory, _default_state_getter,
-    _default_dict_getter, _default_manager_getter
+    ClassManager,
+    InstrumentationFactory,
+    _default_state_getter,
+    _default_dict_getter,
+    _default_manager_getter,
 )
 from ..orm import attributes, collections, base as orm_base
 from .. import util
 from ..orm import exc as orm_exc
 import weakref
 
-INSTRUMENTATION_MANAGER = '__sa_instrumentation_manager__'
+INSTRUMENTATION_MANAGER = "__sa_instrumentation_manager__"
 """Attribute, elects custom instrumentation when present on a mapped class.
 
 Allows a class to specify a slightly or wildly different technique for
@@ -66,6 +69,7 @@ def find_native_user_instrumentation_hook(cls):
     """Find user-specified instrumentation management for a class."""
     return getattr(cls, INSTRUMENTATION_MANAGER, None)
 
+
 instrumentation_finders = [find_native_user_instrumentation_hook]
 """An extensible sequence of callables which return instrumentation
 implementations
@@ -89,6 +93,7 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
     class managers.
 
     """
+
     _manager_finders = weakref.WeakKeyDictionary()
     _state_finders = weakref.WeakKeyDictionary()
     _dict_finders = weakref.WeakKeyDictionary()
@@ -104,13 +109,15 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
             return None, None
 
     def _check_conflicts(self, class_, factory):
-        existing_factories = self._collect_management_factories_for(class_).\
-            difference([factory])
+        existing_factories = self._collect_management_factories_for(
+            class_
+        ).difference([factory])
         if existing_factories:
             raise TypeError(
                 "multiple instrumentation implementations specified "
-                "in %s inheritance hierarchy: %r" % (
-                    class_.__name__, list(existing_factories)))
+                "in %s inheritance hierarchy: %r"
+                % (class_.__name__, list(existing_factories))
+            )
 
     def _extended_class_manager(self, class_, factory):
         manager = factory(class_)
@@ -178,17 +185,20 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
         if instance is None:
             raise AttributeError("None has no persistent state.")
         return self._state_finders.get(
-            instance.__class__, _default_state_getter)(instance)
+            instance.__class__, _default_state_getter
+        )(instance)
 
     def dict_of(self, instance):
         if instance is None:
             raise AttributeError("None has no persistent state.")
         return self._dict_finders.get(
-            instance.__class__, _default_dict_getter)(instance)
+            instance.__class__, _default_dict_getter
+        )(instance)
 
 
-orm_instrumentation._instrumentation_factory = \
-    _instrumentation_factory = ExtendedInstrumentationRegistry()
+orm_instrumentation._instrumentation_factory = (
+    _instrumentation_factory
+) = ExtendedInstrumentationRegistry()
 orm_instrumentation.instrumentation_finders = instrumentation_finders
 
 
@@ -222,14 +232,15 @@ class InstrumentationManager(object):
         pass
 
     def manage(self, class_, manager):
-        setattr(class_, '_default_class_manager', manager)
+        setattr(class_, "_default_class_manager", manager)
 
     def dispose(self, class_, manager):
-        delattr(class_, '_default_class_manager')
+        delattr(class_, "_default_class_manager")
 
     def manager_getter(self, class_):
         def get(cls):
             return cls._default_class_manager
+
         return get
 
     def instrument_attribute(self, class_, key, inst):
@@ -260,13 +271,13 @@ class InstrumentationManager(object):
         pass
 
     def install_state(self, class_, instance, state):
-        setattr(instance, '_default_state', state)
+        setattr(instance, "_default_state", state)
 
     def remove_state(self, class_, instance):
-        delattr(instance, '_default_state')
+        delattr(instance, "_default_state")
 
     def state_getter(self, class_):
-        return lambda instance: getattr(instance, '_default_state')
+        return lambda instance: getattr(instance, "_default_state")
 
     def dict_getter(self, class_):
         return lambda inst: self.get_instance_dict(class_, inst)
@@ -314,15 +325,17 @@ class _ClassInstrumentationAdapter(ClassManager):
 
     def instrument_collection_class(self, key, collection_class):
         return self._adapted.instrument_collection_class(
-            self.class_, key, collection_class)
+            self.class_, key, collection_class
+        )
 
     def initialize_collection(self, key, state, factory):
-        delegate = getattr(self._adapted, 'initialize_collection', None)
+        delegate = getattr(self._adapted, "initialize_collection", None)
         if delegate:
             return delegate(key, state, factory)
         else:
-            return ClassManager.initialize_collection(self, key,
-                                                      state, factory)
+            return ClassManager.initialize_collection(
+                self, key, state, factory
+            )
 
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
@@ -384,7 +397,7 @@ def _install_instrumented_lookups():
         dict(
             instance_state=_instrumentation_factory.state_of,
             instance_dict=_instrumentation_factory.dict_of,
-            manager_of_class=_instrumentation_factory.manager_of_class
+            manager_of_class=_instrumentation_factory.manager_of_class,
         )
     )
 
@@ -395,7 +408,7 @@ def _reinstall_default_lookups():
         dict(
             instance_state=_default_state_getter,
             instance_dict=_default_dict_getter,
-            manager_of_class=_default_manager_getter
+            manager_of_class=_default_manager_getter,
         )
     )
     _instrumentation_factory._extended = False
@@ -403,12 +416,15 @@ def _reinstall_default_lookups():
 
 def _install_lookups(lookups):
     global instance_state, instance_dict, manager_of_class
-    instance_state = lookups['instance_state']
-    instance_dict = lookups['instance_dict']
-    manager_of_class = lookups['manager_of_class']
-    orm_base.instance_state = attributes.instance_state = \
-        orm_instrumentation.instance_state = instance_state
-    orm_base.instance_dict = attributes.instance_dict = \
-        orm_instrumentation.instance_dict = instance_dict
-    orm_base.manager_of_class = attributes.manager_of_class = \
-        orm_instrumentation.manager_of_class = manager_of_class
+    instance_state = lookups["instance_state"]
+    instance_dict = lookups["instance_dict"]
+    manager_of_class = lookups["manager_of_class"]
+    orm_base.instance_state = (
+        attributes.instance_state
+    ) = orm_instrumentation.instance_state = instance_state
+    orm_base.instance_dict = (
+        attributes.instance_dict
+    ) = orm_instrumentation.instance_dict = instance_dict
+    orm_base.manager_of_class = (
+        attributes.manager_of_class
+    ) = orm_instrumentation.manager_of_class = manager_of_class

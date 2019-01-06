@@ -35,6 +35,7 @@ def default_listener(col_attr, default):
     user integrating this feature.
 
     """
+
     @event.listens_for(col_attr, "init_scalar", retval=True, propagate=True)
     def init_scalar(target, value, dict_):
 
@@ -52,7 +53,8 @@ def default_listener(col_attr, default):
             # or can procure a connection from an Engine
             # or Session and actually run the SQL, if desired.
             raise NotImplementedError(
-                "Can't invoke pre-default for a SQL-level column default")
+                "Can't invoke pre-default for a SQL-level column default"
+            )
 
         # set the value in the given dict_; this won't emit any further
         # attribute set events or create attribute "history", but the value
@@ -63,7 +65,7 @@ def default_listener(col_attr, default):
         return value
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     from sqlalchemy import Column, Integer, DateTime, create_engine
     from sqlalchemy.orm import Session
@@ -72,10 +74,10 @@ if __name__ == '__main__':
 
     Base = declarative_base()
 
-    event.listen(Base, 'mapper_configured', configure_listener, propagate=True)
+    event.listen(Base, "mapper_configured", configure_listener, propagate=True)
 
     class Widget(Base):
-        __tablename__ = 'widget'
+        __tablename__ = "widget"
 
         id = Column(Integer, primary_key=True)
 
@@ -96,8 +98,8 @@ if __name__ == '__main__':
     # Column-level default for the "timestamp" column will no longer fire
     # off.
     current_time = w1.timestamp
-    assert (
-        current_time > datetime.datetime.now() - datetime.timedelta(seconds=5)
+    assert current_time > datetime.datetime.now() - datetime.timedelta(
+        seconds=5
     )
 
     # persist
@@ -107,7 +109,7 @@ if __name__ == '__main__':
 
     # data is persisted.  The timestamp is also the one we generated above;
     # e.g. the default wasn't re-invoked later.
-    assert (
-        sess.query(Widget.radius, Widget.timestamp).first() ==
-        (30, current_time)
+    assert sess.query(Widget.radius, Widget.timestamp).first() == (
+        30,
+        current_time,
     )

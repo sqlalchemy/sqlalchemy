@@ -39,7 +39,7 @@ def _resolve_for_abstract_or_classical(cls):
     if cls is object:
         return None
 
-    if _get_immediate_cls_attr(cls, '__abstract__', strict=True):
+    if _get_immediate_cls_attr(cls, "__abstract__", strict=True):
         for sup in cls.__bases__:
             sup = _resolve_for_abstract_or_classical(sup)
             if sup is not None:
@@ -59,7 +59,7 @@ def _dive_for_classically_mapped_class(cls):
 
     # if we are within a base hierarchy, don't
     # search at all for classical mappings
-    if hasattr(cls, '_decl_class_registry'):
+    if hasattr(cls, "_decl_class_registry"):
         return None
 
     manager = instrumentation.manager_of_class(cls)
@@ -89,15 +89,19 @@ def _get_immediate_cls_attr(cls, attrname, strict=False):
         return None
 
     for base in cls.__mro__:
-        _is_declarative_inherits = hasattr(base, '_decl_class_registry')
-        _is_classicial_inherits = not _is_declarative_inherits and \
-            _dive_for_classically_mapped_class(base) is not None
+        _is_declarative_inherits = hasattr(base, "_decl_class_registry")
+        _is_classicial_inherits = (
+            not _is_declarative_inherits
+            and _dive_for_classically_mapped_class(base) is not None
+        )
 
         if attrname in base.__dict__ and (
-            base is cls or
-            ((base in cls.__bases__ if strict else True)
+            base is cls
+            or (
+                (base in cls.__bases__ if strict else True)
                 and not _is_declarative_inherits
-                and not _is_classicial_inherits)
+                and not _is_classicial_inherits
+            )
         ):
             return getattr(base, attrname)
     else:
@@ -108,9 +112,10 @@ def _as_declarative(cls, classname, dict_):
     global declared_attr, declarative_props
     if declared_attr is None:
         from .api import declared_attr
+
         declarative_props = (declared_attr, util.classproperty)
 
-    if _get_immediate_cls_attr(cls, '__abstract__', strict=True):
+    if _get_immediate_cls_attr(cls, "__abstract__", strict=True):
         return
 
     _MapperConfig.setup_mapping(cls, classname, dict_)
@@ -119,23 +124,23 @@ def _as_declarative(cls, classname, dict_):
 def _check_declared_props_nocascade(obj, name, cls):
 
     if isinstance(obj, declarative_props):
-        if getattr(obj, '_cascading', False):
+        if getattr(obj, "_cascading", False):
             util.warn(
                 "@declared_attr.cascading is not supported on the %s "
                 "attribute on class %s.  This attribute invokes for "
-                "subclasses in any case." % (name, cls))
+                "subclasses in any case." % (name, cls)
+            )
         return True
     else:
         return False
 
 
 class _MapperConfig(object):
-
     @classmethod
     def setup_mapping(cls, cls_, classname, dict_):
         defer_map = _get_immediate_cls_attr(
-            cls_, '_sa_decl_prepare_nocascade', strict=True) or \
-            hasattr(cls_, '_sa_decl_prepare')
+            cls_, "_sa_decl_prepare_nocascade", strict=True
+        ) or hasattr(cls_, "_sa_decl_prepare")
 
         if defer_map:
             cfg_cls = _DeferredMapperConfig
@@ -179,12 +184,14 @@ class _MapperConfig(object):
         self.map()
 
     def _setup_declared_events(self):
-        if _get_immediate_cls_attr(self.cls, '__declare_last__'):
+        if _get_immediate_cls_attr(self.cls, "__declare_last__"):
+
             @event.listens_for(mapper, "after_configured")
             def after_configured():
                 self.cls.__declare_last__()
 
-        if _get_immediate_cls_attr(self.cls, '__declare_first__'):
+        if _get_immediate_cls_attr(self.cls, "__declare_first__"):
+
             @event.listens_for(mapper, "before_configured")
             def before_configured():
                 self.cls.__declare_first__()
@@ -198,59 +205,62 @@ class _MapperConfig(object):
         tablename = None
 
         for base in cls.__mro__:
-            class_mapped = base is not cls and \
-                _declared_mapping_info(base) is not None and \
-                not _get_immediate_cls_attr(
-                    base, '_sa_decl_prepare_nocascade', strict=True)
+            class_mapped = (
+                base is not cls
+                and _declared_mapping_info(base) is not None
+                and not _get_immediate_cls_attr(
+                    base, "_sa_decl_prepare_nocascade", strict=True
+                )
+            )
 
             if not class_mapped and base is not cls:
                 self._produce_column_copies(base)
 
             for name, obj in vars(base).items():
-                if name == '__mapper_args__':
-                    check_decl = \
-                        _check_declared_props_nocascade(obj, name, cls)
-                    if not mapper_args_fn and (
-                        not class_mapped or
-                        check_decl
-                    ):
+                if name == "__mapper_args__":
+                    check_decl = _check_declared_props_nocascade(
+                        obj, name, cls
+                    )
+                    if not mapper_args_fn and (not class_mapped or check_decl):
                         # don't even invoke __mapper_args__ until
                         # after we've determined everything about the
                         # mapped table.
                         # make a copy of it so a class-level dictionary
                         # is not overwritten when we update column-based
                         # arguments.
-                        mapper_args_fn = lambda: dict(cls.__mapper_args__)  # noqa
-                elif name == '__tablename__':
-                    check_decl = \
-                        _check_declared_props_nocascade(obj, name, cls)
-                    if not tablename and (
-                        not class_mapped or
-                        check_decl
-                    ):
+                        mapper_args_fn = lambda: dict(
+                            cls.__mapper_args__
+                        )  # noqa
+                elif name == "__tablename__":
+                    check_decl = _check_declared_props_nocascade(
+                        obj, name, cls
+                    )
+                    if not tablename and (not class_mapped or check_decl):
                         tablename = cls.__tablename__
-                elif name == '__table_args__':
-                    check_decl = \
-                        _check_declared_props_nocascade(obj, name, cls)
-                    if not table_args and (
-                        not class_mapped or
-                        check_decl
-                    ):
+                elif name == "__table_args__":
+                    check_decl = _check_declared_props_nocascade(
+                        obj, name, cls
+                    )
+                    if not table_args and (not class_mapped or check_decl):
                         table_args = cls.__table_args__
                         if not isinstance(
-                                table_args, (tuple, dict, type(None))):
+                            table_args, (tuple, dict, type(None))
+                        ):
                             raise exc.ArgumentError(
                                 "__table_args__ value must be a tuple, "
-                                "dict, or None")
+                                "dict, or None"
+                            )
                         if base is not cls:
                             inherited_table_args = True
                 elif class_mapped:
                     if isinstance(obj, declarative_props):
-                        util.warn("Regular (i.e. not __special__) "
-                                  "attribute '%s.%s' uses @declared_attr, "
-                                  "but owning class %s is mapped - "
-                                  "not applying to subclass %s."
-                                  % (base.__name__, name, base, cls))
+                        util.warn(
+                            "Regular (i.e. not __special__) "
+                            "attribute '%s.%s' uses @declared_attr, "
+                            "but owning class %s is mapped - "
+                            "not applying to subclass %s."
+                            % (base.__name__, name, base, cls)
+                        )
                     continue
                 elif base is not cls:
                     # we're a mixin, abstract base, or something that is
@@ -263,7 +273,8 @@ class _MapperConfig(object):
                             "Mapper properties (i.e. deferred,"
                             "column_property(), relationship(), etc.) must "
                             "be declared as @declared_attr callables "
-                            "on declarative mixin classes.")
+                            "on declarative mixin classes."
+                        )
                     elif isinstance(obj, declarative_props):
                         oldclassprop = isinstance(obj, util.classproperty)
                         if not oldclassprop and obj._cascading:
@@ -278,15 +289,18 @@ class _MapperConfig(object):
                                     "Attribute '%s' on class %s cannot be "
                                     "processed due to "
                                     "@declared_attr.cascading; "
-                                    "skipping" % (name, cls))
-                            dict_[name] = column_copies[obj] = \
-                                ret = obj.__get__(obj, cls)
+                                    "skipping" % (name, cls)
+                                )
+                            dict_[name] = column_copies[
+                                obj
+                            ] = ret = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
                         else:
                             if oldclassprop:
                                 util.warn_deprecated(
                                     "Use of sqlalchemy.util.classproperty on "
-                                    "declarative classes is deprecated.")
+                                    "declarative classes is deprecated."
+                                )
                             # access attribute using normal class access
                             ret = getattr(cls, name)
 
@@ -294,14 +308,20 @@ class _MapperConfig(object):
                             # or similar.  note there is no known case that
                             # produces nested proxies, so we are only
                             # looking one level deep right now.
-                            if isinstance(ret, InspectionAttr) and \
-                                    ret._is_internal_proxy and not isinstance(
-                                        ret.original_property, MapperProperty):
+                            if (
+                                isinstance(ret, InspectionAttr)
+                                and ret._is_internal_proxy
+                                and not isinstance(
+                                    ret.original_property, MapperProperty
+                                )
+                            ):
                                 ret = ret.descriptor
 
                             dict_[name] = column_copies[obj] = ret
-                        if isinstance(ret, (Column, MapperProperty)) and \
-                                ret.doc is None:
+                        if (
+                            isinstance(ret, (Column, MapperProperty))
+                            and ret.doc is None
+                        ):
                             ret.doc = obj.__doc__
                     # here, the attribute is some other kind of property that
                     # we assume is not part of the declarative mapping.
@@ -321,8 +341,9 @@ class _MapperConfig(object):
             util.warn(
                 "Attribute '%s' on class %s appears to be a non-schema "
                 "'sqlalchemy.sql.column()' "
-                "object; this won't be part of the declarative mapping" %
-                (key, cls))
+                "object; this won't be part of the declarative mapping"
+                % (key, cls)
+            )
 
     def _produce_column_copies(self, base):
         cls = self.cls
@@ -340,10 +361,11 @@ class _MapperConfig(object):
                     raise exc.InvalidRequestError(
                         "Columns with foreign keys to other columns "
                         "must be declared as @declared_attr callables "
-                        "on declarative mixin classes. ")
+                        "on declarative mixin classes. "
+                    )
                 elif name not in dict_ and not (
-                        '__table__' in dict_ and
-                        (obj.name or name) in dict_['__table__'].c
+                    "__table__" in dict_
+                    and (obj.name or name) in dict_["__table__"].c
                 ):
                     column_copies[obj] = copy_ = obj.copy()
                     copy_._creation_order = obj._creation_order
@@ -357,11 +379,12 @@ class _MapperConfig(object):
         our_stuff = self.properties
 
         late_mapped = _get_immediate_cls_attr(
-                    cls, '_sa_decl_prepare_nocascade', strict=True)
+            cls, "_sa_decl_prepare_nocascade", strict=True
+        )
 
         for k in list(dict_):
 
-            if k in ('__table__', '__tablename__', '__mapper_args__'):
+            if k in ("__table__", "__tablename__", "__mapper_args__"):
                 continue
 
             value = dict_[k]
@@ -371,29 +394,37 @@ class _MapperConfig(object):
                         "Use of @declared_attr.cascading only applies to "
                         "Declarative 'mixin' and 'abstract' classes.  "
                         "Currently, this flag is ignored on mapped class "
-                        "%s" % self.cls)
+                        "%s" % self.cls
+                    )
 
                 value = getattr(cls, k)
 
-            elif isinstance(value, QueryableAttribute) and \
-                    value.class_ is not cls and \
-                    value.key != k:
+            elif (
+                isinstance(value, QueryableAttribute)
+                and value.class_ is not cls
+                and value.key != k
+            ):
                 # detect a QueryableAttribute that's already mapped being
                 # assigned elsewhere in userland, turn into a synonym()
                 value = synonym(value.key)
                 setattr(cls, k, value)
 
-            if (isinstance(value, tuple) and len(value) == 1 and
-                    isinstance(value[0], (Column, MapperProperty))):
-                util.warn("Ignoring declarative-like tuple value of attribute "
-                          "'%s': possibly a copy-and-paste error with a comma "
-                          "accidentally placed at the end of the line?" % k)
+            if (
+                isinstance(value, tuple)
+                and len(value) == 1
+                and isinstance(value[0], (Column, MapperProperty))
+            ):
+                util.warn(
+                    "Ignoring declarative-like tuple value of attribute "
+                    "'%s': possibly a copy-and-paste error with a comma "
+                    "accidentally placed at the end of the line?" % k
+                )
                 continue
             elif not isinstance(value, (Column, MapperProperty)):
                 # using @declared_attr for some object that
                 # isn't Column/MapperProperty; remove from the dict_
                 # and place the evaluated value onto the class.
-                if not k.startswith('__'):
+                if not k.startswith("__"):
                     dict_.pop(k)
                     self._warn_for_decl_attributes(cls, k, value)
                     if not late_mapped:
@@ -402,7 +433,7 @@ class _MapperConfig(object):
             # we expect to see the name 'metadata' in some valid cases;
             # however at this point we see it's assigned to something trying
             # to be mapped, so raise for that.
-            elif k == 'metadata':
+            elif k == "metadata":
                 raise exc.InvalidRequestError(
                     "Attribute name 'metadata' is reserved "
                     "for the MetaData instance when using a "
@@ -423,8 +454,7 @@ class _MapperConfig(object):
         for key, c in list(our_stuff.items()):
             if isinstance(c, (ColumnProperty, CompositeProperty)):
                 for col in c.columns:
-                    if isinstance(col, Column) and \
-                            col.table is None:
+                    if isinstance(col, Column) and col.table is None:
                         _undefer_column_name(key, col)
                         if not isinstance(c, CompositeProperty):
                             name_to_prop_key[col.name].add(key)
@@ -447,8 +477,8 @@ class _MapperConfig(object):
                     "On class %r, Column object %r named "
                     "directly multiple times, "
                     "only one will be used: %s. "
-                    "Consider using orm.synonym instead" %
-                    (self.classname, name, (", ".join(sorted(keys))))
+                    "Consider using orm.synonym instead"
+                    % (self.classname, name, (", ".join(sorted(keys))))
                 )
 
     def _setup_table(self):
@@ -459,15 +489,16 @@ class _MapperConfig(object):
         declared_columns = self.declared_columns
 
         declared_columns = self.declared_columns = sorted(
-            declared_columns, key=lambda c: c._creation_order)
+            declared_columns, key=lambda c: c._creation_order
+        )
         table = None
 
-        if hasattr(cls, '__table_cls__'):
+        if hasattr(cls, "__table_cls__"):
             table_cls = util.unbound_method_to_callable(cls.__table_cls__)
         else:
             table_cls = Table
 
-        if '__table__' not in dict_:
+        if "__table__" not in dict_:
             if tablename is not None:
 
                 args, table_kw = (), {}
@@ -480,14 +511,16 @@ class _MapperConfig(object):
                         else:
                             args = table_args
 
-                autoload = dict_.get('__autoload__')
+                autoload = dict_.get("__autoload__")
                 if autoload:
-                    table_kw['autoload'] = True
+                    table_kw["autoload"] = True
 
                 cls.__table__ = table = table_cls(
-                    tablename, cls.metadata,
+                    tablename,
+                    cls.metadata,
                     *(tuple(declared_columns) + tuple(args)),
-                    **table_kw)
+                    **table_kw
+                )
         else:
             table = cls.__table__
             if declared_columns:
@@ -512,21 +545,27 @@ class _MapperConfig(object):
             c = _resolve_for_abstract_or_classical(c)
             if c is None:
                 continue
-            if _declared_mapping_info(c) is not None and \
-                    not _get_immediate_cls_attr(
-                        c, '_sa_decl_prepare_nocascade', strict=True):
+            if _declared_mapping_info(
+                c
+            ) is not None and not _get_immediate_cls_attr(
+                c, "_sa_decl_prepare_nocascade", strict=True
+            ):
                 inherits.append(c)
 
         if inherits:
             if len(inherits) > 1:
                 raise exc.InvalidRequestError(
-                    "Class %s has multiple mapped bases: %r" % (cls, inherits))
+                    "Class %s has multiple mapped bases: %r" % (cls, inherits)
+                )
             self.inherits = inherits[0]
         else:
             self.inherits = None
 
-        if table is None and self.inherits is None and \
-                not _get_immediate_cls_attr(cls, '__no_table__'):
+        if (
+            table is None
+            and self.inherits is None
+            and not _get_immediate_cls_attr(cls, "__no_table__")
+        ):
 
             raise exc.InvalidRequestError(
                 "Class %r does not have a __table__ or __tablename__ "
@@ -553,8 +592,8 @@ class _MapperConfig(object):
                             continue
                         raise exc.ArgumentError(
                             "Column '%s' on class %s conflicts with "
-                            "existing column '%s'" %
-                            (c, cls, inherited_table.c[c.name])
+                            "existing column '%s'"
+                            % (c, cls, inherited_table.c[c.name])
                         )
                     if c.primary_key:
                         raise exc.ArgumentError(
@@ -562,8 +601,10 @@ class _MapperConfig(object):
                             "class with no table."
                         )
                     inherited_table.append_column(c)
-                    if inherited_mapped_table is not None and \
-                            inherited_mapped_table is not inherited_table:
+                    if (
+                        inherited_mapped_table is not None
+                        and inherited_mapped_table is not inherited_table
+                    ):
                         inherited_mapped_table._refresh_for_new_column(c)
 
     def _prepare_mapper_arguments(self):
@@ -575,18 +616,19 @@ class _MapperConfig(object):
 
         # make sure that column copies are used rather
         # than the original columns from any mixins
-        for k in ('version_id_col', 'polymorphic_on',):
+        for k in ("version_id_col", "polymorphic_on"):
             if k in mapper_args:
                 v = mapper_args[k]
                 mapper_args[k] = self.column_copies.get(v, v)
 
-        assert 'inherits' not in mapper_args, \
-            "Can't specify 'inherits' explicitly with declarative mappings"
+        assert (
+            "inherits" not in mapper_args
+        ), "Can't specify 'inherits' explicitly with declarative mappings"
 
         if self.inherits:
-            mapper_args['inherits'] = self.inherits
+            mapper_args["inherits"] = self.inherits
 
-        if self.inherits and not mapper_args.get('concrete', False):
+        if self.inherits and not mapper_args.get("concrete", False):
             # single or joined inheritance
             # exclude any cols on the inherited table which are
             # not mapped on the parent class, to avoid
@@ -594,16 +636,17 @@ class _MapperConfig(object):
             inherited_mapper = _declared_mapping_info(self.inherits)
             inherited_table = inherited_mapper.local_table
 
-            if 'exclude_properties' not in mapper_args:
-                mapper_args['exclude_properties'] = exclude_properties = \
-                    set(
-                        [c.key for c in inherited_table.c
-                         if c not in inherited_mapper._columntoproperty]
-                ).union(
-                    inherited_mapper.exclude_properties or ()
-                )
+            if "exclude_properties" not in mapper_args:
+                mapper_args["exclude_properties"] = exclude_properties = set(
+                    [
+                        c.key
+                        for c in inherited_table.c
+                        if c not in inherited_mapper._columntoproperty
+                    ]
+                ).union(inherited_mapper.exclude_properties or ())
                 exclude_properties.difference_update(
-                    [c.key for c in self.declared_columns])
+                    [c.key for c in self.declared_columns]
+                )
 
             # look through columns in the current mapper that
             # are keyed to a propname different than the colname
@@ -621,21 +664,20 @@ class _MapperConfig(object):
                         # first.  See [ticket:1892] for background.
                         properties[k] = [col] + p.columns
         result_mapper_args = mapper_args.copy()
-        result_mapper_args['properties'] = properties
+        result_mapper_args["properties"] = properties
         self.mapper_args = result_mapper_args
 
     def map(self):
         self._prepare_mapper_arguments()
-        if hasattr(self.cls, '__mapper_cls__'):
+        if hasattr(self.cls, "__mapper_cls__"):
             mapper_cls = util.unbound_method_to_callable(
-                self.cls.__mapper_cls__)
+                self.cls.__mapper_cls__
+            )
         else:
             mapper_cls = mapper
 
         self.cls.__mapper__ = mp_ = mapper_cls(
-            self.cls,
-            self.local_table,
-            **self.mapper_args
+            self.cls, self.local_table, **self.mapper_args
         )
         del self.cls._sa_declared_attr_reg
         return mp_
@@ -663,8 +705,7 @@ class _DeferredMapperConfig(_MapperConfig):
     @classmethod
     def has_cls(cls, class_):
         # 2.6 fails on weakref if class_ is an old style class
-        return isinstance(class_, type) and \
-            weakref.ref(class_) in cls._configs
+        return isinstance(class_, type) and weakref.ref(class_) in cls._configs
 
     @classmethod
     def config_for_cls(cls, class_):
@@ -673,18 +714,15 @@ class _DeferredMapperConfig(_MapperConfig):
     @classmethod
     def classes_for_base(cls, base_cls, sort=True):
         classes_for_base = [
-            m for m, cls_ in
-            [(m, m.cls) for m in cls._configs.values()]
+            m
+            for m, cls_ in [(m, m.cls) for m in cls._configs.values()]
             if cls_ is not None and issubclass(cls_, base_cls)
         ]
 
         if not sort:
             return classes_for_base
 
-        all_m_by_cls = dict(
-            (m.cls, m)
-            for m in classes_for_base
-        )
+        all_m_by_cls = dict((m.cls, m) for m in classes_for_base)
 
         tuples = []
         for m_cls in all_m_by_cls:
@@ -693,12 +731,7 @@ class _DeferredMapperConfig(_MapperConfig):
                 for base_cls in m_cls.__bases__
                 if base_cls in all_m_by_cls
             )
-        return list(
-            topological.sort(
-                tuples,
-                classes_for_base
-            )
-        )
+        return list(topological.sort(tuples, classes_for_base))
 
     def map(self):
         self._configs.pop(self._cls, None)
@@ -713,7 +746,7 @@ def _add_attribute(cls, key, value):
 
     """
 
-    if '__mapper__' in cls.__dict__:
+    if "__mapper__" in cls.__dict__:
         if isinstance(value, Column):
             _undefer_column_name(key, value)
             cls.__table__.append_column(value)
@@ -726,16 +759,14 @@ def _add_attribute(cls, key, value):
             cls.__mapper__.add_property(key, value)
         elif isinstance(value, MapperProperty):
             cls.__mapper__.add_property(
-                key,
-                clsregistry._deferred_relationship(cls, value)
+                key, clsregistry._deferred_relationship(cls, value)
             )
         elif isinstance(value, QueryableAttribute) and value.key != key:
             # detect a QueryableAttribute that's already mapped being
             # assigned elsewhere in userland, turn into a synonym()
             value = synonym(value.key)
             cls.__mapper__.add_property(
-                key,
-                clsregistry._deferred_relationship(cls, value)
+                key, clsregistry._deferred_relationship(cls, value)
             )
         else:
             type.__setattr__(cls, key, value)
@@ -746,15 +777,18 @@ def _add_attribute(cls, key, value):
 
 def _del_attribute(cls, key):
 
-    if '__mapper__' in cls.__dict__ and \
-            key in cls.__dict__ and not cls.__mapper__._dispose_called:
+    if (
+        "__mapper__" in cls.__dict__
+        and key in cls.__dict__
+        and not cls.__mapper__._dispose_called
+    ):
         value = cls.__dict__[key]
         if isinstance(
-                value,
-                (Column, ColumnProperty, MapperProperty, QueryableAttribute)
+            value, (Column, ColumnProperty, MapperProperty, QueryableAttribute)
         ):
             raise NotImplementedError(
-                "Can't un-map individual mapped attributes on a mapped class.")
+                "Can't un-map individual mapped attributes on a mapped class."
+            )
         else:
             type.__delattr__(cls, key)
             cls.__mapper__._expire_memoizations()
@@ -776,10 +810,12 @@ def _declarative_constructor(self, **kwargs):
     for k in kwargs:
         if not hasattr(cls_, k):
             raise TypeError(
-                "%r is an invalid keyword argument for %s" %
-                (k, cls_.__name__))
+                "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+            )
         setattr(self, k, kwargs[k])
-_declarative_constructor.__name__ = '__init__'
+
+
+_declarative_constructor.__name__ = "__init__"
 
 
 def _undefer_column_name(key, column):

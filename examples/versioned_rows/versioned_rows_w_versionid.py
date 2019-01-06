@@ -6,10 +6,24 @@ This example adds a numerical version_id to the Versioned class as well
 as the ability to see which row is the most "current" vesion.
 
 """
-from sqlalchemy.orm import sessionmaker, relationship, make_transient, \
-    backref, Session, column_property
-from sqlalchemy import Column, ForeignKeyConstraint, create_engine, \
-    Integer, String, Boolean, select, func
+from sqlalchemy.orm import (
+    sessionmaker,
+    relationship,
+    make_transient,
+    backref,
+    Session,
+    column_property,
+)
+from sqlalchemy import (
+    Column,
+    ForeignKeyConstraint,
+    create_engine,
+    Integer,
+    String,
+    Boolean,
+    select,
+    func,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy import event
@@ -38,7 +52,8 @@ class Versioned(object):
         # optional - set previous version to have is_current_version=False
         old_id = self.id
         session.query(self.__class__).filter_by(id=old_id).update(
-            values=dict(is_current_version=False), synchronize_session=False)
+            values=dict(is_current_version=False), synchronize_session=False
+        )
 
         # make us transient (removes persistent
         # identity).
@@ -65,9 +80,10 @@ def before_flush(session, flush_context, instances):
         # re-add
         session.add(instance)
 
+
 Base = declarative_base()
 
-engine = create_engine('sqlite://', echo=True)
+engine = create_engine("sqlite://", echo=True)
 
 Session = sessionmaker(engine)
 
@@ -75,17 +91,18 @@ Session = sessionmaker(engine)
 
 
 class Example(Versioned, Base):
-    __tablename__ = 'example'
+    __tablename__ = "example"
     data = Column(String)
+
 
 Base.metadata.create_all(engine)
 
 session = Session()
-e1 = Example(id=1, data='e1')
+e1 = Example(id=1, data="e1")
 session.add(e1)
 session.commit()
 
-e1.data = 'e2'
+e1.data = "e2"
 session.commit()
 
 assert session.query(
@@ -93,36 +110,36 @@ assert session.query(
     Example.version_id,
     Example.is_current_version,
     Example.calc_is_current_version,
-    Example.data).order_by(Example.id, Example.version_id).all() == (
-    [(1, 1, False, False, 'e1'), (1, 2, True, True, 'e2')]
+    Example.data,
+).order_by(Example.id, Example.version_id).all() == (
+    [(1, 1, False, False, "e1"), (1, 2, True, True, "e2")]
 )
 
 # example 2, versioning with a parent
 
 
 class Parent(Base):
-    __tablename__ = 'parent'
+    __tablename__ = "parent"
     id = Column(Integer, primary_key=True)
     child_id = Column(Integer)
     child_version_id = Column(Integer)
-    child = relationship("Child", backref=backref('parent', uselist=False))
+    child = relationship("Child", backref=backref("parent", uselist=False))
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ['child_id', 'child_version_id'],
-            ['child.id', 'child.version_id'],
+            ["child_id", "child_version_id"], ["child.id", "child.version_id"]
         ),
     )
 
 
 class Child(Versioned, Base):
-    __tablename__ = 'child'
+    __tablename__ = "child"
 
     data = Column(String)
 
     def new_version(self, session):
         # expire parent's reference to us
-        session.expire(self.parent, ['child'])
+        session.expire(self.parent, ["child"])
 
         # create new version
         Versioned.new_version(self, session)
@@ -131,15 +148,16 @@ class Child(Versioned, Base):
         # parent foreign key to be updated also
         self.parent.child = self
 
+
 Base.metadata.create_all(engine)
 
 session = Session()
 
-p1 = Parent(child=Child(id=1, data='c1'))
+p1 = Parent(child=Child(id=1, data="c1"))
 session.add(p1)
 session.commit()
 
-p1.child.data = 'c2'
+p1.child.data = "c2"
 session.commit()
 
 assert p1.child_id == 1
@@ -150,6 +168,7 @@ assert session.query(
     Child.version_id,
     Child.is_current_version,
     Child.calc_is_current_version,
-    Child.data).order_by(Child.id, Child.version_id).all() == (
-    [(1, 1, False, False, 'c1'), (1, 2, True, True, 'c2')]
+    Child.data,
+).order_by(Child.id, Child.version_id).all() == (
+    [(1, 1, False, False, "c1"), (1, 2, True, True, "c2")]
 )

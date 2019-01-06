@@ -14,7 +14,7 @@ from ...sql.base import _generative
 from ... import util
 from . import ext
 
-__all__ = ('Insert', 'insert')
+__all__ = ("Insert", "insert")
 
 
 class Insert(StandardInsert):
@@ -40,13 +40,17 @@ class Insert(StandardInsert):
             to use :attr:`.Insert.excluded`
 
         """
-        return alias(self.table, name='excluded').columns
+        return alias(self.table, name="excluded").columns
 
     @_generative
     def on_conflict_do_update(
-            self,
-            constraint=None, index_elements=None,
-            index_where=None, set_=None, where=None):
+        self,
+        constraint=None,
+        index_elements=None,
+        index_where=None,
+        set_=None,
+        where=None,
+    ):
         """
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -96,13 +100,14 @@ class Insert(StandardInsert):
 
         """
         self._post_values_clause = OnConflictDoUpdate(
-            constraint, index_elements, index_where, set_, where)
+            constraint, index_elements, index_where, set_, where
+        )
         return self
 
     @_generative
     def on_conflict_do_nothing(
-            self,
-            constraint=None, index_elements=None, index_where=None):
+        self, constraint=None, index_elements=None, index_where=None
+    ):
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -130,30 +135,29 @@ class Insert(StandardInsert):
 
         """
         self._post_values_clause = OnConflictDoNothing(
-            constraint, index_elements, index_where)
+            constraint, index_elements, index_where
+        )
         return self
 
-insert = public_factory(Insert, '.dialects.postgresql.insert')
+
+insert = public_factory(Insert, ".dialects.postgresql.insert")
 
 
 class OnConflictClause(ClauseElement):
-    def __init__(
-            self,
-            constraint=None,
-            index_elements=None,
-            index_where=None):
+    def __init__(self, constraint=None, index_elements=None, index_where=None):
 
         if constraint is not None:
-            if not isinstance(constraint, util.string_types) and \
-                    isinstance(constraint, (
-                        schema.Index, schema.Constraint,
-                        ext.ExcludeConstraint)):
-                constraint = getattr(constraint, 'name') or constraint
+            if not isinstance(constraint, util.string_types) and isinstance(
+                constraint,
+                (schema.Index, schema.Constraint, ext.ExcludeConstraint),
+            ):
+                constraint = getattr(constraint, "name") or constraint
 
         if constraint is not None:
             if index_elements is not None:
                 raise ValueError(
-                    "'constraint' and 'index_elements' are mutually exclusive")
+                    "'constraint' and 'index_elements' are mutually exclusive"
+                )
 
             if isinstance(constraint, util.string_types):
                 self.constraint_target = constraint
@@ -161,54 +165,61 @@ class OnConflictClause(ClauseElement):
                 self.inferred_target_whereclause = None
             elif isinstance(constraint, schema.Index):
                 index_elements = constraint.expressions
-                index_where = \
-                    constraint.dialect_options['postgresql'].get("where")
+                index_where = constraint.dialect_options["postgresql"].get(
+                    "where"
+                )
             elif isinstance(constraint, ext.ExcludeConstraint):
                 index_elements = constraint.columns
                 index_where = constraint.where
             else:
                 index_elements = constraint.columns
-                index_where = \
-                    constraint.dialect_options['postgresql'].get("where")
+                index_where = constraint.dialect_options["postgresql"].get(
+                    "where"
+                )
 
         if index_elements is not None:
             self.constraint_target = None
             self.inferred_target_elements = index_elements
             self.inferred_target_whereclause = index_where
         elif constraint is None:
-            self.constraint_target = self.inferred_target_elements = \
-                self.inferred_target_whereclause = None
+            self.constraint_target = (
+                self.inferred_target_elements
+            ) = self.inferred_target_whereclause = None
 
 
 class OnConflictDoNothing(OnConflictClause):
-    __visit_name__ = 'on_conflict_do_nothing'
+    __visit_name__ = "on_conflict_do_nothing"
 
 
 class OnConflictDoUpdate(OnConflictClause):
-    __visit_name__ = 'on_conflict_do_update'
+    __visit_name__ = "on_conflict_do_update"
 
     def __init__(
-            self,
-            constraint=None,
-            index_elements=None,
-            index_where=None,
-            set_=None,
-            where=None):
+        self,
+        constraint=None,
+        index_elements=None,
+        index_where=None,
+        set_=None,
+        where=None,
+    ):
         super(OnConflictDoUpdate, self).__init__(
             constraint=constraint,
             index_elements=index_elements,
-            index_where=index_where)
+            index_where=index_where,
+        )
 
-        if self.inferred_target_elements is None and \
-                self.constraint_target is None:
+        if (
+            self.inferred_target_elements is None
+            and self.constraint_target is None
+        ):
             raise ValueError(
                 "Either constraint or index_elements, "
-                "but not both, must be specified unless DO NOTHING")
+                "but not both, must be specified unless DO NOTHING"
+            )
 
-        if (not isinstance(set_, dict) or not set_):
+        if not isinstance(set_, dict) or not set_:
             raise ValueError("set parameter must be a non-empty dictionary")
         self.update_values_to_set = [
-            (key, value)
-            for key, value in set_.items()
+            (key, value) for key, value in set_.items()
         ]
         self.update_whereclause = where

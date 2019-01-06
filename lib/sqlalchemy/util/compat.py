@@ -20,9 +20,9 @@ py32 = sys.version_info >= (3, 2)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
 py265 = sys.version_info >= (2, 6, 5)
-jython = sys.platform.startswith('java')
-pypy = hasattr(sys, 'pypy_version_info')
-win32 = sys.platform.startswith('win')
+jython = sys.platform.startswith("java")
+pypy = hasattr(sys, "pypy_version_info")
+win32 = sys.platform.startswith("win")
 cpython = not pypy and not jython  # TODO: something better for this ?
 
 contextmanager = contextlib.contextmanager
@@ -30,8 +30,9 @@ dottedgetter = operator.attrgetter
 namedtuple = collections.namedtuple
 next = next
 
-ArgSpec = collections.namedtuple("ArgSpec",
-                                 ["args", "varargs", "keywords", "defaults"])
+ArgSpec = collections.namedtuple(
+    "ArgSpec", ["args", "varargs", "keywords", "defaults"]
+)
 
 try:
     import threading
@@ -58,40 +59,43 @@ if py3k:
     from io import BytesIO as byte_buffer
     from io import StringIO
     from itertools import zip_longest
-    from urllib.parse import (quote_plus, unquote_plus, parse_qsl, quote, unquote)
+    from urllib.parse import (
+        quote_plus,
+        unquote_plus,
+        parse_qsl,
+        quote,
+        unquote,
+    )
 
-    string_types = str,
-    binary_types = bytes,
+    string_types = (str,)
+    binary_types = (bytes,)
     binary_type = bytes
     text_type = str
-    int_types = int,
+    int_types = (int,)
     iterbytes = iter
 
     itertools_filterfalse = itertools.filterfalse
     itertools_filter = filter
     itertools_imap = map
 
-    exec_ = getattr(builtins, 'exec')
-    import_ = getattr(builtins, '__import__')
+    exec_ = getattr(builtins, "exec")
+    import_ = getattr(builtins, "__import__")
     print_ = getattr(builtins, "print")
 
     def b(s):
         return s.encode("latin-1")
 
     def b64decode(x):
-        return base64.b64decode(x.encode('ascii'))
-
+        return base64.b64decode(x.encode("ascii"))
 
     def b64encode(x):
-        return base64.b64encode(x).decode('ascii')
+        return base64.b64encode(x).decode("ascii")
 
     def cmp(a, b):
         return (a > b) - (a < b)
 
     def inspect_getargspec(func):
-        return ArgSpec(
-            *inspect_getfullargspec(func)[0:4]
-        )
+        return ArgSpec(*inspect_getfullargspec(func)[0:4])
 
     def reraise(tp, value, tb=None, cause=None):
         if cause is not None:
@@ -110,8 +114,11 @@ if py3k:
     if py32:
         callable = callable
     else:
+
         def callable(fn):
-            return hasattr(fn, '__call__')
+            return hasattr(fn, "__call__")
+
+
 else:
     import base64
     import ConfigParser as configparser
@@ -129,8 +136,8 @@ else:
     except ImportError:
         import pickle
 
-    string_types = basestring,
-    binary_types = bytes,
+    string_types = (basestring,)
+    binary_types = (bytes,)
     binary_type = str
     text_type = unicode
     int_types = int, long
@@ -153,9 +160,9 @@ else:
 
     def exec_(func_text, globals_, lcl=None):
         if lcl is None:
-            exec('exec func_text in globals_')
+            exec("exec func_text in globals_")
         else:
-            exec('exec func_text in globals_, lcl')
+            exec("exec func_text in globals_, lcl")
 
     def iterbytes(buf):
         return (ord(byte) for byte in buf)
@@ -186,24 +193,32 @@ else:
 
     # not as nice as that of Py3K, but at least preserves
     # the code line where the issue occurred
-    exec("def reraise(tp, value, tb=None, cause=None):\n"
-         "    if cause is not None:\n"
-         "        assert cause is not value, 'Same cause emitted'\n"
-         "    raise tp, value, tb\n")
+    exec(
+        "def reraise(tp, value, tb=None, cause=None):\n"
+        "    if cause is not None:\n"
+        "        assert cause is not value, 'Same cause emitted'\n"
+        "    raise tp, value, tb\n"
+    )
 
 
 if py35:
     from inspect import formatannotation
 
     def inspect_formatargspec(
-            args, varargs=None, varkw=None, defaults=None,
-            kwonlyargs=(), kwonlydefaults={}, annotations={},
-            formatarg=str,
-            formatvarargs=lambda name: '*' + name,
-            formatvarkw=lambda name: '**' + name,
-            formatvalue=lambda value: '=' + repr(value),
-            formatreturns=lambda text: ' -> ' + text,
-            formatannotation=formatannotation):
+        args,
+        varargs=None,
+        varkw=None,
+        defaults=None,
+        kwonlyargs=(),
+        kwonlydefaults={},
+        annotations={},
+        formatarg=str,
+        formatvarargs=lambda name: "*" + name,
+        formatvarkw=lambda name: "**" + name,
+        formatvalue=lambda value: "=" + repr(value),
+        formatreturns=lambda text: " -> " + text,
+        formatannotation=formatannotation,
+    ):
         """Copy formatargspec from python 3.7 standard library.
 
         Python 3 has deprecated formatargspec and requested that Signature
@@ -221,7 +236,7 @@ if py35:
         def formatargandannotation(arg):
             result = formatarg(arg)
             if arg in annotations:
-                result += ': ' + formatannotation(annotations[arg])
+                result += ": " + formatannotation(annotations[arg])
             return result
 
         specs = []
@@ -237,7 +252,7 @@ if py35:
             specs.append(formatvarargs(formatargandannotation(varargs)))
         else:
             if kwonlyargs:
-                specs.append('*')
+                specs.append("*")
 
         if kwonlyargs:
             for kwonlyarg in kwonlyargs:
@@ -249,10 +264,12 @@ if py35:
         if varkw is not None:
             specs.append(formatvarkw(formatargandannotation(varkw)))
 
-        result = '(' + ', '.join(specs) + ')'
-        if 'return' in annotations:
-            result += formatreturns(formatannotation(annotations['return']))
+        result = "(" + ", ".join(specs) + ")"
+        if "return" in annotations:
+            result += formatreturns(formatannotation(annotations["return"]))
         return result
+
+
 else:
     from inspect import formatargspec as inspect_formatargspec
 
@@ -330,4 +347,5 @@ def with_metaclass(meta, *bases):
             if this_bases is None:
                 return type.__new__(cls, name, (), d)
             return meta(name, bases, d)
-    return metaclass('temporary_class', None, {})
+
+    return metaclass("temporary_class", None, {})

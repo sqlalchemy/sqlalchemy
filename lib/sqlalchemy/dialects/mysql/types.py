@@ -24,28 +24,30 @@ class _NumericType(object):
         super(_NumericType, self).__init__(**kw)
 
     def __repr__(self):
-        return util.generic_repr(self,
-                                 to_inspect=[_NumericType, sqltypes.Numeric])
+        return util.generic_repr(
+            self, to_inspect=[_NumericType, sqltypes.Numeric]
+        )
 
 
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
-        if isinstance(self, (REAL, DOUBLE)) and \
-            (
-                (precision is None and scale is not None) or
-                (precision is not None and scale is None)
+        if isinstance(self, (REAL, DOUBLE)) and (
+            (precision is None and scale is not None)
+            or (precision is not None and scale is None)
         ):
             raise exc.ArgumentError(
                 "You must specify both precision and scale or omit "
-                "both altogether.")
+                "both altogether."
+            )
         super(_FloatType, self).__init__(
-            precision=precision, asdecimal=asdecimal, **kw)
+            precision=precision, asdecimal=asdecimal, **kw
+        )
         self.scale = scale
 
     def __repr__(self):
-        return util.generic_repr(self, to_inspect=[_FloatType,
-                                                   _NumericType,
-                                                   sqltypes.Float])
+        return util.generic_repr(
+            self, to_inspect=[_FloatType, _NumericType, sqltypes.Float]
+        )
 
 
 class _IntegerType(_NumericType, sqltypes.Integer):
@@ -54,21 +56,28 @@ class _IntegerType(_NumericType, sqltypes.Integer):
         super(_IntegerType, self).__init__(**kw)
 
     def __repr__(self):
-        return util.generic_repr(self, to_inspect=[_IntegerType,
-                                                   _NumericType,
-                                                   sqltypes.Integer])
+        return util.generic_repr(
+            self, to_inspect=[_IntegerType, _NumericType, sqltypes.Integer]
+        )
 
 
 class _StringType(sqltypes.String):
     """Base for MySQL string types."""
 
-    def __init__(self, charset=None, collation=None,
-                 ascii=False, binary=False, unicode=False,
-                 national=False, **kw):
+    def __init__(
+        self,
+        charset=None,
+        collation=None,
+        ascii=False,
+        binary=False,
+        unicode=False,
+        national=False,
+        **kw
+    ):
         self.charset = charset
 
         # allow collate= or collation=
-        kw.setdefault('collation', kw.pop('collate', collation))
+        kw.setdefault("collation", kw.pop("collate", collation))
 
         self.ascii = ascii
         self.unicode = unicode
@@ -77,8 +86,9 @@ class _StringType(sqltypes.String):
         super(_StringType, self).__init__(**kw)
 
     def __repr__(self):
-        return util.generic_repr(self,
-                                 to_inspect=[_StringType, sqltypes.String])
+        return util.generic_repr(
+            self, to_inspect=[_StringType, sqltypes.String]
+        )
 
 
 class _MatchType(sqltypes.Float, sqltypes.MatchType):
@@ -88,11 +98,10 @@ class _MatchType(sqltypes.Float, sqltypes.MatchType):
         sqltypes.MatchType.__init__(self)
 
 
-
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
 
-    __visit_name__ = 'NUMERIC'
+    __visit_name__ = "NUMERIC"
 
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a NUMERIC.
@@ -110,14 +119,15 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
           numeric.
 
         """
-        super(NUMERIC, self).__init__(precision=precision,
-                                      scale=scale, asdecimal=asdecimal, **kw)
+        super(NUMERIC, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal, **kw
+        )
 
 
 class DECIMAL(_NumericType, sqltypes.DECIMAL):
     """MySQL DECIMAL type."""
 
-    __visit_name__ = 'DECIMAL'
+    __visit_name__ = "DECIMAL"
 
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a DECIMAL.
@@ -135,14 +145,15 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
           numeric.
 
         """
-        super(DECIMAL, self).__init__(precision=precision, scale=scale,
-                                      asdecimal=asdecimal, **kw)
+        super(DECIMAL, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal, **kw
+        )
 
 
 class DOUBLE(_FloatType):
     """MySQL DOUBLE type."""
 
-    __visit_name__ = 'DOUBLE'
+    __visit_name__ = "DOUBLE"
 
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a DOUBLE.
@@ -168,14 +179,15 @@ class DOUBLE(_FloatType):
           numeric.
 
         """
-        super(DOUBLE, self).__init__(precision=precision, scale=scale,
-                                     asdecimal=asdecimal, **kw)
+        super(DOUBLE, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal, **kw
+        )
 
 
 class REAL(_FloatType, sqltypes.REAL):
     """MySQL REAL type."""
 
-    __visit_name__ = 'REAL'
+    __visit_name__ = "REAL"
 
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a REAL.
@@ -201,14 +213,15 @@ class REAL(_FloatType, sqltypes.REAL):
           numeric.
 
         """
-        super(REAL, self).__init__(precision=precision, scale=scale,
-                                   asdecimal=asdecimal, **kw)
+        super(REAL, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal, **kw
+        )
 
 
 class FLOAT(_FloatType, sqltypes.FLOAT):
     """MySQL FLOAT type."""
 
-    __visit_name__ = 'FLOAT'
+    __visit_name__ = "FLOAT"
 
     def __init__(self, precision=None, scale=None, asdecimal=False, **kw):
         """Construct a FLOAT.
@@ -226,8 +239,9 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
           numeric.
 
         """
-        super(FLOAT, self).__init__(precision=precision, scale=scale,
-                                    asdecimal=asdecimal, **kw)
+        super(FLOAT, self).__init__(
+            precision=precision, scale=scale, asdecimal=asdecimal, **kw
+        )
 
     def bind_processor(self, dialect):
         return None
@@ -236,7 +250,7 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
 class INTEGER(_IntegerType, sqltypes.INTEGER):
     """MySQL INTEGER type."""
 
-    __visit_name__ = 'INTEGER'
+    __visit_name__ = "INTEGER"
 
     def __init__(self, display_width=None, **kw):
         """Construct an INTEGER.
@@ -257,7 +271,7 @@ class INTEGER(_IntegerType, sqltypes.INTEGER):
 class BIGINT(_IntegerType, sqltypes.BIGINT):
     """MySQL BIGINTEGER type."""
 
-    __visit_name__ = 'BIGINT'
+    __visit_name__ = "BIGINT"
 
     def __init__(self, display_width=None, **kw):
         """Construct a BIGINTEGER.
@@ -278,7 +292,7 @@ class BIGINT(_IntegerType, sqltypes.BIGINT):
 class MEDIUMINT(_IntegerType):
     """MySQL MEDIUMINTEGER type."""
 
-    __visit_name__ = 'MEDIUMINT'
+    __visit_name__ = "MEDIUMINT"
 
     def __init__(self, display_width=None, **kw):
         """Construct a MEDIUMINTEGER
@@ -299,7 +313,7 @@ class MEDIUMINT(_IntegerType):
 class TINYINT(_IntegerType):
     """MySQL TINYINT type."""
 
-    __visit_name__ = 'TINYINT'
+    __visit_name__ = "TINYINT"
 
     def __init__(self, display_width=None, **kw):
         """Construct a TINYINT.
@@ -320,7 +334,7 @@ class TINYINT(_IntegerType):
 class SMALLINT(_IntegerType, sqltypes.SMALLINT):
     """MySQL SMALLINTEGER type."""
 
-    __visit_name__ = 'SMALLINT'
+    __visit_name__ = "SMALLINT"
 
     def __init__(self, display_width=None, **kw):
         """Construct a SMALLINTEGER.
@@ -347,7 +361,7 @@ class BIT(sqltypes.TypeEngine):
 
     """
 
-    __visit_name__ = 'BIT'
+    __visit_name__ = "BIT"
 
     def __init__(self, length=None):
         """Construct a BIT.
@@ -374,13 +388,14 @@ class BIT(sqltypes.TypeEngine):
                     v = v << 8 | i
                 return v
             return value
+
         return process
 
 
 class TIME(sqltypes.TIME):
     """MySQL TIME type. """
 
-    __visit_name__ = 'TIME'
+    __visit_name__ = "TIME"
 
     def __init__(self, timezone=False, fsp=None):
         """Construct a MySQL TIME type.
@@ -413,12 +428,15 @@ class TIME(sqltypes.TIME):
                 microseconds = value.microseconds
                 seconds = value.seconds
                 minutes = seconds // 60
-                return time(minutes // 60,
-                            minutes % 60,
-                            seconds - minutes * 60,
-                            microsecond=microseconds)
+                return time(
+                    minutes // 60,
+                    minutes % 60,
+                    seconds - minutes * 60,
+                    microsecond=microseconds,
+                )
             else:
                 return None
+
         return process
 
 
@@ -427,7 +445,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
     """
 
-    __visit_name__ = 'TIMESTAMP'
+    __visit_name__ = "TIMESTAMP"
 
     def __init__(self, timezone=False, fsp=None):
         """Construct a MySQL TIMESTAMP type.
@@ -457,7 +475,7 @@ class DATETIME(sqltypes.DATETIME):
 
     """
 
-    __visit_name__ = 'DATETIME'
+    __visit_name__ = "DATETIME"
 
     def __init__(self, timezone=False, fsp=None):
         """Construct a MySQL DATETIME type.
@@ -485,7 +503,7 @@ class DATETIME(sqltypes.DATETIME):
 class YEAR(sqltypes.TypeEngine):
     """MySQL YEAR type, for single byte storage of years 1901-2155."""
 
-    __visit_name__ = 'YEAR'
+    __visit_name__ = "YEAR"
 
     def __init__(self, display_width=None):
         self.display_width = display_width
@@ -494,7 +512,7 @@ class YEAR(sqltypes.TypeEngine):
 class TEXT(_StringType, sqltypes.TEXT):
     """MySQL TEXT type, for text up to 2^16 characters."""
 
-    __visit_name__ = 'TEXT'
+    __visit_name__ = "TEXT"
 
     def __init__(self, length=None, **kw):
         """Construct a TEXT.
@@ -530,7 +548,7 @@ class TEXT(_StringType, sqltypes.TEXT):
 class TINYTEXT(_StringType):
     """MySQL TINYTEXT type, for text up to 2^8 characters."""
 
-    __visit_name__ = 'TINYTEXT'
+    __visit_name__ = "TINYTEXT"
 
     def __init__(self, **kwargs):
         """Construct a TINYTEXT.
@@ -562,7 +580,7 @@ class TINYTEXT(_StringType):
 class MEDIUMTEXT(_StringType):
     """MySQL MEDIUMTEXT type, for text up to 2^24 characters."""
 
-    __visit_name__ = 'MEDIUMTEXT'
+    __visit_name__ = "MEDIUMTEXT"
 
     def __init__(self, **kwargs):
         """Construct a MEDIUMTEXT.
@@ -594,7 +612,7 @@ class MEDIUMTEXT(_StringType):
 class LONGTEXT(_StringType):
     """MySQL LONGTEXT type, for text up to 2^32 characters."""
 
-    __visit_name__ = 'LONGTEXT'
+    __visit_name__ = "LONGTEXT"
 
     def __init__(self, **kwargs):
         """Construct a LONGTEXT.
@@ -626,7 +644,7 @@ class LONGTEXT(_StringType):
 class VARCHAR(_StringType, sqltypes.VARCHAR):
     """MySQL VARCHAR type, for variable-length character data."""
 
-    __visit_name__ = 'VARCHAR'
+    __visit_name__ = "VARCHAR"
 
     def __init__(self, length=None, **kwargs):
         """Construct a VARCHAR.
@@ -658,7 +676,7 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
 class CHAR(_StringType, sqltypes.CHAR):
     """MySQL CHAR type, for fixed-length character data."""
 
-    __visit_name__ = 'CHAR'
+    __visit_name__ = "CHAR"
 
     def __init__(self, length=None, **kwargs):
         """Construct a CHAR.
@@ -690,7 +708,7 @@ class CHAR(_StringType, sqltypes.CHAR):
                 ascii=type_.ascii,
                 binary=type_.binary,
                 unicode=type_.unicode,
-                national=False  # not supported in CAST
+                national=False,  # not supported in CAST
             )
         else:
             return CHAR(length=type_.length)
@@ -703,7 +721,7 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     character set.
     """
 
-    __visit_name__ = 'NVARCHAR'
+    __visit_name__ = "NVARCHAR"
 
     def __init__(self, length=None, **kwargs):
         """Construct an NVARCHAR.
@@ -718,7 +736,7 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
           compatible with the national character set.
 
         """
-        kwargs['national'] = True
+        kwargs["national"] = True
         super(NVARCHAR, self).__init__(length=length, **kwargs)
 
 
@@ -729,7 +747,7 @@ class NCHAR(_StringType, sqltypes.NCHAR):
     character set.
     """
 
-    __visit_name__ = 'NCHAR'
+    __visit_name__ = "NCHAR"
 
     def __init__(self, length=None, **kwargs):
         """Construct an NCHAR.
@@ -744,23 +762,23 @@ class NCHAR(_StringType, sqltypes.NCHAR):
           compatible with the national character set.
 
         """
-        kwargs['national'] = True
+        kwargs["national"] = True
         super(NCHAR, self).__init__(length=length, **kwargs)
 
 
 class TINYBLOB(sqltypes._Binary):
     """MySQL TINYBLOB type, for binary data up to 2^8 bytes."""
 
-    __visit_name__ = 'TINYBLOB'
+    __visit_name__ = "TINYBLOB"
 
 
 class MEDIUMBLOB(sqltypes._Binary):
     """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes."""
 
-    __visit_name__ = 'MEDIUMBLOB'
+    __visit_name__ = "MEDIUMBLOB"
 
 
 class LONGBLOB(sqltypes._Binary):
     """MySQL LONGBLOB type, for binary data up to 2^32 bytes."""
 
-    __visit_name__ = 'LONGBLOB'
+    __visit_name__ = "LONGBLOB"

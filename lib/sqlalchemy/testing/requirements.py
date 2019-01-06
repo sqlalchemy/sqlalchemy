@@ -26,7 +26,6 @@ class Requirements(object):
 
 
 class SuiteRequirements(Requirements):
-
     @property
     def create_table(self):
         """target platform can emit basic CreateTable DDL."""
@@ -68,8 +67,8 @@ class SuiteRequirements(Requirements):
         # somehow only_if([x, y]) isn't working here, negation/conjunctions
         # getting confused.
         return exclusions.only_if(
-            lambda: self.on_update_cascade.enabled or
-            self.deferrable_fks.enabled
+            lambda: self.on_update_cascade.enabled
+            or self.deferrable_fks.enabled
         )
 
     @property
@@ -231,22 +230,21 @@ class SuiteRequirements(Requirements):
     def sane_rowcount(self):
         return exclusions.skip_if(
             lambda config: not config.db.dialect.supports_sane_rowcount,
-            "driver doesn't support 'sane' rowcount"
+            "driver doesn't support 'sane' rowcount",
         )
 
     @property
     def sane_multi_rowcount(self):
         return exclusions.fails_if(
             lambda config: not config.db.dialect.supports_sane_multi_rowcount,
-            "driver %(driver)s %(doesnt_support)s 'sane' multi row count"
+            "driver %(driver)s %(doesnt_support)s 'sane' multi row count",
         )
 
     @property
     def sane_rowcount_w_returning(self):
         return exclusions.fails_if(
-            lambda config:
-                not config.db.dialect.supports_sane_rowcount_returning,
-            "driver doesn't support 'sane' rowcount when returning is on"
+            lambda config: not config.db.dialect.supports_sane_rowcount_returning,
+            "driver doesn't support 'sane' rowcount when returning is on",
         )
 
     @property
@@ -255,9 +253,9 @@ class SuiteRequirements(Requirements):
         INSERT DEFAULT VALUES or equivalent."""
 
         return exclusions.only_if(
-            lambda config: config.db.dialect.supports_empty_insert or
-            config.db.dialect.supports_default_values,
-            "empty inserts not supported"
+            lambda config: config.db.dialect.supports_empty_insert
+            or config.db.dialect.supports_default_values,
+            "empty inserts not supported",
         )
 
     @property
@@ -272,7 +270,7 @@ class SuiteRequirements(Requirements):
 
         return exclusions.only_if(
             lambda config: config.db.dialect.implicit_returning,
-            "%(database)s %(does_support)s 'returning'"
+            "%(database)s %(does_support)s 'returning'",
         )
 
     @property
@@ -297,7 +295,7 @@ class SuiteRequirements(Requirements):
 
         return exclusions.skip_if(
             lambda config: not config.db.dialect.requires_name_normalize,
-            "Backend does not require denormalized names."
+            "Backend does not require denormalized names.",
         )
 
     @property
@@ -307,7 +305,7 @@ class SuiteRequirements(Requirements):
 
         return exclusions.skip_if(
             lambda config: not config.db.dialect.supports_multivalues_insert,
-            "Backend does not support multirow inserts."
+            "Backend does not support multirow inserts.",
         )
 
     @property
@@ -355,27 +353,32 @@ class SuiteRequirements(Requirements):
     def server_side_cursors(self):
         """Target dialect must support server side cursors."""
 
-        return exclusions.only_if([
-            lambda config: config.db.dialect.supports_server_side_cursors
-        ], "no server side cursors support")
+        return exclusions.only_if(
+            [lambda config: config.db.dialect.supports_server_side_cursors],
+            "no server side cursors support",
+        )
 
     @property
     def sequences(self):
         """Target database must support SEQUENCEs."""
 
-        return exclusions.only_if([
-            lambda config: config.db.dialect.supports_sequences
-        ], "no sequence support")
+        return exclusions.only_if(
+            [lambda config: config.db.dialect.supports_sequences],
+            "no sequence support",
+        )
 
     @property
     def sequences_optional(self):
         """Target database supports sequences, but also optionally
         as a means of generating new PK values."""
 
-        return exclusions.only_if([
-            lambda config: config.db.dialect.supports_sequences and
-            config.db.dialect.sequences_optional
-        ], "no sequence support, or sequences not optional")
+        return exclusions.only_if(
+            [
+                lambda config: config.db.dialect.supports_sequences
+                and config.db.dialect.sequences_optional
+            ],
+            "no sequence support, or sequences not optional",
+        )
 
     @property
     def reflects_pk_names(self):
@@ -841,7 +844,8 @@ class SuiteRequirements(Requirements):
 
         """
         return exclusions.skip_if(
-            lambda config: config.options.low_connections)
+            lambda config: config.options.low_connections
+        )
 
     @property
     def timing_intensive(self):
@@ -859,37 +863,37 @@ class SuiteRequirements(Requirements):
         """
         return exclusions.skip_if(
             lambda config: util.py3k and config.options.has_coverage,
-            "Stability issues with coverage + py3k"
+            "Stability issues with coverage + py3k",
         )
 
     @property
     def python2(self):
         return exclusions.skip_if(
             lambda: sys.version_info >= (3,),
-            "Python version 2.xx is required."
+            "Python version 2.xx is required.",
         )
 
     @property
     def python3(self):
         return exclusions.skip_if(
-            lambda: sys.version_info < (3,),
-            "Python version 3.xx is required."
+            lambda: sys.version_info < (3,), "Python version 3.xx is required."
         )
 
     @property
     def cpython(self):
         return exclusions.only_if(
-            lambda: util.cpython,
-            "cPython interpreter needed"
+            lambda: util.cpython, "cPython interpreter needed"
         )
 
     @property
     def non_broken_pickle(self):
         from sqlalchemy.util import pickle
+
         return exclusions.only_if(
-            lambda: not util.pypy and pickle.__name__ == 'cPickle'
-                or sys.version_info >= (3, 2),
-            "Needs cPickle+cPython or newer Python 3 pickle"
+            lambda: not util.pypy
+            and pickle.__name__ == "cPickle"
+            or sys.version_info >= (3, 2),
+            "Needs cPickle+cPython or newer Python 3 pickle",
         )
 
     @property
@@ -910,7 +914,7 @@ class SuiteRequirements(Requirements):
         """
         return exclusions.skip_if(
             lambda config: config.options.has_coverage,
-            "Issues observed when coverage is enabled"
+            "Issues observed when coverage is enabled",
         )
 
     def _has_mysql_on_windows(self, config):
@@ -931,8 +935,9 @@ class SuiteRequirements(Requirements):
 
     def _has_sqlite(self):
         from sqlalchemy import create_engine
+
         try:
-            create_engine('sqlite://')
+            create_engine("sqlite://")
             return True
         except ImportError:
             return False
@@ -940,6 +945,7 @@ class SuiteRequirements(Requirements):
     def _has_cextensions(self):
         try:
             from sqlalchemy import cresultproxy, cprocessors
+
             return True
         except ImportError:
             return False

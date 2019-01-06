@@ -15,10 +15,12 @@ class BindIntegrationTest(_fixtures.FixtureTest):
     run_inserts = None
 
     def test_mapped_binds(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                           self.tables.addresses,
-                                           self.tables.users,
-                                           self.classes.User)
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
 
         # ensure tables are unbound
         m2 = sa.MetaData()
@@ -26,28 +28,43 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         addresses_unbound = addresses.tometadata(m2)
 
         mapper(Address, addresses_unbound)
-        mapper(User, users_unbound, properties={
-            'addresses': relationship(Address,
-                                      backref=backref("user", cascade="all"),
-                                      cascade="all")})
+        mapper(
+            User,
+            users_unbound,
+            properties={
+                "addresses": relationship(
+                    Address,
+                    backref=backref("user", cascade="all"),
+                    cascade="all",
+                )
+            },
+        )
 
-        sess = Session(binds={User: self.metadata.bind,
-                              Address: self.metadata.bind})
+        sess = Session(
+            binds={User: self.metadata.bind, Address: self.metadata.bind}
+        )
 
-        u1 = User(id=1, name='ed')
+        u1 = User(id=1, name="ed")
         sess.add(u1)
-        eq_(sess.query(User).filter(User.id == 1).all(),
-            [User(id=1, name='ed')])
+        eq_(
+            sess.query(User).filter(User.id == 1).all(),
+            [User(id=1, name="ed")],
+        )
 
         # test expression binding
 
-        sess.execute(users_unbound.insert(), params=dict(id=2,
-                                                         name='jack'))
-        eq_(sess.execute(users_unbound.select(users_unbound.c.id
-                                              == 2)).fetchall(), [(2, 'jack')])
+        sess.execute(users_unbound.insert(), params=dict(id=2, name="jack"))
+        eq_(
+            sess.execute(
+                users_unbound.select(users_unbound.c.id == 2)
+            ).fetchall(),
+            [(2, "jack")],
+        )
 
-        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
-            [(2, 'jack')])
+        eq_(
+            sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            [(2, "jack")],
+        )
 
         sess.execute(users_unbound.delete())
         eq_(sess.execute(users_unbound.select()).fetchall(), [])
@@ -55,10 +72,12 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.close()
 
     def test_table_binds(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                           self.tables.addresses,
-                                           self.tables.users,
-                                           self.classes.User)
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
 
         # ensure tables are unbound
         m2 = sa.MetaData()
@@ -66,27 +85,46 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         addresses_unbound = addresses.tometadata(m2)
 
         mapper(Address, addresses_unbound)
-        mapper(User, users_unbound, properties={
-            'addresses': relationship(Address,
-                                      backref=backref("user", cascade="all"),
-                                      cascade="all")})
+        mapper(
+            User,
+            users_unbound,
+            properties={
+                "addresses": relationship(
+                    Address,
+                    backref=backref("user", cascade="all"),
+                    cascade="all",
+                )
+            },
+        )
 
-        Session = sessionmaker(binds={users_unbound: self.metadata.bind,
-                                      addresses_unbound: self.metadata.bind})
+        Session = sessionmaker(
+            binds={
+                users_unbound: self.metadata.bind,
+                addresses_unbound: self.metadata.bind,
+            }
+        )
         sess = Session()
 
-        u1 = User(id=1, name='ed')
+        u1 = User(id=1, name="ed")
         sess.add(u1)
-        eq_(sess.query(User).filter(User.id == 1).all(),
-            [User(id=1, name='ed')])
+        eq_(
+            sess.query(User).filter(User.id == 1).all(),
+            [User(id=1, name="ed")],
+        )
 
-        sess.execute(users_unbound.insert(), params=dict(id=2, name='jack'))
+        sess.execute(users_unbound.insert(), params=dict(id=2, name="jack"))
 
-        eq_(sess.execute(users_unbound.select(users_unbound.c.id
-                                              == 2)).fetchall(), [(2, 'jack')])
+        eq_(
+            sess.execute(
+                users_unbound.select(users_unbound.c.id == 2)
+            ).fetchall(),
+            [(2, "jack")],
+        )
 
-        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
-            [(2, 'jack')])
+        eq_(
+            sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            [(2, "jack")],
+        )
 
         sess.execute(users_unbound.delete())
         eq_(sess.execute(users_unbound.select()).fetchall(), [])
@@ -99,20 +137,22 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         session = create_session()
-        session.execute(users.insert(), dict(name='Johnny'))
+        session.execute(users.insert(), dict(name="Johnny"))
 
-        assert len(session.query(User).filter_by(name='Johnny').all()) == 1
+        assert len(session.query(User).filter_by(name="Johnny").all()) == 1
 
         session.execute(users.delete())
 
-        assert len(session.query(User).filter_by(name='Johnny').all()) == 0
+        assert len(session.query(User).filter_by(name="Johnny").all()) == 0
         session.close()
 
     def test_bind_arguments(self):
-        users, Address, addresses, User = (self.tables.users,
-                                           self.classes.Address,
-                                           self.tables.addresses,
-                                           self.classes.User)
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
 
         mapper(User, users)
         mapper(Address, addresses)
@@ -130,11 +170,16 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         assert sess.connection(mapper=Address, bind=e1).engine is e1
         assert sess.connection(mapper=Address).engine is e2
         assert sess.connection(clause=addresses.select()).engine is e2
-        assert sess.connection(mapper=User,
-                               clause=addresses.select()).engine is e1
-        assert sess.connection(mapper=User,
-                               clause=addresses.select(),
-                               bind=e2).engine is e2
+        assert (
+            sess.connection(mapper=User, clause=addresses.select()).engine
+            is e1
+        )
+        assert (
+            sess.connection(
+                mapper=User, clause=addresses.select(), bind=e2
+            ).engine
+            is e2
+        )
 
         sess.close()
 
@@ -144,7 +189,9 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             "Not an acceptable bind target: foobar",
-            sess.bind_mapper, "foobar", testing.db
+            sess.bind_mapper,
+            "foobar",
+            testing.db,
         )
 
         mapper(self.classes.User, self.tables.users)
@@ -153,7 +200,9 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             "Not an acceptable bind target: User()",
-            sess.bind_mapper, u_object, testing.db
+            sess.bind_mapper,
+            u_object,
+            testing.db,
         )
 
     @engines.close_open_connections
@@ -165,17 +214,22 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess = create_session(bind=c)
         sess.begin()
         transaction = sess.transaction
-        u = User(name='u1')
+        u = User(name="u1")
         sess.add(u)
         sess.flush()
-        assert transaction._connection_for_bind(testing.db, None) \
-            is transaction._connection_for_bind(c, None) is c
+        assert (
+            transaction._connection_for_bind(testing.db, None)
+            is transaction._connection_for_bind(c, None)
+            is c
+        )
 
-        assert_raises_message(sa.exc.InvalidRequestError,
-                              'Session already has a Connection '
-                              'associated',
-                              transaction._connection_for_bind,
-                              testing.db.connect(), None)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Session already has a Connection " "associated",
+            transaction._connection_for_bind,
+            testing.db.connect(),
+            None,
+        )
         transaction.rollback()
         assert len(sess.query(User).all()) == 0
         sess.close()
@@ -187,7 +241,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         c = testing.db.connect()
 
         sess = create_session(bind=c, autocommit=False)
-        u = User(name='u1')
+        u = User(name="u1")
         sess.add(u)
         sess.flush()
         sess.close()
@@ -195,7 +249,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         assert c.scalar("select count(1) from users") == 0
 
         sess = create_session(bind=c, autocommit=False)
-        u = User(name='u2')
+        u = User(name="u2")
         sess.add(u)
         sess.flush()
         sess.commit()
@@ -208,7 +262,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         trans = c.begin()
         sess = create_session(bind=c, autocommit=True)
-        u = User(name='u3')
+        u = User(name="u3")
         sess.add(u)
         sess.flush()
         assert c.in_transaction()
@@ -218,13 +272,16 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
 
 class SessionBindTest(fixtures.MappedTest):
-
     @classmethod
     def define_tables(cls, metadata):
-        Table('test_table', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('data', Integer))
+        Table(
+            "test_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", Integer),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -238,8 +295,8 @@ class SessionBindTest(fixtures.MappedTest):
         meta = MetaData()
         test_table.tometadata(meta)
 
-        assert meta.tables['test_table'].bind is None
-        mapper(Foo, meta.tables['test_table'])
+        assert meta.tables["test_table"].bind is None
+        mapper(Foo, meta.tables["test_table"])
 
     def test_session_bind(self):
         Foo = self.classes.Foo
@@ -255,7 +312,7 @@ class SessionBindTest(fixtures.MappedTest):
                 sess.flush()
                 assert sess.query(Foo).get(f.id) is f
             finally:
-                if hasattr(bind, 'close'):
+                if hasattr(bind, "close"):
                     bind.close()
 
     def test_session_unbound(self):
@@ -265,29 +322,30 @@ class SessionBindTest(fixtures.MappedTest):
         sess.add(Foo())
         assert_raises_message(
             sa.exc.UnboundExecutionError,
-            ('Could not locate a bind configured on Mapper|Foo|test_table '
-             'or this Session'),
-            sess.flush)
+            (
+                "Could not locate a bind configured on Mapper|Foo|test_table "
+                "or this Session"
+            ),
+            sess.flush,
+        )
 
 
 class GetBindTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
+        Table("base_table", metadata, Column("id", Integer, primary_key=True))
         Table(
-            'base_table', metadata,
-            Column('id', Integer, primary_key=True)
+            "w_mixin_table", metadata, Column("id", Integer, primary_key=True)
         )
         Table(
-            'w_mixin_table', metadata,
-            Column('id', Integer, primary_key=True)
+            "joined_sub_table",
+            metadata,
+            Column("id", ForeignKey("base_table.id"), primary_key=True),
         )
         Table(
-            'joined_sub_table', metadata,
-            Column('id', ForeignKey('base_table.id'), primary_key=True)
-        )
-        Table(
-            'concrete_sub_table', metadata,
-            Column('id', Integer, primary_key=True)
+            "concrete_sub_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
         )
 
     @classmethod
@@ -313,171 +371,118 @@ class GetBindTest(fixtures.MappedTest):
         mapper(cls.classes.BaseClass, cls.tables.base_table)
         mapper(
             cls.classes.JoinedSubClass,
-            cls.tables.joined_sub_table, inherits=cls.classes.BaseClass)
+            cls.tables.joined_sub_table,
+            inherits=cls.classes.BaseClass,
+        )
         mapper(
             cls.classes.ConcreteSubClass,
-            cls.tables.concrete_sub_table, inherits=cls.classes.BaseClass,
-            concrete=True)
+            cls.tables.concrete_sub_table,
+            inherits=cls.classes.BaseClass,
+            concrete=True,
+        )
 
     def _fixture(self, binds):
         return Session(binds=binds)
 
     def test_fallback_table_metadata(self):
         session = self._fixture({})
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            testing.db
-        )
+        is_(session.get_bind(self.classes.BaseClass), testing.db)
 
     def test_bind_base_table_base_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.tables.base_table: base_class_bind
-        })
+        session = self._fixture({self.tables.base_table: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
 
     def test_bind_base_table_joined_sub_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.tables.base_table: base_class_bind
-        })
+        session = self._fixture({self.tables.base_table: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
-        )
-        is_(
-            session.get_bind(self.classes.JoinedSubClass),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
+        is_(session.get_bind(self.classes.JoinedSubClass), base_class_bind)
 
     def test_bind_joined_sub_table_joined_sub_class(self):
-        base_class_bind = Mock(name='base')
-        joined_class_bind = Mock(name='joined')
-        session = self._fixture({
-            self.tables.base_table: base_class_bind,
-            self.tables.joined_sub_table: joined_class_bind
-        })
-
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
+        base_class_bind = Mock(name="base")
+        joined_class_bind = Mock(name="joined")
+        session = self._fixture(
+            {
+                self.tables.base_table: base_class_bind,
+                self.tables.joined_sub_table: joined_class_bind,
+            }
         )
+
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
         # joined table inheritance has to query based on the base
         # table, so this is what we expect
-        is_(
-            session.get_bind(self.classes.JoinedSubClass),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.JoinedSubClass), base_class_bind)
 
     def test_bind_base_table_concrete_sub_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.tables.base_table: base_class_bind
-        })
+        session = self._fixture({self.tables.base_table: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.ConcreteSubClass),
-            testing.db
-        )
+        is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)
 
     def test_bind_sub_table_concrete_sub_class(self):
-        base_class_bind = Mock(name='base')
-        concrete_sub_bind = Mock(name='concrete')
+        base_class_bind = Mock(name="base")
+        concrete_sub_bind = Mock(name="concrete")
 
-        session = self._fixture({
-            self.tables.base_table: base_class_bind,
-            self.tables.concrete_sub_table: concrete_sub_bind
-        })
+        session = self._fixture(
+            {
+                self.tables.base_table: base_class_bind,
+                self.tables.concrete_sub_table: concrete_sub_bind,
+            }
+        )
 
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
-        )
-        is_(
-            session.get_bind(self.classes.ConcreteSubClass),
-            concrete_sub_bind
-        )
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
+        is_(session.get_bind(self.classes.ConcreteSubClass), concrete_sub_bind)
 
     def test_bind_base_class_base_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.classes.BaseClass: base_class_bind
-        })
+        session = self._fixture({self.classes.BaseClass: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
 
     def test_bind_mixin_class_simple_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.classes.MixinOne: base_class_bind
-        })
+        session = self._fixture({self.classes.MixinOne: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.ClassWMixin),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.ClassWMixin), base_class_bind)
 
     def test_bind_base_class_joined_sub_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.classes.BaseClass: base_class_bind
-        })
+        session = self._fixture({self.classes.BaseClass: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.JoinedSubClass),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.JoinedSubClass), base_class_bind)
 
     def test_bind_joined_sub_class_joined_sub_class(self):
-        base_class_bind = Mock(name='base')
-        joined_class_bind = Mock(name='joined')
-        session = self._fixture({
-            self.classes.BaseClass: base_class_bind,
-            self.classes.JoinedSubClass: joined_class_bind
-        })
+        base_class_bind = Mock(name="base")
+        joined_class_bind = Mock(name="joined")
+        session = self._fixture(
+            {
+                self.classes.BaseClass: base_class_bind,
+                self.classes.JoinedSubClass: joined_class_bind,
+            }
+        )
 
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
-        )
-        is_(
-            session.get_bind(self.classes.JoinedSubClass),
-            joined_class_bind
-        )
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
+        is_(session.get_bind(self.classes.JoinedSubClass), joined_class_bind)
 
     def test_bind_base_class_concrete_sub_class(self):
         base_class_bind = Mock()
-        session = self._fixture({
-            self.classes.BaseClass: base_class_bind
-        })
+        session = self._fixture({self.classes.BaseClass: base_class_bind})
 
-        is_(
-            session.get_bind(self.classes.ConcreteSubClass),
-            base_class_bind
-        )
+        is_(session.get_bind(self.classes.ConcreteSubClass), base_class_bind)
 
     def test_bind_sub_class_concrete_sub_class(self):
-        base_class_bind = Mock(name='base')
-        concrete_sub_bind = Mock(name='concrete')
+        base_class_bind = Mock(name="base")
+        concrete_sub_bind = Mock(name="concrete")
 
-        session = self._fixture({
-            self.classes.BaseClass: base_class_bind,
-            self.classes.ConcreteSubClass: concrete_sub_bind
-        })
+        session = self._fixture(
+            {
+                self.classes.BaseClass: base_class_bind,
+                self.classes.ConcreteSubClass: concrete_sub_bind,
+            }
+        )
 
-        is_(
-            session.get_bind(self.classes.BaseClass),
-            base_class_bind
-        )
-        is_(
-            session.get_bind(self.classes.ConcreteSubClass),
-            concrete_sub_bind
-        )
+        is_(session.get_bind(self.classes.BaseClass), base_class_bind)
+        is_(session.get_bind(self.classes.ConcreteSubClass), concrete_sub_bind)

@@ -255,7 +255,8 @@ class Profiler(object):
     def profile(cls, fn):
         if cls.name is None:
             raise ValueError(
-                "Need to call Profile.init(<suitename>, <default_num>) first.")
+                "Need to call Profile.init(<suitename>, <default_num>) first."
+            )
         cls.tests.append(fn)
         return fn
 
@@ -270,7 +271,8 @@ class Profiler(object):
     def setup_once(cls, fn):
         if cls._setup_once is not None:
             raise ValueError(
-                "setup_once function already set to %s" % cls._setup_once)
+                "setup_once function already set to %s" % cls._setup_once
+            )
         cls._setup_once = staticmethod(fn)
         return fn
 
@@ -298,7 +300,7 @@ class Profiler(object):
         finally:
             pr.disable()
 
-        stats = pstats.Stats(pr).sort_stats('cumulative')
+        stats = pstats.Stats(pr).sort_stats("cumulative")
 
         self.stats.append(TestResult(self, fn, stats=stats))
         return result
@@ -326,7 +328,8 @@ class Profiler(object):
 
         if cls.name is None:
             parser.add_argument(
-                "name", choices=cls._suite_names(), help="suite to run")
+                "name", choices=cls._suite_names(), help="suite to run"
+            )
 
             if len(sys.argv) > 1:
                 potential_name = sys.argv[1]
@@ -335,35 +338,44 @@ class Profiler(object):
                 except ImportError:
                     pass
 
-        parser.add_argument(
-            "--test", type=str,
-            help="run specific test name"
-        )
+        parser.add_argument("--test", type=str, help="run specific test name")
 
         parser.add_argument(
-            '--dburl', type=str, default="sqlite:///profile.db",
-            help="database URL, default sqlite:///profile.db"
+            "--dburl",
+            type=str,
+            default="sqlite:///profile.db",
+            help="database URL, default sqlite:///profile.db",
         )
         parser.add_argument(
-            '--num', type=int, default=cls.num,
+            "--num",
+            type=int,
+            default=cls.num,
             help="Number of iterations/items/etc for tests; "
-                 "default is %d module-specific" % cls.num
+            "default is %d module-specific" % cls.num,
         )
         parser.add_argument(
-            '--profile', action='store_true',
-            help='run profiling and dump call counts')
+            "--profile",
+            action="store_true",
+            help="run profiling and dump call counts",
+        )
         parser.add_argument(
-            '--dump', action='store_true',
-            help='dump full call profile (implies --profile)')
+            "--dump",
+            action="store_true",
+            help="dump full call profile (implies --profile)",
+        )
         parser.add_argument(
-            '--callers', action='store_true',
-            help='print callers as well (implies --dump)')
+            "--callers",
+            action="store_true",
+            help="print callers as well (implies --dump)",
+        )
         parser.add_argument(
-            '--runsnake', action='store_true',
-            help='invoke runsnakerun (implies --profile)')
+            "--runsnake",
+            action="store_true",
+            help="invoke runsnakerun (implies --profile)",
+        )
         parser.add_argument(
-            '--echo', action='store_true',
-            help="Echo SQL output")
+            "--echo", action="store_true", help="Echo SQL output"
+        )
         args = parser.parse_args()
 
         args.dump = args.dump or args.callers
@@ -378,7 +390,7 @@ class Profiler(object):
     def _suite_names(cls):
         suites = []
         for file_ in os.listdir(os.path.dirname(__file__)):
-            match = re.match(r'^([a-z].*).py$', file_)
+            match = re.match(r"^([a-z].*).py$", file_)
             if match:
                 suites.append(match.group(1))
         return suites
@@ -398,7 +410,10 @@ class TestResult(object):
 
     def _summary(self):
         summary = "%s : %s (%d iterations)" % (
-            self.test.__name__, self.test.__doc__, self.profile.num)
+            self.test.__name__,
+            self.test.__doc__,
+            self.profile.num,
+        )
         if self.total_time:
             summary += "; total time %f sec" % self.total_time
         if self.stats:
@@ -412,7 +427,7 @@ class TestResult(object):
             self._dump()
 
     def _dump(self):
-        self.stats.sort_stats('time', 'calls')
+        self.stats.sort_stats("time", "calls")
         self.stats.print_stats()
         if self.profile.callers:
             self.stats.print_callers()
@@ -424,5 +439,3 @@ class TestResult(object):
             os.system("runsnake %s" % filename)
         finally:
             os.remove(filename)
-
-
