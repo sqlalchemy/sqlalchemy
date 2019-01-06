@@ -14,14 +14,22 @@ in unitofwork.py.
 
 """
 
+from itertools import chain
+from itertools import groupby
 import operator
-from itertools import groupby, chain
-from .. import sql, util, exc as sa_exc
-from . import attributes, sync, exc as orm_exc, evaluator
-from .base import state_str, _entity_descriptor
+
+from . import attributes
+from . import evaluator
+from . import exc as orm_exc
+from . import loading
+from . import sync
+from .base import _entity_descriptor
+from .base import state_str
+from .. import exc as sa_exc
+from .. import sql
+from .. import util
 from ..sql import expression
 from ..sql.base import _from_objects
-from . import loading
 
 
 def _bulk_insert(
@@ -67,7 +75,16 @@ def _bulk_insert(
                 has_all_pks,
                 has_all_defaults,
             )
-            for state, state_dict, params, mp, conn, value_params, has_all_pks, has_all_defaults in _collect_insert_commands(
+            for (
+                state,
+                state_dict,
+                params,
+                mp,
+                conn,
+                value_params,
+                has_all_pks,
+                has_all_defaults,
+            ) in _collect_insert_commands(
                 table,
                 ((None, mapping, mapper, connection) for mapping in mappings),
                 bulk=True,
@@ -234,11 +251,17 @@ def save_obj(base_mapper, states, uowtransaction, single=False):
         chain(
             (
                 (state, state_dict, mapper, connection, False)
-                for state, state_dict, mapper, connection in states_to_insert
+                for (state, state_dict, mapper, connection) in states_to_insert
             ),
             (
                 (state, state_dict, mapper, connection, True)
-                for state, state_dict, mapper, connection, update_version_id in states_to_update
+                for (
+                    state,
+                    state_dict,
+                    mapper,
+                    connection,
+                    update_version_id,
+                ) in states_to_update
             ),
         ),
     )
@@ -609,9 +632,9 @@ def _collect_update_commands(
                     params[col.key] = value
 
             if mapper.base_mapper.eager_defaults:
-                has_all_defaults = mapper._server_onupdate_default_cols[
-                    table
-                ].issubset(params)
+                has_all_defaults = (
+                    mapper._server_onupdate_default_cols[table]
+                ).issubset(params)
             else:
                 has_all_defaults = True
 

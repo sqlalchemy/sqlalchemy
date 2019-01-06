@@ -1,5 +1,6 @@
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import assert_raises_message, eq_
 
 
 class _BooleanProcessorTest(fixtures.TestBase):

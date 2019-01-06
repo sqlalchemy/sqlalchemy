@@ -1,8 +1,10 @@
 """test the inspection registry system."""
 
-from sqlalchemy.testing import eq_, assert_raises_message
-from sqlalchemy import exc, util
-from sqlalchemy import inspection, inspect
+from sqlalchemy import exc
+from sqlalchemy import inspect
+from sqlalchemy import inspection
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 

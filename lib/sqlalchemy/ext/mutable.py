@@ -370,12 +370,16 @@ pickling process of the parent's object-relational state so that the
 :meth:`MutableBase._parents` collection is restored to all ``Point`` objects.
 
 """
-from ..orm.attributes import flag_modified
-from .. import event, types
-from ..orm import mapper, object_mapper, Mapper
-from ..util import memoized_property
-from ..sql.base import SchemaEventTarget
 import weakref
+
+from .. import event
+from .. import types
+from ..orm import Mapper
+from ..orm import mapper
+from ..orm import object_mapper
+from ..orm.attributes import flag_modified
+from ..sql.base import SchemaEventTarget
+from ..util import memoized_property
 
 
 class MutableBase(object):
@@ -479,7 +483,7 @@ class MutableBase(object):
             if not attrs or listen_keys.intersection(attrs):
                 load(state)
 
-        def set(target, value, oldvalue, initiator):
+        def set_(target, value, oldvalue, initiator):
             """Listen for set/replace events on the target
             data member.
 
@@ -519,7 +523,7 @@ class MutableBase(object):
             parent_cls, "refresh_flush", load_attrs, raw=True, propagate=True
         )
         event.listen(
-            attribute, "set", set, raw=True, retval=True, propagate=True
+            attribute, "set", set_, raw=True, retval=True, propagate=True
         )
         event.listen(parent_cls, "pickle", pickle, raw=True, propagate=True)
         event.listen(

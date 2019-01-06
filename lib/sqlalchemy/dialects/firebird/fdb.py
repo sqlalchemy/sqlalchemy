@@ -9,8 +9,7 @@
 .. dialect:: firebird+fdb
     :name: fdb
     :dbapi: pyodbc
-    :connectstring: firebird+fdb://user:password@host:port/path/to/db\
-[?key=value&key=value...]
+    :connectstring: firebird+fdb://user:password@host:port/path/to/db[?key=value&key=value...]
     :url: http://pypi.python.org/pypi/fdb/
 
     fdb is a kinterbasdb compatible DBAPI for Firebird.
@@ -66,7 +65,7 @@ accept every argument that Kinterbasdb does.
     http://pythonhosted.org/fdb/usage-guide.html#retaining-transactions
     - information on the "retaining" flag.
 
-"""
+"""  # noqa
 
 from .kinterbasdb import FBDialect_kinterbasdb
 from ... import util

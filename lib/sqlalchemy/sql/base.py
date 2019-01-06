@@ -10,10 +10,13 @@
 """
 
 
-from .. import util, exc
 import itertools
-from .visitors import ClauseVisitor
 import re
+
+from .visitors import ClauseVisitor
+from .. import exc
+from .. import util
+
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
@@ -517,7 +520,7 @@ class ColumnCollection(util.OrderedProperties):
     def __delitem__(self, key):
         raise NotImplementedError()
 
-    def __setattr__(self, key, object):
+    def __setattr__(self, key, obj):
         raise NotImplementedError()
 
     def __setitem__(self, key, value):
@@ -557,16 +560,16 @@ class ColumnCollection(util.OrderedProperties):
             c for c in self._all_columns if c is not column
         ]
 
-    def update(self, iter):
-        cols = list(iter)
+    def update(self, iter_):
+        cols = list(iter_)
         all_col_set = set(self._all_columns)
         self._all_columns.extend(
             c for label, c in cols if c not in all_col_set
         )
         self._data.update((label, c) for label, c in cols)
 
-    def extend(self, iter):
-        cols = list(iter)
+    def extend(self, iter_):
+        cols = list(iter_)
         all_col_set = set(self._all_columns)
         self._all_columns.extend(c for c in cols if c not in all_col_set)
         self._data.update((c.key, c) for c in cols)

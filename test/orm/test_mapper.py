@@ -1,44 +1,45 @@
 """General mapper operations with an emphasis on selecting/loading."""
 
-from sqlalchemy.testing import assert_raises, assert_raises_message
-import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy import (
-    MetaData,
-    Integer,
-    String,
-    ForeignKey,
-    func,
-    util,
-    select,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.engine import default
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    backref,
-    create_session,
-    class_mapper,
-    configure_mappers,
-    reconstructor,
-    aliased,
-    deferred,
-    synonym,
-    attributes,
-    column_property,
-    composite,
-    dynamic_loader,
-    comparable_property,
-    Session,
-)
-from sqlalchemy.orm.persistence import _sort_states
-from sqlalchemy.testing import eq_, AssertsCompiledSQL, is_
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.testing.assertsql import CompiledSQL
 import logging
 import logging.handlers
+
+import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import comparable_property
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import dynamic_loader
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import reconstructor
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm.persistence import _sort_states
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
 
 
 class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -325,8 +326,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         """
 
         class Foo(object):
-            def __init__(self, id):
-                self.id = id
+            def __init__(self, id_):
+                self.id = id_
 
         m = MetaData()
         foo_t = Table("foo", m, Column("id", String, primary_key=True))
@@ -336,10 +337,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             if util.py2k:
 
                 def __lt__(self, other):
-                    assert not isinstance(other, basestring)
+                    assert not isinstance(other, basestring)  # noqa
                     return int(self) < other
 
-        foos = [Foo(id="f%d" % i) for i in range(5)]
+        foos = [Foo(id_="f%d" % i) for i in range(5)]
         states = [attributes.instance_state(f) for f in foos]
 
         for s in states[0:3]:
@@ -2536,7 +2537,20 @@ class OptionsTest(_fixtures.FixtureTest):
         self.sql_count_(4, go)
 
     def test_eager_degrade_deep(self):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, item_keywords, Order, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.items,
@@ -2689,7 +2703,18 @@ class OptionsTest(_fixtures.FixtureTest):
 class DeepOptionsTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
-        users, Keyword, items, order_items, Order, Item, User, keywords, item_keywords, orders = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+            orders,
+        ) = (
             cls.tables.users,
             cls.classes.Keyword,
             cls.tables.items,
@@ -3312,10 +3337,8 @@ class DeferredPopulationTest(fixtures.MappedTest):
 
         session = create_session()
         human = (
-            session.query(Human)
-            .options(sa.orm.joinedload("thing"))  # noqa
-            .first()
-        )
+            session.query(Human).options(sa.orm.joinedload("thing")).first()
+        )  # noqa
         session.expunge_all()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
@@ -3325,10 +3348,8 @@ class DeferredPopulationTest(fixtures.MappedTest):
 
         session = create_session()
         human = (
-            session.query(Human)
-            .options(sa.orm.joinedload("thing"))  # noqa
-            .first()
-        )
+            session.query(Human).options(sa.orm.joinedload("thing")).first()
+        )  # noqa
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
@@ -3337,11 +3358,8 @@ class DeferredPopulationTest(fixtures.MappedTest):
 
         session = create_session()
         result = (
-            session.query(Human)
-            .add_entity(Thing)  # noqa
-            .join("thing")
-            .first()
-        )
+            session.query(Human).add_entity(Thing).join("thing").first()
+        )  # noqa
         session.expunge_all()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
@@ -3351,11 +3369,8 @@ class DeferredPopulationTest(fixtures.MappedTest):
 
         session = create_session()
         result = (
-            session.query(Human)
-            .add_entity(Thing)  # noqa
-            .join("thing")
-            .first()
-        )
+            session.query(Human).add_entity(Thing).join("thing").first()
+        )  # noqa
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
@@ -3714,8 +3729,8 @@ class RequirementsTest(fixtures.MappedTest):
             #  sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
 
     class _ValueBase(object):
-        def __init__(self, value="abc", id=None):
-            self.id = id
+        def __init__(self, value="abc", id_=None):
+            self.id = id_
             self.value = value
 
         def __bool__(self):
@@ -3842,15 +3857,15 @@ class RequirementsTest(fixtures.MappedTest):
         ht2, ht1 = (self.tables.ht2, self.tables.ht1)
 
         class H1(self._ValueBase):
-            def __init__(self, value, id, h2s):
+            def __init__(self, value, id_, h2s):
                 self.value = value
-                self.id = id
+                self.id = id_
                 self.h2s = h2s
 
         class H2(self._ValueBase):
-            def __init__(self, value, id):
+            def __init__(self, value, id_):
                 self.value = value
-                self.id = id
+                self.id = id_
 
         mapper(H1, ht1, properties={"h2s": relationship(H2, backref="h1")})
         mapper(H2, ht2)
@@ -3860,12 +3875,12 @@ class RequirementsTest(fixtures.MappedTest):
                 H1(
                     "abc",
                     1,
-                    h2s=[H2("abc", id=1), H2("def", id=2), H2("def", id=3)],
+                    h2s=[H2("abc", id_=1), H2("def", id_=2), H2("def", id_=3)],
                 ),
                 H1(
                     "def",
                     2,
-                    h2s=[H2("abc", id=4), H2("abc", id=5), H2("def", id=6)],
+                    h2s=[H2("abc", id_=4), H2("abc", id_=5), H2("def", id_=6)],
                 ),
             ]
         )

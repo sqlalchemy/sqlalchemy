@@ -1,22 +1,21 @@
-from sqlalchemy import (
-    exc as exceptions,
-    select,
-    MetaData,
-    Integer,
-    or_,
-    bindparam,
-)
+from sqlalchemy import bindparam
+from sqlalchemy import exc as exceptions
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import or_
+from sqlalchemy import select
 from sqlalchemy.engine import default
-from sqlalchemy.sql import table, column
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
 from sqlalchemy.sql.elements import _truncated_label
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    assert_raises,
-    engines,
-    fixtures,
-    eq_,
-)
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+
 
 IDENT_LENGTH = 29
 

@@ -14,34 +14,38 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 
 """
 from __future__ import absolute_import
-from .. import sql, util, exc as sa_exc, schema, log
 
-import weakref
-from .util import CascadeOptions, _orm_annotate, _orm_deannotate
-from . import dependency
-from . import attributes
-from ..sql.util import (
-    ClauseAdapter,
-    join_condition,
-    _shallow_annotate,
-    visit_binary_product,
-    _deep_deannotate,
-    selectables_overlap,
-    adapt_criterion_to_null,
-)
-from .base import state_str
-
-from ..sql import operators, expression, visitors
-from .interfaces import (
-    MANYTOMANY,
-    MANYTOONE,
-    ONETOMANY,
-    StrategizedProperty,
-    PropComparator,
-)
-from ..inspection import inspect
-from . import mapper as mapperlib
 import collections
+import weakref
+
+from . import attributes
+from . import dependency
+from . import mapper as mapperlib
+from .base import state_str
+from .interfaces import MANYTOMANY
+from .interfaces import MANYTOONE
+from .interfaces import ONETOMANY
+from .interfaces import PropComparator
+from .interfaces import StrategizedProperty
+from .util import _orm_annotate
+from .util import _orm_deannotate
+from .util import CascadeOptions
+from .. import exc as sa_exc
+from .. import log
+from .. import schema
+from .. import sql
+from .. import util
+from ..inspection import inspect
+from ..sql import expression
+from ..sql import operators
+from ..sql import visitors
+from ..sql.util import _deep_deannotate
+from ..sql.util import _shallow_annotate
+from ..sql.util import adapt_criterion_to_null
+from ..sql.util import ClauseAdapter
+from ..sql.util import join_condition
+from ..sql.util import selectables_overlap
+from ..sql.util import visit_binary_product
 
 
 def remote(expr):
@@ -88,7 +92,7 @@ def foreign(expr):
 
 
 @log.class_logger
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties")
+@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -596,8 +600,8 @@ class RelationshipProperty(StrategizedProperty):
 
           .. seealso::
 
-            :doc:`/orm/loading_relationships` - Full documentation on relationship loader
-            configuration.
+            :doc:`/orm/loading_relationships` - Full documentation on
+            relationship loader configuration.
 
             :ref:`dynamic_relationship` - detail on the ``dynamic`` option.
 
@@ -991,7 +995,14 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 of_type = None
 
-            pj, sj, source, dest, secondary, target_adapter = self.property._create_joins(
+            (
+                pj,
+                sj,
+                source,
+                dest,
+                secondary,
+                target_adapter,
+            ) = self.property._create_joins(
                 source_selectable=adapt_from,
                 source_polymorphic=True,
                 of_type=of_type,
@@ -1112,7 +1123,14 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 source_selectable = None
 
-            pj, sj, source, dest, secondary, target_adapter = self.property._create_joins(
+            (
+                pj,
+                sj,
+                source,
+                dest,
+                secondary,
+                target_adapter,
+            ) = self.property._create_joins(
                 dest_polymorphic=True,
                 dest_selectable=to_selectable,
                 source_selectable=source_selectable,
@@ -1508,7 +1526,7 @@ class RelationshipProperty(StrategizedProperty):
 
         Above, the SQL should be "address.user_id = 5". The callable
         returned by this method produces the value "5" based on the identity
-        of ``u1`.
+        of ``u1``.
 
         """
 
@@ -2108,9 +2126,9 @@ class RelationshipProperty(StrategizedProperty):
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
-            self._dependency_processor = dependency.DependencyProcessor.from_relationship(
-                self
-            )
+            self._dependency_processor = (
+                dependency.DependencyProcessor.from_relationship
+            )(self)
 
     @util.memoized_property
     def _use_get(self):
@@ -2155,7 +2173,13 @@ class RelationshipProperty(StrategizedProperty):
         single_crit = dest_mapper._single_table_criterion
         aliased = aliased or (source_selectable is not None)
 
-        primaryjoin, secondaryjoin, secondary, target_adapter, dest_selectable = self._join_condition.join_targets(
+        (
+            primaryjoin,
+            secondaryjoin,
+            secondary,
+            target_adapter,
+            dest_selectable,
+        ) = self._join_condition.join_targets(
             source_selectable, dest_selectable, aliased, single_crit
         )
         if source_selectable is None:

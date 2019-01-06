@@ -28,8 +28,8 @@ def connection_memoize(key):
 
 
 def py_fallback():
-    def _distill_params(multiparams, params):
-        """Given arguments from the calling form *multiparams, **params,
+    def _distill_params(multiparams, params):  # noqa
+        r"""Given arguments from the calling form \*multiparams, \**params,
         return a list of bind parameter structures, usually a list of
         dictionaries.
 
@@ -75,6 +75,6 @@ def py_fallback():
 
 
 try:
-    from sqlalchemy.cutils import _distill_params
+    from sqlalchemy.cutils import _distill_params  # noqa
 except ImportError:
     globals().update(py_fallback())

@@ -24,19 +24,20 @@ To generate user-defined SQL strings, see
 """
 
 import contextlib
-import re
-from . import (
-    schema,
-    sqltypes,
-    operators,
-    functions,
-    visitors,
-    elements,
-    selectable,
-    crud,
-)
-from .. import util, exc
 import itertools
+import re
+
+from . import crud
+from . import elements
+from . import functions
+from . import operators
+from . import schema
+from . import selectable
+from . import sqltypes
+from . import visitors
+from .. import exc
+from .. import util
+
 
 RESERVED_WORDS = set(
     [
@@ -2392,11 +2393,7 @@ class SQLCompiler(Compiled):
         table_text = preparer.format_table(insert_stmt.table)
 
         if insert_stmt._hints:
-            dialect_hints, table_text = self._setup_crud_hints(
-                insert_stmt, table_text
-            )
-        else:
-            dialect_hints = None
+            _, table_text = self._setup_crud_hints(insert_stmt, table_text)
 
         text += table_text
 

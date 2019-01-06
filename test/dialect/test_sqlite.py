@@ -1,54 +1,58 @@
 #!coding: utf-8
 
 """SQLite-specific tests."""
-import os
 import datetime
+import os
 
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    is_,
-    expect_warnings,
-)
-from sqlalchemy import (
-    Table,
-    select,
-    bindparam,
-    Column,
-    MetaData,
-    func,
-    extract,
-    ForeignKey,
-    text,
-    DefaultClause,
-    and_,
-    create_engine,
-    UniqueConstraint,
-    Index,
-    PrimaryKeyConstraint,
-    CheckConstraint,
-)
-from sqlalchemy.types import Integer, String, Boolean, DateTime, Date, Time
-from sqlalchemy import types as sqltypes
-from sqlalchemy import event, inspect
-from sqlalchemy.util import u, ue
-from sqlalchemy import exc, sql, schema, pool, util
-from sqlalchemy.dialects.sqlite import (
-    base as sqlite,
-    pysqlite as pysqlite_dialect,
-)
-from sqlalchemy.engine.url import make_url
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsCompiledSQL,
-    AssertsExecutionResults,
-    engines,
-)
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import DefaultClause
+from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import extract
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import MetaData
+from sqlalchemy import pool
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import sql
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.schema import CreateTable, FetchedValue
+from sqlalchemy import text
+from sqlalchemy import types as sqltypes
+from sqlalchemy import UniqueConstraint
+from sqlalchemy import util
+from sqlalchemy.dialects.sqlite import base as sqlite
+from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import FetchedValue
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.types import Boolean
+from sqlalchemy.types import Date
+from sqlalchemy.types import DateTime
+from sqlalchemy.types import Integer
+from sqlalchemy.types import String
+from sqlalchemy.types import Time
+from sqlalchemy.util import u
+from sqlalchemy.util import ue
 
 
 class TestTypes(fixtures.TestBase, AssertsExecutionResults):

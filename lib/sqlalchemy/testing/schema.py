@@ -5,11 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import exclusions
-from .. import schema, event
 from . import config
+from . import exclusions
+from .. import event
+from .. import schema
 
-__all__ = "Table", "Column"
+
+__all__ = ["Table", "Column"]
 
 table_options = {}
 

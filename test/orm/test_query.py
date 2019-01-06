@@ -1,68 +1,71 @@
-from sqlalchemy import (
-    testing,
-    null,
-    exists,
-    text,
-    union,
-    literal,
-    literal_column,
-    func,
-    between,
-    Unicode,
-    desc,
-    and_,
-    bindparam,
-    select,
-    distinct,
-    or_,
-    collate,
-    insert,
-    Integer,
-    String,
-    Boolean,
-    exc as sa_exc,
-    util,
-    cast,
-    MetaData,
-    ForeignKey,
-)
-from sqlalchemy.sql import operators, expression
-from sqlalchemy import column, table
-from sqlalchemy.engine import default
-from sqlalchemy.orm import (
-    attributes,
-    mapper,
-    relationship,
-    create_session,
-    synonym,
-    Session,
-    aliased,
-    column_property,
-    joinedload_all,
-    joinedload,
-    Query,
-    Bundle,
-    subqueryload,
-    backref,
-    lazyload,
-    defer,
-)
-from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.schema import Table, Column
-import sqlalchemy as sa
-from sqlalchemy.testing.assertions import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    expect_warnings,
-    eq_ignore_whitespace,
-)
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, assert_warnings
-from test.orm import _fixtures
-from sqlalchemy.orm.util import join, with_parent
 import contextlib
-from sqlalchemy.testing import mock, is_, is_not_
+
+import sqlalchemy as sa
+from sqlalchemy import and_
+from sqlalchemy import between
+from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import collate
+from sqlalchemy import column
+from sqlalchemy import desc
+from sqlalchemy import distinct
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import null
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import Unicode
+from sqlalchemy import union
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Query
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm.util import join
+from sqlalchemy.orm.util import with_parent
+from sqlalchemy.sql import expression
+from sqlalchemy.sql import operators
+from sqlalchemy.testing import assert_warnings
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import eq_ignore_whitespace
+from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
 
 
 class QueryTest(_fixtures.FixtureTest):
@@ -1799,7 +1802,8 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         q = session.query(User.id).filter(User.id == 7).label("foo")
         self.assert_compile(
             session.query(q),
-            "SELECT (SELECT users.id FROM users WHERE users.id = :id_1) AS foo",
+            "SELECT (SELECT users.id FROM users "
+            "WHERE users.id = :id_1) AS foo",
         )
 
     def test_as_scalar(self):
@@ -2230,7 +2234,8 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "SELECT (SELECT max(addresses.email_address) AS max_1 FROM "
             "addresses WHERE addresses.user_id = users_1.id) AS anon_1, "
             "users_1.id AS users_1_id, users_1.name AS users_1_name, "
-            "users.id AS users_id FROM users AS users_1, users ORDER BY anon_1",
+            "users.id AS users_id FROM users AS users_1, "
+            "users ORDER BY anon_1",
         )
 
     def test_order_by_column_unlabeled_prop_attr_aliased_one(self):
@@ -4776,7 +4781,20 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_mappers(cls):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, Order, item_keywords, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            Order,
+            item_keywords,
+            addresses,
+        ) = (
             cls.tables.users,
             cls.classes.Keyword,
             cls.tables.items,
@@ -4963,7 +4981,8 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q,
             "SELECT users_1.name AS users_1_name FROM "
-            "users AS users_1 JOIN addresses ON users_1.id = addresses.user_id",
+            "users AS users_1 JOIN addresses "
+            "ON users_1.id = addresses.user_id",
         )
 
 

@@ -1,36 +1,34 @@
-from sqlalchemy.testing import (
-    eq_,
-    le_,
-    assert_raises,
-    assert_raises_message,
-    is_,
-    is_true,
-    is_false,
-)
-from sqlalchemy.ext import declarative as decl
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    relationship,
-    create_session,
-    class_mapper,
-    configure_mappers,
-    clear_mappers,
-    polymorphic_union,
-    deferred,
-    Session,
-    mapper,
-)
-from sqlalchemy.ext.declarative import (
-    declared_attr,
-    AbstractConcreteBase,
-    ConcreteBase,
-    has_inherited_table,
-)
-from sqlalchemy.testing import fixtures, mock
+from sqlalchemy.ext import declarative as decl
+from sqlalchemy.ext.declarative import AbstractConcreteBase
+from sqlalchemy.ext.declarative import ConcreteBase
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.declarative import has_inherited_table
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from test.orm.test_events import _RemoveListeners
+
 
 Base = None
 
@@ -1903,7 +1901,8 @@ class ConcreteExtensionConfigTest(
             "(SELECT cca.id AS id, cca.x AS x, cca.y AS y, "
             "cca.something_id AS something_id, 'ccb' AS type FROM cca) "
             "AS pjoin WHERE EXISTS (SELECT 1 FROM something "
-            "WHERE something.id = pjoin.something_id AND something.id = :id_1)",
+            "WHERE something.id = pjoin.something_id "
+            "AND something.id = :id_1)",
         )
 
         self.assert_compile(
@@ -1916,7 +1915,8 @@ class ConcreteExtensionConfigTest(
             "(SELECT cca.id AS id, cca.x AS x, cca.y AS y, "
             "cca.something_id AS something_id, 'ccb' AS type FROM cca) "
             "AS pjoin WHERE EXISTS (SELECT 1 FROM something "
-            "WHERE something.id = pjoin.something_id AND something.id = :id_1)",
+            "WHERE something.id = pjoin.something_id AND "
+            "something.id = :id_1)",
         )
 
     def test_abstract_in_hierarchy(self):

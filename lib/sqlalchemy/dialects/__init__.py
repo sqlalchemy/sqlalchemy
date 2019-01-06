@@ -17,6 +17,7 @@ __all__ = (
 
 from .. import util
 
+
 _translates = {"postgres": "postgresql"}
 
 

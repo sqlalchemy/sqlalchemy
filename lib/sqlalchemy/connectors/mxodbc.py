@@ -19,8 +19,8 @@ For more info on mxODBC, see http://www.egenix.com/
 
 """
 
-import sys
 import re
+import sys
 import warnings
 
 from . import Connector
@@ -89,7 +89,7 @@ class MxODBCConnector(Connector):
         return error_handler
 
     def create_connect_args(self, url):
-        """ Return a tuple of *args,**kwargs for creating a connection.
+        r"""Return a tuple of \*args, \**kwargs for creating a connection.
 
         The mxODBC 3.x connection constructor looks like this:
 

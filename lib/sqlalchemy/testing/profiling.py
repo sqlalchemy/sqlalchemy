@@ -12,19 +12,24 @@ in a more fine-grained way than nose's profiling plugin.
 
 """
 
-import os
-import sys
-from .util import gc_collect
-from . import config
-import pstats
 import collections
 import contextlib
+import os
+import pstats
+import sys
+
+from . import config
+from .util import gc_collect
+from ..util import jython
+from ..util import pypy
+from ..util import update_wrapper
+from ..util import win32
+
 
 try:
     import cProfile
 except ImportError:
     cProfile = None
-from ..util import jython, pypy, win32, update_wrapper
 
 _current_test = None
 

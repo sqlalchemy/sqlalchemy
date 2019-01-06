@@ -1,86 +1,89 @@
 # coding: utf-8
-from sqlalchemy.testing import (
-    eq_,
-    is_,
-    is_not_,
-    assert_raises,
-    assert_raises_message,
-    expect_warnings,
-)
-import decimal
 import datetime
+import decimal
+import importlib
+import operator
 import os
-from sqlalchemy import (
-    Unicode,
-    MetaData,
-    PickleType,
-    Boolean,
-    TypeDecorator,
-    Integer,
-    Interval,
-    Float,
-    Numeric,
-    Text,
-    CHAR,
-    String,
-    distinct,
-    select,
-    bindparam,
-    and_,
-    func,
-    Date,
-    LargeBinary,
-    literal,
-    cast,
-    text,
-    Enum,
-    type_coerce,
-    VARCHAR,
-    Time,
-    DateTime,
-    BigInteger,
-    SmallInteger,
-    BOOLEAN,
-    BLOB,
-    NCHAR,
-    NVARCHAR,
-    CLOB,
-    TIME,
-    DATE,
-    DATETIME,
-    TIMESTAMP,
-    SMALLINT,
-    INTEGER,
-    DECIMAL,
-    NUMERIC,
-    FLOAT,
-    REAL,
-    ARRAY,
-    JSON,
-)
-from sqlalchemy.sql import ddl
-from sqlalchemy.sql import visitors
+
+from sqlalchemy import and_
+from sqlalchemy import ARRAY
+from sqlalchemy import BigInteger
+from sqlalchemy import bindparam
+from sqlalchemy import BLOB
+from sqlalchemy import BOOLEAN
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import CHAR
+from sqlalchemy import CLOB
+from sqlalchemy import DATE
+from sqlalchemy import Date
+from sqlalchemy import DATETIME
+from sqlalchemy import DateTime
+from sqlalchemy import DECIMAL
+from sqlalchemy import dialects
+from sqlalchemy import distinct
+from sqlalchemy import Enum
+from sqlalchemy import exc
+from sqlalchemy import FLOAT
+from sqlalchemy import Float
+from sqlalchemy import func
 from sqlalchemy import inspection
-from sqlalchemy import exc, types, util, dialects
-from sqlalchemy.util import OrderedDict
-from sqlalchemy.sql import operators, column, table, null
-from sqlalchemy.schema import CheckConstraint, AddConstraint
-from sqlalchemy.engine import default
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import INTEGER
+from sqlalchemy import Integer
+from sqlalchemy import Interval
+from sqlalchemy import JSON
+from sqlalchemy import LargeBinary
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import NCHAR
+from sqlalchemy import NUMERIC
+from sqlalchemy import Numeric
+from sqlalchemy import NVARCHAR
+from sqlalchemy import PickleType
+from sqlalchemy import REAL
+from sqlalchemy import select
+from sqlalchemy import SMALLINT
+from sqlalchemy import SmallInteger
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    AssertsExecutionResults,
-    engines,
-    pickleable,
-)
+from sqlalchemy import Text
+from sqlalchemy import text
+from sqlalchemy import TIME
+from sqlalchemy import Time
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import type_coerce
+from sqlalchemy import TypeDecorator
+from sqlalchemy import types
+from sqlalchemy import Unicode
+from sqlalchemy import util
+from sqlalchemy import VARCHAR
+from sqlalchemy.engine import default
+from sqlalchemy.schema import AddConstraint
+from sqlalchemy.schema import CheckConstraint
+from sqlalchemy.sql import column
+from sqlalchemy.sql import ddl
+from sqlalchemy.sql import null
+from sqlalchemy.sql import operators
+from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql import table
+from sqlalchemy.sql import visitors
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import mock
-from sqlalchemy.sql import column
-import operator
-import importlib
+from sqlalchemy.util import OrderedDict
 
 
 class AdaptTest(fixtures.TestBase):
@@ -197,8 +200,6 @@ class AdaptTest(fixtures.TestBase):
                         and "sqlalchemy" in subcl.__module__
                     ):
                         yield True, subcl, [typ]
-
-        from sqlalchemy.sql import sqltypes
 
         for is_down_adaption, typ, target_adaptions in adaptions():
             if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
@@ -2754,8 +2755,8 @@ class NumericRawSQLTest(fixtures.TestBase):
 
     """
 
-    def _fixture(self, metadata, type, data):
-        t = Table("t", metadata, Column("val", type))
+    def _fixture(self, metadata, type_, data):
+        t = Table("t", metadata, Column("val", type_))
         metadata.create_all()
         t.insert().execute(val=data)
 

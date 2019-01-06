@@ -10,9 +10,11 @@
 """
 from __future__ import absolute_import
 
-from .. import util, exc
 from .base import _registrars
 from .registry import _EventKey
+from .. import exc
+from .. import util
+
 
 CANCEL = util.symbol("CANCEL")
 NO_RETVAL = util.symbol("NO_RETVAL")

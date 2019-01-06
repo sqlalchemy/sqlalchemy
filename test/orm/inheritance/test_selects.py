@@ -1,10 +1,14 @@
-from sqlalchemy import String, Integer, ForeignKey, select
-from sqlalchemy.orm import mapper, Session
-
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-
-from sqlalchemy.testing import fixtures, eq_
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class InheritingSelectablesTest(fixtures.MappedTest):

@@ -1,31 +1,29 @@
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message, is_
-from sqlalchemy.testing import fixtures
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    or_,
-    exc,
-    select,
-    func,
-    Boolean,
-    case,
-    text,
-    column,
-)
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    backref,
-    Session,
-    joinedload,
-    synonym,
-    query,
-)
+from sqlalchemy import Boolean
+from sqlalchemy import case
+from sqlalchemy import column
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class UpdateDeleteTest(fixtures.MappedTest):

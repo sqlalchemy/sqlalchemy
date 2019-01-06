@@ -25,9 +25,11 @@ http://techspot.zzzeek.org/2008/01/23/expression-transformations/
 """
 
 from collections import deque
-from .. import util
 import operator
+
 from .. import exc
+from .. import util
+
 
 __all__ = [
     "VisitableType",

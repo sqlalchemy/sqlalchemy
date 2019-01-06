@@ -7,6 +7,7 @@
 from .base import ischema_names
 from ... import types as sqltypes
 
+
 __all__ = ("INT4RANGE", "INT8RANGE", "NUMRANGE")
 
 

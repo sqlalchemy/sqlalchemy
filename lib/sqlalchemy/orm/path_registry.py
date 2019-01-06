@@ -8,12 +8,14 @@
 
 """
 
+from itertools import chain
+import logging
+
+from .base import class_mapper
+from .. import exc
 from .. import inspection
 from .. import util
-from .. import exc
-from itertools import chain
-from .base import class_mapper
-import logging
+
 
 log = logging.getLogger(__name__)
 

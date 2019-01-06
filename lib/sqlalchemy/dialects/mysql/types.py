@@ -6,8 +6,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import datetime
-from ... import exc, util
+
+from ... import exc
 from ... import types as sqltypes
+from ... import util
 
 
 class _NumericType(object):
@@ -68,7 +70,7 @@ class _StringType(sqltypes.String):
         self,
         charset=None,
         collation=None,
-        ascii=False,
+        ascii=False,  # noqa
         binary=False,
         unicode=False,
         national=False,

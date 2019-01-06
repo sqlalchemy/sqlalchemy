@@ -3,18 +3,35 @@ These are generally tests derived from specific user issues.
 
 """
 
-from sqlalchemy.testing import eq_
-from sqlalchemy import *
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import Unicode
 from sqlalchemy import util
-from sqlalchemy.orm import *
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import join
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import Query
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsExecutionResults
-from sqlalchemy import testing
-from sqlalchemy.testing.util import function_named
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import function_named
 
 
 class AttrSettable(object):
@@ -485,8 +502,8 @@ def _generate_test(jointype="join1", usedata=False):
 
 for jointype in ["join1", "join2", "join3", "join4"]:
     for data in (True, False):
-        func = _generate_test(jointype, data)
-        setattr(RelationshipTest3, func.__name__, func)
+        _fn = _generate_test(jointype, data)
+        setattr(RelationshipTest3, _fn.__name__, _fn)
 del func
 
 
@@ -1481,7 +1498,8 @@ class MultiLevelTest(fixtures.MappedTest):
 class ManyToManyPolyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global base_item_table, item_table, base_item_collection_table, collection_table
+        global base_item_table, item_table
+        global base_item_collection_table, collection_table
         base_item_table = Table(
             "base_item",
             metadata,

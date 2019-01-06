@@ -1,38 +1,35 @@
-from sqlalchemy.orm import (
-    Session,
-    aliased,
-    with_polymorphic,
-    contains_eager,
-    joinedload,
-    subqueryload,
-    relationship,
-    subqueryload_all,
-    joinedload_all,
-)
 from sqlalchemy import and_
-from sqlalchemy import testing, exc as sa_exc
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import assert_raises, assert_raises_message, eq_
-from sqlalchemy.testing.schema import Column
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.engine import default
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import subqueryload_all
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
-from sqlalchemy import Integer, String, ForeignKey
-from .inheritance._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    Boss,
-    Machine,
-    Paperwork,
-    _PolymorphicFixtureBase,
-    _Polymorphic,
-    _PolymorphicPolymorphic,
-    _PolymorphicUnions,
-    _PolymorphicJoins,
-    _PolymorphicAliasedJoins,
-)
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL
+from sqlalchemy.testing.schema import Column
+from .inheritance._poly_fixtures import _PolymorphicAliasedJoins
+from .inheritance._poly_fixtures import _PolymorphicJoins
+from .inheritance._poly_fixtures import _PolymorphicPolymorphic
+from .inheritance._poly_fixtures import _PolymorphicUnions
+from .inheritance._poly_fixtures import Boss
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Engineer
+from .inheritance._poly_fixtures import Machine
+from .inheritance._poly_fixtures import Manager
+from .inheritance._poly_fixtures import Person
 
 
 class _PolymorphicTestBase(object):

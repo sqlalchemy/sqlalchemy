@@ -1,17 +1,30 @@
-from sqlalchemy import Integer, ForeignKey, String, func
-from sqlalchemy.types import PickleType, TypeDecorator, VARCHAR
-from sqlalchemy.orm import mapper, Session, composite, column_property
-from sqlalchemy.orm.mapper import Mapper
-from sqlalchemy.orm import attributes
-from sqlalchemy.orm.instrumentation import ClassManager
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import eq_, assert_raises_message, assert_raises
-from sqlalchemy.testing.util import picklers
-from sqlalchemy.testing import fixtures
-from sqlalchemy.ext.mutable import MutableComposite
-from sqlalchemy.ext.mutable import MutableDict, MutableList, MutableSet
-from sqlalchemy.testing import mock
 from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.mutable import MutableComposite
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy.ext.mutable import MutableSet
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.instrumentation import ClassManager
+from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import picklers
+from sqlalchemy.types import PickleType
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import VARCHAR
 
 
 class Foo(fixtures.BasicEntity):

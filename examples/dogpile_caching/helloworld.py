@@ -2,9 +2,10 @@
 
 """
 
+from .caching_query import FromCache
 from .environment import Session
 from .model import Person
-from .caching_query import FromCache
+
 
 # load Person objects.  cache the result in the "default" cache region
 print("loading people....")

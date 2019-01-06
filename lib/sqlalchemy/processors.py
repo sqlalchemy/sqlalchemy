@@ -14,8 +14,9 @@ They all share one common characteristic: None is passed through unchanged.
 """
 
 import codecs
-import re
 import datetime
+import re
+
 from . import util
 
 
@@ -101,19 +102,19 @@ def py_fallback():
 
         return process
 
-    def to_float(value):
+    def to_float(value):  # noqa
         if value is None:
             return None
         else:
             return float(value)
 
-    def to_str(value):
+    def to_str(value):  # noqa
         if value is None:
             return None
         else:
             return str(value)
 
-    def int_to_boolean(value):
+    def int_to_boolean(value):  # noqa
         if value is None:
             return None
         else:
@@ -125,25 +126,27 @@ def py_fallback():
     TIME_RE = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
     DATE_RE = re.compile(r"(\d+)-(\d+)-(\d+)")
 
-    str_to_datetime = str_to_datetime_processor_factory(
+    str_to_datetime = str_to_datetime_processor_factory(  # noqa
         DATETIME_RE, datetime.datetime
     )
-    str_to_time = str_to_datetime_processor_factory(TIME_RE, datetime.time)
-    str_to_date = str_to_datetime_processor_factory(DATE_RE, datetime.date)
+    str_to_time = str_to_datetime_processor_factory(  # noqa
+        TIME_RE, datetime.time
+    )  # noqa
+    str_to_date = str_to_datetime_processor_factory(  # noqa
+        DATE_RE, datetime.date
+    )  # noqa
     return locals()
 
 
 try:
-    from sqlalchemy.cprocessors import (
-        UnicodeResultProcessor,
-        DecimalResultProcessor,
-        to_float,
-        to_str,
-        int_to_boolean,
-        str_to_datetime,
-        str_to_time,
-        str_to_date,
-    )
+    from sqlalchemy.cprocessors import DecimalResultProcessor  # noqa
+    from sqlalchemy.cprocessors import int_to_boolean  # noqa
+    from sqlalchemy.cprocessors import str_to_date  # noqa
+    from sqlalchemy.cprocessors import str_to_datetime  # noqa
+    from sqlalchemy.cprocessors import str_to_time  # noqa
+    from sqlalchemy.cprocessors import to_float  # noqa
+    from sqlalchemy.cprocessors import to_str  # noqa
+    from sqlalchemy.cprocessors import UnicodeResultProcessor  # noqa
 
     def to_unicode_processor_factory(encoding, errors=None):
         if errors is not None:

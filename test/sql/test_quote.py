@@ -1,22 +1,24 @@
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    select,
-    ForeignKey,
-    Index,
-    CheckConstraint,
-    inspect,
-    column,
-)
-from sqlalchemy import sql, schema, types as sqltypes
-from sqlalchemy.sql import compiler
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, eq_
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import sql
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.sql.elements import quoted_name, _anonymous_label
-from sqlalchemy.testing.util import picklers
 from sqlalchemy.engine import default
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql.elements import _anonymous_label
+from sqlalchemy.sql.elements import quoted_name
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import picklers
 
 
 class QuoteExecTest(fixtures.TestBase):
@@ -215,18 +217,18 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         """test the quoting of labels.
 
         If labels aren't quoted, a query in postgresql in particular will
-        fail since it produces:
+        fail since it produces::
 
-        SELECT
-            LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
-        FROM (
-            SELECT DISTINCT
-                "WorstCase1".lowercase AS lowercase,
-                "WorstCase1"."UPPERCASE" AS UPPERCASE,
-                "WorstCase1"."MixedCase" AS MixedCase,
-                "WorstCase1"."ASC" AS ASC
-            FROM "WorstCase1"
-        ) AS LaLa
+            SELECT
+                LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
+            FROM (
+                SELECT DISTINCT
+                    "WorstCase1".lowercase AS lowercase,
+                    "WorstCase1"."UPPERCASE" AS UPPERCASE,
+                    "WorstCase1"."MixedCase" AS MixedCase,
+                    "WorstCase1"."ASC" AS ASC
+                FROM "WorstCase1"
+            ) AS LaLa
 
         where the "UPPERCASE" column of "LaLa" doesn't exist.
         """

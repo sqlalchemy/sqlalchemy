@@ -1,8 +1,15 @@
-from sqlalchemy.testing.assertions import eq_, assert_raises
-from sqlalchemy.testing import fixtures
-from sqlalchemy import exc, testing
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import Table, Column, Boolean, Integer, String, func
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import eq_
 
 
 class OnDuplicateTest(fixtures.TablesTest):
@@ -71,9 +78,10 @@ class OnDuplicateTest(fixtures.TablesTest):
             stmt = insert(foos)
             update_condition = foos.c.updated_once == False
 
-            # The following statements show importance of the columns update ordering
-            # as old values being referenced in UPDATE clause are getting replaced one
-            # by one from left to right with their new values.
+            # The following statements show importance of the columns update
+            # ordering as old values being referenced in UPDATE clause are
+            # getting replaced one by one from left to right with their new
+            # values.
             stmt1 = stmt.on_duplicate_key_update(
                 [
                     (

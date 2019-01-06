@@ -55,8 +55,8 @@ Pass through exact Pyodbc string
 
 A PyODBC connection string can also be sent exactly as specified in
 `ConnectionStrings <https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_
-into the driver using the parameter ``odbc_connect``.  The delimeters must be URL escaped, however,
-as illustrated below using ``urllib.quote_plus``::
+into the driver using the parameter ``odbc_connect``.  The delimeters must be
+URL escaped, however, as illustrated below using ``urllib.quote_plus``::
 
     import urllib
     params = urllib.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
@@ -107,18 +107,23 @@ in order to use this flag::
 
 .. seealso::
 
-    `fast executemany
-    <https://github.com/mkleehammer/pyodbc/wiki/Features-beyond-the-DB-API#fast_executemany>`_
+    `fast executemany <https://github.com/mkleehammer/pyodbc/wiki/Features-beyond-the-DB-API#fast_executemany>`_
     - on github
 
 
-"""
+"""  # noqa
 
-from .base import MSExecutionContext, MSDialect, BINARY, VARBINARY
-from ...connectors.pyodbc import PyODBCConnector
-from ... import types as sqltypes, util, exc
 import decimal
 import re
+
+from .base import BINARY
+from .base import MSDialect
+from .base import MSExecutionContext
+from .base import VARBINARY
+from ... import exc
+from ... import types as sqltypes
+from ... import util
+from ...connectors.pyodbc import PyODBCConnector
 
 
 class _ms_numeric_pyodbc(object):

@@ -14,11 +14,15 @@ See the example ``examples/association/proxied_association.py``.
 
 """
 import operator
-from .. import exc, orm, util
-from ..orm import collections, interfaces
+
+from .. import exc
+from .. import inspect
+from .. import orm
+from .. import util
+from ..orm import collections
+from ..orm import interfaces
 from ..sql import or_
 from ..sql.operators import ColumnOperators
-from .. import inspect
 
 
 def association_proxy(target_collection, attr, **kw):
@@ -316,7 +320,7 @@ class AssociationProxyInstance(object):
 
     .. versionadded:: 1.3
 
-    """
+    """  # noqa
 
     def __init__(self, parent, owning_class, target_class, value_attr):
         self.parent = parent
@@ -478,10 +482,10 @@ class AssociationProxyInstance(object):
 
     def _initialize_scalar_accessors(self):
         if self.parent.getset_factory:
-            get, set = self.parent.getset_factory(None, self)
+            get, set_ = self.parent.getset_factory(None, self)
         else:
-            get, set = self.parent._default_getset(None)
-        self._scalar_get, self._scalar_set = get, set
+            get, set_ = self.parent._default_getset(None)
+        self._scalar_get, self._scalar_set = get, set_
 
     def _default_getset(self, collection_class):
         attr = self.value_attr
@@ -954,11 +958,11 @@ class _AssociationList(_AssociationCollection):
     def _create(self, value):
         return self.creator(value)
 
-    def _get(self, object):
-        return self.getter(object)
+    def _get(self, object_):
+        return self.getter(object_)
 
-    def _set(self, object, value):
-        return self.setter(object, value)
+    def _set(self, object_, value):
+        return self.setter(object_, value)
 
     def __getitem__(self, index):
         if not isinstance(index, slice):
@@ -1164,11 +1168,11 @@ class _AssociationDict(_AssociationCollection):
     def _create(self, key, value):
         return self.creator(key, value)
 
-    def _get(self, object):
-        return self.getter(object)
+    def _get(self, object_):
+        return self.getter(object_)
 
-    def _set(self, object, key, value):
-        return self.setter(object, key, value)
+    def _set(self, object_, key, value):
+        return self.setter(object_, key, value)
 
     def __getitem__(self, key):
         return self._get(self.col[key])
@@ -1321,8 +1325,8 @@ class _AssociationSet(_AssociationCollection):
     def _create(self, value):
         return self.creator(value)
 
-    def _get(self, object):
-        return self.getter(object)
+    def _get(self, object_):
+        return self.getter(object_)
 
     def __len__(self):
         return len(self.col)

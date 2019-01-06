@@ -13,7 +13,8 @@ event system.
 
 """
 
-from . import event, util
+from . import event
+from . import util
 
 
 class PoolListener(object):

@@ -1,21 +1,22 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from sqlalchemy import MetaData, Integer, ForeignKey, util, event
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    attributes,
-    class_mapper,
-    clear_mappers,
-    instrumentation,
-    events,
-)
-from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.testing import eq_, ne_
+from sqlalchemy import event
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import util
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import instrumentation
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class InitTest(fixtures.ORMTest):

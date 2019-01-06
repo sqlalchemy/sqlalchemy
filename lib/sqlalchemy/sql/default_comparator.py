@@ -8,34 +8,34 @@
 """Default implementation of SQL comparison operations.
 """
 
-from .. import exc, util
-from . import type_api
 from . import operators
-from .elements import (
-    BindParameter,
-    True_,
-    False_,
-    BinaryExpression,
-    Null,
-    _const_expr,
-    _clause_element_as_expr,
-    ClauseList,
-    ColumnElement,
-    TextClause,
-    UnaryExpression,
-    collate,
-    _is_literal,
-    _literal_as_text,
-    ClauseElement,
-    and_,
-    or_,
-    Slice,
-    Visitable,
-    _literal_as_binds,
-    CollectionAggregate,
-    Tuple,
-)
-from .selectable import SelectBase, Alias, Selectable, ScalarSelect
+from . import type_api
+from .elements import _clause_element_as_expr
+from .elements import _const_expr
+from .elements import _is_literal
+from .elements import _literal_as_text
+from .elements import and_
+from .elements import BinaryExpression
+from .elements import BindParameter
+from .elements import ClauseElement
+from .elements import ClauseList
+from .elements import collate
+from .elements import CollectionAggregate
+from .elements import ColumnElement
+from .elements import False_
+from .elements import Null
+from .elements import or_
+from .elements import TextClause
+from .elements import True_
+from .elements import Tuple
+from .elements import UnaryExpression
+from .elements import Visitable
+from .selectable import Alias
+from .selectable import ScalarSelect
+from .selectable import Selectable
+from .selectable import SelectBase
+from .. import exc
+from .. import util
 
 
 def _boolean_compare(

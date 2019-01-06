@@ -17,8 +17,9 @@ the source distribution.
 
 from .. import inspect
 from .. import util
-from ..orm.session import Session
 from ..orm.query import Query
+from ..orm.session import Session
+
 
 __all__ = ["ShardedSession", "ShardedQuery"]
 

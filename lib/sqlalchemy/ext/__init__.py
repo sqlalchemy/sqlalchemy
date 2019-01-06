@@ -7,4 +7,5 @@
 
 from .. import util as _sa_util
 
+
 _sa_util.dependencies.resolve_all("sqlalchemy.ext")

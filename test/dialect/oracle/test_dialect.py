@@ -1,34 +1,34 @@
 # coding: utf-8
 
 
-from sqlalchemy.testing import eq_
-from sqlalchemy import exc
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-)
-from sqlalchemy import testing
+from sqlalchemy import bindparam
 from sqlalchemy import create_engine
-from sqlalchemy import bindparam, outparam
-from sqlalchemy import (
-    text,
-    Float,
-    Integer,
-    String,
-    select,
-    literal_column,
-    Unicode,
-    UnicodeText,
-    Sequence,
-)
-from sqlalchemy.util import u
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
+from sqlalchemy import exc
+from sqlalchemy import Float
+from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import outparam
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import Unicode
+from sqlalchemy import UnicodeText
+from sqlalchemy.dialects.oracle import base as oracle
+from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.engine import url
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import u
 
 
 class DialectTest(fixtures.TestBase):

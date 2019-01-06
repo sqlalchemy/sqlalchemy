@@ -1,42 +1,37 @@
 from __future__ import with_statement
-from sqlalchemy import (
-    testing,
-    exc as sa_exc,
-    event,
-    String,
-    Column,
-    Table,
-    select,
-    func,
-)
-from sqlalchemy.sql import elements
+
+from sqlalchemy import Column
+from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import func
+from sqlalchemy import inspect
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import session as _session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.util import identity_key
-from sqlalchemy.testing import (
-    fixtures,
-    engines,
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    assert_warnings,
-    mock,
-    expect_warnings,
-    is_,
-    is_not_,
-    is_true,
-)
-from sqlalchemy.orm import (
-    exc as orm_exc,
-    Session,
-    mapper,
-    sessionmaker,
-    create_session,
-    relationship,
-    attributes,
-    session as _session,
-)
+from sqlalchemy.sql import elements
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warnings
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
-from sqlalchemy import inspect
 
 
 class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):

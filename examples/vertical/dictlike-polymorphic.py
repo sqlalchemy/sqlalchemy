@@ -24,10 +24,10 @@ date.
 
 """
 
-from sqlalchemy.orm.interfaces import PropComparator
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import event
 from sqlalchemy import literal_column
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm.interfaces import PropComparator
 from .dictlike import ProxiedDictMixin
 
 

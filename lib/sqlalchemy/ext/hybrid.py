@@ -16,8 +16,8 @@ dependencies on the rest of SQLAlchemy.  It can, in theory, work with
 any descriptor-based expression system.
 
 Consider a mapping ``Interval``, representing integer ``start`` and ``end``
-values. We can define higher level functions on mapped classes that produce
-SQL expressions at the class level, and Python expression evaluation at the
+values. We can define higher level functions on mapped classes that produce SQL
+expressions at the class level, and Python expression evaluation at the
 instance level.  Below, each function decorated with :class:`.hybrid_method` or
 :class:`.hybrid_property` may receive ``self`` as an instance of the class, or
 as the class itself::
@@ -410,7 +410,8 @@ idiosyncratic behavior on the SQL side.
 
 .. note::  The :meth:`.hybrid_property.comparator` decorator introduced
    in this section **replaces** the use of the
-   :meth:`.hybrid_property.expression` decorator.  They cannot be used together.
+   :meth:`.hybrid_property.expression` decorator.
+   They cannot be used together.
 
 The example class below allows case-insensitive comparisons on the attribute
 named ``word_insensitive``::
@@ -496,13 +497,12 @@ Above, the ``FirstNameLastName`` class refers to the hybrid from
 ``FirstNameOnly.name`` to repurpose its getter and setter for the subclass.
 
 When overriding :meth:`.hybrid_property.expression` and
-:meth:`.hybrid_property.comparator` alone as the first reference
-to the superclass, these names conflict
-with the same-named accessors on the class-level :class:`.QueryableAttribute`
-object returned at the class level.  To override these methods when
-referring directly to the parent class descriptor, add
-the special qualifier :attr:`.hybrid_property.overrides`, which will
-de-reference the instrumented attribute back to the hybrid object::
+:meth:`.hybrid_property.comparator` alone as the first reference to the
+superclass, these names conflict with the same-named accessors on the class-
+level :class:`.QueryableAttribute` object returned at the class level.  To
+override these methods when referring directly to the parent class descriptor,
+add the special qualifier :attr:`.hybrid_property.overrides`, which will de-
+reference the instrumented attribute back to the hybrid object::
 
     class FirstNameLastName(FirstNameOnly):
         # ...
@@ -520,19 +520,18 @@ de-reference the instrumented attribute back to the hybrid object::
 Hybrid Value Objects
 --------------------
 
-Note in our previous example, if we were to compare the
-``word_insensitive`` attribute of a ``SearchWord`` instance to a plain
-Python string, the plain Python string would not be coerced to lower
-case - the ``CaseInsensitiveComparator`` we built, being returned by
+Note in our previous example, if we were to compare the ``word_insensitive``
+attribute of a ``SearchWord`` instance to a plain Python string, the plain
+Python string would not be coerced to lower case - the
+``CaseInsensitiveComparator`` we built, being returned by
 ``@word_insensitive.comparator``, only applies to the SQL side.
 
-A more comprehensive form of the custom comparator is to construct a
-*Hybrid Value Object*. This technique applies the target value or
-expression to a value object which is then returned by the accessor in
-all cases.   The value object allows control of all operations upon
-the value as well as how compared values are treated, both on the SQL
-expression side as well as the Python value side.   Replacing the
-previous ``CaseInsensitiveComparator`` class with a new
+A more comprehensive form of the custom comparator is to construct a *Hybrid
+Value Object*. This technique applies the target value or expression to a value
+object which is then returned by the accessor in all cases.   The value object
+allows control of all operations upon the value as well as how compared values
+are treated, both on the SQL expression side as well as the Python value side.
+Replacing the previous ``CaseInsensitiveComparator`` class with a new
 ``CaseInsensitiveWord`` class::
 
     class CaseInsensitiveWord(Comparator):
@@ -560,13 +559,12 @@ previous ``CaseInsensitiveComparator`` class with a new
         key = 'word'
         "Label to apply to Query tuple results"
 
-Above, the ``CaseInsensitiveWord`` object represents ``self.word``,
-which may be a SQL function, or may be a Python native.   By
-overriding ``operate()`` and ``__clause_element__()`` to work in terms
-of ``self.word``, all comparison operations will work against the
-"converted" form of ``word``, whether it be SQL side or Python side.
-Our ``SearchWord`` class can now deliver the ``CaseInsensitiveWord``
-object unconditionally from a single hybrid call::
+Above, the ``CaseInsensitiveWord`` object represents ``self.word``, which may
+be a SQL function, or may be a Python native.   By overriding ``operate()`` and
+``__clause_element__()`` to work in terms of ``self.word``, all comparison
+operations will work against the "converted" form of ``word``, whether it be
+SQL side or Python side. Our ``SearchWord`` class can now deliver the
+``CaseInsensitiveWord`` object unconditionally from a single hybrid call::
 
     class SearchWord(Base):
         __tablename__ = 'searchword'
@@ -577,10 +575,9 @@ object unconditionally from a single hybrid call::
         def word_insensitive(self):
             return CaseInsensitiveWord(self.word)
 
-The ``word_insensitive`` attribute now has case-insensitive comparison
-behavior universally, including SQL expression vs. Python expression
-(note the Python value is converted to lower case on the Python side
-here)::
+The ``word_insensitive`` attribute now has case-insensitive comparison behavior
+universally, including SQL expression vs. Python expression (note the Python
+value is converted to lower case on the Python side here)::
 
     >>> print Session().query(SearchWord).filter_by(word_insensitive="Trucks")
     SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
@@ -612,9 +609,9 @@ Python only expression::
     >>> print ws1.word_insensitive
     someword
 
-The Hybrid Value pattern is very useful for any kind of value that may
-have multiple representations, such as timestamps, time deltas, units
-of measurement, currencies and encrypted passwords.
+The Hybrid Value pattern is very useful for any kind of value that may have
+multiple representations, such as timestamps, time deltas, units of
+measurement, currencies and encrypted passwords.
 
 .. seealso::
 
@@ -631,17 +628,17 @@ of measurement, currencies and encrypted passwords.
 Building Transformers
 ----------------------
 
-A *transformer* is an object which can receive a :class:`.Query`
-object and return a new one.   The :class:`.Query` object includes a
-method :meth:`.with_transformation` that returns a new :class:`.Query`
-transformed by the given function.
+A *transformer* is an object which can receive a :class:`.Query` object and
+return a new one.   The :class:`.Query` object includes a method
+:meth:`.with_transformation` that returns a new :class:`.Query` transformed by
+the given function.
 
 We can combine this with the :class:`.Comparator` class to produce one type
 of recipe which can both set up the FROM clause of a query as well as assign
 filtering criterion.
 
-Consider a mapped class ``Node``, which assembles using adjacency list
-into a hierarchical tree pattern::
+Consider a mapped class ``Node``, which assembles using adjacency list into a
+hierarchical tree pattern::
 
     from sqlalchemy import Column, Integer, ForeignKey
     from sqlalchemy.orm import relationship
@@ -654,9 +651,9 @@ into a hierarchical tree pattern::
         parent_id = Column(Integer, ForeignKey('node.id'))
         parent = relationship("Node", remote_side=id)
 
-Suppose we wanted to add an accessor ``grandparent``.  This would
-return the ``parent`` of ``Node.parent``.  When we have an instance of
-``Node``, this is simple::
+Suppose we wanted to add an accessor ``grandparent``.  This would return the
+``parent`` of ``Node.parent``.  When we have an instance of ``Node``, this is
+simple::
 
     from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -667,13 +664,12 @@ return the ``parent`` of ``Node.parent``.  When we have an instance of
         def grandparent(self):
             return self.parent.parent
 
-For the expression, things are not so clear.   We'd need to construct
-a :class:`.Query` where we :meth:`~.Query.join` twice along
-``Node.parent`` to get to the ``grandparent``.   We can instead return
-a transforming callable that we'll combine with the
-:class:`.Comparator` class to receive any :class:`.Query` object, and
-return a new one that's joined to the ``Node.parent`` attribute and
-filtered based on the given criterion::
+For the expression, things are not so clear.   We'd need to construct a
+:class:`.Query` where we :meth:`~.Query.join` twice along ``Node.parent`` to
+get to the ``grandparent``.   We can instead return a transforming callable
+that we'll combine with the :class:`.Comparator` class to receive any
+:class:`.Query` object, and return a new one that's joined to the
+``Node.parent`` attribute and filtered based on the given criterion::
 
     from sqlalchemy.ext.hybrid import Comparator
 
@@ -702,17 +698,15 @@ filtered based on the given criterion::
         def grandparent(cls):
             return GrandparentTransformer(cls)
 
-The ``GrandparentTransformer`` overrides the core
-:meth:`.Operators.operate` method at the base of the
-:class:`.Comparator` hierarchy to return a query-transforming
-callable, which then runs the given comparison operation in a
-particular context. Such as, in the example above, the ``operate``
-method is called, given the :attr:`.Operators.eq` callable as well as
-the right side of the comparison ``Node(id=5)``.  A function
-``transform`` is then returned which will transform a :class:`.Query`
-first to join to ``Node.parent``, then to compare ``parent_alias``
-using :attr:`.Operators.eq` against the left and right sides, passing
-into :class:`.Query.filter`:
+The ``GrandparentTransformer`` overrides the core :meth:`.Operators.operate`
+method at the base of the :class:`.Comparator` hierarchy to return a query-
+transforming callable, which then runs the given comparison operation in a
+particular context. Such as, in the example above, the ``operate`` method is
+called, given the :attr:`.Operators.eq` callable as well as the right side of
+the comparison ``Node(id=5)``.  A function ``transform`` is then returned which
+will transform a :class:`.Query` first to join to ``Node.parent``, then to
+compare ``parent_alias`` using :attr:`.Operators.eq` against the left and right
+sides, passing into :class:`.Query.filter`:
 
 .. sourcecode:: pycon+sql
 
@@ -726,12 +720,12 @@ into :class:`.Query.filter`:
     WHERE :param_1 = node_1.parent_id
     {stop}
 
-We can modify the pattern to be more verbose but flexible by separating
-the "join" step from the "filter" step.  The tricky part here is ensuring
-that successive instances of ``GrandparentTransformer`` use the same
+We can modify the pattern to be more verbose but flexible by separating the
+"join" step from the "filter" step.  The tricky part here is ensuring that
+successive instances of ``GrandparentTransformer`` use the same
 :class:`.AliasedClass` object against ``Node``.  Below we use a simple
-memoizing approach that associates a ``GrandparentTransformer``
-with each class::
+memoizing approach that associates a ``GrandparentTransformer`` with each
+class::
 
     class Node(Base):
 
@@ -769,14 +763,16 @@ with each class::
     WHERE :param_1 = node_1.parent_id
     {stop}
 
-The "transformer" pattern is an experimental pattern that starts
-to make usage of some functional programming paradigms.
-While it's only recommended for advanced and/or patient developers,
-there's probably a whole lot of amazing things it can be used for.
+The "transformer" pattern is an experimental pattern that starts to make usage
+of some functional programming paradigms. While it's only recommended for
+advanced and/or patient developers, there's probably a whole lot of amazing
+things it can be used for.
 
-"""
+"""  # noqa
 from .. import util
-from ..orm import attributes, interfaces
+from ..orm import attributes
+from ..orm import interfaces
+
 
 HYBRID_METHOD = util.symbol("HYBRID_METHOD")
 """Symbol indicating an :class:`InspectionAttr` that's

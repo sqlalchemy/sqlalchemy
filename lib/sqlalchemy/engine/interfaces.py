@@ -8,9 +8,8 @@
 """Define core interfaces used by the engine system."""
 
 from .. import util
-
-# backwards compat
-from ..sql.compiler import Compiled, TypeCompiler
+from ..sql.compiler import Compiled  # noqa
+from ..sql.compiler import TypeCompiler  # noqa
 
 
 class Dialect(object):
@@ -1157,11 +1156,11 @@ class Connectable(object):
 
         raise NotImplementedError()
 
-    def execute(self, object, *multiparams, **params):
+    def execute(self, object_, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`."""
         raise NotImplementedError()
 
-    def scalar(self, object, *multiparams, **params):
+    def scalar(self, object_, *multiparams, **params):
         """Executes and returns the first column of the first row.
 
         The underlying cursor is closed after execution.

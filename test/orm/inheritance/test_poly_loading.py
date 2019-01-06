@@ -1,25 +1,27 @@
-from sqlalchemy import String, Integer, Column, ForeignKey
-from sqlalchemy.orm import (
-    relationship,
-    Session,
-    joinedload,
-    selectin_polymorphic,
-    selectinload,
-    with_polymorphic,
-    backref,
-)
-from sqlalchemy.testing import fixtures
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectin_polymorphic
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import AllOf, CompiledSQL, EachOf, Or
-from ._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    _Polymorphic,
-    GeometryFixtureBase,
-)
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import EachOf
+from sqlalchemy.testing.assertsql import Or
+from ._poly_fixtures import _Polymorphic
+from ._poly_fixtures import Company
+from ._poly_fixtures import Engineer
+from ._poly_fixtures import GeometryFixtureBase
+from ._poly_fixtures import Manager
+from ._poly_fixtures import Person
 
 
 class BaseAndSubFixture(object):
@@ -102,9 +104,11 @@ class BaseAndSubFixture(object):
             AllOf(
                 EachOf(
                     CompiledSQL(
-                        "SELECT asub.id AS asub_id, a.id AS a_id, a.type AS a_type, "
+                        "SELECT asub.id AS asub_id, a.id AS a_id, "
+                        "a.type AS a_type, "
                         "asub.asubdata AS asub_asubdata FROM a JOIN asub "
-                        "ON a.id = asub.id WHERE a.id IN ([EXPANDING_primary_keys]) "
+                        "ON a.id = asub.id "
+                        "WHERE a.id IN ([EXPANDING_primary_keys]) "
                         "ORDER BY a.id",
                         {"primary_keys": [2]},
                     ),

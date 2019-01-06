@@ -5,13 +5,19 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from ..util import jython, pypy, defaultdict, decorator, py2k
 import decimal
 import gc
-import time
 import random
 import sys
+import time
 import types
+
+from ..util import decorator
+from ..util import defaultdict
+from ..util import jython
+from ..util import py2k
+from ..util import pypy
+
 
 if jython:
 

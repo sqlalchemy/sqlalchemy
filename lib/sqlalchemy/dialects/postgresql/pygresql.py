@@ -4,33 +4,33 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 """
 .. dialect:: postgresql+pygresql
     :name: pygresql
     :dbapi: pgdb
-    :connectstring: postgresql+pygresql://user:password@host:port/dbname\
-[?key=value&key=value...]
+    :connectstring: postgresql+pygresql://user:password@host:port/dbname[?key=value&key=value...]
     :url: http://www.pygresql.org/
-"""
+"""  # noqa
 
 import decimal
 import re
 
-from ... import exc, processors, util
-from ...types import Numeric, JSON as Json
-from ...sql.elements import Null
-from .base import (
-    PGDialect,
-    PGCompiler,
-    PGIdentifierPreparer,
-    _DECIMAL_TYPES,
-    _FLOAT_TYPES,
-    _INT_TYPES,
-    UUID,
-)
+from .base import _DECIMAL_TYPES
+from .base import _FLOAT_TYPES
+from .base import _INT_TYPES
+from .base import PGCompiler
+from .base import PGDialect
+from .base import PGIdentifierPreparer
+from .base import UUID
 from .hstore import HSTORE
-from .json import JSON, JSONB
+from .json import JSON
+from .json import JSONB
+from ... import exc
+from ... import processors
+from ... import util
+from ...sql.elements import Null
+from ...types import JSON as Json
+from ...types import Numeric
 
 
 class _PGNumeric(Numeric):

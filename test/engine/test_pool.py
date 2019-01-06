@@ -1,17 +1,28 @@
+import collections
+import random
 import threading
 import time
-from sqlalchemy import pool, select, event
-import sqlalchemy as tsa
-from sqlalchemy import testing
-from sqlalchemy.testing.util import gc_collect, lazy_gc
-from sqlalchemy.testing import eq_, assert_raises, is_not_, is_
-from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import assert_raises_message
-import random
-from sqlalchemy.testing.mock import Mock, call, patch, ANY
 import weakref
-import collections
+
+import sqlalchemy as tsa
+from sqlalchemy import event
+from sqlalchemy import pool
+from sqlalchemy import select
+from sqlalchemy import testing
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing.mock import ANY
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing.util import lazy_gc
+
 
 join_timeout = 10
 

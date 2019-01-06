@@ -1,18 +1,19 @@
 from __future__ import print_function
 
+import logging
+import random
+import sys
+
 import gevent.monkey
+
+from sqlalchemy import create_engine
+from sqlalchemy import event
+
 
 gevent.monkey.patch_all()  # noqa
 
-import logging
-
 logging.basicConfig()  # noqa
 # logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)
-from sqlalchemy import event
-import random
-import sys
-from sqlalchemy import create_engine
-import traceback
 
 engine = create_engine(
     "mysql+pymysql://scott:tiger@localhost/test", pool_size=50, max_overflow=0

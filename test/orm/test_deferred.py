@@ -1,43 +1,38 @@
 import sqlalchemy as sa
-from sqlalchemy import testing, util
-from sqlalchemy.orm import (
-    mapper,
-    deferred,
-    defer,
-    undefer,
-    Load,
-    load_only,
-    undefer_group,
-    create_session,
-    synonym,
-    relationship,
-    Session,
-    joinedload,
-    defaultload,
-    aliased,
-    contains_eager,
-    with_polymorphic,
-    query_expression,
-    with_expression,
-    subqueryload,
-)
-from sqlalchemy.testing import eq_, AssertsCompiledSQL, assert_raises_message
-from test.orm import _fixtures
-from sqlalchemy.testing.schema import Column
-from sqlalchemy import Integer, ForeignKey
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import query_expression
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer_group
+from sqlalchemy.orm import with_expression
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-
-
-from .inheritance._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    Boss,
-    Machine,
-    Paperwork,
-    _Polymorphic,
-)
+from sqlalchemy.testing.schema import Column
+from test.orm import _fixtures
+from .inheritance._poly_fixtures import _Polymorphic
+from .inheritance._poly_fixtures import Boss
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Manager
+from .inheritance._poly_fixtures import Person
 
 
 class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
@@ -594,10 +589,13 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     {"id_1": 7},
                 ),
                 (
-                    "SELECT orders.user_id AS orders_user_id, orders.description "
+                    "SELECT orders.user_id AS orders_user_id, "
+                    "orders.description "
                     "AS orders_description, orders.isopen AS orders_isopen, "
-                    "orders.id AS orders_id, orders.address_id AS orders_address_id "
-                    "FROM orders WHERE :param_1 = orders.user_id ORDER BY orders.id",
+                    "orders.id AS orders_id, orders.address_id "
+                    "AS orders_address_id "
+                    "FROM orders WHERE :param_1 = orders.user_id "
+                    "ORDER BY orders.id",
                     {"param_1": 7},
                 ),
             ],
@@ -654,10 +652,13 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     {"id_1": 7},
                 ),
                 (
-                    "SELECT orders.user_id AS orders_user_id, orders.description "
+                    "SELECT orders.user_id AS orders_user_id, "
+                    "orders.description "
                     "AS orders_description, orders.isopen AS orders_isopen, "
-                    "orders.id AS orders_id, orders.address_id AS orders_address_id, "
-                    "anon_1.users_id AS anon_1_users_id FROM (SELECT users.id AS "
+                    "orders.id AS orders_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "anon_1.users_id AS anon_1_users_id "
+                    "FROM (SELECT users.id AS "
                     "users_id FROM users WHERE users.id = :id_1) AS anon_1 "
                     "JOIN orders ON anon_1.users_id = orders.user_id ORDER BY "
                     "anon_1.users_id, orders.id",
@@ -713,8 +714,9 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             [
                 (
                     "SELECT users.id AS users_id, users.name AS users_name, "
-                    "orders_1.user_id AS orders_1_user_id, orders_1.description AS "
-                    "orders_1_description, orders_1.isopen AS orders_1_isopen, "
+                    "orders_1.user_id AS orders_1_user_id, "
+                    "orders_1.description AS orders_1_description, "
+                    "orders_1.isopen AS orders_1_isopen, "
                     "orders_1.id AS orders_1_id, orders_1.address_id AS "
                     "orders_1_address_id FROM users "
                     "LEFT OUTER JOIN orders AS orders_1 ON users.id = "
@@ -777,7 +779,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     "SELECT users.id AS users_id, users.name AS users_name, "
                     "orders_1.user_id AS orders_1_user_id, "
                     "lower(orders_1.description) AS lower_1, "
-                    "orders_1.isopen AS orders_1_isopen, orders_1.id AS orders_1_id, "
+                    "orders_1.isopen AS orders_1_isopen, "
+                    "orders_1.id AS orders_1_id, "
                     "orders_1.address_id AS orders_1_address_id, "
                     "orders_1.description AS orders_1_description FROM users "
                     "LEFT OUTER JOIN orders AS orders_1 ON users.id = "
@@ -1162,7 +1165,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             "orders_1.id AS orders_1_id FROM users "
             "LEFT OUTER JOIN addresses AS addresses_1 "
             "ON users.id = addresses_1.user_id "
-            "LEFT OUTER JOIN orders AS orders_1 ON users.id = orders_1.user_id",
+            "LEFT OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id",
         )
 
 

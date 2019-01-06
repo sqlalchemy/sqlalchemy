@@ -1,32 +1,34 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, is_
+from sqlalchemy import Column
+from sqlalchemy import delete
+from sqlalchemy import extract
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import insert
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
-from sqlalchemy.sql import table, column, quoted_name
-from sqlalchemy.dialects import mssql
-from sqlalchemy.dialects.mssql import mxodbc
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import sql
-from sqlalchemy import (
-    Integer,
-    String,
-    Table,
-    Column,
-    select,
-    MetaData,
-    update,
-    delete,
-    insert,
-    extract,
-    union,
-    func,
-    PrimaryKeyConstraint,
-    UniqueConstraint,
-    Index,
-    Sequence,
-    literal,
-)
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import union
+from sqlalchemy import UniqueConstraint
+from sqlalchemy import update
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
+from sqlalchemy.dialects.mssql import mxodbc
+from sqlalchemy.sql import column
+from sqlalchemy.sql import quoted_name
+from sqlalchemy.sql import table
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -310,7 +312,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t = table("sometable", column("foo"))
 
-        for expr, compile in [
+        for expr, compiled in [
             (
                 select([literal("x"), literal("y")]),
                 "SELECT 'x' AS anon_1, 'y' AS anon_2",
@@ -322,7 +324,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (t.c.foo.in_([None]), "sometable.foo IN (NULL)"),
         ]:
-            self.assert_compile(expr, compile, dialect=mxodbc_dialect)
+            self.assert_compile(expr, compiled, dialect=mxodbc_dialect)
 
     def test_in_with_subqueries(self):
         """Test removal of legacy behavior that converted "x==subquery"

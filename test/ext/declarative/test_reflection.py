@@ -1,12 +1,19 @@
-from sqlalchemy.testing import eq_, assert_raises
-from sqlalchemy.ext import declarative as decl
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import relationship, create_session, clear_mappers, Session
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.ext import declarative as decl
 from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
 
 
 class DeclarativeReflectionBase(fixtures.TablesTest):

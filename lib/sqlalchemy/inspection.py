@@ -31,7 +31,9 @@ in a forwards-compatible way.
 
 """
 
-from . import util, exc
+from . import exc
+from . import util
+
 
 _registrars = util.defaultdict(list)
 

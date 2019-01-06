@@ -9,9 +9,17 @@
 
 """
 
-from .. import sql, util, exc as sa_exc
-from . import attributes, exc, sync, unitofwork, util as mapperutil
-from .interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
+from . import attributes
+from . import exc
+from . import sync
+from . import unitofwork
+from . import util as mapperutil
+from .interfaces import MANYTOMANY
+from .interfaces import MANYTOONE
+from .interfaces import ONETOMANY
+from .. import exc as sa_exc
+from .. import sql
+from .. import util
 
 
 class DependencyProcessor(object):
@@ -1180,9 +1188,9 @@ class ManyToManyDP(DependencyProcessor):
             )
             result = connection.execute(statement, secondary_delete)
 
-            if result.supports_sane_multi_rowcount() and result.rowcount != len(
-                secondary_delete
-            ):
+            if (
+                result.supports_sane_multi_rowcount()
+            ) and result.rowcount != len(secondary_delete):
                 raise exc.StaleDataError(
                     "DELETE statement on table '%s' expected to delete "
                     "%d row(s); Only %d were matched."
@@ -1206,9 +1214,9 @@ class ManyToManyDP(DependencyProcessor):
             )
             result = connection.execute(statement, secondary_update)
 
-            if result.supports_sane_multi_rowcount() and result.rowcount != len(
-                secondary_update
-            ):
+            if (
+                result.supports_sane_multi_rowcount()
+            ) and result.rowcount != len(secondary_update):
                 raise exc.StaleDataError(
                     "UPDATE statement on table '%s' expected to update "
                     "%d row(s); Only %d were matched."

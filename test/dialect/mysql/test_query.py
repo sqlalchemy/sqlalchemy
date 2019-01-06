@@ -1,9 +1,24 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_, is_
-from sqlalchemy import *
-from sqlalchemy.testing import fixtures
+from sqlalchemy import all_
+from sqlalchemy import and_
+from sqlalchemy import any_
+from sqlalchemy import Boolean
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import false
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import true
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 
 class IdiosyncrasyTest(fixtures.TestBase):

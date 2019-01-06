@@ -1,20 +1,22 @@
-from sqlalchemy.testing import eq_, assert_raises_message, is_
+from sqlalchemy import and_
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import INT
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Sequence
+from sqlalchemy import sql
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, engines
-from sqlalchemy import (
-    exc,
-    sql,
-    String,
-    Integer,
-    MetaData,
-    and_,
-    ForeignKey,
-    VARCHAR,
-    INT,
-    Sequence,
-    func,
-)
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy import VARCHAR
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class InsertExecTest(fixtures.TablesTest):
@@ -94,16 +96,16 @@ class InsertExecTest(fixtures.TablesTest):
             result = engine.execute(table_.insert(), **values)
             ret = values.copy()
 
-            for col, id in zip(
+            for col, id_ in zip(
                 table_.primary_key, result.inserted_primary_key
             ):
-                ret[col.key] = id
+                ret[col.key] = id_
 
             if result.lastrow_has_defaults():
                 criterion = and_(
                     *[
-                        col == id
-                        for col, id in zip(
+                        col == id_
+                        for col, id_ in zip(
                             table_.primary_key, result.inserted_primary_key
                         )
                     ]

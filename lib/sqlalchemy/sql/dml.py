@@ -9,29 +9,22 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
 
-from .base import (
-    Executable,
-    _generative,
-    _from_objects,
-    DialectKWArgs,
-    ColumnCollection,
-)
-from .elements import (
-    ClauseElement,
-    _literal_as_text,
-    Null,
-    and_,
-    _clone,
-    _column_as_key,
-)
-from .selectable import (
-    _interpret_as_from,
-    _interpret_as_select,
-    HasPrefixes,
-    HasCTE,
-)
-from .. import util
+from .base import _from_objects
+from .base import _generative
+from .base import DialectKWArgs
+from .base import Executable
+from .elements import _clone
+from .elements import _column_as_key
+from .elements import _literal_as_text
+from .elements import and_
+from .elements import ClauseElement
+from .elements import Null
+from .selectable import _interpret_as_from
+from .selectable import _interpret_as_select
+from .selectable import HasCTE
+from .selectable import HasPrefixes
 from .. import exc
+from .. import util
 
 
 class UpdateBase(
@@ -372,9 +365,10 @@ class ValuesBase(UpdateBase):
             v = {}
 
         if self.parameters is None:
-            self.parameters, self._has_multi_parameters = self._process_colparams(
-                v
-            )
+            (
+                self.parameters,
+                self._has_multi_parameters,
+            ) = self._process_colparams(v)
         else:
             if self._has_multi_parameters:
                 self.parameters = list(self.parameters)
@@ -714,17 +708,17 @@ class Update(ValuesBase):
           :meth:`.ResultProxy.last_updated_params`.
 
         :param preserve_parameter_order: if True, the update statement is
-          expected to receive parameters **only** via the :meth:`.Update.values`
-          method, and they must be passed as a Python ``list`` of 2-tuples.
-          The rendered UPDATE statement will emit the SET clause for each
-          referenced column maintaining this order.
+          expected to receive parameters **only** via the
+          :meth:`.Update.values` method, and they must be passed as a Python
+          ``list`` of 2-tuples. The rendered UPDATE statement will emit the SET
+          clause for each referenced column maintaining this order.
 
           .. versionadded:: 1.0.10
 
           .. seealso::
 
             :ref:`updates_order_parameters` - full example of the
-            :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order` flag
+            :paramref:`~.update.preserve_parameter_order` flag
 
         If both ``values`` and compile-time bind parameters are present, the
         compile-time bind parameters override the information specified

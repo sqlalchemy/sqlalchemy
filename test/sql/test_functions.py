@@ -1,36 +1,46 @@
-from sqlalchemy.testing import eq_, is_
 import datetime
-from sqlalchemy import (
-    func,
-    select,
-    Integer,
-    literal,
-    DateTime,
-    Table,
-    Column,
-    Sequence,
-    MetaData,
-    extract,
-    Date,
-    String,
-    bindparam,
-    literal_column,
-    ARRAY,
-    Numeric,
-    Boolean,
-)
-from sqlalchemy.sql import table, column
-from sqlalchemy import sql, util
-from sqlalchemy.sql.compiler import BIND_TEMPLATES
-from sqlalchemy.testing.engines import all_dialects
-from sqlalchemy import types as sqltypes
-from sqlalchemy.sql import functions
-from sqlalchemy.sql.functions import GenericFunction, FunctionElement
 import decimal
+
+from sqlalchemy import ARRAY
+from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import extract
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import Numeric
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL, engines
-from sqlalchemy.dialects import sqlite, postgresql, mysql, oracle
-from sqlalchemy.testing import assert_raises_message, assert_raises
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import oracle
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
+from sqlalchemy.sql import column
+from sqlalchemy.sql import functions
+from sqlalchemy.sql import table
+from sqlalchemy.sql.compiler import BIND_TEMPLATES
+from sqlalchemy.sql.functions import FunctionElement
+from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.engines import all_dialects
+
 
 table1 = table(
     "mytable",
@@ -795,7 +805,7 @@ class ExecuteTest(fixtures.TestBase):
             type = Date()
 
         @compiles(myfunc)
-        def compile(elem, compiler, **kw):
+        def compile_(elem, compiler, **kw):
             return compiler.process(func.current_date())
 
         conn = testing.db.connect()
@@ -861,8 +871,8 @@ class ExecuteTest(fixtures.TestBase):
         assert t.select().execute().first()["value"] == 5
 
         r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
-        id = r.inserted_primary_key[0]
-        assert t.select(t.c.id == id).execute().first()["value"] == 9
+        id_ = r.inserted_primary_key[0]
+        assert t.select(t.c.id == id_).execute().first()["value"] == 9
         t.update(values={t.c.value: func.length("asdf")}).execute()
         assert t.select().execute().first()["value"] == 4
         t2.insert().execute()
@@ -897,6 +907,7 @@ class ExecuteTest(fixtures.TestBase):
         t2.update(
             values={t2.c.value: func.length("asfdaasdf"), t2.c.stuff: "foo"}
         ).execute()
+
         eq_(select([t2.c.value, t2.c.stuff]).execute().first(), (9, "foo"))
 
     @testing.fails_on_everything_except("postgresql")

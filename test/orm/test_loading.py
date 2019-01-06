@@ -1,14 +1,15 @@
-from . import _fixtures
-from sqlalchemy.orm import loading, Session, aliased
-from sqlalchemy.testing.assertions import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-)
-from sqlalchemy.util import KeyedTuple
-from sqlalchemy.testing import mock
-from sqlalchemy import select
 from sqlalchemy import exc
+from sqlalchemy import select
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import loading
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.util import KeyedTuple
+from . import _fixtures
+
 
 # class GetFromIdentityTest(_fixtures.FixtureTest):
 # class LoadOnIdentTest(_fixtures.FixtureTest):

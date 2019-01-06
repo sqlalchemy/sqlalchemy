@@ -3,18 +3,23 @@ Primary key changing capabilities and passive/non-passive cascading updates.
 
 """
 
-from sqlalchemy.testing import (
-    fixtures,
-    eq_,
-    ne_,
-    assert_raises,
-    assert_raises_message,
-)
 import sqlalchemy as sa
-from sqlalchemy import testing, Integer, String, ForeignKey
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, create_session, Session
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.session import make_transient
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 
 

@@ -13,9 +13,10 @@ This module is semi-private and is invoked automatically when the threadlocal
 engine strategy is used.
 """
 
-from .. import util
-from . import base
 import weakref
+
+from . import base
+from .. import util
 
 
 class TLConnection(base.Connection):
@@ -92,8 +93,8 @@ class TLEngine(base.Engine):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        if type is None:
+    def __exit__(self, type_, value, traceback):
+        if type_ is None:
             self.commit()
         else:
             self.rollback()

@@ -3,11 +3,15 @@ of rows in bulk.
 
 
 """
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
 from . import Profiler
 
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine, bindparam
-from sqlalchemy.orm import Session
 
 Base = declarative_base()
 engine = None

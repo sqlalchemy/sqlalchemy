@@ -31,8 +31,8 @@ individual suites to be run::
       -h, --help            show this help message and exit
       --test TEST           run specific test name
       --dburl DBURL         database URL, default sqlite:///profile.db
-      --num NUM             Number of iterations/items/etc for tests; default is 0
-                            module-specific
+      --num NUM             Number of iterations/items/etc for tests;
+                            default is module-specific
       --profile             run profiling and dump call counts
       --dump                dump full call profile (implies --profile)
       --runsnake            invoke runsnakerun (implies --profile)
@@ -217,14 +217,14 @@ As well as see RunSnake output for an individual test::
 
     $ python test_loads.py  --num 100 --runsnake --test test_joinedload
 
-"""
+"""  # noqa
 import argparse
 import cProfile
-import pstats
 import os
-import time
+import pstats
 import re
 import sys
+import time
 
 
 class Profiler(object):

@@ -13,11 +13,12 @@
 import traceback
 import weakref
 
-from .base import Pool, _ConnectionRecord
+from .base import _ConnectionRecord
+from .base import Pool
 from .. import exc
 from .. import util
-from ..util import queue as sqla_queue
 from ..util import chop_traceback
+from ..util import queue as sqla_queue
 from ..util import threading
 
 

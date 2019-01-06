@@ -1,20 +1,24 @@
 # -*- encoding: utf-8
-from sqlalchemy.testing import eq_, engines
-from sqlalchemy import *
-from sqlalchemy import exc
-from sqlalchemy.dialects.mssql import pyodbc, pymssql, adodbapi
-from sqlalchemy.engine import url
-from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
-from sqlalchemy.testing import (
-    assert_raises_message,
-    assert_warnings,
-    expect_warnings,
-)
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.dialects.mssql import base
-from sqlalchemy import Integer, String, Table, Column
+from sqlalchemy import Column
+from sqlalchemy import engine_from_config
 from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy.dialects.mssql import adodbapi
+from sqlalchemy.dialects.mssql import base
+from sqlalchemy.dialects.mssql import pymssql
+from sqlalchemy.dialects.mssql import pyodbc
+from sqlalchemy.engine import url
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warnings
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.mock import Mock
 
 
 class ParseConnectTest(fixtures.TestBase):

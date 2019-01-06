@@ -1,25 +1,27 @@
-from sqlalchemy.orm import (
-    create_session,
-    relationship,
-    mapper,
-    contains_eager,
-    joinedload,
-    subqueryload,
-    subqueryload_all,
-    Session,
-    aliased,
-    with_polymorphic,
-    joinedload_all,
-    backref,
-)
-
-from sqlalchemy import Integer, String, ForeignKey, select, func
-from sqlalchemy.engine import default
-
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import assert_raises, eq_, is_
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import subqueryload_all
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class Company(fixtures.ComparableEntity):

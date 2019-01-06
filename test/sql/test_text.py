@@ -1,36 +1,34 @@
 """Test the TextClause and related constructs."""
 
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsCompiledSQL,
-    eq_,
-    assert_raises_message,
-    expect_warnings,
-    assert_warnings,
-)
-from sqlalchemy import (
-    text,
-    select,
-    Integer,
-    String,
-    Float,
-    bindparam,
-    and_,
-    func,
-    literal_column,
-    exc,
-    MetaData,
-    Table,
-    Column,
-    asc,
-    func,
-    desc,
-    union,
-    literal,
-)
-from sqlalchemy.types import NullType
-from sqlalchemy.sql import table, column, util as sql_util
+from sqlalchemy import and_
+from sqlalchemy import asc
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import desc
+from sqlalchemy import exc
+from sqlalchemy import Float
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import text
+from sqlalchemy import union
 from sqlalchemy import util
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.sql import util as sql_util
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warnings
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.types import NullType
+
 
 table1 = table(
     "mytable",

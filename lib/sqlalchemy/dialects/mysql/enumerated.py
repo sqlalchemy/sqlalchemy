@@ -8,7 +8,9 @@
 import re
 
 from .types import _StringType
-from ... import exc, sql, util
+from ... import exc
+from ... import sql
+from ... import util
 from ...sql import sqltypes
 
 

@@ -14,7 +14,11 @@ from collections import deque
 import time
 import weakref
 
-from .. import exc, log, event, interfaces, util
+from .. import event
+from .. import exc
+from .. import interfaces
+from .. import log
+from .. import util
 from ..util import threading
 
 

@@ -17,10 +17,14 @@ New strategies can be added via new ``EngineStrategy`` classes.
 
 from operator import attrgetter
 
-from sqlalchemy.engine import base, threadlocal, url
-from sqlalchemy import util, event
-from sqlalchemy import pool as poollib
-from sqlalchemy.sql import schema
+from . import base
+from . import threadlocal
+from . import url
+from .. import event
+from .. import pool as poollib
+from .. import util
+from ..sql import schema
+
 
 strategies = {}
 
@@ -299,7 +303,7 @@ class MockEngineStrategy(EngineStrategy):
                 element
             )
 
-        def execute(self, object, *multiparams, **params):
+        def execute(self, object_, *multiparams, **params):
             raise NotImplementedError()
 
 

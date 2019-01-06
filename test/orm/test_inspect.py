@@ -1,20 +1,21 @@
 """test the inspection registry system."""
 
-from sqlalchemy.testing import eq_, assert_raises_message, is_
-from sqlalchemy import exc, util
-from sqlalchemy import inspect
-from test.orm import _fixtures
-from sqlalchemy.orm import (
-    class_mapper,
-    synonym,
-    Session,
-    aliased,
-    relationship,
-)
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm.attributes import instance_state, NO_VALUE
+from sqlalchemy import inspect
 from sqlalchemy import testing
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm.attributes import instance_state
+from sqlalchemy.orm.attributes import NO_VALUE
 from sqlalchemy.orm.util import identity_key
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import is_
+from test.orm import _fixtures
 
 
 class TestORMInspection(_fixtures.FixtureTest):

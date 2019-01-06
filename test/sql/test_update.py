@@ -1,33 +1,30 @@
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    and_,
-    or_,
-    func,
-    literal,
-    update,
-    table,
-    bindparam,
-    column,
-    select,
-    exc,
-    exists,
-    text,
-    MetaData,
-)
+from sqlalchemy import and_
+from sqlalchemy import bindparam
+from sqlalchemy import column
+from sqlalchemy import exc
+from sqlalchemy import exists
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import MetaData
+from sqlalchemy import or_
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import table
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import update
+from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    eq_,
-    fixtures,
-    assert_raises_message,
-    assert_raises,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy import util
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class _UpdateFromTestBase(object):

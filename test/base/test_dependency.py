@@ -1,8 +1,9 @@
-from sqlalchemy.util import topological
-from sqlalchemy.testing import assert_raises, eq_
-from sqlalchemy.testing.util import conforms_partial_ordering
 from sqlalchemy import exc
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import conforms_partial_ordering
+from sqlalchemy.util import topological
 
 
 class DependencySortTest(fixtures.TestBase):

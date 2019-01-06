@@ -1,16 +1,15 @@
-from sqlalchemy import (
-    Table,
-    Column,
-    String,
-    func,
-    MetaData,
-    select,
-    TypeDecorator,
-    cast,
-)
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import func
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 
 
 class _ExprFixture(object):

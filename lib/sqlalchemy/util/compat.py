@@ -9,9 +9,10 @@
 
 import collections
 import contextlib
-import sys
 import operator
+import sys
 import time
+
 
 py36 = sys.version_info >= (3, 6)
 py33 = sys.version_info >= (3, 3)
@@ -28,7 +29,7 @@ cpython = not pypy and not jython  # TODO: something better for this ?
 contextmanager = contextlib.contextmanager
 dottedgetter = operator.attrgetter
 namedtuple = collections.namedtuple
-next = next
+next = next  # noqa
 
 ArgSpec = collections.namedtuple(
     "ArgSpec", ["args", "varargs", "keywords", "defaults"]
@@ -37,12 +38,12 @@ ArgSpec = collections.namedtuple(
 try:
     import threading
 except ImportError:
-    import dummy_threading as threading
+    import dummy_threading as threading  # noqa
 
 
 # work around http://bugs.python.org/issue2646
 if py265:
-    safe_kwarg = lambda arg: arg
+    safe_kwarg = lambda arg: arg  # noqa
 else:
     safe_kwarg = str
 
@@ -112,41 +113,44 @@ if py3k:
         return s
 
     if py32:
-        callable = callable
+        callable = callable  # noqa
     else:
 
-        def callable(fn):
+        def callable(fn):  # noqa
             return hasattr(fn, "__call__")
 
 
 else:
     import base64
-    import ConfigParser as configparser
+    import ConfigParser as configparser  # noqa
     import itertools
 
-    from StringIO import StringIO
-    from cStringIO import StringIO as byte_buffer
-    from inspect import getargspec as inspect_getfullargspec
-    from itertools import izip_longest as zip_longest
-    from urllib import quote_plus, unquote_plus, quote, unquote
-    from urlparse import parse_qsl
+    from StringIO import StringIO  # noqa
+    from cStringIO import StringIO as byte_buffer  # noqa
+    from inspect import getargspec as inspect_getfullargspec  # noqa
+    from itertools import izip_longest as zip_longest  # noqa
+    from urllib import quote  # noqa
+    from urllib import quote_plus  # noqa
+    from urllib import unquote  # noqa
+    from urllib import unquote_plus  # noqa
+    from urlparse import parse_qsl  # noqa
 
     try:
         import cPickle as pickle
     except ImportError:
-        import pickle
+        import pickle  # noqa
 
-    string_types = (basestring,)
+    string_types = (basestring,)  # noqa
     binary_types = (bytes,)
     binary_type = str
-    text_type = unicode
-    int_types = int, long
+    text_type = unicode  # noqa
+    int_types = int, long  # noqa
 
     inspect_getargspec = inspect_getfullargspec
 
-    callable = callable
-    cmp = cmp
-    reduce = reduce
+    callable = callable  # noqa
+    cmp = cmp  # noqa
+    reduce = reduce  # noqa
 
     b64encode = base64.b64encode
     b64decode = base64.b64decode
@@ -177,7 +181,7 @@ else:
         if fp is None:
             return
         for arg in enumerate(args):
-            if not isinstance(arg, basestring):
+            if not isinstance(arg, basestring):  # noqa
                 arg = str(arg)
             fp.write(arg)
 
@@ -186,10 +190,10 @@ else:
         # strings - we only use u() with
         # literal source strings, and all our source files with non-ascii
         # in them (all are tests) are utf-8 encoded.
-        return unicode(s, "utf-8")
+        return unicode(s, "utf-8")  # noqa
 
     def ue(s):
-        return unicode(s, "unicode_escape")
+        return unicode(s, "unicode_escape")  # noqa
 
     # not as nice as that of Py3K, but at least preserves
     # the code line where the issue occurred
@@ -271,7 +275,7 @@ if py35:
 
 
 else:
-    from inspect import formatargspec as inspect_formatargspec
+    from inspect import formatargspec as inspect_formatargspec  # noqa
 
 
 if win32 or jython:
@@ -284,7 +288,7 @@ else:
 if py33:
     import collections.abc as collections_abc
 else:
-    import collections as collections_abc
+    import collections as collections_abc  # noqa
 
 
 @contextlib.contextmanager
@@ -299,22 +303,22 @@ def nested(*managers):
     """
 
     exits = []
-    vars = []
+    vars_ = []
     exc = (None, None, None)
     try:
         for mgr in managers:
-            exit = mgr.__exit__
+            exit_ = mgr.__exit__
             enter = mgr.__enter__
-            vars.append(enter())
-            exits.append(exit)
-        yield vars
+            vars_.append(enter())
+            exits.append(exit_)
+        yield vars_
     except:
         exc = sys.exc_info()
     finally:
         while exits:
-            exit = exits.pop()
+            exit_ = exits.pop()  # noqa
             try:
-                if exit(*exc):
+                if exit_(*exc):
                     exc = (None, None, None)
             except:
                 exc = sys.exc_info()

@@ -1,14 +1,22 @@
 # coding: utf-8
 
-from sqlalchemy.testing import eq_
-from sqlalchemy import *
-from sqlalchemy.engine.url import make_url
-from sqlalchemy.testing import fixtures, expect_warnings
-from sqlalchemy import testing
-from sqlalchemy.testing import engines
-from ...engine import test_execute
 import datetime
+
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from ...engine import test_execute
 
 
 class DialectTest(fixtures.TestBase):

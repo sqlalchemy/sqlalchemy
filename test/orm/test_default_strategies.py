@@ -1,9 +1,12 @@
-from test.orm import _fixtures
-from sqlalchemy import testing
-from sqlalchemy.orm import mapper, relationship, create_session
-from sqlalchemy import util
 import sqlalchemy as sa
-from sqlalchemy.testing import eq_, assert_raises_message
+from sqlalchemy import testing
+from sqlalchemy import util
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from test.orm import _fixtures
 
 
 class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
@@ -36,7 +39,20 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def _downgrade_fixture(self):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, item_keywords, Order, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.items,
@@ -97,7 +113,20 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         return create_session()
 
     def _upgrade_fixture(self):
-        users, Keyword, items, order_items, orders, Item, User, Address, keywords, item_keywords, Order, addresses = (
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.items,

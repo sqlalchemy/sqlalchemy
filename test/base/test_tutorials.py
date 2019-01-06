@@ -1,11 +1,13 @@
 from __future__ import print_function
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import config
+
 import doctest
 import logging
-import sys
-import re
 import os
+import re
+import sys
+
+from sqlalchemy.testing import config
+from sqlalchemy.testing import fixtures
 
 
 class DocTest(fixtures.TestBase):

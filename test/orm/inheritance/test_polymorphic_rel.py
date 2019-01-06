@@ -1,34 +1,29 @@
-from sqlalchemy import func, desc, select
-from sqlalchemy.orm import (
-    interfaces,
-    create_session,
-    joinedload,
-    joinedload_all,
-    subqueryload,
-    subqueryload_all,
-    aliased,
-    class_mapper,
-    with_polymorphic,
-)
+from sqlalchemy import desc
 from sqlalchemy import exc as sa_exc
-
+from sqlalchemy import func
+from sqlalchemy import select
 from sqlalchemy import testing
-from sqlalchemy.testing import assert_raises, eq_
-
-from ._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    Boss,
-    Machine,
-    Paperwork,
-    _Polymorphic,
-    _PolymorphicPolymorphic,
-    _PolymorphicUnions,
-    _PolymorphicJoins,
-    _PolymorphicAliasedJoins,
-)
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import subqueryload_all
+from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
+from ._poly_fixtures import _Polymorphic
+from ._poly_fixtures import _PolymorphicAliasedJoins
+from ._poly_fixtures import _PolymorphicJoins
+from ._poly_fixtures import _PolymorphicPolymorphic
+from ._poly_fixtures import _PolymorphicUnions
+from ._poly_fixtures import Boss
+from ._poly_fixtures import Company
+from ._poly_fixtures import Engineer
+from ._poly_fixtures import Machine
+from ._poly_fixtures import Manager
+from ._poly_fixtures import Paperwork
+from ._poly_fixtures import Person
 
 
 class _PolymorphicTestBase(object):

@@ -1,14 +1,22 @@
-from sqlalchemy.testing import assert_raises, eq_, is_
-import sqlalchemy.engine.url as url
-from sqlalchemy import create_engine, engine_from_config, exc, pool
-from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy as tsa
-from sqlalchemy.testing import fixtures
+from sqlalchemy import create_engine
+from sqlalchemy import engine_from_config
+from sqlalchemy import exc
+from sqlalchemy import pool
 from sqlalchemy import testing
-from sqlalchemy.testing.mock import Mock, MagicMock, call
-from sqlalchemy.testing import mock
-from sqlalchemy.dialects import registry
 from sqlalchemy.dialects import plugins
+from sqlalchemy.dialects import registry
+from sqlalchemy.engine.default import DefaultDialect
+import sqlalchemy.engine.url as url
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import MagicMock
+from sqlalchemy.testing.mock import Mock
+
 
 dialect = None
 

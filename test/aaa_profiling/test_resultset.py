@@ -1,18 +1,20 @@
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    String,
-    Unicode,
-    Integer,
-    create_engine,
-)
-from sqlalchemy.testing import fixtures, AssertsExecutionResults, profiling
-from sqlalchemy import testing
-from sqlalchemy.testing import eq_
-from sqlalchemy.util import u
-from sqlalchemy.engine.result import RowProxy
 import sys
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import Unicode
+from sqlalchemy.engine.result import RowProxy
+from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import profiling
+from sqlalchemy.util import u
+
 
 NUM_FIELDS = 10
 NUM_RECORDS = 1000

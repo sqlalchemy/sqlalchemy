@@ -1,60 +1,49 @@
-from sqlalchemy.testing import eq_
-from sqlalchemy.util import pickle
-import sqlalchemy as sa
 import copy
+
+import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.testing.util import picklers
-from sqlalchemy.testing import assert_raises_message
-from sqlalchemy import Integer, String, ForeignKey, exc, MetaData
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    sessionmaker,
-    attributes,
-    interfaces,
-    clear_mappers,
-    exc as orm_exc,
-    configure_mappers,
-    Session,
-    lazyload_all,
-    lazyload,
-    aliased,
-    subqueryload,
-)
-from sqlalchemy.orm import state as sa_state
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import instrumentation
-from sqlalchemy.orm.collections import (
-    attribute_mapped_collection,
-    column_mapped_collection,
-)
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
-from sqlalchemy.testing.pickleable import (
-    User,
-    Address,
-    Dingaling,
-    Order,
-    Child1,
-    Child2,
-    Parent,
-    Screen,
-    EmailUser,
-)
-
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import state as sa_state
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
-
-from .inheritance._poly_fixtures import (
-    Company,
-    Person,
-    Engineer,
-    Manager,
-    Boss,
-    Machine,
-    Paperwork,
-    _Polymorphic,
-)
+from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm.collections import column_mapped_collection
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.pickleable import Address
+from sqlalchemy.testing.pickleable import Child1
+from sqlalchemy.testing.pickleable import Child2
+from sqlalchemy.testing.pickleable import Dingaling
+from sqlalchemy.testing.pickleable import EmailUser
+from sqlalchemy.testing.pickleable import Order
+from sqlalchemy.testing.pickleable import Parent
+from sqlalchemy.testing.pickleable import Screen
+from sqlalchemy.testing.pickleable import User
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import picklers
+from sqlalchemy.util import pickle
+from test.orm import _fixtures
+from .inheritance._poly_fixtures import _Polymorphic
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Engineer
+from .inheritance._poly_fixtures import Manager
+from .inheritance._poly_fixtures import Person
 
 
 class PickleTest(fixtures.MappedTest):
@@ -704,8 +693,8 @@ class TupleLabelTest(_fixtures.FixtureTest):
         )
         mapper(Address, addresses)
         mapper(
-            Order, orders, properties={"address": relationship(Address)}  # m2o
-        )
+            Order, orders, properties={"address": relationship(Address)}
+        )  # m2o
 
     def test_tuple_labeling(self):
         users = self.tables.users

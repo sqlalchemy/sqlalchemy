@@ -11,8 +11,8 @@ associations.
 
 """
 
-from .. import util
 from . import operators
+from .. import util
 
 
 class Annotated(object):

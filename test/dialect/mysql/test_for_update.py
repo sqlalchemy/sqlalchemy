@@ -5,12 +5,16 @@ See #4246
 """
 import contextlib
 
-from sqlalchemy import Column, Integer, ForeignKey, update
-from sqlalchemy.orm import relationship, Session, joinedload
+from sqlalchemy import Column
 from sqlalchemy import exc
-
-from sqlalchemy.testing import fixtures
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
 from sqlalchemy import testing
+from sqlalchemy import update
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import fixtures
 
 
 class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):

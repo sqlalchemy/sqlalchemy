@@ -7,30 +7,29 @@
 """Public API functions and helpers for declarative."""
 
 
-from ...schema import Table, MetaData, Column
-from ...orm import (
-    synonym as _orm_synonym,
-    comparable_property,
-    interfaces,
-    properties,
-    attributes,
-)
-from ...orm.util import polymorphic_union
-from ...orm.base import _mapper_or_none
-from ...util import OrderedDict, hybridmethod, hybridproperty
-from ... import util
-from ... import exc
-import weakref
 import re
+import weakref
 
-from .base import (
-    _as_declarative,
-    _declarative_constructor,
-    _DeferredMapperConfig,
-    _add_attribute,
-    _del_attribute,
-)
+from .base import _add_attribute
+from .base import _as_declarative
+from .base import _declarative_constructor
+from .base import _DeferredMapperConfig
+from .base import _del_attribute
 from .clsregistry import _class_resolver
+from ... import exc
+from ... import util
+from ...orm import attributes
+from ...orm import comparable_property
+from ...orm import interfaces
+from ...orm import properties
+from ...orm import synonym as _orm_synonym
+from ...orm.base import _mapper_or_none
+from ...orm.util import polymorphic_union
+from ...schema import MetaData
+from ...schema import Table
+from ...util import hybridmethod
+from ...util import hybridproperty
+from ...util import OrderedDict
 
 
 def instrument_declarative(cls, registry, metadata):
@@ -258,7 +257,8 @@ class declared_attr(interfaces._MappedAttribute, property):
                 @declared_attr.cascading
                 def id(cls):
                     if has_inherited_table(cls):
-                        return Column(ForeignKey('myclass.id'), primary_key=True)
+                        return Column(
+                            ForeignKey('myclass.id'), primary_key=True)
                     else:
                         return Column(Integer, primary_key=True)
 
@@ -362,8 +362,9 @@ def declarative_base(
       compatible callable to use as the meta type of the generated
       declarative base class.
 
-    .. versionchanged:: 1.1 if :paramref:`.declarative_base.cls` is a single class (rather
-         than a tuple), the constructed base class will inherit its docstring.
+    .. versionchanged:: 1.1 if :paramref:`.declarative_base.cls` is a
+         single class (rather than a tuple), the constructed base class will
+         inherit its docstring.
 
     .. seealso::
 

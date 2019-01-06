@@ -1,36 +1,36 @@
 # coding: utf-8
 
+import itertools
+from operator import itemgetter
+import re
+
+import sqlalchemy as sa
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import Index
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import Sequence
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy.dialects.postgresql import INTEGER
+from sqlalchemy.dialects.postgresql import INTERVAL
+from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql.schema import CheckConstraint
-from sqlalchemy.testing.assertions import (
-    eq_,
-    assert_raises,
-    AssertsExecutionResults,
-)
 from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
-from sqlalchemy import inspect
-from sqlalchemy import (
-    Table,
-    Column,
-    MetaData,
-    Integer,
-    String,
-    PrimaryKeyConstraint,
-    ForeignKey,
-    join,
-    Sequence,
-    UniqueConstraint,
-    Index,
-)
-from sqlalchemy import exc
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import base as postgresql
-from sqlalchemy.dialects.postgresql import ARRAY, INTERVAL, INTEGER, TSRANGE
-from sqlalchemy.dialects.postgresql import ExcludeConstraint
-import re
-from operator import itemgetter
-import itertools
+from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import AssertsExecutionResults
+from sqlalchemy.testing.assertions import eq_
 
 
 class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):

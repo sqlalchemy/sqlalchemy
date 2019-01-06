@@ -5,28 +5,26 @@ to only the most recent version.
 
 """
 
-from sqlalchemy import (
-    create_engine,
-    Integer,
-    String,
-    event,
-    Column,
-    DateTime,
-    inspect,
-    literal,
-)
-from sqlalchemy.orm import (
-    make_transient,
-    Session,
-    relationship,
-    attributes,
-    backref,
-    make_transient_to_detached,
-    Query,
-)
-from sqlalchemy.ext.declarative import declarative_base
 import datetime
 import time
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import DateTime
+from sqlalchemy import event
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import make_transient_to_detached
+from sqlalchemy.orm import Query
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+
 
 Base = declarative_base()
 

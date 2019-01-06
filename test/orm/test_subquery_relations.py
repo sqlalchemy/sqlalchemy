@@ -1,42 +1,42 @@
-from sqlalchemy.testing import eq_, is_, is_not_, is_true
-from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy import Integer, String, ForeignKey, bindparam, inspect
-from sqlalchemy.orm import (
-    backref,
-    subqueryload,
-    subqueryload_all,
-    mapper,
-    relationship,
-    clear_mappers,
-    create_session,
-    lazyload,
-    aliased,
-    joinedload,
-    deferred,
-    undefer,
-    eagerload_all,
-    Session,
-)
-from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.entities import ComparableEntity
-from test.orm import _fixtures
 import sqlalchemy as sa
-
+from sqlalchemy import bindparam
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import subqueryload_all
+from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
-
-from .inheritance._poly_fixtures import (
-    _Polymorphic,
-    Person,
-    Engineer,
-    Paperwork,
-    Page,
-    Machine,
-    MachineType,
-    Company,
-)
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
+from .inheritance._poly_fixtures import _Polymorphic
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Engineer
+from .inheritance._poly_fixtures import Machine
+from .inheritance._poly_fixtures import MachineType
+from .inheritance._poly_fixtures import Page
+from .inheritance._poly_fixtures import Paperwork
+from .inheritance._poly_fixtures import Person
 
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
@@ -529,7 +529,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self._do_mapper_test(self._pathing_runs)
 
     def _do_options_test(self, configs):
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.orders,
@@ -585,7 +596,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self._do_query_tests(options, count)
 
     def _do_mapper_test(self, configs):
-        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
             self.tables.users,
             self.classes.Keyword,
             self.tables.orders,
@@ -862,7 +884,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         """Eager loading with two relationships simultaneously,
         from the same table, using aliases."""
 
-        addresses, items, order_items, orders, Item, User, Address, Order, users = (
+        (
+            addresses,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            users,
+        ) = (
             self.tables.addresses,
             self.tables.items,
             self.tables.order_items,
@@ -968,7 +1000,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
-        users, items, order_items, orders, Item, User, Address, Order, addresses = (
+        (
+            users,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            addresses,
+        ) = (
             self.tables.users,
             self.tables.items,
             self.tables.order_items,

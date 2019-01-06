@@ -9,6 +9,8 @@
 modules, classes, hierarchies, attributes, functions, and methods.
 
 """
+from functools import update_wrapper
+import hashlib
 import inspect
 import itertools
 import operator
@@ -16,11 +18,10 @@ import re
 import sys
 import types
 import warnings
-from functools import update_wrapper
-from .. import exc
-import hashlib
-from . import compat
+
 from . import _collections
+from . import compat
+from .. import exc
 
 
 def md5_hex(x):
@@ -857,7 +858,10 @@ def memoized_instancemethod(fn):
 
     def oneshot(self, *args, **kw):
         result = fn(self, *args, **kw)
-        memo = lambda *a, **kw: result
+
+        def memo(*a, **kw):
+            return result
+
         memo.__name__ = fn.__name__
         memo.__doc__ = fn.__doc__
         self.__dict__[fn.__name__] = memo
@@ -914,7 +918,10 @@ class MemoizedSlots(object):
 
             def oneshot(*args, **kw):
                 result = fn(*args, **kw)
-                memo = lambda *a, **kw: result
+
+                def memo(*a, **kw):
+                    return result
+
                 memo.__name__ = fn.__name__
                 memo.__doc__ = fn.__doc__
                 setattr(self, key, memo)
@@ -928,8 +935,6 @@ class MemoizedSlots(object):
 
 def dependency_for(modulename, add_to_all=False):
     def decorate(obj):
-        # TODO: would be nice to improve on this import silliness,
-        # unfortunately importlib doesn't work that great either
         tokens = modulename.split(".")
         mod = compat.import_(
             ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]]
@@ -1461,7 +1466,7 @@ def attrsetter(attrname):
 
 
 class EnsureKWArgType(type):
-    """Apply translation of functions to accept **kw arguments if they
+    r"""Apply translation of functions to accept \**kw arguments if they
     don't already.
 
     """

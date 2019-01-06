@@ -5,8 +5,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .. import event, util
 from .interfaces import EXT_CONTINUE
+from .. import event
+from .. import util
 
 
 @util.langhelpers.dependency_for("sqlalchemy.orm.interfaces")

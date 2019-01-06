@@ -10,76 +10,79 @@ styling and coherent test organization.
 
 """
 
-from sqlalchemy.testing import (
-    eq_,
-    is_,
-    assert_raises,
-    assert_raises_message,
-    eq_ignore_whitespace,
-)
-from sqlalchemy import testing
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy import (
-    Integer,
-    String,
-    MetaData,
-    Table,
-    Column,
-    select,
-    func,
-    not_,
-    cast,
-    text,
-    tuple_,
-    exists,
-    update,
-    bindparam,
-    literal,
-    and_,
-    null,
-    type_coerce,
-    alias,
-    or_,
-    literal_column,
-    Float,
-    TIMESTAMP,
-    Numeric,
-    Date,
-    Text,
-    union,
-    except_,
-    intersect,
-    union_all,
-    Boolean,
-    distinct,
-    join,
-    outerjoin,
-    asc,
-    desc,
-    over,
-    subquery,
-    case,
-    true,
-    CheckConstraint,
-    Sequence,
-)
 import decimal
-from sqlalchemy.util import u
-from sqlalchemy import exc, sql, util, types, schema
-from sqlalchemy.sql import table, column, label
-from sqlalchemy.sql.expression import ClauseList, _literal_as_text, HasPrefixes
+
+from sqlalchemy import alias
+from sqlalchemy import and_
+from sqlalchemy import asc
+from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import case
+from sqlalchemy import cast
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import Date
+from sqlalchemy import desc
+from sqlalchemy import distinct
+from sqlalchemy import exc
+from sqlalchemy import except_
+from sqlalchemy import exists
+from sqlalchemy import Float
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import intersect
+from sqlalchemy import join
+from sqlalchemy import literal
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import not_
+from sqlalchemy import null
+from sqlalchemy import Numeric
+from sqlalchemy import or_
+from sqlalchemy import outerjoin
+from sqlalchemy import over
+from sqlalchemy import schema
+from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import sql
+from sqlalchemy import String
+from sqlalchemy import subquery
+from sqlalchemy import Table
+from sqlalchemy import Text
+from sqlalchemy import text
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import true
+from sqlalchemy import tuple_
+from sqlalchemy import type_coerce
+from sqlalchemy import types
+from sqlalchemy import union
+from sqlalchemy import union_all
+from sqlalchemy import util
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import oracle
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
+from sqlalchemy.dialects import sybase
+from sqlalchemy.dialects.postgresql.base import PGCompiler
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import default
-from sqlalchemy.dialects import (
-    mysql,
-    mssql,
-    postgresql,
-    oracle,
-    sqlite,
-    sybase,
-)
-from sqlalchemy.dialects.postgresql.base import PGCompiler, PGDialect
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql import label
+from sqlalchemy.sql import table
+from sqlalchemy.sql.expression import _literal_as_text
+from sqlalchemy.sql.expression import ClauseList
+from sqlalchemy.sql.expression import HasPrefixes
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.util import u
+
 
 table1 = table(
     "mytable",
@@ -958,14 +961,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "zips", column("zipcode"), column("latitude"), column("longitude")
         )
         places = table("places", column("id"), column("nm"))
-        zip = "12345"
+        zipcode = "12345"
         qlat = (
-            select([zips.c.latitude], zips.c.zipcode == zip)
+            select([zips.c.latitude], zips.c.zipcode == zipcode)
             .correlate(None)
             .as_scalar()
         )
         qlng = (
-            select([zips.c.longitude], zips.c.zipcode == zip)
+            select([zips.c.longitude], zips.c.zipcode == zipcode)
             .correlate(None)
             .as_scalar()
         )
@@ -977,7 +980,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 zips.c.zipcode,
                 func.latlondist(qlat, qlng).label("dist"),
             ],
-            zips.c.zipcode == zip,
+            zips.c.zipcode == zipcode,
             order_by=["dist", places.c.nm],
         )
 
@@ -3380,7 +3383,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             pass
 
         @compiles(MyType)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             raise exc.CompileError("Couldn't compile type")
 
         return MyType

@@ -6,20 +6,28 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 """Internal implementation for declarative."""
 
-from ...schema import Table, Column
-from ...orm import mapper, class_mapper, synonym
-from ...orm.interfaces import MapperProperty
-from ...orm.properties import ColumnProperty, CompositeProperty
-from ...orm.attributes import QueryableAttribute
-from ...orm.base import _is_mapped_class, InspectionAttr
-from ... import util, exc
-from ...util import topological
-from ...sql import expression
-from ... import event
-from . import clsregistry
 import collections
 import weakref
+
 from sqlalchemy.orm import instrumentation
+from . import clsregistry
+from ... import event
+from ... import exc
+from ... import util
+from ...orm import class_mapper
+from ...orm import mapper
+from ...orm import synonym
+from ...orm.attributes import QueryableAttribute
+from ...orm.base import _is_mapped_class
+from ...orm.base import InspectionAttr
+from ...orm.interfaces import MapperProperty
+from ...orm.properties import ColumnProperty
+from ...orm.properties import CompositeProperty
+from ...schema import Column
+from ...schema import Table
+from ...sql import expression
+from ...util import topological
+
 
 declared_attr = declarative_props = None
 
@@ -228,9 +236,9 @@ class _MapperConfig(object):
                         # make a copy of it so a class-level dictionary
                         # is not overwritten when we update column-based
                         # arguments.
-                        mapper_args_fn = lambda: dict(
-                            cls.__mapper_args__
-                        )  # noqa
+                        def mapper_args_fn():
+                            return dict(cls.__mapper_args__)
+
                 elif name == "__tablename__":
                     check_decl = _check_declared_props_nocascade(
                         obj, name, cls
@@ -283,8 +291,9 @@ class _MapperConfig(object):
                                 # defined attribute here to allow a clean
                                 # override, if there's another
                                 # subclass below then it still tries to use
-                                # this.  not sure if there is enough information
-                                # here to add this as a feature later on.
+                                # this.  not sure if there is enough
+                                # information here to add this as a feature
+                                # later on.
                                 util.warn(
                                     "Attribute '%s' on class %s cannot be "
                                     "processed due to "

@@ -1,15 +1,23 @@
 """tests basic polymorphic mapper loading/saving, minimal relationships"""
 
-from sqlalchemy.testing import eq_, is_, assert_raises, assert_raises_message
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.testing.schema import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.testing.util import function_named
-from test.orm import _fixtures
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import polymorphic_union
+from sqlalchemy.orm import relationship
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.util import function_named
 
 
 class Person(fixtures.ComparableEntity):
@@ -505,19 +513,19 @@ def _generate_round_trip_test(
 
 for lazy_relationship in [True, False]:
     for redefine_colprop in [True, False]:
-        for with_polymorphic in ["unions", "joins", "auto", "none"]:
-            if with_polymorphic == "unions":
+        for with_polymorphic_ in ["unions", "joins", "auto", "none"]:
+            if with_polymorphic_ == "unions":
                 for include_base in [True, False]:
                     _generate_round_trip_test(
                         include_base,
                         lazy_relationship,
                         redefine_colprop,
-                        with_polymorphic,
+                        with_polymorphic_,
                     )
             else:
                 _generate_round_trip_test(
                     False,
                     lazy_relationship,
                     redefine_colprop,
-                    with_polymorphic,
+                    with_polymorphic_,
                 )

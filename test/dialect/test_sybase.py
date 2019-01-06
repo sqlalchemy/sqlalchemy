@@ -1,11 +1,10 @@
-from sqlalchemy import extract, select
+from sqlalchemy import extract
+from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy.databases import sybase
-from sqlalchemy.testing import (
-    assert_raises_message,
-    fixtures,
-    AssertsCompiledSQL,
-)
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import fixtures
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

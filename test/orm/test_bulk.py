@@ -1,11 +1,16 @@
+from sqlalchemy import FetchedValue
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.testing import mock
 from sqlalchemy.testing import fixtures
-from sqlalchemy import Integer, String, ForeignKey, FetchedValue
-from sqlalchemy.orm import mapper, Session
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 
 

@@ -1,9 +1,15 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
-
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
-from sqlalchemy import testing
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class PolymorphicCircularTest(fixtures.MappedTest):

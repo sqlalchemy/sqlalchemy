@@ -12,12 +12,18 @@ upon access of a non-existent key, in the same manner as Python's
 
 """
 
-from sqlalchemy import String, Integer, Column, create_engine, ForeignKey
-from sqlalchemy.orm import relationship, Session
-from sqlalchemy.orm.collections import MappedCollection
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.associationproxy import association_proxy
 import operator
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.collections import MappedCollection
 
 
 class Base(object):

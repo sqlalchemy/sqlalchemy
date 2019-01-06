@@ -8,12 +8,18 @@
 # TODO: should be using the sys. catalog with SQL Server, not information
 # schema
 
-from ... import Table, MetaData, Column
-from ...types import String, Unicode, UnicodeText, Integer, TypeDecorator
 from ... import cast
+from ... import Column
+from ... import MetaData
+from ... import Table
 from ... import util
-from ...sql import expression
 from ...ext.compiler import compiles
+from ...sql import expression
+from ...types import Integer
+from ...types import String
+from ...types import TypeDecorator
+from ...types import Unicode
+
 
 ischema = MetaData()
 

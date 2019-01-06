@@ -1,14 +1,24 @@
-import sys
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Integer, Column, ForeignKey, String, func
-from sqlalchemy.orm import relationship, Session, joinedload
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 import curses
-import time
-import textwrap
-import re
-import random
 import logging
+import random
+import re
+import sys
+import textwrap
+import time
+
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+
 
 _PY3 = sys.version_info > (3, 0)
 if _PY3:
@@ -39,7 +49,6 @@ PAUSE_KEY = ord("p")
 
 COLOR_MAP = {
     "K": curses.COLOR_BLACK,
-    "R": curses.COLOR_RED,
     "B": curses.COLOR_BLUE,
     "C": curses.COLOR_CYAN,
     "G": curses.COLOR_GREEN,

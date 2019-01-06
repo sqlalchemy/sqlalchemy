@@ -10,10 +10,13 @@
 """
 
 
-from .. import exc, util
 from . import operators
-from .visitors import Visitable, VisitableType
 from .base import SchemaEventTarget
+from .visitors import Visitable
+from .visitors import VisitableType
+from .. import exc
+from .. import util
+
 
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None
@@ -396,7 +399,7 @@ class TypeEngine(Visitable):
         raise NotImplementedError()
 
     def with_variant(self, type_, dialect_name):
-        """Produce a new type object that will utilize the given
+        r"""Produce a new type object that will utilize the given
         type when applied to the dialect of the given name.
 
         e.g.::
@@ -414,7 +417,7 @@ class TypeEngine(Visitable):
         itself provides a :meth:`.Variant.with_variant`
         that can be called repeatedly.
 
-        :param type_: a :class:`.TypeEngine` that will be selected
+        :param type\_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
          of the given name is in use.
         :param dialect_name: base name of the dialect which uses
@@ -592,7 +595,9 @@ class TypeEngine(Visitable):
 
     def __str__(self):
         if util.py2k:
-            return unicode(self.compile()).encode("ascii", "backslashreplace")
+            return unicode(self.compile()).encode(  # noqa
+                "ascii", "backslashreplace"
+            )  # noqa
         else:
             return str(self.compile())
 
@@ -1407,11 +1412,11 @@ class Variant(TypeDecorator):
                 impl._set_parent_with_dispatch(parent)
 
     def with_variant(self, type_, dialect_name):
-        """Return a new :class:`.Variant` which adds the given
+        r"""Return a new :class:`.Variant` which adds the given
         type + dialect name to the mapping, in addition to the
         mapping present in this :class:`.Variant`.
 
-        :param type_: a :class:`.TypeEngine` that will be selected
+        :param type\_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
          of the given name is in use.
         :param dialect_name: base name of the dialect which uses

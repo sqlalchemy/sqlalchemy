@@ -9,25 +9,21 @@ descriptors with a user-defined system.
 
 
 """
-from sqlalchemy import (
-    create_engine,
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    Text,
-    ForeignKey,
-)
-from sqlalchemy.orm import mapper, relationship, Session
-
-from sqlalchemy.orm.attributes import (
-    set_attribute,
-    get_attribute,
-    del_attribute,
-)
-from sqlalchemy.orm.instrumentation import is_instrumented
-
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
+from sqlalchemy import Text
 from sqlalchemy.ext.instrumentation import InstrumentationManager
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import del_attribute
+from sqlalchemy.orm.attributes import get_attribute
+from sqlalchemy.orm.attributes import set_attribute
+from sqlalchemy.orm.instrumentation import is_instrumented
 
 
 class MyClassState(InstrumentationManager):

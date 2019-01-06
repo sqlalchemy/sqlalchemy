@@ -1,36 +1,33 @@
 import datetime
-import sqlalchemy as sa
-from sqlalchemy.testing import engines, config
-from sqlalchemy import testing
-from sqlalchemy.testing.mock import patch
-from sqlalchemy import (
-    Integer,
-    String,
-    Date,
-    ForeignKey,
-    orm,
-    exc,
-    select,
-    TypeDecorator,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    Session,
-    create_session,
-    sessionmaker,
-    exc as orm_exc,
-)
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    fixtures,
-)
-from sqlalchemy.testing.assertsql import CompiledSQL
 import uuid
+
+import sqlalchemy as sa
+from sqlalchemy import Date
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import orm
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
 from sqlalchemy import util
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 def make_uuid():
@@ -1263,7 +1260,7 @@ class ServerVersioningTest(fixtures.MappedTest):
             pass
 
         @compiles(IncDefault)
-        def compile(element, compiler, **kw):
+        def compile_(element, compiler, **kw):
             # cache the counter value on the statement
             # itself so the assertsql system gets the same
             # value when it compiles the statement a second time

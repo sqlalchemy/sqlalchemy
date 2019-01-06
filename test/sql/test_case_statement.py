@@ -1,21 +1,23 @@
-from sqlalchemy.testing import assert_raises, eq_, assert_raises_message
-from sqlalchemy.testing import fixtures, AssertsCompiledSQL
-from sqlalchemy import (
-    testing,
-    exc,
-    case,
-    select,
-    literal_column,
-    text,
-    and_,
-    Integer,
-    cast,
-    String,
-    Column,
-    Table,
-    MetaData,
-)
-from sqlalchemy.sql import table, column
+from sqlalchemy import and_
+from sqlalchemy import case
+from sqlalchemy import cast
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy.sql import column
+from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+
 
 info_table = None
 

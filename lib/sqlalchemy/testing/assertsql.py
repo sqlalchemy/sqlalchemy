@@ -5,15 +5,16 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from ..engine.default import DefaultDialect
-from .. import util
-import re
 import collections
 import contextlib
+import re
+
 from .. import event
-from sqlalchemy.schema import _DDLCompiles
-from sqlalchemy.engine.util import _distill_params
-from sqlalchemy.engine import url
+from .. import util
+from ..engine import url
+from ..engine.default import DefaultDialect
+from ..engine.util import _distill_params
+from ..schema import _DDLCompiles
 
 
 class AssertRule(object):

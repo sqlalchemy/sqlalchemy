@@ -7,28 +7,32 @@
 
 """
 
-##################### PART I - Imports/Configuration #########################
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    Unicode,
-    and_,
-    create_engine,
-)
-from sqlalchemy.orm import mapper, relationship, Session, lazyload
+# PART I - Imports/Configuration
 
-import sys, os, io, re
-
+import io
+import os
+import re
 from xml.etree import ElementTree
+
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import Table
+from sqlalchemy import Unicode
+from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+
 
 e = create_engine("sqlite://", echo=True)
 meta = MetaData()
 
-####################### PART II - Table Metadata #############################
+# PART II - Table Metadata
 
 # stores a top level record of an XML document.
 documents = Table(
@@ -68,10 +72,12 @@ attributes = Table(
 
 meta.create_all(e)
 
-########################### PART III - Model #################################
+# PART III - Model
 
 # our document class.  contains a string name,
 # and the ElementTree root element.
+
+
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
@@ -83,19 +89,22 @@ class Document(object):
         return buf.getvalue()
 
 
-########################## PART IV - Persistence Mapping #####################
+# PART IV - Persistence Mapping
 
-# Node class.  a non-public class which will represent
-# the DB-persisted Element/SubElement object.  We cannot create mappers for
-# ElementTree elements directly because they are at the very least not new-style
-# classes, and also may be backed by native implementations.
-# so here we construct an adapter.
+# Node class.  a non-public class which will represent the DB-persisted
+# Element/SubElement object.  We cannot create mappers for ElementTree elements
+# directly because they are at the very least not new-style classes, and also
+# may be backed by native implementations. so here we construct an adapter.
+
+
 class _Node(object):
     pass
 
 
-# Attribute class.  also internal, this will represent the key/value attributes stored for
-# a particular Node.
+# Attribute class.  also internal, this will represent the key/value attributes
+# stored for a particular Node.
+
+
 class _Attribute(object):
     def __init__(self, name, value):
         self.name = name
@@ -115,10 +124,11 @@ mapper(
     },
 )
 
-# the _Node objects change the way they load so that a list of _Nodes will organize
-# themselves hierarchically using the ElementTreeMarshal.  this depends on the ordering of
-# nodes being hierarchical as well; relationship() always applies at least ROWID/primary key
-# ordering to rows which will suffice.
+# the _Node objects change the way they load so that a list of _Nodes will
+# organize themselves hierarchically using the ElementTreeMarshal.  this
+# depends on the ordering of nodes being hierarchical as well; relationship()
+# always applies at least ROWID/primary key ordering to rows which will
+# suffice.
 mapper(
     _Node,
     elements,
@@ -134,9 +144,12 @@ mapper(
 
 mapper(_Attribute, attributes)
 
-# define marshalling functions that convert from _Node/_Attribute to/from ElementTree objects.
-# this will set the ElementTree element as "document._element", and append the root _Node
-# object to the "_nodes" mapped collection.
+# define marshalling functions that convert from _Node/_Attribute to/from
+# ElementTree objects. this will set the ElementTree element as
+# "document._element", and append the root _Node object to the "_nodes" mapped
+# collection.
+
+
 class ElementTreeMarshal(object):
     def __get__(self, document, owner):
         if document is None:
@@ -188,7 +201,7 @@ class ElementTreeMarshal(object):
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
 
-###################### PART V - Basic Persistence Example ####################
+# PART V - Basic Persistence Example
 
 line = "\n--------------------------------------------------------"
 
@@ -210,7 +223,7 @@ document = session.query(Document).filter_by(filename="test.xml").first()
 
 print(document)
 
-######################## PART VI - Searching for Paths #######################
+# PART VI - Searching for Paths
 
 # manually search for a document which contains "/somefile/header/field1:hi"
 print("\nManual search for /somefile/header/field1=='hi':", line)
@@ -227,6 +240,8 @@ d = (
 print(d)
 
 # generalize the above approach into an extremely impoverished xpath function:
+
+
 def find_document(path, compareto):
     j = documents
     prev_elements = None

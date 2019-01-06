@@ -20,6 +20,7 @@ this should be removable when Alembic targets SQLAlchemy 1.0.0.
 import os
 import sys
 
+
 bootstrap_file = locals()["bootstrap_file"]
 to_bootstrap = locals()["to_bootstrap"]
 

@@ -15,20 +15,21 @@
     .. note:: Jython is not supported by current versions of SQLAlchemy.  The
        zxjdbc dialect should be considered as experimental.
 
-"""
+"""  # noqa
+import collections
 import decimal
 import re
 
-from sqlalchemy import sql, types as sqltypes, util
-from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
-from sqlalchemy.dialects.oracle.base import (
-    OracleCompiler,
-    OracleDialect,
-    OracleExecutionContext,
-)
-from sqlalchemy.engine import result as _result
-from sqlalchemy.sql import expression
-import collections
+from .base import OracleCompiler
+from .base import OracleDialect
+from .base import OracleExecutionContext
+from ... import sql
+from ... import types as sqltypes
+from ... import util
+from ...connectors.zxJDBC import ZxJDBCConnector
+from ...engine import result as _result
+from ...sql import expression
+
 
 SQLException = zxJDBC = None
 
@@ -173,8 +174,8 @@ class ReturningParam(object):
     Specially handled by OracleReturningDataHandler.
     """
 
-    def __init__(self, type):
-        self.type = type
+    def __init__(self, type_):
+        self.type = type_
 
     def __eq__(self, other):
         if isinstance(other, ReturningParam):
@@ -218,16 +219,16 @@ class OracleDialect_zxjdbc(ZxJDBCConnector, OracleDialect):
         class OracleReturningDataHandler(OracleDataHandler):
             """zxJDBC DataHandler that specially handles ReturningParam."""
 
-            def setJDBCObject(self, statement, index, object, dbtype=None):
-                if type(object) is ReturningParam:
-                    statement.registerReturnParameter(index, object.type)
+            def setJDBCObject(self, statement, index, object_, dbtype=None):
+                if type(object_) is ReturningParam:
+                    statement.registerReturnParameter(index, object_.type)
                 elif dbtype is None:
                     OracleDataHandler.setJDBCObject(
-                        self, statement, index, object
+                        self, statement, index, object_
                     )
                 else:
                     OracleDataHandler.setJDBCObject(
-                        self, statement, index, object, dbtype
+                        self, statement, index, object_, dbtype
                     )
 
         self.DataHandler = OracleReturningDataHandler

@@ -1,25 +1,27 @@
-from sqlalchemy import testing, desc, select, func, exc, cast, Integer
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    create_session,
-    Query,
-    attributes,
-    exc as orm_exc,
-    Session,
-    backref,
-    configure_mappers,
-)
+from sqlalchemy import cast
+from sqlalchemy import desc
+from sqlalchemy import exc
+from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import select
+from sqlalchemy import testing
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Query
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.dynamic import AppenderMixin
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    assert_raises_message,
-    assert_raises,
-    eq_,
-    is_,
-)
-from test.orm import _fixtures
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import CompiledSQL
+from test.orm import _fixtures
 
 
 class _DynamicFixture(object):
@@ -740,16 +742,16 @@ class UOWTest(
             eq_(
                 testing.db.scalar(
                     select([func.count("*")]).where(
-                        addresses.c.user_id == None  # noqa
-                    )
+                        addresses.c.user_id == None
+                    )  # noqa
                 ),
                 6,
             )
             eq_(
                 testing.db.scalar(
                     select([func.count("*")]).where(
-                        addresses.c.user_id != None  # noqa
-                    )
+                        addresses.c.user_id != None
+                    )  # noqa
                 ),
                 0,
             )

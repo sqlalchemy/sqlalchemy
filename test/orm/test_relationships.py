@@ -1,45 +1,49 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
 import datetime
+
 import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy import (
-    Integer,
-    String,
-    ForeignKey,
-    MetaData,
-    and_,
-    select,
-    func,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    mapper,
-    relationship,
-    relation,
-    backref,
-    create_session,
-    configure_mappers,
-    clear_mappers,
-    sessionmaker,
-    attributes,
-    Session,
-    composite,
-    column_property,
-    foreign,
-    remote,
-    synonym,
-    joinedload,
-    subqueryload,
-)
-from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
-from sqlalchemy.testing import eq_, startswith_, AssertsCompiledSQL, is_, in_
-from sqlalchemy.testing import fixtures
-from test.orm import _fixtures
+from sqlalchemy import and_
 from sqlalchemy import exc
-from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy import inspect
+from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import foreign
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relation
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import remote
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
+from sqlalchemy.orm.interfaces import MANYTOONE
+from sqlalchemy.orm.interfaces import ONETOMANY
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import startswith_
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from test.orm import _fixtures
 
 
 class _RelationshipErrors(object):
@@ -802,15 +806,15 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     this is a very unusual case::
 
-    company         employee
-    ----------      ----------
-    company_id <--- company_id ------+
-    name                ^            |
-                        +------------+
+        company         employee
+        ----------      ----------
+        company_id <--- company_id ------+
+        name                ^            |
+                            +------------+
 
-                    emp_id <---------+
-                    name             |
-                    reports_to_id ---+
+                        emp_id <---------+
+                        name             |
+                        reports_to_id ---+
 
     employee joins to its sub-employees
     both on reports_to_id, *and on company_id to itself*.
@@ -4134,8 +4138,6 @@ class SecondaryNestedJoinTest(
                     secondary=j,
                     primaryjoin=and_(a.c.b_id == b.c.id, a.c.id == c.c.a_id),
                     secondaryjoin=d.c.id == b.c.d_id,
-                    # primaryjoin=and_(a.c.b_id == j.c.b_id, a.c.id == j.c.c_a_id),
-                    # secondaryjoin=d.c.id == j.c.b_d_id,
                     uselist=False,
                     viewonly=True,
                 ),

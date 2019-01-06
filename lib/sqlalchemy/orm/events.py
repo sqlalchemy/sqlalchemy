@@ -8,17 +8,21 @@
 """ORM event interfaces.
 
 """
-from .. import event, exc, util
-from .base import _mapper_or_none
-import inspect
 import weakref
+
+from . import instrumentation
 from . import interfaces
-from . import mapperlib, instrumentation
-from .session import Session, sessionmaker
-from .scoping import scoped_session
+from . import mapperlib
 from .attributes import QueryableAttribute
+from .base import _mapper_or_none
 from .query import Query
-from sqlalchemy.util.compat import inspect_getargspec
+from .scoping import scoped_session
+from .session import Session
+from .session import sessionmaker
+from .. import event
+from .. import exc
+from .. import util
+from ..util.compat import inspect_getargspec
 
 
 class InstrumentationEvents(event.Events):
@@ -1885,7 +1889,7 @@ class SessionEvents(event.Events):
 
 
 class AttributeEvents(event.Events):
-    """Define events for object attributes.
+    r"""Define events for object attributes.
 
     These are typically defined on the class-bound descriptor for the
     target class.

@@ -103,15 +103,15 @@ through the adapter, allowing for some very sophisticated behavior.
 
 """
 
-import inspect
 import operator
 import weakref
 
-from ..sql import expression
-from .. import util, exc as sa_exc
-from . import base
-
 from sqlalchemy.util.compat import inspect_getargspec
+from . import base
+from .. import exc as sa_exc
+from .. import util
+from ..sql import expression
+
 
 __all__ = [
     "collection",

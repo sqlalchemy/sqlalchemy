@@ -1,48 +1,47 @@
-from sqlalchemy.testing import (
-    eq_,
-    assert_raises,
-    assert_raises_message,
-    expect_warnings,
-    is_,
-)
-from sqlalchemy.testing import assertions
-from sqlalchemy.ext import declarative as decl
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import exc
 import sqlalchemy as sa
-from sqlalchemy import testing, util
-from sqlalchemy import (
-    MetaData,
-    Integer,
-    String,
-    ForeignKey,
-    ForeignKeyConstraint,
-    Index,
-    UniqueConstraint,
-    CheckConstraint,
-)
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import (
-    relationship,
-    create_session,
-    class_mapper,
-    joinedload,
-    configure_mappers,
-    backref,
-    clear_mappers,
-    column_property,
-    composite,
-    Session,
-    properties,
-    deferred,
-)
-from sqlalchemy.util import with_metaclass
-from sqlalchemy.ext.declarative import declared_attr, synonym_for
-from sqlalchemy.testing import fixtures, mock
-from sqlalchemy.orm.events import MapperEvents
-from sqlalchemy.orm import mapper
+from sqlalchemy import CheckConstraint
 from sqlalchemy import event
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import Index
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import UniqueConstraint
+from sqlalchemy import util
+from sqlalchemy.ext import declarative as decl
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.declarative import synonym_for
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import composite
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import properties
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.events import MapperEvents
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assertions
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import with_metaclass
+
 
 Base = None
 

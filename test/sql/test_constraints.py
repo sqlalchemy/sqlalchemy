@@ -1,37 +1,32 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
-from sqlalchemy import (
-    Table,
-    Integer,
-    String,
-    Column,
-    PrimaryKeyConstraint,
-    ForeignKeyConstraint,
-    ForeignKey,
-    UniqueConstraint,
-    Index,
-    MetaData,
-    CheckConstraint,
-    func,
-    text,
-)
-from sqlalchemy import exc, schema
-from sqlalchemy.testing import (
-    fixtures,
-    AssertsExecutionResults,
-    AssertsCompiledSQL,
-)
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
+from sqlalchemy import exc
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
+from sqlalchemy import Index
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import schema
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.engine import default
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
-from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing.assertsql import (
-    AllOf,
-    RegexSQL,
-    CompiledSQL,
-    DialectSQL,
-)
-from sqlalchemy.sql import table, column
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import DialectSQL
+from sqlalchemy.testing.assertsql import RegexSQL
 
 
 class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):

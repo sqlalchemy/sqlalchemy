@@ -25,14 +25,15 @@ methods such as get_table_names, get_columns, etc.
    'name' attribute..
 """
 
-from .. import exc, sql
-from ..sql import schema as sa_schema
+from .base import Connectable
+from .. import exc
+from .. import inspection
+from .. import sql
 from .. import util
+from ..sql import schema as sa_schema
 from ..sql.type_api import TypeEngine
 from ..util import deprecated
 from ..util import topological
-from .. import inspection
-from .base import Connectable
 
 
 @util.decorator

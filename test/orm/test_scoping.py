@@ -1,13 +1,18 @@
-from sqlalchemy.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import query
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.testing.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, query
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 
 class ScopedSessionTest(fixtures.MappedTest):

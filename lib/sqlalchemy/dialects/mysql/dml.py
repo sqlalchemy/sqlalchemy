@@ -1,10 +1,11 @@
-from ...sql.elements import ClauseElement
-from ...sql.dml import Insert as StandardInsert
-from ...sql.expression import alias
-from ...util.langhelpers import public_factory
-from ...sql.base import _generative
 from ... import exc
 from ... import util
+from ...sql.base import _generative
+from ...sql.dml import Insert as StandardInsert
+from ...sql.elements import ClauseElement
+from ...sql.expression import alias
+from ...util.langhelpers import public_factory
+
 
 __all__ = ("Insert", "insert")
 

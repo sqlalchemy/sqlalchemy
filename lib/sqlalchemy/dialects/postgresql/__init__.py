@@ -5,60 +5,61 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import (
-    base,
-    psycopg2,
-    pg8000,
-    pypostgresql,
-    pygresql,
-    zxjdbc,
-    psycopg2cffi,
-)  # noqa
+from . import base
+from . import pg8000  # noqa
+from . import psycopg2  # noqa
+from . import psycopg2cffi  # noqa
+from . import pygresql  # noqa
+from . import pypostgresql  # noqa
+from . import zxjdbc  # noqa
+from .array import All
+from .array import Any
+from .array import ARRAY
+from .array import array
+from .base import BIGINT
+from .base import BIT
+from .base import BOOLEAN
+from .base import BYTEA
+from .base import CHAR
+from .base import CIDR
+from .base import CreateEnumType
+from .base import DATE
+from .base import DOUBLE_PRECISION
+from .base import DropEnumType
+from .base import ENUM
+from .base import FLOAT
+from .base import INET
+from .base import INTEGER
+from .base import INTERVAL
+from .base import MACADDR
+from .base import MONEY
+from .base import NUMERIC
+from .base import OID
+from .base import REAL
+from .base import REGCLASS
+from .base import SMALLINT
+from .base import TEXT
+from .base import TIME
+from .base import TIMESTAMP
+from .base import TSVECTOR
+from .base import UUID
+from .base import VARCHAR
+from .dml import Insert
+from .dml import insert
+from .ext import aggregate_order_by
+from .ext import array_agg
+from .ext import ExcludeConstraint
+from .hstore import HSTORE
+from .hstore import hstore
+from .json import JSON
+from .json import JSONB
+from .ranges import DATERANGE
+from .ranges import INT4RANGE
+from .ranges import INT8RANGE
+from .ranges import NUMRANGE
+from .ranges import TSRANGE
+from .ranges import TSTZRANGE
 
-from .base import (
-    INTEGER,
-    BIGINT,
-    SMALLINT,
-    VARCHAR,
-    CHAR,
-    TEXT,
-    NUMERIC,
-    FLOAT,
-    REAL,
-    INET,
-    CIDR,
-    UUID,
-    BIT,
-    MACADDR,
-    MONEY,
-    OID,
-    REGCLASS,
-    DOUBLE_PRECISION,
-    TIMESTAMP,
-    TIME,
-    DATE,
-    BYTEA,
-    BOOLEAN,
-    INTERVAL,
-    ENUM,
-    TSVECTOR,
-    DropEnumType,
-    CreateEnumType,
-)
-from .hstore import HSTORE, hstore
-from .json import JSON, JSONB
-from .array import array, ARRAY, Any, All
-from .ext import aggregate_order_by, ExcludeConstraint, array_agg
-from .dml import insert, Insert
-
-from .ranges import (
-    INT4RANGE,
-    INT8RANGE,
-    NUMRANGE,
-    DATERANGE,
-    TSRANGE,
-    TSTZRANGE,
-)
 
 base.dialect = dialect = psycopg2.dialect
 
@@ -98,6 +99,7 @@ __all__ = (
     "INT8RANGE",
     "NUMRANGE",
     "DATERANGE",
+    "TSVECTOR",
     "TSRANGE",
     "TSTZRANGE",
     "JSON",

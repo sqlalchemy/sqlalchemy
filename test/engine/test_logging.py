@@ -1,12 +1,15 @@
-from sqlalchemy.testing import eq_, assert_raises_message, eq_regex
-from sqlalchemy import select
-import sqlalchemy as tsa
-from sqlalchemy.testing import engines
 import logging.handlers
+
+import sqlalchemy as tsa
+from sqlalchemy import select
+from sqlalchemy import util
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import lazy_gc
-from sqlalchemy import util
 
 
 class LogParamsTest(fixtures.TestBase):

@@ -1,15 +1,21 @@
-from sqlalchemy.testing import assert_raises
 import sqlalchemy as sa
-from sqlalchemy import testing
-from sqlalchemy import Integer, Text
-from sqlalchemy.sql.sqltypes import ARRAY, JSON
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.orm import Session
-from sqlalchemy.testing import fixtures
-from sqlalchemy.ext.indexable import index_property
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.testing import eq_, ne_, is_, in_, not_in_
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import testing
+from sqlalchemy import Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.indexable import index_property
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.sqltypes import ARRAY
+from sqlalchemy.sql.sqltypes import JSON
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import ne_
+from sqlalchemy.testing import not_in_
+from sqlalchemy.testing.schema import Column
 
 
 class IndexPropertyTest(fixtures.TestBase):

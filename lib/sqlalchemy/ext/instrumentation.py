@@ -26,18 +26,20 @@ see the example :ref:`examples_instrumentation`.
    being used to determine class instrumentation resolution.
 
 """
-from ..orm import instrumentation as orm_instrumentation
-from ..orm.instrumentation import (
-    ClassManager,
-    InstrumentationFactory,
-    _default_state_getter,
-    _default_dict_getter,
-    _default_manager_getter,
-)
-from ..orm import attributes, collections, base as orm_base
-from .. import util
-from ..orm import exc as orm_exc
 import weakref
+
+from .. import util
+from ..orm import attributes
+from ..orm import base as orm_base
+from ..orm import collections
+from ..orm import exc as orm_exc
+from ..orm import instrumentation as orm_instrumentation
+from ..orm.instrumentation import _default_dict_getter
+from ..orm.instrumentation import _default_manager_getter
+from ..orm.instrumentation import _default_state_getter
+from ..orm.instrumentation import ClassManager
+from ..orm.instrumentation import InstrumentationFactory
+
 
 INSTRUMENTATION_MANAGER = "__sa_instrumentation_manager__"
 """Attribute, elects custom instrumentation when present on a mapped class.

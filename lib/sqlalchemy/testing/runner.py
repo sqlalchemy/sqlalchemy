@@ -30,9 +30,9 @@ SQLAlchemy itself is possible.
 
 """
 
-from .plugin.noseplugin import NoseSQLAlchemy
-
 import nose
+
+from .plugin.noseplugin import NoseSQLAlchemy
 
 
 def main():

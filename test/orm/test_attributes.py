@@ -1,24 +1,26 @@
 import pickle
-from sqlalchemy.orm import attributes, instrumentation, exc as orm_exc
+
+from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import testing
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.testing import (
-    eq_,
-    ne_,
-    assert_raises,
-    assert_raises_message,
-    is_true,
-    is_false,
-    is_,
-)
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.util import gc_collect, all_partial_orderings
-from sqlalchemy.util import jython
-from sqlalchemy import event
-from sqlalchemy import testing
-from sqlalchemy.testing.mock import Mock, call
 from sqlalchemy.orm.state import InstanceState
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.util import all_partial_orderings
+from sqlalchemy.testing.util import gc_collect
+
 
 # global for pickling tests
 MyTest = None
@@ -3707,11 +3709,11 @@ class ListenerTest(fixtures.ORMTest):
                 classes[2], "attrib", uselist=False, useobject=False
             )
 
-        def set(state, value, oldvalue, initiator):
+        def set_(state, value, oldvalue, initiator):
             canary.append(value)
 
         def events_a():
-            event.listen(classes[0].attrib, "set", set, propagate=True)
+            event.listen(classes[0].attrib, "set", set_, propagate=True)
 
         def teardown():
             classes[:] = [None, None, None]

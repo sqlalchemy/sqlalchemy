@@ -8,24 +8,25 @@
 
 """
 
-from .interfaces import MapperOption, PropComparator, MapperProperty
-from .attributes import QueryableAttribute
-from .. import util
-from ..sql.base import _generative, Generative
-from .. import exc as sa_exc, inspect
-from .base import (
-    _is_aliased_class,
-    _class_to_mapper,
-    _is_mapped_class,
-    InspectionAttr,
-)
 from . import util as orm_util
-from .path_registry import (
-    PathRegistry,
-    TokenRegistry,
-    _WILDCARD_TOKEN,
-    _DEFAULT_TOKEN,
-)
+from .attributes import QueryableAttribute
+from .base import _class_to_mapper
+from .base import _is_aliased_class
+from .base import _is_mapped_class
+from .base import InspectionAttr
+from .interfaces import MapperOption
+from .interfaces import PropComparator
+from .path_registry import _DEFAULT_TOKEN
+from .path_registry import _WILDCARD_TOKEN
+from .path_registry import PathRegistry
+from .path_registry import TokenRegistry
+from .util import _orm_full_deannotate
+from .. import exc as sa_exc
+from .. import inspect
+from .. import util
+from ..sql import expression as sql_expr
+from ..sql.base import _generative
+from ..sql.base import Generative
 
 
 class Load(Generative, MapperOption):
@@ -1452,10 +1453,6 @@ def undefer_group(loadopt, name):
 @undefer_group._add_unbound_fn
 def undefer_group(name):
     return _UnboundLoad().undefer_group(name)
-
-
-from ..sql import expression as sql_expr
-from .util import _orm_full_deannotate
 
 
 @loader_option()
