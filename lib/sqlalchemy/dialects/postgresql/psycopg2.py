@@ -300,7 +300,7 @@ The psycopg2 dialect will log PostgreSQL NOTICE messages via the
     import logging
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
 
-.. _psycopg2_hstore::
+.. _psycopg2_hstore:
 
 HSTORE type
 ------------

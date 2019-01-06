@@ -56,18 +56,12 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
             __tablename__ = 'users'
             __autoload__ = True
-            if testing.against('oracle', 'firebird'):
-                id = Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True)
             addresses = relationship('Address', backref='user')
 
         class Address(Base, fixtures.ComparableEntity):
 
             __tablename__ = 'addresses'
             __autoload__ = True
-            if testing.against('oracle', 'firebird'):
-                id = Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True)
 
         u1 = User(name='u1', addresses=[Address(email='one'),
                                         Address(email='two')])
@@ -87,9 +81,6 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
             __tablename__ = 'users'
             __autoload__ = True
-            if testing.against('oracle', 'firebird'):
-                id = Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True)
             nom = Column('name', String(50), key='nom')
             addresses = relationship('Address', backref='user')
 
@@ -97,9 +88,6 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
             __tablename__ = 'addresses'
             __autoload__ = True
-            if testing.against('oracle', 'firebird'):
-                id = Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True)
 
         u1 = User(nom='u1', addresses=[Address(email='one'),
                                        Address(email='two')])
@@ -120,18 +108,12 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
             __tablename__ = 'imhandles'
             __autoload__ = True
-            if testing.against('oracle', 'firebird'):
-                id = Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True)
             user_id = Column('user_id', Integer, ForeignKey('users.id'))
 
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = 'users'
             __autoload__ = True
-            if testing.against('oracle', 'firebird'):
-                id = Column('id', Integer, primary_key=True,
-                            test_needs_autoincrement=True)
             handles = relationship('IMHandle', backref='user')
 
         u1 = User(name='u1', handles=[

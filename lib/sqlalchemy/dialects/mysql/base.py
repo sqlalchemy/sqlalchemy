@@ -736,7 +736,6 @@ output::
 from collections import defaultdict
 import re
 import sys
-import json
 
 from ... import schema as sa_schema
 from ... import exc, log, sql, util

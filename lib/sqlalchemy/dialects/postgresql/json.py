@@ -6,8 +6,6 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 from __future__ import absolute_import
 
-import json
-
 from .base import ischema_names, colspecs
 from ... import types as sqltypes
 from ...sql import operators

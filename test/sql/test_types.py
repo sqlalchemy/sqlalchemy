@@ -2924,15 +2924,6 @@ class BooleanTest(
             proc, "foo"
         )
 
-    def test_literal_processor_coercion_native_int_out_of_range(self):
-        proc = Boolean().literal_processor(
-            default.DefaultDialect(supports_native_boolean=True))
-        assert_raises_message(
-            ValueError,
-            "Value 15 is not None, True, or False",
-            proc, 15
-        )
-
 
 
 class PickleTest(fixtures.TestBase):

@@ -14,7 +14,7 @@ from .base import \
     TIMESTAMP, TIME, DATE, BYTEA, BOOLEAN, INTERVAL, ENUM, TSVECTOR, \
     DropEnumType, CreateEnumType
 from .hstore import HSTORE, hstore
-from .json import JSON, JSONB, json
+from .json import JSON, JSONB
 from .array import array, ARRAY, Any, All
 from .ext import aggregate_order_by, ExcludeConstraint, array_agg
 from .dml import insert, Insert
@@ -31,7 +31,7 @@ __all__ = (
     'REGCLASS', 'DOUBLE_PRECISION', 'TIMESTAMP', 'TIME', 'DATE', 'BYTEA',
     'BOOLEAN', 'INTERVAL', 'ARRAY', 'ENUM', 'dialect', 'array', 'HSTORE',
     'hstore', 'INT4RANGE', 'INT8RANGE', 'NUMRANGE', 'DATERANGE',
-    'TSRANGE', 'TSTZRANGE', 'json', 'JSON', 'JSONB', 'Any', 'All',
+    'TSRANGE', 'TSTZRANGE', 'JSON', 'JSONB', 'Any', 'All',
     'DropEnumType', 'CreateEnumType', 'ExcludeConstraint',
     'aggregate_order_by', 'array_agg', 'insert', 'Insert'
 )

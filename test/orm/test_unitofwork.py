@@ -3,7 +3,6 @@
 
 from sqlalchemy.testing import eq_, assert_raises, assert_raises_message
 import datetime
-from sqlalchemy.orm import mapper as orm_mapper
 from sqlalchemy.util import OrderedDict
 
 import sqlalchemy as sa
@@ -2346,7 +2345,7 @@ class BooleanColTest(fixtures.MappedTest):
         # use the regular mapper
         class T(fixtures.ComparableEntity):
             pass
-        orm_mapper(T, t1_t)
+        mapper(T, t1_t)
 
         sess = create_session()
         t1 = T(value=True, name="t1")
@@ -2641,8 +2640,8 @@ class TransactionTest(fixtures.MappedTest):
                           cls.tables.t2,
                           cls.tables.t1)
 
-        orm_mapper(T1, t1)
-        orm_mapper(T2, t2)
+        mapper(T1, t1)
+        mapper(T2, t2)
 
     def test_close_transaction_on_commit_fail(self):
         T2, t1 = self.classes.T2, self.tables.t1
@@ -2686,7 +2685,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        orm_mapper(cls.classes.T1, cls.tables.t1)
+        mapper(cls.classes.T1, cls.tables.t1)
 
     def test_key_switch(self):
         T1 = self.classes.T1
@@ -2801,8 +2800,8 @@ class EnsurePKSortableTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        orm_mapper(cls.classes.T1, cls.tables.t1)
-        orm_mapper(cls.classes.T2, cls.tables.t2)
+        mapper(cls.classes.T1, cls.tables.t1)
+        mapper(cls.classes.T2, cls.tables.t2)
 
     def test_exception_persistent_flush_py3k(self):
         s = Session()

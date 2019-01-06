@@ -114,7 +114,7 @@ with open(
             os.path.dirname(__file__),
             'lib', 'sqlalchemy', '__init__.py')) as v_file:
     VERSION = re.compile(
-        r".*__version__ = '(.*?)'",
+        r""".*__version__ = ["'](.*?)['"]""",
         re.S).match(v_file.read()).group(1)
 
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as r_file:

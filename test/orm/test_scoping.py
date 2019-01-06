@@ -10,22 +10,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock
 
 
-class _ScopedTest(fixtures.MappedTest):
-    """Adds another lookup bucket to emulate Session globals."""
-
-    run_setup_mappers = 'once'
-
-    @classmethod
-    def setup_class(cls):
-        cls.scoping = _base.adict()
-        super(_ScopedTest, cls).setup_class()
-
-    @classmethod
-    def teardown_class(cls):
-        cls.scoping.clear()
-        super(_ScopedTest, cls).teardown_class()
-
-
 class ScopedSessionTest(fixtures.MappedTest):
 
     @classmethod
