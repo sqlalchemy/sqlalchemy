@@ -12,7 +12,6 @@ _repr_stack = set()
 
 
 class BasicEntity(object):
-
     def __init__(self, **kw):
         for key, value in kw.items():
             setattr(self, key, value)
@@ -24,17 +23,22 @@ class BasicEntity(object):
         try:
             return "%s(%s)" % (
                 (self.__class__.__name__),
-                ', '.join(["%s=%r" % (key, getattr(self, key))
-                           for key in sorted(self.__dict__.keys())
-                           if not key.startswith('_')]))
+                ", ".join(
+                    [
+                        "%s=%r" % (key, getattr(self, key))
+                        for key in sorted(self.__dict__.keys())
+                        if not key.startswith("_")
+                    ]
+                ),
+            )
         finally:
             _repr_stack.remove(id(self))
+
 
 _recursion_stack = set()
 
 
 class ComparableEntity(BasicEntity):
-
     def __hash__(self):
         return hash(self.__class__)
 
@@ -75,7 +79,7 @@ class ComparableEntity(BasicEntity):
                 b = other
 
             for attr in list(a.__dict__):
-                if attr.startswith('_'):
+                if attr.startswith("_"):
                     continue
                 value = getattr(a, attr)
 
@@ -85,9 +89,10 @@ class ComparableEntity(BasicEntity):
                 except (AttributeError, sa_exc.UnboundExecutionError):
                     return False
 
-                if hasattr(value, '__iter__'):
-                    if hasattr(value, '__getitem__') and not hasattr(
-                            value, 'keys'):
+                if hasattr(value, "__iter__"):
+                    if hasattr(value, "__getitem__") and not hasattr(
+                        value, "keys"
+                    ):
                         if list(value) != list(battr):
                             return False
                     else:

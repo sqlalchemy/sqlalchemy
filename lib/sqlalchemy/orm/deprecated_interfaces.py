@@ -58,23 +58,25 @@ class MapperExtension(object):
 
     @classmethod
     def _adapt_instrument_class(cls, self, listener):
-        cls._adapt_listener_methods(self, listener, ('instrument_class',))
+        cls._adapt_listener_methods(self, listener, ("instrument_class",))
 
     @classmethod
     def _adapt_listener(cls, self, listener):
         cls._adapt_listener_methods(
-            self, listener,
+            self,
+            listener,
             (
-                'init_instance',
-                'init_failed',
-                'reconstruct_instance',
-                'before_insert',
-                'after_insert',
-                'before_update',
-                'after_update',
-                'before_delete',
-                'after_delete'
-            ))
+                "init_instance",
+                "init_failed",
+                "reconstruct_instance",
+                "before_insert",
+                "after_insert",
+                "before_update",
+                "after_update",
+                "before_delete",
+                "after_delete",
+            ),
+        )
 
     @classmethod
     def _adapt_listener_methods(cls, self, listener, methods):
@@ -84,36 +86,75 @@ class MapperExtension(object):
             ls_meth = getattr(listener, meth)
 
             if not util.methods_equivalent(me_meth, ls_meth):
-                if meth == 'reconstruct_instance':
+                if meth == "reconstruct_instance":
+
                     def go(ls_meth):
                         def reconstruct(instance, ctx):
                             ls_meth(self, instance)
+
                         return reconstruct
-                    event.listen(self.class_manager, 'load',
-                                 go(ls_meth), raw=False, propagate=True)
-                elif meth == 'init_instance':
+
+                    event.listen(
+                        self.class_manager,
+                        "load",
+                        go(ls_meth),
+                        raw=False,
+                        propagate=True,
+                    )
+                elif meth == "init_instance":
+
                     def go(ls_meth):
                         def init_instance(instance, args, kwargs):
-                            ls_meth(self, self.class_,
-                                    self.class_manager.original_init,
-                                    instance, args, kwargs)
+                            ls_meth(
+                                self,
+                                self.class_,
+                                self.class_manager.original_init,
+                                instance,
+                                args,
+                                kwargs,
+                            )
+
                         return init_instance
-                    event.listen(self.class_manager, 'init',
-                                 go(ls_meth), raw=False, propagate=True)
-                elif meth == 'init_failed':
+
+                    event.listen(
+                        self.class_manager,
+                        "init",
+                        go(ls_meth),
+                        raw=False,
+                        propagate=True,
+                    )
+                elif meth == "init_failed":
+
                     def go(ls_meth):
                         def init_failed(instance, args, kwargs):
                             util.warn_exception(
-                                ls_meth, self, self.class_,
+                                ls_meth,
+                                self,
+                                self.class_,
                                 self.class_manager.original_init,
-                                instance, args, kwargs)
+                                instance,
+                                args,
+                                kwargs,
+                            )
 
                         return init_failed
-                    event.listen(self.class_manager, 'init_failure',
-                                 go(ls_meth), raw=False, propagate=True)
+
+                    event.listen(
+                        self.class_manager,
+                        "init_failure",
+                        go(ls_meth),
+                        raw=False,
+                        propagate=True,
+                    )
                 else:
-                    event.listen(self, "%s" % meth, ls_meth,
-                                 raw=False, retval=True, propagate=True)
+                    event.listen(
+                        self,
+                        "%s" % meth,
+                        ls_meth,
+                        raw=False,
+                        retval=True,
+                        propagate=True,
+                    )
 
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
@@ -302,16 +343,16 @@ class SessionExtension(object):
     @classmethod
     def _adapt_listener(cls, self, listener):
         for meth in [
-            'before_commit',
-            'after_commit',
-            'after_rollback',
-            'before_flush',
-            'after_flush',
-            'after_flush_postexec',
-            'after_begin',
-            'after_attach',
-            'after_bulk_update',
-            'after_bulk_delete',
+            "before_commit",
+            "after_commit",
+            "after_rollback",
+            "before_flush",
+            "after_flush",
+            "after_flush_postexec",
+            "after_begin",
+            "after_attach",
+            "after_bulk_update",
+            "after_bulk_delete",
         ]:
             me_meth = getattr(SessionExtension, meth)
             ls_meth = getattr(listener, meth)
@@ -450,15 +491,30 @@ class AttributeExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(self, 'append', listener.append,
-                     active_history=listener.active_history,
-                     raw=True, retval=True)
-        event.listen(self, 'remove', listener.remove,
-                     active_history=listener.active_history,
-                     raw=True, retval=True)
-        event.listen(self, 'set', listener.set,
-                     active_history=listener.active_history,
-                     raw=True, retval=True)
+        event.listen(
+            self,
+            "append",
+            listener.append,
+            active_history=listener.active_history,
+            raw=True,
+            retval=True,
+        )
+        event.listen(
+            self,
+            "remove",
+            listener.remove,
+            active_history=listener.active_history,
+            raw=True,
+            retval=True,
+        )
+        event.listen(
+            self,
+            "set",
+            listener.set,
+            active_history=listener.active_history,
+            raw=True,
+            retval=True,
+        )
 
     def append(self, state, value, initiator):
         """Receive a collection append event.

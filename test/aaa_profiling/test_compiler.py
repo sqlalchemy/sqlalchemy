@@ -6,7 +6,7 @@ t1 = t2 = None
 
 
 class CompileTest(fixtures.TestBase, AssertsExecutionResults):
-    __requires__ = 'cpython',
+    __requires__ = ("cpython",)
     __backend__ = True
 
     @classmethod
@@ -14,13 +14,19 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
 
         global t1, t2, metadata
         metadata = MetaData()
-        t1 = Table('t1', metadata,
-                   Column('c1', Integer, primary_key=True),
-                   Column('c2', String(30)))
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", Integer, primary_key=True),
+            Column("c2", String(30)),
+        )
 
-        t2 = Table('t2', metadata,
-                   Column('c1', Integer, primary_key=True),
-                   Column('c2', String(30)))
+        t2 = Table(
+            "t2",
+            metadata,
+            Column("c1", Integer, primary_key=True),
+            Column("c2", String(30)),
+        )
 
         # do a "compile" ahead of time to load
         # deferred imports
@@ -33,6 +39,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
             for c in t.c:
                 c.type._type_affinity
         from sqlalchemy.sql import sqltypes
+
         for t in list(sqltypes._type_map.values()):
             t._type_affinity
 
@@ -42,7 +49,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     def test_insert(self):
         t1.insert().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(variance=.15)
+    @profiling.function_call_count(variance=0.15)
     def test_update(self):
         t1.update().compile(dialect=self.dialect)
 
@@ -52,6 +59,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         @profiling.function_call_count()
         def go():
             t1.update().where(t1.c.c2 == 12).compile(dialect=self.dialect)
+
         go()
 
     def test_select(self):
@@ -64,6 +72,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         def go():
             s = select([t1], t1.c.c2 == t2.c.c1)
             s.compile(dialect=self.dialect)
+
         go()
 
     def test_select_labels(self):
@@ -76,4 +85,5 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         def go():
             s = select([t1], t1.c.c2 == t2.c.c1).apply_labels()
             s.compile(dialect=self.dialect)
+
         go()

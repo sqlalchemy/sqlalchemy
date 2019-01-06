@@ -20,6 +20,7 @@ from .attributes import QueryableAttribute
 from .query import Query
 from sqlalchemy.util.compat import inspect_getargspec
 
+
 class InstrumentationEvents(event.Events):
     """Events related to class instrumentation events.
 
@@ -61,9 +62,11 @@ class InstrumentationEvents(event.Events):
 
     @classmethod
     def _listen(cls, event_key, propagate=True, **kw):
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, \
-            event_key._listen_fn
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key._listen_fn,
+        )
 
         def listen(target_cls, *arg):
             listen_cls = target()
@@ -74,16 +77,20 @@ class InstrumentationEvents(event.Events):
 
         def remove(ref):
             key = event.registry._EventKey(
-                None, identifier, listen,
-                instrumentation._instrumentation_factory)
-            getattr(instrumentation._instrumentation_factory.dispatch,
-                    identifier).remove(key)
+                None,
+                identifier,
+                listen,
+                instrumentation._instrumentation_factory,
+            )
+            getattr(
+                instrumentation._instrumentation_factory.dispatch, identifier
+            ).remove(key)
 
         target = weakref.ref(target.class_, remove)
 
-        event_key.\
-            with_dispatch_target(instrumentation._instrumentation_factory).\
-            with_wrapper(listen).base_listen(**kw)
+        event_key.with_dispatch_target(
+            instrumentation._instrumentation_factory
+        ).with_wrapper(listen).base_listen(**kw)
 
     @classmethod
     def _clear(cls):
@@ -193,21 +200,24 @@ class InstanceEvents(event.Events):
 
     @classmethod
     def _listen(cls, event_key, raw=False, propagate=False, **kw):
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, \
-            event_key._listen_fn
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key._listen_fn,
+        )
 
         if not raw:
+
             def wrap(state, *arg, **kw):
                 return fn(state.obj(), *arg, **kw)
+
             event_key = event_key.with_wrapper(wrap)
 
         event_key.base_listen(propagate=propagate, **kw)
 
         if propagate:
             for mgr in target.subclass_managers(True):
-                event_key.with_dispatch_target(mgr).base_listen(
-                    propagate=True)
+                event_key.with_dispatch_target(mgr).base_listen(propagate=True)
 
     @classmethod
     def _clear(cls):
@@ -438,8 +448,11 @@ class _EventsHold(event.RefCollection):
 
         @classmethod
         def _listen(cls, event_key, raw=False, propagate=False, **kw):
-            target, identifier, fn = \
-                event_key.dispatch_target, event_key.identifier, event_key.fn
+            target, identifier, fn = (
+                event_key.dispatch_target,
+                event_key.identifier,
+                event_key.fn,
+            )
 
             if target.class_ in target.all_holds:
                 collection = target.all_holds[target.class_]
@@ -458,12 +471,16 @@ class _EventsHold(event.RefCollection):
                     if subject is not None:
                         # we are already going through __subclasses__()
                         # so leave generic propagate flag False
-                        event_key.with_dispatch_target(subject).\
-                            listen(raw=raw, propagate=False, **kw)
+                        event_key.with_dispatch_target(subject).listen(
+                            raw=raw, propagate=False, **kw
+                        )
 
     def remove(self, event_key):
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key.fn,
+        )
 
         if isinstance(target, _EventsHold):
             collection = target.all_holds[target.class_]
@@ -481,8 +498,9 @@ class _EventsHold(event.RefCollection):
                         # populate(), we rely upon _EventsHold for all event
                         # assignment, instead of using the generic propagate
                         # flag.
-                        event_key.with_dispatch_target(subject).\
-                            listen(raw=raw, propagate=False)
+                        event_key.with_dispatch_target(subject).listen(
+                            raw=raw, propagate=False
+                        )
 
 
 class _InstanceEventsHold(_EventsHold):
@@ -592,24 +610,31 @@ class MapperEvents(event.Events):
 
     @classmethod
     def _listen(
-            cls, event_key, raw=False, retval=False, propagate=False, **kw):
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, \
-            event_key._listen_fn
+        cls, event_key, raw=False, retval=False, propagate=False, **kw
+    ):
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key._listen_fn,
+        )
 
-        if identifier in ("before_configured", "after_configured") and \
-                target is not mapperlib.Mapper:
+        if (
+            identifier in ("before_configured", "after_configured")
+            and target is not mapperlib.Mapper
+        ):
             util.warn(
                 "'before_configured' and 'after_configured' ORM events "
                 "only invoke with the mapper() function or Mapper class "
-                "as the target.")
+                "as the target."
+            )
 
         if not raw or not retval:
             if not raw:
                 meth = getattr(cls, identifier)
                 try:
-                    target_index = \
-                        inspect_getargspec(meth)[0].index('target') - 1
+                    target_index = (
+                        inspect_getargspec(meth)[0].index("target") - 1
+                    )
                 except ValueError:
                     target_index = None
 
@@ -622,12 +647,14 @@ class MapperEvents(event.Events):
                     return interfaces.EXT_CONTINUE
                 else:
                     return fn(*arg, **kw)
+
             event_key = event_key.with_wrapper(wrap)
 
         if propagate:
             for mapper in target.self_and_descendants:
                 event_key.with_dispatch_target(mapper).base_listen(
-                    propagate=True, **kw)
+                    propagate=True, **kw
+                )
         else:
             event_key.base_listen(**kw)
 
@@ -1162,15 +1189,14 @@ class SessionEvents(event.Events):
         if isinstance(target, scoped_session):
 
             target = target.session_factory
-            if not isinstance(target, sessionmaker) and \
-                (
-                    not isinstance(target, type) or
-                    not issubclass(target, Session)
+            if not isinstance(target, sessionmaker) and (
+                not isinstance(target, type) or not issubclass(target, Session)
             ):
                 raise exc.ArgumentError(
                     "Session event listen on a scoped_session "
                     "requires that its creation callable "
-                    "is associated with the Session class.")
+                    "is associated with the Session class."
+                )
 
         if isinstance(target, sessionmaker):
             return target.class_
@@ -1504,13 +1530,16 @@ class SessionEvents(event.Events):
 
         """
 
-    @event._legacy_signature("0.9",
-                             ["session", "query", "query_context", "result"],
-                             lambda update_context: (
-                                 update_context.session,
-                                 update_context.query,
-                                 update_context.context,
-                                 update_context.result))
+    @event._legacy_signature(
+        "0.9",
+        ["session", "query", "query_context", "result"],
+        lambda update_context: (
+            update_context.session,
+            update_context.query,
+            update_context.context,
+            update_context.result,
+        ),
+    )
     def after_bulk_update(self, update_context):
         """Execute after a bulk update operation to the session.
 
@@ -1530,13 +1559,16 @@ class SessionEvents(event.Events):
 
         """
 
-    @event._legacy_signature("0.9",
-                             ["session", "query", "query_context", "result"],
-                             lambda delete_context: (
-                                 delete_context.session,
-                                 delete_context.query,
-                                 delete_context.context,
-                                 delete_context.result))
+    @event._legacy_signature(
+        "0.9",
+        ["session", "query", "query_context", "result"],
+        lambda delete_context: (
+            delete_context.session,
+            delete_context.query,
+            delete_context.context,
+            delete_context.result,
+        ),
+    )
     def after_bulk_delete(self, delete_context):
         """Execute after a bulk delete operation to the session.
 
@@ -1870,18 +1902,26 @@ class AttributeEvents(event.Events):
             return target
 
     @classmethod
-    def _listen(cls, event_key, active_history=False,
-                raw=False, retval=False,
-                propagate=False):
+    def _listen(
+        cls,
+        event_key,
+        active_history=False,
+        raw=False,
+        retval=False,
+        propagate=False,
+    ):
 
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, \
-            event_key._listen_fn
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key._listen_fn,
+        )
 
         if active_history:
             target.dispatch._active_history = True
 
         if not raw or not retval:
+
             def wrap(target, *arg):
                 if not raw:
                     target = target.obj()
@@ -1894,6 +1934,7 @@ class AttributeEvents(event.Events):
                     return value
                 else:
                     return fn(target, *arg)
+
             event_key = event_key.with_wrapper(wrap)
 
         event_key.base_listen(propagate=propagate)
@@ -1902,8 +1943,9 @@ class AttributeEvents(event.Events):
             manager = instrumentation.manager_of_class(target.class_)
 
             for mgr in manager.subclass_managers(True):
-                event_key.with_dispatch_target(
-                    mgr[target.key]).base_listen(propagate=True)
+                event_key.with_dispatch_target(mgr[target.key]).base_listen(
+                    propagate=True
+                )
 
     def append(self, target, value, initiator):
         """Receive a collection append event.
@@ -2258,11 +2300,11 @@ class QueryEvents(event.Events):
         """
 
     @classmethod
-    def _listen(
-            cls, event_key, retval=False, **kw):
+    def _listen(cls, event_key, retval=False, **kw):
         fn = event_key._listen_fn
 
         if not retval:
+
             def wrap(*arg, **kw):
                 if not retval:
                     query = arg[0]
@@ -2270,6 +2312,7 @@ class QueryEvents(event.Events):
                     return query
                 else:
                     return fn(*arg, **kw)
+
             event_key = event_key.with_wrapper(wrap)
 
         event_key.base_listen(**kw)

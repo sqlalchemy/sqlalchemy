@@ -29,7 +29,6 @@ import re
 
 
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
-
     def get_lastrowid(self):
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
@@ -46,7 +45,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
 
     def __init__(self, **kw):
         # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
-        kw.setdefault('convert_unicode', True)
+        kw.setdefault("convert_unicode", True)
         super(MySQLDialect_pyodbc, self).__init__(**kw)
 
     def _detect_charset(self, connection):
@@ -60,13 +59,15 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
         # this can prefer the driver value.
         rs = connection.execute("SHOW VARIABLES LIKE 'character_set%%'")
         opts = {row[0]: row[1] for row in self._compat_fetchall(rs)}
-        for key in ('character_set_connection', 'character_set'):
+        for key in ("character_set_connection", "character_set"):
             if opts.get(key, None):
                 return opts[key]
 
-        util.warn("Could not detect the connection character set.  "
-                  "Assuming latin1.")
-        return 'latin1'
+        util.warn(
+            "Could not detect the connection character set.  "
+            "Assuming latin1."
+        )
+        return "latin1"
 
     def _extract_error_code(self, exception):
         m = re.compile(r"\((\d+)\)").search(str(exception.args))
@@ -75,5 +76,6 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             return int(c)
         else:
             return None
+
 
 dialect = MySQLDialect_pyodbc

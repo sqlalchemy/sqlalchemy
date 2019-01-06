@@ -51,6 +51,7 @@ class _kinterbasdb_numeric(object):
                 return str(value)
             else:
                 return value
+
         return process
 
 
@@ -65,15 +66,16 @@ class _FBFloat_kinterbasdb(_kinterbasdb_numeric, sqltypes.Float):
 class FBExecutionContext_kinterbasdb(FBExecutionContext):
     @property
     def rowcount(self):
-        if self.execution_options.get('enable_rowcount',
-                                      self.dialect.enable_rowcount):
+        if self.execution_options.get(
+            "enable_rowcount", self.dialect.enable_rowcount
+        ):
             return self.cursor.rowcount
         else:
             return -1
 
 
 class FBDialect_kinterbasdb(FBDialect):
-    driver = 'kinterbasdb'
+    driver = "kinterbasdb"
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     execution_ctx_cls = FBExecutionContext_kinterbasdb
@@ -85,13 +87,17 @@ class FBDialect_kinterbasdb(FBDialect):
         {
             sqltypes.Numeric: _FBNumeric_kinterbasdb,
             sqltypes.Float: _FBFloat_kinterbasdb,
-        }
-
+        },
     )
 
-    def __init__(self, type_conv=200, concurrency_level=1,
-                 enable_rowcount=True,
-                 retaining=False, **kwargs):
+    def __init__(
+        self,
+        type_conv=200,
+        concurrency_level=1,
+        enable_rowcount=True,
+        retaining=False,
+        **kwargs
+    ):
         super(FBDialect_kinterbasdb, self).__init__(**kwargs)
         self.enable_rowcount = enable_rowcount
         self.type_conv = type_conv
@@ -102,7 +108,7 @@ class FBDialect_kinterbasdb(FBDialect):
 
     @classmethod
     def dbapi(cls):
-        return __import__('kinterbasdb')
+        return __import__("kinterbasdb")
 
     def do_execute(self, cursor, statement, parameters, context=None):
         # kinterbase does not accept a None, but wants an empty list
@@ -116,28 +122,30 @@ class FBDialect_kinterbasdb(FBDialect):
         dbapi_connection.commit(self.retaining)
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
-        if opts.get('port'):
-            opts['host'] = "%s/%s" % (opts['host'], opts['port'])
-            del opts['port']
+        opts = url.translate_connect_args(username="user")
+        if opts.get("port"):
+            opts["host"] = "%s/%s" % (opts["host"], opts["port"])
+            del opts["port"]
         opts.update(url.query)
 
-        util.coerce_kw_type(opts, 'type_conv', int)
+        util.coerce_kw_type(opts, "type_conv", int)
 
-        type_conv = opts.pop('type_conv', self.type_conv)
-        concurrency_level = opts.pop('concurrency_level',
-                                     self.concurrency_level)
+        type_conv = opts.pop("type_conv", self.type_conv)
+        concurrency_level = opts.pop(
+            "concurrency_level", self.concurrency_level
+        )
 
         if self.dbapi is not None:
-            initialized = getattr(self.dbapi, 'initialized', None)
+            initialized = getattr(self.dbapi, "initialized", None)
             if initialized is None:
                 # CVS rev 1.96 changed the name of the attribute:
                 # http://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/
                 # Kinterbasdb-3.0/__init__.py?r1=1.95&r2=1.96
-                initialized = getattr(self.dbapi, '_initialized', False)
+                initialized = getattr(self.dbapi, "_initialized", False)
             if not initialized:
-                self.dbapi.init(type_conv=type_conv,
-                                concurrency_level=concurrency_level)
+                self.dbapi.init(
+                    type_conv=type_conv, concurrency_level=concurrency_level
+                )
         return ([], opts)
 
     def _get_server_version_info(self, connection):
@@ -160,25 +168,31 @@ class FBDialect_kinterbasdb(FBDialect):
 
     def _parse_version_info(self, version):
         m = match(
-            r'\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+)( \w+ (\d+)\.(\d+))?', version)
+            r"\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+)( \w+ (\d+)\.(\d+))?", version
+        )
         if not m:
             raise AssertionError(
-                "Could not determine version from string '%s'" % version)
+                "Could not determine version from string '%s'" % version
+            )
 
         if m.group(5) != None:
-            return tuple([int(x) for x in m.group(6, 7, 4)] + ['firebird'])
+            return tuple([int(x) for x in m.group(6, 7, 4)] + ["firebird"])
         else:
-            return tuple([int(x) for x in m.group(1, 2, 3)] + ['interbase'])
+            return tuple([int(x) for x in m.group(1, 2, 3)] + ["interbase"])
 
     def is_disconnect(self, e, connection, cursor):
-        if isinstance(e, (self.dbapi.OperationalError,
-                          self.dbapi.ProgrammingError)):
+        if isinstance(
+            e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)
+        ):
             msg = str(e)
-            return ('Unable to complete network request to host' in msg or
-                    'Invalid connection state' in msg or
-                    'Invalid cursor state' in msg or
-                    'connection shutdown' in msg)
+            return (
+                "Unable to complete network request to host" in msg
+                or "Invalid connection state" in msg
+                or "Invalid cursor state" in msg
+                or "connection shutdown" in msg
+            )
         else:
             return False
+
 
 dialect = FBDialect_kinterbasdb

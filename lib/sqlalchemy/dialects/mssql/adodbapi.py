@@ -33,6 +33,7 @@ class MSDateTime_adodbapi(MSDateTime):
             if type(value) is datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
             return value
+
         return process
 
 
@@ -41,18 +42,16 @@ class MSDialect_adodbapi(MSDialect):
     supports_sane_multi_rowcount = True
     supports_unicode = sys.maxunicode == 65535
     supports_unicode_statements = True
-    driver = 'adodbapi'
+    driver = "adodbapi"
 
     @classmethod
     def import_dbapi(cls):
         import adodbapi as module
+
         return module
 
     colspecs = util.update_copy(
-        MSDialect.colspecs,
-        {
-            sqltypes.DateTime: MSDateTime_adodbapi
-        }
+        MSDialect.colspecs, {sqltypes.DateTime: MSDateTime_adodbapi}
     )
 
     def create_connect_args(self, url):
@@ -61,14 +60,13 @@ class MSDialect_adodbapi(MSDialect):
                 token = "'%s'" % token
             return token
 
-        keys = dict(
-            (k, check_quote(v)) for k, v in url.query.items()
-        )
+        keys = dict((k, check_quote(v)) for k, v in url.query.items())
 
         connectors = ["Provider=SQLOLEDB"]
-        if 'port' in keys:
-            connectors.append("Data Source=%s, %s" %
-                              (keys.get("host"), keys.get("port")))
+        if "port" in keys:
+            connectors.append(
+                "Data Source=%s, %s" % (keys.get("host"), keys.get("port"))
+            )
         else:
             connectors.append("Data Source=%s" % keys.get("host"))
         connectors.append("Initial Catalog=%s" % keys.get("database"))
@@ -81,7 +79,9 @@ class MSDialect_adodbapi(MSDialect):
         return [[";".join(connectors)], {}]
 
     def is_disconnect(self, e, connection, cursor):
-        return isinstance(e, self.dbapi.adodbapi.DatabaseError) and \
-            "'connection failure'" in str(e)
+        return isinstance(
+            e, self.dbapi.adodbapi.DatabaseError
+        ) and "'connection failure'" in str(e)
+
 
 dialect = MSDialect_adodbapi

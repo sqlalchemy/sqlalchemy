@@ -19,7 +19,6 @@ from .base import PGDialect, PGExecutionContext
 
 
 class PGExecutionContext_zxjdbc(PGExecutionContext):
-
     def create_cursor(self):
         cursor = self._dbapi_connection.cursor()
         cursor.datahandler = self.dialect.DataHandler(cursor.datahandler)
@@ -27,8 +26,8 @@ class PGExecutionContext_zxjdbc(PGExecutionContext):
 
 
 class PGDialect_zxjdbc(ZxJDBCConnector, PGDialect):
-    jdbc_db_name = 'postgresql'
-    jdbc_driver_name = 'org.postgresql.Driver'
+    jdbc_db_name = "postgresql"
+    jdbc_driver_name = "org.postgresql.Driver"
 
     execution_ctx_cls = PGExecutionContext_zxjdbc
 
@@ -37,10 +36,12 @@ class PGDialect_zxjdbc(ZxJDBCConnector, PGDialect):
     def __init__(self, *args, **kwargs):
         super(PGDialect_zxjdbc, self).__init__(*args, **kwargs)
         from com.ziclix.python.sql.handler import PostgresqlDataHandler
+
         self.DataHandler = PostgresqlDataHandler
 
     def _get_server_version_info(self, connection):
-        parts = connection.connection.dbversion.split('.')
+        parts = connection.connection.dbversion.split(".")
         return tuple(int(x) for x in parts)
+
 
 dialect = PGDialect_zxjdbc

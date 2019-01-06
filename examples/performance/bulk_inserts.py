@@ -36,12 +36,15 @@ def test_flush_no_pk(n):
     """Individual INSERT statements via the ORM, calling upon last row id"""
     session = Session(bind=engine)
     for chunk in range(0, n, 1000):
-        session.add_all([
-            Customer(
-                name='customer name %d' % i,
-                description='customer description %d' % i)
-            for i in range(chunk, chunk + 1000)
-        ])
+        session.add_all(
+            [
+                Customer(
+                    name="customer name %d" % i,
+                    description="customer description %d" % i,
+                )
+                for i in range(chunk, chunk + 1000)
+            ]
+        )
         session.flush()
     session.commit()
 
@@ -50,13 +53,16 @@ def test_flush_no_pk(n):
 def test_bulk_save_return_pks(n):
     """Individual INSERT statements in "bulk", but calling upon last row id"""
     session = Session(bind=engine)
-    session.bulk_save_objects([
-        Customer(
-            name='customer name %d' % i,
-            description='customer description %d' % i
-        )
-        for i in range(n)
-    ], return_defaults=True)
+    session.bulk_save_objects(
+        [
+            Customer(
+                name="customer name %d" % i,
+                description="customer description %d" % i,
+            )
+            for i in range(n)
+        ],
+        return_defaults=True,
+    )
     session.commit()
 
 
@@ -65,13 +71,16 @@ def test_flush_pk_given(n):
     """Batched INSERT statements via the ORM, PKs already defined"""
     session = Session(bind=engine)
     for chunk in range(0, n, 1000):
-        session.add_all([
-            Customer(
-                id=i + 1,
-                name='customer name %d' % i,
-                description='customer description %d' % i)
-            for i in range(chunk, chunk + 1000)
-        ])
+        session.add_all(
+            [
+                Customer(
+                    id=i + 1,
+                    name="customer name %d" % i,
+                    description="customer description %d" % i,
+                )
+                for i in range(chunk, chunk + 1000)
+            ]
+        )
         session.flush()
     session.commit()
 
@@ -80,13 +89,15 @@ def test_flush_pk_given(n):
 def test_bulk_save(n):
     """Batched INSERT statements via the ORM in "bulk", discarding PKs."""
     session = Session(bind=engine)
-    session.bulk_save_objects([
-        Customer(
-            name='customer name %d' % i,
-            description='customer description %d' % i
-        )
-        for i in range(n)
-    ])
+    session.bulk_save_objects(
+        [
+            Customer(
+                name="customer name %d" % i,
+                description="customer description %d" % i,
+            )
+            for i in range(n)
+        ]
+    )
     session.commit()
 
 
@@ -94,13 +105,16 @@ def test_bulk_save(n):
 def test_bulk_insert_mappings(n):
     """Batched INSERT statements via the ORM "bulk", using dictionaries."""
     session = Session(bind=engine)
-    session.bulk_insert_mappings(Customer, [
-        dict(
-            name='customer name %d' % i,
-            description='customer description %d' % i
-        )
-        for i in range(n)
-    ])
+    session.bulk_insert_mappings(
+        Customer,
+        [
+            dict(
+                name="customer name %d" % i,
+                description="customer description %d" % i,
+            )
+            for i in range(n)
+        ],
+    )
     session.commit()
 
 
@@ -112,11 +126,12 @@ def test_core_insert(n):
         Customer.__table__.insert(),
         [
             dict(
-                name='customer name %d' % i,
-                description='customer description %d' % i
+                name="customer name %d" % i,
+                description="customer description %d" % i,
             )
             for i in range(n)
-        ])
+        ],
+    )
 
 
 @Profiler.profile
@@ -125,30 +140,30 @@ def test_dbapi_raw(n):
 
     conn = engine.pool._creator()
     cursor = conn.cursor()
-    compiled = Customer.__table__.insert().values(
-        name=bindparam('name'),
-        description=bindparam('description')).\
-        compile(dialect=engine.dialect)
+    compiled = (
+        Customer.__table__.insert()
+        .values(name=bindparam("name"), description=bindparam("description"))
+        .compile(dialect=engine.dialect)
+    )
 
     if compiled.positional:
         args = (
-            ('customer name %d' % i, 'customer description %d' % i)
-            for i in range(n))
+            ("customer name %d" % i, "customer description %d" % i)
+            for i in range(n)
+        )
     else:
         args = (
             dict(
-                name='customer name %d' % i,
-                description='customer description %d' % i
+                name="customer name %d" % i,
+                description="customer description %d" % i,
             )
             for i in range(n)
         )
 
-    cursor.executemany(
-        str(compiled),
-        list(args)
-    )
+    cursor.executemany(str(compiled), list(args))
     conn.commit()
     conn.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     Profiler.main()

@@ -1,17 +1,25 @@
 import warnings
+
 warnings.filterwarnings("ignore", r".*Decimal objects natively")  # noqa
 
 # speed up cdecimal if available
 try:
     import cdecimal
     import sys
-    sys.modules['decimal'] = cdecimal
+
+    sys.modules["decimal"] = cdecimal
 except ImportError:
     pass
 
 from sqlalchemy import __version__
-from sqlalchemy import Column, Integer, create_engine, ForeignKey, \
-    String, Numeric
+from sqlalchemy import (
+    Column,
+    Integer,
+    create_engine,
+    ForeignKey,
+    String,
+    Numeric,
+)
 
 from sqlalchemy.orm import Session, relationship
 
@@ -24,43 +32,44 @@ Base = declarative_base()
 
 
 class Employee(Base):
-    __tablename__ = 'employee'
+    __tablename__ = "employee"
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
     type = Column(String(50), nullable=False)
 
-    __mapper_args__ = {'polymorphic_on': type}
+    __mapper_args__ = {"polymorphic_on": type}
 
 
 class Boss(Employee):
-    __tablename__ = 'boss'
+    __tablename__ = "boss"
 
-    id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+    id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
     golf_average = Column(Numeric)
 
-    __mapper_args__ = {'polymorphic_identity': 'boss'}
+    __mapper_args__ = {"polymorphic_identity": "boss"}
 
 
 class Grunt(Employee):
-    __tablename__ = 'grunt'
+    __tablename__ = "grunt"
 
-    id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+    id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
     savings = Column(Numeric)
 
-    employer_id = Column(Integer, ForeignKey('boss.id'))
+    employer_id = Column(Integer, ForeignKey("boss.id"))
 
-    employer = relationship("Boss", backref="employees",
-                            primaryjoin=Boss.id == employer_id)
+    employer = relationship(
+        "Boss", backref="employees", primaryjoin=Boss.id == employer_id
+    )
 
-    __mapper_args__ = {'polymorphic_identity': 'grunt'}
+    __mapper_args__ = {"polymorphic_identity": "grunt"}
 
 
-if os.path.exists('orm2010.db'):
-    os.remove('orm2010.db')
+if os.path.exists("orm2010.db"):
+    os.remove("orm2010.db")
 # use a file based database so that cursor.execute() has some
 # palpable overhead.
-engine = create_engine('sqlite:///orm2010.db')
+engine = create_engine("sqlite:///orm2010.db")
 
 Base.metadata.create_all(engine)
 
@@ -72,10 +81,7 @@ def runit(status, factor=1, query_runs=5):
     num_grunts = num_bosses * 100
 
     bosses = [
-        Boss(
-            name="Boss %d" % i,
-            golf_average=Decimal(random.randint(40, 150))
-        )
+        Boss(name="Boss %d" % i, golf_average=Decimal(random.randint(40, 150)))
         for i in range(num_bosses)
     ]
 
@@ -85,7 +91,7 @@ def runit(status, factor=1, query_runs=5):
     grunts = [
         Grunt(
             name="Grunt %d" % i,
-            savings=Decimal(random.randint(5000000, 15000000) / 100)
+            savings=Decimal(random.randint(5000000, 15000000) / 100),
         )
         for i in range(num_grunts)
     ]
@@ -115,12 +121,14 @@ def runit(status, factor=1, query_runs=5):
         # load all the Grunts, print a report with their name, stats,
         # and their bosses' stats.
         for grunt in sess.query(Grunt):
-            report.append((
-                            grunt.name,
-                            grunt.savings,
-                            grunt.employer.name,
-                            grunt.employer.golf_average
-                        ))
+            report.append(
+                (
+                    grunt.name,
+                    grunt.savings,
+                    grunt.employer.name,
+                    grunt.employer.golf_average,
+                )
+            )
 
         sess.close()  # close out the session
 
@@ -128,6 +136,7 @@ def runit(status, factor=1, query_runs=5):
 def run_with_profile(runsnake=False, dump=False):
     import cProfile
     import pstats
+
     filename = "orm2010.profile"
 
     if os.path.exists("orm2010.profile"):
@@ -136,24 +145,31 @@ def run_with_profile(runsnake=False, dump=False):
     def status(msg):
         print(msg)
 
-    cProfile.runctx('runit(status)', globals(), locals(), filename)
+    cProfile.runctx("runit(status)", globals(), locals(), filename)
     stats = pstats.Stats(filename)
 
-    counts_by_methname = dict((key[2],
-                               stats.stats[key][0]) for key in stats.stats)
+    counts_by_methname = dict(
+        (key[2], stats.stats[key][0]) for key in stats.stats
+    )
 
     print("SQLA Version: %s" % __version__)
     print("Total calls %d" % stats.total_calls)
     print("Total cpu seconds: %.2f" % stats.total_tt)
-    print('Total execute calls: %d'
-          % counts_by_methname["<method 'execute' of 'sqlite3.Cursor' "
-                               "objects>"])
-    print('Total executemany calls: %d'
-          % counts_by_methname.get("<method 'executemany' of 'sqlite3.Cursor' "
-                                   "objects>", 0))
+    print(
+        "Total execute calls: %d"
+        % counts_by_methname[
+            "<method 'execute' of 'sqlite3.Cursor' " "objects>"
+        ]
+    )
+    print(
+        "Total executemany calls: %d"
+        % counts_by_methname.get(
+            "<method 'executemany' of 'sqlite3.Cursor' " "objects>", 0
+        )
+    )
 
     if dump:
-        stats.sort_stats('time', 'calls')
+        stats.sort_stats("time", "calls")
         stats.print_stats()
 
     if runsnake:
@@ -162,6 +178,7 @@ def run_with_profile(runsnake=False, dump=False):
 
 def run_with_time():
     import time
+
     now = time.time()
 
     def status(msg):
@@ -171,16 +188,25 @@ def run_with_time():
     print("Total time: %d" % (time.time() - now))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--profile', action='store_true',
-                        help='run shorter test suite w/ cprofilng')
-    parser.add_argument('--dump', action='store_true',
-                        help='dump full call profile (implies --profile)')
-    parser.add_argument('--runsnake', action='store_true',
-                        help='invoke runsnakerun (implies --profile)')
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help="run shorter test suite w/ cprofilng",
+    )
+    parser.add_argument(
+        "--dump",
+        action="store_true",
+        help="dump full call profile (implies --profile)",
+    )
+    parser.add_argument(
+        "--runsnake",
+        action="store_true",
+        help="invoke runsnakerun (implies --profile)",
+    )
 
     args = parser.parse_args()
 

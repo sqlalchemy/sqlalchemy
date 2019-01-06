@@ -411,37 +411,44 @@ def compiles(class_, *specs):
 
     def decorate(fn):
         # get an existing @compiles handler
-        existing = class_.__dict__.get('_compiler_dispatcher', None)
+        existing = class_.__dict__.get("_compiler_dispatcher", None)
 
         # get the original handler.  All ClauseElement classes have one
         # of these, but some TypeEngine classes will not.
-        existing_dispatch = getattr(class_, '_compiler_dispatch', None)
+        existing_dispatch = getattr(class_, "_compiler_dispatch", None)
 
         if not existing:
             existing = _dispatcher()
 
             if existing_dispatch:
+
                 def _wrap_existing_dispatch(element, compiler, **kw):
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError:
                         raise exc.CompileError(
                             "%s construct has no default "
-                            "compilation handler." % type(element))
-                existing.specs['default'] = _wrap_existing_dispatch
+                            "compilation handler." % type(element)
+                        )
+
+                existing.specs["default"] = _wrap_existing_dispatch
 
             # TODO: why is the lambda needed ?
-            setattr(class_, '_compiler_dispatch',
-                    lambda *arg, **kw: existing(*arg, **kw))
-            setattr(class_, '_compiler_dispatcher', existing)
+            setattr(
+                class_,
+                "_compiler_dispatch",
+                lambda *arg, **kw: existing(*arg, **kw),
+            )
+            setattr(class_, "_compiler_dispatcher", existing)
 
         if specs:
             for s in specs:
                 existing.specs[s] = fn
 
         else:
-            existing.specs['default'] = fn
+            existing.specs["default"] = fn
         return fn
+
     return decorate
 
 
@@ -449,7 +456,7 @@ def deregister(class_):
     """Remove all custom compilers associated with a given
     :class:`.ClauseElement` type."""
 
-    if hasattr(class_, '_compiler_dispatcher'):
+    if hasattr(class_, "_compiler_dispatcher"):
         # regenerate default _compiler_dispatch
         visitors._generate_dispatch(class_)
         # remove custom directive
@@ -465,10 +472,11 @@ class _dispatcher(object):
         fn = self.specs.get(compiler.dialect.name, None)
         if not fn:
             try:
-                fn = self.specs['default']
+                fn = self.specs["default"]
             except KeyError:
                 raise exc.CompileError(
                     "%s construct has no default "
-                    "compilation handler." % type(element))
+                    "compilation handler." % type(element)
+                )
 
         return fn(element, compiler, **kw)

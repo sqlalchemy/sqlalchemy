@@ -3,21 +3,24 @@ from sqlalchemy.orm import relationship, Session, aliased, persistence
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
-from sqlalchemy.testing import eq_, is_, AssertsCompiledSQL, \
-    assert_raises_message
+from sqlalchemy.testing import (
+    eq_,
+    is_,
+    AssertsCompiledSQL,
+    assert_raises_message,
+)
 from sqlalchemy.testing import fixtures
 from sqlalchemy import inspect
 from decimal import Decimal
 
 
 class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _fixture(self):
         Base = declarative_base()
 
         class UCComparator(hybrid.Comparator):
-
             def __eq__(self, other):
                 if other is None:
                     return self.expression is None
@@ -25,7 +28,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
                     return func.upper(self.expression) == func.upper(other)
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
 
             _value = Column("value", String)
@@ -63,8 +66,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         A = self._fixture()
         sess = Session()
         self.assert_compile(
-            sess.query(A.value),
-            "SELECT a.value AS a_value FROM a"
+            sess.query(A.value), "SELECT a.value AS a_value FROM a"
         )
 
     def test_aliased_query(self):
@@ -72,7 +74,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = Session()
         self.assert_compile(
             sess.query(aliased(A).value),
-            "SELECT a_1.value AS a_1_value FROM a AS a_1"
+            "SELECT a_1.value AS a_1_value FROM a AS a_1",
         )
 
     def test_aliased_filter(self):
@@ -81,7 +83,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(aliased(A)).filter_by(value="foo"),
             "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
-            "FROM a AS a_1 WHERE upper(a_1.value) = upper(:upper_1)"
+            "FROM a AS a_1 WHERE upper(a_1.value) = upper(:upper_1)",
         )
 
     def test_docstring(self):
@@ -90,13 +92,13 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _fixture(self):
         Base = declarative_base()
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             _value = Column("value", String)
 
@@ -120,14 +122,13 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A
 
-
     def _relationship_fixture(self):
         Base = declarative_base()
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
-            b_id = Column('bid', Integer, ForeignKey('b.id'))
+            b_id = Column("bid", Integer, ForeignKey("b.id"))
             _value = Column("value", String)
 
             @hybrid.hybrid_property
@@ -147,7 +148,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
                 return func.bar(cls._value)
 
         class B(Base):
-            __tablename__ = 'b'
+            __tablename__ = "b"
             id = Column(Integer, primary_key=True)
 
             as_ = relationship("A")
@@ -159,7 +160,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         inspect(A).all_orm_descriptors.value.info["some key"] = "some value"
         eq_(
             inspect(A).all_orm_descriptors.value.info,
-            {"some key": "some value"}
+            {"some key": "some value"},
         )
 
     def test_set_get(self):
@@ -171,8 +172,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_expression(self):
         A = self._fixture()
         self.assert_compile(
-            A.value.__clause_element__(),
-            "foo(a.value) + bar(a.value)"
+            A.value.__clause_element__(), "foo(a.value) + bar(a.value)"
         )
 
     def test_any(self):
@@ -182,14 +182,14 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             sess.query(B).filter(B.as_.any(value=5)),
             "SELECT b.id AS b_id FROM b WHERE EXISTS "
             "(SELECT 1 FROM a WHERE b.id = a.bid "
-            "AND foo(a.value) + bar(a.value) = :param_1)"
+            "AND foo(a.value) + bar(a.value) = :param_1)",
         )
 
     def test_aliased_expression(self):
         A = self._fixture()
         self.assert_compile(
             aliased(A).value.__clause_element__(),
-            "foo(a_1.value) + bar(a_1.value)"
+            "foo(a_1.value) + bar(a_1.value)",
         )
 
     def test_query(self):
@@ -198,7 +198,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(A).filter_by(value="foo"),
             "SELECT a.value AS a_value, a.id AS a_id "
-            "FROM a WHERE foo(a.value) + bar(a.value) = :param_1"
+            "FROM a WHERE foo(a.value) + bar(a.value) = :param_1",
         )
 
     def test_aliased_query(self):
@@ -207,7 +207,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(aliased(A)).filter_by(value="foo"),
             "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
-            "FROM a AS a_1 WHERE foo(a_1.value) + bar(a_1.value) = :param_1"
+            "FROM a AS a_1 WHERE foo(a_1.value) + bar(a_1.value) = :param_1",
         )
 
     def test_docstring(self):
@@ -220,13 +220,13 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _fixture(self, assignable):
         Base = declarative_base()
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             _value = Column("value", String)
 
@@ -235,6 +235,7 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
                 return self._value - 5
 
             if assignable:
+
                 @value.setter
                 def value(self, v):
                     self._value = v + 5
@@ -245,18 +246,14 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
         A = self._fixture(False)
         a1 = A(_value=5)
         assert_raises_message(
-            AttributeError,
-            "can't set attribute",
-            setattr, a1, 'value', 10
+            AttributeError, "can't set attribute", setattr, a1, "value", 10
         )
 
     def test_nondeletable(self):
         A = self._fixture(False)
         a1 = A(_value=5)
         assert_raises_message(
-            AttributeError,
-            "can't delete attribute",
-            delattr, a1, 'value'
+            AttributeError, "can't delete attribute", delattr, a1, "value"
         )
 
     def test_set_get(self):
@@ -267,13 +264,13 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _fixture(self):
         Base = declarative_base()
 
         class Person(Base):
-            __tablename__ = 'person'
+            __tablename__ = "person"
             id = Column(Integer, primary_key=True)
             _name = Column(String)
 
@@ -286,8 +283,8 @@ class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
                 self._name = value.title()
 
         class OverrideSetter(Person):
-            __tablename__ = 'override_setter'
-            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            __tablename__ = "override_setter"
+            id = Column(Integer, ForeignKey("person.id"), primary_key=True)
             other = Column(String)
 
             @Person.name.setter
@@ -295,8 +292,8 @@ class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
                 self._name = value.upper()
 
         class OverrideGetter(Person):
-            __tablename__ = 'override_getter'
-            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            __tablename__ = "override_getter"
+            id = Column(Integer, ForeignKey("person.id"), primary_key=True)
             other = Column(String)
 
             @Person.name.getter
@@ -304,8 +301,8 @@ class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
                 return "Hello " + self._name
 
         class OverrideExpr(Person):
-            __tablename__ = 'override_expr'
-            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            __tablename__ = "override_expr"
+            id = Column(Integer, ForeignKey("person.id"), primary_key=True)
             other = Column(String)
 
             @Person.name.overrides.expression
@@ -317,8 +314,8 @@ class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
                 return func.concat("Hello", self.expression._name)
 
         class OverrideComparator(Person):
-            __tablename__ = 'override_comp'
-            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+            __tablename__ = "override_comp"
+            id = Column(Integer, ForeignKey("person.id"), primary_key=True)
             other = Column(String)
 
             @Person.name.overrides.comparator
@@ -326,66 +323,63 @@ class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):
                 return FooComparator(self)
 
         return (
-            Person, OverrideSetter, OverrideGetter,
-            OverrideExpr, OverrideComparator
+            Person,
+            OverrideSetter,
+            OverrideGetter,
+            OverrideExpr,
+            OverrideComparator,
         )
 
     def test_property(self):
         Person, _, _, _, _ = self._fixture()
         p1 = Person()
-        p1.name = 'mike'
-        eq_(p1._name, 'Mike')
-        eq_(p1.name, 'Mike')
+        p1.name = "mike"
+        eq_(p1._name, "Mike")
+        eq_(p1.name, "Mike")
 
     def test_override_setter(self):
         _, OverrideSetter, _, _, _ = self._fixture()
         p1 = OverrideSetter()
-        p1.name = 'mike'
-        eq_(p1._name, 'MIKE')
-        eq_(p1.name, 'MIKE')
+        p1.name = "mike"
+        eq_(p1._name, "MIKE")
+        eq_(p1.name, "MIKE")
 
     def test_override_getter(self):
         _, _, OverrideGetter, _, _ = self._fixture()
         p1 = OverrideGetter()
-        p1.name = 'mike'
-        eq_(p1._name, 'Mike')
-        eq_(p1.name, 'Hello Mike')
+        p1.name = "mike"
+        eq_(p1._name, "Mike")
+        eq_(p1.name, "Hello Mike")
 
     def test_override_expr(self):
         Person, _, _, OverrideExpr, _ = self._fixture()
 
-        self.assert_compile(
-            Person.name.__clause_element__(),
-            "person._name"
-        )
+        self.assert_compile(Person.name.__clause_element__(), "person._name")
 
         self.assert_compile(
             OverrideExpr.name.__clause_element__(),
-            "concat(:concat_1, person._name)"
+            "concat(:concat_1, person._name)",
         )
 
     def test_override_comparator(self):
         Person, _, _, _, OverrideComparator = self._fixture()
 
-        self.assert_compile(
-            Person.name.__clause_element__(),
-            "person._name"
-        )
+        self.assert_compile(Person.name.__clause_element__(), "person._name")
 
         self.assert_compile(
             OverrideComparator.name.__clause_element__(),
-            "concat(:concat_1, person._name)"
+            "concat(:concat_1, person._name)",
         )
 
 
 class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _fixture(self):
         Base = declarative_base()
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             _value = Column("value", String)
 
@@ -393,6 +387,7 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
             def value(self):
                 "This is an instance-level docstring"
                 return self._value
+
         return A
 
     def test_property(self):
@@ -416,29 +411,29 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_info_not_mirrored(self):
         A = self._fixture()
-        A._value.info['foo'] = 'bar'
-        A.value.info['bar'] = 'hoho'
+        A._value.info["foo"] = "bar"
+        A.value.info["bar"] = "hoho"
 
-        eq_(A._value.info, {'foo': 'bar'})
-        eq_(A.value.info, {'bar': 'hoho'})
+        eq_(A._value.info, {"foo": "bar"})
+        eq_(A.value.info, {"bar": "hoho"})
 
     def test_info_from_hybrid(self):
         A = self._fixture()
-        A._value.info['foo'] = 'bar'
-        A.value.info['bar'] = 'hoho'
+        A._value.info["foo"] = "bar"
+        A.value.info["bar"] = "hoho"
 
         insp = inspect(A)
-        is_(insp.all_orm_descriptors['value'].info, A.value.info)
+        is_(insp.all_orm_descriptors["value"].info, A.value.info)
 
 
 class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _fixture(self):
         Base = declarative_base()
 
         class A(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             _value = Column("value", String)
 
@@ -470,24 +465,20 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_expression(self):
         A = self._fixture()
-        self.assert_compile(
-            A.value(5),
-            "foo(a.value, :foo_1) + :foo_2"
-        )
+        self.assert_compile(A.value(5), "foo(a.value, :foo_1) + :foo_2")
 
     def test_info(self):
         A = self._fixture()
         inspect(A).all_orm_descriptors.value.info["some key"] = "some value"
         eq_(
             inspect(A).all_orm_descriptors.value.info,
-            {"some key": "some value"}
+            {"some key": "some value"},
         )
 
     def test_aliased_expression(self):
         A = self._fixture()
         self.assert_compile(
-            aliased(A).value(5),
-            "foo(a_1.value, :foo_1) + :foo_2"
+            aliased(A).value(5), "foo(a_1.value, :foo_1) + :foo_2"
         )
 
     def test_query(self):
@@ -496,7 +487,7 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(A).filter(A.value(5) == "foo"),
             "SELECT a.value AS a_value, a.id AS a_id "
-            "FROM a WHERE foo(a.value, :foo_1) + :foo_2 = :param_1"
+            "FROM a WHERE foo(a.value, :foo_1) + :foo_2 = :param_1",
         )
 
     def test_aliased_query(self):
@@ -506,7 +497,7 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(a1).filter(a1.value(5) == "foo"),
             "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
-            "FROM a AS a_1 WHERE foo(a_1.value, :foo_1) + :foo_2 = :param_1"
+            "FROM a AS a_1 WHERE foo(a_1.value, :foo_1) + :foo_2 = :param_1",
         )
 
     def test_query_col(self):
@@ -514,7 +505,7 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = Session()
         self.assert_compile(
             sess.query(A.value(5)),
-            "SELECT foo(a.value, :foo_1) + :foo_2 AS anon_1 FROM a"
+            "SELECT foo(a.value, :foo_1) + :foo_2 AS anon_1 FROM a",
         )
 
     def test_aliased_query_col(self):
@@ -522,7 +513,7 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         sess = Session()
         self.assert_compile(
             sess.query(aliased(A).value(5)),
-            "SELECT foo(a_1.value, :foo_1) + :foo_2 AS anon_1 FROM a AS a_1"
+            "SELECT foo(a_1.value, :foo_1) + :foo_2 AS anon_1 FROM a AS a_1",
         )
 
     def test_docstring(self):
@@ -539,14 +530,14 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
         class Person(Base):
-            __tablename__ = 'person'
+            __tablename__ = "person"
 
             id = Column(Integer, primary_key=True)
             first_name = Column(String(10))
@@ -554,19 +545,19 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
             @hybrid.hybrid_property
             def name(self):
-                return self.first_name + ' ' + self.last_name
+                return self.first_name + " " + self.last_name
 
             @name.setter
             def name(self, value):
-                self.first_name, self.last_name = value.split(' ', 1)
+                self.first_name, self.last_name = value.split(" ", 1)
 
             @name.expression
             def name(cls):
-                return func.concat(cls.first_name, ' ', cls.last_name)
+                return func.concat(cls.first_name, " ", cls.last_name)
 
             @name.update_expression
             def name(cls, value):
-                f, l = value.split(' ', 1)
+                f, l = value.split(" ", 1)
                 return [(cls.first_name, f), (cls.last_name, l)]
 
             @hybrid.hybrid_property
@@ -584,7 +575,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     @classmethod
     def insert_data(cls):
         s = Session()
-        jill = cls.classes.Person(id=3, first_name='jill')
+        jill = cls.classes.Person(id=3, first_name="jill")
         s.add(jill)
         s.commit()
 
@@ -595,12 +586,13 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         q = s.query(Person)
 
         bulk_ud = persistence.BulkUpdate.factory(
-            q, False, {Person.fname: "Dr."}, {})
+            q, False, {Person.fname: "Dr."}, {}
+        )
 
         self.assert_compile(
             bulk_ud,
             "UPDATE person SET first_name=:first_name",
-            params={'first_name': 'Dr.'}
+            params={"first_name": "Dr."},
         )
 
     def test_update_expr(self):
@@ -610,12 +602,13 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         q = s.query(Person)
 
         bulk_ud = persistence.BulkUpdate.factory(
-            q, False, {Person.name: "Dr. No"}, {})
+            q, False, {Person.name: "Dr. No"}, {}
+        )
 
         self.assert_compile(
             bulk_ud,
             "UPDATE person SET first_name=:first_name, last_name=:last_name",
-            params={'first_name': 'Dr.', 'last_name': 'No'}
+            params={"first_name": "Dr.", "last_name": "No"},
         )
 
     def test_evaluate_hybrid_attr_indirect(self):
@@ -625,9 +618,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.fname2: 'moonbeam'},
-            synchronize_session='evaluate')
-        eq_(jill.fname2, 'moonbeam')
+            {Person.fname2: "moonbeam"}, synchronize_session="evaluate"
+        )
+        eq_(jill.fname2, "moonbeam")
 
     def test_evaluate_hybrid_attr_plain(self):
         Person = self.classes.Person
@@ -636,9 +629,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.fname: 'moonbeam'},
-            synchronize_session='evaluate')
-        eq_(jill.fname, 'moonbeam')
+            {Person.fname: "moonbeam"}, synchronize_session="evaluate"
+        )
+        eq_(jill.fname, "moonbeam")
 
     def test_fetch_hybrid_attr_indirect(self):
         Person = self.classes.Person
@@ -647,9 +640,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.fname2: 'moonbeam'},
-            synchronize_session='fetch')
-        eq_(jill.fname2, 'moonbeam')
+            {Person.fname2: "moonbeam"}, synchronize_session="fetch"
+        )
+        eq_(jill.fname2, "moonbeam")
 
     def test_fetch_hybrid_attr_plain(self):
         Person = self.classes.Person
@@ -658,9 +651,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.fname: 'moonbeam'},
-            synchronize_session='fetch')
-        eq_(jill.fname, 'moonbeam')
+            {Person.fname: "moonbeam"}, synchronize_session="fetch"
+        )
+        eq_(jill.fname, "moonbeam")
 
     def test_evaluate_hybrid_attr_w_update_expr(self):
         Person = self.classes.Person
@@ -669,9 +662,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.name: 'moonbeam sunshine'},
-            synchronize_session='evaluate')
-        eq_(jill.name, 'moonbeam sunshine')
+            {Person.name: "moonbeam sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.name, "moonbeam sunshine")
 
     def test_fetch_hybrid_attr_w_update_expr(self):
         Person = self.classes.Person
@@ -680,9 +673,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.name: 'moonbeam sunshine'},
-            synchronize_session='fetch')
-        eq_(jill.name, 'moonbeam sunshine')
+            {Person.name: "moonbeam sunshine"}, synchronize_session="fetch"
+        )
+        eq_(jill.name, "moonbeam sunshine")
 
     def test_evaluate_hybrid_attr_indirect_w_update_expr(self):
         Person = self.classes.Person
@@ -691,9 +684,9 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         jill = s.query(Person).get(3)
 
         s.query(Person).update(
-            {Person.uname: 'moonbeam sunshine'},
-            synchronize_session='evaluate')
-        eq_(jill.uname, 'moonbeam sunshine')
+            {Person.uname: "moonbeam sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.uname, "moonbeam sunshine")
 
 
 class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -703,13 +696,14 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
     http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/
 
     """
-    __dialect__ = 'default'
+
+    __dialect__ = "default"
 
     @classmethod
     def setup_class(cls):
         from sqlalchemy import literal
 
-        symbols = ('usd', 'gbp', 'cad', 'eur', 'aud')
+        symbols = ("usd", "gbp", "cad", "eur", "aud")
         currency_lookup = dict(
             ((currency_from, currency_to), Decimal(str(rate)))
             for currency_to, values in zip(
@@ -720,7 +714,8 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
                     (1.01152, 1.6084, 1, 1.39569, 1.04148),
                     (0.724743, 1.1524, 0.716489, 1, 0.746213),
                     (0.971228, 1.54434, 0.960166, 1.34009, 1),
-                ])
+                ],
+            )
             for currency_from, rate in zip(symbols, values)
         )
 
@@ -731,16 +726,14 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
 
             def __add__(self, other):
                 return Amount(
-                    self.amount +
-                    other.as_currency(self.currency).amount,
-                    self.currency
+                    self.amount + other.as_currency(self.currency).amount,
+                    self.currency,
                 )
 
             def __sub__(self, other):
                 return Amount(
-                    self.amount -
-                    other.as_currency(self.currency).amount,
-                    self.currency
+                    self.amount - other.as_currency(self.currency).amount,
+                    self.currency,
                 )
 
             def __lt__(self, other):
@@ -754,9 +747,9 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
 
             def as_currency(self, other_currency):
                 return Amount(
-                    currency_lookup[(self.currency, other_currency)] *
-                    self.amount,
-                    other_currency
+                    currency_lookup[(self.currency, other_currency)]
+                    * self.amount,
+                    other_currency,
                 )
 
             def __clause_element__(self):
@@ -776,10 +769,10 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
         Base = declarative_base()
 
         class BankAccount(Base):
-            __tablename__ = 'bank_account'
+            __tablename__ = "bank_account"
             id = Column(Integer, primary_key=True)
 
-            _balance = Column('balance', Numeric)
+            _balance = Column("balance", Numeric)
 
             @hybrid.hybrid_property
             def balance(self):
@@ -805,7 +798,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
         account = BankAccount(balance=Amount(4000, "usd"))
 
         # 3c. print balance in gbp
-        eq_(account.balance.as_currency("gbp").amount, Decimal('2515.58'))
+        eq_(account.balance.as_currency("gbp").amount, Decimal("2515.58"))
 
     def test_instance_three(self):
         BankAccount, Amount = self.BankAccount, self.Amount
@@ -819,22 +812,23 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
         account = BankAccount(balance=Amount(4000, "usd"))
         eq_(
             account.balance + Amount(500, "cad") - Amount(50, "eur"),
-            Amount(Decimal("4425.316"), "usd")
+            Amount(Decimal("4425.316"), "usd"),
         )
 
     def test_query_one(self):
         BankAccount, Amount = self.BankAccount, self.Amount
         session = Session()
 
-        query = session.query(BankAccount).\
-            filter(BankAccount.balance == Amount(10000, "cad"))
+        query = session.query(BankAccount).filter(
+            BankAccount.balance == Amount(10000, "cad")
+        )
 
         self.assert_compile(
             query,
             "SELECT bank_account.balance AS bank_account_balance, "
             "bank_account.id AS bank_account_id FROM bank_account "
             "WHERE bank_account.balance = :balance_1",
-            checkparams={'balance_1': Decimal('9886.110000')}
+            checkparams={"balance_1": Decimal("9886.110000")},
         )
 
     def test_query_two(self):
@@ -842,11 +836,15 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
         session = Session()
 
         # alternatively we can do the calc on the DB side.
-        query = session.query(BankAccount).\
-            filter(
-                BankAccount.balance.as_currency("cad") > Amount(9999, "cad")).\
-            filter(
-                BankAccount.balance.as_currency("cad") < Amount(10001, "cad"))
+        query = (
+            session.query(BankAccount)
+            .filter(
+                BankAccount.balance.as_currency("cad") > Amount(9999, "cad")
+            )
+            .filter(
+                BankAccount.balance.as_currency("cad") < Amount(10001, "cad")
+            )
+        )
         self.assert_compile(
             query,
             "SELECT bank_account.balance AS bank_account_balance, "
@@ -855,20 +853,21 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE :balance_1 * bank_account.balance > :param_1 "
             "AND :balance_2 * bank_account.balance < :param_2",
             checkparams={
-                'balance_1': Decimal('1.01152'),
-                'balance_2': Decimal('1.01152'),
-                'param_1': Decimal('9999'),
-                'param_2': Decimal('10001')}
+                "balance_1": Decimal("1.01152"),
+                "balance_2": Decimal("1.01152"),
+                "param_1": Decimal("9999"),
+                "param_2": Decimal("10001"),
+            },
         )
 
     def test_query_three(self):
         BankAccount = self.BankAccount
         session = Session()
 
-        query = session.query(BankAccount).\
-            filter(
-                BankAccount.balance.as_currency("cad") >
-                BankAccount.balance.as_currency("eur"))
+        query = session.query(BankAccount).filter(
+            BankAccount.balance.as_currency("cad")
+            > BankAccount.balance.as_currency("eur")
+        )
         self.assert_compile(
             query,
             "SELECT bank_account.balance AS bank_account_balance, "
@@ -876,9 +875,10 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE :balance_1 * bank_account.balance > "
             ":param_1 * :balance_2 * bank_account.balance",
             checkparams={
-                'balance_1': Decimal('1.01152'),
-                'balance_2': Decimal('0.724743'),
-                'param_1': Decimal('1.39569')}
+                "balance_1": Decimal("1.01152"),
+                "balance_2": Decimal("0.724743"),
+                "param_1": Decimal("1.39569"),
+            },
         )
 
     def test_query_four(self):
@@ -891,7 +891,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
             query,
             "SELECT :balance_1 * bank_account.balance AS anon_1 "
             "FROM bank_account",
-            checkparams={'balance_1': Decimal('1.01152')}
+            checkparams={"balance_1": Decimal("1.01152")},
         )
 
     def test_query_five(self):
@@ -904,11 +904,12 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
             query,
             "SELECT avg(:balance_1 * bank_account.balance) AS avg_1 "
             "FROM bank_account",
-            checkparams={'balance_1': Decimal('0.724743')}
+            checkparams={"balance_1": Decimal("0.724743")},
         )
 
     def test_docstring(self):
         BankAccount = self.BankAccount
         eq_(
             BankAccount.balance.__doc__,
-            "Return an Amount view of the current balance.")
+            "Return an Amount view of the current balance.",
+        )

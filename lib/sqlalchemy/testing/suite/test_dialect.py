@@ -15,16 +15,19 @@ class ExceptionTest(fixtures.TablesTest):
     specific exceptions from real round trips, we need to be conservative.
 
     """
-    run_deletes = 'each'
+
+    run_deletes = "each"
 
     __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('manual_pk', metadata,
-              Column('id', Integer, primary_key=True, autoincrement=False),
-              Column('data', String(50))
-              )
+        Table(
+            "manual_pk",
+            metadata,
+            Column("id", Integer, primary_key=True, autoincrement=False),
+            Column("data", String(50)),
+        )
 
     @requirements.duplicate_key_raises_integrity_error
     def test_integrity_error(self):
@@ -33,15 +36,14 @@ class ExceptionTest(fixtures.TablesTest):
 
             trans = conn.begin()
             conn.execute(
-                self.tables.manual_pk.insert(),
-                {'id': 1, 'data': 'd1'}
+                self.tables.manual_pk.insert(), {"id": 1, "data": "d1"}
             )
 
             assert_raises(
                 exc.IntegrityError,
                 conn.execute,
                 self.tables.manual_pk.insert(),
-                {'id': 1, 'data': 'd1'}
+                {"id": 1, "data": "d1"},
             )
 
             trans.rollback()
@@ -49,38 +51,39 @@ class ExceptionTest(fixtures.TablesTest):
 
 class AutocommitTest(fixtures.TablesTest):
 
-    run_deletes = 'each'
+    run_deletes = "each"
 
-    __requires__ = 'autocommit',
+    __requires__ = ("autocommit",)
 
     __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('some_table', metadata,
-              Column('id', Integer, primary_key=True, autoincrement=False),
-              Column('data', String(50)),
-              test_needs_acid=True
-              )
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True, autoincrement=False),
+            Column("data", String(50)),
+            test_needs_acid=True,
+        )
 
     def _test_conn_autocommits(self, conn, autocommit):
         trans = conn.begin()
         conn.execute(
-            self.tables.some_table.insert(),
-            {"id": 1, "data": "some data"}
+            self.tables.some_table.insert(), {"id": 1, "data": "some data"}
         )
         trans.rollback()
 
         eq_(
             conn.scalar(select([self.tables.some_table.c.id])),
-            1 if autocommit else None
+            1 if autocommit else None,
         )
 
         conn.execute(self.tables.some_table.delete())
 
     def test_autocommit_on(self):
         conn = config.db.connect()
-        c2 = conn.execution_options(isolation_level='AUTOCOMMIT')
+        c2 = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(c2, True)
         conn.invalidate()
         self._test_conn_autocommits(conn, False)
@@ -98,7 +101,7 @@ class EscapingTest(fixtures.TestBase):
 
         """
         m = self.metadata
-        t = Table('t', m, Column('data', String(50)))
+        t = Table("t", m, Column("data", String(50)))
         t.create(config.db)
         with config.db.begin() as conn:
             conn.execute(t.insert(), dict(data="some % value"))
@@ -107,14 +110,17 @@ class EscapingTest(fixtures.TestBase):
             eq_(
                 conn.scalar(
                     select([t.c.data]).where(
-                        t.c.data == literal_column("'some % value'"))
+                        t.c.data == literal_column("'some % value'")
+                    )
                 ),
-                "some % value"
+                "some % value",
             )
 
             eq_(
                 conn.scalar(
                     select([t.c.data]).where(
-                        t.c.data == literal_column("'some %% other value'"))
-                ), "some %% other value"
+                        t.c.data == literal_column("'some %% other value'")
+                    )
+                ),
+                "some %% other value",
             )

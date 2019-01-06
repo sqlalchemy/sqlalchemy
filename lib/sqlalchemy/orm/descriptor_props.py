@@ -37,9 +37,11 @@ class DescriptorProperty(MapperProperty):
             def __init__(self, key):
                 self.key = key
 
-            if hasattr(prop, 'get_history'):
-                def get_history(self, state, dict_,
-                                passive=attributes.PASSIVE_OFF):
+            if hasattr(prop, "get_history"):
+
+                def get_history(
+                    self, state, dict_, passive=attributes.PASSIVE_OFF
+                ):
                     return prop.get_history(state, dict_, passive)
 
         if self.descriptor is None:
@@ -48,6 +50,7 @@ class DescriptorProperty(MapperProperty):
                 self.descriptor = desc
 
         if self.descriptor is None:
+
             def fset(obj, value):
                 setattr(obj, self.name, value)
 
@@ -57,21 +60,16 @@ class DescriptorProperty(MapperProperty):
             def fget(obj):
                 return getattr(obj, self.name)
 
-            self.descriptor = property(
-                fget=fget,
-                fset=fset,
-                fdel=fdel,
-            )
+            self.descriptor = property(fget=fget, fset=fset, fdel=fdel)
 
-        proxy_attr = attributes.create_proxied_attribute(
-            self.descriptor)(
-                self.parent.class_,
-                self.key,
-                self.descriptor,
-                lambda: self._comparator_factory(mapper),
-                doc=self.doc,
-                original_property=self
-            )
+        proxy_attr = attributes.create_proxied_attribute(self.descriptor)(
+            self.parent.class_,
+            self.key,
+            self.descriptor,
+            lambda: self._comparator_factory(mapper),
+            doc=self.doc,
+            original_property=self,
+        )
         proxy_attr.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
@@ -149,13 +147,14 @@ class CompositeProperty(DescriptorProperty):
 
         self.attrs = attrs
         self.composite_class = class_
-        self.active_history = kwargs.get('active_history', False)
-        self.deferred = kwargs.get('deferred', False)
-        self.group = kwargs.get('group', None)
-        self.comparator_factory = kwargs.pop('comparator_factory',
-                                             self.__class__.Comparator)
-        if 'info' in kwargs:
-            self.info = kwargs.pop('info')
+        self.active_history = kwargs.get("active_history", False)
+        self.deferred = kwargs.get("deferred", False)
+        self.group = kwargs.get("group", None)
+        self.comparator_factory = kwargs.pop(
+            "comparator_factory", self.__class__.Comparator
+        )
+        if "info" in kwargs:
+            self.info = kwargs.pop("info")
 
         util.set_creation_order(self)
         self._create_descriptor()
@@ -186,8 +185,7 @@ class CompositeProperty(DescriptorProperty):
                 # attributes, retrieve their values.  This
                 # ensures they all load.
                 values = [
-                    getattr(instance, key)
-                    for key in self._attribute_keys
+                    getattr(instance, key) for key in self._attribute_keys
                 ]
 
                 # current expected behavior here is that the composite is
@@ -196,8 +194,7 @@ class CompositeProperty(DescriptorProperty):
                 # if the composite were created unconditionally,
                 # but that would be a behavioral change.
                 if self.key not in dict_ and (
-                    state.key is not None or
-                    not _none_set.issuperset(values)
+                    state.key is not None or not _none_set.issuperset(values)
                 ):
                     dict_[self.key] = self.composite_class(*values)
                     state.manager.dispatch.refresh(state, None, [self.key])
@@ -217,8 +214,8 @@ class CompositeProperty(DescriptorProperty):
                     setattr(instance, key, None)
             else:
                 for key, value in zip(
-                        self._attribute_keys,
-                        value.__composite_values__()):
+                    self._attribute_keys, value.__composite_values__()
+                ):
                     setattr(instance, key, value)
 
         def fdel(instance):
@@ -234,18 +231,14 @@ class CompositeProperty(DescriptorProperty):
 
     @util.memoized_property
     def _comparable_elements(self):
-        return [
-            getattr(self.parent.class_, prop.key)
-            for prop in self.props
-        ]
+        return [getattr(self.parent.class_, prop.key) for prop in self.props]
 
     @util.memoized_property
     def props(self):
         props = []
         for attr in self.attrs:
             if isinstance(attr, str):
-                prop = self.parent.get_property(
-                    attr, _configure_mappers=False)
+                prop = self.parent.get_property(attr, _configure_mappers=False)
             elif isinstance(attr, schema.Column):
                 prop = self.parent._columntoproperty[attr]
             elif isinstance(attr, attributes.InstrumentedAttribute):
@@ -254,7 +247,8 @@ class CompositeProperty(DescriptorProperty):
                 raise sa_exc.ArgumentError(
                     "Composite expects Column objects or mapped "
                     "attributes/attribute names as arguments, got: %r"
-                    % (attr,))
+                    % (attr,)
+                )
             props.append(prop)
         return props
 
@@ -271,9 +265,7 @@ class CompositeProperty(DescriptorProperty):
             prop.active_history = self.active_history
             if self.deferred:
                 prop.deferred = self.deferred
-                prop.strategy_key = (
-                    ("deferred", True),
-                    ("instrument", True))
+                prop.strategy_key = (("deferred", True), ("instrument", True))
             prop.group = self.group
 
     def _setup_event_handlers(self):
@@ -299,8 +291,7 @@ class CompositeProperty(DescriptorProperty):
                     return
 
             dict_[self.key] = self.composite_class(
-                *[state.dict[key] for key in
-                  self._attribute_keys]
+                *[state.dict[key] for key in self._attribute_keys]
             )
 
         def expire_handler(state, keys):
@@ -317,24 +308,27 @@ class CompositeProperty(DescriptorProperty):
 
             state.dict.pop(self.key, None)
 
-        event.listen(self.parent, 'after_insert',
-                     insert_update_handler, raw=True)
-        event.listen(self.parent, 'after_update',
-                     insert_update_handler, raw=True)
-        event.listen(self.parent, 'load',
-                     load_handler, raw=True, propagate=True)
-        event.listen(self.parent, 'refresh',
-                     refresh_handler, raw=True, propagate=True)
-        event.listen(self.parent, 'expire',
-                     expire_handler, raw=True, propagate=True)
+        event.listen(
+            self.parent, "after_insert", insert_update_handler, raw=True
+        )
+        event.listen(
+            self.parent, "after_update", insert_update_handler, raw=True
+        )
+        event.listen(
+            self.parent, "load", load_handler, raw=True, propagate=True
+        )
+        event.listen(
+            self.parent, "refresh", refresh_handler, raw=True, propagate=True
+        )
+        event.listen(
+            self.parent, "expire", expire_handler, raw=True, propagate=True
+        )
 
         # TODO: need a deserialize hook here
 
     @util.memoized_property
     def _attribute_keys(self):
-        return [
-            prop.key for prop in self.props
-        ]
+        return [prop.key for prop in self.props]
 
     def get_history(self, state, dict_, passive=attributes.PASSIVE_OFF):
         """Provided for userland code that uses attributes.get_history()."""
@@ -363,12 +357,10 @@ class CompositeProperty(DescriptorProperty):
             return attributes.History(
                 [self.composite_class(*added)],
                 (),
-                [self.composite_class(*deleted)]
+                [self.composite_class(*deleted)],
             )
         else:
-            return attributes.History(
-                (), [self.composite_class(*added)], ()
-            )
+            return attributes.History((), [self.composite_class(*added)], ())
 
     def _comparator_factory(self, mapper):
         return self.comparator_factory(self, mapper)
@@ -377,12 +369,15 @@ class CompositeProperty(DescriptorProperty):
         def __init__(self, property, expr):
             self.property = property
             super(CompositeProperty.CompositeBundle, self).__init__(
-                property.key, *expr)
+                property.key, *expr
+            )
 
         def create_row_processor(self, query, procs, labels):
             def proc(row):
                 return self.property.composite_class(
-                    *[proc(row) for proc in procs])
+                    *[proc(row) for proc in procs]
+                )
+
             return proc
 
     class Comparator(PropComparator):
@@ -412,11 +407,13 @@ class CompositeProperty(DescriptorProperty):
 
         def __clause_element__(self):
             return expression.ClauseList(
-                group=False, *self._comparable_elements)
+                group=False, *self._comparable_elements
+            )
 
         def _query_clause_element(self):
             return CompositeProperty.CompositeBundle(
-                self.prop, self.__clause_element__())
+                self.prop, self.__clause_element__()
+            )
 
         def _bulk_update_tuples(self, value):
             if value is None:
@@ -425,22 +422,18 @@ class CompositeProperty(DescriptorProperty):
                 values = value.__composite_values__()
             else:
                 raise sa_exc.ArgumentError(
-                    "Can't UPDATE composite attribute %s to %r" %
-                    (self.prop, value))
+                    "Can't UPDATE composite attribute %s to %r"
+                    % (self.prop, value)
+                )
 
-            return zip(
-                self._comparable_elements,
-                values
-            )
+            return zip(self._comparable_elements, values)
 
         @util.memoized_property
         def _comparable_elements(self):
             if self._adapt_to_entity:
                 return [
-                    getattr(
-                        self._adapt_to_entity.entity,
-                        prop.key
-                    ) for prop in self.prop._comparable_elements
+                    getattr(self._adapt_to_entity.entity, prop.key)
+                    for prop in self.prop._comparable_elements
                 ]
             else:
                 return self.prop._comparable_elements
@@ -451,8 +444,7 @@ class CompositeProperty(DescriptorProperty):
             else:
                 values = other.__composite_values__()
             comparisons = [
-                a == b
-                for a, b in zip(self.prop._comparable_elements, values)
+                a == b for a, b in zip(self.prop._comparable_elements, values)
             ]
             if self._adapt_to_entity:
                 comparisons = [self.adapter(x) for x in comparisons]
@@ -495,14 +487,16 @@ class ConcreteInheritedProperty(DescriptorProperty):
 
     def __init__(self):
         super(ConcreteInheritedProperty, self).__init__()
+
         def warn():
-            raise AttributeError("Concrete %s does not implement "
-                                 "attribute %r at the instance level.  Add "
-                                 "this property explicitly to %s." %
-                                 (self.parent, self.key, self.parent))
+            raise AttributeError(
+                "Concrete %s does not implement "
+                "attribute %r at the instance level.  Add "
+                "this property explicitly to %s."
+                % (self.parent, self.key, self.parent)
+            )
 
         class NoninheritedConcreteProp(object):
-
             def __set__(s, obj, value):
                 warn()
 
@@ -513,15 +507,21 @@ class ConcreteInheritedProperty(DescriptorProperty):
                 if obj is None:
                     return self.descriptor
                 warn()
+
         self.descriptor = NoninheritedConcreteProp()
 
 
 @util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class SynonymProperty(DescriptorProperty):
-
-    def __init__(self, name, map_column=None,
-                 descriptor=None, comparator_factory=None,
-                 doc=None, info=None):
+    def __init__(
+        self,
+        name,
+        map_column=None,
+        descriptor=None,
+        comparator_factory=None,
+        doc=None,
+        info=None,
+    ):
         """Denote an attribute name as a synonym to a mapped property,
         in that the attribute will mirror the value and expression behavior
         of another attribute.
@@ -639,15 +639,13 @@ class SynonymProperty(DescriptorProperty):
     @util.memoized_property
     def _proxied_property(self):
         attr = getattr(self.parent.class_, self.name)
-        if not hasattr(attr, 'property') or not \
-                isinstance(attr.property, MapperProperty):
+        if not hasattr(attr, "property") or not isinstance(
+            attr.property, MapperProperty
+        ):
             raise sa_exc.InvalidRequestError(
                 """synonym() attribute "%s.%s" only supports """
-                """ORM mapped attributes, got %r""" % (
-                    self.parent.class_.__name__,
-                    self.name,
-                    attr
-                )
+                """ORM mapped attributes, got %r"""
+                % (self.parent.class_.__name__, self.name, attr)
             )
         return attr.property
 
@@ -667,23 +665,23 @@ class SynonymProperty(DescriptorProperty):
                 raise sa_exc.ArgumentError(
                     "Can't compile synonym '%s': no column on table "
                     "'%s' named '%s'"
-                    % (self.name, parent.mapped_table.description, self.key))
-            elif parent.mapped_table.c[self.key] in \
-                    parent._columntoproperty and \
-                    parent._columntoproperty[
-                parent.mapped_table.c[self.key]
-            ].key == self.name:
+                    % (self.name, parent.mapped_table.description, self.key)
+                )
+            elif (
+                parent.mapped_table.c[self.key] in parent._columntoproperty
+                and parent._columntoproperty[
+                    parent.mapped_table.c[self.key]
+                ].key
+                == self.name
+            ):
                 raise sa_exc.ArgumentError(
                     "Can't call map_column=True for synonym %r=%r, "
                     "a ColumnProperty already exists keyed to the name "
-                    "%r for column %r" %
-                    (self.key, self.name, self.name, self.key)
+                    "%r for column %r"
+                    % (self.key, self.name, self.name, self.key)
                 )
             p = properties.ColumnProperty(parent.mapped_table.c[self.key])
-            parent._configure_property(
-                self.name, p,
-                init=init,
-                setparent=True)
+            parent._configure_property(self.name, p, init=init, setparent=True)
             p._mapped_by_synonym = self.key
 
         self.parent = parent
@@ -694,7 +692,8 @@ class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
     def __init__(
-            self, comparator_factory, descriptor=None, doc=None, info=None):
+        self, comparator_factory, descriptor=None, doc=None, info=None
+    ):
         """Provides a method of applying a :class:`.PropComparator`
         to any Python descriptor attribute.
 

@@ -13,8 +13,25 @@
 from .. import util
 
 from operator import (
-    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg,
-    getitem, lshift, rshift, contains
+    and_,
+    or_,
+    inv,
+    add,
+    mul,
+    sub,
+    mod,
+    truediv,
+    lt,
+    le,
+    ne,
+    gt,
+    ge,
+    eq,
+    neg,
+    getitem,
+    lshift,
+    rshift,
+    contains,
 )
 
 if util.py2k:
@@ -37,6 +54,7 @@ class Operators(object):
     :class:`.ColumnOperators`.
 
     """
+
     __slots__ = ()
 
     def __and__(self, other):
@@ -105,8 +123,8 @@ class Operators(object):
         return self.operate(inv)
 
     def op(
-            self, opstring, precedence=0, is_comparison=False,
-            return_type=None):
+        self, opstring, precedence=0, is_comparison=False, return_type=None
+    ):
         """produce a generic operator function.
 
         e.g.::
@@ -168,6 +186,7 @@ class Operators(object):
 
         def against(other):
             return operator(self, other)
+
         return against
 
     def bool_op(self, opstring, precedence=0):
@@ -247,12 +266,18 @@ class custom_op(object):
         :meth:`.Operators.bool_op`
 
     """
-    __name__ = 'custom_op'
+
+    __name__ = "custom_op"
 
     def __init__(
-            self, opstring, precedence=0, is_comparison=False,
-            return_type=None, natural_self_precedent=False,
-            eager_grouping=False):
+        self,
+        opstring,
+        precedence=0,
+        is_comparison=False,
+        return_type=None,
+        natural_self_precedent=False,
+        eager_grouping=False,
+    ):
         self.opstring = opstring
         self.precedence = precedence
         self.is_comparison = is_comparison
@@ -263,8 +288,7 @@ class custom_op(object):
         )
 
     def __eq__(self, other):
-        return isinstance(other, custom_op) and \
-            other.opstring == self.opstring
+        return isinstance(other, custom_op) and other.opstring == self.opstring
 
     def __hash__(self):
         return id(self)
@@ -1226,20 +1250,18 @@ def _escaped_like_impl(fn, other, escape, autoescape):
     if autoescape:
         if autoescape is not True:
             util.warn(
-                "The autoescape parameter is now a simple boolean True/False")
+                "The autoescape parameter is now a simple boolean True/False"
+            )
         if escape is None:
-            escape = '/'
+            escape = "/"
 
         if not isinstance(other, util.compat.string_types):
             raise TypeError("String value expected when autoescape=True")
 
-        if escape not in ('%', '_'):
+        if escape not in ("%", "_"):
             other = other.replace(escape, escape + escape)
 
-        other = (
-            other.replace('%', escape + '%').
-            replace('_', escape + '_')
-        )
+        other = other.replace("%", escape + "%").replace("_", escape + "_")
 
     return fn(other, escape=escape)
 
@@ -1318,13 +1340,24 @@ def json_path_getitem_op(a, b):
 
 _commutative = {eq, ne, add, mul}
 
-_comparison = {eq, ne, lt, gt, ge, le, between_op, like_op, is_,
-               isnot, is_distinct_from, isnot_distinct_from}
+_comparison = {
+    eq,
+    ne,
+    lt,
+    gt,
+    ge,
+    le,
+    between_op,
+    like_op,
+    is_,
+    isnot,
+    is_distinct_from,
+    isnot_distinct_from,
+}
 
 
 def is_comparison(op):
-    return op in _comparison or \
-        isinstance(op, custom_op) and op.is_comparison
+    return op in _comparison or isinstance(op, custom_op) and op.is_comparison
 
 
 def is_commutative(op):
@@ -1332,13 +1365,16 @@ def is_commutative(op):
 
 
 def is_ordering_modifier(op):
-    return op in (asc_op, desc_op,
-                  nullsfirst_op, nullslast_op)
+    return op in (asc_op, desc_op, nullsfirst_op, nullslast_op)
 
 
 def is_natural_self_precedent(op):
-    return op in _natural_self_precedent or \
-        isinstance(op, custom_op) and op.natural_self_precedent
+    return (
+        op in _natural_self_precedent
+        or isinstance(op, custom_op)
+        and op.natural_self_precedent
+    )
+
 
 _booleans = (inv, istrue, isfalse, and_, or_)
 
@@ -1346,12 +1382,8 @@ _booleans = (inv, istrue, isfalse, and_, or_)
 def is_boolean(op):
     return is_comparison(op) or op in _booleans
 
-_mirror = {
-    gt: lt,
-    ge: le,
-    lt: gt,
-    le: ge
-}
+
+_mirror = {gt: lt, ge: le, lt: gt, le: ge}
 
 
 def mirror(op):
@@ -1365,17 +1397,18 @@ def mirror(op):
 
 _associative = _commutative.union([concat_op, and_, or_]).difference([eq, ne])
 
-_natural_self_precedent = _associative.union([
-    getitem, json_getitem_op, json_path_getitem_op])
+_natural_self_precedent = _associative.union(
+    [getitem, json_getitem_op, json_path_getitem_op]
+)
 """Operators where if we have (a op b) op c, we don't want to
 parenthesize (a op b).
 
 """
 
 
-_asbool = util.symbol('_asbool', canonical=-10)
-_smallest = util.symbol('_smallest', canonical=-100)
-_largest = util.symbol('_largest', canonical=100)
+_asbool = util.symbol("_asbool", canonical=-10)
+_smallest = util.symbol("_smallest", canonical=-100)
+_largest = util.symbol("_largest", canonical=100)
 
 _PRECEDENCE = {
     from_: 15,
@@ -1384,7 +1417,6 @@ _PRECEDENCE = {
     getitem: 15,
     json_getitem_op: 15,
     json_path_getitem_op: 15,
-
     mul: 8,
     truediv: 8,
     div: 8,
@@ -1392,22 +1424,17 @@ _PRECEDENCE = {
     neg: 8,
     add: 7,
     sub: 7,
-
     concat_op: 6,
-
     match_op: 5,
     notmatch_op: 5,
-
     ilike_op: 5,
     notilike_op: 5,
     like_op: 5,
     notlike_op: 5,
     in_op: 5,
     notin_op: 5,
-
     is_: 5,
     isnot: 5,
-
     eq: 5,
     ne: 5,
     is_distinct_from: 5,
@@ -1418,7 +1445,6 @@ _PRECEDENCE = {
     lt: 5,
     ge: 5,
     le: 5,
-
     between_op: 5,
     notbetween_op: 5,
     distinct_op: 5,
@@ -1428,17 +1454,14 @@ _PRECEDENCE = {
     and_: 3,
     or_: 2,
     comma_op: -1,
-
     desc_op: 3,
     asc_op: 3,
     collate: 4,
-
     as_: -1,
     exists: 0,
-
     _asbool: -10,
     _smallest: _smallest,
-    _largest: _largest
+    _largest: _largest,
 }
 
 
@@ -1446,7 +1469,6 @@ def is_precedent(operator, against):
     if operator is against and is_natural_self_precedent(operator):
         return False
     else:
-        return (_PRECEDENCE.get(operator,
-                                getattr(operator, 'precedence', _smallest)) <=
-                _PRECEDENCE.get(against,
-                                getattr(against, 'precedence', _largest)))
+        return _PRECEDENCE.get(
+            operator, getattr(operator, "precedence", _smallest)
+        ) <= _PRECEDENCE.get(against, getattr(against, "precedence", _largest))

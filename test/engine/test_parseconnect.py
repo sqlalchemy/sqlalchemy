@@ -16,45 +16,53 @@ dialect = None
 class ParseConnectTest(fixtures.TestBase):
     def test_rfc1738(self):
         for text in (
-            'dbtype://username:password@hostspec:110//usr/db_file.db',
-            'dbtype://username:password@hostspec/database',
-            'dbtype+apitype://username:password@hostspec/database',
-            'dbtype://username:password@hostspec',
-            'dbtype://username:password@/database',
-            'dbtype://username@hostspec',
-            'dbtype://username:password@127.0.0.1:1521',
-            'dbtype://hostspec/database',
-            'dbtype://hostspec',
-            'dbtype://hostspec/?arg1=val1&arg2=val2',
-            'dbtype+apitype:///database',
-            'dbtype:///:memory:',
-            'dbtype:///foo/bar/im/a/file',
-            'dbtype:///E:/work/src/LEM/db/hello.db',
-            'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala',
-            'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala&hoho=bat',
-            'dbtype://',
-            'dbtype://username:password@/database',
-            'dbtype:////usr/local/_xtest@example.com/members.db',
-            'dbtype://username:apples%2Foranges@hostspec/database',
-            'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]'
-            '/database?foo=bar',
-            'dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80'
-            '/database?foo=bar'
+            "dbtype://username:password@hostspec:110//usr/db_file.db",
+            "dbtype://username:password@hostspec/database",
+            "dbtype+apitype://username:password@hostspec/database",
+            "dbtype://username:password@hostspec",
+            "dbtype://username:password@/database",
+            "dbtype://username@hostspec",
+            "dbtype://username:password@127.0.0.1:1521",
+            "dbtype://hostspec/database",
+            "dbtype://hostspec",
+            "dbtype://hostspec/?arg1=val1&arg2=val2",
+            "dbtype+apitype:///database",
+            "dbtype:///:memory:",
+            "dbtype:///foo/bar/im/a/file",
+            "dbtype:///E:/work/src/LEM/db/hello.db",
+            "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala",
+            "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala&hoho=bat",
+            "dbtype://",
+            "dbtype://username:password@/database",
+            "dbtype:////usr/local/_xtest@example.com/members.db",
+            "dbtype://username:apples%2Foranges@hostspec/database",
+            "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]"
+            "/database?foo=bar",
+            "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80"
+            "/database?foo=bar",
         ):
             u = url.make_url(text)
 
-            assert u.drivername in ('dbtype', 'dbtype+apitype')
-            assert u.username in ('username', None)
-            assert u.password in ('password', 'apples/oranges', None)
+            assert u.drivername in ("dbtype", "dbtype+apitype")
+            assert u.username in ("username", None)
+            assert u.password in ("password", "apples/oranges", None)
             assert u.host in (
-                'hostspec', '127.0.0.1',
-                '2001:da8:2004:1000:202:116:160:90', '', None), u.host
+                "hostspec",
+                "127.0.0.1",
+                "2001:da8:2004:1000:202:116:160:90",
+                "",
+                None,
+            ), u.host
             assert u.database in (
-                'database',
-                '/usr/local/_xtest@example.com/members.db',
-                '/usr/db_file.db', ':memory:', '',
-                'foo/bar/im/a/file',
-                'E:/work/src/LEM/db/hello.db', None), u.database
+                "database",
+                "/usr/local/_xtest@example.com/members.db",
+                "/usr/db_file.db",
+                ":memory:",
+                "",
+                "foo/bar/im/a/file",
+                "E:/work/src/LEM/db/hello.db",
+                None,
+            ), u.database
             eq_(str(u), text)
 
     def test_rfc1738_password(self):
@@ -63,25 +71,28 @@ class ParseConnectTest(fixtures.TestBase):
         eq_(str(u), "dbtype://user:pass word + other%3Awords@host/dbname")
 
         u = url.make_url(
-            'dbtype://username:apples%2Foranges@hostspec/database')
+            "dbtype://username:apples%2Foranges@hostspec/database"
+        )
         eq_(u.password, "apples/oranges")
-        eq_(str(u), 'dbtype://username:apples%2Foranges@hostspec/database')
+        eq_(str(u), "dbtype://username:apples%2Foranges@hostspec/database")
 
         u = url.make_url(
-            'dbtype://username:apples%40oranges%40%40@hostspec/database')
+            "dbtype://username:apples%40oranges%40%40@hostspec/database"
+        )
         eq_(u.password, "apples@oranges@@")
         eq_(
             str(u),
-            'dbtype://username:apples%40oranges%40%40@hostspec/database')
+            "dbtype://username:apples%40oranges%40%40@hostspec/database",
+        )
 
-        u = url.make_url('dbtype://username%40:@hostspec/database')
-        eq_(u.password, '')
+        u = url.make_url("dbtype://username%40:@hostspec/database")
+        eq_(u.password, "")
         eq_(u.username, "username@")
-        eq_(str(u), 'dbtype://username%40:@hostspec/database')
+        eq_(str(u), "dbtype://username%40:@hostspec/database")
 
-        u = url.make_url('dbtype://username:pass%2Fword@hostspec/database')
-        eq_(u.password, 'pass/word')
-        eq_(str(u), 'dbtype://username:pass%2Fword@hostspec/database')
+        u = url.make_url("dbtype://username:pass%2Fword@hostspec/database")
+        eq_(u.password, "pass/word")
+        eq_(str(u), "dbtype://username:pass%2Fword@hostspec/database")
 
     def test_password_custom_obj(self):
         class SecurePassword(str):
@@ -92,11 +103,7 @@ class ParseConnectTest(fixtures.TestBase):
                 return self.value
 
         sp = SecurePassword("secured_password")
-        u = url.URL(
-            "dbtype",
-            username="x", password=sp,
-            host="localhost"
-        )
+        u = url.URL("dbtype", username="x", password=sp, host="localhost")
 
         eq_(u.password, "secured_password")
         eq_(str(u), "dbtype://x:secured_password@localhost")
@@ -117,18 +124,18 @@ class ParseConnectTest(fixtures.TestBase):
         eq_(str(u), "dbtype://x@localhost")
 
     def test_query_string(self):
-        u = url.make_url(
-            "dialect://user:pass@host/db?arg1=param1&arg2=param2")
+        u = url.make_url("dialect://user:pass@host/db?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
         eq_(str(u), "dialect://user:pass@host/db?arg1=param1&arg2=param2")
 
         u = url.make_url(
-            "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3")
+            "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3"
+        )
         eq_(u.query, {"arg1": "param1", "arg2": ["param2", "param3"]})
         eq_(
             str(u),
-            "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3")
-
+            "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
+        )
 
 
 class DialectImportTest(fixtures.TestBase):
@@ -136,14 +143,18 @@ class DialectImportTest(fixtures.TestBase):
         # the globals() somehow makes it for the exec() + nose3.
 
         for name in (
-                'mysql',
-                'firebird',
-                'postgresql',
-                'sqlite',
-                'oracle',
-                'mssql'):
-            exec('from sqlalchemy.dialects import %s\ndialect = '
-                 '%s.dialect()' % (name, name), globals())
+            "mysql",
+            "firebird",
+            "postgresql",
+            "sqlite",
+            "oracle",
+            "mssql",
+        ):
+            exec(
+                "from sqlalchemy.dialects import %s\ndialect = "
+                "%s.dialect()" % (name, name),
+                globals(),
+            )
             eq_(dialect.name, name)
 
 
@@ -152,54 +163,59 @@ class CreateEngineTest(fixtures.TestBase):
     propagated properly"""
 
     def test_connect_query(self):
-        dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
-        e = \
-            create_engine('postgresql://scott:tiger@somehost/test?foobe'
-                          'r=12&lala=18&fooz=somevalue', module=dbapi,
-                          _initialize=False)
+        dbapi = MockDBAPI(foober="12", lala="18", fooz="somevalue")
+        e = create_engine(
+            "postgresql://scott:tiger@somehost/test?foobe"
+            "r=12&lala=18&fooz=somevalue",
+            module=dbapi,
+            _initialize=False,
+        )
         e.connect()
 
     def test_kwargs(self):
-        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this': 'dict'},
-                          fooz='somevalue')
-        e = \
-            create_engine(
-                'postgresql://scott:tiger@somehost/test?fooz='
-                'somevalue', connect_args={
-                    'foober': 12,
-                    'lala': 18, 'hoho': {'this': 'dict'}},
-                module=dbapi, _initialize=False)
+        dbapi = MockDBAPI(
+            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
+        )
+        e = create_engine(
+            "postgresql://scott:tiger@somehost/test?fooz=" "somevalue",
+            connect_args={"foober": 12, "lala": 18, "hoho": {"this": "dict"}},
+            module=dbapi,
+            _initialize=False,
+        )
         e.connect()
 
     def test_engine_from_config(self):
         dbapi = mock_dbapi
 
         config = {
-            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test'
-            '?fooz=somevalue',
-            'sqlalchemy.pool_recycle': '50',
-            'sqlalchemy.echo': 'true'}
+            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test"
+            "?fooz=somevalue",
+            "sqlalchemy.pool_recycle": "50",
+            "sqlalchemy.echo": "true",
+        }
 
         e = engine_from_config(config, module=dbapi, _initialize=False)
         assert e.pool._recycle == 50
-        assert e.url \
-            == url.make_url('postgresql://scott:tiger@somehost/test?foo'
-                            'z=somevalue')
+        assert e.url == url.make_url(
+            "postgresql://scott:tiger@somehost/test?foo" "z=somevalue"
+        )
         assert e.echo is True
 
     def test_pool_threadlocal_from_config(self):
         dbapi = mock_dbapi
 
         config = {
-            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
-            'sqlalchemy.pool_threadlocal': "false"}
+            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test",
+            "sqlalchemy.pool_threadlocal": "false",
+        }
 
         e = engine_from_config(config, module=dbapi, _initialize=False)
         eq_(e.pool._use_threadlocal, False)
 
         config = {
-            'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
-            'sqlalchemy.pool_threadlocal': "true"}
+            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test",
+            "sqlalchemy.pool_threadlocal": "true",
+        }
 
         e = engine_from_config(config, module=dbapi, _initialize=False)
         eq_(e.pool._use_threadlocal, True)
@@ -210,23 +226,25 @@ class CreateEngineTest(fixtures.TestBase):
         for value, expected in [
             ("rollback", pool.reset_rollback),
             ("commit", pool.reset_commit),
-            ("none", pool.reset_none)
+            ("none", pool.reset_none),
         ]:
             config = {
-                'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
-                'sqlalchemy.pool_reset_on_return': value}
+                "sqlalchemy.url": "postgresql://scott:tiger@somehost/test",
+                "sqlalchemy.pool_reset_on_return": value,
+            }
 
             e = engine_from_config(config, module=dbapi, _initialize=False)
             eq_(e.pool._reset_on_return, expected)
 
     def test_engine_from_config_custom(self):
         from sqlalchemy import util
+
         tokens = __name__.split(".")
 
         class MyDialect(MockDialect):
             engine_config_types = {
                 "foobar": int,
-                "bathoho": util.bool_or_str('force')
+                "bathoho": util.bool_or_str("force"),
             }
 
             def __init__(self, foobar=None, bathoho=None, **kw):
@@ -236,108 +254,143 @@ class CreateEngineTest(fixtures.TestBase):
         global dialect
         dialect = MyDialect
         registry.register(
-            "mockdialect.barb",
-            ".".join(tokens[0:-1]), tokens[-1])
+            "mockdialect.barb", ".".join(tokens[0:-1]), tokens[-1]
+        )
 
         config = {
             "sqlalchemy.url": "mockdialect+barb://",
             "sqlalchemy.foobar": "5",
-            "sqlalchemy.bathoho": "false"
+            "sqlalchemy.bathoho": "false",
         }
         e = engine_from_config(config, _initialize=False)
         eq_(e.dialect.foobar, 5)
         eq_(e.dialect.bathoho, False)
 
     def test_custom(self):
-        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this': 'dict'},
-                          fooz='somevalue')
+        dbapi = MockDBAPI(
+            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
+        )
 
         def connect():
-            return dbapi.connect(foober=12, lala=18, fooz='somevalue',
-                                 hoho={'this': 'dict'})
+            return dbapi.connect(
+                foober=12, lala=18, fooz="somevalue", hoho={"this": "dict"}
+            )
 
         # start the postgresql dialect, but put our mock DBAPI as the
         # module instead of psycopg
 
-        e = create_engine('postgresql://', creator=connect,
-                          module=dbapi, _initialize=False)
+        e = create_engine(
+            "postgresql://", creator=connect, module=dbapi, _initialize=False
+        )
         e.connect()
 
     def test_recycle(self):
-        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this': 'dict'},
-                          fooz='somevalue')
-        e = create_engine('postgresql://', pool_recycle=472,
-                          module=dbapi, _initialize=False)
+        dbapi = MockDBAPI(
+            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
+        )
+        e = create_engine(
+            "postgresql://", pool_recycle=472, module=dbapi, _initialize=False
+        )
         assert e.pool._recycle == 472
 
     def test_reset_on_return(self):
-        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this': 'dict'},
-                          fooz='somevalue')
+        dbapi = MockDBAPI(
+            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
+        )
         for (value, expected) in [
-            ('rollback', pool.reset_rollback),
-            ('commit', pool.reset_commit),
+            ("rollback", pool.reset_rollback),
+            ("commit", pool.reset_commit),
             (None, pool.reset_none),
             (True, pool.reset_rollback),
             (False, pool.reset_none),
         ]:
             e = create_engine(
-                'postgresql://', pool_reset_on_return=value,
-                module=dbapi, _initialize=False)
+                "postgresql://",
+                pool_reset_on_return=value,
+                module=dbapi,
+                _initialize=False,
+            )
             assert e.pool._reset_on_return is expected
 
         assert_raises(
             exc.ArgumentError,
-            create_engine, "postgresql://",
-            pool_reset_on_return='hi', module=dbapi,
-            _initialize=False
+            create_engine,
+            "postgresql://",
+            pool_reset_on_return="hi",
+            module=dbapi,
+            _initialize=False,
         )
 
     def test_bad_args(self):
-        assert_raises(exc.ArgumentError, create_engine, 'foobar://',
-                      module=mock_dbapi)
-
-        # bad arg
-
-        assert_raises(TypeError, create_engine, 'postgresql://',
-                      use_ansi=True, module=mock_dbapi)
+        assert_raises(
+            exc.ArgumentError, create_engine, "foobar://", module=mock_dbapi
+        )
 
         # bad arg
 
         assert_raises(
             TypeError,
             create_engine,
-            'oracle://',
+            "postgresql://",
+            use_ansi=True,
+            module=mock_dbapi,
+        )
+
+        # bad arg
+
+        assert_raises(
+            TypeError,
+            create_engine,
+            "oracle://",
             lala=5,
             use_ansi=True,
             module=mock_dbapi,
         )
-        assert_raises(TypeError, create_engine, 'postgresql://',
-                      lala=5, module=mock_dbapi)
-        assert_raises(TypeError, create_engine, 'sqlite://', lala=5,
-                      module=mock_sqlite_dbapi)
-        assert_raises(TypeError, create_engine, 'mysql+mysqldb://',
-                      use_unicode=True, module=mock_dbapi)
+        assert_raises(
+            TypeError,
+            create_engine,
+            "postgresql://",
+            lala=5,
+            module=mock_dbapi,
+        )
+        assert_raises(
+            TypeError,
+            create_engine,
+            "sqlite://",
+            lala=5,
+            module=mock_sqlite_dbapi,
+        )
+        assert_raises(
+            TypeError,
+            create_engine,
+            "mysql+mysqldb://",
+            use_unicode=True,
+            module=mock_dbapi,
+        )
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
 
-        e = create_engine('mysql://scott:tiger@localhost/test',
-                          module=mock_dbapi, _initialize=False)
-        u = url.make_url('mysql://scott:tiger@localhost/test')
+        e = create_engine(
+            "mysql://scott:tiger@localhost/test",
+            module=mock_dbapi,
+            _initialize=False,
+        )
+        u = url.make_url("mysql://scott:tiger@localhost/test")
         e2 = create_engine(u, module=mock_dbapi, _initialize=False)
-        assert e.url.drivername == e2.url.drivername == 'mysql'
-        assert e.url.username == e2.url.username == 'scott'
+        assert e.url.drivername == e2.url.drivername == "mysql"
+        assert e.url.username == e2.url.username == "scott"
         assert e2.url is u
-        assert str(u) == 'mysql://scott:tiger@localhost/test'
-        assert repr(u) == 'mysql://scott:***@localhost/test'
-        assert repr(e) == 'Engine(mysql://scott:***@localhost/test)'
-        assert repr(e2) == 'Engine(mysql://scott:***@localhost/test)'
+        assert str(u) == "mysql://scott:tiger@localhost/test"
+        assert repr(u) == "mysql://scott:***@localhost/test"
+        assert repr(e) == "Engine(mysql://scott:***@localhost/test)"
+        assert repr(e2) == "Engine(mysql://scott:***@localhost/test)"
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""
 
         e = create_engine(
-            'postgresql://',
+            "postgresql://",
             creator=None,
             pool_recycle=50,
             echo_pool=None,
@@ -349,7 +402,7 @@ class CreateEngineTest(fixtures.TestBase):
         # these args work for QueuePool
 
         e = create_engine(
-            'postgresql://',
+            "postgresql://",
             max_overflow=8,
             pool_timeout=60,
             poolclass=tsa.pool.QueuePool,
@@ -362,7 +415,7 @@ class CreateEngineTest(fixtures.TestBase):
         assert_raises(
             TypeError,
             create_engine,
-            'sqlite://',
+            "sqlite://",
             max_overflow=8,
             pool_timeout=60,
             poolclass=tsa.pool.SingletonThreadPool,
@@ -390,7 +443,8 @@ class TestRegNewDBAPI(fixtures.TestBase):
         global dialect
         dialect = MockDialect
         registry.register(
-            "mockdialect.foob", ".".join(tokens[0:-1]), tokens[-1])
+            "mockdialect.foob", ".".join(tokens[0:-1]), tokens[-1]
+        )
 
         e = create_engine("mockdialect+foob://")
         assert isinstance(e.dialect, MockDialect)
@@ -414,6 +468,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
         registry.register("wrapperdialect", __name__, "WrapperFactory")
 
         from sqlalchemy.dialects import sqlite
+
         e = create_engine("wrapperdialect://")
 
         eq_(e.dialect.name, "sqlite")
@@ -423,8 +478,8 @@ class TestRegNewDBAPI(fixtures.TestBase):
             WrapperFactory.mock_calls,
             [
                 call.get_dialect_cls(url.make_url("sqlite://")),
-                call.engine_created(e)
-            ]
+                call.engine_created(e),
+            ],
         )
 
     @testing.requires.sqlite
@@ -436,11 +491,15 @@ class TestRegNewDBAPI(fixtures.TestBase):
         def side_effect(url, kw):
             eq_(
                 url.query,
-                {"plugin": "engineplugin", "myplugin_arg": "bat", "foo": "bar"}
+                {
+                    "plugin": "engineplugin",
+                    "myplugin_arg": "bat",
+                    "foo": "bar",
+                },
             )
             eq_(kw, {"logging_name": "foob"})
-            kw['logging_name'] = 'bar'
-            url.query.pop('myplugin_arg', None)
+            kw["logging_name"] = "bar"
+            url.query.pop("myplugin_arg", None)
             return MyEnginePlugin
 
         MyEnginePlugin = Mock(side_effect=side_effect)
@@ -449,15 +508,13 @@ class TestRegNewDBAPI(fixtures.TestBase):
 
         e = create_engine(
             "sqlite:///?plugin=engineplugin&foo=bar&myplugin_arg=bat",
-            logging_name='foob')
+            logging_name="foob",
+        )
         eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
         # plugin args are removed from URL.
-        eq_(
-            e.url.query,
-            {"foo": "bar"}
-        )
+        eq_(e.url.query, {"foo": "bar"})
         assert isinstance(e.dialect, sqlite.dialect)
 
         eq_(
@@ -466,15 +523,12 @@ class TestRegNewDBAPI(fixtures.TestBase):
                 call(url.make_url("sqlite:///?foo=bar"), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
-                call.engine_created(e)
-            ]
+                call.engine_created(e),
+            ],
         )
 
         # url was modified in place by MyEnginePlugin
-        eq_(
-            str(MyEnginePlugin.mock_calls[0][1][0]),
-            "sqlite:///?foo=bar"
-        )
+        eq_(str(MyEnginePlugin.mock_calls[0][1][0]), "sqlite:///?foo=bar")
 
     @testing.requires.sqlite
     def test_plugin_multiple_url_registration(self):
@@ -485,12 +539,12 @@ class TestRegNewDBAPI(fixtures.TestBase):
 
         def side_effect_1(url, kw):
             eq_(kw, {"logging_name": "foob"})
-            kw['logging_name'] = 'bar'
-            url.query.pop('myplugin1_arg', None)
+            kw["logging_name"] = "bar"
+            url.query.pop("myplugin1_arg", None)
             return MyEnginePlugin1
 
         def side_effect_2(url, kw):
-            url.query.pop('myplugin2_arg', None)
+            url.query.pop("myplugin2_arg", None)
             return MyEnginePlugin2
 
         MyEnginePlugin1 = Mock(side_effect=side_effect_1)
@@ -502,15 +556,13 @@ class TestRegNewDBAPI(fixtures.TestBase):
         e = create_engine(
             "sqlite:///?plugin=engineplugin1&foo=bar&myplugin1_arg=bat"
             "&plugin=engineplugin2&myplugin2_arg=hoho",
-            logging_name='foob')
+            logging_name="foob",
+        )
         eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
         # plugin args are removed from URL.
-        eq_(
-            e.url.query,
-            {"foo": "bar"}
-        )
+        eq_(e.url.query, {"foo": "bar"})
         assert isinstance(e.dialect, sqlite.dialect)
 
         eq_(
@@ -519,8 +571,8 @@ class TestRegNewDBAPI(fixtures.TestBase):
                 call(url.make_url("sqlite:///?foo=bar"), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
-                call.engine_created(e)
-            ]
+                call.engine_created(e),
+            ],
         )
 
         eq_(
@@ -529,8 +581,8 @@ class TestRegNewDBAPI(fixtures.TestBase):
                 call(url.make_url("sqlite:///?foo=bar"), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
-                call.engine_created(e)
-            ]
+                call.engine_created(e),
+            ],
         )
 
     @testing.requires.sqlite
@@ -542,11 +594,14 @@ class TestRegNewDBAPI(fixtures.TestBase):
         def side_effect(url, kw):
             eq_(
                 kw,
-                {"logging_name": "foob", 'plugins': ['engineplugin'],
-                 'myplugin_arg': 'bat'}
+                {
+                    "logging_name": "foob",
+                    "plugins": ["engineplugin"],
+                    "myplugin_arg": "bat",
+                },
             )
-            kw['logging_name'] = 'bar'
-            kw.pop('myplugin_arg', None)
+            kw["logging_name"] = "bar"
+            kw.pop("myplugin_arg", None)
             return MyEnginePlugin
 
         MyEnginePlugin = Mock(side_effect=side_effect)
@@ -555,7 +610,10 @@ class TestRegNewDBAPI(fixtures.TestBase):
 
         e = create_engine(
             "sqlite:///?foo=bar",
-            logging_name='foob', plugins=["engineplugin"], myplugin_arg="bat")
+            logging_name="foob",
+            plugins=["engineplugin"],
+            myplugin_arg="bat",
+        )
         eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
@@ -567,8 +625,8 @@ class TestRegNewDBAPI(fixtures.TestBase):
                 call(url.make_url("sqlite:///?foo=bar"), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
-                call.engine_created(e)
-            ]
+                call.engine_created(e),
+            ],
         )
 
 
@@ -579,22 +637,20 @@ class MockDialect(DefaultDialect):
 
 
 def MockDBAPI(**assert_kwargs):
-    connection = Mock(get_server_version_info=Mock(return_value='5.0'))
+    connection = Mock(get_server_version_info=Mock(return_value="5.0"))
 
     def connect(*args, **kwargs):
         for k in assert_kwargs:
-            assert k in kwargs, 'key %s not present in dictionary' % k
-            eq_(
-                kwargs[k], assert_kwargs[k]
-            )
+            assert k in kwargs, "key %s not present in dictionary" % k
+            eq_(kwargs[k], assert_kwargs[k])
         return connection
 
     return MagicMock(
-        sqlite_version_info=(99, 9, 9,),
-        version_info=(99, 9, 9,),
-        sqlite_version='99.9.9',
-        paramstyle='named',
-        connect=Mock(side_effect=connect)
+        sqlite_version_info=(99, 9, 9),
+        version_info=(99, 9, 9),
+        sqlite_version="99.9.9",
+        paramstyle="named",
+        connect=Mock(side_effect=connect),
     )
 
 

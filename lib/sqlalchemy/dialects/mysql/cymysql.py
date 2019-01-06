@@ -18,7 +18,7 @@
 import re
 
 from .mysqldb import MySQLDialect_mysqldb
-from .base import (BIT, MySQLDialect)
+from .base import BIT, MySQLDialect
 from ... import util
 
 
@@ -34,27 +34,23 @@ class _cymysqlBIT(BIT):
                     v = v << 8 | i
                 return v
             return value
+
         return process
 
 
 class MySQLDialect_cymysql(MySQLDialect_mysqldb):
-    driver = 'cymysql'
+    driver = "cymysql"
 
     description_encoding = None
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_unicode_statements = True
 
-    colspecs = util.update_copy(
-        MySQLDialect.colspecs,
-        {
-            BIT: _cymysqlBIT,
-        }
-    )
+    colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _cymysqlBIT})
 
     @classmethod
     def dbapi(cls):
-        return __import__('cymysql')
+        return __import__("cymysql")
 
     def _detect_charset(self, connection):
         return connection.connection.charset
@@ -64,13 +60,19 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.OperationalError):
-            return self._extract_error_code(e) in \
-                (2006, 2013, 2014, 2045, 2055)
+            return self._extract_error_code(e) in (
+                2006,
+                2013,
+                2014,
+                2045,
+                2055,
+            )
         elif isinstance(e, self.dbapi.InterfaceError):
             # if underlying connection is closed,
             # this is the error you get
             return True
         else:
             return False
+
 
 dialect = MySQLDialect_cymysql

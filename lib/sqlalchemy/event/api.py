@@ -14,8 +14,8 @@ from .. import util, exc
 from .base import _registrars
 from .registry import _EventKey
 
-CANCEL = util.symbol('CANCEL')
-NO_RETVAL = util.symbol('NO_RETVAL')
+CANCEL = util.symbol("CANCEL")
+NO_RETVAL = util.symbol("NO_RETVAL")
 
 
 def _event_key(target, identifier, fn):
@@ -24,8 +24,9 @@ def _event_key(target, identifier, fn):
         if tgt is not None:
             return _EventKey(target, identifier, fn, tgt)
     else:
-        raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
-                                      (identifier, target))
+        raise exc.InvalidRequestError(
+            "No such event '%s' for target '%s'" % (identifier, target)
+        )
 
 
 def listen(target, identifier, fn, *args, **kw):
@@ -120,9 +121,11 @@ def listens_for(target, identifier, *args, **kw):
         :func:`.listen` - general description of event listening
 
     """
+
     def decorate(fn):
         listen(target, identifier, fn, *args, **kw)
         return fn
+
     return decorate
 
 

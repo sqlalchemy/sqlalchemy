@@ -7,20 +7,74 @@
 
 from . import base, pyodbc, adodbapi, pymssql, zxjdbc, mxodbc  # noqa
 
-from .base import \
-    INTEGER, BIGINT, SMALLINT, TINYINT, VARCHAR, NVARCHAR, CHAR, \
-    NCHAR, TEXT, NTEXT, DECIMAL, NUMERIC, FLOAT, DATETIME,\
-    DATETIME2, DATETIMEOFFSET, DATE, TIME, SMALLDATETIME, \
-    BINARY, VARBINARY, BIT, REAL, IMAGE, TIMESTAMP, ROWVERSION, \
-    MONEY, SMALLMONEY, UNIQUEIDENTIFIER, SQL_VARIANT, XML
+from .base import (
+    INTEGER,
+    BIGINT,
+    SMALLINT,
+    TINYINT,
+    VARCHAR,
+    NVARCHAR,
+    CHAR,
+    NCHAR,
+    TEXT,
+    NTEXT,
+    DECIMAL,
+    NUMERIC,
+    FLOAT,
+    DATETIME,
+    DATETIME2,
+    DATETIMEOFFSET,
+    DATE,
+    TIME,
+    SMALLDATETIME,
+    BINARY,
+    VARBINARY,
+    BIT,
+    REAL,
+    IMAGE,
+    TIMESTAMP,
+    ROWVERSION,
+    MONEY,
+    SMALLMONEY,
+    UNIQUEIDENTIFIER,
+    SQL_VARIANT,
+    XML,
+)
 
 base.dialect = dialect = pyodbc.dialect
 
 
 __all__ = (
-    'INTEGER', 'BIGINT', 'SMALLINT', 'TINYINT', 'VARCHAR', 'NVARCHAR', 'CHAR',
-    'NCHAR', 'TEXT', 'NTEXT', 'DECIMAL', 'NUMERIC', 'FLOAT', 'DATETIME',
-    'DATETIME2', 'DATETIMEOFFSET', 'DATE', 'TIME', 'SMALLDATETIME',
-    'BINARY', 'VARBINARY', 'BIT', 'REAL', 'IMAGE', 'TIMESTAMP', 'ROWVERSION',
-    'MONEY', 'SMALLMONEY', 'UNIQUEIDENTIFIER', 'SQL_VARIANT', 'XML', 'dialect'
+    "INTEGER",
+    "BIGINT",
+    "SMALLINT",
+    "TINYINT",
+    "VARCHAR",
+    "NVARCHAR",
+    "CHAR",
+    "NCHAR",
+    "TEXT",
+    "NTEXT",
+    "DECIMAL",
+    "NUMERIC",
+    "FLOAT",
+    "DATETIME",
+    "DATETIME2",
+    "DATETIMEOFFSET",
+    "DATE",
+    "TIME",
+    "SMALLDATETIME",
+    "BINARY",
+    "VARBINARY",
+    "BIT",
+    "REAL",
+    "IMAGE",
+    "TIMESTAMP",
+    "ROWVERSION",
+    "MONEY",
+    "SMALLMONEY",
+    "UNIQUEIDENTIFIER",
+    "SQL_VARIANT",
+    "XML",
+    "dialect",
 )

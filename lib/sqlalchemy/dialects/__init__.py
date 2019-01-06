@@ -6,18 +6,19 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 __all__ = (
-    'firebird',
-    'mssql',
-    'mysql',
-    'oracle',
-    'postgresql',
-    'sqlite',
-    'sybase',
+    "firebird",
+    "mssql",
+    "mysql",
+    "oracle",
+    "postgresql",
+    "sqlite",
+    "sybase",
 )
 
 from .. import util
 
-_translates = {'postgres': 'postgresql'}
+_translates = {"postgres": "postgresql"}
+
 
 def _auto_fn(name):
     """default dialect importer.
@@ -40,7 +41,7 @@ def _auto_fn(name):
         )
         dialect = translated
     try:
-        module = __import__('sqlalchemy.dialects.%s' % (dialect, )).dialects
+        module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
     except ImportError:
         return None
 
@@ -50,6 +51,7 @@ def _auto_fn(name):
         return lambda: module.dialect
     else:
         return None
+
 
 registry = util.PluginLoader("sqlalchemy.dialects", auto_fn=_auto_fn)
 

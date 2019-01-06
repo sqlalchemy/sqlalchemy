@@ -13,8 +13,15 @@ between instances based on join conditions.
 from . import exc, util as orm_util, attributes
 
 
-def populate(source, source_mapper, dest, dest_mapper,
-             synchronize_pairs, uowcommit, flag_cascaded_pks):
+def populate(
+    source,
+    source_mapper,
+    dest,
+    dest_mapper,
+    synchronize_pairs,
+    uowcommit,
+    flag_cascaded_pks,
+):
     source_dict = source.dict
     dest_dict = dest.dict
 
@@ -22,8 +29,9 @@ def populate(source, source_mapper, dest, dest_mapper,
         try:
             # inline of source_mapper._get_state_attr_by_column
             prop = source_mapper._columntoproperty[l]
-            value = source.manager[prop.key].impl.get(source, source_dict,
-                                                      attributes.PASSIVE_OFF)
+            value = source.manager[prop.key].impl.get(
+                source, source_dict, attributes.PASSIVE_OFF
+            )
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, dest_mapper, r)
 
@@ -39,14 +47,16 @@ def populate(source, source_mapper, dest, dest_mapper,
         # how often this logic is invoked for memory/performance
         # reasons, since we only need this info for a primary key
         # destination.
-        if flag_cascaded_pks and l.primary_key and \
-                r.primary_key and \
-                r.references(l):
+        if (
+            flag_cascaded_pks
+            and l.primary_key
+            and r.primary_key
+            and r.references(l)
+        ):
             uowcommit.attributes[("pk_cascaded", dest, r)] = True
 
 
-def bulk_populate_inherit_keys(
-        source_dict, source_mapper, synchronize_pairs):
+def bulk_populate_inherit_keys(source_dict, source_mapper, synchronize_pairs):
     # a simplified version of populate() used by bulk insert mode
     for l, r in synchronize_pairs:
         try:
@@ -64,14 +74,15 @@ def bulk_populate_inherit_keys(
 
 def clear(dest, dest_mapper, synchronize_pairs):
     for l, r in synchronize_pairs:
-        if r.primary_key and \
-            dest_mapper._get_state_attr_by_column(
-                dest, dest.dict, r) not in orm_util._none_set:
+        if (
+            r.primary_key
+            and dest_mapper._get_state_attr_by_column(dest, dest.dict, r)
+            not in orm_util._none_set
+        ):
 
             raise AssertionError(
                 "Dependency rule tried to blank-out primary key "
-                "column '%s' on instance '%s'" %
-                (r, orm_util.state_str(dest))
+                "column '%s' on instance '%s'" % (r, orm_util.state_str(dest))
             )
         try:
             dest_mapper._set_state_attr_by_column(dest, dest.dict, r, None)
@@ -83,9 +94,11 @@ def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
             oldvalue = source_mapper._get_committed_attr_by_column(
-                source.obj(), l)
+                source.obj(), l
+            )
             value = source_mapper._get_state_attr_by_column(
-                source, source.dict, l, passive=attributes.PASSIVE_OFF)
+                source, source.dict, l, passive=attributes.PASSIVE_OFF
+            )
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
         dest[r.key] = value
@@ -96,7 +109,8 @@ def populate_dict(source, source_mapper, dict_, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
             value = source_mapper._get_state_attr_by_column(
-                source, source.dict, l, passive=attributes.PASSIVE_OFF)
+                source, source.dict, l, passive=attributes.PASSIVE_OFF
+            )
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
 
@@ -114,27 +128,31 @@ def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
         history = uowcommit.get_attribute_history(
-            source, prop.key, attributes.PASSIVE_NO_INITIALIZE)
+            source, prop.key, attributes.PASSIVE_NO_INITIALIZE
+        )
         if bool(history.deleted):
             return True
     else:
         return False
 
 
-def _raise_col_to_prop(isdest, source_mapper, source_column,
-                       dest_mapper, dest_column):
+def _raise_col_to_prop(
+    isdest, source_mapper, source_column, dest_mapper, dest_column
+):
     if isdest:
         raise exc.UnmappedColumnError(
             "Can't execute sync rule for "
             "destination column '%s'; mapper '%s' does not map "
             "this column.  Try using an explicit `foreign_keys` "
             "collection which does not include this column (or use "
-            "a viewonly=True relation)." % (dest_column, dest_mapper))
+            "a viewonly=True relation)." % (dest_column, dest_mapper)
+        )
     else:
         raise exc.UnmappedColumnError(
             "Can't execute sync rule for "
             "source column '%s'; mapper '%s' does not map this "
             "column.  Try using an explicit `foreign_keys` "
             "collection which does not include destination column "
-            "'%s' (or use a viewonly=True relation)." %
-            (source_column, source_mapper, dest_column))
+            "'%s' (or use a viewonly=True relation)."
+            % (source_column, source_mapper, dest_column)
+        )

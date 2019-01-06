@@ -600,39 +600,53 @@ class ConnectionEvents(event.Events):
 
     @classmethod
     def _listen(cls, event_key, retval=False):
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, \
-            event_key._listen_fn
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key._listen_fn,
+        )
 
         target._has_events = True
 
         if not retval:
-            if identifier == 'before_execute':
+            if identifier == "before_execute":
                 orig_fn = fn
 
-                def wrap_before_execute(conn, clauseelement,
-                                        multiparams, params):
+                def wrap_before_execute(
+                    conn, clauseelement, multiparams, params
+                ):
                     orig_fn(conn, clauseelement, multiparams, params)
                     return clauseelement, multiparams, params
+
                 fn = wrap_before_execute
-            elif identifier == 'before_cursor_execute':
+            elif identifier == "before_cursor_execute":
                 orig_fn = fn
 
-                def wrap_before_cursor_execute(conn, cursor, statement,
-                                               parameters, context,
-                                               executemany):
-                    orig_fn(conn, cursor, statement,
-                            parameters, context, executemany)
+                def wrap_before_cursor_execute(
+                    conn, cursor, statement, parameters, context, executemany
+                ):
+                    orig_fn(
+                        conn,
+                        cursor,
+                        statement,
+                        parameters,
+                        context,
+                        executemany,
+                    )
                     return statement, parameters
+
                 fn = wrap_before_cursor_execute
-        elif retval and \
-            identifier not in ('before_execute',
-                               'before_cursor_execute', 'handle_error'):
+        elif retval and identifier not in (
+            "before_execute",
+            "before_cursor_execute",
+            "handle_error",
+        ):
             raise exc.ArgumentError(
                 "Only the 'before_execute', "
                 "'before_cursor_execute' and 'handle_error' engine "
                 "event listeners accept the 'retval=True' "
-                "argument.")
+                "argument."
+            )
         event_key.with_wrapper(fn).base_listen()
 
     def before_execute(self, conn, clauseelement, multiparams, params):
@@ -677,8 +691,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def before_cursor_execute(self, conn, cursor, statement,
-                              parameters, context, executemany):
+    def before_cursor_execute(
+        self, conn, cursor, statement, parameters, context, executemany
+    ):
         """Intercept low-level cursor execute() events before execution,
         receiving the string SQL statement and DBAPI-specific parameter list to
         be invoked against a cursor.
@@ -718,8 +733,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def after_cursor_execute(self, conn, cursor, statement,
-                             parameters, context, executemany):
+    def after_cursor_execute(
+        self, conn, cursor, statement, parameters, context, executemany
+    ):
         """Intercept low-level cursor execute() events after execution.
 
         :param conn: :class:`.Connection` object
@@ -737,8 +753,9 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def dbapi_error(self, conn, cursor, statement, parameters,
-                    context, exception):
+    def dbapi_error(
+        self, conn, cursor, statement, parameters, context, exception
+    ):
         """Intercept a raw DBAPI error.
 
         This event is called with the DBAPI exception instance
@@ -1039,6 +1056,7 @@ class ConnectionEvents(event.Events):
         .. versionadded:: 1.0.5
 
         """
+
     def begin(self, conn):
         """Intercept begin() events.
 
@@ -1173,8 +1191,11 @@ class DialectEvents(event.Events):
 
     @classmethod
     def _listen(cls, event_key, retval=False):
-        target, identifier, fn = \
-            event_key.dispatch_target, event_key.identifier, event_key.fn
+        target, identifier, fn = (
+            event_key.dispatch_target,
+            event_key.identifier,
+            event_key.fn,
+        )
 
         target._has_events = True
         event_key.base_listen()
@@ -1235,8 +1256,9 @@ class DialectEvents(event.Events):
 
         """
 
-    def do_setinputsizes(self,
-                         inputsizes, cursor, statement, parameters, context):
+    def do_setinputsizes(
+        self, inputsizes, cursor, statement, parameters, context
+    ):
         """Receive the setinputsizes dictionary for possible modification.
 
         This event is emitted in the case where the dialect makes use of the

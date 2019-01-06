@@ -12,44 +12,58 @@ from ...sql import operators
 from ...sql import elements
 from ... import util
 
-__all__ = ('JSON', 'JSONB')
+__all__ = ("JSON", "JSONB")
 
 idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]
 
 ASTEXT = operators.custom_op(
-    "->>", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "->>",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 JSONPATH_ASTEXT = operators.custom_op(
-    "#>>", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "#>>",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 
 HAS_KEY = operators.custom_op(
-    "?", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "?",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 HAS_ALL = operators.custom_op(
-    "?&", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "?&",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 HAS_ANY = operators.custom_op(
-    "?|", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "?|",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 CONTAINS = operators.custom_op(
-    "@>", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "@>",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 CONTAINED_BY = operators.custom_op(
-    "<@", precedence=idx_precedence, natural_self_precedent=True,
-    eager_grouping=True
+    "<@",
+    precedence=idx_precedence,
+    natural_self_precedent=True,
+    eager_grouping=True,
 )
 
 
@@ -59,7 +73,7 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
 
         def process(value):
             assert isinstance(value, util.collections_abc.Sequence)
-            tokens = [util.text_type(elem)for elem in value]
+            tokens = [util.text_type(elem) for elem in value]
             value = "{%s}" % (", ".join(tokens))
             if super_proc:
                 value = super_proc(value)
@@ -72,13 +86,14 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
 
         def process(value):
             assert isinstance(value, util.collections_abc.Sequence)
-            tokens = [util.text_type(elem)for elem in value]
+            tokens = [util.text_type(elem) for elem in value]
             value = "{%s}" % (", ".join(tokens))
             if super_proc:
                 value = super_proc(value)
             return value
 
         return process
+
 
 colspecs[sqltypes.JSON.JSONPathType] = JSONPathType
 
@@ -203,16 +218,19 @@ class JSON(sqltypes.JSON):
             if isinstance(self.expr.right.type, sqltypes.JSON.JSONPathType):
                 return self.expr.left.operate(
                     JSONPATH_ASTEXT,
-                    self.expr.right, result_type=self.type.astext_type)
+                    self.expr.right,
+                    result_type=self.type.astext_type,
+                )
             else:
                 return self.expr.left.operate(
-                    ASTEXT, self.expr.right, result_type=self.type.astext_type)
+                    ASTEXT, self.expr.right, result_type=self.type.astext_type
+                )
 
     comparator_factory = Comparator
 
 
 colspecs[sqltypes.JSON] = JSON
-ischema_names['json'] = JSON
+ischema_names["json"] = JSON
 
 
 class JSONB(JSON):
@@ -259,7 +277,7 @@ class JSONB(JSON):
 
     """
 
-    __visit_name__ = 'JSONB'
+    __visit_name__ = "JSONB"
 
     class Comparator(JSON.Comparator):
         """Define comparison operations for :class:`.JSON`."""
@@ -291,8 +309,10 @@ class JSONB(JSON):
             keys of the argument jsonb expression.
             """
             return self.operate(
-                CONTAINED_BY, other, result_type=sqltypes.Boolean)
+                CONTAINED_BY, other, result_type=sqltypes.Boolean
+            )
 
     comparator_factory = Comparator
 
-ischema_names['jsonb'] = JSONB
+
+ischema_names["jsonb"] = JSONB

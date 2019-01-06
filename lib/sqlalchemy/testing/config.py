@@ -64,8 +64,9 @@ class Config(object):
         assert _current, "Can't push without a default Config set up"
         cls.push(
             Config(
-                db, _current.db_opts, _current.options, _current.file_config),
-            namespace
+                db, _current.db_opts, _current.options, _current.file_config
+            ),
+            namespace,
         )
 
     @classmethod
@@ -94,4 +95,3 @@ class Config(object):
 
 def skip_test(msg):
     raise _skip_test_exception(msg)
-

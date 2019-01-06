@@ -1,7 +1,6 @@
 """a directed graph example."""
 
-from sqlalchemy import Column, Integer, ForeignKey, \
-    create_engine
+from sqlalchemy import Column, Integer, ForeignKey, create_engine
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -9,7 +8,7 @@ Base = declarative_base()
 
 
 class Node(Base):
-    __tablename__ = 'node'
+    __tablename__ = "node"
 
     node_id = Column(Integer, primary_key=True)
 
@@ -21,33 +20,26 @@ class Node(Base):
 
 
 class Edge(Base):
-    __tablename__ = 'edge'
+    __tablename__ = "edge"
 
-    lower_id = Column(
-        Integer,
-        ForeignKey('node.node_id'),
-        primary_key=True)
+    lower_id = Column(Integer, ForeignKey("node.node_id"), primary_key=True)
 
-    higher_id = Column(
-        Integer,
-        ForeignKey('node.node_id'),
-        primary_key=True)
+    higher_id = Column(Integer, ForeignKey("node.node_id"), primary_key=True)
 
     lower_node = relationship(
-        Node,
-        primaryjoin=lower_id == Node.node_id,
-        backref='lower_edges')
+        Node, primaryjoin=lower_id == Node.node_id, backref="lower_edges"
+    )
 
     higher_node = relationship(
-        Node,
-        primaryjoin=higher_id == Node.node_id,
-        backref='higher_edges')
+        Node, primaryjoin=higher_id == Node.node_id, backref="higher_edges"
+    )
 
     def __init__(self, n1, n2):
         self.lower_node = n1
         self.higher_node = n2
 
-engine = create_engine('sqlite://', echo=True)
+
+engine = create_engine("sqlite://", echo=True)
 Base.metadata.create_all(engine)
 
 session = sessionmaker(engine)()
@@ -80,4 +72,3 @@ assert [x for x in n3.higher_neighbors()] == [n6]
 assert [x for x in n3.lower_neighbors()] == [n1]
 assert [x for x in n2.lower_neighbors()] == [n1]
 assert [x for x in n2.higher_neighbors()] == [n1, n5, n7]
-

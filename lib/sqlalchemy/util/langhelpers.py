@@ -25,7 +25,7 @@ from . import _collections
 
 def md5_hex(x):
     if compat.py3k:
-        x = x.encode('utf-8')
+        x = x.encode("utf-8")
     m = hashlib.md5()
     m.update(x)
     return m.hexdigest()
@@ -49,7 +49,7 @@ class safe_reraise(object):
 
     """
 
-    __slots__ = ('warn_only', '_exc_info')
+    __slots__ = ("warn_only", "_exc_info")
 
     def __init__(self, warn_only=False):
         self.warn_only = warn_only
@@ -61,7 +61,7 @@ class safe_reraise(object):
         # see #2703 for notes
         if type_ is None:
             exc_type, exc_value, exc_tb = self._exc_info
-            self._exc_info = None   # remove potential circular references
+            self._exc_info = None  # remove potential circular references
             if not self.warn_only:
                 compat.reraise(exc_type, exc_value, exc_tb)
         else:
@@ -71,8 +71,9 @@ class safe_reraise(object):
                 warn(
                     "An exception has occurred during handling of a "
                     "previous exception.  The previous exception "
-                    "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1]))
-            self._exc_info = None   # remove potential circular references
+                    "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1])
+                )
+            self._exc_info = None  # remove potential circular references
             compat.reraise(type_, value, traceback)
 
 
@@ -84,7 +85,7 @@ def decode_slice(slc):
     """
     ret = []
     for x in slc.start, slc.stop, slc.step:
-        if hasattr(x, '__index__'):
+        if hasattr(x, "__index__"):
             x = x.__index__()
         ret.append(x)
     return tuple(ret)
@@ -93,9 +94,10 @@ def decode_slice(slc):
 def _unique_symbols(used, *bases):
     used = set(used)
     for base in bases:
-        pool = itertools.chain((base,),
-                               compat.itertools_imap(lambda i: base + str(i),
-                                                     range(1000)))
+        pool = itertools.chain(
+            (base,),
+            compat.itertools_imap(lambda i: base + str(i), range(1000)),
+        )
         for sym in pool:
             if sym not in used:
                 used.add(sym)
@@ -122,21 +124,25 @@ def decorator(target):
             raise Exception("not a decoratable function")
         spec = compat.inspect_getfullargspec(fn)
         names = tuple(spec[0]) + spec[1:3] + (fn.__name__,)
-        targ_name, fn_name = _unique_symbols(names, 'target', 'fn')
+        targ_name, fn_name = _unique_symbols(names, "target", "fn")
 
         metadata = dict(target=targ_name, fn=fn_name)
         metadata.update(format_argspec_plus(spec, grouped=False))
-        metadata['name'] = fn.__name__
-        code = """\
+        metadata["name"] = fn.__name__
+        code = (
+            """\
 def %(name)s(%(args)s):
     return %(target)s(%(fn)s, %(apply_kw)s)
-""" % metadata
-        decorated = _exec_code_in_env(code,
-                                      {targ_name: target, fn_name: fn},
-                                      fn.__name__)
-        decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
+"""
+            % metadata
+        )
+        decorated = _exec_code_in_env(
+            code, {targ_name: target, fn_name: fn}, fn.__name__
+        )
+        decorated.__defaults__ = getattr(fn, "im_func", fn).__defaults__
         decorated.__wrapped__ = fn
         return update_wrapper(decorated, fn)
+
     return update_wrapper(decorate, target)
 
 
@@ -155,31 +161,38 @@ def public_factory(target, location):
     if isinstance(target, type):
         fn = target.__init__
         callable_ = target
-        doc = "Construct a new :class:`.%s` object. \n\n"\
-            "This constructor is mirrored as a public API function; "\
-            "see :func:`~%s` "\
-            "for a full usage and argument description." % (
-                target.__name__, location, )
+        doc = (
+            "Construct a new :class:`.%s` object. \n\n"
+            "This constructor is mirrored as a public API function; "
+            "see :func:`~%s` "
+            "for a full usage and argument description."
+            % (target.__name__, location)
+        )
     else:
         fn = callable_ = target
-        doc = "This function is mirrored; see :func:`~%s` "\
+        doc = (
+            "This function is mirrored; see :func:`~%s` "
             "for a description of arguments." % location
+        )
 
     location_name = location.split(".")[-1]
     spec = compat.inspect_getfullargspec(fn)
     del spec[0][0]
     metadata = format_argspec_plus(spec, grouped=False)
-    metadata['name'] = location_name
-    code = """\
+    metadata["name"] = location_name
+    code = (
+        """\
 def %(name)s(%(args)s):
     return cls(%(apply_kw)s)
-""" % metadata
-    env = {'cls': callable_, 'symbol': symbol}
+"""
+        % metadata
+    )
+    env = {"cls": callable_, "symbol": symbol}
     exec(code, env)
     decorated = env[location_name]
     decorated.__doc__ = fn.__doc__
     decorated.__module__ = "sqlalchemy" + location.rsplit(".", 1)[0]
-    if compat.py2k or hasattr(fn, '__func__'):
+    if compat.py2k or hasattr(fn, "__func__"):
         fn.__func__.__doc__ = doc
     else:
         fn.__doc__ = doc
@@ -187,7 +200,6 @@ def %(name)s(%(args)s):
 
 
 class PluginLoader(object):
-
     def __init__(self, group, auto_fn=None):
         self.group = group
         self.impls = {}
@@ -211,14 +223,13 @@ class PluginLoader(object):
         except ImportError:
             pass
         else:
-            for impl in pkg_resources.iter_entry_points(
-                    self.group, name):
+            for impl in pkg_resources.iter_entry_points(self.group, name):
                 self.impls[name] = impl.load
                 return impl.load()
 
         raise exc.NoSuchModuleError(
-            "Can't load plugin: %s:%s" %
-            (self.group, name))
+            "Can't load plugin: %s:%s" % (self.group, name)
+        )
 
     def register(self, name, modulepath, objname):
         def load():
@@ -226,6 +237,7 @@ class PluginLoader(object):
             for token in modulepath.split(".")[1:]:
                 mod = getattr(mod, token)
             return getattr(mod, objname)
+
         self.impls[name] = load
 
 
@@ -245,10 +257,13 @@ def get_cls_kwargs(cls, _set=None):
     if toplevel:
         _set = set()
 
-    ctr = cls.__dict__.get('__init__', False)
+    ctr = cls.__dict__.get("__init__", False)
 
-    has_init = ctr and isinstance(ctr, types.FunctionType) and \
-        isinstance(ctr.__code__, types.CodeType)
+    has_init = (
+        ctr
+        and isinstance(ctr, types.FunctionType)
+        and isinstance(ctr.__code__, types.CodeType)
+    )
 
     if has_init:
         names, has_kw = inspect_func_args(ctr)
@@ -262,7 +277,7 @@ def get_cls_kwargs(cls, _set=None):
             if get_cls_kwargs(c, _set) is None:
                 break
 
-    _set.discard('self')
+    _set.discard("self")
     return _set
 
 
@@ -278,7 +293,9 @@ try:
         has_kw = bool(co.co_flags & CO_VARKEYWORDS)
         return args, has_kw
 
+
 except ImportError:
+
     def inspect_func_args(fn):
         names, _, has_kw, _ = compat.inspect_getargspec(fn)
         return names, bool(has_kw)
@@ -309,23 +326,26 @@ def get_callable_argspec(fn, no_self=False, _is_init=False):
     elif inspect.isfunction(fn):
         if _is_init and no_self:
             spec = compat.inspect_getargspec(fn)
-            return compat.ArgSpec(spec.args[1:], spec.varargs,
-                                  spec.keywords, spec.defaults)
+            return compat.ArgSpec(
+                spec.args[1:], spec.varargs, spec.keywords, spec.defaults
+            )
         else:
             return compat.inspect_getargspec(fn)
     elif inspect.ismethod(fn):
         if no_self and (_is_init or fn.__self__):
             spec = compat.inspect_getargspec(fn.__func__)
-            return compat.ArgSpec(spec.args[1:], spec.varargs,
-                                  spec.keywords, spec.defaults)
+            return compat.ArgSpec(
+                spec.args[1:], spec.varargs, spec.keywords, spec.defaults
+            )
         else:
             return compat.inspect_getargspec(fn.__func__)
     elif inspect.isclass(fn):
         return get_callable_argspec(
-            fn.__init__, no_self=no_self, _is_init=True)
-    elif hasattr(fn, '__func__'):
+            fn.__init__, no_self=no_self, _is_init=True
+        )
+    elif hasattr(fn, "__func__"):
         return compat.inspect_getargspec(fn.__func__)
-    elif hasattr(fn, '__call__'):
+    elif hasattr(fn, "__call__"):
         if inspect.ismethod(fn.__call__):
             return get_callable_argspec(fn.__call__, no_self=no_self)
         else:
@@ -375,13 +395,14 @@ def format_argspec_plus(fn, grouped=True):
     if spec[0]:
         self_arg = spec[0][0]
     elif spec[1]:
-        self_arg = '%s[0]' % spec[1]
+        self_arg = "%s[0]" % spec[1]
     else:
         self_arg = None
 
     if compat.py3k:
         apply_pos = compat.inspect_formatargspec(
-            spec[0], spec[1], spec[2], None, spec[4])
+            spec[0], spec[1], spec[2], None, spec[4]
+        )
         num_defaults = 0
         if spec[3]:
             num_defaults += len(spec[3])
@@ -396,19 +417,31 @@ def format_argspec_plus(fn, grouped=True):
         name_args = spec[0]
 
     if num_defaults:
-        defaulted_vals = name_args[0 - num_defaults:]
+        defaulted_vals = name_args[0 - num_defaults :]
     else:
         defaulted_vals = ()
 
     apply_kw = compat.inspect_formatargspec(
-        name_args, spec[1], spec[2], defaulted_vals,
-        formatvalue=lambda x: '=' + x)
+        name_args,
+        spec[1],
+        spec[2],
+        defaulted_vals,
+        formatvalue=lambda x: "=" + x,
+    )
     if grouped:
-        return dict(args=args, self_arg=self_arg,
-                    apply_pos=apply_pos, apply_kw=apply_kw)
+        return dict(
+            args=args,
+            self_arg=self_arg,
+            apply_pos=apply_pos,
+            apply_kw=apply_kw,
+        )
     else:
-        return dict(args=args[1:-1], self_arg=self_arg,
-                    apply_pos=apply_pos[1:-1], apply_kw=apply_kw[1:-1])
+        return dict(
+            args=args[1:-1],
+            self_arg=self_arg,
+            apply_pos=apply_pos[1:-1],
+            apply_kw=apply_kw[1:-1],
+        )
 
 
 def format_argspec_init(method, grouped=True):
@@ -422,14 +455,17 @@ def format_argspec_init(method, grouped=True):
 
     """
     if method is object.__init__:
-        args = grouped and '(self)' or 'self'
+        args = grouped and "(self)" or "self"
     else:
         try:
             return format_argspec_plus(method, grouped=grouped)
         except TypeError:
-            args = (grouped and '(self, *args, **kwargs)'
-                    or 'self, *args, **kwargs')
-    return dict(self_arg='self', args=args, apply_pos=args, apply_kw=args)
+            args = (
+                grouped
+                and "(self, *args, **kwargs)"
+                or "self, *args, **kwargs"
+            )
+    return dict(self_arg="self", args=args, apply_pos=args, apply_kw=args)
 
 
 def getargspec_init(method):
@@ -445,9 +481,9 @@ def getargspec_init(method):
         return compat.inspect_getargspec(method)
     except TypeError:
         if method is object.__init__:
-            return (['self'], None, None, None)
+            return (["self"], None, None, None)
         else:
-            return (['self'], 'args', 'kwargs', None)
+            return (["self"], "args", "kwargs", None)
 
 
 def unbound_method_to_callable(func_or_cls):
@@ -479,8 +515,9 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     vargs = None
     for i, insp in enumerate(to_inspect):
         try:
-            (_args, _vargs, vkw, defaults) = \
-                compat.inspect_getargspec(insp.__init__)
+            (_args, _vargs, vkw, defaults) = compat.inspect_getargspec(
+                insp.__init__
+            )
         except TypeError:
             continue
         else:
@@ -493,16 +530,17 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
                 else:
                     pos_args.extend(_args[1:])
             else:
-                kw_args.update([
-                    (arg, missing) for arg in _args[1:-default_len]
-                ])
+                kw_args.update(
+                    [(arg, missing) for arg in _args[1:-default_len]]
+                )
 
             if default_len:
-                kw_args.update([
-                    (arg, default)
-                    for arg, default
-                    in zip(_args[-default_len:], defaults)
-                ])
+                kw_args.update(
+                    [
+                        (arg, default)
+                        for arg, default in zip(_args[-default_len:], defaults)
+                    ]
+                )
     output = []
 
     output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
@@ -516,7 +554,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
         try:
             val = getattr(obj, arg, missing)
             if val is not missing and val != defval:
-                output.append('%s=%r' % (arg, val))
+                output.append("%s=%r" % (arg, val))
         except Exception:
             pass
 
@@ -525,7 +563,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
             try:
                 val = getattr(obj, arg, missing)
                 if val is not missing and val != defval:
-                    output.append('%s=%r' % (arg, val))
+                    output.append("%s=%r" % (arg, val))
             except Exception:
                 pass
 
@@ -538,16 +576,19 @@ class portable_instancemethod(object):
 
     """
 
-    __slots__ = 'target', 'name', 'kwargs', '__weakref__'
+    __slots__ = "target", "name", "kwargs", "__weakref__"
 
     def __getstate__(self):
-        return {'target': self.target, 'name': self.name,
-                'kwargs': self.kwargs}
+        return {
+            "target": self.target,
+            "name": self.name,
+            "kwargs": self.kwargs,
+        }
 
     def __setstate__(self, state):
-        self.target = state['target']
-        self.name = state['name']
-        self.kwargs = state.get('kwargs', ())
+        self.target = state["target"]
+        self.name = state["name"]
+        self.kwargs = state.get("kwargs", ())
 
     def __init__(self, meth, kwargs=()):
         self.target = meth.__self__
@@ -583,8 +624,11 @@ def class_hierarchy(cls):
         if compat.py2k:
             if isinstance(c, types.ClassType):
                 continue
-            bases = (_ for _ in c.__bases__
-                     if _ not in hier and not isinstance(_, types.ClassType))
+            bases = (
+                _
+                for _ in c.__bases__
+                if _ not in hier and not isinstance(_, types.ClassType)
+            )
         else:
             bases = (_ for _ in c.__bases__ if _ not in hier)
 
@@ -593,11 +637,12 @@ def class_hierarchy(cls):
             hier.add(b)
 
         if compat.py3k:
-            if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
+            if c.__module__ == "builtins" or not hasattr(c, "__subclasses__"):
                 continue
         else:
-            if c.__module__ == '__builtin__' or not hasattr(
-                    c, '__subclasses__'):
+            if c.__module__ == "__builtin__" or not hasattr(
+                c, "__subclasses__"
+            ):
                 continue
 
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
@@ -622,26 +667,45 @@ def iterate_attributes(cls):
                 break
 
 
-def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
-                                 name='self.proxy', from_instance=None):
+def monkeypatch_proxied_specials(
+    into_cls,
+    from_cls,
+    skip=None,
+    only=None,
+    name="self.proxy",
+    from_instance=None,
+):
     """Automates delegation of __specials__ for a proxying type."""
 
     if only:
         dunders = only
     else:
         if skip is None:
-            skip = ('__slots__', '__del__', '__getattribute__',
-                    '__metaclass__', '__getstate__', '__setstate__')
-        dunders = [m for m in dir(from_cls)
-                   if (m.startswith('__') and m.endswith('__') and
-                       not hasattr(into_cls, m) and m not in skip)]
+            skip = (
+                "__slots__",
+                "__del__",
+                "__getattribute__",
+                "__metaclass__",
+                "__getstate__",
+                "__setstate__",
+            )
+        dunders = [
+            m
+            for m in dir(from_cls)
+            if (
+                m.startswith("__")
+                and m.endswith("__")
+                and not hasattr(into_cls, m)
+                and m not in skip
+            )
+        ]
 
     for method in dunders:
         try:
             fn = getattr(from_cls, method)
-            if not hasattr(fn, '__call__'):
+            if not hasattr(fn, "__call__"):
                 continue
-            fn = getattr(fn, 'im_func', fn)
+            fn = getattr(fn, "im_func", fn)
         except AttributeError:
             continue
         try:
@@ -649,11 +713,13 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
             fn_args = compat.inspect_formatargspec(spec[0])
             d_args = compat.inspect_formatargspec(spec[0][1:])
         except TypeError:
-            fn_args = '(self, *args, **kw)'
-            d_args = '(*args, **kw)'
+            fn_args = "(self, *args, **kw)"
+            d_args = "(*args, **kw)"
 
-        py = ("def %(method)s%(fn_args)s: "
-              "return %(name)s.%(method)s%(d_args)s" % locals())
+        py = (
+            "def %(method)s%(fn_args)s: "
+            "return %(name)s.%(method)s%(d_args)s" % locals()
+        )
 
         env = from_instance is not None and {name: from_instance} or {}
         compat.exec_(py, env)
@@ -667,8 +733,9 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
 def methods_equivalent(meth1, meth2):
     """Return True if the two methods are the same implementation."""
 
-    return getattr(meth1, '__func__', meth1) is getattr(
-        meth2, '__func__', meth2)
+    return getattr(meth1, "__func__", meth1) is getattr(
+        meth2, "__func__", meth2
+    )
 
 
 def as_interface(obj, cls=None, methods=None, required=None):
@@ -705,12 +772,12 @@ def as_interface(obj, cls=None, methods=None, required=None):
 
     """
     if not cls and not methods:
-        raise TypeError('a class or collection of method names are required')
+        raise TypeError("a class or collection of method names are required")
 
     if isinstance(cls, type) and isinstance(obj, cls):
         return obj
 
-    interface = set(methods or [m for m in dir(cls) if not m.startswith('_')])
+    interface = set(methods or [m for m in dir(cls) if not m.startswith("_")])
     implemented = set(dir(obj))
 
     complies = operator.ge
@@ -727,15 +794,17 @@ def as_interface(obj, cls=None, methods=None, required=None):
 
     # No dict duck typing here.
     if not isinstance(obj, dict):
-        qualifier = complies is operator.gt and 'any of' or 'all of'
-        raise TypeError("%r does not implement %s: %s" % (
-            obj, qualifier, ', '.join(interface)))
+        qualifier = complies is operator.gt and "any of" or "all of"
+        raise TypeError(
+            "%r does not implement %s: %s"
+            % (obj, qualifier, ", ".join(interface))
+        )
 
     class AnonymousInterface(object):
         """A callable-holding shell."""
 
     if cls:
-        AnonymousInterface.__name__ = 'Anonymous' + cls.__name__
+        AnonymousInterface.__name__ = "Anonymous" + cls.__name__
     found = set()
 
     for method, impl in dictlike_iteritems(obj):
@@ -749,8 +818,10 @@ def as_interface(obj, cls=None, methods=None, required=None):
     if complies(found, required):
         return AnonymousInterface
 
-    raise TypeError("dictionary does not contain required keys %s" %
-                    ', '.join(required - found))
+    raise TypeError(
+        "dictionary does not contain required keys %s"
+        % ", ".join(required - found)
+    )
 
 
 class memoized_property(object):
@@ -791,6 +862,7 @@ def memoized_instancemethod(fn):
         memo.__doc__ = fn.__doc__
         self.__dict__[fn.__name__] = memo
         return result
+
     return update_wrapper(oneshot, fn)
 
 
@@ -831,14 +903,14 @@ class MemoizedSlots(object):
         raise AttributeError(key)
 
     def __getattr__(self, key):
-        if key.startswith('_memoized'):
+        if key.startswith("_memoized"):
             raise AttributeError(key)
-        elif hasattr(self, '_memoized_attr_%s' % key):
-            value = getattr(self, '_memoized_attr_%s' % key)()
+        elif hasattr(self, "_memoized_attr_%s" % key):
+            value = getattr(self, "_memoized_attr_%s" % key)()
             setattr(self, key, value)
             return value
-        elif hasattr(self, '_memoized_method_%s' % key):
-            fn = getattr(self, '_memoized_method_%s' % key)
+        elif hasattr(self, "_memoized_method_%s" % key):
+            fn = getattr(self, "_memoized_method_%s" % key)
 
             def oneshot(*args, **kw):
                 result = fn(*args, **kw)
@@ -847,6 +919,7 @@ class MemoizedSlots(object):
                 memo.__doc__ = fn.__doc__
                 setattr(self, key, memo)
                 return result
+
             oneshot.__doc__ = fn.__doc__
             return oneshot
         else:
@@ -859,12 +932,14 @@ def dependency_for(modulename, add_to_all=False):
         # unfortunately importlib doesn't work that great either
         tokens = modulename.split(".")
         mod = compat.import_(
-            ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]])
+            ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]]
+        )
         mod = getattr(mod, tokens[-1])
         setattr(mod, obj.__name__, obj)
         if add_to_all and hasattr(mod, "__all__"):
             mod.__all__.append(obj.__name__)
         return obj
+
     return decorate
 
 
@@ -891,10 +966,7 @@ class dependencies(object):
         for dep in deps:
             tokens = dep.split(".")
             self.import_deps.append(
-                dependencies._importlater(
-                    ".".join(tokens[0:-1]),
-                    tokens[-1]
-                )
+                dependencies._importlater(".".join(tokens[0:-1]), tokens[-1])
             )
 
     def __call__(self, fn):
@@ -902,7 +974,7 @@ class dependencies(object):
         spec = compat.inspect_getfullargspec(fn)
 
         spec_zero = list(spec[0])
-        hasself = spec_zero[0] in ('self', 'cls')
+        hasself = spec_zero[0] in ("self", "cls")
 
         for i in range(len(import_deps)):
             spec[0][i + (1 if hasself else 0)] = "import_deps[%r]" % i
@@ -915,13 +987,13 @@ class dependencies(object):
 
         outer_spec = format_argspec_plus(spec, grouped=False)
 
-        code = 'lambda %(args)s: fn(%(apply_kw)s)' % {
-            "args": outer_spec['args'],
-            "apply_kw": inner_spec['apply_kw']
+        code = "lambda %(args)s: fn(%(apply_kw)s)" % {
+            "args": outer_spec["args"],
+            "apply_kw": inner_spec["apply_kw"],
         }
 
         decorated = eval(code, locals())
-        decorated.__defaults__ = getattr(fn, 'im_func', fn).__defaults__
+        decorated.__defaults__ = getattr(fn, "im_func", fn).__defaults__
         return update_wrapper(decorated, fn)
 
     @classmethod
@@ -961,26 +1033,27 @@ class dependencies(object):
                 raise ImportError(
                     "importlater.resolve_all() hasn't "
                     "been called (this is %s %s)"
-                    % (self._il_path, self._il_addtl))
+                    % (self._il_path, self._il_addtl)
+                )
 
             return getattr(self._initial_import, self._il_addtl)
 
         def _resolve(self):
             dependencies._unresolved.discard(self)
             self._initial_import = compat.import_(
-                self._il_path, globals(), locals(),
-                [self._il_addtl])
+                self._il_path, globals(), locals(), [self._il_addtl]
+            )
 
         def __getattr__(self, key):
-            if key == 'module':
-                raise ImportError("Could not resolve module %s"
-                                  % self._full_path)
+            if key == "module":
+                raise ImportError(
+                    "Could not resolve module %s" % self._full_path
+                )
             try:
                 attr = getattr(self.module, key)
             except AttributeError:
                 raise AttributeError(
-                    "Module %s has no attribute '%s'" %
-                    (self._full_path, key)
+                    "Module %s has no attribute '%s'" % (self._full_path, key)
                 )
             self.__dict__[key] = attr
             return attr
@@ -990,9 +1063,9 @@ class dependencies(object):
 def asbool(obj):
     if isinstance(obj, compat.string_types):
         obj = obj.strip().lower()
-        if obj in ['true', 'yes', 'on', 'y', 't', '1']:
+        if obj in ["true", "yes", "on", "y", "t", "1"]:
             return True
-        elif obj in ['false', 'no', 'off', 'n', 'f', '0']:
+        elif obj in ["false", "no", "off", "n", "f", "0"]:
             return False
         else:
             raise ValueError("String is not true/false: %r" % obj)
@@ -1004,11 +1077,13 @@ def bool_or_str(*text):
     boolean, or one of a set of "alternate" string values.
 
     """
+
     def bool_or_value(obj):
         if obj in text:
             return obj
         else:
             return asbool(obj)
+
     return bool_or_value
 
 
@@ -1042,8 +1117,8 @@ def constructor_copy(obj, cls, *args, **kw):
 
     names = get_cls_kwargs(cls)
     kw.update(
-        (k, obj.__dict__[k]) for k in names.difference(kw)
-        if k in obj.__dict__)
+        (k, obj.__dict__[k]) for k in names.difference(kw) if k in obj.__dict__
+    )
     return cls(*args, **kw)
 
 
@@ -1070,10 +1145,11 @@ def duck_type_collection(specimen, default=None):
     property is present, return that preferentially.
     """
 
-    if hasattr(specimen, '__emulates__'):
+    if hasattr(specimen, "__emulates__"):
         # canonicalize set vs sets.Set to a standard: the builtin set
-        if (specimen.__emulates__ is not None and
-                issubclass(specimen.__emulates__, set)):
+        if specimen.__emulates__ is not None and issubclass(
+            specimen.__emulates__, set
+        ):
             return set
         else:
             return specimen.__emulates__
@@ -1086,11 +1162,11 @@ def duck_type_collection(specimen, default=None):
     elif isa(specimen, dict):
         return dict
 
-    if hasattr(specimen, 'append'):
+    if hasattr(specimen, "append"):
         return list
-    elif hasattr(specimen, 'add'):
+    elif hasattr(specimen, "add"):
         return set
-    elif hasattr(specimen, 'set'):
+    elif hasattr(specimen, "set"):
         return dict
     else:
         return default
@@ -1102,41 +1178,43 @@ def assert_arg_type(arg, argtype, name):
     else:
         if isinstance(argtype, tuple):
             raise exc.ArgumentError(
-                "Argument '%s' is expected to be one of type %s, got '%s'" %
-                (name, ' or '.join("'%s'" % a for a in argtype), type(arg)))
+                "Argument '%s' is expected to be one of type %s, got '%s'"
+                % (name, " or ".join("'%s'" % a for a in argtype), type(arg))
+            )
         else:
             raise exc.ArgumentError(
-                "Argument '%s' is expected to be of type '%s', got '%s'" %
-                (name, argtype, type(arg)))
+                "Argument '%s' is expected to be of type '%s', got '%s'"
+                % (name, argtype, type(arg))
+            )
 
 
 def dictlike_iteritems(dictlike):
     """Return a (key, value) iterator for almost any dict-like object."""
 
     if compat.py3k:
-        if hasattr(dictlike, 'items'):
+        if hasattr(dictlike, "items"):
             return list(dictlike.items())
     else:
-        if hasattr(dictlike, 'iteritems'):
+        if hasattr(dictlike, "iteritems"):
             return dictlike.iteritems()
-        elif hasattr(dictlike, 'items'):
+        elif hasattr(dictlike, "items"):
             return iter(dictlike.items())
 
-    getter = getattr(dictlike, '__getitem__', getattr(dictlike, 'get', None))
+    getter = getattr(dictlike, "__getitem__", getattr(dictlike, "get", None))
     if getter is None:
-        raise TypeError(
-            "Object '%r' is not dict-like" % dictlike)
+        raise TypeError("Object '%r' is not dict-like" % dictlike)
 
-    if hasattr(dictlike, 'iterkeys'):
+    if hasattr(dictlike, "iterkeys"):
+
         def iterator():
             for key in dictlike.iterkeys():
                 yield key, getter(key)
+
         return iterator()
-    elif hasattr(dictlike, 'keys'):
+    elif hasattr(dictlike, "keys"):
         return iter((key, getter(key)) for key in dictlike.keys())
     else:
-        raise TypeError(
-            "Object '%r' is not dict-like" % dictlike)
+        raise TypeError("Object '%r' is not dict-like" % dictlike)
 
 
 class classproperty(property):
@@ -1205,7 +1283,8 @@ class _symbol(int):
     def __repr__(self):
         return "symbol(%r)" % self.name
 
-_symbol.__name__ = 'symbol'
+
+_symbol.__name__ = "symbol"
 
 
 class symbol(object):
@@ -1229,6 +1308,7 @@ class symbol(object):
     ``doc`` here.
 
     """
+
     symbols = {}
     _lock = compat.threading.Lock()
 
@@ -1290,9 +1370,11 @@ class _hash_limit_string(compat.text_type):
 
 
     """
+
     def __new__(cls, value, num, args):
-        interpolated = (value % args) + \
-            (" (this warning may be suppressed after %d occurrences)" % num)
+        interpolated = (value % args) + (
+            " (this warning may be suppressed after %d occurrences)" % num
+        )
         self = super(_hash_limit_string, cls).__new__(cls, interpolated)
         self._hash = hash("%s_%d" % (value, hash(interpolated) % num))
         return self
@@ -1338,8 +1420,8 @@ def only_once(fn):
     return go
 
 
-_SQLA_RE = re.compile(r'sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py')
-_UNITTEST_RE = re.compile(r'unit(?:2|test2?/)')
+_SQLA_RE = re.compile(r"sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py")
+_UNITTEST_RE = re.compile(r"unit(?:2|test2?/)")
 
 
 def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
@@ -1361,18 +1443,17 @@ def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
         start += 1
     while start <= end and exclude_suffix.search(tb[end]):
         end -= 1
-    return tb[start:end + 1]
+    return tb[start : end + 1]
+
 
 NoneType = type(None)
 
 
 def attrsetter(attrname):
-    code = \
-        "def set(obj, value):"\
-        "    obj.%s = value" % attrname
+    code = "def set(obj, value):" "    obj.%s = value" % attrname
     env = locals().copy()
     exec(code, env)
-    return env['set']
+    return env["set"]
 
 
 class EnsureKWArgType(type):
@@ -1380,6 +1461,7 @@ class EnsureKWArgType(type):
     don't already.
 
     """
+
     def __init__(cls, clsname, bases, clsdict):
         fn_reg = cls.ensure_kwarg
         if fn_reg:
@@ -1394,9 +1476,9 @@ class EnsureKWArgType(type):
         super(EnsureKWArgType, cls).__init__(clsname, bases, clsdict)
 
     def _wrap_w_kw(self, fn):
-
         def wrap(*arg, **kw):
             return fn(*arg)
+
         return update_wrapper(wrap, fn)
 
 
@@ -1408,15 +1490,15 @@ def wrap_callable(wrapper, fn):
       object with __call__ method
 
     """
-    if hasattr(fn, '__name__'):
+    if hasattr(fn, "__name__"):
         return update_wrapper(wrapper, fn)
     else:
         _f = wrapper
         _f.__name__ = fn.__class__.__name__
-        if hasattr(fn, '__module__'):
+        if hasattr(fn, "__module__"):
             _f.__module__ = fn.__module__
 
-        if hasattr(fn.__call__, '__doc__') and fn.__call__.__doc__:
+        if hasattr(fn.__call__, "__doc__") and fn.__call__.__doc__:
             _f.__doc__ = fn.__call__.__doc__
         elif fn.__doc__:
             _f.__doc__ = fn.__doc__
@@ -1466,4 +1548,3 @@ def quoted_token_parser(value):
         idx += 1
 
     return ["".join(token) for token in result]
-

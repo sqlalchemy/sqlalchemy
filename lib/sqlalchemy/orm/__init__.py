@@ -20,13 +20,9 @@ from .mapper import (
     class_mapper,
     configure_mappers,
     reconstructor,
-    validates
+    validates,
 )
-from .interfaces import (
-    EXT_CONTINUE,
-    EXT_STOP,
-    PropComparator,
-)
+from .interfaces import EXT_CONTINUE, EXT_STOP, PropComparator
 from .deprecated_interfaces import (
     MapperExtension,
     SessionExtension,
@@ -49,20 +45,15 @@ from .descriptor_props import (
     CompositeProperty,
     SynonymProperty,
 )
-from .relationships import (
-    foreign,
-    remote,
-)
+from .relationships import foreign, remote
 from .session import (
     Session,
     object_session,
     sessionmaker,
     make_transient,
-    make_transient_to_detached
+    make_transient_to_detached,
 )
-from .scoping import (
-    scoped_session
-)
+from .scoping import scoped_session
 from . import mapper as mapperlib
 from .query import AliasOption, Query, Bundle
 from ..util.langhelpers import public_factory
@@ -102,10 +93,11 @@ def create_session(bind=None, **kwargs):
     create_session().
 
     """
-    kwargs.setdefault('autoflush', False)
-    kwargs.setdefault('autocommit', True)
-    kwargs.setdefault('expire_on_commit', False)
+    kwargs.setdefault("autoflush", False)
+    kwargs.setdefault("autocommit", True)
+    kwargs.setdefault("expire_on_commit", False)
     return Session(bind=bind, **kwargs)
+
 
 relationship = public_factory(RelationshipProperty, ".orm.relationship")
 
@@ -132,7 +124,7 @@ def dynamic_loader(argument, **kw):
     on dynamic loading.
 
     """
-    kw['lazy'] = 'dynamic'
+    kw["lazy"] = "dynamic"
     return relationship(argument, **kw)
 
 
@@ -192,16 +184,21 @@ def query_expression():
     prop.strategy_key = (("query_expression", True),)
     return prop
 
+
 mapper = public_factory(Mapper, ".orm.mapper")
 
 synonym = public_factory(SynonymProperty, ".orm.synonym")
 
-comparable_property = public_factory(ComparableProperty,
-                                     ".orm.comparable_property")
+comparable_property = public_factory(
+    ComparableProperty, ".orm.comparable_property"
+)
 
 
-@_sa_util.deprecated("0.7", message=":func:`.compile_mappers` "
-                     "is renamed to :func:`.configure_mappers`")
+@_sa_util.deprecated(
+    "0.7",
+    message=":func:`.compile_mappers` "
+    "is renamed to :func:`.configure_mappers`",
+)
 def compile_mappers():
     """Initialize the inter-mapper relationships of all mappers that have
     been defined.
@@ -241,6 +238,7 @@ def clear_mappers():
                 pass
     finally:
         mapperlib._CONFIGURE_MUTEX.release()
+
 
 from . import strategy_options
 
@@ -288,10 +286,14 @@ def __go(lcls):
     from . import loading
     import inspect as _inspect
 
-    __all__ = sorted(name for name, obj in lcls.items()
-                     if not (name.startswith('_') or _inspect.ismodule(obj)))
+    __all__ = sorted(
+        name
+        for name, obj in lcls.items()
+        if not (name.startswith("_") or _inspect.ismodule(obj))
+    )
 
     _sa_util.dependencies.resolve_all("sqlalchemy.orm")
     _sa_util.dependencies.resolve_all("sqlalchemy.ext")
+
 
 __go(locals())

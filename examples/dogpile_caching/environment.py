@@ -10,6 +10,7 @@ from dogpile.cache.region import make_region
 import os
 from hashlib import md5
 import sys
+
 py2k = sys.version_info < (3, 0)
 
 if py2k:
@@ -23,9 +24,7 @@ regions = {}
 # using a callable that will associate the dictionary
 # of regions with the Query.
 Session = scoped_session(
-    sessionmaker(
-        query_cls=caching_query.query_callable(regions)
-    )
+    sessionmaker(query_cls=caching_query.query_callable(regions))
 )
 
 # global declarative base class.
@@ -42,7 +41,7 @@ if not os.path.exists(root):
     os.makedirs(root)
 
 dbfile = os.path.join(root, "dogpile_demo.db")
-engine = create_engine('sqlite:///%s' % dbfile, echo=True)
+engine = create_engine("sqlite:///%s" % dbfile, echo=True)
 Session.configure(bind=engine)
 
 
@@ -51,10 +50,11 @@ def md5_key_mangler(key):
     distill them into an md5 hash.
 
     """
-    return md5(key.encode('ascii')).hexdigest()
+    return md5(key.encode("ascii")).hexdigest()
+
 
 # configure the "default" cache region.
-regions['default'] = make_region(
+regions["default"] = make_region(
     # the "dbm" backend needs
     # string-encoded keys
     key_mangler=md5_key_mangler
@@ -63,11 +63,9 @@ regions['default'] = make_region(
     # serialized persistence.  Normally
     # memcached or similar is a better choice
     # for caching.
-    'dogpile.cache.dbm',
+    "dogpile.cache.dbm",
     expiration_time=3600,
-    arguments={
-        "filename": os.path.join(root, "cache.dbm")
-    }
+    arguments={"filename": os.path.join(root, "cache.dbm")},
 )
 
 # optional; call invalidate() on the region
@@ -83,6 +81,7 @@ installed = False
 def bootstrap():
     global installed
     from . import fixture_data
+
     if not os.path.exists(dbfile):
         fixture_data.install()
         installed = True

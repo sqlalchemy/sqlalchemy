@@ -21,53 +21,88 @@ from sqlalchemy.orm.util import join, outerjoin, with_parent
 
 
 class QueryTest(_fixtures.FixtureTest):
-    run_setup_mappers = 'once'
-    run_inserts = 'once'
+    run_setup_mappers = "once"
+    run_inserts = "once"
     run_deletes = None
 
     @classmethod
     def setup_mappers(cls):
-        Node, composite_pk_table, users, Keyword, items, Dingaling, \
-            order_items, item_keywords, Item, User, dingalings, \
-            Address, keywords, CompositePk, nodes, Order, orders, \
-            addresses = cls.classes.Node, \
-            cls.tables.composite_pk_table, cls.tables.users, \
-            cls.classes.Keyword, cls.tables.items, \
-            cls.classes.Dingaling, cls.tables.order_items, \
-            cls.tables.item_keywords, cls.classes.Item, \
-            cls.classes.User, cls.tables.dingalings, \
-            cls.classes.Address, cls.tables.keywords, \
-            cls.classes.CompositePk, cls.tables.nodes, \
-            cls.classes.Order, cls.tables.orders, cls.tables.addresses
+        Node, composite_pk_table, users, Keyword, items, Dingaling, order_items, item_keywords, Item, User, dingalings, Address, keywords, CompositePk, nodes, Order, orders, addresses = (
+            cls.classes.Node,
+            cls.tables.composite_pk_table,
+            cls.tables.users,
+            cls.classes.Keyword,
+            cls.tables.items,
+            cls.classes.Dingaling,
+            cls.tables.order_items,
+            cls.tables.item_keywords,
+            cls.classes.Item,
+            cls.classes.User,
+            cls.tables.dingalings,
+            cls.classes.Address,
+            cls.tables.keywords,
+            cls.classes.CompositePk,
+            cls.tables.nodes,
+            cls.classes.Order,
+            cls.tables.orders,
+            cls.tables.addresses,
+        )
 
-        mapper(User, users, properties={
-            'addresses': relationship(Address, backref='user',
-                                      order_by=addresses.c.id),
-            # o2m, m2o
-            'orders': relationship(Order, backref='user', order_by=orders.c.id)
-        })
-        mapper(Address, addresses, properties={
-            # o2o
-            'dingaling': relationship(Dingaling, uselist=False,
-                                      backref="address")
-        })
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", order_by=addresses.c.id
+                ),
+                # o2m, m2o
+                "orders": relationship(
+                    Order, backref="user", order_by=orders.c.id
+                ),
+            },
+        )
+        mapper(
+            Address,
+            addresses,
+            properties={
+                # o2o
+                "dingaling": relationship(
+                    Dingaling, uselist=False, backref="address"
+                )
+            },
+        )
         mapper(Dingaling, dingalings)
-        mapper(Order, orders, properties={
-            # m2m
-            'items': relationship(Item, secondary=order_items,
-                                  order_by=items.c.id),
-            'address': relationship(Address),  # m2o
-        })
-        mapper(Item, items, properties={
-            'keywords': relationship(Keyword, secondary=item_keywords)  # m2m
-        })
+        mapper(
+            Order,
+            orders,
+            properties={
+                # m2m
+                "items": relationship(
+                    Item, secondary=order_items, order_by=items.c.id
+                ),
+                "address": relationship(Address),  # m2o
+            },
+        )
+        mapper(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords
+                )  # m2m
+            },
+        )
         mapper(Keyword, keywords)
 
-        mapper(Node, nodes, properties={
-            'children': relationship(Node,
-                                     backref=backref(
-                                         'parent', remote_side=[nodes.c.id]))
-        })
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node, backref=backref("parent", remote_side=[nodes.c.id])
+                )
+            },
+        )
 
         mapper(CompositePk, composite_pk_table)
 
@@ -75,54 +110,100 @@ class QueryTest(_fixtures.FixtureTest):
 
 
 class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
-    run_setup_mappers = 'once'
+    run_setup_mappers = "once"
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('companies', metadata,
-              Column('company_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('name', String(50)))
+        Table(
+            "companies",
+            metadata,
+            Column(
+                "company_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("name", String(50)),
+        )
 
-        Table('people', metadata,
-              Column('person_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('company_id', Integer,
-                     ForeignKey('companies.company_id')),
-              Column('name', String(50)),
-              Column('type', String(30)))
+        Table(
+            "people",
+            metadata,
+            Column(
+                "person_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("company_id", Integer, ForeignKey("companies.company_id")),
+            Column("name", String(50)),
+            Column("type", String(30)),
+        )
 
-        Table('engineers', metadata,
-              Column('person_id', Integer, ForeignKey(
-                  'people.person_id'), primary_key=True),
-              Column('status', String(30)),
-              Column('engineer_name', String(50)),
-              Column('primary_language', String(50)))
+        Table(
+            "engineers",
+            metadata,
+            Column(
+                "person_id",
+                Integer,
+                ForeignKey("people.person_id"),
+                primary_key=True,
+            ),
+            Column("status", String(30)),
+            Column("engineer_name", String(50)),
+            Column("primary_language", String(50)),
+        )
 
-        Table('machines', metadata,
-              Column('machine_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('name', String(50)),
-              Column('engineer_id', Integer,
-                     ForeignKey('engineers.person_id')))
+        Table(
+            "machines",
+            metadata,
+            Column(
+                "machine_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("name", String(50)),
+            Column("engineer_id", Integer, ForeignKey("engineers.person_id")),
+        )
 
-        Table('managers', metadata,
-              Column('person_id', Integer, ForeignKey(
-                  'people.person_id'), primary_key=True),
-              Column('status', String(30)),
-              Column('manager_name', String(50)))
+        Table(
+            "managers",
+            metadata,
+            Column(
+                "person_id",
+                Integer,
+                ForeignKey("people.person_id"),
+                primary_key=True,
+            ),
+            Column("status", String(30)),
+            Column("manager_name", String(50)),
+        )
 
-        Table('boss', metadata,
-              Column('boss_id', Integer, ForeignKey(
-                  'managers.person_id'), primary_key=True),
-              Column('golf_swing', String(30)),
-              )
+        Table(
+            "boss",
+            metadata,
+            Column(
+                "boss_id",
+                Integer,
+                ForeignKey("managers.person_id"),
+                primary_key=True,
+            ),
+            Column("golf_swing", String(30)),
+        )
 
-        Table('paperwork', metadata,
-              Column('paperwork_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('description', String(50)),
-              Column('person_id', Integer, ForeignKey('people.person_id')))
+        Table(
+            "paperwork",
+            metadata,
+            Column(
+                "paperwork_id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("description", String(50)),
+            Column("person_id", Integer, ForeignKey("people.person_id")),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -133,7 +214,8 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             cls.tables.boss,
             cls.tables.managers,
             cls.tables.machines,
-            cls.tables.engineers)
+            cls.tables.engineers,
+        )
 
         class Company(cls.Comparable):
             pass
@@ -156,26 +238,42 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         class Paperwork(cls.Comparable):
             pass
 
-        mapper(Company, companies, properties={
-            'employees': relationship(Person, order_by=people.c.person_id)
-        })
+        mapper(
+            Company,
+            companies,
+            properties={
+                "employees": relationship(Person, order_by=people.c.person_id)
+            },
+        )
 
         mapper(Machine, machines)
 
-        mapper(Person, people,
-               polymorphic_on=people.c.type,
-               polymorphic_identity='person',
-               properties={
-                   'paperwork': relationship(Paperwork,
-                                             order_by=paperwork.c.paperwork_id)
-               })
-        mapper(Engineer, engineers, inherits=Person,
-               polymorphic_identity='engineer',
-               properties={'machines': relationship(
-                   Machine, order_by=machines.c.machine_id)})
-        mapper(Manager, managers,
-               inherits=Person, polymorphic_identity='manager')
-        mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
+        mapper(
+            Person,
+            people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity="person",
+            properties={
+                "paperwork": relationship(
+                    Paperwork, order_by=paperwork.c.paperwork_id
+                )
+            },
+        )
+        mapper(
+            Engineer,
+            engineers,
+            inherits=Person,
+            polymorphic_identity="engineer",
+            properties={
+                "machines": relationship(
+                    Machine, order_by=machines.c.machine_id
+                )
+            },
+        )
+        mapper(
+            Manager, managers, inherits=Person, polymorphic_identity="manager"
+        )
+        mapper(Boss, boss, inherits=Manager, polymorphic_identity="boss")
         mapper(Paperwork, paperwork)
 
     def test_single_prop(self):
@@ -189,7 +287,8 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "companies.name AS companies_name "
             "FROM companies JOIN people "
             "ON companies.company_id = people.company_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_force_via_select_from(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
@@ -199,25 +298,30 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(Company)
             .filter(Company.company_id == Engineer.company_id)
-            .filter(Engineer.primary_language == 'java'),
+            .filter(Engineer.primary_language == "java"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies, people, engineers "
             "WHERE companies.company_id = people.company_id "
             "AND engineers.primary_language "
-            "= :primary_language_1", use_default_dialect=True)
+            "= :primary_language_1",
+            use_default_dialect=True,
+        )
 
         self.assert_compile(
-            sess.query(Company).select_from(Company, Engineer)
+            sess.query(Company)
+            .select_from(Company, Engineer)
             .filter(Company.company_id == Engineer.company_id)
-            .filter(Engineer.primary_language == 'java'),
+            .filter(Engineer.primary_language == "java"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies, people JOIN engineers "
             "ON people.person_id = engineers.person_id "
             "WHERE companies.company_id = people.company_id "
             "AND engineers.primary_language ="
-            " :primary_language_1", use_default_dialect=True)
+            " :primary_language_1",
+            use_default_dialect=True,
+        )
 
     def test_single_prop_of_type(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
@@ -232,19 +336,24 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "(people JOIN engineers "
             "ON people.person_id = engineers.person_id) "
             "ON companies.company_id = people.company_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_prop_with_polymorphic_1(self):
-        Person, Manager, Paperwork = (self.classes.Person,
-                                      self.classes.Manager,
-                                      self.classes.Paperwork)
+        Person, Manager, Paperwork = (
+            self.classes.Person,
+            self.classes.Manager,
+            self.classes.Paperwork,
+        )
 
         sess = create_session()
 
         self.assert_compile(
-            sess.query(Person).with_polymorphic(Manager).
-            order_by(Person.person_id).join('paperwork')
-            .filter(Paperwork.description.like('%review%')),
+            sess.query(Person)
+            .with_polymorphic(Manager)
+            .order_by(Person.person_id)
+            .join("paperwork")
+            .filter(Paperwork.description.like("%review%")),
             "SELECT people.person_id AS people_person_id, people.company_id AS"
             " people_company_id, "
             "people.name AS people_name, people.type AS people_type, "
@@ -256,19 +365,25 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "JOIN paperwork "
             "ON people.person_id = paperwork.person_id "
             "WHERE paperwork.description LIKE :description_1 "
-            "ORDER BY people.person_id", use_default_dialect=True)
+            "ORDER BY people.person_id",
+            use_default_dialect=True,
+        )
 
     def test_prop_with_polymorphic_2(self):
-        Person, Manager, Paperwork = (self.classes.Person,
-                                      self.classes.Manager,
-                                      self.classes.Paperwork)
+        Person, Manager, Paperwork = (
+            self.classes.Person,
+            self.classes.Manager,
+            self.classes.Paperwork,
+        )
 
         sess = create_session()
 
         self.assert_compile(
-            sess.query(Person).with_polymorphic(Manager).
-            order_by(Person.person_id).join('paperwork', aliased=True)
-            .filter(Paperwork.description.like('%review%')),
+            sess.query(Person)
+            .with_polymorphic(Manager)
+            .order_by(Person.person_id)
+            .join("paperwork", aliased=True)
+            .filter(Paperwork.description.like("%review%")),
             "SELECT people.person_id AS people_person_id, "
             "people.company_id AS people_company_id, "
             "people.name AS people_name, people.type AS people_type, "
@@ -281,7 +396,8 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "ON people.person_id = paperwork_1.person_id "
             "WHERE paperwork_1.description "
             "LIKE :description_1 ORDER BY people.person_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_explicit_polymorphic_join_one(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
@@ -289,8 +405,9 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess = create_session()
 
         self.assert_compile(
-            sess.query(Company).join(Engineer)
-            .filter(Engineer.engineer_name == 'vlad'),
+            sess.query(Company)
+            .join(Engineer)
+            .filter(Engineer.engineer_name == "vlad"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies JOIN (people JOIN engineers "
@@ -298,7 +415,8 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "ON "
             "companies.company_id = people.company_id "
             "WHERE engineers.engineer_name = :engineer_name_1",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_explicit_polymorphic_join_two(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
@@ -307,7 +425,7 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(Company)
             .join(Engineer, Company.company_id == Engineer.company_id)
-            .filter(Engineer.engineer_name == 'vlad'),
+            .filter(Engineer.engineer_name == "vlad"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies JOIN "
@@ -316,7 +434,8 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "ON "
             "companies.company_id = people.company_id "
             "WHERE engineers.engineer_name = :engineer_name_1",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_multiple_adaption(self):
         """test that multiple filter() adapters get chained together "
@@ -328,28 +447,31 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.classes.Machine,
             self.tables.engineers,
             self.tables.machines,
-            self.classes.Engineer)
+            self.classes.Engineer,
+        )
 
         sess = create_session()
 
         self.assert_compile(
             sess.query(Company)
             .join(people.join(engineers), Company.employees)
-            .filter(Engineer.name == 'dilbert'),
+            .filter(Engineer.name == "dilbert"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies JOIN (people "
             "JOIN engineers ON people.person_id = "
             "engineers.person_id) ON companies.company_id = "
             "people.company_id WHERE people.name = :name_1",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
         mach_alias = machines.select()
         self.assert_compile(
-            sess.query(Company).join(people.join(engineers), Company.employees)
-            .join(mach_alias, Engineer.machines, from_joinpoint=True).
-            filter(Engineer.name == 'dilbert').filter(Machine.name == 'foo'),
+            sess.query(Company)
+            .join(people.join(engineers), Company.employees)
+            .join(mach_alias, Engineer.machines, from_joinpoint=True)
+            .filter(Engineer.name == "dilbert")
+            .filter(Machine.name == "foo"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies JOIN (people "
@@ -362,20 +484,25 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "FROM machines) AS anon_1 "
             "ON engineers.person_id = anon_1.engineer_id "
             "WHERE people.name = :name_1 AND anon_1.name = :name_2",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_auto_aliasing_multi_link(self):
         # test [ticket:2903]
         sess = create_session()
 
-        Company, Engineer, Manager, Boss = self.classes.Company, \
-            self.classes.Engineer, \
-            self.classes.Manager, self.classes.Boss
-        q = sess.query(Company).\
-            join(Company.employees.of_type(Engineer)).\
-            join(Company.employees.of_type(Manager)).\
-            join(Company.employees.of_type(Boss))
+        Company, Engineer, Manager, Boss = (
+            self.classes.Company,
+            self.classes.Engineer,
+            self.classes.Manager,
+            self.classes.Boss,
+        )
+        q = (
+            sess.query(Company)
+            .join(Company.employees.of_type(Engineer))
+            .join(Company.employees.of_type(Manager))
+            .join(Company.employees.of_type(Boss))
+        )
 
         self.assert_compile(
             q,
@@ -391,21 +518,26 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             "ON people_2.person_id = managers_2.person_id JOIN boss AS boss_1 "
             "ON managers_2.person_id = boss_1.boss_id) "
             "ON companies.company_id = people_2.company_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
 
 class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     @classmethod
     def setup_mappers(cls):
         User = cls.classes.User
         Address = cls.classes.Address
         users, addresses = (cls.tables.users, cls.tables.addresses)
-        mapper(User, users, properties={
-            'addresses': relationship(Address),
-            'ad_syn': synonym("addresses")
-        })
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address),
+                "ad_syn": synonym("addresses"),
+            },
+        )
         mapper(Address, addresses)
 
     def test_join_on_synonym(self):
@@ -413,12 +545,12 @@ class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.assert_compile(
             Session().query(User).join(User.ad_syn),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses ON users.id = addresses.user_id"
+            "FROM users JOIN addresses ON users.id = addresses.user_id",
         )
 
 
 class JoinTest(QueryTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def test_single_name(self):
         User = self.classes.User
@@ -428,12 +560,11 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(User).join("orders"),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id"
+            "FROM users JOIN orders ON users.id = orders.user_id",
         )
 
         assert_raises(
-            sa_exc.InvalidRequestError,
-            sess.query(User).join, "user",
+            sa_exc.InvalidRequestError, sess.query(User).join, "user"
         )
 
         self.assert_compile(
@@ -442,21 +573,21 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN orders ON users.id = orders.user_id "
             "JOIN order_items AS order_items_1 "
             "ON orders.id = order_items_1.order_id JOIN items "
-            "ON items.id = order_items_1.item_id"
+            "ON items.id = order_items_1.item_id",
         )
 
         # test overlapping paths.   User->orders is used by both joins, but
         # rendered once.
         self.assert_compile(
-            sess.query(User).join("orders", "items").join(
-                "orders", "address"),
+            sess.query(User).join("orders", "items").join("orders", "address"),
             "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "JOIN orders "
             "ON users.id = orders.user_id "
             "JOIN order_items AS order_items_1 "
             "ON orders.id = order_items_1.order_id "
             "JOIN items ON items.id = order_items_1.item_id JOIN addresses "
-            "ON addresses.id = orders.address_id")
+            "ON addresses.id = orders.address_id",
+        )
 
     def test_invalid_kwarg_join(self):
         User = self.classes.User
@@ -464,12 +595,18 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert_raises_message(
             TypeError,
             "unknown arguments: bar, foob",
-            sess.query(User).join, "address", foob="bar", bar="bat"
+            sess.query(User).join,
+            "address",
+            foob="bar",
+            bar="bat",
         )
         assert_raises_message(
             TypeError,
             "unknown arguments: bar, foob",
-            sess.query(User).outerjoin, "address", foob="bar", bar="bat"
+            sess.query(User).outerjoin,
+            "address",
+            foob="bar",
+            bar="bat",
         )
 
     def test_left_is_none(self):
@@ -482,7 +619,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa_exc.InvalidRequestError,
             r"Don't know how to join from x; please use select_from\(\) to "
             r"establish the left entity/selectable of this join",
-            sess.query(literal_column('x'), User).join, Address
+            sess.query(literal_column("x"), User).join,
+            Address,
         )
 
     def test_left_is_none_and_query_has_no_entities(self):
@@ -495,25 +633,26 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa_exc.InvalidRequestError,
             r"No entities to join from; please use select_from\(\) to "
             r"establish the left entity/selectable of this join",
-            sess.query().join, Address
+            sess.query().join,
+            Address,
         )
 
     def test_isouter_flag(self):
         User = self.classes.User
 
         self.assert_compile(
-            create_session().query(User).join('orders', isouter=True),
+            create_session().query(User).join("orders", isouter=True),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id"
+            "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id",
         )
 
     def test_full_flag(self):
         User = self.classes.User
 
         self.assert_compile(
-            create_session().query(User).outerjoin('orders', full=True),
+            create_session().query(User).outerjoin("orders", full=True),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users FULL OUTER JOIN orders ON users.id = orders.user_id"
+            "FROM users FULL OUTER JOIN orders ON users.id = orders.user_id",
         )
 
     def test_multi_tuple_form(self):
@@ -524,9 +663,11 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         """
 
-        Item, Order, User = (self.classes.Item,
-                             self.classes.Order,
-                             self.classes.User)
+        Item, Order, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+        )
 
         sess = create_session()
 
@@ -543,8 +684,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User).join(
-                (Order, User.id == Order.user_id),
-                (Item, Order.items)),
+                (Order, User.id == Order.user_id), (Item, Order.items)
+            ),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id "
             "JOIN order_items AS order_items_1 ON orders.id = "
@@ -560,36 +701,42 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_single_prop_1(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         self.assert_compile(
             sess.query(User).join(User.orders),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id"
+            "FROM users JOIN orders ON users.id = orders.user_id",
         )
 
     def test_single_prop_2(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         self.assert_compile(
             sess.query(User).join(Order.user),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM orders JOIN users ON users.id = orders.user_id"
+            "FROM orders JOIN users ON users.id = orders.user_id",
         )
 
     def test_single_prop_3(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         oalias1 = aliased(Order)
@@ -597,14 +744,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(User).join(oalias1.user),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM orders AS orders_1 JOIN users ON users.id = orders_1.user_id"
+            "FROM orders AS orders_1 JOIN users ON users.id = orders_1.user_id",
         )
 
     def test_single_prop_4(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         oalias1 = aliased(Order)
@@ -616,13 +765,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM orders AS orders_1 JOIN users "
             "ON users.id = orders_1.user_id, "
-            "orders AS orders_2 JOIN users ON users.id = orders_2.user_id")
+            "orders AS orders_2 JOIN users ON users.id = orders_2.user_id",
+        )
 
     def test_single_prop_5(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         self.assert_compile(
@@ -631,28 +783,32 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN orders ON users.id = orders.user_id "
             "JOIN order_items AS order_items_1 "
             "ON orders.id = order_items_1.order_id JOIN items "
-            "ON items.id = order_items_1.item_id"
+            "ON items.id = order_items_1.item_id",
         )
 
     def test_single_prop_6(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         ualias = aliased(User)
         self.assert_compile(
             sess.query(ualias).join(ualias.orders),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
-            "FROM users AS users_1 JOIN orders ON users_1.id = orders.user_id"
+            "FROM users AS users_1 JOIN orders ON users_1.id = orders.user_id",
         )
 
     def test_single_prop_7(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         # this query is somewhat nonsensical.  the old system didn't render a
@@ -666,13 +822,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN orders ON users.id = orders.user_id, "
             "orders AS orders_1 JOIN order_items AS order_items_1 "
             "ON orders_1.id = order_items_1.order_id "
-            "JOIN items ON items.id = order_items_1.item_id")
+            "JOIN items ON items.id = order_items_1.item_id",
+        )
 
     def test_single_prop_8(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         # same as before using an aliased() for User as well
@@ -685,101 +844,117 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN orders ON users_1.id = orders.user_id, "
             "orders AS orders_1 JOIN order_items AS order_items_1 "
             "ON orders_1.id = order_items_1.order_id "
-            "JOIN items ON items.id = order_items_1.item_id")
+            "JOIN items ON items.id = order_items_1.item_id",
+        )
 
     def test_single_prop_9(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         self.assert_compile(
-            sess.query(User).filter(User.name == 'ed').from_self().
-            join(User.orders),
+            sess.query(User)
+            .filter(User.name == "ed")
+            .from_self()
+            .join(User.orders),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
             "WHERE users.name = :name_1) AS anon_1 JOIN orders "
-            "ON anon_1.users_id = orders.user_id"
+            "ON anon_1.users_id = orders.user_id",
         )
 
     def test_single_prop_10(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         self.assert_compile(
-            sess.query(User).join(User.addresses, aliased=True).
-            filter(Address.email_address == 'foo'),
+            sess.query(User)
+            .join(User.addresses, aliased=True)
+            .filter(Address.email_address == "foo"),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN addresses AS addresses_1 "
             "ON users.id = addresses_1.user_id "
-            "WHERE addresses_1.email_address = :email_address_1"
+            "WHERE addresses_1.email_address = :email_address_1",
         )
 
     def test_single_prop_11(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         self.assert_compile(
-            sess.query(User).join(User.orders, Order.items, aliased=True).
-            filter(Item.id == 10),
+            sess.query(User)
+            .join(User.orders, Order.items, aliased=True)
+            .filter(Item.id == 10),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders AS orders_1 "
             "ON users.id = orders_1.user_id "
             "JOIN order_items AS order_items_1 "
             "ON orders_1.id = order_items_1.order_id "
             "JOIN items AS items_1 ON items_1.id = order_items_1.item_id "
-            "WHERE items_1.id = :id_1")
+            "WHERE items_1.id = :id_1",
+        )
 
     def test_single_prop_12(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         oalias1 = aliased(Order)
         # test #1 for [ticket:1706]
         ualias = aliased(User)
         self.assert_compile(
-            sess.query(ualias).
-            join(oalias1, ualias.orders).
-            join(Address, ualias.addresses),
+            sess.query(ualias)
+            .join(oalias1, ualias.orders)
+            .join(Address, ualias.addresses),
             "SELECT users_1.id AS users_1_id, users_1.name AS "
             "users_1_name FROM users AS users_1 JOIN orders AS orders_1 "
             "ON users_1.id = orders_1.user_id JOIN addresses ON users_1.id "
-            "= addresses.user_id"
+            "= addresses.user_id",
         )
 
     def test_single_prop_13(self):
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
         # test #2 for [ticket:1706]
         ualias = aliased(User)
         ualias2 = aliased(User)
         self.assert_compile(
-            sess.query(ualias).
-            join(Address, ualias.addresses).
-            join(ualias2, Address.user).
-            join(Order, ualias.orders),
+            sess.query(ualias)
+            .join(Address, ualias.addresses)
+            .join(ualias2, Address.user)
+            .join(Order, ualias.orders),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM users "
             "AS users_1 JOIN addresses ON users_1.id = addresses.user_id "
             "JOIN users AS users_2 "
             "ON users_2.id = addresses.user_id JOIN orders "
-            "ON users_1.id = orders.user_id"
+            "ON users_1.id = orders.user_id",
         )
 
     def test_overlapping_paths(self):
@@ -788,22 +963,28 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         for aliased in (True, False):
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
-            result = create_session().query(User) \
-                .join('orders', 'items', aliased=aliased) \
-                .filter_by(id=3) \
-                .join('orders', 'address', aliased=aliased) \
-                .filter_by(id=1).all()
-            assert [User(id=7, name='jack')] == result
+            result = (
+                create_session()
+                .query(User)
+                .join("orders", "items", aliased=aliased)
+                .filter_by(id=3)
+                .join("orders", "address", aliased=aliased)
+                .filter_by(id=1)
+                .all()
+            )
+            assert [User(id=7, name="jack")] == result
 
     def test_overlapping_paths_multilevel(self):
         User = self.classes.User
 
         s = Session()
-        q = s.query(User).\
-            join('orders').\
-            join('addresses').\
-            join('orders', 'items').\
-            join('addresses', 'dingaling')
+        q = (
+            s.query(User)
+            .join("orders")
+            .join("addresses")
+            .join("orders", "items")
+            .join("addresses", "dingaling")
+        )
         self.assert_compile(
             q,
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -812,17 +993,22 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN order_items AS order_items_1 ON orders.id = "
             "order_items_1.order_id "
             "JOIN items ON items.id = order_items_1.item_id "
-            "JOIN dingalings ON addresses.id = dingalings.address_id"
-
+            "JOIN dingalings ON addresses.id = dingalings.address_id",
         )
 
     def test_overlapping_paths_outerjoin(self):
         User = self.classes.User
 
-        result = create_session().query(User).outerjoin('orders', 'items') \
-            .filter_by(id=3).outerjoin('orders', 'address') \
-            .filter_by(id=1).all()
-        assert [User(id=7, name='jack')] == result
+        result = (
+            create_session()
+            .query(User)
+            .outerjoin("orders", "items")
+            .filter_by(id=3)
+            .outerjoin("orders", "address")
+            .filter_by(id=1)
+            .all()
+        )
+        assert [User(id=7, name="jack")] == result
 
     def test_raises_on_dupe_target_rel(self):
         User = self.classes.User
@@ -831,52 +1017,65 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa.exc.SAWarning,
             "Pathed join target Order.items has already been joined to; "
             "skipping",
-            lambda: create_session().query(User).outerjoin('orders', 'items').
-            outerjoin('orders', 'items')
+            lambda: create_session()
+            .query(User)
+            .outerjoin("orders", "items")
+            .outerjoin("orders", "items"),
         )
 
     def test_from_joinpoint(self):
-        Item, User, Order = (self.classes.Item,
-                             self.classes.User,
-                             self.classes.Order)
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
 
         sess = create_session()
 
         for oalias, ialias in [
-                (True, True),
-                (False, False),
-                (True, False),
-                (False, True)]:
+            (True, True),
+            (False, False),
+            (True, False),
+            (False, True),
+        ]:
             eq_(
-                sess.query(User).join('orders', aliased=oalias)
-                .join('items', from_joinpoint=True, aliased=ialias)
-                .filter(Item.description == 'item 4').all(),
-                [User(name='jack')]
+                sess.query(User)
+                .join("orders", aliased=oalias)
+                .join("items", from_joinpoint=True, aliased=ialias)
+                .filter(Item.description == "item 4")
+                .all(),
+                [User(name="jack")],
             )
 
             # use middle criterion
             eq_(
-                sess.query(User).join('orders', aliased=oalias)
+                sess.query(User)
+                .join("orders", aliased=oalias)
                 .filter(Order.user_id == 9)
-                .join('items', from_joinpoint=True, aliased=ialias)
-                .filter(Item.description == 'item 4').all(),
-                []
+                .join("items", from_joinpoint=True, aliased=ialias)
+                .filter(Item.description == "item 4")
+                .all(),
+                [],
             )
 
         orderalias = aliased(Order)
         itemalias = aliased(Item)
         eq_(
-            sess.query(User).join(orderalias, 'orders')
-            .join(itemalias, 'items', from_joinpoint=True)
-            .filter(itemalias.description == 'item 4').all(),
-            [User(name='jack')]
+            sess.query(User)
+            .join(orderalias, "orders")
+            .join(itemalias, "items", from_joinpoint=True)
+            .filter(itemalias.description == "item 4")
+            .all(),
+            [User(name="jack")],
         )
         eq_(
-            sess.query(User).join(orderalias, 'orders')
-            .join(itemalias, 'items', from_joinpoint=True)
+            sess.query(User)
+            .join(orderalias, "orders")
+            .join(itemalias, "items", from_joinpoint=True)
             .filter(orderalias.user_id == 9)
-            .filter(itemalias.description == 'item 4').all(),
-            []
+            .filter(itemalias.description == "item 4")
+            .all(),
+            [],
         )
 
     def test_join_nonmapped_column(self):
@@ -888,9 +1087,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         # intentionally join() with a non-existent "left" side
         self.assert_compile(
-            sess.query(User.id, literal_column('foo')).join(Order.user),
+            sess.query(User.id, literal_column("foo")).join(Order.user),
             "SELECT users.id AS users_id, foo FROM "
-            "orders JOIN users ON users.id = orders.user_id"
+            "orders JOIN users ON users.id = orders.user_id",
         )
 
     def test_backwards_join(self):
@@ -902,17 +1101,21 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         eq_(
-            sess.query(User).join(Address.user)
-            .filter(Address.email_address == 'ed@wood.com').all(),
-            [User(id=8, name='ed')]
+            sess.query(User)
+            .join(Address.user)
+            .filter(Address.email_address == "ed@wood.com")
+            .all(),
+            [User(id=8, name="ed")],
         )
 
         # its actually not so controversial if you view it in terms
         # of multiple entities.
         eq_(
-            sess.query(User, Address).join(Address.user)
-            .filter(Address.email_address == 'ed@wood.com').all(),
-            [(User(id=8, name='ed'), Address(email_address='ed@wood.com'))]
+            sess.query(User, Address)
+            .join(Address.user)
+            .filter(Address.email_address == "ed@wood.com")
+            .all(),
+            [(User(id=8, name="ed"), Address(email_address="ed@wood.com"))],
         )
 
         # this was the controversial part.  now, raise an error if the feature
@@ -920,14 +1123,18 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # before the error raise was added, this would silently work.....
         assert_raises(
             sa_exc.InvalidRequestError,
-            sess.query(User).join, Address, Address.user,
+            sess.query(User).join,
+            Address,
+            Address.user,
         )
 
         # but this one would silently fail
         adalias = aliased(Address)
         assert_raises(
             sa_exc.InvalidRequestError,
-            sess.query(User).join, adalias, Address.user,
+            sess.query(User).join,
+            adalias,
+            Address.user,
         )
 
     def test_multiple_with_aliases(self):
@@ -939,7 +1146,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         oalias1 = aliased(Order)
         oalias2 = aliased(Order)
         self.assert_compile(
-            sess.query(ualias).join(oalias1, ualias.orders)
+            sess.query(ualias)
+            .join(oalias1, ualias.orders)
             .join(oalias2, ualias.orders)
             .filter(or_(oalias1.user_id == 9, oalias2.user_id == 7)),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
@@ -949,7 +1157,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "users_1.id = orders_2.user_id "
             "WHERE orders_1.user_id = :user_id_1 "
             "OR orders_2.user_id = :user_id_2",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_select_from_orm_joins(self):
         User, Order = self.classes.User, self.classes.Order
@@ -963,36 +1172,42 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             join(User, oalias2, User.id == oalias2.user_id),
             "users JOIN orders AS orders_1 ON users.id = orders_1.user_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
         self.assert_compile(
             join(ualias, oalias1, ualias.orders),
             "users AS users_1 JOIN orders AS orders_1 "
             "ON users_1.id = orders_1.user_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
         self.assert_compile(
             sess.query(ualias).select_from(
-                join(ualias, oalias1, ualias.orders)),
+                join(ualias, oalias1, ualias.orders)
+            ),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM users AS users_1 "
             "JOIN orders AS orders_1 ON users_1.id = orders_1.user_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
         self.assert_compile(
             sess.query(User, ualias).select_from(
-                join(ualias, oalias1, ualias.orders)),
+                join(ualias, oalias1, ualias.orders)
+            ),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users_1.id AS users_1_id, "
             "users_1.name AS users_1_name FROM users, users AS users_1 "
             "JOIN orders AS orders_1 ON users_1.id = orders_1.user_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
         # this fails (and we cant quite fix right now).
         if False:
             self.assert_compile(
-                sess.query(User, ualias).join(oalias1, ualias.orders)
+                sess.query(User, ualias)
+                .join(oalias1, ualias.orders)
                 .join(oalias2, User.id == oalias2.user_id)
                 .filter(or_(oalias1.user_id == 9, oalias2.user_id == 7)),
                 "SELECT users.id AS users_id, users.name AS users_name, "
@@ -1003,14 +1218,17 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 "ON users_1.id = orders_1.user_id  "
                 "WHERE orders_1.user_id = :user_id_1 "
                 "OR orders_2.user_id = :user_id_2",
-                use_default_dialect=True)
+                use_default_dialect=True,
+            )
 
         # this is the same thing using explicit orm.join() (which now offers
         # multiple again)
         self.assert_compile(
-            sess.query(User, ualias).select_from(
+            sess.query(User, ualias)
+            .select_from(
                 join(ualias, oalias1, ualias.orders),
-                join(User, oalias2, User.id == oalias2.user_id),)
+                join(User, oalias2, User.id == oalias2.user_id),
+            )
             .filter(or_(oalias1.user_id == 9, oalias2.user_id == 7)),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users_1.id AS users_1_id, users_1.name AS "
@@ -1019,7 +1237,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "users JOIN orders AS orders_2 ON users.id = orders_2.user_id "
             "WHERE orders_1.user_id = :user_id_1 "
             "OR orders_2.user_id = :user_id_2",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_overlapping_backwards_joins(self):
         User, Order = self.classes.User, self.classes.Order
@@ -1037,20 +1256,24 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM orders AS orders_1 "
             "JOIN users ON users.id = orders_1.user_id, orders AS orders_2 "
             "JOIN users ON users.id = orders_2.user_id",
-            use_default_dialect=True,)
+            use_default_dialect=True,
+        )
 
     def test_replace_multiple_from_clause(self):
         """test adding joins onto multiple FROM clauses"""
 
-        User, Order, Address = (self.classes.User,
-                                self.classes.Order,
-                                self.classes.Address)
+        User, Order, Address = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Address,
+        )
 
         sess = create_session()
 
         self.assert_compile(
             sess.query(Address, User)
-            .join(Address.dingaling).join(User.orders, Order.items),
+            .join(Address.dingaling)
+            .join(User.orders, Order.items),
             "SELECT addresses.id AS addresses_id, "
             "addresses.user_id AS addresses_user_id, "
             "addresses.email_address AS addresses_email_address, "
@@ -1061,61 +1284,77 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN order_items AS order_items_1 "
             "ON orders.id = order_items_1.order_id JOIN items "
             "ON items.id = order_items_1.item_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_multiple_adaption(self):
-        Item, Order, User = (self.classes.Item,
-                             self.classes.Order,
-                             self.classes.User)
+        Item, Order, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+        )
 
         sess = create_session()
 
         self.assert_compile(
-            sess.query(User).join(User.orders, Order.items, aliased=True)
-            .filter(Order.id == 7).filter(Item.id == 8),
+            sess.query(User)
+            .join(User.orders, Order.items, aliased=True)
+            .filter(Order.id == 7)
+            .filter(Item.id == 8),
             "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "JOIN orders AS orders_1 "
             "ON users.id = orders_1.user_id JOIN order_items AS order_items_1 "
             "ON orders_1.id = order_items_1.order_id "
             "JOIN items AS items_1 ON items_1.id = order_items_1.item_id "
             "WHERE orders_1.id = :id_1 AND items_1.id = :id_2",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_onclause_conditional_adaption(self):
-        Item, Order, orders, order_items, User = (self.classes.Item,
-                                                  self.classes.Order,
-                                                  self.tables.orders,
-                                                  self.tables.order_items,
-                                                  self.classes.User)
+        Item, Order, orders, order_items, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.order_items,
+            self.classes.User,
+        )
 
         sess = create_session()
 
         # this is now a very weird test, nobody should really
         # be using the aliased flag in this way.
         self.assert_compile(
-            sess.query(User).join(User.orders, aliased=True).
-            join(Item,
-                 and_(Order.id == order_items.c.order_id,
-                      order_items.c.item_id == Item.id),
-                 from_joinpoint=True, aliased=True),
+            sess.query(User)
+            .join(User.orders, aliased=True)
+            .join(
+                Item,
+                and_(
+                    Order.id == order_items.c.order_id,
+                    order_items.c.item_id == Item.id,
+                ),
+                from_joinpoint=True,
+                aliased=True,
+            ),
             "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "JOIN orders AS orders_1 ON users.id = orders_1.user_id "
             "JOIN items AS items_1 "
             "ON orders_1.id = order_items.order_id "
             "AND order_items.item_id = items_1.id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
         oalias = orders.select()
         self.assert_compile(
-            sess.query(User).join(oalias, User.orders)
-            .join(Item,
-                  and_(
-                      Order.id == order_items.c.order_id,
-                      order_items.c.item_id == Item.id),
-                  from_joinpoint=True),
+            sess.query(User)
+            .join(oalias, User.orders)
+            .join(
+                Item,
+                and_(
+                    Order.id == order_items.c.order_id,
+                    order_items.c.item_id == Item.id,
+                ),
+                from_joinpoint=True,
+            ),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN "
             "(SELECT orders.id AS id, orders.user_id AS user_id, "
@@ -1124,7 +1363,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON users.id = anon_1.user_id JOIN items "
             "ON anon_1.id = order_items.order_id "
             "AND order_items.item_id = items.id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
         # query.join(<stuff>, aliased=True).join(target, sql_expression)
         # or: query.join(path_to_some_joined_table_mapper).join(target,
@@ -1138,98 +1378,125 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(users).join(addresses),
             "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses ON users.id = addresses.user_id"
+            "FROM users JOIN addresses ON users.id = addresses.user_id",
         )
 
     def test_orderby_arg_bug(self):
-        User, users, Order = (self.classes.User,
-                              self.tables.users,
-                              self.classes.Order)
+        User, users, Order = (
+            self.classes.User,
+            self.tables.users,
+            self.classes.Order,
+        )
 
         sess = create_session()
         # no arg error
-        result = sess.query(User).join('orders', aliased=True) \
-            .order_by(Order.id).reset_joinpoint().order_by(users.c.id).all()
+        result = (
+            sess.query(User)
+            .join("orders", aliased=True)
+            .order_by(Order.id)
+            .reset_joinpoint()
+            .order_by(users.c.id)
+            .all()
+        )
 
     def test_no_onclause(self):
-        Item, User, Order = (self.classes.Item,
-                             self.classes.User,
-                             self.classes.Order)
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
 
         sess = create_session()
 
         eq_(
-            sess.query(User).select_from(join(User, Order)
-                                         .join(Item, Order.items))
-            .filter(Item.description == 'item 4').all(),
-            [User(name='jack')]
+            sess.query(User)
+            .select_from(join(User, Order).join(Item, Order.items))
+            .filter(Item.description == "item 4")
+            .all(),
+            [User(name="jack")],
         )
 
         eq_(
-            sess.query(User.name).select_from(join(User, Order)
-                                              .join(Item, Order.items))
-            .filter(Item.description == 'item 4').all(),
-            [('jack',)]
+            sess.query(User.name)
+            .select_from(join(User, Order).join(Item, Order.items))
+            .filter(Item.description == "item 4")
+            .all(),
+            [("jack",)],
         )
 
         eq_(
-            sess.query(User).join(Order).join(Item, Order.items)
-                            .filter(Item.description == 'item 4').all(),
-            [User(name='jack')]
+            sess.query(User)
+            .join(Order)
+            .join(Item, Order.items)
+            .filter(Item.description == "item 4")
+            .all(),
+            [User(name="jack")],
         )
 
     def test_clause_onclause(self):
-        Item, Order, users, order_items, User = (self.classes.Item,
-                                                 self.classes.Order,
-                                                 self.tables.users,
-                                                 self.tables.order_items,
-                                                 self.classes.User)
+        Item, Order, users, order_items, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.tables.users,
+            self.tables.order_items,
+            self.classes.User,
+        )
 
         sess = create_session()
 
         eq_(
-            sess.query(User).join(Order, User.id == Order.user_id)
+            sess.query(User)
+            .join(Order, User.id == Order.user_id)
             .join(order_items, Order.id == order_items.c.order_id)
             .join(Item, order_items.c.item_id == Item.id)
-            .filter(Item.description == 'item 4').all(),
-            [User(name='jack')]
+            .filter(Item.description == "item 4")
+            .all(),
+            [User(name="jack")],
         )
 
         eq_(
-            sess.query(User.name).join(Order, User.id == Order.user_id)
+            sess.query(User.name)
+            .join(Order, User.id == Order.user_id)
             .join(order_items, Order.id == order_items.c.order_id)
             .join(Item, order_items.c.item_id == Item.id)
-            .filter(Item.description == 'item 4').all(),
-            [('jack',)]
+            .filter(Item.description == "item 4")
+            .all(),
+            [("jack",)],
         )
 
         ualias = aliased(User)
         eq_(
-            sess.query(ualias.name).join(Order, ualias.id == Order.user_id)
+            sess.query(ualias.name)
+            .join(Order, ualias.id == Order.user_id)
             .join(order_items, Order.id == order_items.c.order_id)
             .join(Item, order_items.c.item_id == Item.id)
-            .filter(Item.description == 'item 4').all(),
-            [('jack',)]
+            .filter(Item.description == "item 4")
+            .all(),
+            [("jack",)],
         )
 
         # explicit onclause with from_self(), means
         # the onclause must be aliased against the query's custom
         # FROM object
         eq_(
-            sess.query(User).order_by(User.id).offset(2)
+            sess.query(User)
+            .order_by(User.id)
+            .offset(2)
             .from_self()
             .join(Order, User.id == Order.user_id)
             .all(),
-            [User(name='fred')]
+            [User(name="fred")],
         )
 
         # same with an explicit select_from()
         eq_(
-            sess.query(User).select_entity_from(select([users])
-                                                .order_by(User.id)
-                                                .offset(2).alias())
-            .join(Order, User.id == Order.user_id).all(),
-            [User(name='fred')]
+            sess.query(User)
+            .select_entity_from(
+                select([users]).order_by(User.id).offset(2).alias()
+            )
+            .join(Order, User.id == Order.user_id)
+            .all(),
+            [User(name="fred")],
         )
 
     def test_aliased_classes(self):
@@ -1238,14 +1505,17 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         (user7, user8, user9, user10) = sess.query(User).all()
-        (address1, address2, address3, address4, address5) = sess \
-            .query(Address).all()
-        expected = [(user7, address1),
-                    (user8, address2),
-                    (user8, address3),
-                    (user8, address4),
-                    (user9, address5),
-                    (user10, None)]
+        (address1, address2, address3, address4, address5) = sess.query(
+            Address
+        ).all()
+        expected = [
+            (user7, address1),
+            (user8, address2),
+            (user8, address3),
+            (user8, address4),
+            (user9, address5),
+            (user10, None),
+        ]
 
         q = sess.query(User)
         AdAlias = aliased(Address)
@@ -1256,32 +1526,50 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         sess.expunge_all()
 
         q = sess.query(User).add_entity(AdAlias)
-        result = q.select_from(outerjoin(User, AdAlias)) \
-            .filter(AdAlias.email_address == 'ed@bettyboop.com').all()
+        result = (
+            q.select_from(outerjoin(User, AdAlias))
+            .filter(AdAlias.email_address == "ed@bettyboop.com")
+            .all()
+        )
         eq_(result, [(user8, address3)])
 
-        result = q.select_from(outerjoin(User, AdAlias, 'addresses')) \
-            .filter(AdAlias.email_address == 'ed@bettyboop.com').all()
+        result = (
+            q.select_from(outerjoin(User, AdAlias, "addresses"))
+            .filter(AdAlias.email_address == "ed@bettyboop.com")
+            .all()
+        )
         eq_(result, [(user8, address3)])
 
-        result = q.select_from(
-            outerjoin(User, AdAlias, User.id == AdAlias.user_id)).filter(
-            AdAlias.email_address == 'ed@bettyboop.com').all()
+        result = (
+            q.select_from(outerjoin(User, AdAlias, User.id == AdAlias.user_id))
+            .filter(AdAlias.email_address == "ed@bettyboop.com")
+            .all()
+        )
         eq_(result, [(user8, address3)])
 
         # this is the first test where we are joining "backwards" - from
         # AdAlias to User even though
         # the query is against User
         q = sess.query(User, AdAlias)
-        result = q.join(AdAlias.user) \
-            .filter(User.name == 'ed').order_by(User.id, AdAlias.id)
-        eq_(result.all(), [(user8, address2),
-                           (user8, address3), (user8, address4), ])
+        result = (
+            q.join(AdAlias.user)
+            .filter(User.name == "ed")
+            .order_by(User.id, AdAlias.id)
+        )
+        eq_(
+            result.all(),
+            [(user8, address2), (user8, address3), (user8, address4)],
+        )
 
-        q = sess.query(User, AdAlias).select_from(
-            join(AdAlias, User, AdAlias.user)).filter(User.name == 'ed')
-        eq_(result.all(), [(user8, address2),
-                           (user8, address3), (user8, address4), ])
+        q = (
+            sess.query(User, AdAlias)
+            .select_from(join(AdAlias, User, AdAlias.user))
+            .filter(User.name == "ed")
+        )
+        eq_(
+            result.all(),
+            [(user8, address2), (user8, address3), (user8, address4)],
+        )
 
     def test_expression_onclauses(self):
         Order, User = self.classes.Order, self.classes.User
@@ -1295,7 +1583,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN (SELECT users.id AS id, users.name "
             "AS name FROM users) AS anon_1 ON users.name = anon_1.name",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
         subq = sess.query(Order).subquery()
@@ -1306,51 +1594,100 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "orders.address_id AS address_id, orders.description AS "
             "description, orders.isopen AS isopen FROM orders) AS "
             "anon_1 ON users.id = anon_1.user_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
         self.assert_compile(
             sess.query(User).join(Order, User.id == Order.user_id),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_implicit_joins_from_aliases(self):
-        Item, User, Order = (self.classes.Item,
-                             self.classes.User,
-                             self.classes.Order)
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
 
         sess = create_session()
         OrderAlias = aliased(Order)
 
-        eq_(sess.query(OrderAlias).join('items')
-            .filter_by(description='item 3').order_by(OrderAlias.id).all(),
+        eq_(
+            sess.query(OrderAlias)
+            .join("items")
+            .filter_by(description="item 3")
+            .order_by(OrderAlias.id)
+            .all(),
             [
-                Order(address_id=1, description='order 1', isopen=0, user_id=7,
-                      id=1),
-                Order(address_id=4, description='order 2', isopen=0, user_id=9,
-                      id=2),
-                Order(address_id=1, description='order 3', isopen=1, user_id=7,
-                      id=3)
-            ])
+                Order(
+                    address_id=1,
+                    description="order 1",
+                    isopen=0,
+                    user_id=7,
+                    id=1,
+                ),
+                Order(
+                    address_id=4,
+                    description="order 2",
+                    isopen=0,
+                    user_id=9,
+                    id=2,
+                ),
+                Order(
+                    address_id=1,
+                    description="order 3",
+                    isopen=1,
+                    user_id=7,
+                    id=3,
+                ),
+            ],
+        )
 
-        eq_(sess.query(User, OrderAlias, Item.description).
-            join(OrderAlias, 'orders').join('items', from_joinpoint=True).
-            filter_by(description='item 3').order_by(User.id, OrderAlias.id).
-            all(),
-            [(User(name='jack', id=7),
-              Order(address_id=1, description='order 1', isopen=0, user_id=7,
-                    id=1),
-              'item 3'),
-             (User(name='jack', id=7),
-              Order(address_id=1, description='order 3', isopen=1, user_id=7,
-                    id=3),
-              'item 3'),
-             (User(name='fred', id=9),
-              Order(address_id=4, description='order 2', isopen=0, user_id=9,
-                    id=2),
-              'item 3')])
+        eq_(
+            sess.query(User, OrderAlias, Item.description)
+            .join(OrderAlias, "orders")
+            .join("items", from_joinpoint=True)
+            .filter_by(description="item 3")
+            .order_by(User.id, OrderAlias.id)
+            .all(),
+            [
+                (
+                    User(name="jack", id=7),
+                    Order(
+                        address_id=1,
+                        description="order 1",
+                        isopen=0,
+                        user_id=7,
+                        id=1,
+                    ),
+                    "item 3",
+                ),
+                (
+                    User(name="jack", id=7),
+                    Order(
+                        address_id=1,
+                        description="order 3",
+                        isopen=1,
+                        user_id=7,
+                        id=3,
+                    ),
+                    "item 3",
+                ),
+                (
+                    User(name="fred", id=9),
+                    Order(
+                        address_id=4,
+                        description="order 2",
+                        isopen=0,
+                        user_id=9,
+                        id=2,
+                    ),
+                    "item 3",
+                ),
+            ],
+        )
 
     def test_aliased_classes_m2m(self):
         Item, Order = self.classes.Item, self.classes.Order
@@ -1375,22 +1712,22 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         ]
 
         q = sess.query(Order)
-        q = q.add_entity(Item).select_from(
-            join(Order, Item, 'items')).order_by(Order.id, Item.id)
+        q = (
+            q.add_entity(Item)
+            .select_from(join(Order, Item, "items"))
+            .order_by(Order.id, Item.id)
+        )
         result = q.all()
         eq_(result, expected)
 
         IAlias = aliased(Item)
-        q = sess.query(Order, IAlias).select_from(
-            join(Order, IAlias, 'items')) \
-            .filter(IAlias.description == 'item 3')
+        q = (
+            sess.query(Order, IAlias)
+            .select_from(join(Order, IAlias, "items"))
+            .filter(IAlias.description == "item 3")
+        )
         result = q.all()
-        eq_(result,
-            [
-                (order1, item3),
-                (order2, item3),
-                (order3, item3),
-            ])
+        eq_(result, [(order1, item3), (order2, item3), (order3, item3)])
 
     def test_joins_from_adapted_entities(self):
         User = self.classes.User
@@ -1404,17 +1741,19 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         subquery = session.query(User.id).subquery()
         join = subquery, subquery.c.id == User.id
         joined = unioned.outerjoin(*join)
-        self.assert_compile(joined,
-                            'SELECT anon_1.users_id AS '
-                            'anon_1_users_id, anon_1.users_name AS '
-                            'anon_1_users_name FROM (SELECT users.id '
-                            'AS users_id, users.name AS users_name '
-                            'FROM users UNION SELECT users.id AS '
-                            'users_id, users.name AS users_name FROM '
-                            'users) AS anon_1 LEFT OUTER JOIN (SELECT '
-                            'users.id AS id FROM users) AS anon_2 ON '
-                            'anon_2.id = anon_1.users_id',
-                            use_default_dialect=True)
+        self.assert_compile(
+            joined,
+            "SELECT anon_1.users_id AS "
+            "anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name FROM (SELECT users.id "
+            "AS users_id, users.name AS users_name "
+            "FROM users UNION SELECT users.id AS "
+            "users_id, users.name AS users_name FROM "
+            "users) AS anon_1 LEFT OUTER JOIN (SELECT "
+            "users.id AS id FROM users) AS anon_2 ON "
+            "anon_2.id = anon_1.users_id",
+            use_default_dialect=True,
+        )
 
         first = session.query(User.id)
         second = session.query(User.id)
@@ -1422,14 +1761,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         subquery = session.query(User.id).subquery()
         join = subquery, subquery.c.id == User.id
         joined = unioned.outerjoin(*join)
-        self.assert_compile(joined,
-                            'SELECT anon_1.users_id AS anon_1_users_id '
-                            'FROM (SELECT users.id AS users_id FROM '
-                            'users UNION SELECT users.id AS users_id '
-                            'FROM users) AS anon_1 LEFT OUTER JOIN '
-                            '(SELECT users.id AS id FROM users) AS '
-                            'anon_2 ON anon_2.id = anon_1.users_id',
-                            use_default_dialect=True)
+        self.assert_compile(
+            joined,
+            "SELECT anon_1.users_id AS anon_1_users_id "
+            "FROM (SELECT users.id AS users_id FROM "
+            "users UNION SELECT users.id AS users_id "
+            "FROM users) AS anon_1 LEFT OUTER JOIN "
+            "(SELECT users.id AS id FROM users) AS "
+            "anon_2 ON anon_2.id = anon_1.users_id",
+            use_default_dialect=True,
+        )
 
     def test_joins_from_adapted_entities_isouter(self):
         User = self.classes.User
@@ -1443,17 +1784,19 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         subquery = session.query(User.id).subquery()
         join = subquery, subquery.c.id == User.id
         joined = unioned.join(*join, isouter=True)
-        self.assert_compile(joined,
-                            'SELECT anon_1.users_id AS '
-                            'anon_1_users_id, anon_1.users_name AS '
-                            'anon_1_users_name FROM (SELECT users.id '
-                            'AS users_id, users.name AS users_name '
-                            'FROM users UNION SELECT users.id AS '
-                            'users_id, users.name AS users_name FROM '
-                            'users) AS anon_1 LEFT OUTER JOIN (SELECT '
-                            'users.id AS id FROM users) AS anon_2 ON '
-                            'anon_2.id = anon_1.users_id',
-                            use_default_dialect=True)
+        self.assert_compile(
+            joined,
+            "SELECT anon_1.users_id AS "
+            "anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name FROM (SELECT users.id "
+            "AS users_id, users.name AS users_name "
+            "FROM users UNION SELECT users.id AS "
+            "users_id, users.name AS users_name FROM "
+            "users) AS anon_1 LEFT OUTER JOIN (SELECT "
+            "users.id AS id FROM users) AS anon_2 ON "
+            "anon_2.id = anon_1.users_id",
+            use_default_dialect=True,
+        )
 
         first = session.query(User.id)
         second = session.query(User.id)
@@ -1461,14 +1804,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         subquery = session.query(User.id).subquery()
         join = subquery, subquery.c.id == User.id
         joined = unioned.join(*join, isouter=True)
-        self.assert_compile(joined,
-                            'SELECT anon_1.users_id AS anon_1_users_id '
-                            'FROM (SELECT users.id AS users_id FROM '
-                            'users UNION SELECT users.id AS users_id '
-                            'FROM users) AS anon_1 LEFT OUTER JOIN '
-                            '(SELECT users.id AS id FROM users) AS '
-                            'anon_2 ON anon_2.id = anon_1.users_id',
-                            use_default_dialect=True)
+        self.assert_compile(
+            joined,
+            "SELECT anon_1.users_id AS anon_1_users_id "
+            "FROM (SELECT users.id AS users_id FROM "
+            "users UNION SELECT users.id AS users_id "
+            "FROM users) AS anon_1 LEFT OUTER JOIN "
+            "(SELECT users.id AS id FROM users) AS "
+            "anon_2 ON anon_2.id = anon_1.users_id",
+            use_default_dialect=True,
+        )
 
     def test_reset_joinpoint(self):
         User = self.classes.User
@@ -1476,100 +1821,158 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         for aliased in (True, False):
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
-            result = create_session().query(User) \
-                .join('orders', 'items', aliased=aliased) \
-                .filter_by(id=3).reset_joinpoint() \
-                .join('orders', 'address', aliased=aliased) \
-                .filter_by(id=1).all()
-            assert [User(id=7, name='jack')] == result
+            result = (
+                create_session()
+                .query(User)
+                .join("orders", "items", aliased=aliased)
+                .filter_by(id=3)
+                .reset_joinpoint()
+                .join("orders", "address", aliased=aliased)
+                .filter_by(id=1)
+                .all()
+            )
+            assert [User(id=7, name="jack")] == result
 
-            result = create_session().query(User) \
-                .join('orders', 'items', aliased=aliased, isouter=True) \
-                .filter_by(id=3).reset_joinpoint() \
-                .join('orders', 'address', aliased=aliased, isouter=True) \
-                .filter_by(id=1).all()
-            assert [User(id=7, name='jack')] == result
+            result = (
+                create_session()
+                .query(User)
+                .join("orders", "items", aliased=aliased, isouter=True)
+                .filter_by(id=3)
+                .reset_joinpoint()
+                .join("orders", "address", aliased=aliased, isouter=True)
+                .filter_by(id=1)
+                .all()
+            )
+            assert [User(id=7, name="jack")] == result
 
-            result = create_session().query(User).outerjoin(
-                'orders', 'items', aliased=aliased).filter_by(
-                id=3).reset_joinpoint().outerjoin(
-                'orders', 'address', aliased=aliased).filter_by(
-                id=1).all()
-            assert [User(id=7, name='jack')] == result
+            result = (
+                create_session()
+                .query(User)
+                .outerjoin("orders", "items", aliased=aliased)
+                .filter_by(id=3)
+                .reset_joinpoint()
+                .outerjoin("orders", "address", aliased=aliased)
+                .filter_by(id=1)
+                .all()
+            )
+            assert [User(id=7, name="jack")] == result
 
     def test_overlap_with_aliases(self):
-        orders, User, users = (self.tables.orders,
-                               self.classes.User,
-                               self.tables.users)
+        orders, User, users = (
+            self.tables.orders,
+            self.classes.User,
+            self.tables.users,
+        )
 
-        oalias = orders.alias('oalias')
+        oalias = orders.alias("oalias")
 
-        result = create_session().query(User).select_from(users.join(oalias)) \
-            .filter(oalias.c.description.in_(
-                ["order 1", "order 2", "order 3"])) \
-            .join('orders', 'items').order_by(User.id).all()
-        assert [User(id=7, name='jack'), User(id=9, name='fred')] == result
+        result = (
+            create_session()
+            .query(User)
+            .select_from(users.join(oalias))
+            .filter(
+                oalias.c.description.in_(["order 1", "order 2", "order 3"])
+            )
+            .join("orders", "items")
+            .order_by(User.id)
+            .all()
+        )
+        assert [User(id=7, name="jack"), User(id=9, name="fred")] == result
 
-        result = create_session().query(User).select_from(users.join(oalias)) \
-            .filter(oalias.c.description.in_(
-                ["order 1", "order 2", "order 3"])) \
-            .join('orders', 'items').filter_by(id=4).all()
-        assert [User(id=7, name='jack')] == result
+        result = (
+            create_session()
+            .query(User)
+            .select_from(users.join(oalias))
+            .filter(
+                oalias.c.description.in_(["order 1", "order 2", "order 3"])
+            )
+            .join("orders", "items")
+            .filter_by(id=4)
+            .all()
+        )
+        assert [User(id=7, name="jack")] == result
 
     def test_aliased(self):
         """test automatic generation of aliased joins."""
 
-        Item, Order, User, Address = (self.classes.Item,
-                                      self.classes.Order,
-                                      self.classes.User,
-                                      self.classes.Address)
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
 
         sess = create_session()
 
         # test a basic aliasized path
-        q = sess.query(User).join('addresses', aliased=True).filter_by(
-            email_address='jack@bean.com')
+        q = (
+            sess.query(User)
+            .join("addresses", aliased=True)
+            .filter_by(email_address="jack@bean.com")
+        )
         assert [User(id=7)] == q.all()
 
-        q = sess.query(User).join('addresses', aliased=True).filter(
-            Address.email_address == 'jack@bean.com')
+        q = (
+            sess.query(User)
+            .join("addresses", aliased=True)
+            .filter(Address.email_address == "jack@bean.com")
+        )
         assert [User(id=7)] == q.all()
 
-        q = sess.query(User).join('addresses', aliased=True).filter(or_(
-            Address.email_address == 'jack@bean.com',
-            Address.email_address == 'fred@fred.com'))
+        q = (
+            sess.query(User)
+            .join("addresses", aliased=True)
+            .filter(
+                or_(
+                    Address.email_address == "jack@bean.com",
+                    Address.email_address == "fred@fred.com",
+                )
+            )
+        )
         assert [User(id=7), User(id=9)] == q.all()
 
         # test two aliasized paths, one to 'orders' and the other to
         # 'orders','items'. one row is returned because user 7 has order 3 and
         # also has order 1 which has item 1
         # this tests a o2m join and a m2m join.
-        q = sess.query(User).join('orders', aliased=True) \
-            .filter(Order.description == "order 3") \
-            .join('orders', 'items', aliased=True) \
+        q = (
+            sess.query(User)
+            .join("orders", aliased=True)
+            .filter(Order.description == "order 3")
+            .join("orders", "items", aliased=True)
             .filter(Item.description == "item 1")
+        )
         assert q.count() == 1
         assert [User(id=7)] == q.all()
 
         # test the control version - same joins but not aliased.  rows are not
         # returned because order 3 does not have item 1
-        q = sess.query(User).join('orders').filter(
-            Order.description == "order 3").join(
-            'orders', 'items').filter(
-            Item.description == "item 1")
+        q = (
+            sess.query(User)
+            .join("orders")
+            .filter(Order.description == "order 3")
+            .join("orders", "items")
+            .filter(Item.description == "item 1")
+        )
         assert [] == q.all()
         assert q.count() == 0
 
         # the left half of the join condition of the any() is aliased.
-        q = sess.query(User).join('orders', aliased=True).filter(
-            Order.items.any(Item.description == 'item 4'))
+        q = (
+            sess.query(User)
+            .join("orders", aliased=True)
+            .filter(Order.items.any(Item.description == "item 4"))
+        )
         assert [User(id=7)] == q.all()
 
         # test that aliasing gets reset when join() is called
-        q = sess.query(User).join('orders', aliased=True) \
-            .filter(Order.description == "order 3") \
-            .join('orders', aliased=True) \
+        q = (
+            sess.query(User)
+            .join("orders", aliased=True)
+            .filter(Order.description == "order 3")
+            .join("orders", aliased=True)
             .filter(Order.description == "order 5")
+        )
         assert q.count() == 1
         assert [User(id=7)] == q.all()
 
@@ -1580,16 +1983,18 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         ualias = aliased(User)
         eq_(
-            sess.query(User, ualias).filter(User.id > ualias.id)
-            .order_by(desc(ualias.id), User.name).all(),
+            sess.query(User, ualias)
+            .filter(User.id > ualias.id)
+            .order_by(desc(ualias.id), User.name)
+            .all(),
             [
-                (User(id=10, name='chuck'), User(id=9, name='fred')),
-                (User(id=10, name='chuck'), User(id=8, name='ed')),
-                (User(id=9, name='fred'), User(id=8, name='ed')),
-                (User(id=10, name='chuck'), User(id=7, name='jack')),
-                (User(id=8, name='ed'), User(id=7, name='jack')),
-                (User(id=9, name='fred'), User(id=7, name='jack'))
-            ]
+                (User(id=10, name="chuck"), User(id=9, name="fred")),
+                (User(id=10, name="chuck"), User(id=8, name="ed")),
+                (User(id=9, name="fred"), User(id=8, name="ed")),
+                (User(id=10, name="chuck"), User(id=7, name="jack")),
+                (User(id=8, name="ed"), User(id=7, name="jack")),
+                (User(id=9, name="fred"), User(id=7, name="jack")),
+            ],
         )
 
     def test_plain_table(self):
@@ -1600,8 +2005,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(
             sess.query(User.name)
             .join(addresses, User.id == addresses.c.user_id)
-            .order_by(User.id).all(),
-            [('jack',), ('ed',), ('ed',), ('ed',), ('fred',)]
+            .order_by(User.id)
+            .all(),
+            [("jack",), ("ed",), ("ed",), ("ed",), ("fred",)],
         )
 
     def test_no_joinpoint_expr(self):
@@ -1615,42 +2021,50 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "Can't join table/selectable 'users' to itself",
-            sess.query(users.c.id).join, User
+            sess.query(users.c.id).join,
+            User,
         )
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "Can't join table/selectable 'users' to itself",
-            sess.query(users.c.id).select_from(users).join, User
+            sess.query(users.c.id).select_from(users).join,
+            User,
         )
 
     def test_select_from(self):
         """Test that the left edge of the join can be set reliably with
         select_from()."""
 
-        Item, Order, User = (self.classes.Item,
-                             self.classes.Order,
-                             self.classes.User)
+        Item, Order, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+        )
 
         sess = create_session()
         self.assert_compile(
-            sess.query(Item.id).select_from(User)
-            .join(User.orders).join(Order.items),
+            sess.query(Item.id)
+            .select_from(User)
+            .join(User.orders)
+            .join(Order.items),
             "SELECT items.id AS items_id FROM users JOIN orders ON "
             "users.id = orders.user_id JOIN order_items AS order_items_1 "
             "ON orders.id = order_items_1.order_id JOIN items ON items.id = "
             "order_items_1.item_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
         # here, the join really wants to add a second FROM clause
         # for "Item".  but select_from disallows that
         self.assert_compile(
-            sess.query(Item.id).select_from(User)
+            sess.query(Item.id)
+            .select_from(User)
             .join(Item, User.id == Item.id),
             "SELECT items.id AS items_id FROM users JOIN items "
             "ON users.id = items.id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_from_self_resets_joinpaths(self):
         """test a join from from_self() doesn't confuse joins inside the subquery
@@ -1662,7 +2076,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         self.assert_compile(
-            sess.query(Item).join(Item.keywords).from_self(Keyword)
+            sess.query(Item)
+            .join(Item.keywords)
+            .from_self(Keyword)
             .join(Item.keywords),
             "SELECT keywords.id AS keywords_id, "
             "keywords.name AS keywords_name "
@@ -1675,20 +2091,23 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "anon_1.items_id = item_keywords_2.item_id "
             "JOIN keywords ON "
             "keywords.id = item_keywords_2.keyword_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
 
 class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
-    run_setup_mappers = 'once'
+    __dialect__ = "default"
+    run_setup_mappers = "once"
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('table1', metadata,
-              Column('id', Integer, primary_key=True))
-        Table('table2', metadata,
-              Column('id', Integer, primary_key=True),
-              Column('t1_id', Integer))
+        Table("table1", metadata, Column("id", Integer, primary_key=True))
+        Table(
+            "table2",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("t1_id", Integer),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -1707,25 +2126,32 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         self.assert_compile(
             sess.query(subq.c.count, T1.id)
-            .select_from(subq).join(T1, subq.c.t1_id == T1.id),
+            .select_from(subq)
+            .join(T1, subq.c.t1_id == T1.id),
             "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
             "FROM (SELECT table2.t1_id AS t1_id, "
             "count(table2.id) AS count FROM table2 "
             "GROUP BY table2.t1_id) AS anon_1 JOIN table1 "
-            "ON anon_1.t1_id = table1.id"
+            "ON anon_1.t1_id = table1.id",
         )
 
     def test_select_mapped_to_mapped_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         self.assert_compile(
             sess.query(subq.c.count, T1.id).join(T1, subq.c.t1_id == T1.id),
@@ -1733,98 +2159,125 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
             "FROM (SELECT table2.t1_id AS t1_id, "
             "count(table2.id) AS count FROM table2 "
             "GROUP BY table2.t1_id) AS anon_1 JOIN table1 "
-            "ON anon_1.t1_id = table1.id"
+            "ON anon_1.t1_id = table1.id",
         )
 
     def test_select_mapped_to_select_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         self.assert_compile(
-            sess.query(subq.c.count, T1.id).select_from(T1)
+            sess.query(subq.c.count, T1.id)
+            .select_from(T1)
             .join(subq, subq.c.t1_id == T1.id),
             "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
             "FROM table1 JOIN (SELECT table2.t1_id AS t1_id, "
             "count(table2.id) AS count FROM table2 GROUP BY table2.t1_id) "
-            "AS anon_1 ON anon_1.t1_id = table1.id"
+            "AS anon_1 ON anon_1.t1_id = table1.id",
         )
 
     def test_select_mapped_to_select_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
             r"Can't construct a join from ",
-            sess.query(subq.c.count, T1.id).join, subq, subq.c.t1_id == T1.id,
+            sess.query(subq.c.count, T1.id).join,
+            subq,
+            subq.c.t1_id == T1.id,
         )
 
     def test_mapped_select_to_mapped_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "Can't join table/selectable 'table1' to itself",
-            sess.query(T1.id, subq.c.count).join, T1, subq.c.t1_id == T1.id
+            sess.query(T1.id, subq.c.count).join,
+            T1,
+            subq.c.t1_id == T1.id,
         )
 
         self.assert_compile(
-            sess.query(T1.id, subq.c.count).select_from(subq).
-            join(T1, subq.c.t1_id == T1.id),
+            sess.query(T1.id, subq.c.count)
+            .select_from(subq)
+            .join(T1, subq.c.t1_id == T1.id),
             "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
             "FROM (SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
             "FROM table2 GROUP BY table2.t1_id) AS anon_1 "
-            "JOIN table1 ON anon_1.t1_id = table1.id"
+            "JOIN table1 ON anon_1.t1_id = table1.id",
         )
 
     def test_mapped_select_to_mapped_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         self.assert_compile(
-            sess.query(T1.id, subq.c.count).select_from(subq)
+            sess.query(T1.id, subq.c.count)
+            .select_from(subq)
             .join(T1, subq.c.t1_id == T1.id),
             "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
             "FROM (SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
             "FROM table2 GROUP BY table2.t1_id) AS anon_1 JOIN table1 "
-            "ON anon_1.t1_id = table1.id"
+            "ON anon_1.t1_id = table1.id",
         )
 
     def test_mapped_select_to_select_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         self.assert_compile(
-            sess.query(T1.id, subq.c.count).select_from(T1)
+            sess.query(T1.id, subq.c.count)
+            .select_from(T1)
             .join(subq, subq.c.t1_id == T1.id),
             "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
             "FROM table1 JOIN (SELECT table2.t1_id AS t1_id, "
             "count(table2.id) AS count "
             "FROM table2 GROUP BY table2.t1_id) AS anon_1 "
-            "ON anon_1.t1_id = table1.id")
+            "ON anon_1.t1_id = table1.id",
+        )
 
     def test_mapped_select_to_select_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
         sess = Session()
-        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
-            group_by(T2.t1_id).subquery()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
 
         self.assert_compile(
             sess.query(T1.id, subq.c.count).join(subq, subq.c.t1_id == T1.id),
@@ -1832,34 +2285,51 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
             "FROM table1 JOIN (SELECT table2.t1_id AS t1_id, "
             "count(table2.id) AS count "
             "FROM table2 GROUP BY table2.t1_id) AS anon_1 "
-            "ON anon_1.t1_id = table1.id")
+            "ON anon_1.t1_id = table1.id",
+        )
 
 
 class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
-        t1 = Table('t1', metadata,
-                   Column('id', Integer, primary_key=True,
-                          test_needs_autoincrement=True),
-                   Column('data', String(30)))
-        t2 = Table('t2', metadata,
-                   Column('id', Integer, primary_key=True,
-                          test_needs_autoincrement=True),
-                   Column('data', String(30)))
+        t1 = Table(
+            "t1",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+        )
+        t2 = Table(
+            "t2",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+        )
 
-        t1t2_1 = Table('t1t2_1', metadata,
-                       Column('t1id', Integer, ForeignKey('t1.id')),
-                       Column('t2id', Integer, ForeignKey('t2.id')))
+        t1t2_1 = Table(
+            "t1t2_1",
+            metadata,
+            Column("t1id", Integer, ForeignKey("t1.id")),
+            Column("t2id", Integer, ForeignKey("t2.id")),
+        )
 
-        t1t2_2 = Table('t1t2_2', metadata,
-                       Column('t1id', Integer, ForeignKey('t1.id')),
-                       Column('t2id', Integer, ForeignKey('t2.id')))
+        t1t2_2 = Table(
+            "t1t2_2",
+            metadata,
+            Column("t1id", Integer, ForeignKey("t1.id")),
+            Column("t2id", Integer, ForeignKey("t2.id")),
+        )
 
     def test_basic(self):
-        t2, t1t2_1, t1t2_2, t1 = (self.tables.t2,
-                                  self.tables.t1t2_1,
-                                  self.tables.t1t2_2,
-                                  self.tables.t1)
+        t2, t1t2_1, t1t2_2, t1 = (
+            self.tables.t2,
+            self.tables.t1t2_1,
+            self.tables.t1t2_2,
+            self.tables.t1,
+        )
 
         class T1(object):
             pass
@@ -1867,14 +2337,24 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
         class T2(object):
             pass
 
-        mapper(T1, t1, properties={
-            't2s_1': relationship(T2, secondary=t1t2_1),
-            't2s_2': relationship(T2, secondary=t1t2_2),
-        })
+        mapper(
+            T1,
+            t1,
+            properties={
+                "t2s_1": relationship(T2, secondary=t1t2_1),
+                "t2s_2": relationship(T2, secondary=t1t2_2),
+            },
+        )
         mapper(T2, t2)
 
-        q = create_session().query(T1).join('t2s_1') \
-            .filter(t2.c.id == 5).reset_joinpoint().join('t2s_2')
+        q = (
+            create_session()
+            .query(T1)
+            .join("t2s_1")
+            .filter(t2.c.id == 5)
+            .reset_joinpoint()
+            .join("t2s_2")
+        )
         self.assert_compile(
             q,
             "SELECT t1.id AS t1_id, t1.data AS t1_data FROM t1 "
@@ -1883,35 +2363,48 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
             "JOIN t1t2_2 AS t1t2_2_1 "
             "ON t1.id = t1t2_2_1.t1id JOIN t2 ON t2.id = t1t2_2_1.t2id "
             "WHERE t2.id = :id_1",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
 
 class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
-    run_setup_mappers = 'once'
+    run_setup_mappers = "once"
     __dialect__ = default.DefaultDialect()
 
     @classmethod
     def define_tables(cls, metadata):
-        nodes = Table('nodes', metadata,
-                      Column('id', Integer, primary_key=True,
-                             test_needs_autoincrement=True),
-                      Column('parent_id', Integer, ForeignKey('nodes.id')))
+        nodes = Table(
+            "nodes",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("parent_id", Integer, ForeignKey("nodes.id")),
+        )
 
-        sub_table = Table('sub_table', metadata,
-                          Column('id', Integer, primary_key=True,
-                                 test_needs_autoincrement=True),
-                          Column('node_id', Integer, ForeignKey('nodes.id')))
+        sub_table = Table(
+            "sub_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("node_id", Integer, ForeignKey("nodes.id")),
+        )
 
-        assoc_table = Table('assoc_table', metadata,
-                            Column('left_id', Integer, ForeignKey('nodes.id')),
-                            Column('right_id', Integer,
-                                   ForeignKey('nodes.id')))
+        assoc_table = Table(
+            "assoc_table",
+            metadata,
+            Column("left_id", Integer, ForeignKey("nodes.id")),
+            Column("right_id", Integer, ForeignKey("nodes.id")),
+        )
 
     @classmethod
     def setup_classes(cls):
-        nodes, assoc_table, sub_table = (cls.tables.nodes,
-                                         cls.tables.assoc_table,
-                                         cls.tables.sub_table)
+        nodes, assoc_table, sub_table = (
+            cls.tables.nodes,
+            cls.tables.assoc_table,
+            cls.tables.sub_table,
+        )
 
         class Node(cls.Comparable):
             pass
@@ -1919,18 +2412,25 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
         class Sub(cls.Comparable):
             pass
 
-        mapper(Node, nodes, properties={
-            'children': relationship(Node, lazy='select', join_depth=3,
-                                     backref=backref(
-                                         'parent', remote_side=[nodes.c.id])
-                                     ),
-            'subs': relationship(Sub),
-            'assoc': relationship(
-                Node,
-                secondary=assoc_table,
-                primaryjoin=nodes.c.id == assoc_table.c.left_id,
-                secondaryjoin=nodes.c.id == assoc_table.c.right_id)
-        })
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node,
+                    lazy="select",
+                    join_depth=3,
+                    backref=backref("parent", remote_side=[nodes.c.id]),
+                ),
+                "subs": relationship(Sub),
+                "assoc": relationship(
+                    Node,
+                    secondary=assoc_table,
+                    primaryjoin=nodes.c.id == assoc_table.c.left_id,
+                    secondaryjoin=nodes.c.id == assoc_table.c.right_id,
+                ),
+            },
+        )
         mapper(Sub, sub_table)
 
     def test_o2m_aliased_plus_o2m(self):
@@ -1943,14 +2443,14 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(Node).join(n1, Node.children).join(Sub, n1.subs),
             "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id "
             "FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
-            "JOIN sub_table ON nodes_1.id = sub_table.node_id"
+            "JOIN sub_table ON nodes_1.id = sub_table.node_id",
         )
 
         self.assert_compile(
             sess.query(Node).join(n1, Node.children).join(Sub, Node.subs),
             "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id "
             "FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
-            "JOIN sub_table ON nodes.id = sub_table.node_id"
+            "JOIN sub_table ON nodes.id = sub_table.node_id",
         )
 
     def test_m2m_aliased_plus_o2m(self):
@@ -1979,22 +2479,28 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     def _inherits_fixture(self):
         m = MetaData()
-        base = Table('base', m, Column('id', Integer, primary_key=True))
-        a = Table('a', m,
-                  Column('id', Integer, ForeignKey('base.id'),
-                         primary_key=True),
-                  Column('b_id', Integer, ForeignKey('b.id')))
-        b = Table('b', m,
-                  Column('id', Integer, ForeignKey('base.id'),
-                         primary_key=True),
-                  Column('c_id', Integer, ForeignKey('c.id')))
-        c = Table('c', m,
-                  Column('id', Integer, ForeignKey('base.id'),
-                         primary_key=True))
+        base = Table("base", m, Column("id", Integer, primary_key=True))
+        a = Table(
+            "a",
+            m,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+        b = Table(
+            "b",
+            m,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+            Column("c_id", Integer, ForeignKey("c.id")),
+        )
+        c = Table(
+            "c",
+            m,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+        )
 
         class Base(object):
             pass
@@ -2007,11 +2513,20 @@ class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
 
         class C(Base):
             pass
+
         mapper(Base, base)
-        mapper(A, a, inherits=Base, properties={
-               'b': relationship(B, primaryjoin=a.c.b_id == b.c.id)})
-        mapper(B, b, inherits=Base, properties={
-               'c': relationship(C, primaryjoin=b.c.c_id == c.c.id)})
+        mapper(
+            A,
+            a,
+            inherits=Base,
+            properties={"b": relationship(B, primaryjoin=a.c.b_id == b.c.id)},
+        )
+        mapper(
+            B,
+            b,
+            inherits=Base,
+            properties={"c": relationship(C, primaryjoin=b.c.c_id == c.c.id)},
+        )
         mapper(C, c, inherits=Base)
         return A, B, C, Base
 
@@ -2028,7 +2543,7 @@ class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
             "(SELECT 1 FROM (SELECT base.id AS base_id, c.id AS c_id "
             "FROM base JOIN c ON base.id = c.id) AS anon_2 "
             "WHERE anon_1.b_c_id = anon_2.c_id AND anon_2.c_id = :id_1"
-            ")))"
+            ")))",
         )
 
 
@@ -2041,19 +2556,26 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
     """
-    __dialect__ = 'default'
+
+    __dialect__ = "default"
     run_create_tables = None
     run_deletes = None
 
     @classmethod
     def define_tables(cls, metadata):
-        Table("parent", metadata,
-              Column('id', Integer, primary_key=True),
-              Column('data', String(50)))
-        Table("child", metadata,
-              Column('id', Integer, primary_key=True),
-              Column('parent_id', Integer, ForeignKey('parent.id')),
-              Column('data', String(50)))
+        Table(
+            "parent",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        Table(
+            "child",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("parent_id", Integer, ForeignKey("parent.id")),
+            Column("data", String(50)),
+        )
 
     @classmethod
     def setup_mappers(cls):
@@ -2079,27 +2601,31 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
         npc = self.npc
         sess = Session()
         self.assert_compile(
-            sess.query(Parent).join(Parent.npc)
-            .filter(self.derived.c.data == 'x'),
+            sess.query(Parent)
+            .join(Parent.npc)
+            .filter(self.derived.c.data == "x"),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
             "FROM parent JOIN (SELECT child.id AS id, "
             "child.parent_id AS parent_id, "
             "child.data AS data "
             "FROM child) AS anon_1 ON parent.id = anon_1.parent_id "
-            "WHERE anon_1.data = :data_1")
+            "WHERE anon_1.data = :data_1",
+        )
 
     def test_join_parent_child_select_from(self):
         Parent = self.classes.Parent
         npc = self.npc
         sess = Session()
         self.assert_compile(
-            sess.query(npc).select_from(Parent).join(Parent.npc)
-            .filter(self.derived.c.data == 'x'),
+            sess.query(npc)
+            .select_from(Parent)
+            .join(Parent.npc)
+            .filter(self.derived.c.data == "x"),
             "SELECT anon_1.id AS anon_1_id, anon_1.parent_id "
             "AS anon_1_parent_id, anon_1.data AS anon_1_data "
             "FROM parent JOIN (SELECT child.id AS id, child.parent_id AS "
             "parent_id, child.data AS data FROM child) AS anon_1 ON "
-            "parent.id = anon_1.parent_id WHERE anon_1.data = :data_1"
+            "parent.id = anon_1.parent_id WHERE anon_1.data = :data_1",
         )
 
     def test_join_select_parent_child(self):
@@ -2107,29 +2633,34 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
         npc = self.npc
         sess = Session()
         self.assert_compile(
-            sess.query(Parent, npc).join(Parent.npc)
-            .filter(self.derived.c.data == 'x'),
+            sess.query(Parent, npc)
+            .join(Parent.npc)
+            .filter(self.derived.c.data == "x"),
             "SELECT parent.id AS parent_id, parent.data AS parent_data, "
             "anon_1.id AS anon_1_id, anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.data AS anon_1_data FROM parent JOIN "
             "(SELECT child.id AS id, child.parent_id AS parent_id, "
             "child.data AS data FROM child) AS anon_1 ON parent.id = "
-            "anon_1.parent_id WHERE anon_1.data = :data_1"
+            "anon_1.parent_id WHERE anon_1.data = :data_1",
         )
 
 
 class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
-    run_setup_mappers = 'once'
-    run_inserts = 'once'
+    run_setup_mappers = "once"
+    run_inserts = "once"
     run_deletes = None
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('nodes', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('parent_id', Integer, ForeignKey('nodes.id')),
-              Column('data', String(30)))
+        Table(
+            "nodes",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("parent_id", Integer, ForeignKey("nodes.id")),
+            Column("data", String(30)),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -2141,25 +2672,31 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def setup_mappers(cls):
         Node, nodes = cls.classes.Node, cls.tables.nodes
 
-        mapper(Node, nodes, properties={
-            'children': relationship(Node, lazy='select', join_depth=3,
-                                     backref=backref(
-                                         'parent', remote_side=[nodes.c.id])
-                                     ),
-        })
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node,
+                    lazy="select",
+                    join_depth=3,
+                    backref=backref("parent", remote_side=[nodes.c.id]),
+                )
+            },
+        )
 
     @classmethod
     def insert_data(cls):
         Node = cls.classes.Node
 
         sess = create_session()
-        n1 = Node(data='n1')
-        n1.append(Node(data='n11'))
-        n1.append(Node(data='n12'))
-        n1.append(Node(data='n13'))
-        n1.children[1].append(Node(data='n121'))
-        n1.children[1].append(Node(data='n122'))
-        n1.children[1].append(Node(data='n123'))
+        n1 = Node(data="n1")
+        n1.append(Node(data="n11"))
+        n1.append(Node(data="n12"))
+        n1.append(Node(data="n13"))
+        n1.children[1].append(Node(data="n121"))
+        n1.children[1].append(Node(data="n122"))
+        n1.children[1].append(Node(data="n123"))
         sess.add(n1)
         sess.flush()
         sess.close()
@@ -2168,34 +2705,49 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         Node = self.classes.Node
         sess = create_session()
 
-        node = sess.query(Node) \
-            .join('children', aliased=True).filter_by(data='n122').first()
-        assert node.data == 'n12'
+        node = (
+            sess.query(Node)
+            .join("children", aliased=True)
+            .filter_by(data="n122")
+            .first()
+        )
+        assert node.data == "n12"
 
     def test_join_2(self):
         Node = self.classes.Node
         sess = create_session()
-        ret = sess.query(Node.data) \
-            .join(Node.children, aliased=True).filter_by(data='n122').all()
-        assert ret == [('n12',)]
+        ret = (
+            sess.query(Node.data)
+            .join(Node.children, aliased=True)
+            .filter_by(data="n122")
+            .all()
+        )
+        assert ret == [("n12",)]
 
     def test_join_3(self):
         Node = self.classes.Node
         sess = create_session()
-        node = sess.query(Node) \
-            .join('children', 'children', aliased=True) \
-            .filter_by(data='n122').first()
-        assert node.data == 'n1'
+        node = (
+            sess.query(Node)
+            .join("children", "children", aliased=True)
+            .filter_by(data="n122")
+            .first()
+        )
+        assert node.data == "n1"
 
     def test_join_4(self):
         Node = self.classes.Node
         sess = create_session()
-        node = sess.query(Node) \
-            .filter_by(data='n122').join('parent', aliased=True) \
-            .filter_by(data='n12') \
-            .join('parent', aliased=True, from_joinpoint=True) \
-            .filter_by(data='n1').first()
-        assert node.data == 'n122'
+        node = (
+            sess.query(Node)
+            .filter_by(data="n122")
+            .join("parent", aliased=True)
+            .filter_by(data="n12")
+            .join("parent", aliased=True, from_joinpoint=True)
+            .filter_by(data="n1")
+            .first()
+        )
+        assert node.data == "n122"
 
     def test_string_or_prop_aliased(self):
         """test that join('foo') behaves the same as join(Cls.foo) in a self
@@ -2206,14 +2758,21 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         Node = self.classes.Node
 
         sess = create_session()
-        nalias = aliased(Node,
-                         sess.query(Node).filter_by(data='n1').subquery())
+        nalias = aliased(
+            Node, sess.query(Node).filter_by(data="n1").subquery()
+        )
 
-        q1 = sess.query(nalias).join(nalias.children, aliased=True).\
-            join(Node.children, from_joinpoint=True)
+        q1 = (
+            sess.query(nalias)
+            .join(nalias.children, aliased=True)
+            .join(Node.children, from_joinpoint=True)
+        )
 
-        q2 = sess.query(nalias).join(nalias.children, aliased=True).\
-            join("children", from_joinpoint=True)
+        q2 = (
+            sess.query(nalias)
+            .join(nalias.children, aliased=True)
+            .join("children", from_joinpoint=True)
+        )
 
         for q in (q1, q2):
             self.assert_compile(
@@ -2224,16 +2783,22 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
                 "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
                 "AS anon_1 JOIN nodes AS nodes_1 ON anon_1.id = "
                 "nodes_1.parent_id JOIN nodes ON nodes_1.id = nodes.parent_id",
-                use_default_dialect=True
+                use_default_dialect=True,
             )
 
-        q1 = sess.query(Node).join(nalias.children, aliased=True).\
-            join(Node.children, aliased=True, from_joinpoint=True).\
-            join(Node.children, from_joinpoint=True)
+        q1 = (
+            sess.query(Node)
+            .join(nalias.children, aliased=True)
+            .join(Node.children, aliased=True, from_joinpoint=True)
+            .join(Node.children, from_joinpoint=True)
+        )
 
-        q2 = sess.query(Node).join(nalias.children, aliased=True).\
-            join("children", aliased=True, from_joinpoint=True).\
-            join("children", from_joinpoint=True)
+        q2 = (
+            sess.query(Node)
+            .join(nalias.children, aliased=True)
+            .join("children", aliased=True, from_joinpoint=True)
+            .join("children", from_joinpoint=True)
+        )
 
         for q in (q1, q2):
             self.assert_compile(
@@ -2245,7 +2810,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
                 "JOIN nodes AS nodes_1 ON anon_1.id = nodes_1.parent_id "
                 "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id "
                 "JOIN nodes ON nodes_2.id = nodes.parent_id",
-                use_default_dialect=True
+                use_default_dialect=True,
             )
 
     def test_from_self_inside_excludes_outside(self):
@@ -2262,7 +2827,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         # n1 is not inside the from_self(), so all cols must be maintained
         # on the outside
         self.assert_compile(
-            sess.query(Node).filter(Node.data == 'n122')
+            sess.query(Node)
+            .filter(Node.data == "n122")
             .from_self(n1, Node.id),
             "SELECT nodes_1.id AS nodes_1_id, "
             "nodes_1.parent_id AS nodes_1_parent_id, "
@@ -2271,15 +2837,21 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             "nodes.parent_id AS nodes_parent_id, "
             "nodes.data AS nodes_data FROM "
             "nodes WHERE nodes.data = :data_1) AS anon_1",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
         parent = aliased(Node)
         grandparent = aliased(Node)
-        q = sess.query(Node, parent, grandparent).\
-            join(parent, Node.parent).\
-            join(grandparent, parent.parent).\
-            filter(Node.data == 'n122').filter(parent.data == 'n12').\
-            filter(grandparent.data == 'n1').from_self().limit(1)
+        q = (
+            sess.query(Node, parent, grandparent)
+            .join(parent, Node.parent)
+            .join(grandparent, parent.parent)
+            .filter(Node.data == "n122")
+            .filter(parent.data == "n12")
+            .filter(grandparent.data == "n1")
+            .from_self()
+            .limit(1)
+        )
 
         # parent, grandparent *are* inside the from_self(), so they
         # should get aliased to the outside.
@@ -2305,8 +2877,9 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             "ON nodes_2.id = nodes_1.parent_id "
             "WHERE nodes.data = :data_1 AND nodes_1.data = :data_2 AND "
             "nodes_2.data = :data_3) AS anon_1 LIMIT :param_1",
-            {'param_1': 1},
-            use_default_dialect=True)
+            {"param_1": 1},
+            use_default_dialect=True,
+        )
 
     def test_explicit_join_1(self):
         Node = self.classes.Node
@@ -2314,10 +2887,10 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n2 = aliased(Node)
 
         self.assert_compile(
-            join(Node, n1, 'children').join(n2, 'children'),
+            join(Node, n1, "children").join(n2, "children"),
             "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
             "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_explicit_join_2(self):
@@ -2329,7 +2902,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             join(Node, n1, Node.children).join(n2, n1.children),
             "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
             "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_explicit_join_3(self):
@@ -2340,11 +2913,12 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         # the join_to_left=False here is unfortunate.   the default on this
         # flag should be False.
         self.assert_compile(
-            join(Node, n1, Node.children)
-            .join(n2, Node.children, join_to_left=False),
+            join(Node, n1, Node.children).join(
+                n2, Node.children, join_to_left=False
+            ),
             "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
             "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
-            use_default_dialect=True
+            use_default_dialect=True,
         )
 
     def test_explicit_join_4(self):
@@ -2359,7 +2933,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
             "ON nodes.id = nodes_1.parent_id "
             "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_explicit_join_5(self):
         Node = self.classes.Node
@@ -2373,16 +2948,21 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
             "ON nodes.id = nodes_1.parent_id "
             "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
-            use_default_dialect=True)
+            use_default_dialect=True,
+        )
 
     def test_explicit_join_6(self):
         Node = self.classes.Node
         sess = create_session()
         n1 = aliased(Node)
 
-        node = sess.query(Node).select_from(join(Node, n1, 'children')).\
-            filter(n1.data == 'n122').first()
-        assert node.data == 'n12'
+        node = (
+            sess.query(Node)
+            .select_from(join(Node, n1, "children"))
+            .filter(n1.data == "n122")
+            .first()
+        )
+        assert node.data == "n12"
 
     def test_explicit_join_7(self):
         Node = self.classes.Node
@@ -2390,10 +2970,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n1 = aliased(Node)
         n2 = aliased(Node)
 
-        node = sess.query(Node).select_from(
-            join(Node, n1, 'children').join(n2, 'children')).\
-            filter(n2.data == 'n122').first()
-        assert node.data == 'n1'
+        node = (
+            sess.query(Node)
+            .select_from(join(Node, n1, "children").join(n2, "children"))
+            .filter(n2.data == "n122")
+            .first()
+        )
+        assert node.data == "n1"
 
     def test_explicit_join_8(self):
         Node = self.classes.Node
@@ -2402,10 +2985,15 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n2 = aliased(Node)
 
         # mix explicit and named onclauses
-        node = sess.query(Node).select_from(
-            join(Node, n1, Node.id == n1.parent_id).join(n2, 'children')).\
-            filter(n2.data == 'n122').first()
-        assert node.data == 'n1'
+        node = (
+            sess.query(Node)
+            .select_from(
+                join(Node, n1, Node.id == n1.parent_id).join(n2, "children")
+            )
+            .filter(n2.data == "n122")
+            .first()
+        )
+        assert node.data == "n1"
 
     def test_explicit_join_9(self):
         Node = self.classes.Node
@@ -2413,11 +3001,15 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n1 = aliased(Node)
         n2 = aliased(Node)
 
-        node = sess.query(Node).select_from(
-            join(Node, n1, 'parent').join(n2, 'parent')).filter(
-            and_(Node.data == 'n122', n1.data == 'n12', n2.data == 'n1')) \
+        node = (
+            sess.query(Node)
+            .select_from(join(Node, n1, "parent").join(n2, "parent"))
+            .filter(
+                and_(Node.data == "n122", n1.data == "n12", n2.data == "n1")
+            )
             .first()
-        assert node.data == 'n122'
+        )
+        assert node.data == "n122"
 
     def test_explicit_join_10(self):
         Node = self.classes.Node
@@ -2426,13 +3018,18 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n2 = aliased(Node)
 
         eq_(
-            list(sess.query(Node).select_from(join(Node, n1, 'parent')
-                                              .join(n2, 'parent')).
-                 filter(and_(Node.data == 'n122',
-                             n1.data == 'n12',
-                             n2.data == 'n1')).values(Node.data, n1.data,
-                                                      n2.data)),
-            [('n122', 'n12', 'n1')])
+            list(
+                sess.query(Node)
+                .select_from(join(Node, n1, "parent").join(n2, "parent"))
+                .filter(
+                    and_(
+                        Node.data == "n122", n1.data == "n12", n2.data == "n1"
+                    )
+                )
+                .values(Node.data, n1.data, n2.data)
+            ),
+            [("n122", "n12", "n1")],
+        )
 
     def test_join_to_nonaliased(self):
         Node = self.classes.Node
@@ -2442,17 +3039,27 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         n1 = aliased(Node)
 
         # using 'n1.parent' implicitly joins to unaliased Node
-        eq_(sess.query(n1).join(n1.parent).filter(Node.data == 'n1').all(),
-            [Node(parent_id=1, data='n11', id=2),
-             Node(parent_id=1, data='n12', id=3),
-             Node(parent_id=1, data='n13', id=4)])
+        eq_(
+            sess.query(n1).join(n1.parent).filter(Node.data == "n1").all(),
+            [
+                Node(parent_id=1, data="n11", id=2),
+                Node(parent_id=1, data="n12", id=3),
+                Node(parent_id=1, data="n13", id=4),
+            ],
+        )
 
         # explicit (new syntax)
-        eq_(sess.query(n1).join(Node, n1.parent).filter(Node.data
-                                                        == 'n1').all(),
-            [Node(parent_id=1, data='n11', id=2),
-             Node(parent_id=1, data='n12', id=3),
-             Node(parent_id=1, data='n13', id=4)])
+        eq_(
+            sess.query(n1)
+            .join(Node, n1.parent)
+            .filter(Node.data == "n1")
+            .all(),
+            [
+                Node(parent_id=1, data="n11", id=2),
+                Node(parent_id=1, data="n12", id=3),
+                Node(parent_id=1, data="n13", id=4),
+            ],
+        )
 
     def test_multiple_explicit_entities_one(self):
         Node = self.classes.Node
@@ -2462,12 +3069,14 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         parent = aliased(Node)
         grandparent = aliased(Node)
         eq_(
-            sess.query(Node, parent, grandparent).
-            join(parent, Node.parent).
-            join(grandparent, parent.parent).
-            filter(Node.data == 'n122').filter(parent.data == 'n12').
-            filter(grandparent.data == 'n1').first(),
-            (Node(data='n122'), Node(data='n12'), Node(data='n1'))
+            sess.query(Node, parent, grandparent)
+            .join(parent, Node.parent)
+            .join(grandparent, parent.parent)
+            .filter(Node.data == "n122")
+            .filter(parent.data == "n12")
+            .filter(grandparent.data == "n1")
+            .first(),
+            (Node(data="n122"), Node(data="n12"), Node(data="n1")),
         )
 
     def test_multiple_explicit_entities_two(self):
@@ -2478,12 +3087,15 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         parent = aliased(Node)
         grandparent = aliased(Node)
         eq_(
-            sess.query(Node, parent, grandparent).
-            join(parent, Node.parent).
-            join(grandparent, parent.parent).
-            filter(Node.data == 'n122').filter(parent.data == 'n12').
-            filter(grandparent.data == 'n1').from_self().first(),
-            (Node(data='n122'), Node(data='n12'), Node(data='n1'))
+            sess.query(Node, parent, grandparent)
+            .join(parent, Node.parent)
+            .join(grandparent, parent.parent)
+            .filter(Node.data == "n122")
+            .filter(parent.data == "n12")
+            .filter(grandparent.data == "n1")
+            .from_self()
+            .first(),
+            (Node(data="n122"), Node(data="n12"), Node(data="n1")),
         )
 
     def test_multiple_explicit_entities_three(self):
@@ -2495,12 +3107,15 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         grandparent = aliased(Node)
         # same, change order around
         eq_(
-            sess.query(parent, grandparent, Node).
-            join(parent, Node.parent).
-            join(grandparent, parent.parent).
-            filter(Node.data == 'n122').filter(parent.data == 'n12').
-            filter(grandparent.data == 'n1').from_self().first(),
-            (Node(data='n12'), Node(data='n1'), Node(data='n122'))
+            sess.query(parent, grandparent, Node)
+            .join(parent, Node.parent)
+            .join(grandparent, parent.parent)
+            .filter(Node.data == "n122")
+            .filter(parent.data == "n12")
+            .filter(grandparent.data == "n1")
+            .from_self()
+            .first(),
+            (Node(data="n12"), Node(data="n1"), Node(data="n122")),
         )
 
     def test_multiple_explicit_entities_four(self):
@@ -2511,13 +3126,15 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         parent = aliased(Node)
         grandparent = aliased(Node)
         eq_(
-            sess.query(Node, parent, grandparent).
-            join(parent, Node.parent).
-            join(grandparent, parent.parent).
-            filter(Node.data == 'n122').filter(parent.data == 'n12').
-            filter(grandparent.data == 'n1').
-            options(joinedload(Node.children)).first(),
-            (Node(data='n122'), Node(data='n12'), Node(data='n1'))
+            sess.query(Node, parent, grandparent)
+            .join(parent, Node.parent)
+            .join(grandparent, parent.parent)
+            .filter(Node.data == "n122")
+            .filter(parent.data == "n12")
+            .filter(grandparent.data == "n1")
+            .options(joinedload(Node.children))
+            .first(),
+            (Node(data="n122"), Node(data="n12"), Node(data="n1")),
         )
 
     def test_multiple_explicit_entities_five(self):
@@ -2528,85 +3145,142 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         parent = aliased(Node)
         grandparent = aliased(Node)
         eq_(
-            sess.query(Node, parent, grandparent).
-            join(parent, Node.parent).
-            join(grandparent, parent.parent).
-            filter(Node.data == 'n122').filter(parent.data == 'n12').
-            filter(grandparent.data == 'n1').from_self().
-            options(joinedload(Node.children)).first(),
-            (Node(data='n122'), Node(data='n12'), Node(data='n1'))
+            sess.query(Node, parent, grandparent)
+            .join(parent, Node.parent)
+            .join(grandparent, parent.parent)
+            .filter(Node.data == "n122")
+            .filter(parent.data == "n12")
+            .filter(grandparent.data == "n1")
+            .from_self()
+            .options(joinedload(Node.children))
+            .first(),
+            (Node(data="n122"), Node(data="n12"), Node(data="n1")),
         )
 
     def test_any(self):
         Node = self.classes.Node
 
         sess = create_session()
-        eq_(sess.query(Node).filter(Node.children.any(Node.data == 'n1'))
-            .all(), [])
-        eq_(sess.query(Node)
-            .filter(Node.children.any(Node.data == 'n12')).all(),
-            [Node(data='n1')])
-        eq_(sess.query(Node).filter(~Node.children.any()).order_by(Node.id)
-            .all(), [Node(data='n11'), Node(data='n13'), Node(data='n121'),
-                     Node(data='n122'), Node(data='n123'), ])
+        eq_(
+            sess.query(Node)
+            .filter(Node.children.any(Node.data == "n1"))
+            .all(),
+            [],
+        )
+        eq_(
+            sess.query(Node)
+            .filter(Node.children.any(Node.data == "n12"))
+            .all(),
+            [Node(data="n1")],
+        )
+        eq_(
+            sess.query(Node)
+            .filter(~Node.children.any())
+            .order_by(Node.id)
+            .all(),
+            [
+                Node(data="n11"),
+                Node(data="n13"),
+                Node(data="n121"),
+                Node(data="n122"),
+                Node(data="n123"),
+            ],
+        )
 
     def test_has(self):
         Node = self.classes.Node
 
         sess = create_session()
 
-        eq_(sess.query(Node).filter(Node.parent.has(Node.data == 'n12'))
-            .order_by(Node.id).all(),
-            [Node(data='n121'), Node(data='n122'), Node(data='n123')])
-        eq_(sess.query(Node).filter(Node.parent.has(Node.data == 'n122'))
-            .all(), [])
-        eq_(sess.query(Node).filter(
-            ~Node.parent.has()).all(), [Node(data='n1')])
+        eq_(
+            sess.query(Node)
+            .filter(Node.parent.has(Node.data == "n12"))
+            .order_by(Node.id)
+            .all(),
+            [Node(data="n121"), Node(data="n122"), Node(data="n123")],
+        )
+        eq_(
+            sess.query(Node)
+            .filter(Node.parent.has(Node.data == "n122"))
+            .all(),
+            [],
+        )
+        eq_(
+            sess.query(Node).filter(~Node.parent.has()).all(),
+            [Node(data="n1")],
+        )
 
     def test_contains(self):
         Node = self.classes.Node
 
         sess = create_session()
 
-        n122 = sess.query(Node).filter(Node.data == 'n122').one()
-        eq_(sess.query(Node).filter(Node.children.contains(n122)).all(),
-            [Node(data='n12')])
+        n122 = sess.query(Node).filter(Node.data == "n122").one()
+        eq_(
+            sess.query(Node).filter(Node.children.contains(n122)).all(),
+            [Node(data="n12")],
+        )
 
-        n13 = sess.query(Node).filter(Node.data == 'n13').one()
-        eq_(sess.query(Node).filter(Node.children.contains(n13)).all(),
-            [Node(data='n1')])
+        n13 = sess.query(Node).filter(Node.data == "n13").one()
+        eq_(
+            sess.query(Node).filter(Node.children.contains(n13)).all(),
+            [Node(data="n1")],
+        )
 
     def test_eq_ne(self):
         Node = self.classes.Node
 
         sess = create_session()
 
-        n12 = sess.query(Node).filter(Node.data == 'n12').one()
-        eq_(sess.query(Node).filter(Node.parent == n12).all(),
-            [Node(data='n121'), Node(data='n122'), Node(data='n123')])
+        n12 = sess.query(Node).filter(Node.data == "n12").one()
+        eq_(
+            sess.query(Node).filter(Node.parent == n12).all(),
+            [Node(data="n121"), Node(data="n122"), Node(data="n123")],
+        )
 
-        eq_(sess.query(Node).filter(Node.parent != n12).all(),
-            [Node(data='n1'), Node(data='n11'), Node(data='n12'),
-             Node(data='n13')])
+        eq_(
+            sess.query(Node).filter(Node.parent != n12).all(),
+            [
+                Node(data="n1"),
+                Node(data="n11"),
+                Node(data="n12"),
+                Node(data="n13"),
+            ],
+        )
 
 
 class SelfReferentialM2MTest(fixtures.MappedTest):
-    run_setup_mappers = 'once'
-    run_inserts = 'once'
+    run_setup_mappers = "once"
+    run_inserts = "once"
     run_deletes = None
 
     @classmethod
     def define_tables(cls, metadata):
-        nodes = Table('nodes', metadata,
-                      Column('id', Integer, primary_key=True,
-                             test_needs_autoincrement=True),
-                      Column('data', String(30)))
+        nodes = Table(
+            "nodes",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+        )
 
-        node_to_nodes = Table('node_to_nodes', metadata,
-                              Column('left_node_id', Integer, ForeignKey(
-                                  'nodes.id'), primary_key=True),
-                              Column('right_node_id', Integer, ForeignKey(
-                                  'nodes.id'), primary_key=True))
+        node_to_nodes = Table(
+            "node_to_nodes",
+            metadata,
+            Column(
+                "left_node_id",
+                Integer,
+                ForeignKey("nodes.id"),
+                primary_key=True,
+            ),
+            Column(
+                "right_node_id",
+                Integer,
+                ForeignKey("nodes.id"),
+                primary_key=True,
+            ),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -2615,25 +3289,33 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
 
     @classmethod
     def insert_data(cls):
-        Node, nodes, node_to_nodes = (cls.classes.Node,
-                                      cls.tables.nodes,
-                                      cls.tables.node_to_nodes)
+        Node, nodes, node_to_nodes = (
+            cls.classes.Node,
+            cls.tables.nodes,
+            cls.tables.node_to_nodes,
+        )
 
-        mapper(Node, nodes, properties={
-            'children': relationship(
-                Node, lazy='select',
-                secondary=node_to_nodes,
-                primaryjoin=nodes.c.id == node_to_nodes.c.left_node_id,
-                secondaryjoin=nodes.c.id == node_to_nodes.c.right_node_id)
-        })
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node,
+                    lazy="select",
+                    secondary=node_to_nodes,
+                    primaryjoin=nodes.c.id == node_to_nodes.c.left_node_id,
+                    secondaryjoin=nodes.c.id == node_to_nodes.c.right_node_id,
+                )
+            },
+        )
         sess = create_session()
-        n1 = Node(data='n1')
-        n2 = Node(data='n2')
-        n3 = Node(data='n3')
-        n4 = Node(data='n4')
-        n5 = Node(data='n5')
-        n6 = Node(data='n6')
-        n7 = Node(data='n7')
+        n1 = Node(data="n1")
+        n2 = Node(data="n2")
+        n3 = Node(data="n3")
+        n4 = Node(data="n4")
+        n5 = Node(data="n5")
+        n6 = Node(data="n6")
+        n7 = Node(data="n7")
 
         n1.children = [n2, n3, n4]
         n2.children = [n3, n6, n7]
@@ -2650,23 +3332,40 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
         Node = self.classes.Node
 
         sess = create_session()
-        eq_(sess.query(Node).filter(Node.children.any(Node.data == 'n3'))
-            .order_by(Node.data).all(),
-            [Node(data='n1'), Node(data='n2')])
+        eq_(
+            sess.query(Node)
+            .filter(Node.children.any(Node.data == "n3"))
+            .order_by(Node.data)
+            .all(),
+            [Node(data="n1"), Node(data="n2")],
+        )
 
     def test_contains(self):
         Node = self.classes.Node
 
         sess = create_session()
-        n4 = sess.query(Node).filter_by(data='n4').one()
+        n4 = sess.query(Node).filter_by(data="n4").one()
 
-        eq_(sess.query(Node).filter(Node.children.contains(n4))
-            .order_by(Node.data).all(),
-            [Node(data='n1'), Node(data='n3')])
-        eq_(sess.query(Node).filter(not_(Node.children.contains(n4)))
-            .order_by(Node.data).all(),
-            [Node(data='n2'), Node(data='n4'), Node(data='n5'),
-             Node(data='n6'), Node(data='n7')])
+        eq_(
+            sess.query(Node)
+            .filter(Node.children.contains(n4))
+            .order_by(Node.data)
+            .all(),
+            [Node(data="n1"), Node(data="n3")],
+        )
+        eq_(
+            sess.query(Node)
+            .filter(not_(Node.children.contains(n4)))
+            .order_by(Node.data)
+            .all(),
+            [
+                Node(data="n2"),
+                Node(data="n4"),
+                Node(data="n5"),
+                Node(data="n6"),
+                Node(data="n7"),
+            ],
+        )
 
     def test_explicit_join(self):
         Node = self.classes.Node
@@ -2674,74 +3373,77 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
         sess = create_session()
 
         n1 = aliased(Node)
-        eq_(sess.query(Node).select_from(join(Node, n1, 'children'))
-            .filter(n1.data.in_(['n3', 'n7'])).order_by(Node.id).all(),
-            [Node(data='n1'), Node(data='n2')])
+        eq_(
+            sess.query(Node)
+            .select_from(join(Node, n1, "children"))
+            .filter(n1.data.in_(["n3", "n7"]))
+            .order_by(Node.id)
+            .all(),
+            [Node(data="n1"), Node(data="n2")],
+        )
 
 
 class AliasFromCorrectLeftTest(
-        fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
+    fixtures.DeclarativeMappedTest, AssertsCompiledSQL
+):
     run_create_tables = None
-    __dialect__ = 'default'
+    __dialect__ = "default"
 
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
         class Object(Base):
-            __tablename__ = 'object'
+            __tablename__ = "object"
 
             type = Column(String(30))
             __mapper_args__ = {
-                'polymorphic_identity': 'object',
-                'polymorphic_on': type
+                "polymorphic_identity": "object",
+                "polymorphic_on": type,
             }
 
             id = Column(Integer, primary_key=True)
             name = Column(String(256))
 
         class A(Object):
-            __tablename__ = 'a'
+            __tablename__ = "a"
 
-            __mapper_args__ = {'polymorphic_identity': 'a'}
+            __mapper_args__ = {"polymorphic_identity": "a"}
 
-            id = Column(Integer, ForeignKey('object.id'), primary_key=True)
+            id = Column(Integer, ForeignKey("object.id"), primary_key=True)
 
             b_list = relationship(
-                'B',
-                secondary='a_b_association',
-                backref='a_list'
+                "B", secondary="a_b_association", backref="a_list"
             )
 
         class B(Object):
-            __tablename__ = 'b'
+            __tablename__ = "b"
 
-            __mapper_args__ = {'polymorphic_identity': 'b'}
+            __mapper_args__ = {"polymorphic_identity": "b"}
 
-            id = Column(Integer, ForeignKey('object.id'), primary_key=True)
+            id = Column(Integer, ForeignKey("object.id"), primary_key=True)
 
         class ABAssociation(Base):
-            __tablename__ = 'a_b_association'
+            __tablename__ = "a_b_association"
 
-            a_id = Column(Integer, ForeignKey('a.id'), primary_key=True)
-            b_id = Column(Integer, ForeignKey('b.id'), primary_key=True)
+            a_id = Column(Integer, ForeignKey("a.id"), primary_key=True)
+            b_id = Column(Integer, ForeignKey("b.id"), primary_key=True)
 
         class X(Base):
-            __tablename__ = 'x'
+            __tablename__ = "x"
 
             id = Column(Integer, primary_key=True)
             name = Column(String(30))
 
-            obj_id = Column(Integer, ForeignKey('object.id'))
-            obj = relationship('Object', backref='x_list')
+            obj_id = Column(Integer, ForeignKey("object.id"))
+            obj = relationship("Object", backref="x_list")
 
     def test_join_prop_to_string(self):
         A, B, X = self.classes("A", "B", "X")
 
         s = Session()
 
-        q = s.query(B).\
-            join(B.a_list, 'x_list').filter(X.name == 'x1')
+        q = s.query(B).join(B.a_list, "x_list").filter(X.name == "x1")
 
         self.assert_compile(
             q,
@@ -2754,7 +3456,7 @@ class AliasFromCorrectLeftTest(
             "object AS object_1 "
             "JOIN a AS a_1 ON object_1.id = a_1.id"
             ") ON a_1.id = a_b_association_1.a_id "
-            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1"
+            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
         )
 
     def test_join_prop_to_prop(self):
@@ -2764,8 +3466,7 @@ class AliasFromCorrectLeftTest(
 
         # B -> A, but both are Object.  So when we say A.x_list, make sure
         # we pick the correct right side
-        q = s.query(B).\
-            join(B.a_list, A.x_list).filter(X.name == 'x1')
+        q = s.query(B).join(B.a_list, A.x_list).filter(X.name == "x1")
 
         self.assert_compile(
             q,
@@ -2778,40 +3479,51 @@ class AliasFromCorrectLeftTest(
             "object AS object_1 "
             "JOIN a AS a_1 ON object_1.id = a_1.id"
             ") ON a_1.id = a_b_association_1.a_id "
-            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1"
+            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
         )
+
 
 class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)
 
     run_setup_bind = None
-    run_setup_mappers = 'once'
+    run_setup_mappers = "once"
 
     run_create_tables = None
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('people', metadata,
-              Column('people_id', Integer, primary_key=True),
-              Column('age', Integer),
-              Column('name', String(30)))
-        Table('bookcases', metadata,
-              Column('bookcase_id', Integer, primary_key=True),
-              Column(
-                  'bookcase_owner_id',
-                  Integer, ForeignKey('people.people_id')),
-              Column('bookcase_shelves', Integer),
-              Column('bookcase_width', Integer))
-        Table('books', metadata,
-              Column('book_id', Integer, primary_key=True),
-              Column(
-                  'bookcase_id', Integer, ForeignKey('bookcases.bookcase_id')),
-              Column('book_owner_id', Integer, ForeignKey('people.people_id')),
-              Column('book_weight', Integer))
+        Table(
+            "people",
+            metadata,
+            Column("people_id", Integer, primary_key=True),
+            Column("age", Integer),
+            Column("name", String(30)),
+        )
+        Table(
+            "bookcases",
+            metadata,
+            Column("bookcase_id", Integer, primary_key=True),
+            Column(
+                "bookcase_owner_id", Integer, ForeignKey("people.people_id")
+            ),
+            Column("bookcase_shelves", Integer),
+            Column("bookcase_width", Integer),
+        )
+        Table(
+            "books",
+            metadata,
+            Column("book_id", Integer, primary_key=True),
+            Column(
+                "bookcase_id", Integer, ForeignKey("bookcases.bookcase_id")
+            ),
+            Column("book_owner_id", Integer, ForeignKey("people.people_id")),
+            Column("book_weight", Integer),
+        )
 
     @classmethod
     def setup_classes(cls):
-        people, bookcases, books = cls.tables('people', 'bookcases', 'books')
+        people, bookcases, books = cls.tables("people", "bookcases", "books")
 
         class Person(cls.Comparable):
             pass
@@ -2823,10 +3535,14 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             pass
 
         mapper(Person, people)
-        mapper(Bookcase, bookcases, properties={
-            'owner': relationship(Person),
-            'books': relationship(Book)
-        })
+        mapper(
+            Bookcase,
+            bookcases,
+            properties={
+                "owner": relationship(Person),
+                "books": relationship(Book),
+            },
+        )
         mapper(Book, books)
 
     def test_select_subquery(self):
@@ -2834,13 +3550,15 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         s = Session()
 
-        subq = s.query(Book.book_id).correlate(Person).filter(
-            Person.people_id == Book.book_owner_id
-        ).subquery().lateral()
-
-        stmt = s.query(Person, subq.c.book_id).join(
-            subq, true()
+        subq = (
+            s.query(Book.book_id)
+            .correlate(Person)
+            .filter(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
         )
+
+        stmt = s.query(Person, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -2849,7 +3567,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "anon_1.book_id AS anon_1_book_id "
             "FROM people JOIN LATERAL "
             "(SELECT books.book_id AS book_id FROM books "
-            "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true"
+            "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true",
         )
 
     # sef == select_entity_from
@@ -2861,12 +3579,17 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = s.query(Person).subquery()
 
-        subq = s.query(Book.book_id).filter(
-            Person.people_id == Book.book_owner_id
-        ).subquery().lateral()
+        subq = (
+            s.query(Book.book_id)
+            .filter(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
+        )
 
-        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
-            subq, true()
+        stmt = (
+            s.query(Person, subq.c.book_id)
+            .select_entity_from(stmt)
+            .join(subq, true())
         )
 
         self.assert_compile(
@@ -2879,7 +3602,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "people.name AS name FROM people) AS anon_1 "
             "JOIN LATERAL "
             "(SELECT books.book_id AS book_id FROM books "
-            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
     def test_select_subquery_sef_implicit_correlate_coreonly(self):
@@ -2889,12 +3612,16 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = s.query(Person).subquery()
 
-        subq = select([Book.book_id]).where(
-            Person.people_id == Book.book_owner_id
-        ).lateral()
+        subq = (
+            select([Book.book_id])
+            .where(Person.people_id == Book.book_owner_id)
+            .lateral()
+        )
 
-        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
-            subq, true()
+        stmt = (
+            s.query(Person, subq.c.book_id)
+            .select_entity_from(stmt)
+            .join(subq, true())
         )
 
         self.assert_compile(
@@ -2907,7 +3634,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "people.name AS name FROM people) AS anon_1 "
             "JOIN LATERAL "
             "(SELECT books.book_id AS book_id FROM books "
-            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
     def test_select_subquery_sef_explicit_correlate_coreonly(self):
@@ -2917,12 +3644,17 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = s.query(Person).subquery()
 
-        subq = select([Book.book_id]).correlate(Person).where(
-            Person.people_id == Book.book_owner_id
-        ).lateral()
+        subq = (
+            select([Book.book_id])
+            .correlate(Person)
+            .where(Person.people_id == Book.book_owner_id)
+            .lateral()
+        )
 
-        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
-            subq, true()
+        stmt = (
+            s.query(Person, subq.c.book_id)
+            .select_entity_from(stmt)
+            .join(subq, true())
         )
 
         self.assert_compile(
@@ -2935,7 +3667,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "people.name AS name FROM people) AS anon_1 "
             "JOIN LATERAL "
             "(SELECT books.book_id AS book_id FROM books "
-            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
     @testing.fails("needs #4304 to work")
@@ -2946,12 +3678,18 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = s.query(Person).subquery()
 
-        subq = s.query(Book.book_id).correlate(Person).filter(
-            Person.people_id == Book.book_owner_id
-        ).subquery().lateral()
+        subq = (
+            s.query(Book.book_id)
+            .correlate(Person)
+            .filter(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
+        )
 
-        stmt = s.query(Person, subq.c.book_id).select_entity_from(stmt).join(
-            subq, true()
+        stmt = (
+            s.query(Person, subq.c.book_id)
+            .select_entity_from(stmt)
+            .join(subq, true())
         )
 
         self.assert_compile(
@@ -2964,7 +3702,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "people.name AS name FROM people) AS anon_1 "
             "JOIN LATERAL "
             "(SELECT books.book_id AS book_id FROM books "
-            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true"
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
     def test_from_function(self):
@@ -2982,7 +3720,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "bookcases.bookcase_width AS bookcases_bookcase_width "
             "FROM bookcases JOIN "
             "LATERAL generate_series(:generate_series_1, "
-            "bookcases.bookcase_shelves) AS anon_1 ON true"
+            "bookcases.bookcase_shelves) AS anon_1 ON true",
         )
 
     def test_from_function_select_entity_from(self):
@@ -3007,6 +3745,5 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "AS anon_1 "
             "JOIN LATERAL "
             "generate_series(:generate_series_1, anon_1.bookcase_shelves) "
-            "AS anon_2 ON true"
+            "AS anon_2 ON true",
         )
-

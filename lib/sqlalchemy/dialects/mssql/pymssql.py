@@ -35,7 +35,6 @@ class _MSNumeric_pymssql(sqltypes.Numeric):
 
 
 class MSIdentifierPreparer_pymssql(MSIdentifierPreparer):
-
     def __init__(self, dialect):
         super(MSIdentifierPreparer_pymssql, self).__init__(dialect)
         # pymssql has the very unusual behavior that it uses pyformat
@@ -45,47 +44,45 @@ class MSIdentifierPreparer_pymssql(MSIdentifierPreparer):
 
 class MSDialect_pymssql(MSDialect):
     supports_native_decimal = True
-    driver = 'pymssql'
+    driver = "pymssql"
 
     preparer = MSIdentifierPreparer_pymssql
 
     colspecs = util.update_copy(
         MSDialect.colspecs,
-        {
-            sqltypes.Numeric: _MSNumeric_pymssql,
-            sqltypes.Float: sqltypes.Float,
-        }
+        {sqltypes.Numeric: _MSNumeric_pymssql, sqltypes.Float: sqltypes.Float},
     )
 
     @classmethod
     def dbapi(cls):
-        module = __import__('pymssql')
+        module = __import__("pymssql")
         # pymmsql < 2.1.1 doesn't have a Binary method.  we use string
         client_ver = tuple(int(x) for x in module.__version__.split("."))
         if client_ver < (2, 1, 1):
             # TODO: monkeypatching here is less than ideal
-            module.Binary = lambda x: x if hasattr(x, 'decode') else str(x)
+            module.Binary = lambda x: x if hasattr(x, "decode") else str(x)
 
-        if client_ver < (1, ):
-            util.warn("The pymssql dialect expects at least "
-                      "the 1.0 series of the pymssql DBAPI.")
+        if client_ver < (1,):
+            util.warn(
+                "The pymssql dialect expects at least "
+                "the 1.0 series of the pymssql DBAPI."
+            )
         return module
 
     def _get_server_version_info(self, connection):
         vers = connection.scalar("select @@version")
-        m = re.match(
-            r"Microsoft .*? - (\d+).(\d+).(\d+).(\d+)", vers)
+        m = re.match(r"Microsoft .*? - (\d+).(\d+).(\d+).(\d+)", vers)
         if m:
             return tuple(int(x) for x in m.group(1, 2, 3, 4))
         else:
             return None
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
+        opts = url.translate_connect_args(username="user")
         opts.update(url.query)
-        port = opts.pop('port', None)
-        if port and 'host' in opts:
-            opts['host'] = "%s:%s" % (opts['host'], port)
+        port = opts.pop("port", None)
+        if port and "host" in opts:
+            opts["host"] = "%s:%s" % (opts["host"], port)
         return [[], opts]
 
     def is_disconnect(self, e, connection, cursor):
@@ -105,12 +102,13 @@ class MSDialect_pymssql(MSDialect):
             return False
 
     def set_isolation_level(self, connection, level):
-        if level == 'AUTOCOMMIT':
+        if level == "AUTOCOMMIT":
             connection.autocommit(True)
         else:
             connection.autocommit(False)
-            super(MSDialect_pymssql, self).set_isolation_level(connection,
-                                                               level)
+            super(MSDialect_pymssql, self).set_isolation_level(
+                connection, level
+            )
 
 
 dialect = MSDialect_pymssql

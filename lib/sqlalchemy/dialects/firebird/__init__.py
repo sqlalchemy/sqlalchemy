@@ -7,14 +7,35 @@
 
 from . import base, kinterbasdb, fdb  # noqa
 
-from sqlalchemy.dialects.firebird.base import \
-    SMALLINT, BIGINT, FLOAT, DATE, TIME, \
-    TEXT, NUMERIC, TIMESTAMP, VARCHAR, CHAR, BLOB
+from sqlalchemy.dialects.firebird.base import (
+    SMALLINT,
+    BIGINT,
+    FLOAT,
+    DATE,
+    TIME,
+    TEXT,
+    NUMERIC,
+    TIMESTAMP,
+    VARCHAR,
+    CHAR,
+    BLOB,
+)
 
 base.dialect = dialect = fdb.dialect
 
 __all__ = (
-    'SMALLINT', 'BIGINT', 'FLOAT', 'FLOAT', 'DATE', 'TIME',
-    'TEXT', 'NUMERIC', 'FLOAT', 'TIMESTAMP', 'VARCHAR', 'CHAR', 'BLOB',
-    'dialect'
+    "SMALLINT",
+    "BIGINT",
+    "FLOAT",
+    "FLOAT",
+    "DATE",
+    "TIME",
+    "TEXT",
+    "NUMERIC",
+    "FLOAT",
+    "TIMESTAMP",
+    "VARCHAR",
+    "CHAR",
+    "BLOB",
+    "dialect",
 )

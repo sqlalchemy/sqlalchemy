@@ -9,9 +9,7 @@
 
 """
 
-from .sql.base import (
-    SchemaVisitor
-    )
+from .sql.base import SchemaVisitor
 
 
 from .sql.schema import (
@@ -36,8 +34,8 @@ from .sql.schema import (
     UniqueConstraint,
     _get_table_key,
     ColumnCollectionConstraint,
-    ColumnCollectionMixin
-    )
+    ColumnCollectionMixin,
+)
 
 
 from .sql.naming import conv

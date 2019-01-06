@@ -46,28 +46,34 @@ def py_fallback():
         elif len(multiparams) == 1:
             zero = multiparams[0]
             if isinstance(zero, (list, tuple)):
-                if not zero or hasattr(zero[0], '__iter__') and \
-                        not hasattr(zero[0], 'strip'):
+                if (
+                    not zero
+                    or hasattr(zero[0], "__iter__")
+                    and not hasattr(zero[0], "strip")
+                ):
                     # execute(stmt, [{}, {}, {}, ...])
                     # execute(stmt, [(), (), (), ...])
                     return zero
                 else:
                     # execute(stmt, ("value", "value"))
                     return [zero]
-            elif hasattr(zero, 'keys'):
+            elif hasattr(zero, "keys"):
                 # execute(stmt, {"key":"value"})
                 return [zero]
             else:
                 # execute(stmt, "value")
                 return [[zero]]
         else:
-            if hasattr(multiparams[0], '__iter__') and \
-                    not hasattr(multiparams[0], 'strip'):
+            if hasattr(multiparams[0], "__iter__") and not hasattr(
+                multiparams[0], "strip"
+            ):
                 return multiparams
             else:
                 return [multiparams]
 
     return locals()
+
+
 try:
     from sqlalchemy.cutils import _distill_params
 except ImportError:

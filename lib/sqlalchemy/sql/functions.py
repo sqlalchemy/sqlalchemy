@@ -10,9 +10,21 @@
 """
 from . import sqltypes, schema
 from .base import Executable, ColumnCollection
-from .elements import ClauseList, Cast, Extract, _literal_as_binds, \
-    literal_column, _type_from_args, ColumnElement, _clone,\
-    Over, BindParameter, FunctionFilter, Grouping, WithinGroup
+from .elements import (
+    ClauseList,
+    Cast,
+    Extract,
+    _literal_as_binds,
+    literal_column,
+    _type_from_args,
+    ColumnElement,
+    _clone,
+    Over,
+    BindParameter,
+    FunctionFilter,
+    Grouping,
+    WithinGroup,
+)
 from .selectable import FromClause, Select, Alias
 from . import util as sqlutil
 from . import operators
@@ -58,9 +70,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         """
         args = [_literal_as_binds(c, self.name) for c in clauses]
         self.clause_expr = ClauseList(
-            operator=operators.comma_op,
-            group_contents=True, *args).\
-            self_group()
+            operator=operators.comma_op, group_contents=True, *args
+        ).self_group()
 
     def _execute_on_connection(self, connection, multiparams, params):
         return connection._execute_function(self, multiparams, params)
@@ -119,7 +130,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
             partition_by=partition_by,
             order_by=order_by,
             rows=rows,
-            range_=range_
+            range_=range_,
         )
 
     def within_group(self, *order_by):
@@ -171,7 +182,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         return self.clauses._from_objects
 
     def get_children(self, **kwargs):
-        return self.clause_expr,
+        return (self.clause_expr,)
 
     def _copy_internals(self, clone=_clone, **kw):
         self.clause_expr = clone(self.clause_expr, **kw)
@@ -265,17 +276,23 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         return self.select().execute()
 
     def _bind_param(self, operator, obj, type_=None):
-        return BindParameter(None, obj, _compared_to_operator=operator,
-                             _compared_to_type=self.type, unique=True,
-                             type_=type_)
+        return BindParameter(
+            None,
+            obj,
+            _compared_to_operator=operator,
+            _compared_to_type=self.type,
+            unique=True,
+            type_=type_,
+        )
 
     def self_group(self, against=None):
         # for the moment, we are parenthesizing all array-returning
         # expressions against getitem.  This may need to be made
         # more portable if in the future we support other DBs
         # besides postgresql.
-        if against is operators.getitem and \
-                isinstance(self.type, sqltypes.ARRAY):
+        if against is operators.getitem and isinstance(
+            self.type, sqltypes.ARRAY
+        ):
             return Grouping(self)
         else:
             return super(FunctionElement, self).self_group(against=against)
@@ -290,13 +307,13 @@ class _FunctionGenerator(object):
 
     def __getattr__(self, name):
         # passthru __ attributes; fixes pydoc
-        if name.startswith('__'):
+        if name.startswith("__"):
             try:
                 return self.__dict__[name]
             except KeyError:
                 raise AttributeError(name)
 
-        elif name.endswith('_'):
+        elif name.endswith("_"):
             name = name[0:-1]
         f = _FunctionGenerator(**self.opts)
         f.__names = list(self.__names) + [name]
@@ -320,8 +337,9 @@ class _FunctionGenerator(object):
             if func is not None:
                 return func(*c, **o)
 
-        return Function(self.__names[-1],
-                        packagenames=self.__names[0:-1], *c, **o)
+        return Function(
+            self.__names[-1], packagenames=self.__names[0:-1], *c, **o
+        )
 
 
 func = _FunctionGenerator()
@@ -417,7 +435,7 @@ class Function(FunctionElement):
 
     """
 
-    __visit_name__ = 'function'
+    __visit_name__ = "function"
 
     def __init__(self, name, *clauses, **kw):
         """Construct a :class:`.Function`.
@@ -426,30 +444,33 @@ class Function(FunctionElement):
         new :class:`.Function` instances.
 
         """
-        self.packagenames = kw.pop('packagenames', None) or []
+        self.packagenames = kw.pop("packagenames", None) or []
         self.name = name
-        self._bind = kw.get('bind', None)
-        self.type = sqltypes.to_instance(kw.get('type_', None))
+        self._bind = kw.get("bind", None)
+        self.type = sqltypes.to_instance(kw.get("type_", None))
 
         FunctionElement.__init__(self, *clauses, **kw)
 
     def _bind_param(self, operator, obj, type_=None):
-        return BindParameter(self.name, obj,
-                             _compared_to_operator=operator,
-                             _compared_to_type=self.type,
-                             type_=type_,
-                             unique=True)
+        return BindParameter(
+            self.name,
+            obj,
+            _compared_to_operator=operator,
+            _compared_to_type=self.type,
+            type_=type_,
+            unique=True,
+        )
 
 
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
         if annotation.Annotated not in cls.__mro__:
-            cls.name = name = clsdict.get('name', clsname)
-            cls.identifier = identifier = clsdict.get('identifier', name)
-            package = clsdict.pop('package', '_default')
+            cls.name = name = clsdict.get("name", clsname)
+            cls.identifier = identifier = clsdict.get("identifier", name)
+            package = clsdict.pop("package", "_default")
             # legacy
-            if '__return_type__' in clsdict:
-                cls.type = clsdict['__return_type__']
+            if "__return_type__" in clsdict:
+                cls.type = clsdict["__return_type__"]
             register_function(identifier, cls, package)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
@@ -529,16 +550,18 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     coerce_arguments = True
 
     def __init__(self, *args, **kwargs):
-        parsed_args = kwargs.pop('_parsed_args', None)
+        parsed_args = kwargs.pop("_parsed_args", None)
         if parsed_args is None:
             parsed_args = [_literal_as_binds(c, self.name) for c in args]
         self.packagenames = []
-        self._bind = kwargs.get('bind', None)
+        self._bind = kwargs.get("bind", None)
         self.clause_expr = ClauseList(
-            operator=operators.comma_op,
-            group_contents=True, *parsed_args).self_group()
+            operator=operators.comma_op, group_contents=True, *parsed_args
+        ).self_group()
         self.type = sqltypes.to_instance(
-            kwargs.pop("type_", None) or getattr(self, 'type', None))
+            kwargs.pop("type_", None) or getattr(self, "type", None)
+        )
+
 
 register_function("cast", Cast)
 register_function("extract", Extract)
@@ -553,13 +576,15 @@ class next_value(GenericFunction):
     that does not provide support for sequences.
 
     """
+
     type = sqltypes.Integer()
     name = "next_value"
 
     def __init__(self, seq, **kw):
-        assert isinstance(seq, schema.Sequence), \
-            "next_value() accepts a Sequence object as input."
-        self._bind = kw.get('bind', None)
+        assert isinstance(
+            seq, schema.Sequence
+        ), "next_value() accepts a Sequence object as input."
+        self._bind = kw.get("bind", None)
         self.sequence = seq
 
     @property
@@ -577,8 +602,8 @@ class ReturnTypeFromArgs(GenericFunction):
 
     def __init__(self, *args, **kwargs):
         args = [_literal_as_binds(c, self.name) for c in args]
-        kwargs.setdefault('type_', _type_from_args(args))
-        kwargs['_parsed_args'] = args
+        kwargs.setdefault("type_", _type_from_args(args))
+        kwargs["_parsed_args"] = args
         super(ReturnTypeFromArgs, self).__init__(*args, **kwargs)
 
 
@@ -626,7 +651,7 @@ class count(GenericFunction):
 
     def __init__(self, expression=None, **kwargs):
         if expression is None:
-            expression = literal_column('*')
+            expression = literal_column("*")
         super(count, self).__init__(expression, **kwargs)
 
 
@@ -690,15 +715,15 @@ class array_agg(GenericFunction):
     def __init__(self, *args, **kwargs):
         args = [_literal_as_binds(c) for c in args]
 
-        default_array_type = kwargs.pop('_default_array_type', sqltypes.ARRAY)
-        if 'type_' not in kwargs:
+        default_array_type = kwargs.pop("_default_array_type", sqltypes.ARRAY)
+        if "type_" not in kwargs:
 
             type_from_args = _type_from_args(args)
             if isinstance(type_from_args, sqltypes.ARRAY):
-                kwargs['type_'] = type_from_args
+                kwargs["type_"] = type_from_args
             else:
-                kwargs['type_'] = default_array_type(type_from_args)
-        kwargs['_parsed_args'] = args
+                kwargs["type_"] = default_array_type(type_from_args)
+        kwargs["_parsed_args"] = args
         super(array_agg, self).__init__(*args, **kwargs)
 
 
@@ -776,6 +801,7 @@ class rank(GenericFunction):
     .. versionadded:: 1.1
 
     """
+
     type = sqltypes.Integer()
 
 
@@ -790,6 +816,7 @@ class dense_rank(GenericFunction):
     .. versionadded:: 1.1
 
     """
+
     type = sqltypes.Integer()
 
 
@@ -804,6 +831,7 @@ class percent_rank(GenericFunction):
     .. versionadded:: 1.1
 
     """
+
     type = sqltypes.Numeric()
 
 
@@ -818,6 +846,7 @@ class cume_dist(GenericFunction):
     .. versionadded:: 1.1
 
     """
+
     type = sqltypes.Numeric()
 
 

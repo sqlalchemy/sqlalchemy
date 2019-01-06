@@ -17,19 +17,23 @@ if not sys.flags.no_user_site:
     # We check no_user_site to honor the use of this flag.
     sys.path.insert(
         0,
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), '..', 'lib')
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"),
     )
 
 # use bootstrapping so that test plugins are loaded
 # without touching the main library before coverage starts
 bootstrap_file = os.path.join(
-    os.path.dirname(__file__), "..", "lib", "sqlalchemy",
-    "testing", "plugin", "bootstrap.py"
+    os.path.dirname(__file__),
+    "..",
+    "lib",
+    "sqlalchemy",
+    "testing",
+    "plugin",
+    "bootstrap.py",
 )
 
 with open(bootstrap_file) as f:
-    code = compile(f.read(), "bootstrap.py", 'exec')
+    code = compile(f.read(), "bootstrap.py", "exec")
     to_bootstrap = "pytest"
     exec(code, globals(), locals())
     from pytestplugin import *  # noqa

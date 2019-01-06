@@ -46,9 +46,12 @@ def setup_database(dburl, echo, num):
             Customer.__table__.insert(),
             params=[
                 {
-                    'name': 'customer name %d' % i,
-                    'description': 'customer description %d' % i
-                } for i in range(chunk, chunk + 10000)])
+                    "name": "customer name %d" % i,
+                    "description": "customer description %d" % i,
+                }
+                for i in range(chunk, chunk + 10000)
+            ],
+        )
     s.commit()
 
 
@@ -74,8 +77,9 @@ def test_orm_bundles(n):
     """Load lightweight "bundle" objects using the ORM."""
 
     sess = Session(engine)
-    bundle = Bundle('customer',
-                    Customer.id, Customer.name, Customer.description)
+    bundle = Bundle(
+        "customer", Customer.id, Customer.name, Customer.description
+    )
     for row in sess.query(bundle).yield_per(10000).limit(n):
         pass
 
@@ -85,9 +89,11 @@ def test_orm_columns(n):
     """Load individual columns into named tuples using the ORM."""
 
     sess = Session(engine)
-    for row in sess.query(
-        Customer.id, Customer.name,
-            Customer.description).yield_per(10000).limit(n):
+    for row in (
+        sess.query(Customer.id, Customer.name, Customer.description)
+        .yield_per(10000)
+        .limit(n)
+    ):
         pass
 
 
@@ -98,7 +104,7 @@ def test_core_fetchall(n):
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
         for row in result:
-            data = row['id'], row['name'], row['description']
+            data = row["id"], row["name"], row["description"]
 
 
 @Profiler.profile
@@ -106,14 +112,15 @@ def test_core_fetchmany_w_streaming(n):
     """Load Core result rows using fetchmany/streaming."""
 
     with engine.connect() as conn:
-        result = conn.execution_options(stream_results=True).\
-            execute(Customer.__table__.select().limit(n))
+        result = conn.execution_options(stream_results=True).execute(
+            Customer.__table__.select().limit(n)
+        )
         while True:
             chunk = result.fetchmany(10000)
             if not chunk:
                 break
             for row in chunk:
-                data = row['id'], row['name'], row['description']
+                data = row["id"], row["name"], row["description"]
 
 
 @Profiler.profile
@@ -127,7 +134,7 @@ def test_core_fetchmany(n):
             if not chunk:
                 break
             for row in chunk:
-                data = row['id'], row['name'], row['description']
+                data = row["id"], row["name"], row["description"]
 
 
 @Profiler.profile
@@ -145,10 +152,13 @@ def test_dbapi_fetchall_no_object(n):
 
 
 def _test_dbapi_raw(n, make_objects):
-    compiled = Customer.__table__.select().limit(n).\
-        compile(
-            dialect=engine.dialect,
-            compile_kwargs={"literal_binds": True})
+    compiled = (
+        Customer.__table__.select()
+        .limit(n)
+        .compile(
+            dialect=engine.dialect, compile_kwargs={"literal_binds": True}
+        )
+    )
 
     if make_objects:
         # because if you're going to roll your own, you're probably
@@ -170,7 +180,8 @@ def _test_dbapi_raw(n, make_objects):
         for row in cursor.fetchall():
             # ensure that we fully fetch!
             customer = SimpleCustomer(
-                id=row[0], name=row[1], description=row[2])
+                id=row[0], name=row[1], description=row[2]
+            )
     else:
         for row in cursor.fetchall():
             # ensure that we fully fetch!
@@ -178,5 +189,6 @@ def _test_dbapi_raw(n, make_objects):
 
     conn.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     Profiler.main()

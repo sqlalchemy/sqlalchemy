@@ -78,7 +78,8 @@ class array(expression.Tuple):
     :class:`.postgresql.ARRAY`
 
     """
-    __visit_name__ = 'array'
+
+    __visit_name__ = "array"
 
     def __init__(self, clauses, **kw):
         super(array, self).__init__(*clauses, **kw)
@@ -90,18 +91,26 @@ class array(expression.Tuple):
             # a Slice object from that
             assert isinstance(obj, int)
             return expression.BindParameter(
-                None, obj, _compared_to_operator=operator,
+                None,
+                obj,
+                _compared_to_operator=operator,
                 type_=type_,
-                _compared_to_type=self.type, unique=True)
+                _compared_to_type=self.type,
+                unique=True,
+            )
 
         else:
-            return array([
-                self._bind_param(operator, o, _assume_scalar=True, type_=type_)
-                for o in obj])
+            return array(
+                [
+                    self._bind_param(
+                        operator, o, _assume_scalar=True, type_=type_
+                    )
+                    for o in obj
+                ]
+            )
 
     def self_group(self, against=None):
-        if (against in (
-                operators.any_op, operators.all_op, operators.getitem)):
+        if against in (operators.any_op, operators.all_op, operators.getitem):
             return expression.Grouping(self)
         else:
             return self
@@ -180,7 +189,8 @@ class ARRAY(sqltypes.ARRAY):
             elements of the argument array expression.
             """
             return self.operate(
-                CONTAINED_BY, other, result_type=sqltypes.Boolean)
+                CONTAINED_BY, other, result_type=sqltypes.Boolean
+            )
 
         def overlap(self, other):
             """Boolean expression.  Test if array has elements in common with
@@ -190,8 +200,9 @@ class ARRAY(sqltypes.ARRAY):
 
     comparator_factory = Comparator
 
-    def __init__(self, item_type, as_tuple=False, dimensions=None,
-                 zero_indexes=False):
+    def __init__(
+        self, item_type, as_tuple=False, dimensions=None, zero_indexes=False
+    ):
         """Construct an ARRAY.
 
         E.g.::
@@ -228,8 +239,10 @@ class ARRAY(sqltypes.ARRAY):
 
         """
         if isinstance(item_type, ARRAY):
-            raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
-                             "handles multi-dimensional arrays of basetype")
+            raise ValueError(
+                "Do not nest ARRAY types; ARRAY(basetype) "
+                "handles multi-dimensional arrays of basetype"
+            )
         if isinstance(item_type, type):
             item_type = item_type()
         self.item_type = item_type
@@ -251,11 +264,17 @@ class ARRAY(sqltypes.ARRAY):
     def _proc_array(self, arr, itemproc, dim, collection):
         if dim is None:
             arr = list(arr)
-        if dim == 1 or dim is None and (
+        if (
+            dim == 1
+            or dim is None
+            and (
                 # this has to be (list, tuple), or at least
                 # not hasattr('__iter__'), since Py3K strings
                 # etc. have __iter__
-                not arr or not isinstance(arr[0], (list, tuple))):
+                not arr
+                or not isinstance(arr[0], (list, tuple))
+            )
+        ):
             if itemproc:
                 return collection(itemproc(x) for x in arr)
             else:
@@ -263,30 +282,33 @@ class ARRAY(sqltypes.ARRAY):
         else:
             return collection(
                 self._proc_array(
-                    x, itemproc,
+                    x,
+                    itemproc,
                     dim - 1 if dim is not None else None,
-                    collection)
+                    collection,
+                )
                 for x in arr
             )
 
     def bind_processor(self, dialect):
-        item_proc = self.item_type.dialect_impl(dialect).\
-            bind_processor(dialect)
+        item_proc = self.item_type.dialect_impl(dialect).bind_processor(
+            dialect
+        )
 
         def process(value):
             if value is None:
                 return value
             else:
                 return self._proc_array(
-                    value,
-                    item_proc,
-                    self.dimensions,
-                    list)
+                    value, item_proc, self.dimensions, list
+                )
+
         return process
 
     def result_processor(self, dialect, coltype):
-        item_proc = self.item_type.dialect_impl(dialect).\
-            result_processor(dialect, coltype)
+        item_proc = self.item_type.dialect_impl(dialect).result_processor(
+            dialect, coltype
+        )
 
         def process(value):
             if value is None:
@@ -296,8 +318,11 @@ class ARRAY(sqltypes.ARRAY):
                     value,
                     item_proc,
                     self.dimensions,
-                    tuple if self.as_tuple else list)
+                    tuple if self.as_tuple else list,
+                )
+
         return process
 
+
 colspecs[sqltypes.ARRAY] = ARRAY
-ischema_names['_array'] = ARRAY
+ischema_names["_array"] = ARRAY

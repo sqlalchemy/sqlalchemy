@@ -11,6 +11,7 @@ from .. import util
 from .. import exc as sa_exc
 from . import util as orm_util
 
+
 class IdentityMap(object):
     def __init__(self):
         self._dict = {}
@@ -84,7 +85,6 @@ class IdentityMap(object):
 
 
 class WeakInstanceDict(IdentityMap):
-
     def __getitem__(self, key):
         state = self._dict[key]
         o = state.obj()
@@ -145,8 +145,9 @@ class WeakInstanceDict(IdentityMap):
                         raise sa_exc.InvalidRequestError(
                             "Can't attach instance "
                             "%s; another instance with key %s is already "
-                            "present in this session." % (
-                                orm_util.state_str(state), state.key))
+                            "present in this session."
+                            % (orm_util.state_str(state), state.key)
+                        )
                 else:
                     return False
         self._dict[key] = state
@@ -253,6 +254,7 @@ class StrongInstanceDict(IdentityMap):
     """
 
     if util.py2k:
+
         def itervalues(self):
             return self._dict.itervalues()
 
@@ -282,8 +284,9 @@ class StrongInstanceDict(IdentityMap):
 
     def contains_state(self, state):
         return (
-            state.key in self and
-            attributes.instance_state(self[state.key]) is state)
+            state.key in self
+            and attributes.instance_state(self[state.key]) is state
+        )
 
     def replace(self, state):
         if state.key in self._dict:
@@ -303,8 +306,9 @@ class StrongInstanceDict(IdentityMap):
                 raise sa_exc.InvalidRequestError(
                     "Can't attach instance "
                     "%s; another instance with key %s is already "
-                    "present in this session." % (
-                        orm_util.state_str(state), state.key))
+                    "present in this session."
+                    % (orm_util.state_str(state), state.key)
+                )
             return False
         else:
             self._dict[state.key] = state.obj()
