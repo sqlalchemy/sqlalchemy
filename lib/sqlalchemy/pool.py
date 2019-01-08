@@ -217,12 +217,17 @@ class Pool(log.Identified):
          can be assigned via :func:`.create_engine` before dialect-level
          listeners are applied.
 
-        :param listeners: Deprecated.  A list of
-          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
+        :param listeners: A list of :class:`.PoolListener`-like objects or
           dictionaries of callables that receive events when DB-API
           connections are created, checked out and checked in to the
-          pool.  This has been superseded by
-          :func:`~sqlalchemy.event.listen`.
+          pool.
+
+          .. deprecated:: 0.7
+
+                :class:`.PoolListener` is deprecated in favor of the
+                :class:`.PoolEvents` listener interface.  The
+                :paramref:`.Pool.listeners` parameter will be removed in a
+                future release.
 
         :param dialect: a :class:`.Dialect` that will handle the job
          of calling rollback(), close(), or commit() on DBAPI connections.
@@ -278,8 +283,10 @@ class Pool(log.Identified):
                 event.listen(self, target, fn)
         if listeners:
             util.warn_deprecated(
-                "The 'listeners' argument to Pool (and "
-                "create_engine()) is deprecated.  Use event.listen()."
+                "The 'listeners' argument to Pool and create_engine() is "
+                "deprecated and will be removed in a future release. "
+                "Please refer to the PoolEvents class in conjunction "
+                "with event.listen()"
             )
             for l in listeners:
                 self.add_listener(l)
@@ -330,7 +337,9 @@ class Pool(log.Identified):
             )
 
     @util.deprecated(
-        2.7, "Pool.add_listener is deprecated.  Use event.listen()"
+        "0.7", "The :meth:`.Pool.add_listener` method is deprecated and "
+        "will be removed in a future release.  Please use the "
+        ":class:`.PoolEvents` listener interface."
     )
     def add_listener(self, listener):
         """Add a :class:`.PoolListener`-like object to this pool.

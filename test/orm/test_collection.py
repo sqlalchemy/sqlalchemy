@@ -19,6 +19,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing import uses_deprecated
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -2473,6 +2474,7 @@ class InstrumentationTest(fixtures.ORMTest):
         eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
         eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
 
+    @uses_deprecated(r".*Please refer to the .*init_collection")
     def test_link_event(self):
         canary = []
 

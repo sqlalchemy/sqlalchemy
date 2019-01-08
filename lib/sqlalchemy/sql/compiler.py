@@ -311,7 +311,10 @@ class Compiled(object):
 
     @util.deprecated(
         "0.7",
-        ":class:`.Compiled` objects now compile " "within the constructor.",
+        "The :meth:`.Compiled.compile` method is deprecated and will be "
+        "removed in a future release.   The :class:`.Compiled` object "
+        "now runs its compilation within the constructor, and this method "
+        "does nothing."
     )
     def compile(self):
         """Produce the internal string representation of this element.
@@ -3424,20 +3427,48 @@ class IdentifierPreparer(object):
         )
 
     def quote_schema(self, schema, force=None):
-        """Conditionally quote a schema.
+        """Conditionally quote a schema name.
+
+        The name is quoted if it is a reserved word, contains quote-necessary
+        characters, or is an instance of :class:`.quoted_name` which includes
+        ``quote`` set to ``True``.
 
         Subclasses can override this to provide database-dependent
         quoting behavior for schema names.
 
-        the 'force' flag should be considered deprecated.
+        :param schema: string schema name
+        :param force: this parameter is no longer used.
+
+         .. deprecated:: 0.9
+
+            The :paramref:`.IdentifierPreparer.force` parameter is deprecated
+            and will be removed in a future release.  Quoting preference
+            is now intrinsic to the string being quoted by making use of the
+            :class:`.quoted_name` class.
 
         """
         return self.quote(schema, force)
 
     def quote(self, ident, force=None):
-        """Conditionally quote an identifier.
+        """Conditionally quote an identfier.
 
-        the 'force' flag should be considered deprecated.
+        The identifier is quoted if it is a reserved word, contains
+        quote-necessary characters, or is an instance of
+        :class:`.quoted_name` which includes ``quote`` set to ``True``.
+
+        Subclasses can override this to provide database-dependent
+        quoting behavior for identifier names.
+
+        :param ident: string identifier
+        :param force: this parameter is no longer used.
+
+         .. deprecated:: 0.9
+
+             The :paramref:`.IdentifierPreparer.force` parameter is deprecated
+             and will be removed in a future release.  Quoting preference
+             is now intrinsic to the string being quoted by making use of the
+             :class:`.quoted_name` class.
+
         """
 
         force = getattr(ident, "quote", None)

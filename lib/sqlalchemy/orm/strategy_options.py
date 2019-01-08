@@ -812,9 +812,11 @@ See :func:`.orm.%(name)s` for usage examples.
         self._unbound_all_fn = fn
         fn.__doc__ = """Produce a standalone "all" option for :func:`.orm.%(name)s`.
 
-.. deprecated:: 0.9.0
+.. deprecated:: 0.9
 
-    The "_all()" style is replaced by method chaining, e.g.::
+    The :func:`.%(name)s_all` function is deprecated, and will be removed
+    in a future release.  Please use method chaining with :func:`.%(name)s`
+    instead, as in::
 
         session.query(MyClass).options(
             %(name)s("someattribute").%(name)s("anotherattribute")

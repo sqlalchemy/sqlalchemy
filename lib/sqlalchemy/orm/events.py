@@ -2013,8 +2013,6 @@ class AttributeEvents(event.Events):
                 else:
                     return value
 
-
-
         .. versionadded:: 1.2
 
         :param target: the object instance receiving the event.
@@ -2222,7 +2220,7 @@ class AttributeEvents(event.Events):
 
         .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
            and :meth:`.AttributeEvents.dispose_collection` events supersede
-           the :class:`.collection.linker` hook.
+           the :class:`.orm.collection.linker` hook.
 
         """
 

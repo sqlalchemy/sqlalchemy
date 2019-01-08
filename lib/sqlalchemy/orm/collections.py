@@ -427,6 +427,13 @@ class collection(object):
         return fn
 
     @staticmethod
+    @util.deprecated(
+        "1.0",
+        "The :meth:`.collection.linker` handler is deprecated and will "
+        "be removed in a future release.  Please refer to the "
+        ":meth:`.AttributeEvents.init_collection` "
+        "and :meth:`.AttributeEvents.dispose_collection` event handlers. "
+    )
     def linker(fn):
         """Tag the method as a "linked to attribute" event handler.
 
@@ -436,16 +443,18 @@ class collection(object):
         the instance.  A single argument is passed: the collection adapter
         that has been linked, or None if unlinking.
 
-        .. deprecated:: 1.0.0 - the :meth:`.collection.linker` handler
-           is superseded by the :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` handlers.
 
         """
         fn._sa_instrument_role = "linker"
         return fn
 
     link = linker
-    """deprecated; synonym for :meth:`.collection.linker`."""
+    """Synonym for :meth:`.collection.linker`.
+
+    .. deprecated:: 1.0 - :meth:`.collection.link` is deprecated and will be
+       removed in a future release.
+
+    """
 
     @staticmethod
     def converter(fn):

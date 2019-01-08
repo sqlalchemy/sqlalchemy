@@ -268,8 +268,14 @@ class Mapper(InspectionAttr):
 
         :param extension: A :class:`.MapperExtension` instance or
            list of :class:`.MapperExtension` instances which will be applied
-           to all operations by this :class:`.Mapper`.  **Deprecated.**
-           Please see :class:`.MapperEvents`.
+           to all operations by this :class:`.Mapper`.
+
+           .. deprecated:: 0.7
+
+                :class:`.MapperExtension` is deprecated in favor of the
+                :class:`.MapperEvents` listener interface.  The
+                :paramref:`.mapper.extension` parameter will be
+                removed in a future release.
 
         :param include_properties: An inclusive list or set of string column
           names to map.
@@ -342,8 +348,9 @@ class Mapper(InspectionAttr):
            ordering.
 
            .. deprecated:: 1.1 The :paramref:`.Mapper.order_by` parameter
-              is deprecated.   Use :meth:`.Query.order_by` to determine the
-              ordering of a result set.
+              is deprecated, and will be removed in a future release.
+              Use :meth:`.Query.order_by` to determine the ordering of a
+              result set.
 
         :param passive_deletes: Indicates DELETE behavior of foreign key
            columns when a joined-table inheritance entity is being deleted.

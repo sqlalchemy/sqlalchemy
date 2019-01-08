@@ -8,8 +8,12 @@
 
 """Deprecated core event interfaces.
 
-This module is **deprecated** and is superseded by the
-event system.
+
+.. deprecated:: 0.7
+    As of SQLAlchemy 0.7, the new event system described in
+    :ref:`event_toplevel` replaces the extension/proxy/listener system,
+    providing a consistent interface to all events without the need for
+    subclassing.
 
 """
 
@@ -20,10 +24,11 @@ from . import util
 class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`.Pool`.
 
-    .. note::
+    .. deprecated:: 0.7
 
-       :class:`.PoolListener` is deprecated.   Please
-       refer to :class:`.PoolEvents`.
+       :class:`.PoolListener` is deprecated and will be removed in a future
+       release.  Please refer to :func:`.event.listen` in conjunction with
+       the :class:`.PoolEvents` listener interface.
 
     Usage::
 
@@ -156,10 +161,11 @@ class PoolListener(object):
 class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
 
-    .. note::
+    .. deprecated:: 0.7
 
-       :class:`.ConnectionProxy` is deprecated.   Please
-       refer to :class:`.ConnectionEvents`.
+       :class:`.ConnectionProxy` is deprecated and will be removed in a future
+       release.  Please refer to :func:`.event.listen` in conjunction with
+       the :class:`.ConnectionEvents` listener interface.
 
     Either or both of the ``execute()`` and ``cursor_execute()``
     may be implemented to intercept compiled statement and

@@ -823,8 +823,8 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn2.close()
 
     @testing.uses_deprecated(
-        r"autocommit on select\(\) is deprecated",
-        r"``autocommit\(\)`` is deprecated",
+        r".*select.autocommit parameter is deprecated",
+        r".*SelectBase.autocommit\(\) .* is deprecated",
     )
     def test_explicit_compiled_deprecated(self):
         conn1 = testing.db.connect()

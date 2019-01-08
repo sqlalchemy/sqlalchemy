@@ -799,8 +799,10 @@ class ConnectionEvents(event.Events):
         :param exception: The **unwrapped** exception emitted directly from the
          DBAPI.  The class here is specific to the DBAPI module in use.
 
-        .. deprecated:: 0.9.7 - replaced by
-            :meth:`.ConnectionEvents.handle_error`
+        .. deprecated:: 0.9 - The :meth:`.ConnectionEvents.dbapi_error`
+           event is deprecated and will be removed in a future release.
+           Please refer to the :meth:`.ConnectionEvents.handle_error`
+           event.
 
         """
 

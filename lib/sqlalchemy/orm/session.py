@@ -750,10 +750,12 @@ class Session(_SessionClassMethods):
 
         :param _enable_transaction_accounting:  Defaults to ``True``.  A
            legacy-only flag which when ``False`` disables *all* 0.5-style
-           object accounting on transaction boundaries, including auto-expiry
-           of instances on rollback and commit, maintenance of the "new" and
-           "deleted" lists upon rollback, and autoflush of pending changes
-           upon :meth:`~.Session.begin`, all of which are interdependent.
+           object accounting on transaction boundaries.
+
+           .. deprecated::  0.7
+
+                the :paramref:`.Session._enable_transaction_accounting`
+                parameter will be removed in a future release.
 
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
            instances will be fully expired after each :meth:`~.commit`,
@@ -763,8 +765,14 @@ class Session(_SessionClassMethods):
         :param extension: An optional
            :class:`~.SessionExtension` instance, or a list
            of such instances, which will receive pre- and post- commit and
-           flush events, as well as a post-rollback event. **Deprecated.**
-           Please see :class:`.SessionEvents`.
+           flush events, as well as a post-rollback event.
+
+           .. deprecated:: 0.7
+
+                :class:`.SessionExtension` is deprecated in favor of the
+                :class:`.SessionEvents` listener interface.  The
+                :paramref:`.Session.extension` parameter will be
+                removed in a future release.
 
         :param info: optional dictionary of arbitrary data to be associated
            with this :class:`.Session`.  Is available via the
@@ -791,11 +799,18 @@ class Session(_SessionClassMethods):
         :param weak_identity_map:  Defaults to ``True`` - when set to
            ``False``, objects placed in the :class:`.Session` will be
            strongly referenced until explicitly removed or the
-           :class:`.Session` is closed.  **Deprecated** - The strong
-           reference identity map is legacy.  See the
-           recipe at :ref:`session_referencing_behavior` for
-           an event-based approach to maintaining strong identity
-           references.
+           :class:`.Session` is closed.
+
+           .. deprecated:: 1.0
+
+               The :paramref:`.Session.weak_identity_map` parameter as well as
+               the strong-referencing identity map are deprecated, and will be
+               removed in a future release.  For the use case where objects
+               present in a :class:`.Session` need to be automatically strong
+               referenced, see the recipe at
+               :ref:`session_referencing_behavior` for an event-based approach
+               to maintaining strong identity references.
+
 
         """
 
@@ -1756,8 +1771,9 @@ class Session(_SessionClassMethods):
 
     @util.deprecated(
         "0.7",
-        "The non-weak-referencing identity map "
-        "feature is no longer needed.",
+        "The :meth:`.Session.prune` method is deprecated along with "
+        ":paramref:`.Session.weak_identity_map`.  This method will be "
+        "removed in a future release.",
     )
     def prune(self):
         """Remove unreferenced instances cached in the identity map.

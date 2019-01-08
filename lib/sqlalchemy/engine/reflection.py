@@ -179,10 +179,13 @@ class Inspector(object):
          resolve cycles, and will raise :class:`.CircularDependencyError`
          if cycles exist.
 
-         .. deprecated:: 1.0.0 - see
-            :meth:`.Inspector.get_sorted_table_and_fkc_names` for a version
-            of this which resolves foreign key cycles between tables
-            automatically.
+         .. deprecated:: 1.0
+
+            The :paramref:`get_table_names.order_by` parameter is deprecated
+            and will be removed in a future release.  Please refer to
+            :meth:`.Inspector.get_sorted_table_and_fkc_names` for a
+            more comprehensive solution to resolving foreign key cycles
+            between tables.
 
          .. versionchanged:: 0.8 the "foreign_key" sorting sorts tables
             in order of dependee to dependent; that is, in creation
@@ -381,8 +384,9 @@ class Inspector(object):
 
     @deprecated(
         "0.7",
-        "Call to deprecated method get_primary_keys."
-        "  Use get_pk_constraint instead.",
+        "The :meth:`.Inspector.get_primary_keys` method is deprecated and "
+        "will be removed in a future release.  Please refer to the "
+        ":meth:`.Inspector.get_pk_constraint` method."
     )
     def get_primary_keys(self, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
