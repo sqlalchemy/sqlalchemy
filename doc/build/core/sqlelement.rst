@@ -158,6 +158,10 @@ the FROM clause of a SELECT statement.
 
 .. autoclass:: sqlalchemy.sql.elements.quoted_name
 
+   .. attribute:: quote
+
+      whether the string should be unconditionally quoted
+
 .. autoclass:: UnaryExpression
    :members:
 

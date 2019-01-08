@@ -13,7 +13,7 @@ from sqlalchemy.orm import create_session, mapper, relationship, \
     attributes, instrumentation
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import assert_raises, assert_raises_message
-
+from sqlalchemy.testing import uses_deprecated
 
 class Canary(sa.orm.interfaces.AttributeExtension):
     def __init__(self):
@@ -2286,6 +2286,7 @@ class InstrumentationTest(fixtures.ORMTest):
         eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
         eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
 
+    @uses_deprecated(r".*Please refer to the .*init_collection")
     def test_link_event(self):
         canary = []
 

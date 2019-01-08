@@ -933,8 +933,10 @@ def join(
     See :meth:`.Query.join` for information on modern usage
     of ORM level joins.
 
-    .. versionchanged:: 0.8.1 - the ``join_to_left`` parameter
-       is no longer used, and is deprecated.
+    .. deprecated:: 0.8
+
+        the ``join_to_left`` parameter is deprecated, and will be removed
+        in a future release.  The parameter has no effect.
 
     """
     return _ORMJoin(left, right, onclause, isouter, full)

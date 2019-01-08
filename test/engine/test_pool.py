@@ -772,7 +772,10 @@ class PoolFirstConnectSyncTest(PoolTestBase):
 
 class DeprecatedPoolListenerTest(PoolTestBase):
     @testing.requires.predictable_gc
-    @testing.uses_deprecated(r".*Use event.listen")
+    @testing.uses_deprecated(
+        r".*Use the PoolEvents",
+        r".*'listeners' argument .* is deprecated"
+    )
     def test_listeners(self):
 
         class InstrumentingListener(object):
@@ -960,7 +963,10 @@ class DeprecatedPoolListenerTest(PoolTestBase):
         c.close()
         snoop.assert_total(1, 1, 2, 2)
 
-    @testing.uses_deprecated(r".*Use event.listen")
+    @testing.uses_deprecated(
+        r".*Use the PoolEvents",
+        r".*'listeners' argument .* is deprecated"
+    )
     def test_listeners_callables(self):
         def connect(dbapi_con, con_record):
             counts[0] += 1

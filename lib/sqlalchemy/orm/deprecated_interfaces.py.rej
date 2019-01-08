@@ -1,0 +1,37 @@
+--- lib/sqlalchemy/orm/deprecated_interfaces.py
++++ lib/sqlalchemy/orm/deprecated_interfaces.py
+@@ -749,12 +749,14 @@ class Session(_SessionClassMethods):
+ 
+            .. versionadded:: 1.2
+ 
+-        :param _enable_transaction_accounting:  Defaults to ``True``.  A
++        :param _enable_transaction_accounting:   A
+            legacy-only flag which when ``False`` disables *all* 0.5-style
+-           object accounting on transaction boundaries, including auto-expiry
+-           of instances on rollback and commit, maintenance of the "new" and
+-           "deleted" lists upon rollback, and autoflush of pending changes
+-           upon :meth:`~.Session.begin`, all of which are interdependent.
++           object accounting on transaction boundaries.
++
++           .. deprecated::
++
++                the :paramref:`.Session._enable_transaction_accounting`
++                parameter will be removed in a future release.
+ 
+         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
+            instances will be fully expired after each :meth:`~.commit`,
+@@ -764,8 +766,12 @@ class Session(_SessionClassMethods):
+         :param extension: An optional
+            :class:`~.SessionExtension` instance, or a list
+            of such instances, which will receive pre- and post- commit and
+-           flush events, as well as a post-rollback event. **Deprecated.**
+-           Please see :class:`.SessionEvents`.
++           flush events, as well as a post-rollback event.
++
++           .. deprecated::
++
++                the :paramref:`.Session.extension` parameter will be
++                removed in a future release.
+ 
+         :param info: optional dictionary of arbitrary data to be associated
+            with this :class:`.Session`.  Is available via the

@@ -695,11 +695,16 @@ class Float(Numeric):
 
          .. versionadded:: 0.9.0
 
-        :param \**kwargs: deprecated.  Additional arguments here are ignored
-         by the default :class:`.Float` type.  For database specific
-         floats that support additional arguments, see that dialect's
-         documentation for details, such as
-         :class:`sqlalchemy.dialects.mysql.FLOAT`.
+        :param \**kwargs:
+
+            .. deprecated:: 0.9
+
+                Additional keyword arguments are ignored by the base
+                :class:`.Float` type, and keyword arguments will no longer
+                be accepted in a future release.  For database specific floats
+                that support additional arguments, see that dialect's
+                documentation for details, such as
+                :class:`sqlalchemy.dialects.mysql.FLOAT`.
 
         """
         self.precision = precision
@@ -957,7 +962,12 @@ class LargeBinary(_Binary):
 
 class Binary(LargeBinary):
 
-    """Deprecated.  Renamed to LargeBinary."""
+    """.. deprecated:: 0.6
+
+            The :class:`.Binary` class is deprecated and will be removed
+            in a future relase.  Please use :class:`.LargeBinary`.
+
+    """
 
     def __init__(self, *arg, **kw):
         util.warn_deprecated('The Binary type has been renamed to '

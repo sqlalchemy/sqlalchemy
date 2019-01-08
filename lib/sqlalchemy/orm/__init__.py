@@ -185,8 +185,11 @@ comparable_property = public_factory(ComparableProperty,
                                      ".orm.comparable_property")
 
 
-@_sa_util.deprecated("0.7", message=":func:`.compile_mappers` "
-                     "is renamed to :func:`.configure_mappers`")
+@_sa_util.deprecated(
+    "0.7",
+    message=":func:`.compile_mappers` is deprecated and will be removed "
+    "in a future release.  Please use :func:`.configure_mappers`",
+)
 def compile_mappers():
     """Initialize the inter-mapper relationships of all mappers that have
     been defined.

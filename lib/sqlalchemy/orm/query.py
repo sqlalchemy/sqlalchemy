@@ -1420,7 +1420,11 @@ class Query(object):
         """Return a new :class:`.Query` object with the specified "locking mode",
         which essentially refers to the ``FOR UPDATE`` clause.
 
-        .. deprecated:: 0.9.0 superseded by :meth:`.Query.with_for_update`.
+        .. deprecated:: 0.9
+
+            The :meth:`.Query.with_lockmode` method is deprecated and will
+            be removed in a future release.  Please refer to
+            :meth:`.Query.with_for_update`.
 
         :param mode: a string representing the desired locking mode.
          Valid values are:
@@ -1568,12 +1572,9 @@ class Query(object):
         the newly resulting ``Query``
 
         All existing ORDER BY settings can be suppressed by
-        passing ``None`` - this will suppress any ORDER BY configured
-        on mappers as well.
-
-        Alternatively, passing False will reset ORDER BY and additionally
-        re-allow default mapper.order_by to take place.   Note mapper.order_by
-        is deprecated.
+        passing ``None`` - this will suppress any ordering configured
+        on the :func:`.mapper` object using the deprecated
+        :paramref:`.mapper.order_by` parameter.
 
         """
 

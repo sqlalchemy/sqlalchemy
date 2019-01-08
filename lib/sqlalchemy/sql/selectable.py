@@ -357,31 +357,20 @@ class FromClause(Selectable):
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
     @util.deprecated(
-        '1.1',
-        message="``FromClause.count()`` is deprecated. Counting "
-        "rows requires that the correct column expression and "
-        "accommodations for joins, DISTINCT, etc. must be made, "
-        "otherwise results may not be what's expected. "
-        "Please use an appropriate ``func.count()`` expression "
-        "directly.")
+        "1.1",
+        message="The :meth:`.FromClause.count` method is deprecated, "
+        "and will be removed in a future release.   Please use the "
+        ":class:`.functions.count` function available from the "
+        ":attr:`.func` namespace."
+    )
     @util.dependencies("sqlalchemy.sql.functions")
     def count(self, functions, whereclause=None, **params):
         """return a SELECT COUNT generated against this
         :class:`.FromClause`.
 
-        The function generates COUNT against the
-        first column in the primary key of the table, or against
-        the first column in the table overall.   Explicit use of
-        ``func.count()`` should be preferred::
-
-            row_count = conn.scalar(
-                select([func.count('*')]).select_from(table)
-            )
-
-
         .. seealso::
 
-            :data:`.func`
+            :class:`.functions.count`
 
         """
 
@@ -948,9 +937,15 @@ class Join(FromClause):
         between the two selectables.   If there are multiple ways
         to join, or no way to join, an error is raised.
 
-        :param ignore_nonexistent_tables:  Deprecated - this
-        flag is no longer used.  Only resolution errors regarding
-        the two given tables are propagated.
+        :param ignore_nonexistent_tables:
+
+            .. deprecated::  0.9
+
+                The :paramref:`_join_condition.ignore_nonexistent_tables`
+                parameter is deprecated and will be removed in a future
+                release.  Tables outside of the two tables being handled
+                are no longer considered.
+
 
         :param a_subset: An optional expression that is a sub-component
         of ``a``.  An attempt will be made to join to just this sub-component
@@ -1900,10 +1895,14 @@ class SelectBase(HasCTE, Executable, FromClause):
         return self.as_scalar().label(name)
 
     @_generative
-    @util.deprecated('0.6',
-                     message="``autocommit()`` is deprecated. Use "
-                     ":meth:`.Executable.execution_options` with the "
-                     "'autocommit' flag.")
+    @util.deprecated(
+        "0.6",
+        message="The :meth:`.SelectBase.autocommit` method is deprecated, "
+        "and will be removed in a future release.   Please use the "
+        "the :paramref:`.Connection.execution_options.autocommit` "
+        "parameter in conjunction with the "
+        ":meth:`.Executable.execution_options` method."
+    )
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to
         True.
@@ -1965,12 +1964,14 @@ class GenerativeSelect(SelectBase):
                                     parse_legacy_select(for_update))
 
         if autocommit is not None:
-            util.warn_deprecated('autocommit on select() is '
-                                 'deprecated.  Use .execution_options(a'
-                                 'utocommit=True)')
-            self._execution_options = \
-                self._execution_options.union(
-                    {'autocommit': autocommit})
+            util.warn_deprecated(
+                "The select.autocommit parameter is deprecated and will be "
+                "removed in a future release.  Please refer to the "
+                "Select.execution_options.autocommit` parameter."
+            )
+            self._execution_options = self._execution_options.union(
+                {"autocommit": autocommit}
+            )
         if limit is not None:
             self._limit_clause = _offset_or_limit_clause(limit)
         if offset is not None:
@@ -2556,12 +2557,15 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             FROM clause specification.
 
         :param autocommit:
-          Deprecated.  Use ``.execution_options(autocommit=<True|False>)``
-          to set the autocommit option.
 
-          .. seealso::
+            .. deprecated:: 0.6
 
-            :meth:`.Executable.execution_options`
+                The :paramref:`.select.autocommit` parameter is deprecated
+                and will be removed in a future release.  Please refer to
+                the :paramref:`.Connection.execution_options.autocommit`
+                parameter in conjunction with the the
+                :meth:`.Executable.execution_options` method in order to
+                affect the autocommit behavior for a statement.
 
         :param bind=None:
           an :class:`~.Engine` or :class:`~.Connection` instance
@@ -2602,9 +2606,12 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.
 
-          .. deprecated:: 0.9.0 - use
-             :meth:`.Select.with_for_update` to specify the
-             structure of the ``FOR UPDATE`` clause.
+          .. deprecated:: 0.9
+
+            The :paramref:`.select.for_update` parameter is deprecated and
+            will be removed in a future release.  Please refer to the
+            :meth:`.Select.with_for_update` to specify the
+            structure of the ``FOR UPDATE`` clause.
 
           ``for_update`` accepts various string values interpreted by
           specific backends, including:

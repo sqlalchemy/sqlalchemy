@@ -1316,58 +1316,41 @@ class TextClause(Executable, ClauseElement):
           engine-specific format.
 
         :param autocommit:
-          Deprecated.  Use .execution_options(autocommit=<True|False>)
-          to set the autocommit option.
+
+            .. deprecated:: 0.6
+
+                The :paramref:`.text.autocommit` flag is deprecated and
+                will be removed in a future release.  Please use the
+                :paramref:`.Connection.execution_options.autocommit` parameter
+                in conjunction with the :meth:`.Executable.execution_options`
+                method.
 
         :param bind:
           an optional connection or engine to be used for this text query.
 
         :param bindparams:
-          Deprecated.  A list of :func:`.bindparam` instances used to
+          A list of :func:`.bindparam` instances used to
           provide information about parameters embedded in the statement.
-          This argument now invokes the :meth:`.TextClause.bindparams`
-          method on the construct before returning it.  E.g.::
+          E.g.::
 
               stmt = text("SELECT * FROM table WHERE id=:id",
                         bindparams=[bindparam('id', value=5, type_=Integer)])
 
-          Is equivalent to::
-
-              stmt = text("SELECT * FROM table WHERE id=:id").\
-                        bindparams(bindparam('id', value=5, type_=Integer))
-
-          .. deprecated:: 0.9.0 the :meth:`.TextClause.bindparams` method
-             supersedes the ``bindparams`` argument to :func:`.text`.
+          .. deprecated:: 0.9 the :paramref:`.TextClause.bindparams` parameter
+             is deprecated and will be removed in a future release.  Please
+             refer to the :meth:`.TextClause.bindparams` method.
 
         :param typemap:
-          Deprecated.  A dictionary mapping the names of columns
-          represented in the columns clause of a ``SELECT`` statement
-          to type objects,
-          which will be used to perform post-processing on columns within
-          the result set.  This parameter now invokes the
-          :meth:`.TextClause.columns` method, which returns a
-          :class:`.TextAsFrom` construct that gains a ``.c`` collection and
-          can be embedded in other expressions.  E.g.::
+          A dictionary mapping the names of columns represented in the columns
+          clause of a ``SELECT`` statement to type objects, e.g.::
 
               stmt = text("SELECT * FROM table",
                             typemap={'id': Integer, 'name': String},
                         )
 
-          Is equivalent to::
-
-              stmt = text("SELECT * FROM table").columns(id=Integer,
-                                                         name=String)
-
-          Or alternatively::
-
-              from sqlalchemy.sql import column
-              stmt = text("SELECT * FROM table").columns(
-                                    column('id', Integer),
-                                    column('name', String)
-                                )
-
-          .. deprecated:: 0.9.0 the :meth:`.TextClause.columns` method
-             supersedes the ``typemap`` argument to :func:`.text`.
+          .. deprecated:: 0.9  The :paramref:`.TextClause.typemap` argument is
+             deprecated and will be removed in a future release.  Please
+             refer to the :meth:`.TextClause.columns` method.
 
         .. seealso::
 
@@ -3092,6 +3075,10 @@ class Over(ColumnElement):
     order_by = None
     partition_by = None
 
+    element = None
+    """The underlying expression object to which this :class:`.Over`
+    object refers towards."""
+
     def __init__(
             self, element, partition_by=None,
             order_by=None, range_=None, rows=None):
@@ -3231,9 +3218,9 @@ class Over(ColumnElement):
         """the element referred to by this :class:`.Over`
         clause.
 
-        .. deprecated:: 1.1 the ``func`` element has been renamed to
-           ``.element``.  The two attributes are synonymous though
-           ``.func`` is read-only.
+        .. deprecated:: 1.1 the :attr:`.Over.func` member of the :class:`.Over`
+           class is deprecated and will be removed in a future release.  Please
+           refer to the :attr:`.Over.element` attribute.
 
         """
         return self.element
@@ -3920,6 +3907,7 @@ class quoted_name(util.MemoizedSlots, util.text_type):
         ):
             return value
         self = super(quoted_name, cls).__new__(cls, value)
+
         self.quote = quote
         return self
 
