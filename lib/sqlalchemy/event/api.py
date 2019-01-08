@@ -34,6 +34,9 @@ def _event_key(target, identifier, fn):
 def listen(target, identifier, fn, *args, **kw):
     """Register a listener function for the given target.
 
+    The :func:`.listen` function is part of the primary interface for the
+    SQLAlchemy event system, documented at :ref:`event_toplevel`.
+
     e.g.::
 
         from sqlalchemy import event
@@ -94,6 +97,9 @@ def listen(target, identifier, fn, *args, **kw):
 
 def listens_for(target, identifier, *args, **kw):
     """Decorate a function as a listener for the given target + identifier.
+
+    The :func:`.listens_for` decorator is part of the primary interface for the
+    SQLAlchemy event system, documented at :ref:`event_toplevel`.
 
     e.g.::
 

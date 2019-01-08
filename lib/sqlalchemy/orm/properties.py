@@ -122,12 +122,16 @@ class ColumnProperty(StrategizedProperty):
             .. versionadded:: 0.8
 
         :param extension:
-            an
-            :class:`.AttributeExtension`
-            instance, or list of extensions, which will be prepended
-            to the list of attribute listeners for the resulting
-            descriptor placed on the class.
-            **Deprecated.** Please see :class:`.AttributeEvents`.
+            an :class:`.AttributeExtension` instance, or list of extensions,
+            which will be prepended to the list of attribute listeners for the
+            resulting descriptor placed on the class.
+
+           .. deprecated:: 0.7
+
+                :class:`.AttributeExtension` is deprecated in favor of the
+                :class:`.AttributeEvents` listener interface.   The
+                :paramref:`.ColumnProperty.extension` parameter will be
+                removed in a future release.
 
         """
         super(ColumnProperty, self).__init__()

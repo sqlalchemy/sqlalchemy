@@ -254,11 +254,11 @@ class Dialect(object):
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
 
+        .. deprecated:: 0.8
 
-        Deprecated.  This method is only called by the default
-        implementation of :meth:`.Dialect.get_pk_constraint`.  Dialects should
-        instead implement the :meth:`.Dialect.get_pk_constraint` method
-        directly.
+            The :meth:`.Dialect.get_primary_keys` method is deprecated and
+            will be removed in a future release.   Please refer to the
+            :meth:`.Dialect.get_pk_constraint` method.
 
         """
 
@@ -1134,9 +1134,11 @@ class Connectable(object):
 
     @util.deprecated(
         "0.7",
-        "Use the create() method on the given schema "
-        "object directly, i.e. :meth:`.Table.create`, "
-        ":meth:`.Index.create`, :meth:`.MetaData.create_all`",
+        "The :meth:`.Connectable.create` method is deprecated and will be "
+        "removed in a future release.  Please use the ``.create()`` method "
+        "on specific schema objects to emit DDL sequences, including "
+        ":meth:`.Table.create`, :meth:`.Index.create`, and "
+        ":meth:`.MetaData.create_all`."
     )
     def create(self, entity, **kwargs):
         """Emit CREATE statements for the given schema entity.
@@ -1146,10 +1148,11 @@ class Connectable(object):
 
     @util.deprecated(
         "0.7",
-        "Use the drop() method on the given schema "
-        "object directly, i.e. :meth:`.Table.drop`, "
-        ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`",
-    )
+        "The :meth:`.Connectable.drop` method is deprecated and will be "
+        "removed in a future release.  Please use the ``.drop()`` method "
+        "on specific schema objects to emit DDL sequences, including "
+        ":meth:`.Table.drop`, :meth:`.Index.drop`, and "
+        ":meth:`.MetaData.drop_all`.")
     def drop(self, entity, **kwargs):
         """Emit DROP statements for the given schema entity.
         """

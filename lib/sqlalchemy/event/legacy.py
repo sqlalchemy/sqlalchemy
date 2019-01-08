@@ -113,7 +113,8 @@ def _legacy_listen_examples(dispatch_collection, sample_target, fn):
     text = ""
     for since, args, conv in dispatch_collection.legacy_signatures:
         text += (
-            "\n# legacy calling style (pre-%(since)s)\n"
+            "\n# DEPRECATED calling style (pre-%(since)s, "
+            "will be removed in a future release)\n"
             "@event.listens_for(%(sample_target)s, '%(event_name)s')\n"
             "def receive_%(event_name)s("
             "%(named_event_arguments)s%(has_kw_arguments)s):\n"
@@ -132,17 +133,18 @@ def _legacy_listen_examples(dispatch_collection, sample_target, fn):
     return text
 
 
-def _version_signature_changes(dispatch_collection):
+def _version_signature_changes(parent_dispatch_cls, dispatch_collection):
     since, args, conv = dispatch_collection.legacy_signatures[0]
     return (
-        "\n.. versionchanged:: %(since)s\n"
-        "    The ``%(event_name)s`` event now accepts the \n"
+        "\n.. deprecated:: %(since)s\n"
+        "    The :class:`.%(clsname)s.%(event_name)s` event now accepts the \n"
         "    arguments ``%(named_event_arguments)s%(has_kw_arguments)s``.\n"
-        "    Listener functions which accept the previous argument \n"
-        "    signature(s) listed above will be automatically \n"
-        "    adapted to the new signature."
+        "    Support for listener functions which accept the previous \n"
+        "    argument signature(s) listed above as \"deprecated\" will be \n"
+        "    removed in a future release."
         % {
             "since": since,
+            "clsname": parent_dispatch_cls.__name__,
             "event_name": dispatch_collection.name,
             "named_event_arguments": ", ".join(dispatch_collection.arg_names),
             "has_kw_arguments": ", **kw" if dispatch_collection.has_kw else "",
@@ -168,6 +170,7 @@ def _augment_fn_docs(dispatch_collection, parent_dispatch_cls, fn):
             " " * 8,
         )
 
-        text += _version_signature_changes(dispatch_collection)
+        text += _version_signature_changes(
+            parent_dispatch_cls, dispatch_collection)
 
     return util.inject_docstring_text(fn.__doc__, text, 1)

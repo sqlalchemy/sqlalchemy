@@ -145,7 +145,14 @@ class CompositeProperty(DescriptorProperty):
           an :class:`.AttributeExtension` instance,
           or list of extensions, which will be prepended to the list of
           attribute listeners for the resulting descriptor placed on the
-          class.  **Deprecated.**  Please see :class:`.AttributeEvents`.
+          class.
+
+           .. deprecated:: 0.7
+
+                :class:`.AttributeExtension` is deprecated in favor of the
+                :class:`.AttributeEvents` listener interface.  The
+                :paramref:`.CompositeProperty.extension` parameter will be
+                removed in a future release.
 
         """
         super(CompositeProperty, self).__init__()

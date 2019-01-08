@@ -1228,7 +1228,7 @@ class CollectionsTest(fixtures.ORMTest):
         self._test_dict_bulk(MyOrdered)
         self.assert_(getattr(MyOrdered, "_sa_instrumented") == id(MyOrdered))
 
-    @testing.uses_deprecated(r".*Use the bulk_replace event handler")
+    @testing.uses_deprecated(r".*Please refer to the .*bulk_replace listener")
     def test_dict_subclass4(self):
         # tests #2654
         class MyDict(collections.MappedCollection):
@@ -2420,7 +2420,7 @@ class InstrumentationTest(fixtures.ORMTest):
 
         collections._instrument_class(Touchy)
 
-    @testing.uses_deprecated(r".*Use the bulk_replace event handler")
+    @testing.uses_deprecated(r".*Please refer to the .*bulk_replace listener")
     def test_name_setup(self):
         class Base(object):
             @collection.iterator
@@ -2464,6 +2464,7 @@ class InstrumentationTest(fixtures.ORMTest):
         eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
         eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
 
+    @testing.uses_deprecated(r".*Please refer to the .*init_collection")
     def test_link_event(self):
         canary = []
 
