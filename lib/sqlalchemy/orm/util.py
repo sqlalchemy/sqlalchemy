@@ -530,6 +530,9 @@ class AliasedClass(object):
             self._aliased_insp._target.__name__,
         )
 
+    def __str__(self):
+        return str(self._aliased_insp)
+
 
 class AliasedInsp(InspectionAttr):
     """Provide an inspection interface for an
@@ -713,6 +716,9 @@ class AliasedInsp(InspectionAttr):
             self.class_.__name__,
             with_poly,
         )
+
+    def __str__(self):
+        return "aliased(%s)" % (self._target.__name__,)
 
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)

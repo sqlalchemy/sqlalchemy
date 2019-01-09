@@ -982,7 +982,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 sa.exc.InvalidRequestError,
                 "^One or more mappers failed to initialize"
                 " - can't proceed with initialization of other mappers. "
-                r"Triggering mapper: 'Mapper\|User\|users'. "
+                r"Triggering mapper: 'mapped class User->users'. "
                 "Original exception was: When initializing.*",
                 configure_mappers,
             )

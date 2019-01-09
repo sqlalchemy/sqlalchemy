@@ -180,10 +180,11 @@ class Load(Generative, MapperOption):
         else:
             query._attributes.update(self.context)
 
-    def _generate_path(self, path, attr, wildcard_key, raiseerr=True):
+    def _generate_path(
+        self, path, attr, for_strategy, wildcard_key, raiseerr=True
+    ):
         existing_of_type = self._of_type
         self._of_type = None
-
         if raiseerr and not path.has_entity:
             if isinstance(path, TokenRegistry):
                 raise sa_exc.ArgumentError(
@@ -191,9 +192,8 @@ class Load(Generative, MapperOption):
                 )
             else:
                 raise sa_exc.ArgumentError(
-                    "Attribute '%s' of entity '%s' does not "
-                    "refer to a mapped entity"
-                    % (path.prop.key, path.parent.entity)
+                    "Mapped attribute '%s' does not "
+                    "refer to a mapped entity" % (path.prop,)
                 )
 
         if isinstance(attr, util.string_types):
@@ -219,13 +219,13 @@ class Load(Generative, MapperOption):
             except AttributeError:
                 if raiseerr:
                     raise sa_exc.ArgumentError(
-                        "Can't find property named '%s' on the "
-                        "mapped entity %s in this Query. " % (attr, ent)
+                        'Can\'t find property named "%s" on '
+                        "%s in this Query. " % (attr, ent)
                     )
                 else:
                     return None
             else:
-                attr = attr.property
+                attr = found_property = attr.property
 
             path = path[attr]
         elif _is_mapped_class(attr):
@@ -238,7 +238,7 @@ class Load(Generative, MapperOption):
                 else:
                     return None
         else:
-            prop = attr.property
+            prop = found_property = attr.property
 
             if not prop.parent.common_parent(path.mapper):
                 if raiseerr:
@@ -298,6 +298,8 @@ class Load(Generative, MapperOption):
             else:
                 path = path[prop]
 
+        if for_strategy is not None:
+            found_property._get_strategy(for_strategy)
         if path.has_entity:
             path = path.entity_path
         self.path = path
@@ -320,7 +322,7 @@ class Load(Generative, MapperOption):
         self.is_class_strategy = False
         self.propagate_to_loaders = propagate_to_loaders
         # if the path is a wildcard, this will set propagate_to_loaders=False
-        self._generate_path(self.path, attr, "relationship")
+        self._generate_path(self.path, attr, strategy, "relationship")
         self.strategy = strategy
         if strategy is not None:
             self._set_path_strategy()
@@ -333,7 +335,7 @@ class Load(Generative, MapperOption):
         for attr in attrs:
             cloned = self._generate()
             cloned.strategy = strategy
-            cloned._generate_path(self.path, attr, "column")
+            cloned._generate_path(self.path, attr, strategy, "column")
             cloned.propagate_to_loaders = True
             if opts:
                 cloned.local_opts.update(opts)
@@ -347,7 +349,7 @@ class Load(Generative, MapperOption):
         strategy = self._coerce_strat(strategy)
 
         for attr in attrs:
-            path = self._generate_path(self.path, attr, None)
+            path = self._generate_path(self.path, attr, strategy, None)
             cloned = self._generate()
             cloned.strategy = strategy
             cloned.path = path
@@ -359,7 +361,7 @@ class Load(Generative, MapperOption):
         strategy = self._coerce_strat(strategy)
         cloned = self._generate()
         cloned.is_class_strategy = True
-        path = cloned._generate_path(self.path, None, None)
+        path = cloned._generate_path(self.path, None, strategy, None)
         cloned.strategy = strategy
         cloned.path = path
         cloned.propagate_to_loaders = True
@@ -482,7 +484,7 @@ class _UnboundLoad(Load):
     def _set_path_strategy(self):
         self._to_bind.append(self)
 
-    def _generate_path(self, path, attr, wildcard_key):
+    def _generate_path(self, path, attr, for_strategy, wildcard_key):
         if (
             wildcard_key
             and isinstance(attr, util.string_types)
@@ -670,7 +672,7 @@ class _UnboundLoad(Load):
         elif isinstance(token, PropComparator):
             prop = token.property
             entity = self._find_entity_prop_comparator(
-                entities, prop.key, token._parententity, raiseerr
+                entities, prop, token._parententity, raiseerr
             )
         elif self.is_class_strategy and _is_mapped_class(token):
             entity = inspect(token)
@@ -703,9 +705,14 @@ class _UnboundLoad(Load):
         path = loader.path
 
         if not loader.is_class_strategy:
-            for token in start_path:
+            for idx, token in enumerate(start_path):
+
                 if not loader._generate_path(
-                    loader.path, token, None, raiseerr
+                    loader.path,
+                    token,
+                    self.strategy if idx == len(start_path) - 1 else None,
+                    None,
+                    raiseerr,
                 ):
                     return
 
@@ -738,7 +745,7 @@ class _UnboundLoad(Load):
 
         return loader
 
-    def _find_entity_prop_comparator(self, entities, token, mapper, raiseerr):
+    def _find_entity_prop_comparator(self, entities, prop, mapper, raiseerr):
         if _is_aliased_class(mapper):
             searchfor = mapper
         else:
@@ -750,15 +757,18 @@ class _UnboundLoad(Load):
             if raiseerr:
                 if not list(entities):
                     raise sa_exc.ArgumentError(
-                        "Query has only expression-based entities - "
-                        "can't find property named '%s'." % (token,)
+                        "Query has only expression-based entities, "
+                        'which do not apply to %s "%s"'
+                        % (util.clsname_as_plain_name(type(prop)), prop)
                     )
                 else:
                     raise sa_exc.ArgumentError(
-                        "Can't find property '%s' on any entity "
-                        "specified in this Query.  Note the full path "
-                        "from root (%s) to target entity must be specified."
-                        % (token, ",".join(str(x) for x in entities))
+                        'Mapped attribute "%s" does not apply to any of the '
+                        "root entities in this query, e.g. %s. Please "
+                        "specify the full path "
+                        "from one of the root entities to the target "
+                        "attribute. "
+                        % (prop, ", ".join(str(x) for x in entities))
                     )
             else:
                 return None
@@ -768,9 +778,17 @@ class _UnboundLoad(Load):
             if len(list(entities)) != 1:
                 if raiseerr:
                     raise sa_exc.ArgumentError(
-                        "Wildcard loader can only be used with exactly "
-                        "one entity.  Use Load(ent) to specify "
-                        "specific entities."
+                        "Can't apply wildcard ('*') or load_only() "
+                        "loader option to multiple entities %s. Specify "
+                        "loader options for each entity individually, such "
+                        "as %s."
+                        % (
+                            ", ".join(str(ent) for ent in entities),
+                            ", ".join(
+                                "Load(%s).some_option('*')" % ent
+                                for ent in entities
+                            ),
+                        )
                     )
         elif token.endswith(_DEFAULT_TOKEN):
             raiseerr = False
@@ -784,7 +802,7 @@ class _UnboundLoad(Load):
             if raiseerr:
                 raise sa_exc.ArgumentError(
                     "Query has only expression-based entities - "
-                    "can't find property named '%s'." % (token,)
+                    'can\'t find property named "%s".' % (token,)
                 )
             else:
                 return None

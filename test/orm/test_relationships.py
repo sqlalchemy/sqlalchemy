@@ -2142,7 +2142,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             r"User.addresses references "
             r"relationship Address.dingaling, "
             r"which does not "
-            r"reference mapper Mapper\|User\|users",
+            r"reference mapper mapped class User->users",
             configure_mappers,
         )
 

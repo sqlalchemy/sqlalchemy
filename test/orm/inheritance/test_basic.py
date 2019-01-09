@@ -2010,7 +2010,7 @@ class DistinctPKTest(fixtures.MappedTest):
         )
         assert_raises_message(
             sa_exc.SAWarning,
-            r"On mapper Mapper\|Employee\|employees, "
+            r"On mapper mapped class Employee->employees, "
             "primary key column 'persons.id' is being "
             "combined with distinct primary key column 'employees.eid' "
             "in attribute 'id'. Use explicit properties to give "

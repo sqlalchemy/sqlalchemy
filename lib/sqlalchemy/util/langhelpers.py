@@ -78,6 +78,12 @@ class safe_reraise(object):
             compat.reraise(type_, value, traceback)
 
 
+def clsname_as_plain_name(cls):
+    return " ".join(
+        n.lower() for n in re.findall(r"([A-Z][a-z]+)", cls.__name__)
+    )
+
+
 def decode_slice(slc):
     """decode a slice object as sent to __getitem__.
 

@@ -1839,8 +1839,8 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
             self._assert_eager_with_entity_exception(
                 [Item],
                 (joinedload_all("keywords.foo"),),
-                r"Can't find property named 'foo' on the mapped entity "
-                r"Mapper\|Keyword\|keywords in this Query.",
+                'Can\'t find property named \\"foo\\" on mapped class '
+                "Keyword->keywords in this Query.",
             )
 
     def test_all_path_vs_chained(self):

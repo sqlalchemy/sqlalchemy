@@ -10,9 +10,11 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -107,7 +109,10 @@ class LoadTest(PathTest, QueryTest):
         result = Load(User)
         eq_(
             result._generate_path(
-                inspect(User)._path_registry, User.addresses, "relationship"
+                inspect(User)._path_registry,
+                User.addresses,
+                None,
+                "relationship",
             ),
             self._make_path_registry([User, "addresses", Address]),
         )
@@ -118,7 +123,7 @@ class LoadTest(PathTest, QueryTest):
         result = Load(User)
         eq_(
             result._generate_path(
-                inspect(User)._path_registry, User.name, "column"
+                inspect(User)._path_registry, User.name, None, "column"
             ),
             self._make_path_registry([User, "name"]),
         )
@@ -130,7 +135,7 @@ class LoadTest(PathTest, QueryTest):
         result = Load(User)
         eq_(
             result._generate_path(
-                inspect(User)._path_registry, "addresses", "relationship"
+                inspect(User)._path_registry, "addresses", None, "relationship"
             ),
             self._make_path_registry([User, "addresses", Address]),
         )
@@ -141,7 +146,7 @@ class LoadTest(PathTest, QueryTest):
         result = Load(User)
         eq_(
             result._generate_path(
-                inspect(User)._path_registry, "name", "column"
+                inspect(User)._path_registry, "name", None, "column"
             ),
             self._make_path_registry([User, "name"]),
         )
@@ -158,6 +163,7 @@ class LoadTest(PathTest, QueryTest):
             result._generate_path,
             result.path,
             User.addresses,
+            None,
             "relationship",
         )
 
@@ -174,6 +180,7 @@ class LoadTest(PathTest, QueryTest):
             result._generate_path,
             inspect(User)._path_registry,
             Order.items,
+            None,
             "relationship",
         )
 
@@ -187,6 +194,7 @@ class LoadTest(PathTest, QueryTest):
             result._generate_path(
                 inspect(User)._path_registry,
                 Order.items,
+                None,
                 "relationship",
                 False,
             ),
@@ -930,8 +938,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Item = self.classes.Item
 
         message = (
-            "Query has only expression-based entities - "
-            "can't find property named 'keywords'."
+            "Query has only expression-based entities - can't "
+            'find property named "keywords".'
         )
         self._assert_eager_with_just_column_exception(
             Item.id, "keywords", message
@@ -943,8 +951,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_just_column_exception(
             Item.id,
             Item.keywords,
-            "Query has only expression-based entities "
-            "- can't find property named 'keywords'.",
+            "Query has only expression-based entities, which do not apply "
+            'to relationship property "Item.keywords"',
         )
 
     def test_option_against_nonexistent_PropComparator(self):
@@ -953,10 +961,10 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Keyword],
             (joinedload(Item.keywords),),
-            r"Can't find property 'keywords' on any entity specified "
-            r"in this Query.  Note the full path from root "
-            r"\(Mapper\|Keyword\|keywords\) to target entity must be "
-            r"specified.",
+            'Mapped attribute "Item.keywords" does not apply to any of the '
+            "root entities in this query, e.g. mapped class "
+            "Keyword->keywords. Please specify the full path from one of "
+            "the root entities to the target attribute. ",
         )
 
     def test_option_against_nonexistent_basestring(self):
@@ -964,8 +972,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Item],
             (joinedload("foo"),),
-            r"Can't find property named 'foo' on the mapped "
-            r"entity Mapper\|Item\|items in this Query.",
+            'Can\'t find property named "foo" on mapped class '
+            "Item->items in this Query.",
         )
 
     def test_option_against_nonexistent_twolevel_basestring(self):
@@ -973,8 +981,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Item],
             (joinedload("keywords.foo"),),
-            r"Can't find property named 'foo' on the mapped entity "
-            r"Mapper\|Keyword\|keywords in this Query.",
+            'Can\'t find property named "foo" on mapped class '
+            "Keyword->keywords in this Query.",
         )
 
     def test_option_against_nonexistent_twolevel_chained(self):
@@ -982,8 +990,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Item],
             (joinedload("keywords").joinedload("foo"),),
-            r"Can't find property named 'foo' on the mapped entity "
-            r"Mapper\|Keyword\|keywords in this Query.",
+            'Can\'t find property named "foo" on mapped class '
+            "Keyword->keywords in this Query.",
         )
 
     @testing.fails_if(
@@ -1016,21 +1024,57 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
     def test_option_against_wrong_entity_type_basestring(self):
         Item = self.classes.Item
-        self._assert_eager_with_entity_exception(
+        self._assert_loader_strategy_exception(
             [Item],
             (joinedload("id").joinedload("keywords"),),
-            r"Attribute 'id' of entity 'Mapper\|Item\|items' does not "
-            r"refer to a mapped entity",
+            'Can\'t apply "joined loader" strategy to property "Item.id", '
+            'which is a "column property"; this loader strategy is '
+            'intended to be used with a "relationship property".',
+        )
+
+    def test_col_option_against_relationship_basestring(self):
+        Item = self.classes.Item
+        self._assert_loader_strategy_exception(
+            [Item],
+            (load_only("keywords"),),
+            'Can\'t apply "column loader" strategy to property '
+            '"Item.keywords", which is a "relationship property"; this '
+            'loader strategy is intended to be used with a "column property".',
+        )
+
+    def test_load_only_against_multi_entity_attr(self):
+        User = self.classes.User
+        Item = self.classes.Item
+        self._assert_eager_with_entity_exception(
+            [User, Item],
+            (load_only(User.id, Item.id),),
+            r"Can't apply wildcard \('\*'\) or load_only\(\) loader option "
+            "to multiple entities mapped class User->users, mapped class "
+            "Item->items. Specify loader options for each entity "
+            "individually, such as "
+            r"Load\(mapped class User->users\).some_option\('\*'\), "
+            r"Load\(mapped class Item->items\).some_option\('\*'\).",
+        )
+
+    def test_col_option_against_relationship_attr(self):
+        Item = self.classes.Item
+        self._assert_loader_strategy_exception(
+            [Item],
+            (load_only(Item.keywords),),
+            'Can\'t apply "column loader" strategy to property '
+            '"Item.keywords", which is a "relationship property"; this '
+            'loader strategy is intended to be used with a "column property".',
         )
 
     def test_option_against_multi_non_relation_twolevel_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_with_entity_exception(
+        self._assert_loader_strategy_exception(
             [Keyword, Item],
             (joinedload("id").joinedload("keywords"),),
-            r"Attribute 'id' of entity 'Mapper\|Keyword\|keywords' "
-            "does not refer to a mapped entity",
+            'Can\'t apply "joined loader" strategy to property "Keyword.id", '
+            'which is a "column property"; this loader strategy is intended '
+            'to be used with a "relationship property".',
         )
 
     def test_option_against_multi_nonexistent_basestring(self):
@@ -1039,8 +1083,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload("description"),),
-            r"Can't find property named 'description' on the mapped "
-            r"entity Mapper\|Keyword\|keywords in this Query.",
+            'Can\'t find property named "description" on mapped class '
+            "Keyword->keywords in this Query.",
         )
 
     def test_option_against_multi_no_entities_basestring(self):
@@ -1050,27 +1094,29 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             [Keyword.id, Item.id],
             (joinedload("keywords"),),
             r"Query has only expression-based entities - can't find property "
-            "named 'keywords'.",
+            'named "keywords".',
         )
 
     def test_option_against_wrong_multi_entity_type_attr_one(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_with_entity_exception(
+        self._assert_loader_strategy_exception(
             [Keyword, Item],
             (joinedload(Keyword.id).joinedload(Item.keywords),),
-            r"Attribute 'id' of entity 'Mapper\|Keyword\|keywords' "
-            "does not refer to a mapped entity",
+            'Can\'t apply "joined loader" strategy to property "Keyword.id", '
+            'which is a "column property"; this loader strategy is intended '
+            'to be used with a "relationship property".',
         )
 
     def test_option_against_wrong_multi_entity_type_attr_two(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_with_entity_exception(
+        self._assert_loader_strategy_exception(
             [Keyword, Item],
             (joinedload(Keyword.keywords).joinedload(Item.keywords),),
-            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
-            "does not refer to a mapped entity",
+            'Can\'t apply "joined loader" strategy to property '
+            '"Keyword.keywords", which is a "column property"; this loader '
+            'strategy is intended to be used with a "relationship property".',
         )
 
     def test_option_against_wrong_multi_entity_type_attr_three(self):
@@ -1079,8 +1125,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Keyword.id, Item.id],
             (joinedload(Keyword.keywords).joinedload(Item.keywords),),
-            r"Query has only expression-based entities - "
-            "can't find property named 'keywords'.",
+            "Query has only expression-based entities, which do not apply to "
+            'column property "Keyword.keywords"',
         )
 
     def test_wrong_type_in_option(self):
@@ -1163,6 +1209,14 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         q = create_session().query(*entity_list).options(joinedload(option))
         key = ("loader", (inspect(Item), inspect(Item).attrs.keywords))
         assert key in q._attributes
+
+    def _assert_loader_strategy_exception(self, entity_list, options, message):
+        assert_raises_message(
+            orm_exc.LoaderStrategyException,
+            message,
+            create_session().query(*entity_list).options,
+            *options
+        )
 
     def _assert_eager_with_entity_exception(
         self, entity_list, options, message

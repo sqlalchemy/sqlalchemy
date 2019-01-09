@@ -187,13 +187,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         for i in range(3):
             assert_raises_message(
                 sa.exc.InvalidRequestError,
-                "^One or more "
-                "mappers failed to initialize - can't "
-                "proceed with initialization of other "
-                r"mappers. Triggering mapper\: "
-                r"'Mapper\|Address\|addresses'."
-                " Original exception was: Class "
-                "'test.orm._fixtures.User' is not mapped$",
+                "One or more mappers failed to initialize - can't "
+                "proceed with initialization of other mappers. "
+                "Triggering mapper: 'mapped class Address->addresses'. "
+                "Original exception was: Class 'test.orm._fixtures.User' "
+                "is not mapped",
                 configure_mappers,
             )
 
@@ -2540,8 +2538,10 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Can't find property 'items' on any entity "
-            "specified in this Query.",
+            'Mapped attribute "Order.items" does not apply to any of the '
+            "root entities in this query, e.g. mapped class User->users. "
+            "Please specify the full path from one of the root entities "
+            "to the target attribute.",
             sess.query(User).options,
             sa.orm.joinedload(Order.items),
         )

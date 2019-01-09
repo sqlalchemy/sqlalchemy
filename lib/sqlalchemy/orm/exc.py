@@ -150,6 +150,38 @@ class MultipleResultsFound(sa_exc.InvalidRequestError):
     """A single database result was required but more than one were found."""
 
 
+class LoaderStrategyException(sa_exc.InvalidRequestError):
+    """A loader strategy for an attribute does not exist."""
+
+    def __init__(
+        self,
+        applied_to_property_type,
+        requesting_property,
+        applies_to,
+        actual_strategy_type,
+        strategy_key,
+    ):
+        if actual_strategy_type is None:
+            sa_exc.InvalidRequestError.__init__(
+                self,
+                "Can't find strategy %s for %s"
+                % (strategy_key, requesting_property),
+            )
+        else:
+            sa_exc.InvalidRequestError.__init__(
+                self,
+                'Can\'t apply "%s" strategy to property "%s", '
+                'which is a "%s"; this loader strategy is intended '
+                'to be used with a "%s".'
+                % (
+                    util.clsname_as_plain_name(actual_strategy_type),
+                    requesting_property,
+                    util.clsname_as_plain_name(applied_to_property_type),
+                    util.clsname_as_plain_name(applies_to),
+                ),
+            )
+
+
 def _safe_cls_name(cls):
     try:
         cls_name = ".".join((cls.__module__, cls.__name__))

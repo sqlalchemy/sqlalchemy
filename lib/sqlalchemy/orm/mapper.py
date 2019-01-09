@@ -2001,12 +2001,12 @@ class Mapper(InspectionAttr):
         return "<Mapper at 0x%x; %s>" % (id(self), self.class_.__name__)
 
     def __str__(self):
-        return "Mapper|%s|%s%s" % (
+        return "mapped class %s%s->%s" % (
             self.class_.__name__,
-            self.local_table is not None
-            and self.local_table.description
-            or None,
-            self.non_primary and "|non-primary" or "",
+            self.non_primary and " (non-primary)" or "",
+            self.local_table.description
+            if self.local_table is not None
+            else self.persist_selectable.description,
         )
 
     def _is_orphan(self, state):

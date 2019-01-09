@@ -22,6 +22,7 @@ from __future__ import absolute_import
 
 import collections
 
+from . import exc as orm_exc
 from . import path_registry
 from .base import _MappedAttribute  # noqa
 from .base import EXT_CONTINUE
@@ -536,7 +537,7 @@ class StrategizedProperty(MapperProperty):
         try:
             return self._strategies[key]
         except KeyError:
-            cls = self._strategy_lookup(*key)
+            cls = self._strategy_lookup(self, *key)
             self._strategies[key] = self._strategies[cls] = strategy = cls(
                 self, key
             )
@@ -592,7 +593,7 @@ class StrategizedProperty(MapperProperty):
         return decorate
 
     @classmethod
-    def _strategy_lookup(cls, *key):
+    def _strategy_lookup(cls, requesting_property, *key):
         for prop_cls in cls.__mro__:
             if prop_cls in cls._all_strategies:
                 strategies = cls._all_strategies[prop_cls]
@@ -600,7 +601,23 @@ class StrategizedProperty(MapperProperty):
                     return strategies[key]
                 except KeyError:
                     pass
-        raise Exception("can't locate strategy for %s %s" % (cls, key))
+
+        for property_type, strats in cls._all_strategies.items():
+            if key in strats:
+                intended_property_type = property_type
+                actual_strategy = strats[key]
+                break
+        else:
+            intended_property_type = None
+            actual_strategy = None
+
+        raise orm_exc.LoaderStrategyException(
+            cls,
+            requesting_property,
+            intended_property_type,
+            actual_strategy,
+            key,
+        )
 
 
 class MapperOption(object):

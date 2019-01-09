@@ -102,6 +102,7 @@ from .langhelpers import bool_or_str  # noqa
 from .langhelpers import chop_traceback  # noqa
 from .langhelpers import class_hierarchy  # noqa
 from .langhelpers import classproperty  # noqa
+from .langhelpers import clsname_as_plain_name  # noqa
 from .langhelpers import coerce_kw_type  # noqa
 from .langhelpers import constructor_copy  # noqa
 from .langhelpers import counter  # noqa
