@@ -457,6 +457,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def indexes_with_expressions(self):
+        return only_on(["postgresql", "sqlite>=3.9.0"])
+
+    @property
     def temp_table_names(self):
         """target dialect supports listing of temporary table names"""
 
