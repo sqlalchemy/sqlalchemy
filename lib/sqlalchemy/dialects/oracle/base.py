@@ -994,6 +994,11 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         return text
 
+    def visit_drop_table_comment(self, drop):
+        return "COMMENT ON TABLE %s IS ''" % self.preparer.format_table(
+            drop.element
+        )
+
     def visit_create_index(self, create):
         index = create.element
         self._verify_index_table(index)

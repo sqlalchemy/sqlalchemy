@@ -1724,6 +1724,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             ),
         )
 
+    def visit_drop_table_comment(self, create):
+        return "ALTER TABLE %s COMMENT ''" % (
+            self.preparer.format_table(create.element)
+        )
+
     def visit_set_column_comment(self, create):
         return "ALTER TABLE %s CHANGE %s %s" % (
             self.preparer.format_table(create.element.table),

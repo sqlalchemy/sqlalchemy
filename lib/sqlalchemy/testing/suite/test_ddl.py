@@ -4,7 +4,9 @@ from .. import util
 from ..assertions import eq_
 from ..config import requirements
 from ... import Column
+from ... import inspect
 from ... import Integer
+from ... import schema
 from ... import String
 from ... import Table
 
@@ -54,6 +56,28 @@ class TableDDLTest(fixtures.TestBase):
         table = self._underscore_fixture()
         table.create(config.db, checkfirst=False)
         self._simple_roundtrip(table)
+
+    @requirements.comment_reflection
+    @util.provide_metadata
+    def test_add_table_comment(self):
+        table = self._simple_fixture()
+        table.create(config.db, checkfirst=False)
+        table.comment = "a comment"
+        config.db.execute(schema.SetTableComment(table))
+        eq_(
+            inspect(config.db).get_table_comment("test_table"),
+            {"text": "a comment"},
+        )
+
+    @requirements.comment_reflection
+    @util.provide_metadata
+    def test_drop_table_comment(self):
+        table = self._simple_fixture()
+        table.create(config.db, checkfirst=False)
+        table.comment = "a comment"
+        config.db.execute(schema.SetTableComment(table))
+        config.db.execute(schema.DropTableComment(table))
+        eq_(inspect(config.db).get_table_comment("test_table"), {"text": None})
 
 
 __all__ = ("TableDDLTest",)
