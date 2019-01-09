@@ -1737,17 +1737,24 @@ class SQLiteDialect(default.DefaultDialect):
                 "sqlite_autoindex"
             ):
                 continue
-
             indexes.append(dict(name=row[1], column_names=[], unique=row[2]))
 
         # loop thru unique indexes to get the column names.
-        for idx in indexes:
+        for idx in list(indexes):
             pragma_index = self._get_table_pragma(
                 connection, "index_info", idx["name"]
             )
 
             for row in pragma_index:
-                idx["column_names"].append(row[2])
+                if row[2] is None:
+                    util.warn(
+                        "Skipped unsupported reflection of "
+                        "expression-based index %s" % idx["name"]
+                    )
+                    indexes.remove(idx)
+                    break
+                else:
+                    idx["column_names"].append(row[2])
         return indexes
 
     @reflection.cache

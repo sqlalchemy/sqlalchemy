@@ -6,6 +6,7 @@ from .. import assert_raises_message
 from .. import config
 from .. import engines
 from .. import eq_
+from .. import expect_warnings
 from .. import fixtures
 from .. import is_
 from ..schema import Column
@@ -791,6 +792,35 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.index_reflection
     def test_get_noncol_index_pk(self):
         self._test_get_noncol_index("noncol_idx_test_pk", "noncol_idx_pk")
+
+    @testing.requires.indexes_with_expressions
+    @testing.provide_metadata
+    def test_reflect_expression_based_indexes(self):
+        Table(
+            "t",
+            self.metadata,
+            Column("x", String(30)),
+            Column("y", String(30)),
+        )
+        event.listen(
+            self.metadata,
+            "after_create",
+            DDL("CREATE INDEX t_idx ON t(lower(x), lower(y))"),
+        )
+        event.listen(
+            self.metadata, "after_create", DDL("CREATE INDEX t_idx_2 ON t(x)")
+        )
+        self.metadata.create_all()
+
+        insp = inspect(self.metadata.bind)
+
+        with expect_warnings(
+            "Skipped unsupported reflection of expression-based index t_idx"
+        ):
+            eq_(
+                insp.get_indexes("t"),
+                [{"name": "t_idx_2", "column_names": ["x"], "unique": 0}],
+            )
 
     @testing.requires.unique_constraint_reflection
     def test_get_unique_constraints(self):
