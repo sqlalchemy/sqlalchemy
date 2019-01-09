@@ -688,7 +688,11 @@ class SetTableComment(_CreateDropBase):
 
 
 class DropTableComment(_CreateDropBase):
-    """Represent a COMMENT ON TABLE IS NULL statement."""
+    """Represent a COMMENT ON TABLE '' statement.
+
+    Note this varies a lot across database backends.
+
+    """
 
     __visit_name__ = "drop_table_comment"
 

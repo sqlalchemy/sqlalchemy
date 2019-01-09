@@ -1854,6 +1854,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
             colspec += " NOT NULL"
         return colspec
 
+    def visit_drop_table_comment(self, drop):
+        return "COMMENT ON TABLE %s IS NULL" % self.preparer.format_table(
+            drop.element
+        )
+
     def visit_create_enum_type(self, create):
         type_ = create.element
 

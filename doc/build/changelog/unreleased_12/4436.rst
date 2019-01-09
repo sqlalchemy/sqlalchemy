@@ -1,0 +1,7 @@
+.. change::
+   :tags: bug, sql, oracle, mysql
+   :tickets: 4436
+
+   Fixed issue where the DDL emitted for :class:`.DropTableComment`, which
+   will be used by an upcoming version of Alembic, was incorrect for the MySQL
+   and Oracle databases.
