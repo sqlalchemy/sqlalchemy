@@ -51,6 +51,7 @@ from .compat import byte_buffer  # noqa
 from .compat import callable  # noqa
 from .compat import cmp  # noqa
 from .compat import cpython  # noqa
+from .compat import decode_backslashreplace  # noqa
 from .compat import dottedgetter  # noqa
 from .compat import inspect_getargspec  # noqa
 from .compat import int_types  # noqa

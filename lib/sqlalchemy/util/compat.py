@@ -92,6 +92,9 @@ if py3k:
     def b64encode(x):
         return base64.b64encode(x).decode("ascii")
 
+    def decode_backslashreplace(text, encoding):
+        return text.decode(encoding, errors="backslashreplace")
+
     def cmp(a, b):
         return (a > b) - (a < b)
 
@@ -194,6 +197,15 @@ else:
 
     def ue(s):
         return unicode(s, "unicode_escape")  # noqa
+
+    def decode_backslashreplace(text, encoding):
+        try:
+            return text.decode(encoding)
+        except UnicodeDecodeError:
+            # regular "backslashreplace" for an incompatible encoding raises:
+            # "TypeError: don't know how to handle UnicodeDecodeError in
+            # error callback"
+            return repr(text)[1:-1].decode()
 
     # not as nice as that of Py3K, but at least preserves
     # the code line where the issue occurred

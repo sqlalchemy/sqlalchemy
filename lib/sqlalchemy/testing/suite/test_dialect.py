@@ -1,3 +1,5 @@
+#! coding: utf-8
+
 from .. import assert_raises
 from .. import config
 from .. import eq_
@@ -11,6 +13,7 @@ from ... import Integer
 from ... import literal_column
 from ... import select
 from ... import String
+from ...util import compat
 
 
 class ExceptionTest(fixtures.TablesTest):
@@ -52,6 +55,28 @@ class ExceptionTest(fixtures.TablesTest):
             )
 
             trans.rollback()
+
+    def test_exception_with_non_ascii(self):
+        with config.db.connect() as conn:
+            try:
+                # try to create an error message that likely has non-ascii
+                # characters in the DBAPI's message string.  unfortunately
+                # there's no way to make this happen with some drivers like
+                # mysqlclient, pymysql.  this at least does produce a non-
+                # ascii error message for cx_oracle, psycopg2
+                conn.execute(select([literal_column(u"méil")]))
+                assert False
+            except exc.DBAPIError as err:
+                err_str = str(err)
+
+                assert str(err.orig) in str(err)
+
+            # test that we are actually getting string on Py2k, unicode
+            # on Py3k.
+            if compat.py2k:
+                assert isinstance(err_str, str)
+            else:
+                assert isinstance(err_str, str)
 
 
 class AutocommitTest(fixtures.TablesTest):

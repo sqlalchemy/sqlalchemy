@@ -406,7 +406,7 @@ class ExecuteTest(fixtures.TestBase):
                     obj,
                 )
 
-    def test_stmt_exception_non_ascii(self):
+    def test_stmt_exception_bytestring_raised(self):
         name = util.u("méil")
         with testing.db.connect() as conn:
             assert_raises_message(
@@ -426,6 +426,63 @@ class ExecuteTest(fixtures.TestBase):
                 ),
                 {"uname_incorrect": "foo"},
             )
+
+    def test_stmt_exception_bytestring_utf8(self):
+        # uncommon case for Py3K, bytestring object passed
+        # as the error message
+        message = util.u("some message méil").encode("utf-8")
+
+        err = tsa.exc.SQLAlchemyError(message)
+        if util.py2k:
+            # string passes it through
+            eq_(str(err), message)
+
+            # unicode accessor decodes to utf-8
+            eq_(unicode(err), util.u("some message méil"))  # noqa
+        else:
+            eq_(str(err), util.u("some message méil"))
+
+    def test_stmt_exception_bytestring_latin1(self):
+        # uncommon case for Py3K, bytestring object passed
+        # as the error message
+        message = util.u("some message méil").encode("latin-1")
+
+        err = tsa.exc.SQLAlchemyError(message)
+        if util.py2k:
+            # string passes it through
+            eq_(str(err), message)
+
+            # unicode accessor decodes to utf-8
+            eq_(unicode(err), util.u("some message m\\xe9il"))  # noqa
+        else:
+            eq_(str(err), util.u("some message m\\xe9il"))
+
+    def test_stmt_exception_unicode_hook_unicode(self):
+        # uncommon case for Py2K, Unicode object passed
+        # as the error message
+        message = util.u("some message méil")
+
+        err = tsa.exc.SQLAlchemyError(message)
+        if util.py2k:
+            eq_(unicode(err), util.u("some message méil"))  # noqa
+        else:
+            eq_(str(err), util.u("some message méil"))
+
+    def test_stmt_exception_str_multi_args(self):
+        err = tsa.exc.SQLAlchemyError("some message", 206)
+        eq_(str(err), "('some message', 206)")
+
+    def test_stmt_exception_str_multi_args_bytestring(self):
+        message = util.u("some message méil").encode("utf-8")
+
+        err = tsa.exc.SQLAlchemyError(message, 206)
+        eq_(str(err), str((message, 206)))
+
+    def test_stmt_exception_str_multi_args_unicode(self):
+        message = util.u("some message méil")
+
+        err = tsa.exc.SQLAlchemyError(message, 206)
+        eq_(str(err), str((message, 206)))
 
     def test_stmt_exception_pickleable_no_dbapi(self):
         self._test_stmt_exception_pickleable(Exception("hello world"))
