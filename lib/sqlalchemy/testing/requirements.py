@@ -454,6 +454,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def indexes_with_expressions(self):
+        """target database supports CREATE INDEX against SQL expressions."""
+        return exclusions.closed()
+
+    @property
     def unique_constraint_reflection(self):
         """target dialect supports reflection of unique constraints"""
         return exclusions.open()

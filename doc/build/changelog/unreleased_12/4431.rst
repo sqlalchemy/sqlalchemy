@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, sqlite
+   :tickets: 4431
+
+   Reflection of an index based on SQL expressions are now skipped with a
+   warning, in the same way as that of the Postgresql dialect, where we currently
+   do not support reflecting indexes that have SQL expressions within them.
+   Previously, an index with columns of None were produced which would break
+   tools like Alembic.
