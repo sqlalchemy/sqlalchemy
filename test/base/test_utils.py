@@ -1,3 +1,5 @@
+#! coding: utf-8
+
 import copy
 import inspect
 import sys
@@ -2546,3 +2548,47 @@ class QuotedTokenParserTest(fixtures.TestBase):
 
     def test_quoted_single_w_dot_middle(self):
         self._test('"na.me"', ["na.me"])
+
+
+class BackslashReplaceTest(fixtures.TestBase):
+    def test_ascii_to_utf8(self):
+        eq_(
+            compat.decode_backslashreplace(util.b("hello world"), "utf-8"),
+            util.u("hello world"),
+        )
+
+    def test_utf8_to_utf8(self):
+        eq_(
+            compat.decode_backslashreplace(
+                util.u("some message méil").encode("utf-8"), "utf-8"
+            ),
+            util.u("some message méil"),
+        )
+
+    def test_latin1_to_utf8(self):
+        eq_(
+            compat.decode_backslashreplace(
+                util.u("some message méil").encode("latin-1"), "utf-8"
+            ),
+            util.u("some message m\\xe9il"),
+        )
+
+        eq_(
+            compat.decode_backslashreplace(
+                util.u("some message méil").encode("latin-1"), "latin-1"
+            ),
+            util.u("some message méil"),
+        )
+
+    def test_cp1251_to_utf8(self):
+        message = util.u("some message П").encode("cp1251")
+        eq_(message, b"some message \xcf")
+        eq_(
+            compat.decode_backslashreplace(message, "utf-8"),
+            util.u("some message \\xcf"),
+        )
+
+        eq_(
+            compat.decode_backslashreplace(message, "cp1251"),
+            util.u("some message П"),
+        )

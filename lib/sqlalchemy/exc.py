@@ -36,24 +36,47 @@ class SQLAlchemyError(Exception):
                 "http://sqlalche.me/e/%s)" % (self.code,)
             )
 
-    def _message(self):
-        # get string representation just like Exception.__str__(self),
-        # but also support if the string has non-ascii chars
+    def _message(self, as_unicode=compat.py3k):
+        # rules:
+        #
+        # 1. under py2k, for __str__ return single string arg as it was
+        # given without converting to unicode.  for __unicode__
+        # do a conversion but check that it's not unicode already just in
+        # case
+        #
+        # 2. under py3k, single arg string will usually be a unicode
+        # object, but since __str__() must return unicode, check for
+        # bytestring just in case
+        #
+        # 3. for multiple self.args, this is not a case in current
+        # SQLAlchemy though this is happening in at least one known external
+        # library, call str() which does a repr().
+        #
         if len(self.args) == 1:
-            return compat.text_type(self.args[0])
+            text = self.args[0]
+            if as_unicode and isinstance(text, compat.binary_types):
+                return compat.decode_backslashreplace(text, "utf-8")
+            else:
+                return self.args[0]
         else:
-            return compat.text_type(self.args)
+            # this is not a normal case within SQLAlchemy but is here for
+            # compatibility with Exception.args - the str() comes out as
+            # a repr() of the tuple
+            return str(self.args)
 
-    def __str__(self):
-        message = self._message()
+    def _sql_message(self, as_unicode):
+        message = self._message(as_unicode)
 
         if self.code:
             message = "%s %s" % (message, self._code_str())
 
         return message
 
+    def __str__(self):
+        return self._sql_message(compat.py3k)
+
     def __unicode__(self):
-        return self.__str__()
+        return self._sql_message(True)
 
 
 class ArgumentError(SQLAlchemyError):
@@ -321,10 +344,10 @@ class StatementError(SQLAlchemyError):
             (self.args[0], self.statement, self.params, self.orig),
         )
 
-    def __str__(self):
+    def _sql_message(self, as_unicode):
         from sqlalchemy.sql import util
 
-        details = [self._message()]
+        details = [self._message(as_unicode=as_unicode)]
         if self.statement:
             details.append("[SQL: %r]" % self.statement)
             if self.params:
