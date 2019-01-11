@@ -12,7 +12,69 @@
 
 .. changelog::
     :version: 1.2.16
-    :include_notes_from: unreleased_12
+    :released: January 11, 2019
+
+    .. change::
+       :tag: bug, sql
+       :tickets: 4394
+
+       Fixed issue in "expanding IN" feature where using the same bound parameter
+       name more than once in a query would lead to a KeyError within the process
+       of rewriting the parameters in the query.
+
+    .. change::
+       :tags: bug, postgresql
+       :tickets: 4416
+
+       Fixed issue where a :class:`.postgresql.ENUM` or a custom domain present
+       in a remote schema would not be recognized within column reflection if
+       the name of the enum/domain or the name of the schema required quoting.
+       A new parsing scheme now fully parses out quoted or non-quoted tokens
+       including support for SQL-escaped quotes.
+
+    .. change::
+       :tags: bug, postgresql
+
+       Fixed issue where multiple :class:`.postgresql.ENUM` objects referred to
+       by the same :class:`.MetaData` object would fail to be created if
+       multiple objects had the same name under different schema names.  The
+       internal memoization the PostgreSQL dialect uses to track if it has
+       created a particular :class:`.postgresql.ENUM` in the database during
+       a DDL creation sequence now takes schema name into account.
+
+    .. change::
+       :tags: bug, engine
+       :tickets: 4429
+
+       Fixed a regression introduced in version 1.2 where a refactor
+       of the :class:`.SQLAlchemyError` base exception class introduced an
+       inappropriate coercion of a plain string message into Unicode under
+       python 2k, which is not handled by the Python interpreter for characters
+       outside of the platform's encoding (typically ascii).  The
+       :class:`.SQLAlchemyError` class now passes a bytestring through under
+       Py2K for ``__str__()`` as is the behavior of exception objects in general
+       under Py2K, does a safe coercion to unicode utf-8 with
+       backslash fallback for ``__unicode__()``.  For Py3K the message is
+       typically unicode already, but if not is again safe-coerced with utf-8
+       with backslash fallback for the ``__str__()`` method.
+
+    .. change::
+       :tags: bug, sql, oracle, mysql
+       :tickets: 4436
+
+       Fixed issue where the DDL emitted for :class:`.DropTableComment`, which
+       will be used by an upcoming version of Alembic, was incorrect for the MySQL
+       and Oracle databases.
+
+    .. change::
+       :tags: bug, sqlite
+       :tickets: 4431
+
+       Reflection of an index based on SQL expressions are now skipped with a
+       warning, in the same way as that of the Postgresql dialect, where we currently
+       do not support reflecting indexes that have SQL expressions within them.
+       Previously, an index with columns of None were produced which would break
+       tools like Alembic.
 
 .. changelog::
     :version: 1.2.15

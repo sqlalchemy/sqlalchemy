@@ -1,7 +1,0 @@
-.. change::
-   :tag: bug, sql
-   :tickets: 4394
-
-   Fixed issue in "expanding IN" feature where using the same bound parameter
-   name more than once in a query would lead to a KeyError within the process
-   of rewriting the parameters in the query.
