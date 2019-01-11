@@ -20,6 +20,8 @@ Session and sessionmaker()
 Session Utilities
 -----------------
 
+.. autofunction:: close_all
+
 .. autofunction:: make_transient
 
 .. autofunction:: make_transient_to_detached

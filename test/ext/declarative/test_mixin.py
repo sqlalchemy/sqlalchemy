@@ -11,6 +11,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import base as orm_base
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import close_all as close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
@@ -41,7 +42,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
         Base = decl.declarative_base(testing.db)
 
     def teardown(self):
-        Session.close_all()
+        close_all_sessions()
         clear_mappers()
         Base.metadata.drop_all()
 

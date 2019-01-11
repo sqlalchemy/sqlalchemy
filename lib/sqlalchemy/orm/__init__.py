@@ -40,6 +40,7 @@ from .relationships import foreign  # noqa
 from .relationships import RelationshipProperty  # noqa
 from .relationships import remote  # noqa
 from .scoping import scoped_session  # noqa
+from .session import close_all  # noqa
 from .session import make_transient  # noqa
 from .session import make_transient_to_detached  # noqa
 from .session import object_session  # noqa

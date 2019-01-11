@@ -7,6 +7,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import close_all as close_all_sessions
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
@@ -2666,7 +2667,7 @@ class CyclicalInheritingEagerTestTwo(
         session.add_all([rscott, alien, brunner])
         session.commit()
 
-        session.close_all()
+        close_all_sessions()
         d = session.query(Director).options(subqueryload("*")).first()
         assert len(list(session)) == 3
 

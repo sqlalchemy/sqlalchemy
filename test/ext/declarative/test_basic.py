@@ -19,6 +19,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import close_all as close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
@@ -60,7 +61,7 @@ class DeclarativeTestBase(
         Base = decl.declarative_base(testing.db)
 
     def teardown(self):
-        Session.close_all()
+        close_all_sessions()
         clear_mappers()
         Base.metadata.drop_all()
 
