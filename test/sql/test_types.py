@@ -960,7 +960,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
                 return bindparam(None, "x", type_=col.type, unique=True)
             return None
 
-        # ensure we evaulate the expression so that we can see
+        # ensure we evaluate the expression so that we can see
         # the clone resets this info
         stmt.compile()
 

@@ -700,7 +700,7 @@ class ColumnOperators(Operators):
         ``"%"`` and ``"_"`` that are present inside the <other> expression
         will behave like wildcards as well.   For literal string
         values, the :paramref:`.ColumnOperators.startswith.autoescape` flag
-        may be set to ``True`` to apply escaping to occurences of these
+        may be set to ``True`` to apply escaping to occurrences of these
         characters within the string value so that they match as themselves
         and not as wildcard characters.  Alternatively, the
         :paramref:`.ColumnOperators.startswith.escape` parameter will establish
@@ -788,7 +788,7 @@ class ColumnOperators(Operators):
         ``"%"`` and ``"_"`` that are present inside the <other> expression
         will behave like wildcards as well.   For literal string
         values, the :paramref:`.ColumnOperators.endswith.autoescape` flag
-        may be set to ``True`` to apply escaping to occurences of these
+        may be set to ``True`` to apply escaping to occurrences of these
         characters within the string value so that they match as themselves
         and not as wildcard characters.  Alternatively, the
         :paramref:`.ColumnOperators.endswith.escape` parameter will establish
@@ -876,7 +876,7 @@ class ColumnOperators(Operators):
         ``"%"`` and ``"_"`` that are present inside the <other> expression
         will behave like wildcards as well.   For literal string
         values, the :paramref:`.ColumnOperators.contains.autoescape` flag
-        may be set to ``True`` to apply escaping to occurences of these
+        may be set to ``True`` to apply escaping to occurrences of these
         characters within the string value so that they match as themselves
         and not as wildcard characters.  Alternatively, the
         :paramref:`.ColumnOperators.contains.escape` parameter will establish
@@ -960,7 +960,7 @@ class ColumnOperators(Operators):
         * Oracle - renders ``CONTAINS(x, y)``
         * other backends may provide special implementations.
         * Backends without any special implementation will emit
-          the operator as "MATCH".  This is compatible with SQlite, for
+          the operator as "MATCH".  This is compatible with SQLite, for
           example.
 
         """

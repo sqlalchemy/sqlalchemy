@@ -365,7 +365,7 @@ particular ``Magazine``, but then associate the ``Article`` with a
 ``Writer`` that's  associated  with a *different* ``Magazine``, the ORM
 will overwrite ``Article.magazine_id`` non-deterministically, silently
 changing which magazine we refer towards; it may
-also attempt to place NULL into this columnn if we de-associate a
+also attempt to place NULL into this column if we de-associate a
 ``Writer`` from an ``Article``.  The warning lets us know this is the case.
 
 To solve this, we need to break out the behavior of ``Article`` to include

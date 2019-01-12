@@ -566,7 +566,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         # trans is now closed
         eq_(trans._state, _session.CLOSED)
 
-        # outermost transction is new
+        # outermost transaction is new
         is_not_(session.transaction, trans)
 
         # outermost is active

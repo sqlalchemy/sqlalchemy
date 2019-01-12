@@ -107,7 +107,7 @@ ordering is correct when first loaded.
       to lessen the impact of this limitation, however this does not take place
       for a UNIQUE column.
       A future feature will allow the "DELETE before INSERT" behavior to be
-      possible, allevating this limitation, though this feature will require
+      possible, alleviating this limitation, though this feature will require
       explicit configuration at the mapper level for sets of columns that
       are to be handled in this way.
 

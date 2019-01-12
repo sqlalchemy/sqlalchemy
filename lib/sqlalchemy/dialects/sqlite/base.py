@@ -18,7 +18,7 @@ SQLite does not have built-in DATE, TIME, or DATETIME types, and pysqlite does
 not provide out of the box functionality for translating values between Python
 `datetime` objects and a SQLite-supported format. SQLAlchemy's own
 :class:`~sqlalchemy.types.DateTime` and related types provide date formatting
-and parsing functionality when SQlite is used. The implementation classes are
+and parsing functionality when SQLite is used. The implementation classes are
 :class:`~.sqlite.DATETIME`, :class:`~.sqlite.DATE` and :class:`~.sqlite.TIME`.
 These types represent dates and times as ISO formatted strings, which also
 nicely support ordering. There's no reliance on typical "libc" internals for
@@ -139,7 +139,7 @@ only ``connection.commit()`` and ``connection.rollback()``, upon which a
 new transaction is to be begun immediately.  This may seem to imply
 that the SQLite driver would in theory allow only a single filehandle on a
 particular database file at any time; however, there are several
-factors both within SQlite itself as well as within the pysqlite driver
+factors both within SQLite itself as well as within the pysqlite driver
 which loosen this restriction significantly.
 
 However, no matter what locking modes are used, SQLite will still always
@@ -223,7 +223,7 @@ Transactional DDL
 
 The SQLite database supports transactional :term:`DDL` as well.
 In this case, the pysqlite driver is not only failing to start transactions,
-it also is ending any existing transction when DDL is detected, so again,
+it also is ending any existing transaction when DDL is detected, so again,
 workarounds are required.
 
 .. warning::

@@ -921,7 +921,7 @@ A new kind of eager loading is added called "subquery"
 loading.   This is a load that emits a second SQL query
 immediately after the first which loads full collections for
 all the parents in the first query, joining upwards to the
-parent using INNER JOIN.   Subquery loading is used simlarly
+parent using INNER JOIN.   Subquery loading is used similarly
 to the current joined-eager loading, using the
 ```subqueryload()```` and ````subqueryload_all()```` options
 as well as the ````lazy='subquery'```` setting on

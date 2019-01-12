@@ -25,7 +25,7 @@ class Insert(StandardInsert):
 
         MySQL's ON DUPLICATE KEY UPDATE clause allows reference to the row
         that would be inserted, via a special function called ``VALUES()``.
-        This attribute provides all columns in this row to be referenaceable
+        This attribute provides all columns in this row to be referenceable
         such that they will render within a ``VALUES()`` function inside the
         ON DUPLICATE KEY UPDATE clause.    The attribute is named ``.inserted``
         so as not to conflict with the existing :meth:`.Insert.values` method.
@@ -68,7 +68,7 @@ class Insert(StandardInsert):
 
          Passing a list of 2-tuples indicates that the parameter assignments
          in the UPDATE clause should be ordered as sent, in a manner similar
-         to that described for the :class:`.Update` contruct overall
+         to that described for the :class:`.Update` construct overall
          in :ref:`updates_order_parameters`::
 
             insert().on_duplicate_key_update(

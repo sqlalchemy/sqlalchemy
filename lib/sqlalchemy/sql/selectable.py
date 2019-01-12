@@ -1417,7 +1417,7 @@ class Lateral(Alias):
     level function as well as the :meth:`.FromClause.lateral` method available
     on all :class:`.FromClause` subclasses.
 
-    While LATERAL is part of the SQL standard, curently only more recent
+    While LATERAL is part of the SQL standard, currently only more recent
     PostgreSQL versions provide support for this keyword.
 
     .. versionadded:: 1.1
@@ -3252,7 +3252,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         When columns are omitted based on foreign key, the referred-to
         column is the one that's kept.  When columns are omitted based on
-        WHERE eqivalence, the first column in the columns clause is the
+        WHERE equivalence, the first column in the columns clause is the
         one that's kept.
 
         :param only_synonyms: when True, limit the removal of columns

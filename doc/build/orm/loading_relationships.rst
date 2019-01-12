@@ -362,7 +362,7 @@ an OUTER JOIN:
 
 On older versions of SQLite, the above nested right JOIN may be re-rendered
 as a nested subquery.  Older versions of SQLAlchemy would convert right-nested
-joins into subuqeries in all cases.
+joins into subqueries in all cases.
 
 Joined eager loading and result set batching
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -733,7 +733,7 @@ Above, the second SELECT refers to ``addresses.user_id IN (5, 7)``, where the
 "5" and "7" are the primary key values for the previous two ``User``
 objects loaded; after a batch of objects are completely loaded, their primary
 key values are injected into the ``IN`` clause for the second SELECT.
-Because the relatonship between ``User`` and ``Address`` provides that the
+Because the relationship between ``User`` and ``Address`` provides that the
 primary key values for ``User`` can be derived from ``Address.user_id``, the
 statement has no joins or subqueries at all.
 
@@ -927,7 +927,7 @@ references a scalar many-to-one reference.
 Polymorphic Eager Loading
 -------------------------
 
-Specification of polymorpic options on a per-eager-load basis is supported.
+Specification of polymorphic options on a per-eager-load basis is supported.
 See the section :ref:`eagerloading_polymorphic_subtypes` for examples
 of the :meth:`.PropComparator.of_type` method in conjunction with the
 :func:`.orm.with_polymorphic` function.

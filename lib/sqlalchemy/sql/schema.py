@@ -842,7 +842,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
             m1 = MetaData()
 
-            user = Table('user', m1, Column('id', Integer, priamry_key=True))
+            user = Table('user', m1, Column('id', Integer, primary_key=True))
 
             m2 = MetaData()
             user_copy = user.tometadata(m2)
@@ -1482,7 +1482,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             event.listen(self, "after_parent_attach", fn)
 
     def copy(self, **kw):
-        """Create a copy of this ``Column``, unitialized.
+        """Create a copy of this ``Column``, uninitialized.
 
         This is used in ``Table.tometadata``.
 
@@ -4023,7 +4023,7 @@ class MetaData(SchemaItem):
             automatic resolution of dependency cycles between tables, which
             are usually caused by mutually dependent foreign key constraints.
             To resolve these cycles, either the
-            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be appled
+            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be applied
             to those constraints, or use the
             :func:`.schema.sort_tables_and_constraints` function which will
             break out foreign key constraints involved in cycles separately.
@@ -4069,7 +4069,7 @@ class MetaData(SchemaItem):
           the existing bind on this ``MetaData``, if any.
 
         :param schema:
-          Optional, query and reflect tables from an alterate schema.
+          Optional, query and reflect tables from an alternate schema.
           If None, the schema associated with this :class:`.MetaData`
           is used, if any.
 

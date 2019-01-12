@@ -301,7 +301,7 @@ class DDL(DDLElement):
       connection.execute(drop_spow)
 
     When operating on Table events, the following ``statement``
-    string substitions are available::
+    string substitutions are available::
 
       %(table)s  - the Table name, with any required quoting applied
       %(schema)s - the schema name, with any required quoting applied
@@ -1048,7 +1048,7 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
         automatic resolution of dependency cycles between tables, which
         are usually caused by mutually dependent foreign key constraints.
         To resolve these cycles, either the
-        :paramref:`.ForeignKeyConstraint.use_alter` parameter may be appled
+        :paramref:`.ForeignKeyConstraint.use_alter` parameter may be applied
         to those constraints, or use the
         :func:`.sql.sort_tables_and_constraints` function which will break
         out foreign key constraints involved in cycles separately.

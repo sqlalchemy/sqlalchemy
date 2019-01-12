@@ -140,7 +140,7 @@ The above SELECT statement includes these advantages:
 * Because the query only fetches for a given list of primary key identifiers,
   "selectin" loading is potentially compatible with :meth:`.Query.yield_per` to
   operate on chunks of a SELECT result at a time, provided that the
-  database driver allows for multiple, simultaneous cursors (SQlite, PostgreSQL;
+  database driver allows for multiple, simultaneous cursors (SQLite, PostgreSQL;
   **not** MySQL drivers or SQL Server ODBC drivers).   Neither joined eager
   loading nor subquery eager loading are compatible with :meth:`.Query.yield_per`.
 
@@ -665,7 +665,7 @@ with Boolean**, so in 1.2 a hard ``TypeError`` is raised if a non-integer /
 True/False/None value is passed.  Additionally, only the integer values
 0 and 1 are accepted.
 
-To accomodate for applications that wish to have more liberal interpretation
+To accommodate for applications that wish to have more liberal interpretation
 of boolean values, the :class:`.TypeDecorator` should be used.   Below
 illustrates a recipe that will allow for the "liberal" behavior of the pre-1.1
 :class:`.Boolean` datatype::
@@ -1031,7 +1031,7 @@ Parameter helper for multi-valued INSERT with contextual default generator
 
 A default generation function, e.g. that described at
 :ref:`context_default_functions`, can look at the current parameters relevant
-to the statment via the :attr:`.DefaultExecutionContext.current_parameters`
+to the statement via the :attr:`.DefaultExecutionContext.current_parameters`
 attribute.  However, in the case of a :class:`.Insert` construct that specifies
 multiple VALUES clauses via the :meth:`.Insert.values` method, the user-defined
 function is called multiple times, once for each parameter set, however there
@@ -1201,7 +1201,7 @@ However, a collection assignment would fail, since the ORM would assume
 incoming objects are already instances of ``B`` as it attempts to compare  them
 to the existing members of the collection, before doing collection appends
 which actually invoke the validator.  This would make it impossible for bulk
-set operations to accomodate non-ORM objects like dictionaries that needed
+set operations to accommodate non-ORM objects like dictionaries that needed
 up-front modification::
 
     a1 = A()
@@ -1238,7 +1238,7 @@ Previously, the second assignment would trigger the ``A.validate_b``
 method only once, for the ``b3`` object.  The ``b2`` object would be seen
 as being already present in the collection and not validated.  With the new
 behavior, both ``b2`` and ``b3`` are passed to ``A.validate_b`` before passing
-onto the collection.   It is thus important that valiation methods employ
+onto the collection.   It is thus important that validation methods employ
 idempotent behavior to suit such a case.
 
 .. seealso::
@@ -1296,7 +1296,7 @@ The purpose of this keyword was an attempt to allow for variable
 a new :class:`.Session`.   The keyword has never been documented and will
 now raise ``TypeError`` if encountered.   It is not anticipated that this
 keyword is in use, however if users report issues related to this during
-beta tesing, it can be restored with a deprecation.
+beta testing, it can be restored with a deprecation.
 
 :ticket:`3796`
 
@@ -1687,7 +1687,7 @@ more relevant before the 5.x series of cx_Oracle.
   in case a call like ``cursor.fetchmany()`` or ``cursor.fetchall()`` were
   used.
 
-  The dialect now makes use of a cx_Oracle outpttypehandler to handle these
+  The dialect now makes use of a cx_Oracle outputtypehandler to handle these
   ``.read()`` calls, so that they are always called up front regardless of how
   many rows are being fetched, so that this error can no longer occur.  As a
   result, the use of the ``BufferedColumnResultSet``, as well as some other

@@ -167,7 +167,7 @@
         :tags: sql
         :tickets: 667
 
-      foreign key specs can have any chararcter in their identifiers
+      foreign key specs can have any character in their identifiers
 
     .. change::
         :tags: sql
@@ -1167,7 +1167,7 @@
       and the key will be shared.  proper positional/named args translate
       at compile time.  for the old behavior of "aliasing" bind parameters
       with conflicting names, specify "unique=True" - this option is
-      still used internally for all the auto-genererated (value-based)
+      still used internally for all the auto-generated (value-based)
       bind parameters.
 
     .. change::
@@ -1379,7 +1379,7 @@
         :tickets: 
 
       some fixes to relationship calcs when using "viewonly=True" to pull
-      in other tables into the join condition which arent parent of the
+      in other tables into the join condition which aren't parent of the
       relationship's parent/child mappings
 
     .. change::
@@ -1508,7 +1508,7 @@
       the value of "case_sensitive" defaults to True now, regardless of the
       casing of the identifier, unless specifically set to False. this is
       because the object might be label'ed as something else which does
-      contain mixed case, and propigating "case_sensitive=False" breaks that.
+      contain mixed case, and propagating "case_sensitive=False" breaks that.
       Other fixes to quoting when using labels and "fake" column objects
 
     .. change::
@@ -2622,7 +2622,7 @@
       index=True/unique=False creates a plain Index,
       index=True/unique=True on Column creates a unique Index.  'index'
       and 'unique' keyword arguments to column are now boolean only; for
-      explcit names and groupings of indexes or unique constraints, use the
+      explicit names and groupings of indexes or unique constraints, use the
       UniqueConstraint/Index constructs explicitly.
 
     .. change::
@@ -2645,7 +2645,7 @@
         :tickets: 
 
       fixed condition that occurred during reflection when a primary key
-      column was explciitly overridden, where the PrimaryKeyConstraint would
+      column was explicitly overridden, where the PrimaryKeyConstraint would
       get both the reflected and the programmatic column doubled up
 
     .. change::

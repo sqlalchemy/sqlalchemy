@@ -223,7 +223,7 @@ class NullPool(Pool):
     no connections are held persistently.
 
     .. versionchanged:: 0.7
-        :class:`.NullPool` is used by the SQlite dialect automatically
+        :class:`.NullPool` is used by the SQLite dialect automatically
         when a file-based database is used. See :ref:`sqlite_toplevel`.
 
     """

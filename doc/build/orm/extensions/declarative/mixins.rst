@@ -506,7 +506,7 @@ Combining Table/Mapper Arguments from Multiple Mixins
 In the case of ``__table_args__`` or ``__mapper_args__``
 specified with declarative mixins, you may want to combine
 some parameters from several mixins with those you wish to
-define on the class iteself. The
+define on the class itself. The
 :class:`.declared_attr` decorator can be used
 here to create user-defined collation routines that pull
 from multiple collections::

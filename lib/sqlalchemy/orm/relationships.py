@@ -428,7 +428,7 @@ class RelationshipProperty(StrategizedProperty):
           In normal cases, the :paramref:`~.relationship.foreign_keys`
           parameter is **not required.** :func:`.relationship` will
           automatically determine which columns in the
-          :paramref:`~.relationship.primaryjoin` conditition are to be
+          :paramref:`~.relationship.primaryjoin` condition are to be
           considered "foreign key" columns based on those
           :class:`.Column` objects that specify :class:`.ForeignKey`,
           or are otherwise listed as referencing columns in a

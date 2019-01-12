@@ -1536,7 +1536,7 @@ class ManyToManyPolyTest(fixtures.MappedTest):
 
     def test_pjoin_compile(self):
         """test that remote_side columns in the secondary join table
-        arent attempted to be matched to the target polymorphic
+        aren't attempted to be matched to the target polymorphic
         selectable"""
 
         class BaseItem(object):

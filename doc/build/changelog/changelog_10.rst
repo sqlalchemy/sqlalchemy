@@ -358,7 +358,7 @@
 
         Fixed bug whereby the event listeners used for backrefs could
         be inadvertently applied multiple times, when using a deep class
-        inheritance hierarchy in conjunction with mutiple mapper configuration
+        inheritance hierarchy in conjunction with multiple mapper configuration
         steps.
 
     .. change::
@@ -367,7 +367,7 @@
 
         Fixed bug whereby passing a :func:`.text` construct to the
         :meth:`.Query.group_by` method would raise an error, instead
-        of intepreting the object as a SQL fragment.
+        of interpreting the object as a SQL fragment.
 
     .. change::
         :tags: bug, oracle
@@ -1034,7 +1034,7 @@
         :tags: bug, sql
         :tickets: 3490
 
-        Fixed bug where coersion of literal ``True`` or ``False`` constant
+        Fixed bug where coercion of literal ``True`` or ``False`` constant
         in conjunction with :func:`.and_` or :func:`.or_` would fail
         with an AttributeError.
 
@@ -1459,7 +1459,7 @@
         Fixed regression from 0.9.10 prior to release due to :ticket:`3349`
         where the check for query state on :meth:`.Query.update` or
         :meth:`.Query.delete` compared the empty tuple to itself using ``is``,
-        which fails on Pypy to produce ``True`` in this case; this would
+        which fails on PyPy to produce ``True`` in this case; this would
         erronously emit a warning in 0.9 and raise an exception in 1.0.
 
     .. change::
@@ -2035,7 +2035,7 @@
         :tickets: 3330, 3329
 
         The "auto close" for :class:`.ResultProxy` is now a "soft" close.
-        That is, after exhausing all rows using the fetch methods, the
+        That is, after exhausting all rows using the fetch methods, the
         DBAPI cursor is released as before and the object may be safely
         discarded, but the fetch methods may continue to be called for which
         they will return an end-of-result object (None for fetchone, empty list
@@ -3209,7 +3209,7 @@
         A similar change is also applied to an INSERT..VALUES
         with multiple parameter sets; implicit RETURNING will no longer emit
         for this statement either.  As both of these constructs deal
-        with varible numbers of rows, the
+        with variable numbers of rows, the
         :attr:`.ResultProxy.inserted_primary_key` accessor does not
         apply.   Previously, there was a documentation note that one
         may prefer ``inline=True`` with INSERT..FROM SELECT as some databases

@@ -903,7 +903,7 @@ class CreateEnginePlugin(object):
     """
 
     def __init__(self, url, kwargs):
-        """Contruct a new :class:`.CreateEnginePlugin`.
+        """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call
         to :func:`.create_engine`.  A single :class:`.Engine` will be

@@ -2156,7 +2156,7 @@ class AttributeEvents(event.Events):
         a changing value such as a timestamp, the
         :meth:`.AttributeEvents.init_scalar`
         event handler can also be used to **set** the newly returned value, so
-        that a Core-level default generation function effecively fires off
+        that a Core-level default generation function effectively fires off
         only once, but at the moment the attribute is accessed on the
         non-persisted object.   Normally, no change to the object's state
         is made when an uninitialized attribute is accessed (much older
@@ -2274,7 +2274,7 @@ class AttributeEvents(event.Events):
          from what was specified as
          :paramref:`.RelationshipProperty.collection_class`, and will always
          be empty.
-        :param collection_adpater: the :class:`.CollectionAdapter` that will
+        :param collection_adapter: the :class:`.CollectionAdapter` that will
          mediate internal access to the collection.
 
         .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
@@ -2283,7 +2283,7 @@ class AttributeEvents(event.Events):
 
         """
 
-    def dispose_collection(self, target, collection, collection_adpater):
+    def dispose_collection(self, target, collection, collection_adapter):
         """Receive a 'collection dispose' event.
 
         This event is triggered for a collection-based attribute when

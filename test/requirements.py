@@ -167,7 +167,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def no_quoting_special_bind_names(self):
-        """Target database will quote bound paramter names, doesn't support
+        """Target database will quote bound parameter names, doesn't support
         EXPANDING"""
 
         return skip_if(["oracle"])

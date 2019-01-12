@@ -2226,7 +2226,7 @@ class PGInspector(reflection.Inspector):
         """Return a list of FOREIGN TABLE names.
 
         Behavior is similar to that of :meth:`.Inspector.get_table_names`,
-        except that the list is limited to those tables tha report a
+        except that the list is limited to those tables that report a
         ``relkind`` value of ``f``.
 
         .. versionadded:: 1.0.0

@@ -635,7 +635,7 @@ as:
     SELECT ...
     FROM users AS users_1, users JOIN addresses ON users.id = addresses.user_id
 
-That is, the JOIN would implcitly be against the first entity that matches.
+That is, the JOIN would implicitly be against the first entity that matches.
 The new behavior is that an exception requests that this ambiguity be
 resolved::
 
@@ -1010,7 +1010,7 @@ variant expression in order to locate these methods::
 
     MyLargeBinary = LargeBinary().with_variant(CompressedLargeBinary(), "sqlite")
 
-The above expression will render a function within SQL when used on SQlite only::
+The above expression will render a function within SQL when used on SQLite only::
 
     from sqlalchemy import select, column
     from sqlalchemy.dialects import sqlite
@@ -1116,7 +1116,7 @@ Control of parameter ordering within ON DUPLICATE KEY UPDATE
 ------------------------------------------------------------
 
 The order of UPDATE parameters in the ``ON DUPLICATE KEY UPDATE`` clause
-can now be explcitly ordered by passing a list of 2-tuples::
+can now be explicitly ordered by passing a list of 2-tuples::
 
     from sqlalchemy.dialects.mysql import insert
 
@@ -1241,7 +1241,7 @@ cx_Oracle connect arguments modernized, deprecated parameters removed
 A series of modernizations to the parameters accepted by the cx_oracle
 dialect as well as the URL string:
 
-* The deprecated paramters ``auto_setinputsizes``, ``allow_twophase``,
+* The deprecated parameters ``auto_setinputsizes``, ``allow_twophase``,
   ``exclude_setinputsizes`` are removed.
 
 * The value of the ``threaded`` parameter, which has always been defaulted

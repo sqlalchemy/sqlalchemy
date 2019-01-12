@@ -384,7 +384,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             polymorphic_identity=0,
         )
 
-    def test_polymorpic_on_not_in_with_poly(self):
+    def test_polymorphic_on_not_in_with_poly(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent = self.classes.Parent
 
@@ -2300,7 +2300,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         )
 
     def test_plain_descriptor(self):
-        """test that descriptors prevent inheritance from propigating
+        """test that descriptors prevent inheritance from propagating
         properties to subclasses."""
 
         class Base(object):
@@ -2321,7 +2321,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         assert sess.query(Sub).one().data == "im the data"
 
     def test_custom_descriptor(self):
-        """test that descriptors prevent inheritance from propigating
+        """test that descriptors prevent inheritance from propagating
         properties to subclasses."""
 
         class MyDesc(object):

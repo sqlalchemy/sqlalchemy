@@ -1088,7 +1088,7 @@ class BindParameter(ColumnElement):
           if True, this parameter will be treated as an "expanding" parameter
           at execution time; the parameter value is expected to be a sequence,
           rather than a scalar value, and the string SQL statement will
-          be transformed on a per-execution basis to accomodate the sequence
+          be transformed on a per-execution basis to accommodate the sequence
           with a variable number of parameter slots passed to the DBAPI.
           This is to allow statement caching to be used in conjunction with
           an IN clause.

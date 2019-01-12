@@ -599,7 +599,7 @@
 
       Fixed Query being able to join() from individual columns of a
       joined-table subclass entity, i.e.  query(SubClass.foo,
-      SubcClass.bar).join(<anything>).  In most cases, an error
+      SubClass.bar).join(<anything>).  In most cases, an error
       "Could not find a FROM clause to join from" would be
       raised. In a few others, the result would be returned in terms
       of the base class rather than the subclass - so applications
@@ -786,7 +786,7 @@
         the AttributeExtension interface nor any of the publicly
         documented attribute functions.
       
-      - The unit of work no longer genererates a graph of "dependency"
+      - The unit of work no longer generates a graph of "dependency"
         processors for the full graph of mappers during flush(), instead
         creating such processors only for those mappers which represent
         objects with pending changes.  This saves a tremendous number
@@ -1172,7 +1172,7 @@
 
       Query won't fail with weakref error when a non-mapper/class
       instrumented descriptor is passed, raises
-      "Invalid column expession".
+      "Invalid column expression".
 
     .. change::
         :tags: orm
@@ -1443,7 +1443,7 @@
         :tickets: 1237, 781
 
       Added a new `relation()` keyword `back_populates`. This
-      allows configuation of backreferences using explicit
+      allows configuration of backreferences using explicit
       relations. This is required when creating
       bidirectional relations between a hierarchy of concrete
       mappers and another class.
@@ -1470,7 +1470,7 @@
 
       Added a rudimental series of set operations to Query that
       receive Query objects as arguments, including union(),
-      union_all(), intersect(), except_(), insertsect_all(),
+      union_all(), intersect(), except_(), intersect_all(),
       except_all().  See the API documentation for
       Query.union() for examples.
 
@@ -1525,7 +1525,7 @@
       Using delete-orphan on a many-to-many relation is deprecated.
       This produces misleading or erroneous results since SQLA does
       not retrieve the full list of "parents" for m2m.  To get delete-orphan
-      behavior with an m2m table, use an explcit association class
+      behavior with an m2m table, use an explicit association class
       so that the individual association row is treated as a parent.
 
     .. change::
@@ -2651,7 +2651,7 @@
       Added more granularity to internal attribute access, such that
       cascade and flush operations will not initialize unloaded
       attributes and collections, leaving them intact for a
-      lazy-load later on. Backref events still initialize attrbutes
+      lazy-load later on. Backref events still initialize attributes
       and collections for pending instances.
 
     .. change::

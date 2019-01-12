@@ -269,7 +269,7 @@ class NoSuchTableError(InvalidRequestError):
 
 
 class UnreflectableTableError(InvalidRequestError):
-    """Table exists but can't be reflectted for some reason.
+    """Table exists but can't be reflected for some reason.
 
     .. versionadded:: 1.2
 
