@@ -444,7 +444,7 @@ class DDLExecutionTest(fixtures.TestBase):
         assert "xyzzy" in strings
         assert "fnord" in strings
 
-    @testing.uses_deprecated(r"See DDLEvents")
+    @testing.uses_deprecated(r".*use the DDLEvents")
     def test_table_by_metadata_deprecated(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         DDL("mxyzptlk").execute_at("before-create", users)
@@ -548,7 +548,7 @@ class DDLExecutionTest(fixtures.TestBase):
         assert "xyzzy" in strings
         assert "fnord" in strings
 
-    @testing.uses_deprecated(r"See DDLEvents")
+    @testing.uses_deprecated(r".*use the DDLEvents")
     def test_metadata_deprecated(self):
         metadata, engine = self.metadata, self.engine
 
@@ -607,7 +607,7 @@ class DDLExecutionTest(fixtures.TestBase):
         strings = " ".join(str(x) for x in pg_mock.mock)
         assert "my_test_constraint" in strings
 
-    @testing.uses_deprecated(r"See DDLEvents")
+    @testing.uses_deprecated(r".*use the DDLEvents")
     def test_conditional_constraint_deprecated(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         nonpg_mock = engines.mock_engine(dialect_name="sqlite")

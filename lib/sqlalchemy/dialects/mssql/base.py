@@ -64,8 +64,13 @@ is set to ``False`` on any integer primary key column::
 .. versionchanged::  1.3   Added ``mssql_identity_start`` and
    ``mssql_identity_increment`` parameters to :class:`.Column`.  These replace
    the use of the :class:`.Sequence` object in order to specify these values.
+
+.. deprecated:: 1.3
+
    The use of :class:`.Sequence` to specify IDENTITY characteristics is
-   deprecated and will emit a warning.
+   deprecated and will be removed in a future release.   Please use
+   the ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
+   documented at :ref:`mssql_identity`.
 
 .. note::
 

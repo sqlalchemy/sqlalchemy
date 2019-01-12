@@ -585,8 +585,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         insp = Inspector(meta.bind)
         assert_raises_message(
             sa_exc.SADeprecationWarning,
-            "Call to deprecated method get_primary_keys."
-            "  Use get_pk_constraint instead.",
+            r".*get_primary_keys\(\) method is deprecated",
             insp.get_primary_keys,
             users.name,
         )

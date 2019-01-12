@@ -113,7 +113,12 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         return util.generic_repr(self, omit_kwarg=["info"])
 
     @property
-    @util.deprecated("0.9", "Use ``<obj>.name.quote``")
+    @util.deprecated(
+        "0.9",
+        "The :attr:`.SchemaItem.quote` attribute is deprecated and will be "
+        "removed in a future release.  Use the :attr:`.quoted_name.quote` "
+        "attribute on the ``name`` field of the target schema item to retrieve"
+        "quoted status.")
     def quote(self):
         """Return the value of the ``quote`` flag passed
         to this schema object, for those schema items which
@@ -471,7 +476,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     metadata._remove_table(name, schema)
 
     @property
-    @util.deprecated("0.9", "Use ``table.schema.quote``")
+    @util.deprecated(
+        "0.9",
+        "The :meth:`.SchemaItem.quote` method is deprecated and will be "
+        "removed in a future release.  Use the :attr:`.quoted_name.quote` "
+        "attribute on the ``schema`` field of the target schema item to "
+        "retrieve quoted status.")
     def quote_schema(self):
         """Return the value of the ``quote_schema`` flag passed
         to this :class:`.Table`.
@@ -2587,14 +2597,16 @@ class PassiveDefault(DefaultClause):
     """A DDL-specified DEFAULT column value.
 
     .. deprecated:: 0.6
-        :class:`.PassiveDefault` is deprecated.
-        Use :class:`.DefaultClause`.
+
+        The :class:`.PassiveDefault` class is deprecated and will be removed
+        in a future release.  Please use :class:`.DefaultClause`.
+
     """
 
     @util.deprecated(
         "0.6",
-        ":class:`.PassiveDefault` is deprecated.  "
-        "Use :class:`.DefaultClause`.",
+        ":class:`.PassiveDefault` is deprecated and will be removed in a "
+        "future release. Use :class:`.DefaultClause`.",
         False,
     )
     def __init__(self, *arg, **kw):
@@ -3736,7 +3748,10 @@ class MetaData(SchemaItem):
           Defaults to False. ``bind`` is required when this option is set.
 
           .. deprecated:: 0.8
-                Please use the :meth:`.MetaData.reflect` method.
+
+                The :paramref:`.MetaData.reflect` flag is deprecated and will
+                be removed in a future release.   Please use the
+                :meth:`.MetaData.reflect` method.
 
         :param schema:
            The default schema to use for the :class:`.Table`,

@@ -756,6 +756,22 @@ class count(GenericFunction):
     r"""The ANSI COUNT aggregate function.  With no arguments,
     emits COUNT \*.
 
+    E.g.::
+
+        from sqlalchemy import func
+        from sqlalchemy import select
+        from sqlalchemy import table, column
+
+        my_table = table('some_table', column('id'))
+
+        stmt = select([func.count()]).select_from(my_table)
+
+    Executing ``stmt`` would emit::
+
+        SELECT count(*) AS count_1
+        FROM some_table
+
+
     """
     type = sqltypes.Integer
 

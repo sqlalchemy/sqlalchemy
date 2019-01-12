@@ -14,11 +14,11 @@ from .. import util
 class MapperExtension(object):
     """Base implementation for :class:`.Mapper` event hooks.
 
-    .. note::
+    .. deprecated:: 0.7
 
-       :class:`.MapperExtension` is deprecated.   Please
-       refer to :func:`.event.listen` as well as
-       :class:`.MapperEvents`.
+       :class:`.MapperExtension` is deprecated and will be removed in a future
+       release.  Please refer to :func:`.event.listen` in conjunction with
+       the :class:`.MapperEvents` listener interface.
 
     New extension classes subclass :class:`.MapperExtension` and are specified
     using the ``extension`` mapper() argument, which is a single
@@ -318,11 +318,11 @@ class SessionExtension(object):
 
     """Base implementation for :class:`.Session` event hooks.
 
-    .. note::
+    .. deprecated:: 0.7
 
-       :class:`.SessionExtension` is deprecated.   Please
-       refer to :func:`.event.listen` as well as
-       :class:`.SessionEvents`.
+       :class:`.SessionExtension` is deprecated and will be removed in a future
+       release.  Please refer to :func:`.event.listen` in conjunction with
+       the :class:`.SessionEvents` listener interface.
 
     Subclasses may be installed into a :class:`.Session` (or
     :class:`.sessionmaker`) using the ``extension`` keyword
@@ -439,11 +439,11 @@ class AttributeExtension(object):
     """Base implementation for :class:`.AttributeImpl` event hooks, events
     that fire upon attribute mutations in user code.
 
-    .. note::
+    .. deprecated:: 0.7
 
-       :class:`.AttributeExtension` is deprecated.   Please
-       refer to :func:`.event.listen` as well as
-       :class:`.AttributeEvents`.
+       :class:`.AttributeExtension` is deprecated and will be removed in a
+       future release.  Please refer to :func:`.event.listen` in conjunction
+       with the :class:`.AttributeEvents` listener interface.
 
     :class:`.AttributeExtension` is used to listen for set,
     remove, and append events on individual mapped attributes.

@@ -411,7 +411,12 @@ class RelationshipProperty(StrategizedProperty):
           which will be prepended to the list of attribute listeners for
           the resulting descriptor placed on the class.
 
-          .. deprecated:: 0.7 Please see :class:`.AttributeEvents`.
+           .. deprecated:: 0.7
+
+                :class:`.AttributeExtension` is deprecated in favor of the
+                :class:`.AttributeEvents` listener interface. The
+                :paramref:`.RelationshipProperty.extension` parameter will be
+                removed in a future release.
 
         :param foreign_keys:
 
