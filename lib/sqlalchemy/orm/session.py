@@ -59,11 +59,16 @@ class _SessionClassMethods(object):
     """Class-level methods for :class:`.Session`, :class:`.sessionmaker`."""
 
     @classmethod
+    @util.deprecated(
+        "1.3",
+        "The :meth:`.Session.close_all` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":func:`.session.close_all_sessions`.",
+    )
     def close_all(cls):
         """Close *all* sessions in memory."""
 
-        for sess in _sessions.values():
-            sess.close()
+        close_all_sessions()
 
     @classmethod
     @util.dependencies("sqlalchemy.orm.util")
@@ -3202,6 +3207,24 @@ class sessionmaker(_SessionClassMethods):
             self.class_.__name__,
             ", ".join("%s=%r" % (k, v) for k, v in self.kw.items()),
         )
+
+
+def close_all_sessions():
+    """Close all sessions in memory.
+
+    This function consults a global registry of all :class:`.Session` objects
+    and calls :meth:`.Session.close` on them, which resets them to a clean
+    state.
+
+    This function is not for general use but may be useful for test suites
+    within the teardown scheme.
+
+    .. versionadded:: 1.3
+
+    """
+
+    for sess in _sessions.values():
+        sess.close()
 
 
 def make_transient(instance):
