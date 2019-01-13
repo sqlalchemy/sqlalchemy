@@ -23,6 +23,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
+from sqlalchemy.util import py3k
 
 
 e = create_engine("sqlite://")
@@ -76,4 +77,7 @@ session.commit()
 document = session.query(Document).filter_by(filename="test.xml").first()
 
 # print
-document.element.write(sys.stdout)
+if py3k:
+    document.element.write(sys.stdout, encoding="unicode")
+else:
+    document.element.write(sys.stdout)

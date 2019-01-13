@@ -20,6 +20,6 @@ E.g.::
         print document
 
 .. autosource::
-    :files: pickle.py, adjacency_list.py, optimized_al.py
+    :files: pickle_type.py, adjacency_list.py, optimized_al.py
 
 """

@@ -10,8 +10,8 @@ along any path with a given   structure of attributes, basically a
 (very narrow) subset of xpath.
 
 This example explicitly marshals/unmarshals the ElementTree document into
-mapped entities which have their own tables.  Compare to pickle.py which uses
-pickle to accomplish the same task.  Note that the usage of both styles of
+mapped entities which have their own tables.  Compare to pickle_type.py which uses
+PickleType to accomplish the same task.  Note that the usage of both styles of
 persistence are identical, as is the structure of the main Document class.
 
 """
