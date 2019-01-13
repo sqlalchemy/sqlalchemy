@@ -129,7 +129,7 @@ class ColumnProperty(StrategizedProperty):
 
                 :class:`.AttributeExtension` is deprecated in favor of the
                 :class:`.AttributeEvents` listener interface.   The
-                :paramref:`.ColumnProperty.extension` parameter will be
+                :paramref:`.column_property.extension` parameter will be
                 removed in a future release.
 
         """
