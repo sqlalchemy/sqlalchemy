@@ -246,7 +246,7 @@ class RemovesEvents(object):
 class _ORMTest(object):
     @classmethod
     def teardown_class(cls):
-        sa.orm.session.Session.close_all()
+        sa.orm.session.close_all_sessions()
         sa.orm.clear_mappers()
 
 
@@ -287,7 +287,7 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
         self._setup_each_inserts()
 
     def teardown(self):
-        sa.orm.session.Session.close_all()
+        sa.orm.session.close_all_sessions()
         self._teardown_each_mappers()
         self._teardown_each_classes()
         self._teardown_each_tables()

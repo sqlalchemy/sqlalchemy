@@ -7,6 +7,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
@@ -147,6 +148,51 @@ class TransScopingTest(_fixtures.FixtureTest):
 
 class SessionUtilTest(_fixtures.FixtureTest):
     run_inserts = None
+
+    def test_close_all_sessions(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        s1 = Session()
+        u1 = User()
+        s1.add(u1)
+
+        s2 = Session()
+        u2 = User()
+        s2.add(u2)
+
+        assert u1 in s1
+        assert u2 in s2
+
+        close_all_sessions()
+
+        assert u1 not in s1
+        assert u2 not in s2
+
+    def test_session_close_all_deprecated(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        s1 = Session()
+        u1 = User()
+        s1.add(u1)
+
+        s2 = Session()
+        u2 = User()
+        s2.add(u2)
+
+        assert u1 in s1
+        assert u2 in s2
+
+        with assertions.expect_deprecated(
+                r"The Session.close_all\(\) method is deprecated and will "
+                "be removed in a future release. "):
+            Session.close_all()
+
+        assert u1 not in s1
+        assert u2 not in s2
 
     def test_object_session_raises(self):
         User = self.classes.User
