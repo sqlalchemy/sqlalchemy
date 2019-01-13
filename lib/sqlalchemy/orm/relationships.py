@@ -396,7 +396,7 @@ class RelationshipProperty(StrategizedProperty):
 
                 :class:`.AttributeExtension` is deprecated in favor of the
                 :class:`.AttributeEvents` listener interface. The
-                :paramref:`.RelationshipProperty.extension` parameter will be
+                :paramref:`.relationship.extension` parameter will be
                 removed in a future release.
 
         :param foreign_keys:
