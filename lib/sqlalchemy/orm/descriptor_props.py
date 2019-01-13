@@ -151,7 +151,7 @@ class CompositeProperty(DescriptorProperty):
 
                 :class:`.AttributeExtension` is deprecated in favor of the
                 :class:`.AttributeEvents` listener interface.  The
-                :paramref:`.CompositeProperty.extension` parameter will be
+                :paramref:`.composite.extension` parameter will be
                 removed in a future release.
 
         """

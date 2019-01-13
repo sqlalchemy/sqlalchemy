@@ -2270,7 +2270,7 @@ class AttributeEvents(event.Events):
          be the :class:`.InstanceState` object.
         :param collection: the new collection.  This will always be generated
          from what was specified as
-         :paramref:`.RelationshipProperty.collection_class`, and will always
+         :paramref:`.relationship.collection_class`, and will always
          be empty.
         :param collection_adpater: the :class:`.CollectionAdapter` that will
          mediate internal access to the collection.
