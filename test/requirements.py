@@ -663,6 +663,16 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def expressions_against_unbounded_text(self):
+        """target database supports use of an unbounded textual field in a
+        WHERE clause."""
+
+        return fails_if(
+            ["oracle"],
+            "ORA-00932: inconsistent datatypes: expected - got CLOB",
+        )
+
+    @property
     def unicode_data(self):
         """target drive must support unicode data stored in columns."""
         return skip_if([no_support("sybase", "no unicode driver support")])
@@ -1173,9 +1183,9 @@ class DefaultRequirements(SuiteRequirements):
         lookup = {
             # will raise without quoting
             "postgresql": "POSIX",
-            # note MySQL databases need to be created w/ utf8mb3 charset
+            # note MySQL databases need to be created w/ utf8mb4 charset
             # for the test suite
-            "mysql": "utf8mb3_bin",
+            "mysql": "utf8mb4_bin",
             "sqlite": "NOCASE",
             # will raise *with* quoting
             "mssql": "Latin1_General_CI_AS",

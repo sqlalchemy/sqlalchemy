@@ -7,6 +7,7 @@ import os
 import sqlalchemy as sa
 from sqlalchemy import Boolean
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import DefaultClause
@@ -14,6 +15,7 @@ from sqlalchemy import Float
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import PickleType
@@ -27,7 +29,9 @@ from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import Time
 from sqlalchemy import types
+from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
+from sqlalchemy import util
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
@@ -37,6 +41,7 @@ from sqlalchemy.dialects.mssql.base import MS_2008_VERSION
 from sqlalchemy.dialects.mssql.base import TIME
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning_on
@@ -920,6 +925,49 @@ class TypeRoundTripTest(
                 else:
                     assert 1 not in list(engine.execute(tbl.select()).first())
                 engine.execute(tbl.delete())
+
+
+class StringTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mssql.dialect()
+
+    def test_unicode_literal_binds(self):
+        self.assert_compile(
+            column("x", Unicode()) == "foo", "x = N'foo'", literal_binds=True
+        )
+
+    def test_unicode_text_literal_binds(self):
+        self.assert_compile(
+            column("x", UnicodeText()) == "foo",
+            "x = N'foo'",
+            literal_binds=True,
+        )
+
+    def test_string_text_literal_binds(self):
+        self.assert_compile(
+            column("x", String()) == "foo", "x = 'foo'", literal_binds=True
+        )
+
+    def test_string_text_literal_binds_explicit_unicode_right(self):
+        self.assert_compile(
+            column("x", String()) == util.u("foo"),
+            "x = 'foo'",
+            literal_binds=True,
+        )
+
+    def test_string_text_explicit_literal_binds(self):
+        # the literal experssion here coerces the right side to
+        # Unicode on Python 3 for plain string, test with unicode
+        # string just to confirm literal is doing this
+        self.assert_compile(
+            column("x", String()) == literal(util.u("foo")),
+            "x = N'foo'",
+            literal_binds=True,
+        )
+
+    def test_text_text_literal_binds(self):
+        self.assert_compile(
+            column("x", Text()) == "foo", "x = 'foo'", literal_binds=True
+        )
 
 
 class BinaryTest(fixtures.TestBase):
