@@ -81,9 +81,9 @@ class _ClsLevelDispatch(RefCollection):
 
     def __init__(self, parent_dispatch_cls, fn):
         self.name = fn.__name__
-        argspec = util.inspect_getargspec(fn)
+        argspec = util.inspect_getfullargspec(fn)
         self.arg_names = argspec.args[1:]
-        self.has_kw = bool(argspec.keywords)
+        self.has_kw = bool(argspec.varkw)
         self.legacy_signatures = list(
             reversed(
                 sorted(

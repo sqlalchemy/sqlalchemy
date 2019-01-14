@@ -32,7 +32,7 @@ def _wrap_fn_for_legacy(dispatch_collection, fn, argspec):
             has_kw = False
 
         if len(argnames) == len(argspec.args) and has_kw is bool(
-            argspec.keywords
+            argspec.varkw
         ):
 
             if conv:
@@ -140,7 +140,7 @@ def _version_signature_changes(parent_dispatch_cls, dispatch_collection):
         "    The :class:`.%(clsname)s.%(event_name)s` event now accepts the \n"
         "    arguments ``%(named_event_arguments)s%(has_kw_arguments)s``.\n"
         "    Support for listener functions which accept the previous \n"
-        "    argument signature(s) listed above as \"deprecated\" will be \n"
+        '    argument signature(s) listed above as "deprecated" will be \n'
         "    removed in a future release."
         % {
             "since": since,
@@ -171,6 +171,7 @@ def _augment_fn_docs(dispatch_collection, parent_dispatch_cls, fn):
         )
 
         text += _version_signature_changes(
-            parent_dispatch_cls, dispatch_collection)
+            parent_dispatch_cls, dispatch_collection
+        )
 
     return util.inject_docstring_text(fn.__doc__, text, 1)

@@ -13,7 +13,7 @@ import re
 from . import config
 from .. import util
 from ..util import decorator
-from ..util.compat import inspect_getargspec
+from ..util.compat import inspect_getfullargspec
 
 
 def skip_if(predicate, reason=None):
@@ -303,7 +303,7 @@ class SpecPredicate(Predicate):
 
 class LambdaPredicate(Predicate):
     def __init__(self, lambda_, description=None, args=None, kw=None):
-        spec = inspect_getargspec(lambda_)
+        spec = inspect_getfullargspec(lambda_)
         if not spec[0]:
             self.lambda_ = lambda db: lambda_()
         else:
