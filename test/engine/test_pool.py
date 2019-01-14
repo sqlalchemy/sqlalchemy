@@ -1117,7 +1117,7 @@ class QueuePoolTest(PoolTestBase):
         expected_timeout = 123
         p = self._queuepool_fixture(
             timeout=expected_timeout)
-        assert p.timeout() == expected_timeout
+        assert eq_(p.timeout(), expected_timeout)
 
     @testing.requires.timing_intensive
     def test_timeout(self):

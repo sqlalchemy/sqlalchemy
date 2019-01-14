@@ -183,7 +183,7 @@ class QueuePool(Pool):
         return self._pool.maxsize
 
     def timeout(self):
-        return self._pool._timeout
+        return self._timeout
 
     def checkedin(self):
         return self._pool.qsize()
