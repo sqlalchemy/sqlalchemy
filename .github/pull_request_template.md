@@ -1,6 +1,16 @@
-*** **CHECKLIST FOR PULL REQUESTS!!!** ***
+<!-- Provide a general summary of your proposed changes in the Title field above -->
 
-This change is:
+### Description
+<!-- Describe your changes in detail -->
+
+### Checklist
+<!-- go over following points. check them with an `x` if they do apply,
+(they turn into clickable checkboxes once the PR is submitted, so no need
+to do everything at once)
+
+-->
+
+This pull request is:
 
 - [ ] A documentation / typographical error fix
 	- Good to go, no issue or tests are needed
@@ -24,8 +34,8 @@ This change is:
 	- [ ] I don't know how to write the tests.  in which case please GET HELP FROM THE MAINTAINERS
 	      on the above mentioned issue how tests for this feature should be structured.
 
-Note that **we do not accept one-liner code fix pull requests with no tests**.  Code that is not
+<!-- Note that **we do not accept one-liner code fix pull requests with no tests**.  Code that is not
 tested is itself **a bug**.   We will help you fix any problem you have, as long as you produce
-[issue reports](https://github.com/sqlalchemy/sqlalchemy/issues) that include code samples, stack traces, and most preferably complete standalone test cases.
+[issue reports](https://github.com/sqlalchemy/sqlalchemy/issues) that include code samples, stack traces, and most preferably complete standalone test cases. -->
 
 **Have a nice day!**
