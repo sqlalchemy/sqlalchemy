@@ -631,7 +631,7 @@ This function can also be used to make bitwise operators explicit. For example::
 is a bitwise AND of the value in ``somecolumn``.
 
 When using :meth:`.Operators.op`, the return type of the expression may be important,
-especialy when the operator is used in an expression that will be sent as a result
+especially when the operator is used in an expression that will be sent as a result
 column.   For this case, be sure to make the type explicit, if not what's
 normally expected, using :func:`.type_coerce`::
 

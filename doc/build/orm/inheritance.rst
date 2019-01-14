@@ -19,7 +19,7 @@ return objects of multiple types.
 
 .. seealso::
 
-    :ref:`examples_inheritance` - complete exampes of joined, single and
+    :ref:`examples_inheritance` - complete examples of joined, single and
     concrete inheritance
 
 .. _joined_inheritance:
@@ -652,7 +652,7 @@ The :class:`.AbstractConcreteBase` helper class has a more complex internal
 process than that of :class:`.ConcreteBase`, in that the entire mapping
 of the base class must be delayed until all the subclasses have been declared.
 With a mapping like the above, only instances of ``Manager`` and ``Engineer``
-may be persised; querying against the ``Employee`` class will always produce
+may be persisted; querying against the ``Employee`` class will always produce
 ``Manager`` and ``Engineer`` objects.
 
 .. seealso::

@@ -522,7 +522,7 @@ The "password" portion of a ``create_engine()`` no longer considers the ``+`` si
 For whatever reason, the Python function ``unquote_plus()`` was applied to the
 "password" field of a URL, which is an incorrect application of the
 encoding rules described in `RFC 1738 <http://www.ietf.org/rfc/rfc1738.txt>`_
-in that it escaped spaces as plus signs.  The stringiciation of a URL
+in that it escaped spaces as plus signs.  The stringification of a URL
 now only encodes ":", "@", or "/" and nothing else, and is now applied to both the
 ``username`` and ``password`` fields (previously it only applied to the
 password).   On parsing, encoded characters are converted, but plus signs and
@@ -1257,7 +1257,7 @@ with the above queries rewritten as::
 The :meth:`.Join.alias`, :func:`.aliased` and :func:`.with_polymorphic` functions now
 support a new argument, ``flat=True``, which is used to construct aliases of joined-table
 entities without embedding into a SELECT.   This flag is not on by default, to help with
-backwards compatibility - but now a "polymorhpic" selectable can be joined as a target
+backwards compatibility - but now a "polymorphic" selectable can be joined as a target
 without any subqueries generated::
 
     employee_alias = with_polymorphic(Person, [Engineer, Manager], flat=True)
@@ -1523,7 +1523,7 @@ Starting with a table such as this::
     t1 = Table('t', MetaData(), Column('x', Boolean()), Column('y', Integer))
 
 A select construct will now render the boolean column as a binary expression
-on backends that don't feature ``true``/``false`` constant beahvior::
+on backends that don't feature ``true``/``false`` constant behavior::
 
     >>> from sqlalchemy import select, and_, false, true
     >>> from sqlalchemy.dialects import mysql, postgresql

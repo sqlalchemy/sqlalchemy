@@ -294,7 +294,7 @@ most efficient place for this additional keyword to be passed.
     `Character set introducers <https://dev.mysql.com/doc/refman/5.7/en/charset-introducer.html>`_ - on the MySQL website
 
 
-Ansi Quoting Style
+ANSI Quoting Style
 ------------------
 
 MySQL features two varieties of identifier "quoting style", one using

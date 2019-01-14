@@ -72,7 +72,7 @@ SQLAlchemy has been tested against the following platforms:
 
 * cPython since version 2.7, through the 2.xx series
 * cPython version 3, throughout all 3.xx series
-* `Pypy <http://pypy.org/>`_ 2.1 or greater
+* `PyPy <http://pypy.org/>`_ 2.1 or greater
 
 .. versionchanged:: 1.2
    Python 2.7 is now the minimum Python version supported.
@@ -97,7 +97,7 @@ Install via pip
 ---------------
 
 When ``pip`` is available, the distribution can be
-downloaded from Pypi and installed in one step::
+downloaded from PyPI and installed in one step::
 
     pip install SQLAlchemy
 

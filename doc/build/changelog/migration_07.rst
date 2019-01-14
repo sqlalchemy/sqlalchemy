@@ -483,7 +483,7 @@ C Extensions Build by Default
 This is as of 0.7b4.   The exts will build if cPython 2.xx
 is detected.   If the build fails, such as on a windows
 install, that condition is caught and the non-C install
-proceeds.    The C exts won't build if Python 3 or Pypy is
+proceeds.    The C exts won't build if Python 3 or PyPy is
 used.
 
 Query.count() simplified, should work virtually always

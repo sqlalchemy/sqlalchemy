@@ -21,7 +21,7 @@ Probably the most widely used series of events are the "persistence" events,
 which correspond to the :ref:`flush process<session_flushing>`.
 The flush is where all the decisions are made about pending changes to
 objects and are then emitted out to the database in the form of INSERT,
-UPDATE, and DELETE staetments.
+UPDATE, and DELETE statements.
 
 ``before_flush()``
 ^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ Use :meth:`.SessionEvents.before_flush` in order to operate
 upon objects to validate their state as well as to compose additional objects
 and references before they are persisted.   Within this event,
 it is **safe to manipulate the Session's state**, that is, new objects
-can be attached to it, objects can be deleted, and indivual attributes
+can be attached to it, objects can be deleted, and individual attributes
 on objects can be changed freely, and these changes will be pulled into
 the flush process when the event hook completes.
 
@@ -390,7 +390,7 @@ moving back to the persistent state using the
 Transaction Events
 ------------------
 
-Transaction events allow an application to be notifed when transaction
+Transaction events allow an application to be notified when transaction
 boundaries occur at the :class:`.Session` level as well as when the
 :class:`.Session` changes the transactional state on :class:`.Connection`
 objects.

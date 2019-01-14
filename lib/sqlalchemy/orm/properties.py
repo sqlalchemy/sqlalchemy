@@ -7,7 +7,7 @@
 
 """MapperProperty implementations.
 
-This is a private module which defines the behavior of invidual ORM-
+This is a private module which defines the behavior of individual ORM-
 mapped attributes.
 
 """

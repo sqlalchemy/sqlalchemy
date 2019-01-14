@@ -405,7 +405,7 @@
         :class:`.Query` before it fetched results, particularly when
         row processors can't be formed, the cursor would stay open with
         results pending and not actually be closed.  This is typically only
-        an issue on an interpreter like Pypy where the cursor isn't
+        an issue on an interpreter like PyPy where the cursor isn't
         immediately GC'ed, and can in some circumstances lead to transactions/
         locks being open longer than is desirable.
 
@@ -466,7 +466,7 @@
         :tags: bug, examples
         :versions: 1.0.0b1
 
-        Fixed a bug in the examples/generic_assocaitions/discriminator_on_association.py
+        Fixed a bug in the examples/generic_associations/discriminator_on_association.py
         example, where the subclasses of AddressAssociation were not being
         mapped as "single table inheritance", leading to problems when trying
         to use the mappings further.
@@ -768,7 +768,7 @@
 
         * A new parameter :paramref:`.JSON.none_as_null` is added, which
           when True indicates that the Python ``None`` value should be
-          peristed as SQL NULL, rather than JSON-encoded ``'null'``.
+          persisted as SQL NULL, rather than JSON-encoded ``'null'``.
 
         Retrival of NULL as None is also repaired for DBAPIs other than
         psycopg2, namely pg8000.
@@ -1118,7 +1118,7 @@
         :tags: bug, testsuite
         :versions: 1.0.0b1
 
-        In public test suite, shanged to use of ``String(40)`` from
+        In public test suite, changed to use of ``String(40)`` from
         less-supported ``Text`` in ``StringTest.test_literal_backslashes``.
         Pullreq courtesy Jan.
 
@@ -1166,7 +1166,7 @@
         in some cases a scalar attribute set to None, may not be detected
         as a net change in value, and therefore the UPDATE would not reset
         what was on the previous row.   This is due to some as-yet
-        unresovled side effects of the way attribute history works in terms
+        unresolved side effects of the way attribute history works in terms
         of implicitly assuming None isn't really a "change" for a previously
         un-set attribute.  See also :ticket:`3061`.
 
@@ -1352,7 +1352,7 @@
         Added new flag :paramref:`.expression.between.symmetric`, when set to True
         renders "BETWEEN SYMMETRIC".  Also added a new negation operator
         "notbetween_op", which now allows an expression like ``~col.between(x, y)``
-        to render as "col NOT BETWEEN x AND y", rather than a parentheiszed NOT
+        to render as "col NOT BETWEEN x AND y", rather than a parenthesized NOT
         string.
 
 .. changelog::
@@ -1370,7 +1370,7 @@
         (except when version_id is used) to support the unusual edge case of
         self-referential ON DELETE CASCADE; to accommodate this, the message
         is now just a warning, not an exception, and the flag can be used
-        to indicate a mapping that expects self-refererntial cascaded
+        to indicate a mapping that expects self-referential cascaded
         deletes of this nature.  See also :ticket:`2403` for background on the
         original change.
 
@@ -1569,7 +1569,7 @@
         cx_Oracle dialect, which restores the cx_Oracle outputtypehandler
         approach to Python unicode conversion under Python 2, which was
         removed in 0.9.2 as a result of :ticket:`2911`.  Some use cases would
-        prefer that unicode coersion is unconditional for all string values,
+        prefer that unicode coercion is unconditional for all string values,
         despite performance concerns.  Pull request courtesy
         Christoph Zwerschke.
 
@@ -2292,7 +2292,7 @@
         :tags: feature, pool, engine
 
         Added a new pool event :meth:`.PoolEvents.invalidate`.  Called when
-        a DBAPI connection is to be marked as "invaldated" and discarded
+        a DBAPI connection is to be marked as "invalidated" and discarded
         from the pool.
 
     .. change::
@@ -2648,7 +2648,7 @@
         The :func:`.create_engine` routine and the related
         :func:`.make_url` function no longer considers the ``+`` sign
         to be a space within the password field.  The parsing has been
-        adjuted to match RFC 1738 exactly, in that both ``username``
+        adjusted to match RFC 1738 exactly, in that both ``username``
         and ``password`` expect only ``:``, ``@``, and ``/`` to be
         encoded.
 
@@ -2788,7 +2788,7 @@
 
         The PostgreSQL and MySQL dialects now support reflection/inspection
         of foreign key options, including ON UPDATE, ON DELETE.  PostgreSQL
-        also reflects MATCH, DEFERRABLE, and INITIALLY.  Coutesy ijl.
+        also reflects MATCH, DEFERRABLE, and INITIALLY.  Courtesy ijl.
 
     .. change::
         :tags: bug, mysql
@@ -3030,7 +3030,7 @@
         to rely upon server generated version identifiers, using triggers
         or other database-provided versioning features, or via an optional programmatic
         value, by setting ``version_id_generator=False``.
-        When using a server-generated version identfier, the ORM will use RETURNING when
+        When using a server-generated version identifier, the ORM will use RETURNING when
         available to immediately
         load the new version value, else it will emit a second SELECT.
 

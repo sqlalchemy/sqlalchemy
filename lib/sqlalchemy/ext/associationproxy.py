@@ -85,7 +85,7 @@ ASSOCIATION_PROXY = util.symbol("ASSOCIATION_PROXY")
     of type :class:`.AssociationProxy`.
 
    Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attibute.
+   attribute.
 
 """
 

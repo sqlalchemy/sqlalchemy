@@ -596,7 +596,7 @@ def _collect_update_commands(
         propkey_to_col = mapper._propkey_to_col[table]
 
         if bulk:
-            # keys here are mapped attrbute keys, so
+            # keys here are mapped attribute keys, so
             # look at mapper attribute keys for pk
             params = dict(
                 (propkey_to_col[propkey].key, state_dict[propkey])
@@ -679,7 +679,7 @@ def _collect_update_commands(
 
         has_all_pks = True
         if bulk:
-            # keys here are mapped attrbute keys, so
+            # keys here are mapped attribute keys, so
             # look at mapper attribute keys for pk
             pk_params = dict(
                 (propkey_to_col[propkey]._label, state_dict.get(propkey))

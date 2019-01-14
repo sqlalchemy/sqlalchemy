@@ -518,7 +518,7 @@ is compatible with SQL2000 while running on a SQL2005 database
 server. ``server_version_info`` will always return the database
 server version information (in this case SQL2005) and not the
 compatibility level information. Because of this, if running under
-a backwards compatibility mode SQAlchemy may attempt to use T-SQL
+a backwards compatibility mode SQLAlchemy may attempt to use T-SQL
 statements that are unable to be parsed by the database server.
 
 Triggers

@@ -93,7 +93,7 @@
         :tickets: 3044
 
         Fixed bug in INSERT..FROM SELECT construct where selecting from a
-        UNION would wrap the union in an anonymous (e.g. unlabled) subquery.
+        UNION would wrap the union in an anonymous (e.g. unlabeled) subquery.
 
     .. change::
         :tags: bug, postgresql
@@ -249,7 +249,7 @@
         Fixed bug in :func:`.tuple_` construct where the "type" of essentially
         the first SQL expression would be applied as the "comparison type"
         to a compared tuple value; this has the effect in some cases of an
-        inappropriate "type coersion" occurring, such as when a tuple that
+        inappropriate "type coercion" occurring, such as when a tuple that
         has a mix of String and Binary values improperly coerces target
         values to Binary even though that's not what they are on the left
         side.  :func:`.tuple_` now expects heterogeneous types within its
@@ -827,7 +827,7 @@
         by the database (such as PostgreSQL ``oid`` or ``xmin``).  The
         column will be omitted from the ``CREATE TABLE`` statement but will
         otherwise be available for querying.   In addition, the
-        :class:`.CreateColumn` construct can be appled to a custom
+        :class:`.CreateColumn` construct can be applied to a custom
         compilation rule which allows skipping of columns, by producing
         a rule that returns ``None``.
 
@@ -848,7 +848,7 @@
 
         Fixed a potential issue in an ordered sequence implementation used
         by the ORM to iterate mapper hierarchies; under the Jython interpreter
-        this implementation wasn't ordered, even though cPython and Pypy
+        this implementation wasn't ordered, even though cPython and PyPy
         maintained ordering.
 
     .. change::
@@ -1933,7 +1933,7 @@
       custom collections using an ``__instrumentation__`` datastructure
       associated with the collection has been removed, as this was a complex
       and untested feature which was also essentially redundant versus the
-      decorator approach.   Other internal simplifcations to the
+      decorator approach.   Other internal simplifications to the
       orm.collections module have been made as well.
 
     .. change::
@@ -2665,7 +2665,7 @@
       UPDATE..FROM syntax as allowed by the dialect
       to satisfy the WHERE clause.  MySQL's multi-table
       update feature is also supported if columns
-      are specified by object in the "values" dicitionary.
+      are specified by object in the "values" dictionary.
       PG's DELETE..USING is also not available
       in Core yet.
 
@@ -3183,7 +3183,7 @@
         :tags: feature, sql
         :tickets:
 
-      The Core oeprator system now includes
+      The Core operator system now includes
       the `getitem` operator, i.e. the bracket
       operator in Python.  This is used at first
       to provide index and slice behavior to the

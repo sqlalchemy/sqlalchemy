@@ -524,7 +524,7 @@
       cleanup() were not explicitly closed, leaving garbage
       collection to the task instead.   This generally only
       affects non-reference-counting backends like Jython
-      and Pypy.  Thanks to Jaimy Azle for spotting
+      and PyPy.  Thanks to Jaimy Azle for spotting
       this.
 
     .. change::
@@ -1309,7 +1309,7 @@
       @classproperty 's official name/location for usage
       with declarative is sqlalchemy.ext.declarative.declared_attr.
       Same thing, but moving there since it is more of a
-      "marker" that's specific to declararative,
+      "marker" that's specific to declarative,
       not just an attribute technique.
 
     .. change::
@@ -1390,7 +1390,7 @@
         :tags: oracle
         :tickets: 1878
 
-      The implicit_retunring argument to create_engine()
+      The implicit_returning argument to create_engine()
       is now honored regardless of detected version of
       Oracle.  Previously, the flag would be forced
       to False if server version info was < 10.
@@ -1477,7 +1477,7 @@
       Added a mutex to the identity map which mutexes
       remove operations against iteration methods,
       which now pre-buffer before returning an
-      iterable.   This because asyncrhonous gc
+      iterable.   This because asynchronous gc
       can remove items via the gc thread at any time.
 
     .. change::
@@ -2479,7 +2479,7 @@
         :tags: sql
         :tickets: 1571
 
-      Fixed "table" argument on constructor of ForeginKeyConstraint
+      Fixed "table" argument on constructor of ForeignKeyConstraint
 
     .. change::
         :tags: sql
@@ -5368,7 +5368,7 @@
       session, using autocommit=False, autoflush=True. Default
       behavior of SQLSoup now requires the usual usage of commit()
       and rollback(), which have been added to its interface. An
-      explcit Session or scoped_session can be passed to the
+      explicit Session or scoped_session can be passed to the
       constructor, allowing these arguments to be overridden.
 
     .. change::

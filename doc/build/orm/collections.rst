@@ -353,7 +353,7 @@ Custom Collection Implementations
 =================================
 
 You can use your own types for collections as well.  In simple cases,
-inherting from ``list`` or ``set``, adding custom behavior, is all that's needed.
+inheriting from ``list`` or ``set``, adding custom behavior, is all that's needed.
 In other cases, special decorators are needed to tell SQLAlchemy more detail
 about how the collection operates.
 

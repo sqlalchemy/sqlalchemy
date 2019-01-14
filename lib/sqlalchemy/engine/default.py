@@ -1322,7 +1322,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         with the name.
 
         :param isolate_multiinsert_groups=True: indicates that multi-valued
-         INSERT contructs created using :meth:`.Insert.values` should be
+         INSERT constructs created using :meth:`.Insert.values` should be
          handled by returning only the subset of parameters that are local
          to the current column default invocation.   When ``False``, the
          raw parameters of the statement are returned including the

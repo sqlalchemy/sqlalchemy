@@ -1402,7 +1402,7 @@ def warn(msg):
 
 
 def warn_limited(msg, args):
-    """Issue a warning with a paramterized string, limiting the number
+    """Issue a warning with a parameterized string, limiting the number
     of registrations.
 
     """
@@ -1512,7 +1512,7 @@ def wrap_callable(wrapper, fn):
 
 
 def quoted_token_parser(value):
-    """Parse a dotted identifier with accomodation for quoted names.
+    """Parse a dotted identifier with accommodation for quoted names.
 
     Includes support for SQL-style double quotes as a literal character.
 

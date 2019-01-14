@@ -888,7 +888,7 @@ class Session(_SessionClassMethods):
             not necessary for new applications.    The :class:`.Session`
             normally handles the work of "begin" transparently, which in
             turn relies upon the Python DBAPI to transparently "begin"
-            transactions; there is **no need to explcitly begin transactions**
+            transactions; there is **no need to explicitly begin transactions**
             when using modern :class:`.Session` programming patterns.
             In its default mode of ``autocommit=False``, the
             :class:`.Session` does all of its work within
@@ -2322,7 +2322,7 @@ class Session(_SessionClassMethods):
         To make a transient object associated with a :class:`.Session`
         via :meth:`.Session.enable_relationship_loading` pending, add
         it to the :class:`.Session` using :meth:`.Session.add` normally.
-        If the object instead represents an existing idenity in the database,
+        If the object instead represents an existing identity in the database,
         it should be merged using :meth:`.Session.merge`.
 
         :meth:`.Session.enable_relationship_loading` does not improve

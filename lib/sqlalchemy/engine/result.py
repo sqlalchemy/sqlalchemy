@@ -362,7 +362,7 @@ class ResultMetaData(object):
 
         The remaining fairly common case is that of the textual SQL
         that includes at least partial column information; this is when
-        we use a :class:`.TextAsFrom` construct.   This contruct may have
+        we use a :class:`.TextAsFrom` construct.   This construct may have
         unordered or ordered column information.  In the ordered case, we
         merge the cursor.description and the compiled construct's information
         positionally, and warn if there are additional description names
@@ -901,7 +901,7 @@ class ResultProxy(object):
     def close(self):
         """Close this ResultProxy.
 
-        This closes out the underlying DBAPI cursor corresonding
+        This closes out the underlying DBAPI cursor corresponding
         to the statement execution, if one is still present.  Note that the
         DBAPI cursor is automatically released when the :class:`.ResultProxy`
         exhausts all available rows.  :meth:`.ResultProxy.close` is generally

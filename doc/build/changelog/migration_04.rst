@@ -672,16 +672,14 @@ Nested Session Transactions with SAVEPOINT
 
 Available at the Engine and ORM level.  ORM docs so far:
 
-http://www.sqlalchemy.org/docs/04/session.html#unitofwork_ma
-naging
+http://www.sqlalchemy.org/docs/04/session.html#unitofwork_managing
 
 Two-Phase Commit Sessions
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Available at the Engine and ORM level.  ORM docs so far:
 
-http://www.sqlalchemy.org/docs/04/session.html#unitofwork_ma
-naging
+http://www.sqlalchemy.org/docs/04/session.html#unitofwork_managing
 
 Inheritance
 -----------
@@ -737,8 +735,8 @@ New Operator System
 
 SQL operators and more or less every SQL keyword there is
 are now abstracted into the compiler layer.  They now act
-intelligently and are type/backend aware, see: http://www.sq
-lalchemy.org/docs/04/sqlexpression.html#sql_operators
+intelligently and are type/backend aware, see:
+http://www.sqlalchemy.org/docs/04/sqlexpression.html#sql_operators
 
 All ``type`` Keyword Arguments Renamed to ``type_``
 ---------------------------------------------------

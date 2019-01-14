@@ -300,7 +300,7 @@ class ReturningTest(fixtures.TablesTest):
         fetched_pk = config.db.scalar(select([table.c.id]))
         eq_(fetched_pk, pk)
 
-    def test_autoincrement_on_insert_implcit_returning(self):
+    def test_autoincrement_on_insert_implicit_returning(self):
 
         config.db.execute(self.tables.autoinc_pk.insert(), data="some data")
         self._assert_round_trip(self.tables.autoinc_pk, config.db)

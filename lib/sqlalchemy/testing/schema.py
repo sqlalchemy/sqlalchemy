@@ -34,7 +34,7 @@ def Table(*args, **kw):
                 kw["mysql_engine"] = "MyISAM"
 
     # Apply some default cascading rules for self-referential foreign keys.
-    # MySQL InnoDB has some issues around seleting self-refs too.
+    # MySQL InnoDB has some issues around selecting self-refs too.
     if exclusions.against(config._current, "firebird"):
         table_name = args[0]
         unpack = config.db.dialect.identifier_preparer.unformat_identifiers

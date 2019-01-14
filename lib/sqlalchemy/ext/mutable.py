@@ -685,7 +685,7 @@ class MutableDict(Mutable, dict):
     solution for the use case of tracking deep changes to a *recursive*
     dictionary structure, such as a JSON structure.  To support this use case,
     build a subclass of  :class:`.MutableDict` that provides appropriate
-    coersion to the values placed in the dictionary so that they too are
+    coercion to the values placed in the dictionary so that they too are
     "mutable", and emit events up to their parent structure.
 
     .. seealso::
@@ -758,7 +758,7 @@ class MutableList(Mutable, list):
     solution for the use case of tracking deep changes to a *recursive*
     mutable structure, such as a JSON structure.  To support this use case,
     build a subclass of  :class:`.MutableList` that provides appropriate
-    coersion to the values placed in the dictionary so that they too are
+    coercion to the values placed in the dictionary so that they too are
     "mutable", and emit events up to their parent structure.
 
     .. versionadded:: 1.1
@@ -857,7 +857,7 @@ class MutableSet(Mutable, set):
     solution for the use case of tracking deep changes to a *recursive*
     mutable structure.  To support this use case,
     build a subclass of  :class:`.MutableSet` that provides appropriate
-    coersion to the values placed in the dictionary so that they too are
+    coercion to the values placed in the dictionary so that they too are
     "mutable", and emit events up to their parent structure.
 
     .. versionadded:: 1.1

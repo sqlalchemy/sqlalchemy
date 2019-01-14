@@ -327,7 +327,7 @@ The :func:`.orm.with_polymorphic` function evolved from a query-level
 method :meth:`.Query.with_polymorphic`.  This method has the same purpose
 as :func:`.orm.with_polymorphic`, except is not as
 flexible in its usage patterns in that it only applies to the first entity
-of the :class:`.Query`.   It then takes effect for all occurences of
+of the :class:`.Query`.   It then takes effect for all occurrences of
 that entity, so that the entity (and its subclasses) can be referred to
 directly, rather than using an alias object.  For simple cases it might be
 considered to be more succinct::
@@ -493,7 +493,7 @@ With careful planning, selectin loading can be applied against a hierarchy
 that itself uses "with_polymorphic".  A particular use case is that of
 using selectin loading to load a joined-inheritance subtable, which then
 uses "with_polymorphic" to refer to further sub-classes, which may be
-joined- or single-table inheritanace.  If we added a class ``VicePresident`` that
+joined- or single-table inheritance.  If we added a class ``VicePresident`` that
 extends ``Manager`` using single-table inheritance, we could ensure that
 a load of ``Manager`` also fully loads ``VicePresident`` subtypes at the same time::
 
