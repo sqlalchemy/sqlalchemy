@@ -195,7 +195,7 @@ NOT_EXTENSION = util.symbol(
     not part of sqlalchemy.ext.
 
     Is assigned to the :attr:`.InspectionAttr.extension_type`
-    attibute.
+    attribute.
 
     """,
 )

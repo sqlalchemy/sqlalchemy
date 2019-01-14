@@ -891,7 +891,7 @@ class ExpireTest(_fixtures.FixtureTest):
 
         # scalar attributes have their own load
         self.assert_sql_count(testing.db, go, 1)
-        # ideally, this was already loaded, but we arent
+        # ideally, this was already loaded, but we aren't
         # doing it that way right now
         # self.assert_sql_count(testing.db, go, 0)
 

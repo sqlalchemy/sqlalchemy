@@ -207,7 +207,7 @@ class DefaultTest(fixtures.TestBase):
             )
             f = sa.select([func.length("abcdef")], bind=db).scalar()
             f2 = sa.select([func.length("abcdefghijk")], bind=db).scalar()
-            # TODO: engine propigation across nested functions not working
+            # TODO: engine propagation across nested functions not working
             currenttime = func.trunc(
                 currenttime, sa.literal_column("'DAY'"), bind=db, type_=sa.Date
             )

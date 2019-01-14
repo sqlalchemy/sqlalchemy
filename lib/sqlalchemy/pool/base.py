@@ -470,7 +470,7 @@ class _ConnectionRecord(object):
         Unlike the :attr:`._ConnectionRecord.info` dictionary, which is linked
         to the lifespan of the DBAPI connection, this dictionary is linked
         to the lifespan of the :class:`._ConnectionRecord` container itself
-        and will remain persisent throughout the life of the
+        and will remain persistent throughout the life of the
         :class:`._ConnectionRecord`.
 
         .. versionadded:: 1.1

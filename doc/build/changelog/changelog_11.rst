@@ -350,7 +350,7 @@
         duplicate object identities to occur, particularly under joined eager
         loading which involves deduplication of objects.  The issue is specific
         to garbage collection of weak references and is observed only under the
-        Pypy interpreter.
+        PyPy interpreter.
 
     .. change::
         :tags: bug, orm
@@ -392,7 +392,7 @@
     :released: July 24, 2017
 
     .. change:: cache_order_sequence
-        :tags: feature, oracle, posgresql
+        :tags: feature, oracle, postgresql
         :versions: 1.2.0b1
 
         Added new keywords :paramref:`.Sequence.cache` and
@@ -1581,7 +1581,7 @@
         :tickets: 3744
 
         Fixed bug in new CTE feature for update/insert/delete whereby
-        an anoymous (e.g. no name passed) :class:`.CTE` construct around
+        an anonymous (e.g. no name passed) :class:`.CTE` construct around
         the statement would fail.
 
     .. change::
@@ -1823,7 +1823,7 @@
 
     .. change::
         :tags: feature, postgresql
-3
+
         Added new parameter
         :paramref:`.GenerativeSelect.with_for_update.key_share`, which
         will render the ``FOR NO KEY UPDATE`` version of ``FOR UPDATE``

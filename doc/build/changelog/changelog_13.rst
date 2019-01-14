@@ -428,7 +428,7 @@
         :tickets: 4196
 
         Added support for bulk :meth:`.Query.update` and :meth:`.Query.delete`
-        to the :class:`.ShardedQuery` class within the horiziontal sharding
+        to the :class:`.ShardedQuery` class within the horizontal sharding
         extension.  This also adds an additional expansion hook to the
         bulk update/delete methods :meth:`.Query._execute_crud`.
 

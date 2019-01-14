@@ -312,7 +312,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     @util.memoized_property
     def mapper(self):
-        """Return the :class:`.Mapper` used for this mapepd object."""
+        """Return the :class:`.Mapper` used for this mapped object."""
         return self.manager.mapper
 
     @property

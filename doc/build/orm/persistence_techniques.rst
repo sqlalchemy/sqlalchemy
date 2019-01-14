@@ -481,7 +481,7 @@ flushes objects of type ``User`` and ``Account``.
 
 In the more common case, there are typically base or mixin classes that  can be
 used to distinguish between operations that are destined for different database
-connections.  The :paramref:`.Session.binds` argument can accomodate any
+connections.  The :paramref:`.Session.binds` argument can accommodate any
 arbitrary Python class as a key, which will be used if it is found to be in the
 ``__mro__`` (Python method resolution order) for a particular  mapped class.
 Supposing two declarative bases are representing two different database
@@ -657,7 +657,7 @@ to this approach is strictly one of reduced Python overhead:
   perform vastly better than individual statement invocations.
 
 * UPDATE statements can similarly be tailored such that all attributes
-  are subject to the SET clase unconditionally, again making it much more
+  are subject to the SET clause unconditionally, again making it much more
   likely that ``executemany()`` blocks can be used.
 
 The performance behavior of the bulk routines should be studied using the

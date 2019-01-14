@@ -271,7 +271,7 @@ There are several possibilities here:
   suppose it's called ``Child.parents``, SQLAlchemy by default will load in
   the ``Child.parents`` collection to locate all ``Parent`` objects, and remove
   each row from the "secondary" table which establishes this link.  Note that
-  this relationship does not need to be bidrectional; SQLAlchemy is strictly
+  this relationship does not need to be bidirectional; SQLAlchemy is strictly
   looking at every :func:`.relationship` associated with the ``Child`` object
   being deleted.
 * A higher performing option here is to use ON DELETE CASCADE directives

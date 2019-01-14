@@ -477,7 +477,7 @@ of object that one would retrieve from the :attr:`.Mapper.all_orm_descriptors`
 collection.  This includes :class:`.hybrid_property` and :func:`.association_proxy`.
 However, as these objects are class-bound descriptors, they must be accessed
 **separately** from the class to which they are attached in order to get
-at the attribute.  Below this is illustared using the
+at the attribute.  Below this is illustrated using the
 :attr:`.Mapper.all_orm_descriptors` namespace::
 
     class SomeObject(Base):
@@ -1358,7 +1358,7 @@ Changes and fixes in handling of duplicate join targets
 
 Changes here encompass bugs where an unexpected and inconsistent
 behavior would occur in some scenarios when joining to an entity
-twice, or to multple single-table entities against the same table,
+twice, or to multiple single-table entities against the same table,
 without using a relationship-based ON clause, as well as when joining
 multiple times to the same target relationship.
 
@@ -1978,8 +1978,8 @@ be qualified with :func:`.text` or similar.
 
 .. _bug_3288:
 
-Python-side defaults invoked for each row invidually when using a multivalued insert
-------------------------------------------------------------------------------------
+Python-side defaults invoked for each row individually when using a multivalued insert
+--------------------------------------------------------------------------------------
 
 Support for Python-side column defaults when using the multi-valued
 version of :meth:`.Insert.values` were essentially not implemented, and
@@ -2089,7 +2089,7 @@ rows (e.g. only the first row of many).
 A similar change is also applied to an INSERT..VALUES
 with multiple parameter sets; implicit RETURNING will no longer emit
 for this statement either.  As both of these constructs deal
-with varible numbers of rows, the
+with variable numbers of rows, the
 :attr:`.ResultProxy.inserted_primary_key` accessor does not
 apply.   Previously, there was a documentation note that one
 may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
@@ -2411,7 +2411,7 @@ Support for PG8000 versions greater than 1.10.1 has been added, where
 JSONB is supported natively.
 
 
-Support for psycopg2cffi Dialect on Pypy
+Support for psycopg2cffi Dialect on PyPy
 ----------------------------------------
 
 Support for the pypy psycopg2cffi dialect is added.

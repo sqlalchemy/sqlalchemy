@@ -390,7 +390,7 @@
         would also occur for a row that is to be deleted following the update,
         meaning both that a column with a Python-side value generator would show
         the now-deleted value that was emitted for the UPDATE before the DELETE
-        (which was not the previous behavor), as well as that a SQL- emitted value
+        (which was not the previous behavior), as well as that a SQL- emitted value
         generator would have the attribute expired, meaning the previous value
         would be unreachable due to the row having been deleted and the object
         detached from the session.The "postfetch" logic that was added as part of
@@ -421,13 +421,13 @@
 
         Fixed issue that is closely related to :ticket:`3639` where an expression
         rendered in a boolean context on a non-native boolean backend would
-        be compared to 1/0 even though it is already an implcitly boolean
+        be compared to 1/0 even though it is already an implicitly boolean
         expression, when :meth:`.ColumnElement.self_group` were used.  While this
         does not affect the user-friendly backends (MySQL, SQLite) it was not
         handled by Oracle (and possibly SQL Server).   Whether or not the
         expression is implicitly boolean on any database is now determined
         up front as an additional check to not generate the integer comparison
-        within the compliation of the statement.
+        within the compilation of the statement.
 
     .. change::
         :tags: bug, oracle
@@ -555,7 +555,7 @@
         :tickets: 4293
 
         Fixed bug in index reflection where on MySQL 8.0 an index that includes
-        ASC or DESC in an indexed column specfication would not be correctly
+        ASC or DESC in an indexed column specification would not be correctly
         reflected, as MySQL 8.0 introduces support for returning this information
         in a table definition string.
 
@@ -830,7 +830,7 @@
         :class:`.MapperOption` will now cause lazy loaders related to
         the target object to use a non-baked query by default unless
         the :meth:`.MapperOption._generate_cache_key` method is implemented.
-        In particular, this repairs one regression which occured when
+        In particular, this repairs one regression which occurred when
         using the dogpile.cache "advanced" example, which was not
         returning cached results and instead emitting SQL due to an
         incompatibility with the baked query loader; with the change,
@@ -977,7 +977,7 @@
 
         Fixed a regression that occurred from the previous fix to :ticket:`4204` in
         version 1.2.5, where a CTE that refers to itself after the
-        :meth:`.CTE.alias` method has been called would not refer to iself
+        :meth:`.CTE.alias` method has been called would not refer to itself
         correctly.
 
     .. change::
@@ -1007,7 +1007,7 @@
         Removed a warning that would be emitted when calling upon
         ``__table_args__``, ``__mapper_args__`` as named with a ``@declared_attr``
         method, when called from a non-mapped declarative mixin.  Calling these
-        directly is documented as the approach to use when one is overidding one
+        directly is documented as the approach to use when one is overriding one
         of these methods on a mapped class.  The warning still emits for regular
         attribute names.
 
@@ -1141,7 +1141,7 @@
 
         Fixed bug where the :class:`.Bundle` object did not
         correctly report upon the primary :class:`.Mapper` object
-        represened by the bundle, if any.   An immediate
+        represented by the bundle, if any.   An immediate
         side effect of this issue was that the new selectinload
         loader strategy wouldn't work with the horizontal sharding
         extension.
@@ -1747,7 +1747,7 @@
         Fixed issue where the :func:`.make_transient_to_detached` function
         would expire all attributes on the target object, including "deferred"
         attributes, which has the effect of the attribute being undeferred
-        for the next refesh, causing an unexpected load of the attribute.
+        for the next refresh, causing an unexpected load of the attribute.
 
     .. change::
         :tags: bug, orm
@@ -1792,7 +1792,7 @@
     	by the mapper as well as loader strategies reach their threshold; the
     	purpose of this warning was at first a guard against excess cache keys
     	being generated but became basically a check on the "creating many
-    	engines" antipattern.   While this is still an antipattern, the presense
+    	engines" antipattern.   While this is still an antipattern, the presence
     	of test suites which both create an engine per test as well as raise
     	on all warnings will be an inconvenience; it should not be critical
     	that such test suites change their architecture just for this warning
@@ -1911,7 +1911,7 @@
         when "RETURNING", which on SQL Server looks like "OUTPUT inserted", is in
         use, as the PyODBC backend isn't able to give us rowcount on an UPDATE or
         DELETE statement when OUTPUT is in effect.  This primarily affects the ORM
-        when a flush is updating a row that contains server-calcluated values,
+        when a flush is updating a row that contains server-calculated values,
         raising an error if the backend does not return the expected row count.
         PyODBC now states that it supports rowcount except if OUTPUT.inserted is
         present, which is taken into account by the ORM during a flush as to
@@ -2050,7 +2050,7 @@
         passed to SQL statements.  A "float" value will be associated with the
         :class:`.Float` datatype and not the Decimal-coercing :class:`.Numeric`
         datatype as was the case before, eliminating a confusing warning
-        emitted on SQLite as well as unecessary coercion to Decimal.
+        emitted on SQLite as well as unnecessary coercion to Decimal.
 
         .. seealso::
 
@@ -2216,7 +2216,7 @@
         each other will produce parentheses between them.   This suits the
         stated operator precedence of databases like Oracle, MySQL and others
         which place all of these operators as equal precedence, as well as
-        PostgreSQL as of 9.5 which has also flattened its operator precendence.
+        PostgreSQL as of 9.5 which has also flattened its operator precedence.
 
         .. seealso::
 

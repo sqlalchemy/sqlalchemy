@@ -116,7 +116,7 @@ def find_left_clause_to_join_from(clauses, join_to, onclause):
     and optional ON clause, return a list of integer indexes from the
     clauses list indicating the clauses that can be joined from.
 
-    The presense of an "onclause" indicates that at least one clause can
+    The presence of an "onclause" indicates that at least one clause can
     definitely be joined from; if the list of clauses is of length one
     and the onclause is given, returns that index.   If the list of clauses
     is more than length one, and the onclause is given, attempts to locate

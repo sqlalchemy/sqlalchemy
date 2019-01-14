@@ -1472,7 +1472,7 @@ def undefer_group(loadopt, name):
             defaultload("someattr").undefer_group("large_attrs"))
 
     .. versionchanged:: 0.9.0 :func:`.orm.undefer_group` is now specific to a
-       particiular entity load path.
+       particular entity load path.
 
     .. seealso::
 

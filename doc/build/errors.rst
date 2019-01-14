@@ -423,7 +423,7 @@ approach is to provide a value::
  result = conn.execute(stmt, my_param=12)
 
 When the message takes the form "a value is required for bind parameter <x>
-in parameter group <y>", the message is referring to the "executemany" stye
+in parameter group <y>", the message is referring to the "executemany" style
 of execution.  In this case, the statement is typically an INSERT, UPDATE,
 or DELETE and a list of parameters is being passed.   In this format, the
 statement may be generated dynamically to include parameter positions for

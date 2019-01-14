@@ -624,7 +624,7 @@ now, the only way operators could be flexibly redefined was
 in the ORM layer, using :func:`.column_property` given a
 ``comparator_factory`` argument.   Third party libraries
 like GeoAlchemy therefore were forced to be ORM-centric and
-rely upon an array of hacks to apply new opertions as well
+rely upon an array of hacks to apply new operations as well
 as to get them to propagate correctly.
 
 The new operator system in Core adds the one hook that's
@@ -1233,7 +1233,7 @@ create_all() and drop_all() will now honor an empty list as such
 The methods :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all`
 will now accept a list of :class:`.Table` objects that is empty,
 and will not emit any CREATE or DROP statements.  Previously,
-an empty list was interepreted the same as passing ``None``
+an empty list was interpreted the same as passing ``None``
 for a collection, and CREATE/DROP would be emitted for all
 items unconditionally.
 

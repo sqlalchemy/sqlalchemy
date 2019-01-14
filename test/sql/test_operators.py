@@ -2658,7 +2658,7 @@ class TupleTypingTest(fixtures.TestBase):
         eq_(expr.clauses[1].type._type_affinity, String)
         eq_(expr.clauses[2].type._type_affinity, LargeBinary()._type_affinity)
 
-    def test_type_coersion_on_eq(self):
+    def test_type_coercion_on_eq(self):
         a, b, c = (
             column("a", Integer),
             column("b", String),
@@ -2668,7 +2668,7 @@ class TupleTypingTest(fixtures.TestBase):
         expr = t1 == (3, "hi", "there")
         self._assert_types(expr.right)
 
-    def test_type_coersion_on_in(self):
+    def test_type_coercion_on_in(self):
         a, b, c = (
             column("a", Integer),
             column("b", String),

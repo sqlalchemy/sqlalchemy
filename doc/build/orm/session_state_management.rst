@@ -552,7 +552,7 @@ or loaded with :meth:`~.Session.refresh` varies based on several factors, includ
 * :func:`.relationship` attributes configured as "eager loading" via the
   :paramref:`~.relationship.lazy` parameter will load in the case of
   :meth:`~.Session.refresh`, if either no attribute names are specified, or
-  if their names are inclued in the list of attributes to be
+  if their names are included in the list of attributes to be
   refreshed.
 
 * Attributes that are configured as :func:`.deferred` will not normally load,

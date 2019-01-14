@@ -528,7 +528,7 @@ class AbstractConcreteBase(ConcreteBase):
     at class configuration time, it behaves like a declarative mixin
     or an ``__abstract__`` base class.   Once classes are configured
     and mappings are produced, it then gets mapped itself, but
-    after all of its decscendants.  This is a very unique system of mapping
+    after all of its descendants.  This is a very unique system of mapping
     not found in any other SQLAlchemy system.
 
     Using this approach, we can specify columns and properties

@@ -586,7 +586,7 @@
 
       Fixed compiler bug whereby using a correlated
       subquery within an ORDER BY would fail to render correctly
-      if the stament also used LIMIT/OFFSET, due to mis-rendering
+      if the statement also used LIMIT/OFFSET, due to mis-rendering
       within the ROW_NUMBER() OVER clause.  Fix courtesy
       sayap
 
@@ -3790,7 +3790,7 @@
         :tags: general
         :tickets:
 
-      Lots of fixes to unit tests when run under Pypy
+      Lots of fixes to unit tests when run under PyPy
       (courtesy Alex Gaynor).
 
     .. change::

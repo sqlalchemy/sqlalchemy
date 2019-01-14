@@ -329,8 +329,8 @@ Index compression
 ~~~~~~~~~~~~~~~~~
 
 Oracle has a more efficient storage mode for indexes containing lots of
-repeated values. Use the ``oracle_compress`` parameter to turn on key c
-ompression::
+repeated values. Use the ``oracle_compress`` parameter to turn on key
+compression::
 
     Index('my_index', my_table.c.data, oracle_compress=True)
 

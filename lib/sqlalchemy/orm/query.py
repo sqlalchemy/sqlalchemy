@@ -819,7 +819,7 @@ class Query(object):
         The :meth:`.Query.yield_per` method **is not compatible
         subqueryload eager loading or joinedload eager loading when
         using collections**.  It is potentially compatible with "select in"
-        eager loading, **provided the databse driver supports multiple,
+        eager loading, **provided the database driver supports multiple,
         independent cursors** (pysqlite and psycopg2 are known to work,
         MySQL and SQL Server ODBC drivers do not).
 
@@ -959,7 +959,7 @@ class Query(object):
         :param identity_token: identity token that should be used to create
          the identity key.  Used as is, however overriding subclasses can
          repurpose this in order to interpret the value in a special way,
-         such as if None then look among multple target tokens.
+         such as if None then look among multiple target tokens.
         :param passive: passive load flag passed to
          :func:`.loading.get_from_identity`, which impacts the behavior if
          the object is found; the object may be validated and/or unexpired
@@ -2842,7 +2842,7 @@ class Query(object):
         approach to the use case of applying an :func:`.aliased` construct
         explicitly throughout a query.  Instead of referring to the
         :func:`.aliased` construct explicitly,
-        :meth:`.Query.select_entity_from` automatically *adapts* all occurences
+        :meth:`.Query.select_entity_from` automatically *adapts* all occurrences
         of the entity to the target selectable.
 
         Given a case for :func:`.aliased` such as selecting ``User``

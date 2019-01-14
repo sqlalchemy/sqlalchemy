@@ -192,7 +192,7 @@ Going Forward
 ==============
 
 The third-party dialect can be distributed like any other Python
-module on Pypi. Links to prominent dialects can be featured within
+module on PyPI. Links to prominent dialects can be featured within
 SQLAlchemy's own documentation; contact the developers (see AUTHORS)
 for help with this.
 

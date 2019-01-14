@@ -223,7 +223,7 @@
         :tags:
         :tickets:
 
-      modifcation to unitofwork to not maintain ordering within the
+      modification to unitofwork to not maintain ordering within the
       "new" list or within the UOWTask "objects" list; instead, new objects
       are tagged with an ordering identifier as they are registered as new
       with the session, and the INSERT statements are then sorted within the
@@ -949,7 +949,7 @@
         :tags:
         :tickets:
 
-      fixes to session cascade behavior, entity_name propigation
+      fixes to session cascade behavior, entity_name propagation
 
     .. change::
         :tags:
@@ -1098,7 +1098,7 @@
 
       overhaul to Schema to build upon MetaData object instead of an Engine.
       Entire SQL/Schema system can be used with no Engines whatsoever, executed
-      solely by an explicit Connection object.  the "bound" methodlogy exists via the
+      solely by an explicit Connection object.  the "bound" methodology exists via the
       BoundMetaData for schema objects.  ProxyEngine is generally not needed
       anymore and is replaced by DynamicMetaData.
 
@@ -1143,7 +1143,7 @@
         :tickets:
 
       backrefs create themselves against primary mapper of its originating
-      property, priamry/secondary join arguments can be specified to override.
+      property, primary/secondary join arguments can be specified to override.
       helps their usage with polymorphic mappers
 
     .. change::

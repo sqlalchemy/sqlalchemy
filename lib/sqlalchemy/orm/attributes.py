@@ -1643,7 +1643,7 @@ class History(History):
             # key situations
             if id(original) in _NO_STATE_SYMBOLS:
                 deleted = ()
-                # indicate a "del" operation occured when we don't have
+                # indicate a "del" operation occurred when we don't have
                 # the previous value as: ([None], (), ())
                 if id(current) in _NO_STATE_SYMBOLS:
                     current = None
@@ -1673,7 +1673,7 @@ class History(History):
             # ignore the None in any case.
             if id(original) in _NO_STATE_SYMBOLS or original is None:
                 deleted = ()
-                # indicate a "del" operation occured when we don't have
+                # indicate a "del" operation occurred when we don't have
                 # the previous value as: ([None], (), ())
                 if id(current) in _NO_STATE_SYMBOLS:
                     current = None

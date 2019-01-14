@@ -588,7 +588,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
          be much longer due to decimal inaccuracy, and most floating point
          database types don't have a notion of "scale", so by default the
          float type looks for the first ten decimal places when converting.
-         Specfiying this value will override that length.  Types which
+         Specifying this value will override that length.  Types which
          do include an explicit ".scale" value, such as the base
          :class:`.Numeric` as well as the MySQL float types, will use the
          value of ".scale" as the default for decimal_return_scale, if not
@@ -597,7 +597,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
          .. versionadded:: 0.9.0
 
         When using the ``Numeric`` type, care should be taken to ensure
-        that the asdecimal setting is apppropriate for the DBAPI in use -
+        that the asdecimal setting is appropriate for the DBAPI in use -
         when Numeric applies a conversion from Decimal->float or float->
         Decimal, this conversion incurs an additional performance overhead
         for all result columns received.
@@ -739,7 +739,7 @@ class Float(Numeric):
          be much longer due to decimal inaccuracy, and most floating point
          database types don't have a notion of "scale", so by default the
          float type looks for the first ten decimal places when converting.
-         Specfiying this value will override that length.  Note that the
+         Specifying this value will override that length.  Note that the
          MySQL float types, which do include "scale", will use "scale"
          as the default for decimal_return_scale, if not otherwise specified.
 
@@ -1962,9 +1962,9 @@ class JSON(Indexable, TypeEngine):
     Index operations return an expression object whose type defaults to
     :class:`.JSON` by default, so that further JSON-oriented instructions may
     be called upon the result type.   Note that there are backend-specific
-    idiosyncracies here, including that the PostgreSQL database does not
+    idiosyncrasies here, including that the PostgreSQL database does not
     generally compare a "json" to a "json" structure without type casts.  These
-    idiosyncracies can be accommodated in a backend-neutral way by making
+    idiosyncrasies can be accommodated in a backend-neutral way by making
     explicit use of the :func:`.cast` and :func:`.type_coerce` constructs.
     Comparison of specific index elements of a :class:`.JSON` object to other
     objects works best if the **left hand side is CAST to a string** and the

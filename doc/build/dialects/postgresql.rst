@@ -121,7 +121,7 @@ mixin:
 
 .. warning::
 
-  The range type DDL support should work with any Postgres DBAPI
+  The range type DDL support should work with any PostgreSQL DBAPI
   driver, however the data types returned may vary. If you are using
   ``psycopg2``, it's recommended to upgrade to version 2.5 or later
   before using these column types.

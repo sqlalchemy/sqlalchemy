@@ -120,7 +120,7 @@ VARCHAR2, CHAR, and CLOB, the flag ``coerce_to_unicode=False`` can be passed to
 
 .. versionchanged:: 1.3 Unicode conversion is applied to all string values
    by default under python 2.  The ``coerce_to_unicode`` now defaults to True
-   and can be set to False to disable the Unicode coersion of strings that are
+   and can be set to False to disable the Unicode coercion of strings that are
    delivered as VARCHAR2/CHAR/CLOB data.
 
 
@@ -142,11 +142,11 @@ altering the type coercion behavior at the same time.
 Users of the cx_Oracle dialect are **strongly encouraged** to read through
 cx_Oracle's list of built-in datatype symbols at
 http://cx-oracle.readthedocs.io/en/latest/module.html#types.
-Note that in some cases, signficant performance degradation can occur when
+Note that in some cases, significant performance degradation can occur when
 using these types vs. not, in particular when specifying ``cx_Oracle.CLOB``.
 
 On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event can
-be used both for runtime visibliity (e.g. logging) of the setinputsizes step as
+be used both for runtime visibility (e.g. logging) of the setinputsizes step as
 well as to fully control how ``setinputsizes()`` is used on a per-statement
 basis.
 

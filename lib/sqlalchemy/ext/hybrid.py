@@ -779,7 +779,7 @@ HYBRID_METHOD = util.symbol("HYBRID_METHOD")
    of type :class:`.hybrid_method`.
 
    Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attibute.
+   attribute.
 
    .. seealso::
 
@@ -792,7 +792,7 @@ HYBRID_PROPERTY = util.symbol("HYBRID_PROPERTY")
     of type :class:`.hybrid_method`.
 
    Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attibute.
+   attribute.
 
    .. seealso::
 

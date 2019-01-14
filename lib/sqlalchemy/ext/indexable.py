@@ -210,7 +210,7 @@ version of :class:`.postgresql.JSON`::
 
 The ``age`` attribute at the instance level works as before; however
 when rendering SQL, PostgreSQL's ``->>`` operator will be used
-for indexed access, instead of the usual index opearator of ``->``::
+for indexed access, instead of the usual index operator of ``->``::
 
     >>> query = session.query(Person).filter(Person.age < 20)
 

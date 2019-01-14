@@ -156,7 +156,7 @@ different format than what was specified in SQLAlchemy.   The :class:`.Table`
 objects returned from reflection cannot be always relied upon to produce the identical
 DDL as the original Python-defined :class:`.Table` objects.   Areas where
 this occurs includes server defaults, column-associated sequences and various
-idosyncrasies regarding constraints and datatypes.   Server side defaults may
+idiosyncrasies regarding constraints and datatypes.   Server side defaults may
 be returned with cast directives (typically PostgreSQL will include a ``::<type>``
 cast) or different quoting patterns than originally specified.
 

@@ -349,7 +349,7 @@ is as follows:
 
 5. The override logic for many-to-many works the same as that of one-to-many/
    many-to-one; the :func:`.generate_relationship` function is called upon
-   to generate the strucures and existing attributes will be maintained.
+   to generate the structures and existing attributes will be maintained.
 
 Relationships with Inheritance
 ------------------------------
@@ -673,7 +673,7 @@ class AutomapBase(object):
     function.  In practice, the :class:`.AutomapBase` class is always used
     as a mixin along with an actual declarative base.
 
-    A new subclassable :class:`.AutomapBase` is typically instantated
+    A new subclassable :class:`.AutomapBase` is typically instantiated
     using the :func:`.automap_base` function.
 
     .. seealso::

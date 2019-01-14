@@ -13,7 +13,7 @@ Performance
 How can I profile a SQLAlchemy powered application?
 ---------------------------------------------------
 
-Looking for performance issues typically involves two stratgies.  One
+Looking for performance issues typically involves two strategies.  One
 is query profiling, and the other is code profiling.
 
 Query Profiling
@@ -258,7 +258,7 @@ Common strategies to mitigate this include:
 * Use result caching - see :ref:`examples_caching` for an in-depth example
   of this.
 
-* Consider a faster interpreter like that of Pypy.
+* Consider a faster interpreter like that of PyPy.
 
 The output of a profile can be a little daunting but after some
 practice they are very easy to read.
@@ -320,7 +320,7 @@ With cPython 2.7, runtimes observed::
     SQLAlchemy Core: Total time for 100000 records 0.21024107933 secs
     sqlite3: Total time for 100000 records 0.137335062027 sec
 
-We can reduce the time by a factor of nearly three using recent versions of `Pypy <http://pypy.org/>`_::
+We can reduce the time by a factor of nearly three using recent versions of `PyPy <http://pypy.org/>`_::
 
     SQLAlchemy ORM: Total time for 100000 records 2.39429616928 secs
     SQLAlchemy ORM pk given: Total time for 100000 records 1.51412987709 secs

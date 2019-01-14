@@ -185,7 +185,7 @@ class TypeEngine(Visitable):
 
         .. note::
 
-            The "evaulates none" flag does **not** apply to a value
+            The "evaluates none" flag does **not** apply to a value
             of ``None`` passed to :paramref:`.Column.default` or
             :paramref:`.Column.server_default`; in these cases, ``None``
             still means "no default".
@@ -218,7 +218,7 @@ class TypeEngine(Visitable):
         where it can be consumed by schema comparison tools such as
         Alembic autogenerate.
 
-        A future release of SQLAlchemy will potentially impement this method
+        A future release of SQLAlchemy will potentially implement this method
         for builtin types as well.
 
         The function should return True if this type is equivalent to the

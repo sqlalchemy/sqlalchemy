@@ -889,7 +889,7 @@ class Mapper(InspectionAttr):
 
     non_primary = None
     """Represent ``True`` if this :class:`.Mapper` is a "non-primary"
-    mapper, e.g. a mapper that is used only to selet rows but not for
+    mapper, e.g. a mapper that is used only to select rows but not for
     persistence management.
 
     This is a *read only* attribute determined during mapper construction.
@@ -991,7 +991,7 @@ class Mapper(InspectionAttr):
         return PathRegistry.per_mapper(self)
 
     def _configure_inheritance(self):
-        """Configure settings related to inherting and/or inherited mappers
+        """Configure settings related to inheriting and/or inherited mappers
         being present."""
 
         # a set of all mappers which inherit from this one.
@@ -2339,7 +2339,7 @@ class Mapper(InspectionAttr):
 
         :class:`.Mapper` has several pre-filtered views
         of this attribute which limit the types of properties
-        returned, inclding :attr:`.synonyms`, :attr:`.column_attrs`,
+        returned, including :attr:`.synonyms`, :attr:`.column_attrs`,
         :attr:`.relationships`, and :attr:`.composites`.
 
         .. warning::
@@ -3166,7 +3166,7 @@ def configure_mappers():
       additional options, properties, or related mappings before the operation
       proceeds.
 
-    * :meth:`.MapperEvents.mapper_configured` - called as each indivudal
+    * :meth:`.MapperEvents.mapper_configured` - called as each individual
       :class:`.Mapper` is configured within the process; will include all
       mapper state except for backrefs set up by other mappers that are still
       to be configured.
