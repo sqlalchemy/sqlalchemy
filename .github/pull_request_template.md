@@ -1,11 +1,31 @@
-*** **S T O P ! ! !** ***
+*** **CHECKLIST FOR PULL REQUESTS!!!** ***
 
-**TL;DR: don't submit a one liner "fix" for a code bug, show us your use case. We will fix it.**
+This change is:
 
-Is this pull request fixing a bug in the code and not just a typo in the documentation?   If so, does your pull request include a **TEST CASE** ?   Or have you filed a proper bug report that includes a **TEST CASE** ?
+- [ ] A documentation / typographical error fix
+	- Good to go, no issue or tests are needed
+- [ ] A short code fix
+	- [ ] I have filed [a bug report](https://github.com/sqlalchemy/sqlalchemy/issues) which includes
+	      a complete [MCVE](http://stackoverflow.com/help/mcve) illustrating in simple code form
+	      the expected behavior and how the library deviates from it
+	- [ ] My git commit includes a `Fixes: #<issue number>` comment with the above bug report number
+	- [ ] My code fix includes a unit test, which is typically based on the MCVE I did above
+		- [ ] I then **ran the tests**, using the instructions at [README.unittests.rst](https://github.com/sqlalchemy/sqlalchemy/blob/master/README.unittests.rst)
+	- [ ] I don't know how to write a test for this.    In which case please FILE A BUG ONLY.
+- [ ] A new feature implementation
+	- [ ] I have filed [a bug report](https://github.com/sqlalchemy/sqlalchemy/issues) which includes
+	      a complete description of the new behavior, including an a Python code example that illustrates
+	      how the feature would work.
+	- [ ] The new feature request was approved by SQLAlchemy maintainers who requested that I submit
+	      a pull request.
+	- [ ] My git commit includes a `Fixes: #<issue number>` comment with the above bug report number
+	- [ ] My code fix includes unit tests that assert the behavior is as expected.
+		- [ ] I then **ran the tests**, using the instructions at [README.unittests.rst](https://github.com/sqlalchemy/sqlalchemy/blob/master/README.unittests.rst)
+	- [ ] I don't know how to write the tests.  in which case please GET HELP FROM THE MAINTAINERS
+	      on the above mentioned issue how tests for this feature should be structured.
 
-*** **WE DO NOT ACCEPT ONE-LINER CODE-FIX PULL REQUESTS WITH NO TESTS.** ***  The SQLAlchemy project does **NOT** merge bug fixes that aren't verified through tests, since such unverified code **IS A BUG**.   If you would like us to write the tests, that is fine, please **FILE A BUG REPORT** which includes a **TEST SCRIPT**.   
+Note that **we do not accept one-liner code fix pull requests with no tests**.  Code that is not
+tested is itself **a bug**.   We will help you fix any problem you have, as long as you produce
+[issue reports](https://github.com/sqlalchemy/sqlalchemy/issues) that include code samples, stack traces, and most preferably complete standalone test cases.
 
-The vast majority of "drive by" pull requests are incorrect solutions to an ill-defined problem.  Please don't assume that the one line that fixed your problem is the actual fix, **NO MATTER HOW TRIVIAL**.    And above all **HAVE A NICE DAY!!**
-
-
+**Have a nice day!**
