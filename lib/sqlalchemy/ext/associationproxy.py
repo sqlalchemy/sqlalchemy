@@ -380,7 +380,12 @@ class AssociationProxyInstance(object):
                 parent, owning_class, target_class, value_attr
             )
 
-        is_object = getattr(target_class, value_attr).impl.uses_objects
+        attr = getattr(target_class, value_attr)
+        if attr._is_internal_proxy and not hasattr(attr, "impl"):
+            return AmbiguousAssociationProxyInstance(
+                parent, owning_class, target_class, value_attr
+            )
+        is_object = attr.impl.uses_objects
         if is_object:
             return ObjectAssociationProxyInstance(
                 parent, owning_class, target_class, value_attr
@@ -739,13 +744,10 @@ class AmbiguousAssociationProxyInstance(AssociationProxyInstance):
         )
 
     def get(self, obj):
-        self._ambiguous()
-
-    def set(self, obj, values):
-        self._ambiguous()
-
-    def delete(self, obj):
-        self._ambiguous()
+        if obj is None:
+            self._ambiguous()
+        else:
+            return super(AmbiguousAssociationProxyInstance, self).get(obj)
 
     def any(self, criterion=None, **kwargs):
         self._ambiguous()
@@ -764,25 +766,31 @@ class AmbiguousAssociationProxyInstance(AssociationProxyInstance):
         if parent_instance is not None:
             actual_obj = getattr(parent_instance, self.target_collection)
             if actual_obj is not None:
-                instance_class = type(actual_obj)
-                if instance_class not in self._lookup_cache:
-                    self._populate_cache(instance_class)
-
                 try:
-                    return self._lookup_cache[instance_class]
-                except KeyError:
+                    insp = inspect(actual_obj)
+                except exc.NoInspectionAvailable:
                     pass
+                else:
+                    mapper = insp.mapper
+                    instance_class = mapper.class_
+                    if instance_class not in self._lookup_cache:
+                        self._populate_cache(instance_class, mapper)
+
+                    try:
+                        return self._lookup_cache[instance_class]
+                    except KeyError:
+                        pass
 
         # no object or ambiguous object given, so return "self", which
-        # is a no-op proxy.
+        # is a proxy with generally only instance-level functionality
         return self
 
-    def _populate_cache(self, instance_class):
+    def _populate_cache(self, instance_class, mapper):
         prop = orm.class_mapper(self.owning_class).get_property(
             self.target_collection
         )
 
-        if inspect(instance_class).mapper.isa(prop.mapper):
+        if mapper.isa(prop.mapper):
             target_class = instance_class
             try:
                 target_assoc = self._cls_unwrap_target_assoc_proxy(

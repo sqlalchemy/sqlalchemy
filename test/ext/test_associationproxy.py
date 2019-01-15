@@ -2933,6 +2933,9 @@ class MultiOwnerTest(
             **kw
         )
 
+    def _assert_raises_attribute(self, message, fn, *arg, **kw):
+        assert_raises_message(AttributeError, message, fn, *arg, **kw)
+
     def test_column_collection_expressions(self):
         B, C, C2 = self.classes("B", "C", "C2")
 
@@ -2958,7 +2961,7 @@ class MultiOwnerTest(
         D, C, C2 = self.classes("D", "C", "C2")
 
         d1 = D()
-        self._assert_raises_ambiguous(getattr, d1, "c_data")
+        eq_(d1.c_data, None)
 
     def test_subclass_only_owner_assign(self):
         D, C, C2 = self.classes("D", "C", "C2")
@@ -2977,27 +2980,35 @@ class MultiOwnerTest(
         D, C, C2 = self.classes("D", "C", "C2")
 
         d1 = D()
-        self._assert_raises_ambiguous(getattr, d1, "c_data")
+        eq_(d1.c_data, None)
 
     def test_subclass_only_owner_delete(self):
         D, C, C2 = self.classes("D", "C", "C2")
 
         d1 = D(c=C2(csub_only_data="some c2"))
+        eq_(d1.c.csub_only_data, "some c2")
         del d1.c_data
+        assert not hasattr(d1.c, "csub_only_data")
 
-        self._assert_raises_ambiguous(getattr, d1, "c_data")
-
-    def test_subclass_only_owner_assign_raises(self):
+    def test_subclass_only_owner_assign_passes(self):
         D, C, C2 = self.classes("D", "C", "C2")
 
         d1 = D(c=C())
-        self._assert_raises_ambiguous(setattr, d1, "c_data", "some c1")
+        d1.c_data = "some c1"
+
+        # not mapped, but we set it
+        eq_(d1.c.csub_only_data, "some c1")
 
     def test_subclass_only_owner_get_raises(self):
         D, C, C2 = self.classes("D", "C", "C2")
 
         d1 = D(c=C())
-        self._assert_raises_ambiguous(getattr, d1, "c_data")
+        self._assert_raises_attribute(
+            "'C' object has no attribute 'csub_only_data'",
+            getattr,
+            d1,
+            "c_data",
+        )
 
     def test_subclass_only_owner_delete_raises(self):
         D, C, C2 = self.classes("D", "C", "C2")
@@ -3008,7 +3019,7 @@ class MultiOwnerTest(
         # now switch
         d1.c = C()
 
-        self._assert_raises_ambiguous(delattr, d1, "c_data")
+        self._assert_raises_attribute("csub_only_data", delattr, d1, "c_data")
 
     def test_subclasses_conflicting_types(self):
         B, D, C, C1, C2 = self.classes("B", "D", "C", "C1", "C2")
@@ -3041,6 +3052,103 @@ class MultiOwnerTest(
         B, D, = self.classes("B", "D")
 
         self._assert_raises_ambiguous(lambda: D.c_data.any(B.id == 5))
+
+
+class ProxyAttrTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        from sqlalchemy.ext.hybrid import hybrid_property
+        from sqlalchemy.orm.interfaces import PropComparator
+
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+            b_data = association_proxy("bs", "value")
+            well_behaved_b_data = association_proxy("bs", "well_behaved_value")
+
+        class B(Base):
+            __tablename__ = "b"
+
+            id = Column(Integer, primary_key=True)
+            aid = Column(ForeignKey("a.id"))
+            data = Column(String(50))
+
+            @hybrid_property
+            def well_behaved_value(self):
+                return self.data
+
+            @well_behaved_value.setter
+            def well_behaved_value(self, value):
+                self.data = value
+
+            @hybrid_property
+            def value(self):
+                return self.data
+
+            @value.setter
+            def value(self, value):
+                self.data = value
+
+            @value.comparator
+            class value(PropComparator):
+                # comparator has no proxy __getattr__, so we can't
+                # get to impl to see what we ar proxying towards.
+                def __init__(self, cls):
+                    self.cls = cls
+
+    def test_get_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="b1")])
+        eq_(a1.b_data[0], "b1")
+
+    def test_get_nonambiguous(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="b1")])
+        eq_(a1.well_behaved_b_data[0], "b1")
+
+    def test_set_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B()])
+
+        a1.b_data[0] = "b1"
+        eq_(a1.b_data[0], "b1")
+
+    def test_set_nonambiguous(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B()])
+
+        a1.b_data[0] = "b1"
+        eq_(a1.well_behaved_b_data[0], "b1")
+
+    def test_expr_nonambiguous(self):
+        A, B = self.classes("A", "B")
+
+        eq_(
+            str(A.well_behaved_b_data == 5),
+            "EXISTS (SELECT 1 \nFROM a, b \nWHERE "
+            "a.id = b.aid AND b.data = :data_1)",
+        )
+
+    def test_expr_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        assert_raises_message(
+            AttributeError,
+            "Association proxy A.bs refers to an attribute "
+            "'value' that is not directly mapped",
+            getattr,
+            A,
+            "b_data",
+        )
 
 
 class ScopeBehaviorTest(fixtures.DeclarativeMappedTest):
