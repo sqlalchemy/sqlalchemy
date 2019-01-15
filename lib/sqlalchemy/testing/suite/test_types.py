@@ -38,6 +38,8 @@ from ...util import u
 
 
 class _LiteralRoundTripFixture(object):
+    supports_whereclause = True
+
     @testing.provide_metadata
     def _literal_round_trip(self, type_, input_, output, filter_=None):
         """test literal rendering """
@@ -49,32 +51,46 @@ class _LiteralRoundTripFixture(object):
         t = Table("t", self.metadata, Column("x", type_))
         t.create()
 
-        for value in input_:
-            ins = (
-                t.insert()
-                .values(x=literal(value))
-                .compile(
-                    dialect=testing.db.dialect,
-                    compile_kwargs=dict(literal_binds=True),
+        with testing.db.connect() as conn:
+            for value in input_:
+                ins = (
+                    t.insert()
+                    .values(x=literal(value))
+                    .compile(
+                        dialect=testing.db.dialect,
+                        compile_kwargs=dict(literal_binds=True),
+                    )
                 )
-            )
-            testing.db.execute(ins)
+                conn.execute(ins)
 
-        for row in t.select().execute():
-            value = row[0]
-            if filter_ is not None:
-                value = filter_(value)
-            assert value in output
+            if self.supports_whereclause:
+                stmt = t.select().where(t.c.x == literal(value))
+            else:
+                stmt = t.select()
+
+            stmt = stmt.compile(
+                dialect=testing.db.dialect,
+                compile_kwargs=dict(literal_binds=True),
+            )
+            for row in conn.execute(stmt):
+                value = row[0]
+                if filter_ is not None:
+                    value = filter_(value)
+                assert value in output
 
 
 class _UnicodeFixture(_LiteralRoundTripFixture):
     __requires__ = ("unicode_data",)
 
     data = u(
-        "Alors vous imaginez ma surprise, au lever du jour, "
-        "quand une drôle de petite voix m’a réveillé. Elle "
-        "disait: « S’il vous plaît… dessine-moi un mouton! »"
+        "Alors vous imaginez ma 🐍 surprise, au lever du jour, "
+        "quand une drôle de petite 🐍 voix m’a réveillé. Elle "
+        "disait: « S’il vous plaît… dessine-moi 🐍 un mouton! »"
     )
+
+    @property
+    def supports_whereclause(self):
+        return config.requirements.expressions_against_unbounded_text.enabled
 
     @classmethod
     def define_tables(cls, metadata):
@@ -122,6 +138,11 @@ class _UnicodeFixture(_LiteralRoundTripFixture):
     def test_literal(self):
         self._literal_round_trip(self.datatype, [self.data], [self.data])
 
+    def test_literal_non_ascii(self):
+        self._literal_round_trip(
+            self.datatype, [util.u("réve🐍 illé")], [util.u("réve🐍 illé")]
+        )
+
 
 class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
     __requires__ = ("unicode_data",)
@@ -148,6 +169,10 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __requires__ = ("text_type",)
     __backend__ = True
+
+    @property
+    def supports_whereclause(self):
+        return config.requirements.expressions_against_unbounded_text.enabled
 
     @classmethod
     def define_tables(cls, metadata):
@@ -177,6 +202,11 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_literal(self):
         self._literal_round_trip(Text, ["some text"], ["some text"])
 
+    def test_literal_non_ascii(self):
+        self._literal_round_trip(
+            Text, [util.u("réve🐍 illé")], [util.u("réve🐍 illé")]
+        )
+
     def test_literal_quoting(self):
         data = """some 'text' hey "hi there" that's text"""
         self._literal_round_trip(Text, [data], [data])
@@ -202,7 +232,14 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
         foo.drop(config.db)
 
     def test_literal(self):
+        # note that in Python 3, this invokes the Unicode
+        # datatype for the literal part because all strings are unicode
         self._literal_round_trip(String(40), ["some text"], ["some text"])
+
+    def test_literal_non_ascii(self):
+        self._literal_round_trip(
+            String(40), [util.u("réve🐍 illé")], [util.u("réve🐍 illé")]
+        )
 
     def test_literal_quoting(self):
         data = """some 'text' hey "hi there" that's text"""
@@ -864,8 +901,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                 {
                     "name": "r1",
                     "data": {
-                        util.u("réveillé"): util.u("réveillé"),
-                        "data": {"k1": util.u("drôle")},
+                        util.u("réve🐍 illé"): util.u("réve🐍 illé"),
+                        "data": {"k1": util.u("drôl🐍e")},
                     },
                 },
             )
@@ -873,8 +910,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(
                 conn.scalar(select([self.tables.data_table.c.data])),
                 {
-                    util.u("réveillé"): util.u("réveillé"),
-                    "data": {"k1": util.u("drôle")},
+                    util.u("réve🐍 illé"): util.u("réve🐍 illé"),
+                    "data": {"k1": util.u("drôl🐍e")},
                 },
             )
 

@@ -733,6 +733,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def expressions_against_unbounded_text(self):
+        """target database supports use of an unbounded textual field in a
+        WHERE clause."""
+
+        return exclusions.open()
+
+    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return exclusions.open()

@@ -996,12 +996,26 @@ class DATETIMEOFFSET(sqltypes.TypeEngine):
         self.precision = precision
 
 
-class _StringType(object):
+class _UnicodeLiteral(object):
+    def literal_processor(self, dialect):
+        def process(value):
 
-    """Base for MSSQL string types."""
+            value = value.replace("'", "''")
 
-    def __init__(self, collation=None):
-        super(_StringType, self).__init__(collation=collation)
+            if dialect.identifier_preparer._double_percents:
+                value = value.replace("%", "%%")
+
+            return "N'%s'" % value
+
+        return process
+
+
+class _MSUnicode(_UnicodeLiteral, sqltypes.Unicode):
+    pass
+
+
+class _MSUnicodeText(_UnicodeLiteral, sqltypes.UnicodeText):
+    pass
 
 
 class TIMESTAMP(sqltypes._Binary):
@@ -2117,6 +2131,8 @@ class MSDialect(default.DefaultDialect):
         sqltypes.DateTime: _MSDateTime,
         sqltypes.Date: _MSDate,
         sqltypes.Time: TIME,
+        sqltypes.Unicode: _MSUnicode,
+        sqltypes.UnicodeText: _MSUnicodeText,
     }
 
     engine_config_types = default.DefaultDialect.engine_config_types.union(
