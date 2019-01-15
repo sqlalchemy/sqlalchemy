@@ -14,8 +14,6 @@
 
     fdb is a kinterbasdb compatible DBAPI for Firebird.
 
-    .. versionadded:: 0.8 - Support for the fdb Firebird driver.
-
     .. versionchanged:: 0.9 - The fdb dialect is now the default dialect
        under the ``firebird://`` URL space, as ``fdb`` is now the official
        Python driver for Firebird.
@@ -52,10 +50,6 @@ accept every argument that Kinterbasdb does.
   situations, but apparently with significant caveats.
   Please read the fdb and/or kinterbasdb DBAPI documentation in order to
   understand the implications of this flag.
-
-  .. versionadded:: 0.8.2 - ``retaining`` keyword argument specifying
-     transaction retaining behavior - in 0.8 it defaults to ``True``
-     for backwards compatibility.
 
   .. versionchanged:: 0.9.0 - the ``retaining`` flag defaults to ``False``.
      In 0.8 it defaulted to ``True``.

@@ -66,9 +66,6 @@ sections, are listed here.
         :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
         functions.
 
-        .. versionadded:: 0.8  Added support for .info to all
-           :class:`.MapperProperty` subclasses.
-
         .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
            from :class:`.MapperProperty` so that it can apply to a wider
            variety of ORM and extension constructs.

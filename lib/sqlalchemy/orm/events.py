@@ -45,13 +45,6 @@ class InstrumentationEvents(event.Events):
     be the subject of these events, when a listener
     is established on a superclass.
 
-    .. versionchanged:: 0.8 - events here will emit based
-       on comparing the incoming class to the type of class
-       passed to :func:`.event.listen`.  Previously, the
-       event would fire for any class unconditionally regardless
-       of what class was sent for listening, despite
-       documentation which stated the contrary.
-
     """
 
     _target_class_doc = "SomeBaseClass"
@@ -153,9 +146,6 @@ class InstanceEvents(event.Events):
     * :class:`.Mapper` objects
     * the :class:`.Mapper` class itself and the :func:`.mapper`
       function indicate listening for all mappers.
-
-    .. versionchanged:: 0.8.0 instance events can be associated with
-       unmapped superclasses of mapped classes.
 
     Instance events are closely related to mapper events, but
     are more specific to the instance and its instrumentation,
@@ -548,9 +538,6 @@ class MapperEvents(event.Events):
     * :class:`.Mapper` objects
     * the :class:`.Mapper` class itself and the :func:`.mapper`
       function indicate listening for all mappers.
-
-    .. versionchanged:: 0.8.0 mapper events can be associated with
-       unmapped superclasses of mapped classes.
 
     Mapper events provide hooks into critical sections of the
     mapper, including those related to object instrumentation,
@@ -1458,8 +1445,6 @@ class SessionEvents(event.Events):
          :class:`.SessionTransaction` for the given :class:`.Session` is
          available via the :attr:`.Session.transaction` attribute.
 
-        .. versionadded:: 0.7.3
-
         """
 
     def before_flush(self, session, flush_context, instances):
@@ -1553,11 +1538,6 @@ class SessionEvents(event.Events):
 
         This is called before an add, delete or merge causes
         the object to be part of the session.
-
-        .. versionadded:: 0.8.  Note that :meth:`~.SessionEvents.after_attach`
-           now fires off after the item is part of the session.
-           :meth:`.before_attach` is provided for those cases where
-           the item should not yet be part of the session state.
 
         .. seealso::
 

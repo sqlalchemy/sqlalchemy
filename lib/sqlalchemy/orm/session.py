@@ -1563,8 +1563,6 @@ class Session(_SessionClassMethods):
         of objects which involve existing database queries,
         where the uncompleted object should not yet be flushed.
 
-        .. versionadded:: 0.7.6
-
         """
         autoflush = self.autoflush
         self.autoflush = False
@@ -2339,8 +2337,6 @@ class Session(_SessionClassMethods):
         that they are present in an ordinary way before flush()
         proceeds.  This method is not intended for general use.
 
-        .. versionadded:: 0.8
-
         .. seealso::
 
             ``load_on_pending`` at :func:`.relationship` - this flag
@@ -2893,15 +2889,6 @@ class Session(_SessionClassMethods):
 
             return session.is_modified(someobject)
 
-        .. versionchanged:: 0.8
-            When using SQLAlchemy 0.7 and earlier, the ``passive``
-            flag should **always** be explicitly set to ``True``,
-            else SQL loads/autoflushes may proceed which can affect
-            the modified state itself:
-            ``session.is_modified(someobject, passive=True)``\ .
-            In 0.8 and above, the behavior is corrected and
-            this flag is ignored.
-
         A few caveats to this method apply:
 
         * Instances present in the :attr:`.Session.dirty` collection may
@@ -2936,10 +2923,9 @@ class Session(_SessionClassMethods):
          instance upon flush.
         :param passive:
 
-         .. versionchanged:: 0.8
-             Ignored for backwards compatibility.
-             When using SQLAlchemy 0.7 and earlier, this flag should always
-             be set to ``True``.
+         .. deprecated:: 0.8
+             The ``passive`` flag is deprecated and will be removed
+             in a future release.  The flag is no longer used and is ignored.
 
         """
         state = object_state(instance)

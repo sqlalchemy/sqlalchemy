@@ -188,12 +188,6 @@ class declared_attr(interfaces._MappedAttribute, property):
                 else:
                     return {"polymorphic_identity":cls.__name__}
 
-    .. versionchanged:: 0.8 :class:`.declared_attr` can be used with
-       non-ORM or extension attributes, such as user-defined attributes
-       or :func:`.association_proxy` objects, which will be assigned
-       to the class at class construction time.
-
-
     """
 
     def __init__(self, fget, cascading=False):
@@ -416,8 +410,6 @@ def as_declarative(**kw):
 
     All keyword arguments passed to :func:`.as_declarative` are passed
     along to :func:`.declarative_base`.
-
-    .. versionadded:: 0.8.3
 
     .. seealso::
 
@@ -708,8 +700,6 @@ class DeferredReflection(object):
 
         ReflectedOne.prepare(engine_one)
         ReflectedTwo.prepare(engine_two)
-
-    .. versionadded:: 0.8
 
     """
 

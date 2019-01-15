@@ -165,9 +165,6 @@ class String(Concatenable, TypeEngine):
             >>> print select([cast('some string', String(collation='utf8'))])
             SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
-          .. versionadded:: 0.8 Added support for COLLATE to all
-             string types.
-
         :param convert_unicode: When set to ``True``, the
           :class:`.String` type will assume that
           input is to be passed as Python Unicode objects under Python 2,

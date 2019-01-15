@@ -484,9 +484,6 @@ using the :attr:`~.AssociationProxy.attr` attribute in a star-args context::
 
     q = session.query(User).join(*User.keywords.attr)
 
-.. versionadded:: 0.7.3
-    :attr:`~.AssociationProxy.attr` attribute in a star-args context.
-
 :attr:`~.AssociationProxy.attr` is composed of :attr:`.AssociationProxy.local_attr` and :attr:`.AssociationProxy.remote_attr`,
 which are just synonyms for the actual proxied attributes, and can also
 be used for querying::
@@ -496,10 +493,6 @@ be used for querying::
     q = session.query(User).\
             join(uka, User.keywords.local_attr).\
             join(ka, User.keywords.remote_attr)
-
-.. versionadded:: 0.7.3
-    :attr:`.AssociationProxy.local_attr` and :attr:`.AssociationProxy.remote_attr`,
-    synonyms for the actual proxied attributes, and usable for querying.
 
 API Documentation
 -----------------

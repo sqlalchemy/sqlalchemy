@@ -459,12 +459,9 @@ to the INSERT and SELECT statements::
     {'pgp_sym_decrypt_1': 'this is my passphrase', 'username_1': 'some user'}
 
 
-.. versionadded:: 0.8  Added the :meth:`.TypeEngine.bind_expression` and
-   :meth:`.TypeEngine.column_expression` methods.
+.. seealso::
 
-See also:
-
-:ref:`examples_postgis`
+   :ref:`examples_postgis`
 
 .. _types_operators:
 

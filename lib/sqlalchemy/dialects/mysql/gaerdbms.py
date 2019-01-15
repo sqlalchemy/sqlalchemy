@@ -14,8 +14,6 @@ r"""
     This dialect is based primarily on the :mod:`.mysql.mysqldb` dialect with
     minimal changes.
 
-    .. versionadded:: 0.7.8
-
     .. deprecated:: 1.0 This dialect is **no longer necessary** for
         Google Cloud SQL; the MySQLdb dialect can be used directly.
         Cloud SQL now recommends creating connections via the

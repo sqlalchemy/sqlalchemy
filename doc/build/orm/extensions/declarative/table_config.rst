@@ -146,5 +146,3 @@ only after a special ``prepare(engine)`` step is called::
 
     Base.prepare(e)
 
-.. versionadded:: 0.8
-   Added :class:`.DeferredReflection`.

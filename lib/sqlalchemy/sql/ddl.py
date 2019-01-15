@@ -448,8 +448,6 @@ class _CreateDropBase(DDLElement):
 class CreateSchema(_CreateDropBase):
     """Represent a CREATE SCHEMA statement.
 
-    .. versionadded:: 0.7.4
-
     The argument here is the string name of the schema.
 
     """
@@ -467,8 +465,6 @@ class DropSchema(_CreateDropBase):
     """Represent a DROP SCHEMA statement.
 
     The argument here is the string name of the schema.
-
-    .. versionadded:: 0.7.4
 
     """
 
@@ -616,13 +612,6 @@ class CreateColumn(_DDLCompiles):
     Above, a :class:`.CreateTable` construct will generate a ``CREATE TABLE``
     which only includes the ``id`` column in the string; the ``xmin`` column
     will be omitted, but only against the PostgreSQL backend.
-
-    .. versionadded:: 0.8.3 The :class:`.CreateColumn` construct supports
-       skipping of columns by returning ``None`` from a custom compilation
-       rule.
-
-    .. versionadded:: 0.8 The :class:`.CreateColumn` construct was added
-       to support custom column creation styles.
 
     """
 

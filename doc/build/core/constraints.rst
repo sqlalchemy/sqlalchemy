@@ -854,10 +854,6 @@ identify columns::
         Index('idx_col34', 'col3', 'col4', unique=True)
     )
 
-.. versionadded:: 0.7
-    Support of "inline" definition inside the :class:`.Table`
-    for :class:`.Index`\ .
-
 The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` method:
 
 .. sourcecode:: python+sql
@@ -885,9 +881,6 @@ a "case insensitive" index can be created using the ``lower()`` function::
     from sqlalchemy import func, Index
 
     Index('someindex', func.lower(mytable.c.somecol))
-
-.. versionadded:: 0.8 :class:`.Index` supports SQL expressions and functions
-   as well as plain columns.
 
 Index API
 ---------

@@ -36,8 +36,6 @@ class StaleDataError(sa_exc.SQLAlchemyError):
       cannot be made if the new parent was really the most
       recent "parent".
 
-      .. versionadded:: 0.7.4
-
     """
 
 

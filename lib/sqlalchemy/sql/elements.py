@@ -1068,11 +1068,6 @@ class BindParameter(ColumnElement):
           parameters are present, then :paramref:`.bindparam.required`
           defaults to ``False``.
 
-          .. versionchanged:: 0.8 If the ``required`` flag is not specified,
-             it will be set automatically to ``True`` or ``False`` depending
-             on whether or not the ``value`` or ``callable`` parameters
-             were specified.
-
         :param quote:
           True if this parameter name requires quoting and is not
           currently known as a SQLAlchemy reserved word; this currently

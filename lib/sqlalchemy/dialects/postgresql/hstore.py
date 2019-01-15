@@ -126,8 +126,6 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     dictionary, unless that dictionary value is re-assigned to the
     HSTORE-attribute itself, thus generating a change event.
 
-    .. versionadded:: 0.8
-
     .. seealso::
 
         :class:`.hstore` - render the PostgreSQL ``hstore()`` function.
@@ -292,8 +290,6 @@ class hstore(sqlfunc.GenericFunction):
                     array(['value1', 'value2', 'value3'])
                 )
             ])
-
-    .. versionadded:: 0.8
 
     .. seealso::
 

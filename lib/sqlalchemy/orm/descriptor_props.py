@@ -115,10 +115,6 @@ class CompositeProperty(DescriptorProperty):
           scalar attribute should be loaded when replaced, if not
           already loaded.  See the same flag on :func:`.column_property`.
 
-          .. versionchanged:: 0.7
-              This flag specifically becomes meaningful
-              - previously it was a placeholder.
-
         :param group:
           A group name for this property when marked as deferred.
 
@@ -138,8 +134,6 @@ class CompositeProperty(DescriptorProperty):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
-
-            .. versionadded:: 0.8
 
         :param extension:
           an :class:`.AttributeExtension` instance,
@@ -713,7 +707,7 @@ class ComparableProperty(DescriptorProperty):
         """Provides a method of applying a :class:`.PropComparator`
         to any Python descriptor attribute.
 
-        .. versionchanged:: 0.7
+        .. deprecated:: 0.7
             :func:`.comparable_property` is superseded by
             the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example
             at :ref:`hybrid_custom_comparators`.

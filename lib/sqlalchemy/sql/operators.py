@@ -153,8 +153,6 @@ class Operators(object):
          A value of 100 will be higher or equal to all operators, and -100
          will be lower than or equal to all operators.
 
-         .. versionadded:: 0.8 - added the 'precedence' argument.
-
         :param is_comparison: if True, the operator will be considered as a
          "comparison" operator, that is which evaluates to a boolean
          true/false value, like ``==``, ``>``, etc.  This flag should be set
@@ -629,8 +627,6 @@ class ColumnOperators(Operators):
         This is equivalent to using negation with
         :meth:`.ColumnOperators.like`, i.e. ``~x.like(y)``.
 
-        .. versionadded:: 0.8
-
         .. seealso::
 
             :meth:`.ColumnOperators.like`
@@ -643,8 +639,6 @@ class ColumnOperators(Operators):
 
         This is equivalent to using negation with
         :meth:`.ColumnOperators.ilike`, i.e. ``~x.ilike(y)``.
-
-        .. versionadded:: 0.8
 
         .. seealso::
 
@@ -661,8 +655,6 @@ class ColumnOperators(Operators):
         usage of ``IS`` may be desirable if comparing to boolean values
         on certain platforms.
 
-        .. versionadded:: 0.7.9
-
         .. seealso:: :meth:`.ColumnOperators.isnot`
 
         """
@@ -675,8 +667,6 @@ class ColumnOperators(Operators):
         value of ``None``, which resolves to ``NULL``.  However, explicit
         usage of ``IS NOT`` may be desirable if comparing to boolean values
         on certain platforms.
-
-        .. versionadded:: 0.7.9
 
         .. seealso:: :meth:`.ColumnOperators.is_`
 
