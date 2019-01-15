@@ -664,7 +664,9 @@ it will be deleted on flush::
     some_user.preference = None
     session.flush()  # will delete the Preference object
 
-See also :ref:`unitofwork_cascades` for detail on cascades.
+.. seealso::
+
+    :ref:`unitofwork_cascades` for detail on cascades.
 
 
 Deleting based on Filter Criterion

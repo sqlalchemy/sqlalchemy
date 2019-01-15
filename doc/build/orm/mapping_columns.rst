@@ -207,16 +207,18 @@ should be included or excluded::
 
 .. note::
 
-   insert and update defaults configured on individual
-   :class:`.Column` objects, i.e. those described at :ref:`metadata_defaults`
-   including those configured by the ``default``, ``update``,
-   ``server_default`` and ``server_onupdate`` arguments, will continue to
-   function normally even if those :class:`.Column` objects are not mapped.
-   This is because in the case of ``default`` and ``update``, the
-   :class:`.Column` object is still present on the underlying
-   :class:`.Table`, thus allowing the default functions to take place when
-   the ORM emits an INSERT or UPDATE, and in the case of ``server_default``
-   and ``server_onupdate``, the relational database itself maintains these
-   functions.
+    insert and update defaults configured on individual :class:`.Column`
+    objects, i.e. those described at :ref:`metadata_defaults` including those
+    configured by the :paramref:`.Column.default`,
+    :paramref:`.Column.onupdate`, :paramref:`.Column.server_default` and
+    :paramref:`.Column.server_onupdate` parameters, will continue to function
+    normally even if those :class:`.Column` objects are not mapped. This is
+    because in the case of :paramref:`.Column.default` and
+    :paramref:`.Column.onupdate`, the :class:`.Column` object is still present
+    on the underlying :class:`.Table`, thus allowing the default functions to
+    take place when the ORM emits an INSERT or UPDATE, and in the case of
+    :paramref:`.Column.server_default` and :paramref:`.Column.server_onupdate`,
+    the relational database itself emits these defaults as a server side
+    behavior.
 
 

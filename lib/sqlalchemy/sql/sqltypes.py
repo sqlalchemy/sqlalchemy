@@ -343,7 +343,7 @@ class Unicode(String):
     unicode.  The recipe at :ref:`coerce_to_unicode` illustrates
     how this is done.
 
-    See also:
+    .. seealso::
 
         :class:`.UnicodeText` - unlengthed textual counterpart
         to :class:`.Unicode`.
