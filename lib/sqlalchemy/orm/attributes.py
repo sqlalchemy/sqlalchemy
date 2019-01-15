@@ -115,8 +115,6 @@ class QueryableAttribute(interfaces._MappedAttribute,
           :attr:`.QueryableAttribute.property` attribute, as
           ``MyClass.someattribute.property.info``.
 
-        .. versionadded:: 0.8.0
-
         .. seealso::
 
             :attr:`.SchemaItem.info`

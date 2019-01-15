@@ -539,8 +539,6 @@ class Dialect(object):
         detached from the pool, or is being returned beyond the normal
         capacity of the pool.
 
-        .. versionadded:: 0.8
-
         """
 
         raise NotImplementedError()

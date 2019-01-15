@@ -40,8 +40,6 @@ def remote(expr):
     See the section :ref:`relationship_custom_foreign` for a
     description of use.
 
-    .. versionadded:: 0.8
-
     .. seealso::
 
         :ref:`relationship_custom_foreign`
@@ -59,8 +57,6 @@ def foreign(expr):
 
     See the section :ref:`relationship_custom_foreign` for a
     description of use.
-
-    .. versionadded:: 0.8
 
     .. seealso::
 
@@ -368,11 +364,6 @@ class RelationshipProperty(StrategizedProperty):
           reducing performance of the innermost subquery beyond that of what
           duplicate innermost rows may be causing.
 
-          .. versionadded:: 0.8.3 -
-             :paramref:`~.relationship.distinct_target_key` allows the
-             subquery eager loader to apply a DISTINCT modifier to the
-             innermost SELECT.
-
           .. versionchanged:: 0.9.0 -
              :paramref:`~.relationship.distinct_target_key` now defaults to
              ``None``, so that the feature enables itself automatically for
@@ -427,12 +418,6 @@ class RelationshipProperty(StrategizedProperty):
                :func:`.relationship` to consider just those columns specified
                here as "foreign".
 
-               .. versionchanged:: 0.8
-                    A multiple-foreign key join ambiguity can be resolved by
-                    setting the :paramref:`~.relationship.foreign_keys`
-                    parameter alone, without the need to explicitly set
-                    :paramref:`~.relationship.primaryjoin` as well.
-
             2. The :class:`.Table` being mapped does not actually have
                :class:`.ForeignKey` or :class:`.ForeignKeyConstraint`
                constructs present, often because the table
@@ -467,18 +452,8 @@ class RelationshipProperty(StrategizedProperty):
             :func:`.foreign` - allows direct annotation of the "foreign"
             columns within a :paramref:`~.relationship.primaryjoin` condition.
 
-          .. versionadded:: 0.8
-              The :func:`.foreign` annotation can also be applied
-              directly to the :paramref:`~.relationship.primaryjoin`
-              expression, which is an alternate, more specific system of
-              describing which columns in a particular
-              :paramref:`~.relationship.primaryjoin` should be considered
-              "foreign".
-
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
-
-            .. versionadded:: 0.8
 
         :param innerjoin=False:
           when ``True``, joined eager loads will use an inner join to join
@@ -724,12 +699,6 @@ class RelationshipProperty(StrategizedProperty):
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
-
-          .. versionchanged:: 0.8
-              The :func:`.remote` annotation can also be applied
-              directly to the ``primaryjoin`` expression, which is an
-              alternate, more specific system of describing which columns in a
-              particular ``primaryjoin`` should be considered "remote".
 
           .. seealso::
 

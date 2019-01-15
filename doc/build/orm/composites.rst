@@ -115,11 +115,6 @@ via the usage of the :class:`.MutableComposite` mixin, which uses events
 to associate each user-defined composite object with all parent associations.
 Please see the example in :ref:`mutable_composites`.
 
-.. versionchanged:: 0.7
-    In-place changes to an existing composite value are no longer
-    tracked automatically; the functionality is superseded by the
-    :class:`.MutableComposite` class.
-
 .. _composite_operations:
 
 Redefining Comparison Operations for Composites

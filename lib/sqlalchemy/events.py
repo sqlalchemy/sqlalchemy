@@ -425,8 +425,6 @@ class PoolEvents(event.Events):
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
 
-        .. versionadded:: 0.8
-
         .. seealso::
 
             :meth:`.ConnectionEvents.rollback`
@@ -588,10 +586,6 @@ class ConnectionEvents(event.Events):
       is a tuple of parameters that replace the given statement
       and parameters.  See those methods for a description of
       specific return arguments.
-
-    .. versionchanged:: 0.8 :class:`.ConnectionEvents` can now be associated
-       with any :class:`.Connectable` including :class:`.Connection`,
-       in addition to the existing support for :class:`.Engine`.
 
     """
 

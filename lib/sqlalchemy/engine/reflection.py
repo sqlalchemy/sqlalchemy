@@ -185,12 +185,6 @@ class Inspector(object):
             more comprehensive solution to resolving foreign key cycles
             between tables.
 
-         .. versionchanged:: 0.8 the "foreign_key" sorting sorts tables
-            in order of dependee to dependent; that is, in creation
-            order, rather than in drop order.  This is to maintain
-            consistency with similar features such as
-            :attr:`.MetaData.sorted_tables` and :func:`.util.sort_tables`.
-
         .. seealso::
 
             :meth:`.Inspector.get_sorted_table_and_fkc_names`
@@ -505,8 +499,6 @@ class Inspector(object):
         :param schema: string schema name; if omitted, uses the default schema
          of the database connection.  For special quoting,
          use :class:`.quoted_name`.
-
-        .. versionadded:: 0.8.4
 
         """
 

@@ -2009,8 +2009,6 @@ table, or the same table:
 Multiple Table Updates
 ----------------------
 
-.. versionadded:: 0.7.4
-
 The PostgreSQL, Microsoft SQL Server, and MySQL backends all support UPDATE statements
 that refer to multiple tables.   For PG and MSSQL, this is the "UPDATE FROM" syntax,
 which updates one table at a time, but can reference additional tables in an additional

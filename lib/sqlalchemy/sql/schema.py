@@ -205,8 +205,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         replace existing columns of the same name when
         :paramref:`.Table.extend_existing` is ``True``.
 
-        .. versionadded:: 0.7.5
-
         .. seealso::
 
             :paramref:`.Table.autoload`
@@ -249,10 +247,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         and other options will be added into the state of the
         :class:`.Table`, potentially overwriting existing columns
         and options of the same name.
-
-        .. versionchanged:: 0.7.4 :paramref:`.Table.extend_existing` will
-           invoke a new reflection operation when combined with
-           :paramref:`.Table.autoload` set to True.
 
         As is always the case with :paramref:`.Table.autoload`,
         :class:`.Column` objects can be specified in the same :class:`.Table`
@@ -1166,9 +1160,6 @@ class Column(SchemaItem, ColumnClause):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
-             .. versionadded:: 0.8.3 Added the ``system=True`` parameter to
-                :class:`.Column`.
-
         """
 
         name = kwargs.pop('name', None)
@@ -1538,11 +1529,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             ``columnkey`` is the ``key`` which has been assigned to the column
             (defaults to the column name itself), unless ``link_to_name`` is
             ``True`` in which case the rendered name of the column is used.
-
-            .. versionadded:: 0.7.4
-                Note that if the schema name is not included, and the
-                underlying :class:`.MetaData` has a "schema", that value will
-                be used.
 
         :param name: Optional string. An in-database name for the key if
             `constraint` is not provided.
@@ -3309,8 +3295,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
     :class:`.Column` objects::
 
         Index("some_index", func.lower(sometable.c.name))
-
-    .. versionadded:: 0.8 support for functional and expression-based indexes.
 
     An :class:`.Index` can also be manually associated with a :class:`.Table`,
     either through inline declaration or using

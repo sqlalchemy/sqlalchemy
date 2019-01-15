@@ -246,9 +246,6 @@ The psycopg2 dialect supports these constants for isolation level:
 * ``SERIALIZABLE``
 * ``AUTOCOMMIT``
 
-.. versionadded:: 0.8.2 support for AUTOCOMMIT isolation level when using
-    psycopg2.
-
 .. seealso::
 
     :ref:`postgresql_isolation_level`

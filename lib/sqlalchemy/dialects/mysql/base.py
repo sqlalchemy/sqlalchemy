@@ -302,9 +302,6 @@ into play when rendering table and column names as well as when reflecting
 existing database structures.  The detection is entirely automatic and
 no special configuration is needed to use either quoting style.
 
-.. versionchanged:: 0.6 detection of ANSI quoting style is entirely automatic,
-   there's no longer any end-user ``create_engine()`` options in this regard.
-
 MySQL SQL Extensions
 --------------------
 
@@ -400,9 +397,6 @@ columns of the index) or a dict in which keys are column names and values are
 prefix length values for corresponding columns. MySQL only allows a length for
 a column of an index if it is for a CHAR, VARCHAR, TEXT, BINARY, VARBINARY and
 BLOB.
-
-.. versionadded:: 0.8.2 ``mysql_length`` may now be specified as a dictionary
-   for use with composite indexes.
 
 Index Prefixes
 ~~~~~~~~~~~~~~

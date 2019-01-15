@@ -200,9 +200,6 @@ CREATE TABLE statement for this column will yield::
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
 
-.. versionadded:: 0.8 Character collations are now part of the base string
-   types.
-
 LIMIT/OFFSET Support
 --------------------
 
@@ -439,8 +436,6 @@ names::
 
 would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
 
-.. versionadded:: 0.8
-
 Index ordering
 ^^^^^^^^^^^^^^
 
@@ -449,8 +444,6 @@ Index ordering is available via functional expressions, such as::
     Index("my_index", table.c.x.desc())
 
 would render the index as ``CREATE INDEX my_index ON table (x DESC)``
-
-.. versionadded:: 0.8
 
 .. seealso::
 

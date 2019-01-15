@@ -82,10 +82,6 @@ we can specify ``address.Address`` or ``lookup.Address``::
                              primaryjoin="address.Address.user_id=="
                                             "User.id")
 
-.. versionadded:: 0.8
-   module-qualified paths can be used when specifying string arguments
-   with Declarative, in order to specify specific modules.
-
 Two alternatives also exist to using string-based attributes.  A lambda
 can also be used, which will be evaluated after all mappers have been
 configured::

@@ -71,11 +71,9 @@ class array(expression.Tuple):
 
         array(['foo', 'bar'], type_=CHAR)
 
-    .. versionadded:: 0.8 Added the :class:`~.postgresql.array` literal type.
+    .. seealso::
 
-    See also:
-
-    :class:`.postgresql.ARRAY`
+        :class:`.postgresql.ARRAY`
 
     """
     __visit_name__ = 'array'

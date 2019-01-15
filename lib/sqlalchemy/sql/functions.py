@@ -111,8 +111,6 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         See :func:`~.expression.over` for a full description.
 
-        .. versionadded:: 0.7
-
         """
         return Over(
             self,
@@ -378,10 +376,6 @@ func = _FunctionGenerator()
    but are not exactly the same as "functions" from a SQLAlchemy
    perspective.
 
-   .. versionadded:: 0.8 :data:`.func` can return non-function expression
-      constructs for common quasi-functional names like :func:`.cast`
-      and :func:`.extract`.
-
    Functions which are interpreted as "generic" functions know how to
    calculate their return type automatically. For a listing of known generic
    functions, see :ref:`generic_functions`.
@@ -514,15 +508,6 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
 
         >>> print func.geo.buffer()
         ST_Buffer()
-
-    .. versionadded:: 0.8 :class:`.GenericFunction` now supports
-       automatic registration of new functions as well as package
-       and custom naming support.
-
-    .. versionchanged:: 0.8 The attribute name ``type`` is used
-       to specify the function's return type at the class level.
-       Previously, the name ``__return_type__`` was used.  This
-       name is still recognized for backwards-compatibility.
 
     """
 

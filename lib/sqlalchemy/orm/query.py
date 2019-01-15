@@ -493,9 +493,6 @@ class Query(object):
          to remove same-named columns where one also refers to the other
          via foreign key or WHERE clause equivalence.
 
-         .. versionchanged:: 0.8 the ``with_labels`` and ``reduce_columns``
-            keyword arguments were added.
-
         """
         q = self.enable_eagerloads(False)
         if with_labels:
@@ -570,8 +567,6 @@ class Query(object):
 
         Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.label`.
 
-        .. versionadded:: 0.6.5
-
         """
 
         return self.enable_eagerloads(False).statement.label(name)
@@ -581,8 +576,6 @@ class Query(object):
         :class:`.Query`, converted to a scalar subquery.
 
         Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.as_scalar`.
-
-        .. versionadded:: 0.6.5
 
         """
 
@@ -718,14 +711,6 @@ class Query(object):
 
         See the documentation section :ref:`with_polymorphic` for
         details on how this method is used.
-
-        .. versionchanged:: 0.8
-            A new and more flexible function
-            :func:`.orm.with_polymorphic` supersedes
-            :meth:`.Query.with_polymorphic`, as it can apply the equivalent
-            functionality to any set of columns or classes in the
-            :class:`.Query`, not just the "zero mapper".  See that
-            function for a description of arguments.
 
         """
 
@@ -1279,8 +1264,6 @@ class Query(object):
             q = q.join((subq, subq.c.email < Address.email)).\
                         limit(1)
 
-        .. versionadded:: 0.6.5
-
         """
         self._set_entities(entities)
 
@@ -1355,8 +1338,6 @@ class Query(object):
 
         This allows ad-hoc recipes to be created for :class:`.Query`
         objects.  See the example at :ref:`hybrid_transformers`.
-
-        .. versionadded:: 0.7.4
 
         """
         return fn(self)
@@ -1841,16 +1822,6 @@ class Query(object):
         entity in some way as well as an applicable source entity::
 
             q = session.query(User).join(Address, User.id==Address.user_id)
-
-        .. versionchanged:: 0.7
-            In SQLAlchemy 0.6 and earlier, the two argument form of
-            :meth:`~.Query.join` requires the usage of a tuple:
-            ``query(User).join((Address, User.id==Address.user_id))``\ .
-            This calling form is accepted in 0.7 and further, though
-            is not necessary unless multiple join conditions are passed to
-            a single :meth:`~.Query.join` call, which itself is also not
-            generally necessary as it is now equivalent to multiple
-            calls (this wasn't always the case).
 
         **Advanced Join Targeting and Adaption**
 
@@ -2661,8 +2632,6 @@ class Query(object):
             SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL users.name AS users_name
             FROM users
 
-        .. versionadded:: 0.7.7
-
         .. seealso::
 
             :meth:`.HasPrefixes.prefix_with`
@@ -3037,8 +3006,6 @@ class Query(object):
 
             session.query(literal(True)).filter(q.exists()).scalar()
 
-        .. versionadded:: 0.8.1
-
         """
 
         # .add_columns() for the case that we are a query().select_from(X),
@@ -3057,9 +3024,6 @@ class Query(object):
             SELECT count(1) AS count_1 FROM (
                 SELECT <rest of query follows...>
             ) AS anon_1
-
-        .. versionchanged:: 0.7
-            The above scheme is newly refined as of 0.7b3.
 
         For fine grained control over specific columns
         to count, to skip the usage of a subquery or

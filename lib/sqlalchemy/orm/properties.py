@@ -67,8 +67,6 @@ class ColumnProperty(StrategizedProperty):
           which also need to know
           the "previous" value of the attribute.
 
-          .. versionadded:: 0.6.6
-
         :param comparator_factory: a class which extends
            :class:`.ColumnProperty.Comparator` which provides custom SQL
            clause generation for comparison operations.
@@ -100,12 +98,8 @@ class ColumnProperty(StrategizedProperty):
             settings still expires
             all attributes after a :meth:`.Session.commit` call, however.
 
-            .. versionadded:: 0.7.3
-
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
-
-            .. versionadded:: 0.8
 
         :param extension:
             an :class:`.AttributeExtension` instance, or list of extensions,
