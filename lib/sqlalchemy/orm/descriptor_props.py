@@ -393,15 +393,15 @@ class CompositeProperty(DescriptorProperty):
         See the example in :ref:`composite_operations` for an overview
         of usage , as well as the documentation for :class:`.PropComparator`.
 
-        See also:
+        .. seealso::
 
-        :class:`.PropComparator`
+            :class:`.PropComparator`
 
-        :class:`.ColumnOperators`
+            :class:`.ColumnOperators`
 
-        :ref:`types_operators`
+            :ref:`types_operators`
 
-        :attr:`.TypeEngine.comparator_factory`
+            :attr:`.TypeEngine.comparator_factory`
 
         """
 

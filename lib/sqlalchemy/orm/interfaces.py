@@ -341,19 +341,19 @@ class PropComparator(operators.ColumnOperators):
     :attr:`.TypeEngine.comparator_factory` attribute.  See
     :ref:`types_operators` for more detail.
 
-    See also:
+    .. seealso::
 
-    :class:`.ColumnProperty.Comparator`
+        :class:`.ColumnProperty.Comparator`
 
-    :class:`.RelationshipProperty.Comparator`
+        :class:`.RelationshipProperty.Comparator`
 
-    :class:`.CompositeProperty.Comparator`
+        :class:`.CompositeProperty.Comparator`
 
-    :class:`.ColumnOperators`
+        :class:`.ColumnOperators`
 
-    :ref:`types_operators`
+        :ref:`types_operators`
 
-    :attr:`.TypeEngine.comparator_factory`
+        :attr:`.TypeEngine.comparator_factory`
 
     """
 
