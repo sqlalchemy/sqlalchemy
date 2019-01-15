@@ -129,9 +129,6 @@ class TypeEngine(Visitable):
     of existing types, or alternatively by using :class:`.TypeDecorator`.
     See the documentation section :ref:`types_operators` for examples.
 
-    .. versionadded:: 0.8  The expression system was enhanced to support
-      customization of operators on a per-type level.
-
     """
 
     should_evaluate_none = False
@@ -422,8 +419,6 @@ class TypeEngine(Visitable):
         :param dialect_name: base name of the dialect which uses
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
-        .. versionadded:: 0.7.2
-
         """
         return Variant(self, {dialect_name: to_instance(type_)})
 
@@ -684,11 +679,6 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
         the same type as this one.  See
         :meth:`.TypeDecorator.coerce_compared_value` for more detail.
 
-        .. versionchanged:: 0.8 :meth:`.UserDefinedType.coerce_compared_value`
-           now returns ``self`` by default, rather than falling onto the
-           more fundamental behavior of
-           :meth:`.TypeEngine.coerce_compared_value`.
-
         """
 
         return self
@@ -905,10 +895,6 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     Custom :class:`.TypeDecorator` classes can override this attribute to
     return an empty tuple, in which case no values will be coerced to
     constants.
-
-    .. versionadded:: 0.8.2
-        Added :attr:`.TypeDecorator.coerce_to_is_types` to allow for easier
-        control of ``__eq__()`` ``__ne__()`` operations.
 
     """
 
@@ -1328,8 +1314,6 @@ class Variant(TypeDecorator):
 
     The :class:`.Variant` type is typically constructed
     using the :meth:`.TypeEngine.with_variant` method.
-
-    .. versionadded:: 0.7.2
 
     .. seealso:: :meth:`.TypeEngine.with_variant` for an example of use.
 

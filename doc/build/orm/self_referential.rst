@@ -114,10 +114,6 @@ is on both sides, and aligns the "remote" column along with the
 ``folder_id`` column, which it recognizes as uniquely present on
 the "remote" side.
 
-.. versionadded:: 0.8
-    Support for self-referential composite keys in :func:`.relationship`
-    where a column points to itself.
-
 Self-Referential Query Strategies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

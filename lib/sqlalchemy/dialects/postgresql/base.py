@@ -1382,8 +1382,6 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
          :meth:`~.postgresql.ENUM.drop` methods can
          be used to emit SQL to a target bind.
 
-         .. versionadded:: 0.7.4
-
         """
         self.create_type = kw.pop("create_type", True)
         super(ENUM, self).__init__(*enums, **kw)

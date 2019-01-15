@@ -154,9 +154,6 @@ class CompileError(SQLAlchemyError):
 class UnsupportedCompilationError(CompileError):
     """Raised when an operation is not supported by the given compiler.
 
-
-    .. versionadded:: 0.8.3
-
     """
 
     def __init__(self, compiler, element_type):

@@ -1447,8 +1447,6 @@ class CTE(Generative, HasSuffixes, Alias):
     :meth:`.SelectBase.cte` method from any selectable.
     See that method for complete examples.
 
-    .. versionadded:: 0.7.6
-
     """
 
     __visit_name__ = "cte"
@@ -3245,8 +3243,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
          to those which have the same name as the equivalent.   Otherwise,
          all columns that are equivalent to another are removed.
 
-        .. versionadded:: 0.8
-
         """
         return self.with_only_columns(
             sqlutil.reduce_columns(
@@ -3438,21 +3434,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
          constructs, or other compatible constructs (i.e. ORM-mapped
          classes) to become part of the correlate collection.
 
-         .. versionchanged:: 0.8.0 ORM-mapped classes are accepted by
-            :meth:`.Select.correlate`.
-
-        .. versionchanged:: 0.8.0 The :meth:`.Select.correlate` method no
-           longer unconditionally removes entries from the FROM clause;
-           instead, the candidate FROM entries must also be matched by a FROM
-           entry located in an enclosing :class:`.Select`, which ultimately
-           encloses this one as present in the WHERE clause, ORDER BY clause,
-           HAVING clause, or columns clause of an enclosing :meth:`.Select`.
-
-        .. versionchanged:: 0.8.2 explicit correlation takes place
-           via any level of nesting of :class:`.Select` objects; in previous
-           0.8 versions, correlation would only occur relative to the
-           immediate enclosing :class:`.Select` construct.
-
         .. seealso::
 
             :meth:`.Select.correlate_except`
@@ -3480,16 +3461,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         all other FROM elements remain subject to normal auto-correlation
         behaviors.
 
-        .. versionchanged:: 0.8.2 The :meth:`.Select.correlate_except`
-           method was improved to fully prevent FROM clauses specified here
-           from being omitted from the immediate FROM clause of this
-           :class:`.Select`.
-
         If ``None`` is passed, the :class:`.Select` object will correlate
         all of its FROM entries.
-
-        .. versionchanged:: 0.8.2 calling ``correlate_except(None)`` will
-           correctly auto-correlate all FROM clauses.
 
         :param \*fromclauses: a list of one or more :class:`.FromClause`
          constructs, or other compatible constructs (i.e. ORM-mapped

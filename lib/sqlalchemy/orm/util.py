@@ -769,9 +769,6 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
      wouldn't have any "column correspondence" to the actual
      ``UnitPrice.price`` column as it is not a proxy of the original.
 
-     .. versionadded:: 0.7.3
-
-
     """
     if isinstance(element, expression.FromClause):
         if adapt_on_names:
@@ -1163,8 +1160,6 @@ def was_deleted(object_):
     This is regardless of whether or not the object is
     persistent or detached.
 
-    .. versionadded:: 0.8.0
-
     .. seealso::
 
         :attr:`.InstanceState.was_deleted`
@@ -1235,9 +1230,6 @@ def randomize_unitofwork():
 
     This utility is also available when running the test suite via the
     ``--reversetop`` flag.
-
-    .. versionadded:: 0.8.1 created a standalone version of the
-       ``--reversetop`` feature.
 
     """
     from sqlalchemy.orm import unitofwork, session, mapper, dependency

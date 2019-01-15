@@ -414,9 +414,6 @@ class TIME(sqltypes.TIME):
             be limited; current support includes
             MySQL Connector/Python.
 
-        .. versionadded:: 0.8 The MySQL-specific TIME
-           type as well as fractional seconds support.
-
         """
         super(TIME, self).__init__(timezone=timezone)
         self.fsp = fsp
@@ -464,9 +461,6 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
             be limited; current support includes
             MySQL Connector/Python.
 
-        .. versionadded:: 0.8.5 Added MySQL-specific :class:`.mysql.TIMESTAMP`
-           with fractional seconds support.
-
         """
         super(TIMESTAMP, self).__init__(timezone=timezone)
         self.fsp = fsp
@@ -493,9 +487,6 @@ class DATETIME(sqltypes.DATETIME):
             DBAPI driver support for fractional seconds may
             be limited; current support includes
             MySQL Connector/Python.
-
-        .. versionadded:: 0.8.5 Added MySQL-specific :class:`.mysql.DATETIME`
-           with fractional seconds support.
 
         """
         super(DATETIME, self).__init__(timezone=timezone)

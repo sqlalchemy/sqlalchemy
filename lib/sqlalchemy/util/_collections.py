@@ -65,11 +65,6 @@ class KeyedTuple(AbstractKeyedTuple):
     and performance overhead, which is not necessary for the
     :class:`.Query` object's use case.
 
-    .. versionchanged:: 0.8
-        Compatibility methods with ``collections.namedtuple()`` have been
-        added including :attr:`.KeyedTuple._fields` and
-        :meth:`.KeyedTuple._asdict`.
-
     .. seealso::
 
         :ref:`ormtutorial_querying`
@@ -91,8 +86,6 @@ class KeyedTuple(AbstractKeyedTuple):
 
         This method provides compatibility with ``collections.namedtuple()``.
 
-        .. versionadded:: 0.8
-
         .. seealso::
 
             :meth:`.KeyedTuple.keys`
@@ -108,8 +101,6 @@ class KeyedTuple(AbstractKeyedTuple):
 
         This method provides compatibility with ``collections.namedtuple()``,
         with the exception that the dictionary returned is **not** ordered.
-
-        .. versionadded:: 0.8
 
         """
         return {key: self.__dict__[key] for key in self.keys()}

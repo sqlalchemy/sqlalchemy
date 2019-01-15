@@ -183,8 +183,6 @@ class UpdateBase(
 
             mytable.insert().with_hint("WITH (PAGLOCK)", dialect_name="mssql")
 
-        .. versionadded:: 0.7.6
-
         :param text: Text of the hint.
         :param selectable: optional :class:`.Table` that specifies
          an element of the FROM clause within an UPDATE or DELETE
@@ -599,8 +597,6 @@ class Insert(ValuesBase):
            deals with an arbitrary number of rows, so the
            :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
 
-        .. versionadded:: 0.8.3
-
         """
         if self.parameters:
             raise exc.InvalidRequestError(
@@ -684,9 +680,6 @@ class Update(ValuesBase):
                                 where(addresses.c.user_id==users.c.id).\
                                 as_scalar()
                     )
-
-         .. versionchanged:: 0.7.4
-             The WHERE clause of UPDATE can refer to multiple tables.
 
         :param values:
           Optional dictionary which specifies the ``SET`` conditions of the

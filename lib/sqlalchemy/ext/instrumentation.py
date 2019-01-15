@@ -14,17 +14,6 @@ on the class.
 For examples of how the instrumentation extension is used,
 see the example :ref:`examples_instrumentation`.
 
-.. versionchanged:: 0.8
-   The :mod:`sqlalchemy.orm.instrumentation` was split out so
-   that all functionality having to do with non-standard
-   instrumentation was moved out to :mod:`sqlalchemy.ext.instrumentation`.
-   When imported, the module installs itself within
-   :mod:`sqlalchemy.orm.instrumentation` so that it
-   takes effect, including recognition of
-   ``__sa_instrumentation_manager__`` on mapped classes, as
-   well :data:`.instrumentation_finders`
-   being used to determine class instrumentation resolution.
-
 """
 import weakref
 
@@ -217,11 +206,6 @@ class InstrumentationManager(object):
 
     The API for this class should be considered as semi-stable,
     and may change slightly with new releases.
-
-    .. versionchanged:: 0.8
-       :class:`.InstrumentationManager` was moved from
-       :mod:`sqlalchemy.orm.instrumentation` to
-       :mod:`sqlalchemy.ext.instrumentation`.
 
     """
 

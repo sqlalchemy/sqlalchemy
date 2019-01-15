@@ -305,8 +305,6 @@ class Connection(Connectable):
           or piped into a script that's later invoked by
           command line tools.
 
-          .. versionadded:: 0.7.6
-
         :param stream_results: Available on: Connection, statement.
           Indicate to the dialect that results should be
           "streamed" and not pre-buffered, if possible.  This is a limitation
@@ -1925,8 +1923,6 @@ class Engine(Connectable, log.Identified):
                     cursor.execute("use %s" % shards[shard_id])
                     conn.info["current_shard"] = shard_id
 
-        .. versionadded:: 0.8
-
         .. seealso::
 
             :meth:`.Connection.execution_options` - update execution options
@@ -2040,15 +2036,13 @@ class Engine(Connectable, log.Identified):
         :meth:`.Connection.execute` will close the :class:`.Connection` when
         that :class:`.ResultProxy` has exhausted all result rows.
 
-        .. versionadded:: 0.7.6
+        .. seealso::
 
-        See also:
+            :meth:`.Engine.connect` - procure a :class:`.Connection` from
+            an :class:`.Engine`.
 
-        :meth:`.Engine.connect` - procure a :class:`.Connection` from
-        an :class:`.Engine`.
-
-        :meth:`.Connection.begin` - start a :class:`.Transaction`
-        for a particular :class:`.Connection`.
+            :meth:`.Connection.begin` - start a :class:`.Transaction`
+            for a particular :class:`.Connection`.
 
         """
         conn = self.contextual_connect(close_with_result=close_with_result)

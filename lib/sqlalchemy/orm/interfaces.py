@@ -101,9 +101,6 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
         :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
         functions.
 
-        .. versionadded:: 0.8  Added support for .info to all
-           :class:`.MapperProperty` subclasses.
-
         .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
            available on extension types via the
            :attr:`.InspectionAttrInfo.info` attribute, so that it can apply

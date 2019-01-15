@@ -319,16 +319,6 @@ class Mapper(InspectionAttr):
           See the change note and example at :ref:`legacy_is_orphan_addition`
           for more detail on this change.
 
-          .. versionadded:: 0.8 - the consideration of a pending object as
-            an "orphan" has been modified to more closely match the
-            behavior as that of persistent objects, which is that the object
-            is expunged from the :class:`.Session` as soon as it is
-            de-associated from any of its orphan-enabled parents.  Previously,
-            the pending object would be expunged only if de-associated
-            from all of its orphan-enabled parents. The new flag
-            ``legacy_is_orphan`` is added to :func:`.orm.mapper` which
-            re-establishes the legacy behavior.
-
         :param non_primary: Specify that this :class:`.Mapper` is in addition
           to the "primary" mapper, that is, the one used for persistence.
           The :class:`.Mapper` created here may be used for ad-hoc
@@ -487,11 +477,6 @@ class Mapper(InspectionAttr):
                         "polymorphic_on":employee_type,
                         "polymorphic_identity":"employee"
                     }
-
-          .. versionchanged:: 0.7.4
-              ``polymorphic_on`` may be specified as a SQL expression,
-              or refer to any attribute configured with
-              :func:`.column_property`, or to the string name of one.
 
           When setting ``polymorphic_on`` to reference an
           attribute or expression that's not present in the
@@ -2392,8 +2377,6 @@ class Mapper(InspectionAttr):
             ``getattr(mapper.all_orm_descriptors, somename)`` to avoid name
             collisions.
 
-        .. versionadded:: 0.8.0
-
         .. seealso::
 
             :attr:`.Mapper.attrs`
@@ -3275,7 +3258,6 @@ def validates(*names, **kw):
      sent as well - the validation function must accept an additional
      argument "is_remove" which will be a boolean.
 
-     .. versionadded:: 0.7.7
     :param include_backrefs: defaults to ``True``; if ``False``, the
      validation function will not emit if the originator is an attribute
      event related via a backref.  This can be used for bi-directional

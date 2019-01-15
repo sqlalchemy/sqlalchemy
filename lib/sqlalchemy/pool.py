@@ -1332,10 +1332,6 @@ class NullPool(Pool):
     invalidation are not supported by this Pool implementation, since
     no connections are held persistently.
 
-    .. versionchanged:: 0.7
-        :class:`.NullPool` is used by the SQlite dialect automatically
-        when a file-based database is used. See :ref:`sqlite_toplevel`.
-
     """
 
     def status(self):
@@ -1423,11 +1419,6 @@ class AssertionPool(Pool):
     This will raise an exception if more than one connection is checked out
     at a time.  Useful for debugging code that is using more connections
     than desired.
-
-    .. versionchanged:: 0.7
-        :class:`.AssertionPool` also logs a traceback of where
-        the original connection was checked out, and reports
-        this in the assertion error raised.
 
     """
 

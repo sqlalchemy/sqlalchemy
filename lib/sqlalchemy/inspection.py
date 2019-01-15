@@ -26,9 +26,6 @@ is guaranteed to obey a documented API, thus allowing third party
 tools which build on top of SQLAlchemy configurations to be constructed
 in a forwards-compatible way.
 
-.. versionadded:: 0.8 The :func:`.inspect` system is introduced
-   as of version 0.8.
-
 """
 
 from . import exc

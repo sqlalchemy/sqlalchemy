@@ -132,10 +132,6 @@ def create_engine(*args, **kwargs):
        will match in a case-insensitive fashion, that is,
        ``row['SomeColumn']``.
 
-       .. versionchanged:: 0.8
-           By default, result row names match case-sensitively.
-           In version 0.7 and prior, all matches were case-insensitive.
-
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
         additional keyword arguments.  See the example

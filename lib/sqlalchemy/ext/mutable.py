@@ -8,10 +8,6 @@
 r"""Provide support for tracking of in-place changes to scalar values,
 which are propagated into ORM change events on owning parent objects.
 
-.. versionadded:: 0.7 :mod:`sqlalchemy.ext.mutable` replaces SQLAlchemy's
-   legacy approach to in-place mutations of scalar values; see
-   :ref:`07_migration_mutation_extension`.
-
 .. _mutable_scalars:
 
 Establishing Mutability on Scalar Column Values
@@ -236,14 +232,6 @@ be assigned an object value which represents information "composed" from one
 or more columns from the underlying mapped table. The usual example is that of
 a geometric "point", and is introduced in :ref:`mapper_composite`.
 
-.. versionchanged:: 0.7
-    The internals of :func:`.orm.composite` have been
-    greatly simplified and in-place mutation detection is no longer enabled by
-    default; instead, the user-defined value must detect changes on its own and
-    propagate them to all owning parents. The :mod:`sqlalchemy.ext.mutable`
-    extension provides the helper class :class:`.MutableComposite`, which is a
-    slight variant on the :class:`.Mutable` class.
-
 As is the case with :class:`.Mutable`, the user-defined composite class
 subclasses :class:`.MutableComposite` as a mixin, and detects and delivers
 change events to its parents via the :meth:`.MutableComposite.changed` method.
@@ -340,10 +328,6 @@ make use of the custom composite type::
             elif not isinstance(value, Point):
                 raise ValueError("tuple or Point expected")
             return value
-
-.. versionadded:: 0.7.10,0.8.0b2
-    Support for the :meth:`.MutableBase.coerce` method in conjunction with
-    objects of type :class:`.MutableComposite`.
 
 Supporting Pickling
 --------------------
@@ -703,8 +687,6 @@ class MutableDict(Mutable, dict):
     build a subclass of  :class:`.MutableDict` that provides appropriate
     coersion to the values placed in the dictionary so that they too are
     "mutable", and emit events up to their parent structure.
-
-    .. versionadded:: 0.8
 
     .. seealso::
 
