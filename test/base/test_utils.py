@@ -1674,7 +1674,10 @@ class ArgInspectionTest(fixtures.TestBase):
         def foo(x, y, **kw):
             pass
 
-        eq_(get_callable_argspec(foo), (["x", "y"], None, "kw", None))
+        eq_(
+            get_callable_argspec(foo),
+            compat.FullArgSpec(["x", "y"], None, "kw", None, [], None, {}),
+        )
 
     def test_callable_argspec_fn_no_self(self):
         def foo(x, y, **kw):
@@ -1682,7 +1685,7 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(foo, no_self=True),
-            (["x", "y"], None, "kw", None),
+            compat.FullArgSpec(["x", "y"], None, "kw", None, [], None, {}),
         )
 
     def test_callable_argspec_fn_no_self_but_self(self):
@@ -1691,7 +1694,9 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(foo, no_self=True),
-            (["self", "x", "y"], None, "kw", None),
+            compat.FullArgSpec(
+                ["self", "x", "y"], None, "kw", None, [], None, {}
+            ),
         )
 
     @fails_if(lambda: util.pypy, "pypy returns plain *arg, **kw")
@@ -1711,7 +1716,9 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(Foo.foo),
-            (["self", "x", "y"], None, "kw", None),
+            compat.FullArgSpec(
+                ["self", "x", "y"], None, "kw", None, [], None, {}
+            ),
         )
 
     def test_callable_argspec_instance_method_no_self(self):
@@ -1721,7 +1728,7 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(Foo().foo, no_self=True),
-            (["x", "y"], None, "kw", None),
+            compat.FullArgSpec(["x", "y"], None, "kw", None, [], None, {}),
         )
 
     def test_callable_argspec_unbound_method_no_self(self):
@@ -1731,7 +1738,9 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(Foo.foo, no_self=True),
-            (["self", "x", "y"], None, "kw", None),
+            compat.FullArgSpec(
+                ["self", "x", "y"], None, "kw", None, [], None, {}
+            ),
         )
 
     def test_callable_argspec_init(self):
@@ -1739,7 +1748,12 @@ class ArgInspectionTest(fixtures.TestBase):
             def __init__(self, x, y):
                 pass
 
-        eq_(get_callable_argspec(Foo), (["self", "x", "y"], None, None, None))
+        eq_(
+            get_callable_argspec(Foo),
+            compat.FullArgSpec(
+                ["self", "x", "y"], None, None, None, [], None, {}
+            ),
+        )
 
     def test_callable_argspec_init_no_self(self):
         class Foo(object):
@@ -1748,7 +1762,7 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(Foo, no_self=True),
-            (["x", "y"], None, None, None),
+            compat.FullArgSpec(["x", "y"], None, None, None, [], None, {}),
         )
 
     def test_callable_argspec_call(self):
@@ -1757,7 +1771,10 @@ class ArgInspectionTest(fixtures.TestBase):
                 pass
 
         eq_(
-            get_callable_argspec(Foo()), (["self", "x", "y"], None, None, None)
+            get_callable_argspec(Foo()),
+            compat.FullArgSpec(
+                ["self", "x", "y"], None, None, None, [], None, {}
+            ),
         )
 
     def test_callable_argspec_call_no_self(self):
@@ -1767,7 +1784,7 @@ class ArgInspectionTest(fixtures.TestBase):
 
         eq_(
             get_callable_argspec(Foo(), no_self=True),
-            (["x", "y"], None, None, None),
+            compat.FullArgSpec(["x", "y"], None, None, None, [], None, {}),
         )
 
     @fails_if(lambda: util.pypy, "pypy returns plain *arg, **kw")
@@ -1780,6 +1797,25 @@ class ArgInspectionTest(fixtures.TestBase):
         bar = partial(foo, 5)
 
         assert_raises(TypeError, get_callable_argspec, bar)
+
+    def test_getargspec_6_tuple(self):
+        def foo(x, y, z, **kw):
+            pass
+
+        spec = compat.inspect_getfullargspec(foo)
+
+        eq_(
+            spec,
+            compat.FullArgSpec(
+                args=["x", "y", "z"],
+                varargs=None,
+                varkw="kw",
+                defaults=None,
+                kwonlyargs=[],
+                kwonlydefaults=None,
+                annotations={},
+            ),
+        )
 
 
 class SymbolTest(fixtures.TestBase):
@@ -1833,16 +1869,49 @@ class SymbolTest(fixtures.TestBase):
         assert (sym1 | sym2) & (sym2 | sym4)
 
 
-class TestFormatArgspec(fixtures.TestBase):
-    def test_specs(self):
-        def test(fn, wanted, grouped=None):
-            if grouped is None:
-                parsed = util.format_argspec_plus(fn)
-            else:
-                parsed = util.format_argspec_plus(fn, grouped=grouped)
-            eq_(parsed, wanted)
+class _Py3KFixtures(object):
+    pass
 
-        test(
+
+if util.py3k:
+    _locals = {}
+    exec(
+        """
+def _kw_only_fixture(self, a, *, b, c):
+    pass
+
+def _kw_plus_posn_fixture(self, a, *args, b, c):
+    pass
+
+def _kw_opt_fixture(self, a, *, b, c="c"):
+    pass
+""",
+        _locals,
+    )
+    for k in _locals:
+        setattr(_Py3KFixtures, k, _locals[k])
+
+
+class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
+    def _test_format_argspec_plus(self, fn, wanted, grouped=None):
+
+        # test direct function
+        if grouped is None:
+            parsed = util.format_argspec_plus(fn)
+        else:
+            parsed = util.format_argspec_plus(fn, grouped=grouped)
+        eq_(parsed, wanted)
+
+        # test sending fullargspec
+        spec = compat.inspect_getfullargspec(fn)
+        if grouped is None:
+            parsed = util.format_argspec_plus(spec)
+        else:
+            parsed = util.format_argspec_plus(spec, grouped=grouped)
+        eq_(parsed, wanted)
+
+    def test_specs(self):
+        self._test_format_argspec_plus(
             lambda: None,
             {
                 "args": "()",
@@ -1852,13 +1921,13 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda: None,
             {"args": "", "self_arg": None, "apply_kw": "", "apply_pos": ""},
             grouped=False,
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda self: None,
             {
                 "args": "(self)",
@@ -1868,7 +1937,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda self: None,
             {
                 "args": "self",
@@ -1879,7 +1948,7 @@ class TestFormatArgspec(fixtures.TestBase):
             grouped=False,
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda *a: None,
             {
                 "args": "(*a)",
@@ -1889,7 +1958,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda **kw: None,
             {
                 "args": "(**kw)",
@@ -1899,7 +1968,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda *a, **kw: None,
             {
                 "args": "(*a, **kw)",
@@ -1909,7 +1978,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda a, *b: None,
             {
                 "args": "(a, *b)",
@@ -1919,7 +1988,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda a, **b: None,
             {
                 "args": "(a, **b)",
@@ -1929,7 +1998,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda a, *b, **c: None,
             {
                 "args": "(a, *b, **c)",
@@ -1939,7 +2008,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda a, b=1, **c: None,
             {
                 "args": "(a, b=1, **c)",
@@ -1949,7 +2018,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda a=1, b=2: None,
             {
                 "args": "(a=1, b=2)",
@@ -1959,7 +2028,7 @@ class TestFormatArgspec(fixtures.TestBase):
             },
         )
 
-        test(
+        self._test_format_argspec_plus(
             lambda a=1, b=2: None,
             {
                 "args": "a=1, b=2",
@@ -1969,6 +2038,38 @@ class TestFormatArgspec(fixtures.TestBase):
             },
             grouped=False,
         )
+
+        if util.py3k:
+            self._test_format_argspec_plus(
+                self._kw_only_fixture,
+                {
+                    "args": "self, a, *, b, c",
+                    "self_arg": "self",
+                    "apply_pos": "self, a, *, b, c",
+                    "apply_kw": "self, a, b=b, c=c",
+                },
+                grouped=False,
+            )
+            self._test_format_argspec_plus(
+                self._kw_plus_posn_fixture,
+                {
+                    "args": "self, a, *args, b, c",
+                    "self_arg": "self",
+                    "apply_pos": "self, a, *args, b, c",
+                    "apply_kw": "self, a, b=b, c=c, *args",
+                },
+                grouped=False,
+            )
+            self._test_format_argspec_plus(
+                self._kw_opt_fixture,
+                {
+                    "args": "self, a, *, b, c='c'",
+                    "self_arg": "self",
+                    "apply_pos": "self, a, *, b, c",
+                    "apply_kw": "self, a, b=b, c=c",
+                },
+                grouped=False,
+            )
 
     @testing.fails_if(
         lambda: util.pypy,

@@ -31,8 +31,17 @@ dottedgetter = operator.attrgetter
 namedtuple = collections.namedtuple
 next = next  # noqa
 
-ArgSpec = collections.namedtuple(
-    "ArgSpec", ["args", "varargs", "keywords", "defaults"]
+FullArgSpec = collections.namedtuple(
+    "FullArgSpec",
+    [
+        "args",
+        "varargs",
+        "varkw",
+        "defaults",
+        "kwonlyargs",
+        "kwonlydefaults",
+        "annotations",
+    ],
 )
 
 try:
@@ -98,9 +107,6 @@ if py3k:
     def cmp(a, b):
         return (a > b) - (a < b)
 
-    def inspect_getargspec(func):
-        return ArgSpec(*inspect_getfullargspec(func)[0:4])
-
     def reraise(tp, value, tb=None, cause=None):
         if cause is not None:
             assert cause is not value, "Same cause emitted"
@@ -130,7 +136,7 @@ else:
 
     from StringIO import StringIO  # noqa
     from cStringIO import StringIO as byte_buffer  # noqa
-    from inspect import getargspec as inspect_getfullargspec  # noqa
+    from inspect import getargspec as _getargspec
     from itertools import izip_longest as zip_longest  # noqa
     from urllib import quote  # noqa
     from urllib import quote_plus  # noqa
@@ -149,7 +155,8 @@ else:
     text_type = unicode  # noqa
     int_types = int, long  # noqa
 
-    inspect_getargspec = inspect_getfullargspec
+    def inspect_getfullargspec(func):
+        return FullArgSpec(*_getargspec(func)[0:4] + ([], None, {}))
 
     callable = callable  # noqa
     cmp = cmp  # noqa
@@ -284,6 +291,14 @@ if py35:
         if "return" in annotations:
             result += formatreturns(formatannotation(annotations["return"]))
         return result
+
+
+elif py2k:
+    from inspect import formatargspec as _inspect_formatargspec
+
+    def inspect_formatargspec(*spec, **kw):
+        # convert for a potential FullArgSpec from compat.getfullargspec()
+        return _inspect_formatargspec(*spec[0:4], **kw)  # noqa
 
 
 else:

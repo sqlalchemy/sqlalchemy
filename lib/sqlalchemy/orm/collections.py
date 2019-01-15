@@ -106,7 +106,7 @@ through the adapter, allowing for some very sophisticated behavior.
 import operator
 import weakref
 
-from sqlalchemy.util.compat import inspect_getargspec
+from sqlalchemy.util.compat import inspect_getfullargspec
 from . import base
 from .. import exc as sa_exc
 from .. import util
@@ -433,7 +433,7 @@ class collection(object):
         "The :meth:`.collection.linker` handler is deprecated and will "
         "be removed in a future release.  Please refer to the "
         ":meth:`.AttributeEvents.init_collection` "
-        "and :meth:`.AttributeEvents.dispose_collection` event handlers. "
+        "and :meth:`.AttributeEvents.dispose_collection` event handlers. ",
     )
     def linker(fn):
         """Tag the method as a "linked to attribute" event handler.
@@ -463,7 +463,7 @@ class collection(object):
         "The :meth:`.collection.converter` method is deprecated and will "
         "be removed in a future release.  Please refer to the "
         ":class:`.AttributeEvents.bulk_replace` listener interface in "
-        "conjunction with the :func:`.event.listen` function."
+        "conjunction with the :func:`.event.listen` function.",
     )
     def converter(fn):
         """Tag the method as the collection converter.
@@ -1008,7 +1008,9 @@ def _instrument_membership_mutator(method, before, argument, after):
     adapter."""
     # This isn't smart enough to handle @adds(1) for 'def fn(self, (a, b))'
     if before:
-        fn_args = list(util.flatten_iterator(inspect_getargspec(method)[0]))
+        fn_args = list(
+            util.flatten_iterator(inspect_getfullargspec(method)[0])
+        )
         if isinstance(argument, int):
             pos_arg = argument
             named_arg = len(fn_args) > argument and fn_args[argument] or None

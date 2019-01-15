@@ -35,7 +35,7 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util import pickle
 from sqlalchemy.util import pypy
-from sqlalchemy.util.compat import inspect_getargspec
+from sqlalchemy.util.compat import inspect_getfullargspec
 from test.orm import _fixtures
 
 
@@ -1850,7 +1850,7 @@ class SessionInterface(fixtures.TestBase):
         for meth in Session.public_methods:
             if meth in blacklist:
                 continue
-            spec = inspect_getargspec(getattr(Session, meth))
+            spec = inspect_getfullargspec(getattr(Session, meth))
             if len(spec[0]) > 1 or spec[1]:
                 ok.add(meth)
         return ok

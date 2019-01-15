@@ -53,7 +53,7 @@ from .compat import cmp  # noqa
 from .compat import cpython  # noqa
 from .compat import decode_backslashreplace  # noqa
 from .compat import dottedgetter  # noqa
-from .compat import inspect_getargspec  # noqa
+from .compat import inspect_getfullargspec  # noqa
 from .compat import int_types  # noqa
 from .compat import iterbytes  # noqa
 from .compat import itertools_filter  # noqa

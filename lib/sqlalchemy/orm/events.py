@@ -22,7 +22,7 @@ from .session import sessionmaker
 from .. import event
 from .. import exc
 from .. import util
-from ..util.compat import inspect_getargspec
+from ..util.compat import inspect_getfullargspec
 
 
 class InstrumentationEvents(event.Events):
@@ -639,7 +639,7 @@ class MapperEvents(event.Events):
                 meth = getattr(cls, identifier)
                 try:
                     target_index = (
-                        inspect_getargspec(meth)[0].index("target") - 1
+                        inspect_getfullargspec(meth)[0].index("target") - 1
                     )
                 except ValueError:
                     target_index = None

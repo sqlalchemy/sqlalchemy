@@ -121,8 +121,9 @@ def decorator(target):
     """A signature-matching decorator factory."""
 
     def decorate(fn):
-        if not inspect.isfunction(fn):
+        if not inspect.isfunction(fn) and not inspect.ismethod(fn):
             raise Exception("not a decoratable function")
+
         spec = compat.inspect_getfullargspec(fn)
         names = tuple(spec[0]) + spec[1:3] + (fn.__name__,)
         targ_name, fn_name = _unique_symbols(names, "target", "fn")
@@ -242,6 +243,26 @@ class PluginLoader(object):
         self.impls[name] = load
 
 
+def _inspect_func_args(fn):
+    try:
+        co_varkeywords = inspect.CO_VARKEYWORDS
+    except AttributeError:
+        # https://docs.python.org/3/library/inspect.html
+        # The flags are specific to CPython, and may not be defined in other
+        # Python implementations. Furthermore, the flags are an implementation
+        # detail, and can be removed or deprecated in future Python releases.
+        spec = compat.inspect_getfullargspec(fn)
+        return spec[0], bool(spec[2])
+    else:
+        # use fn.__code__ plus flags to reduce method call overhead
+        co = fn.__code__
+        nargs = co.co_argcount
+        return (
+            list(co.co_varnames[:nargs]),
+            bool(co.co_flags & inspect.CO_VARKEYWORDS),
+        )
+
+
 def get_cls_kwargs(cls, _set=None):
     r"""Return the full set of inherited kwargs for the given `cls`.
 
@@ -250,7 +271,10 @@ def get_cls_kwargs(cls, _set=None):
     to pass along unrecognized keywords to its base classes, and the
     collection process is repeated recursively on each of the bases.
 
-    Uses a subset of inspect.getargspec() to cut down on method overhead.
+    Uses a subset of inspect.getfullargspec() to cut down on method overhead,
+    as this is used within the Core typing system to create copies of type
+    objects which is a performance-sensitive operation.
+
     No anonymous tuple arguments please !
 
     """
@@ -267,7 +291,7 @@ def get_cls_kwargs(cls, _set=None):
     )
 
     if has_init:
-        names, has_kw = inspect_func_args(ctr)
+        names, has_kw = _inspect_func_args(ctr)
         _set.update(names)
 
         if not has_kw and not toplevel:
@@ -282,26 +306,6 @@ def get_cls_kwargs(cls, _set=None):
     return _set
 
 
-try:
-    # TODO: who doesn't have this constant?
-    from inspect import CO_VARKEYWORDS
-
-    def inspect_func_args(fn):
-        co = fn.__code__
-        nargs = co.co_argcount
-        names = co.co_varnames
-        args = list(names[:nargs])
-        has_kw = bool(co.co_flags & CO_VARKEYWORDS)
-        return args, has_kw
-
-
-except ImportError:
-
-    def inspect_func_args(fn):
-        names, _, has_kw, _ = compat.inspect_getargspec(fn)
-        return names, bool(has_kw)
-
-
 def get_func_kwargs(func):
     """Return the set of legal kwargs for the given `func`.
 
@@ -310,7 +314,7 @@ def get_func_kwargs(func):
 
     """
 
-    return compat.inspect_getargspec(func)[0]
+    return compat.inspect_getfullargspec(func)[0]
 
 
 def get_callable_argspec(fn, no_self=False, _is_init=False):
@@ -326,26 +330,38 @@ def get_callable_argspec(fn, no_self=False, _is_init=False):
         raise TypeError("Can't inspect builtin: %s" % fn)
     elif inspect.isfunction(fn):
         if _is_init and no_self:
-            spec = compat.inspect_getargspec(fn)
-            return compat.ArgSpec(
-                spec.args[1:], spec.varargs, spec.keywords, spec.defaults
+            spec = compat.inspect_getfullargspec(fn)
+            return compat.FullArgSpec(
+                spec.args[1:],
+                spec.varargs,
+                spec.varkw,
+                spec.defaults,
+                spec.kwonlyargs,
+                spec.kwonlydefaults,
+                spec.annotations,
             )
         else:
-            return compat.inspect_getargspec(fn)
+            return compat.inspect_getfullargspec(fn)
     elif inspect.ismethod(fn):
         if no_self and (_is_init or fn.__self__):
-            spec = compat.inspect_getargspec(fn.__func__)
-            return compat.ArgSpec(
-                spec.args[1:], spec.varargs, spec.keywords, spec.defaults
+            spec = compat.inspect_getfullargspec(fn.__func__)
+            return compat.FullArgSpec(
+                spec.args[1:],
+                spec.varargs,
+                spec.varkw,
+                spec.defaults,
+                spec.kwonlyargs,
+                spec.kwonlydefaults,
+                spec.annotations,
             )
         else:
-            return compat.inspect_getargspec(fn.__func__)
+            return compat.inspect_getfullargspec(fn.__func__)
     elif inspect.isclass(fn):
         return get_callable_argspec(
             fn.__init__, no_self=no_self, _is_init=True
         )
     elif hasattr(fn, "__func__"):
-        return compat.inspect_getargspec(fn.__func__)
+        return compat.inspect_getfullargspec(fn.__func__)
     elif hasattr(fn, "__call__"):
         if inspect.ismethod(fn.__call__):
             return get_callable_argspec(fn.__call__, no_self=no_self)
@@ -390,8 +406,8 @@ def format_argspec_plus(fn, grouped=True):
     if compat.callable(fn):
         spec = compat.inspect_getfullargspec(fn)
     else:
-        # we accept an existing argspec...
         spec = fn
+
     args = compat.inspect_formatargspec(*spec)
     if spec[0]:
         self_arg = spec[0][0]
@@ -400,22 +416,15 @@ def format_argspec_plus(fn, grouped=True):
     else:
         self_arg = None
 
-    if compat.py3k:
-        apply_pos = compat.inspect_formatargspec(
-            spec[0], spec[1], spec[2], None, spec[4]
-        )
-        num_defaults = 0
-        if spec[3]:
-            num_defaults += len(spec[3])
-        if spec[4]:
-            num_defaults += len(spec[4])
-        name_args = spec[0] + spec[4]
-    else:
-        apply_pos = compat.inspect_formatargspec(spec[0], spec[1], spec[2])
-        num_defaults = 0
-        if spec[3]:
-            num_defaults += len(spec[3])
-        name_args = spec[0]
+    apply_pos = compat.inspect_formatargspec(
+        spec[0], spec[1], spec[2], None, spec[4]
+    )
+    num_defaults = 0
+    if spec[3]:
+        num_defaults += len(spec[3])
+    if spec[4]:
+        num_defaults += len(spec[4])
+    name_args = spec[0] + spec[4]
 
     if num_defaults:
         defaulted_vals = name_args[0 - num_defaults :]
@@ -479,7 +488,7 @@ def getargspec_init(method):
 
     """
     try:
-        return compat.inspect_getargspec(method)
+        return compat.inspect_getfullargspec(method)
     except TypeError:
         if method is object.__init__:
             return (["self"], None, None, None)
@@ -516,30 +525,30 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     vargs = None
     for i, insp in enumerate(to_inspect):
         try:
-            (_args, _vargs, vkw, defaults) = compat.inspect_getargspec(
-                insp.__init__
-            )
+            spec = compat.inspect_getfullargspec(insp.__init__)
         except TypeError:
             continue
         else:
-            default_len = defaults and len(defaults) or 0
+            default_len = spec.defaults and len(spec.defaults) or 0
             if i == 0:
-                if _vargs:
-                    vargs = _vargs
+                if spec.varargs:
+                    vargs = spec.varargs
                 if default_len:
-                    pos_args.extend(_args[1:-default_len])
+                    pos_args.extend(spec.args[1:-default_len])
                 else:
-                    pos_args.extend(_args[1:])
+                    pos_args.extend(spec.args[1:])
             else:
                 kw_args.update(
-                    [(arg, missing) for arg in _args[1:-default_len]]
+                    [(arg, missing) for arg in spec.args[1:-default_len]]
                 )
 
             if default_len:
                 kw_args.update(
                     [
                         (arg, default)
-                        for arg, default in zip(_args[-default_len:], defaults)
+                        for arg, default in zip(
+                            spec.args[-default_len:], spec.defaults
+                        )
                     ]
                 )
     output = []
@@ -710,7 +719,7 @@ def monkeypatch_proxied_specials(
         except AttributeError:
             continue
         try:
-            spec = compat.inspect_getargspec(fn)
+            spec = compat.inspect_getfullargspec(fn)
             fn_args = compat.inspect_formatargspec(spec[0])
             d_args = compat.inspect_formatargspec(spec[0][1:])
         except TypeError:
@@ -1478,8 +1487,8 @@ class EnsureKWArgType(type):
                 m = re.match(fn_reg, key)
                 if m:
                     fn = clsdict[key]
-                    spec = compat.inspect_getargspec(fn)
-                    if not spec.keywords:
+                    spec = compat.inspect_getfullargspec(fn)
+                    if not spec.varkw:
                         clsdict[key] = wrapped = cls._wrap_w_kw(fn)
                         setattr(cls, key, wrapped)
         super(EnsureKWArgType, cls).__init__(clsname, bases, clsdict)
