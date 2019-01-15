@@ -320,15 +320,15 @@ class ColumnOperators(Operators):
     so that the ``==`` operation above is replaced by a clause
     construct.
 
-    See also:
+    .. seealso::
 
-    :ref:`types_operators`
+        :ref:`types_operators`
 
-    :attr:`.TypeEngine.comparator_factory`
+        :attr:`.TypeEngine.comparator_factory`
 
-    :class:`.ColumnOperators`
+        :class:`.ColumnOperators`
 
-    :class:`.PropComparator`
+        :class:`.PropComparator`
 
     """
 

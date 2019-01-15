@@ -80,8 +80,7 @@ class DDLEvents(event.Events):
     The above :class:`.DDL` object will also be associated with the
     :class:`.Table` object represented by ``new_table``.
 
-
-    See also:
+    .. seealso::
 
         :ref:`event_toplevel`
 
@@ -669,9 +668,9 @@ class ConnectionEvents(event.Events):
         :param multiparams: Multiple parameter sets, a list of dictionaries.
         :param params: Single parameter set, a single dictionary.
 
-        See also:
+        .. seealso::
 
-        :meth:`.before_cursor_execute`
+            :meth:`.before_cursor_execute`
 
         """
 
@@ -722,11 +721,11 @@ class ConnectionEvents(event.Events):
         :param executemany: boolean, if ``True``, this is an ``executemany()``
          call, if ``False``, this is an ``execute()`` call.
 
-        See also:
+        .. seealso::
 
-        :meth:`.before_execute`
+            :meth:`.before_execute`
 
-        :meth:`.after_cursor_execute`
+            :meth:`.after_cursor_execute`
 
         """
 

@@ -609,14 +609,14 @@ class Connection(Connectable):
         :class:`.Transaction` objects will roll back the
         transaction.
 
-        See also:
+        .. seealso::
 
-        :meth:`.Connection.begin_nested` - use a SAVEPOINT
+            :meth:`.Connection.begin_nested` - use a SAVEPOINT
 
-        :meth:`.Connection.begin_twophase` - use a two phase /XID transaction
+            :meth:`.Connection.begin_twophase` - use a two phase /XID transaction
 
-        :meth:`.Engine.begin` - context manager available from
-        :class:`.Engine`.
+            :meth:`.Engine.begin` - context manager available from
+            :class:`.Engine`
 
         """
         if self.__branch_from:
@@ -639,8 +639,12 @@ class Connection(Connectable):
         still controls the overall ``commit`` or ``rollback`` of the
         transaction of a whole.
 
-        See also :meth:`.Connection.begin`,
-        :meth:`.Connection.begin_twophase`.
+        .. seealso::
+
+            :meth:`.Connection.begin`
+
+            :meth:`.Connection.begin_twophase`
+
         """
         if self.__branch_from:
             return self.__branch_from.begin_nested()
@@ -663,8 +667,11 @@ class Connection(Connectable):
         :param xid: the two phase transaction id.  If not supplied, a
           random id will be generated.
 
-        See also :meth:`.Connection.begin`,
-        :meth:`.Connection.begin_twophase`.
+        .. seealso::
+
+            :meth:`.Connection.begin`
+
+            :meth:`.Connection.begin_twophase`
 
         """
 
@@ -1553,7 +1560,7 @@ class Connection(Connectable):
                with engine.begin() as conn:
                    conn.execute("some statement", {'x':5, 'y':10})
 
-        See also:
+        .. seealso::
 
             :meth:`.Engine.begin` - engine-level transactional
             context
@@ -1643,8 +1650,13 @@ class Transaction(object):
 
     The Transaction object is **not** threadsafe.
 
-    See also:  :meth:`.Connection.begin`, :meth:`.Connection.begin_twophase`,
-    :meth:`.Connection.begin_nested`.
+    .. seealso::
+
+        :meth:`.Connection.begin`
+
+        :meth:`.Connection.begin_twophase`
+
+        :meth:`.Connection.begin_nested`
 
     .. index::
       single: thread safety; Transaction
@@ -1797,11 +1809,11 @@ class Engine(Connectable, log.Identified):
     An :class:`.Engine` object is instantiated publicly using the
     :func:`~sqlalchemy.create_engine` function.
 
-    See also:
+    .. seealso::
 
-    :doc:`/core/engines`
+        :doc:`/core/engines`
 
-    :ref:`connections_toplevel`
+        :ref:`connections_toplevel`
 
     """
 
@@ -2082,7 +2094,7 @@ class Engine(Connectable, log.Identified):
                with engine.begin() as conn:
                    conn.execute("some statement", {'x':5, 'y':10})
 
-        See also:
+        .. seealso::
 
             :meth:`.Engine.begin` - engine-level transactional
             context

@@ -94,9 +94,9 @@ class RelationshipProperty(StrategizedProperty):
 
     Public constructor is the :func:`.orm.relationship` function.
 
-    See also:
+    .. seealso::
 
-    :ref:`relationship_config_toplevel`
+        :ref:`relationship_config_toplevel`
 
     """
 
@@ -894,17 +894,17 @@ class RelationshipProperty(StrategizedProperty):
         See the documentation for :class:`.PropComparator` for a brief
         overview of ORM level operator definition.
 
-        See also:
+        .. seealso::
 
-        :class:`.PropComparator`
+            :class:`.PropComparator`
 
-        :class:`.ColumnProperty.Comparator`
+            :class:`.ColumnProperty.Comparator`
 
-        :class:`.ColumnOperators`
+            :class:`.ColumnOperators`
 
-        :ref:`types_operators`
+            :ref:`types_operators`
 
-        :attr:`.TypeEngine.comparator_factory`
+            :attr:`.TypeEngine.comparator_factory`
 
         """
 

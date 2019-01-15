@@ -405,7 +405,9 @@ class Pool(log.Identified):
         remaining open, as it only affects connections that are
         idle in the pool.
 
-        See also the :meth:`Pool.recreate` method.
+        .. seealso::
+
+            :meth:`Pool.recreate`
 
         """
 

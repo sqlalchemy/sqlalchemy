@@ -260,15 +260,15 @@ class ColumnProperty(StrategizedProperty):
         See the documentation for :class:`.PropComparator` for a brief
         overview.
 
-        See also:
+        .. seealso::
 
-        :class:`.PropComparator`
+            :class:`.PropComparator`
 
-        :class:`.ColumnOperators`
+            :class:`.ColumnOperators`
 
-        :ref:`types_operators`
+            :ref:`types_operators`
 
-        :attr:`.TypeEngine.comparator_factory`
+            :attr:`.TypeEngine.comparator_factory`
 
         """
 
