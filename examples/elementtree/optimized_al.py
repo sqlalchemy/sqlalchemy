@@ -10,7 +10,6 @@
 # PART I - Imports/Configuration
 
 from __future__ import print_function
-import io
 import os
 import re
 from xml.etree import ElementTree

@@ -11,7 +11,6 @@ are identical, as is the structure of the main Document class.
 """
 
 import os
-import sys
 from xml.etree import ElementTree
 
 from sqlalchemy import Column
