@@ -18,7 +18,7 @@ class.
 """
 
 # PART I - Imports/Configuration
-import io
+from __future__ import print_function
 import os
 import re
 from xml.etree import ElementTree
@@ -91,12 +91,6 @@ class Document(object):
     def __init__(self, name, element):
         self.filename = name
         self.element = element
-
-    def __str__(self):
-        buf = io.StringIO()
-        self.element.write(buf)
-        return buf.getvalue()
-
 
 # PART IV - Persistence Mapping
 
@@ -176,7 +170,7 @@ class ElementTreeMarshal(object):
             n = _Node()
             n.tag = str(node.tag)
             n.text = str(node.text)
-            n.tail = str(node.tail)
+            n.tail = str(node.tail) if node.tail else None
             n.children = [traverse(n2) for n2 in node]
             n.attributes = [
                 _Attribute(str(k), str(v)) for k, v in node.attrib.items()
@@ -214,7 +208,7 @@ print("Done.")
 print("\nFull text of document 'text.xml':", line)
 document = session.query(Document).filter_by(filename="test.xml").first()
 
-print(document)
+ElementTree.dump(document.element)
 
 # PART VI - Searching for Paths
 
@@ -229,7 +223,7 @@ d = (
     .filter(and_(_Node.tag == "field1", _Node.text == "hi"))
     .one()
 )
-print(d)
+ElementTree.dump(d.element)
 
 # generalize the above approach into an extremely impoverished xpath function:
 

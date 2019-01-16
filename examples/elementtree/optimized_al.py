@@ -9,6 +9,7 @@
 
 # PART I - Imports/Configuration
 
+from __future__ import print_function
 import io
 import os
 import re
@@ -82,11 +83,6 @@ class Document(object):
     def __init__(self, name, element):
         self.filename = name
         self.element = element
-
-    def __str__(self):
-        buf = io.StringIO()
-        self.element.write(buf)
-        return buf.getvalue()
 
 
 # PART IV - Persistence Mapping
@@ -221,7 +217,7 @@ print("Done.")
 print("\nFull text of document 'text.xml':", line)
 document = session.query(Document).filter_by(filename="test.xml").first()
 
-print(document)
+ElementTree.dump(document.element)
 
 # PART VI - Searching for Paths
 
@@ -237,7 +233,7 @@ d = (
     .filter(and_(_Node.tag == "field1", _Node.text == "hi"))
     .one()
 )
-print(d)
+ElementTree.dump(d.element)
 
 # generalize the above approach into an extremely impoverished xpath function:
 
