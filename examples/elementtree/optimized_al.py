@@ -30,7 +30,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
 
-e = create_engine("sqlite://", echo=True)
+e = create_engine("sqlite://")
 meta = MetaData()
 
 # PART II - Table Metadata
