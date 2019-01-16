@@ -11,7 +11,6 @@ are identical, as is the structure of the main Document class.
 """
 
 import os
-import sys
 from xml.etree import ElementTree
 
 from sqlalchemy import Column
@@ -76,4 +75,4 @@ session.commit()
 document = session.query(Document).filter_by(filename="test.xml").first()
 
 # print
-document.element.write(sys.stdout)
+ElementTree.dump(document.element)
