@@ -654,10 +654,7 @@ class SybaseDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return connection.scalar(
-            text(
-                "SELECT user_name() as user_name",
-                typemap={"user_name": Unicode},
-            )
+            text("SELECT user_name() as user_name").columns(username=Unicode)
         )
 
     def initialize(self, connection):
