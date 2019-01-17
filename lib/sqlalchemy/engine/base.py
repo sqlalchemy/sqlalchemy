@@ -590,7 +590,8 @@ class Connection(Connectable):
 
             :meth:`.Connection.begin_nested` - use a SAVEPOINT
 
-            :meth:`.Connection.begin_twophase` - use a two phase /XID transaction
+            :meth:`.Connection.begin_twophase` -
+            use a two phase /XID transaction
 
             :meth:`.Engine.begin` - context manager available from
             :class:`.Engine`
