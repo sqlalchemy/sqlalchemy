@@ -2514,15 +2514,12 @@ class PGDialect(default.DefaultDialect):
             "select nspname from pg_namespace " "where lower(nspname)=:schema"
         )
         cursor = connection.execute(
-            sql.text(
-                query,
-                bindparams=[
-                    sql.bindparam(
-                        "schema",
-                        util.text_type(schema.lower()),
-                        type_=sqltypes.Unicode,
-                    )
-                ],
+            sql.text(query).bindparams(
+                sql.bindparam(
+                    "schema",
+                    util.text_type(schema.lower()),
+                    type_=sqltypes.Unicode,
+                )
             )
         )
 
@@ -2536,14 +2533,13 @@ class PGDialect(default.DefaultDialect):
                     "select relname from pg_class c join pg_namespace n on "
                     "n.oid=c.relnamespace where "
                     "pg_catalog.pg_table_is_visible(c.oid) "
-                    "and relname=:name",
-                    bindparams=[
-                        sql.bindparam(
-                            "name",
-                            util.text_type(table_name),
-                            type_=sqltypes.Unicode,
-                        )
-                    ],
+                    "and relname=:name"
+                ).bindparams(
+                    sql.bindparam(
+                        "name",
+                        util.text_type(table_name),
+                        type_=sqltypes.Unicode,
+                    )
                 )
             )
         else:
@@ -2551,19 +2547,18 @@ class PGDialect(default.DefaultDialect):
                 sql.text(
                     "select relname from pg_class c join pg_namespace n on "
                     "n.oid=c.relnamespace where n.nspname=:schema and "
-                    "relname=:name",
-                    bindparams=[
-                        sql.bindparam(
-                            "name",
-                            util.text_type(table_name),
-                            type_=sqltypes.Unicode,
-                        ),
-                        sql.bindparam(
-                            "schema",
-                            util.text_type(schema),
-                            type_=sqltypes.Unicode,
-                        ),
-                    ],
+                    "relname=:name"
+                ).bindparams(
+                    sql.bindparam(
+                        "name",
+                        util.text_type(table_name),
+                        type_=sqltypes.Unicode,
+                    ),
+                    sql.bindparam(
+                        "schema",
+                        util.text_type(schema),
+                        type_=sqltypes.Unicode,
+                    ),
                 )
             )
         return bool(cursor.first())
@@ -2575,14 +2570,13 @@ class PGDialect(default.DefaultDialect):
                     "SELECT relname FROM pg_class c join pg_namespace n on "
                     "n.oid=c.relnamespace where relkind='S' and "
                     "n.nspname=current_schema() "
-                    "and relname=:name",
-                    bindparams=[
-                        sql.bindparam(
-                            "name",
-                            util.text_type(sequence_name),
-                            type_=sqltypes.Unicode,
-                        )
-                    ],
+                    "and relname=:name"
+                ).bindparams(
+                    sql.bindparam(
+                        "name",
+                        util.text_type(sequence_name),
+                        type_=sqltypes.Unicode,
+                    )
                 )
             )
         else:
@@ -2590,19 +2584,18 @@ class PGDialect(default.DefaultDialect):
                 sql.text(
                     "SELECT relname FROM pg_class c join pg_namespace n on "
                     "n.oid=c.relnamespace where relkind='S' and "
-                    "n.nspname=:schema and relname=:name",
-                    bindparams=[
-                        sql.bindparam(
-                            "name",
-                            util.text_type(sequence_name),
-                            type_=sqltypes.Unicode,
-                        ),
-                        sql.bindparam(
-                            "schema",
-                            util.text_type(schema),
-                            type_=sqltypes.Unicode,
-                        ),
-                    ],
+                    "n.nspname=:schema and relname=:name"
+                ).bindparams(
+                    sql.bindparam(
+                        "name",
+                        util.text_type(sequence_name),
+                        type_=sqltypes.Unicode,
+                    ),
+                    sql.bindparam(
+                        "schema",
+                        util.text_type(schema),
+                        type_=sqltypes.Unicode,
+                    ),
                 )
             )
 
@@ -2797,10 +2790,10 @@ class PGDialect(default.DefaultDialect):
             AND a.attnum > 0 AND NOT a.attisdropped
             ORDER BY a.attnum
         """
-        s = sql.text(
-            SQL_COLS,
-            bindparams=[sql.bindparam("table_oid", type_=sqltypes.Integer)],
-            typemap={"attname": sqltypes.Unicode, "default": sqltypes.Unicode},
+        s = (
+            sql.text(SQL_COLS)
+            .bindparams(sql.bindparam("table_oid", type_=sqltypes.Integer))
+            .columns(attname=sqltypes.Unicode, default=sqltypes.Unicode)
         )
         c = connection.execute(s, table_oid=table_oid)
         rows = c.fetchall()
@@ -3029,7 +3022,7 @@ class PGDialect(default.DefaultDialect):
                 WHERE a.attrelid = :table_oid
                 ORDER BY k.ord
             """
-        t = sql.text(PK_SQL, typemap={"attname": sqltypes.Unicode})
+        t = sql.text(PK_SQL).columns(attname=sqltypes.Unicode)
         c = connection.execute(t, table_oid=table_oid)
         cols = [r[0] for r in c.fetchall()]
 
@@ -3039,7 +3032,7 @@ class PGDialect(default.DefaultDialect):
            WHERE r.conrelid = :table_oid AND r.contype = 'p'
            ORDER BY 1
         """
-        t = sql.text(PK_CONS_SQL, typemap={"conname": sqltypes.Unicode})
+        t = sql.text(PK_CONS_SQL).columns(conname=sqltypes.Unicode)
         c = connection.execute(t, table_oid=table_oid)
         name = c.scalar()
 
@@ -3085,9 +3078,8 @@ class PGDialect(default.DefaultDialect):
             r"[\s]?(INITIALLY (DEFERRED|IMMEDIATE)+)?"
         )
 
-        t = sql.text(
-            FK_SQL,
-            typemap={"conname": sqltypes.Unicode, "condef": sqltypes.Unicode},
+        t = sql.text(FK_SQL).columns(
+            conname=sqltypes.Unicode, condef=sqltypes.Unicode
         )
         c = connection.execute(t, table=table_oid)
         fkeys = []
@@ -3244,9 +3236,8 @@ class PGDialect(default.DefaultDialect):
                   i.relname
             """
 
-        t = sql.text(
-            IDX_SQL,
-            typemap={"relname": sqltypes.Unicode, "attname": sqltypes.Unicode},
+        t = sql.text(IDX_SQL).columns(
+            relname=sqltypes.Unicode, attname=sqltypes.Unicode
         )
         c = connection.execute(t, table_oid=table_oid)
 
@@ -3348,7 +3339,7 @@ class PGDialect(default.DefaultDialect):
                 cons.contype = 'u'
         """
 
-        t = sql.text(UNIQUE_SQL, typemap={"col_name": sqltypes.Unicode})
+        t = sql.text(UNIQUE_SQL).columns(col_name=sqltypes.Unicode)
         c = connection.execute(t, table_oid=table_oid)
 
         uniques = defaultdict(lambda: defaultdict(dict))
@@ -3429,9 +3420,8 @@ class PGDialect(default.DefaultDialect):
         # e.oid gives us label order within an enum
         SQL_ENUMS += 'ORDER BY "schema", "name", e.oid'
 
-        s = sql.text(
-            SQL_ENUMS,
-            typemap={"attname": sqltypes.Unicode, "label": sqltypes.Unicode},
+        s = sql.text(SQL_ENUMS).columns(
+            attname=sqltypes.Unicode, label=sqltypes.Unicode
         )
 
         if schema != "*":
@@ -3469,7 +3459,7 @@ class PGDialect(default.DefaultDialect):
             WHERE t.typtype = 'd'
         """
 
-        s = sql.text(SQL_DOMAINS, typemap={"attname": sqltypes.Unicode})
+        s = sql.text(SQL_DOMAINS).columns(attname=sqltypes.Unicode)
         c = connection.execute(s)
 
         domains = {}

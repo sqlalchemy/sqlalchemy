@@ -2374,19 +2374,17 @@ class MSDialect(default.DefaultDialect):
                 "join sys.schemas as sch on sch.schema_id=tab.schema_id "
                 "where tab.name = :tabname "
                 "and sch.name=:schname "
-                "and ind.is_primary_key=0 and ind.type != 0",
-                bindparams=[
-                    sql.bindparam(
-                        "tabname",
-                        tablename,
-                        sqltypes.String(convert_unicode=True),
-                    ),
-                    sql.bindparam(
-                        "schname", owner, sqltypes.String(convert_unicode=True)
-                    ),
-                ],
-                typemap={"name": sqltypes.Unicode()},
+                "and ind.is_primary_key=0 and ind.type != 0"
             )
+            .bindparams(
+                sql.bindparam(
+                    "tabname", tablename, sqltypes.String(convert_unicode=True)
+                ),
+                sql.bindparam(
+                    "schname", owner, sqltypes.String(convert_unicode=True)
+                ),
+            )
+            .columns(name=sqltypes.Unicode())
         )
         indexes = {}
         for row in rp:
@@ -2405,19 +2403,17 @@ class MSDialect(default.DefaultDialect):
                 "ind_col.object_id=tab.object_id) "
                 "join sys.schemas as sch on sch.schema_id=tab.schema_id "
                 "where tab.name=:tabname "
-                "and sch.name=:schname",
-                bindparams=[
-                    sql.bindparam(
-                        "tabname",
-                        tablename,
-                        sqltypes.String(convert_unicode=True),
-                    ),
-                    sql.bindparam(
-                        "schname", owner, sqltypes.String(convert_unicode=True)
-                    ),
-                ],
-                typemap={"name": sqltypes.Unicode()},
+                "and sch.name=:schname"
             )
+            .bindparams(
+                sql.bindparam(
+                    "tabname", tablename, sqltypes.String(convert_unicode=True)
+                ),
+                sql.bindparam(
+                    "schname", owner, sqltypes.String(convert_unicode=True)
+                ),
+            )
+            .columns(name=sqltypes.Unicode())
         )
         for row in rp:
             if row["index_id"] in indexes:
@@ -2438,17 +2434,14 @@ class MSDialect(default.DefaultDialect):
                 " where "
                 "mod.object_id=views.object_id and "
                 "views.schema_id=sch.schema_id and "
-                "views.name=:viewname and sch.name=:schname",
-                bindparams=[
-                    sql.bindparam(
-                        "viewname",
-                        viewname,
-                        sqltypes.String(convert_unicode=True),
-                    ),
-                    sql.bindparam(
-                        "schname", owner, sqltypes.String(convert_unicode=True)
-                    ),
-                ],
+                "views.name=:viewname and sch.name=:schname"
+            ).bindparams(
+                sql.bindparam(
+                    "viewname", viewname, sqltypes.String(convert_unicode=True)
+                ),
+                sql.bindparam(
+                    "schname", owner, sqltypes.String(convert_unicode=True)
+                ),
             )
         )
 
