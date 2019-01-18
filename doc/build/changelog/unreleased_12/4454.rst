@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4454
+
+   Fixed issue where when using single-table inheritance in conjunction with a
+   joined inheritance hierarchy that uses "with polymorphic" loading, the
+   "single table criteria" for that single-table entity could get confused for
+   that of other entities from the same hierarchy used in the same query.The
+   adaption of the "single table criteria" is made more specific to the target
+   entity to avoid it accidentally getting adapted to other tables in the
+   query.
+

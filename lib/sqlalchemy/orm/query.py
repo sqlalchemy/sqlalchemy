@@ -364,7 +364,6 @@ class Query(object):
                     or "_orm_adapt" in elem._annotations
                     or "parententity" in elem._annotations
                 ):
-
                     e = adapter(elem)
                     if e is not None:
                         return e
@@ -3933,6 +3932,7 @@ class Query(object):
             if single_crit is not None:
                 if adapter:
                     single_crit = adapter.traverse(single_crit)
+
                 single_crit = self._adapt_clause(single_crit, False, False)
                 context.whereclause = sql.and_(
                     sql.True_._ifnone(context.whereclause), single_crit
