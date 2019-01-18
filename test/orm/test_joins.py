@@ -2588,6 +2588,27 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
             "ON anon_1.t1_id = table1.id",
         )
 
+    def test_mapped_to_select_implicit_left_w_aliased(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"The aliased=True parameter on query.join\(\) only works with "
+            "an ORM entity, not a plain selectable, as the target.",
+            # this doesn't work, so have it raise an error
+            sess.query(T1.id).join,
+            subq,
+            subq.c.t1_id == T1.id,
+            aliased=True,
+        )
+
 
 class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod

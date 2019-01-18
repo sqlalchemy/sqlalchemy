@@ -830,7 +830,6 @@ class ColumnAdapter(ClauseAdapter):
         self,
         selectable,
         equivalents=None,
-        chain_to=None,
         adapt_required=False,
         include_fn=None,
         exclude_fn=None,
@@ -848,8 +847,6 @@ class ColumnAdapter(ClauseAdapter):
             anonymize_labels=anonymize_labels,
         )
 
-        if chain_to:
-            self.chain(chain_to)
         self.columns = util.populate_column_dict(self._locate_col)
         if self.include_fn or self.exclude_fn:
             self.columns = self._IncludeExcludeMapping(self, self.columns)

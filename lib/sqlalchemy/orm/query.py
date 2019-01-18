@@ -112,7 +112,7 @@ class Query(object):
     _join_entities = ()
     _select_from_entity = None
     _mapper_adapter_map = {}
-    _filter_aliases = None
+    _filter_aliases = ()
     _from_obj_alias = None
     _joinpath = _joinpoint = util.immutabledict()
     _execution_options = util.immutabledict()
@@ -334,7 +334,7 @@ class Query(object):
             orm_only = False
 
         if as_filter and self._filter_aliases:
-            for fa in self._filter_aliases.visitor_iterator:
+            for fa in self._filter_aliases:
                 adapters.append((orm_only, fa.replace))
 
         if self._from_obj_alias:
@@ -356,14 +356,12 @@ class Query(object):
             return clause
 
         def replace(elem):
+            is_orm_adapt = (
+                "_orm_adapt" in elem._annotations
+                or "parententity" in elem._annotations
+            )
             for _orm_only, adapter in adapters:
-                # if 'orm only', look for ORM annotations
-                # in the element before adapting.
-                if (
-                    not _orm_only
-                    or "_orm_adapt" in elem._annotations
-                    or "parententity" in elem._annotations
-                ):
+                if not _orm_only or is_orm_adapt:
                     e = adapter(elem)
                     if e is not None:
                         return e
@@ -2652,33 +2650,51 @@ class Query(object):
         if hasattr(r_info, "mapper"):
             self._join_entities += (r_info,)
 
-        if not right_mapper and prop:
-            right_mapper = prop.mapper
-
         need_adapter = False
 
-        if r_info.is_clause_element and right_selectable._is_lateral:
-            # orm_only is disabled to suit the case where we have to
-            # adapt an explicit correlate(Entity) - the select() loses
-            # the ORM-ness in this case right now, ideally it would not
-            right = self._adapt_clause(right, True, False)
+        # test for joining to an unmapped selectable as the target
+        if r_info.is_clause_element:
 
-        if right_mapper and right is right_selectable:
-            if not right_selectable.is_derived_from(right_mapper.mapped_table):
-                raise sa_exc.InvalidRequestError(
-                    "Selectable '%s' is not derived from '%s'"
-                    % (
-                        right_selectable.description,
-                        right_mapper.mapped_table.description,
+            if prop:
+                right_mapper = prop.mapper
+
+            if right_selectable._is_lateral:
+                # orm_only is disabled to suit the case where we have to
+                # adapt an explicit correlate(Entity) - the select() loses
+                # the ORM-ness in this case right now, ideally it would not
+                right = self._adapt_clause(right, True, False)
+
+            elif prop:
+                # joining to selectable with a mapper property given
+                # as the ON clause
+
+                if not right_selectable.is_derived_from(
+                    right_mapper.mapped_table
+                ):
+                    raise sa_exc.InvalidRequestError(
+                        "Selectable '%s' is not derived from '%s'"
+                        % (
+                            right_selectable.description,
+                            right_mapper.mapped_table.description,
+                        )
                     )
+
+                # if the destination selectable is a plain select(),
+                # turn it into an alias().
+                if isinstance(right_selectable, expression.SelectBase):
+                    right_selectable = right_selectable.alias()
+                    need_adapter = True
+
+                # make the right hand side target into an ORM entity
+                right = aliased(right_mapper, right_selectable)
+            elif create_aliases:
+                # it *could* work, but it doesn't right now and I'd rather
+                # get rid of aliased=True completely
+                raise sa_exc.InvalidRequestError(
+                    "The aliased=True parameter on query.join() only works "
+                    "with an ORM entity, not a plain selectable, as the "
+                    "target."
                 )
-
-            if isinstance(right_selectable, expression.SelectBase):
-                # TODO: this isn't even covered now!
-                right_selectable = right_selectable.alias()
-                need_adapter = True
-
-            right = aliased(right_mapper, right_selectable)
 
         aliased_entity = (
             right_mapper
@@ -2699,34 +2715,28 @@ class Query(object):
             right = aliased(right, flat=True)
             need_adapter = True
 
-        # if an alias() of the right side was generated here,
-        # apply an adapter to all subsequent filter() calls
-        # until reset_joinpoint() is called.
         if need_adapter:
-            self._filter_aliases = ORMAdapter(
-                right,
-                equivalents=right_mapper
-                and right_mapper._equivalent_columns
-                or {},
-                chain_to=self._filter_aliases,
+            assert right_mapper
+
+            # if an alias() of the right side was generated,
+            # apply an adapter to all subsequent filter() calls
+            # until reset_joinpoint() is called.
+            adapter = ORMAdapter(
+                right, equivalents=right_mapper._equivalent_columns
             )
+            self._filter_aliases += (adapter,)
+
+            # if an alias() on the right side was generated,
+            # which is intended to wrap a the right side in a subquery,
+            # ensure that columns retrieved from this target in the result
+            # set are also adapted.
+            if not create_aliases:
+                self._mapper_loads_polymorphically_with(right_mapper, adapter)
 
         # if the onclause is a ClauseElement, adapt it with any
         # adapters that are in place right now
         if isinstance(onclause, expression.ClauseElement):
             onclause = self._adapt_clause(onclause, True, True)
-
-        # if an alias() on the right side was generated,
-        # which is intended to wrap a the right side in a subquery,
-        # ensure that columns retrieved from this target in the result
-        # set are also adapted.
-        if aliased_entity and not create_aliases:
-            self._mapper_loads_polymorphically_with(
-                right_mapper,
-                ORMAdapter(
-                    right, equivalents=right_mapper._equivalent_columns
-                ),
-            )
 
         # if joining on a MapperProperty path,
         # track the path to prevent redundant joins
@@ -2744,7 +2754,7 @@ class Query(object):
 
     def _reset_joinpoint(self):
         self._joinpoint = self._joinpath
-        self._filter_aliases = None
+        self._filter_aliases = ()
 
     @_generative(_no_statement_condition)
     def reset_joinpoint(self):

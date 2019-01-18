@@ -3555,7 +3555,7 @@ class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
         sess.flush()
 
         q = sess.query(Base).outerjoin("sub2", aliased=True)
-        assert sub1.c.id not in q._filter_aliases.equivalents
+        assert sub1.c.id not in q._filter_aliases[0].equivalents
 
         eq_(
             sess.query(Base)

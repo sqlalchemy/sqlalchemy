@@ -363,7 +363,6 @@ class ORMAdapter(sql_util.ColumnAdapter):
         entity,
         equivalents=None,
         adapt_required=False,
-        chain_to=None,
         allow_label_resolve=True,
         anonymize_labels=False,
     ):
@@ -381,7 +380,6 @@ class ORMAdapter(sql_util.ColumnAdapter):
             self,
             selectable,
             equivalents,
-            chain_to,
             adapt_required=adapt_required,
             allow_label_resolve=allow_label_resolve,
             anonymize_labels=anonymize_labels,
