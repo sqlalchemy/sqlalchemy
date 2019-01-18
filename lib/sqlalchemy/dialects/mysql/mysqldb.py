@@ -8,10 +8,20 @@
 """
 
 .. dialect:: mysql+mysqldb
-    :name: MySQL-Python
+    :name: mysqlclient (maintained fork of MySQL-Python)
     :dbapi: mysqldb
     :connectstring: mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
-    :url: http://sourceforge.net/projects/mysql-python
+    :url: https://pypi.org/project/mysqlclient/
+
+Driver Status
+-------------
+
+The mysqlclient DBAPI is a maintained fork of the
+`MySQL-Python <http://sourceforge.net/projects/mysql-python>`_ DBAPI
+that is no longer maintained.  `mysqlclient`_ supports Python 2 and Python 3
+and is very stable.
+
+.. _mysqlclient: https://github.com/PyMySQL/mysqlclient-python
 
 .. _mysqldb_unicode:
 
@@ -21,14 +31,6 @@ Unicode
 Please see :ref:`mysql_unicode` for current recommendations on unicode
 handling.
 
-Py3K Support
-------------
-
-Currently, MySQLdb only runs on Python 2 and development has been stopped.
-`mysqlclient`_ is fork of MySQLdb and provides Python 3 support as well
-as some bugfixes.
-
-.. _mysqlclient: https://github.com/PyMySQL/mysqlclient-python
 
 Using MySQLdb with Google Cloud SQL
 -----------------------------------

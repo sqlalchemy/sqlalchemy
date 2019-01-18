@@ -166,12 +166,12 @@ MySQL DML Constructs
 
 
 
-MySQL-Python
-------------
+mysqlclient (fork of MySQL-Python)
+----------------------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
 
-pymysql
+PyMySQL
 -------
 
 .. automodule:: sqlalchemy.dialects.mysql.pymysql
