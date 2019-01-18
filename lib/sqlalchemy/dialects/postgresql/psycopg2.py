@@ -120,7 +120,7 @@ Modern versions of psycopg2 include a feature known as
 which have been shown in benchmarking to improve psycopg2's executemany()
 performance with INSERTS by multiple orders of magnitude.   SQLAlchemy
 allows this extension to be used for all ``executemany()`` style calls
-invoked by an :class:`.Engine` when used with multiple parameter sets,
+invoked by an :class:`.Engine` when used with :ref:`multiple parameter sets <execute_multiple>`,
 by adding the ``use_batch_mode`` flag to :func:`.create_engine`::
 
     engine = create_engine(
@@ -130,6 +130,10 @@ by adding the ``use_batch_mode`` flag to :func:`.create_engine`::
 Batch mode is considered to be **experimental** at this time, however may
 be enabled by default in a future release.
 
+.. seealso::
+
+    :ref:`execute_multiple` - demonstrates how to use DBAPI ``executemany()``
+    with the :class:`.Connection` object.
 
 .. versionadded:: 1.2.0
 
