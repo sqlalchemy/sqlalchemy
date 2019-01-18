@@ -2103,7 +2103,7 @@ class Mapper(InspectionAttr):
     @_memoized_configured_property
     def _single_table_criterion(self):
         if self.single and self.inherits and self.polymorphic_on is not None:
-            return self.polymorphic_on.in_(
+            return self.polymorphic_on._annotate({"parentmapper": self}).in_(
                 m.polymorphic_identity for m in self.self_and_descendants
             )
         else:

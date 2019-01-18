@@ -4,6 +4,8 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
+from sqlalchemy import null
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
@@ -16,6 +18,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1434,6 +1437,216 @@ class SingleOnJoinedTest(fixtures.MappedTest):
             )
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class SingleFromPolySelectableTest(
+    fixtures.DeclarativeMappedTest, AssertsCompiledSQL
+):
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls, with_polymorphic=None, include_sub_defaults=False):
+        Base = cls.DeclarativeBasic
+
+        class Employee(Base):
+            __tablename__ = "employee"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            type = Column(String(50))
+
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "polymorphic_on": type,
+            }
+
+        class Engineer(Employee):
+            __tablename__ = "engineer"
+            id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
+            engineer_info = Column(String(50))
+            manager_id = Column(ForeignKey("manager.id"))
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
+            manager_data = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "manager"}
+
+        class Boss(Manager):
+            __mapper_args__ = {"polymorphic_identity": "boss"}
+
+    def _with_poly_fixture(self):
+        employee = self.classes.Employee.__table__
+        engineer = self.classes.Engineer.__table__
+        manager = self.classes.Manager.__table__
+
+        poly = (
+            select(
+                [
+                    employee.c.id,
+                    employee.c.type,
+                    employee.c.name,
+                    manager.c.manager_data,
+                    null().label("engineer_info"),
+                    null().label("manager_id"),
+                ]
+            )
+            .select_from(employee.join(manager))
+            .apply_labels()
+            .union_all(
+                select(
+                    [
+                        employee.c.id,
+                        employee.c.type,
+                        employee.c.name,
+                        null().label("manager_data"),
+                        engineer.c.engineer_info,
+                        engineer.c.manager_id,
+                    ]
+                )
+                .select_from(employee.join(engineer))
+                .apply_labels()
+            )
+            .alias()
+        )
+
+        return poly
+
+    def test_wpoly_single_inh_subclass(self):
+        poly = with_polymorphic(
+            self.classes.Employee,
+            [self.classes.Boss, self.classes.Manager, self.classes.Engineer],
+            self._with_poly_fixture(),
+        )
+        s = Session()
+        q = s.query(poly.Boss)
+        self.assert_compile(
+            q,
+            "SELECT "
+            "anon_1.employee_id AS anon_1_employee_id, "
+            "anon_1.employee_name AS anon_1_employee_name, "
+            "anon_1.employee_type AS anon_1_employee_type, "
+            "anon_1.manager_manager_data AS anon_1_manager_manager_data "
+            "FROM "
+            "(SELECT "
+            "employee.id AS employee_id, employee.type AS employee_type, "
+            "employee.name AS employee_name, "
+            "manager.manager_data AS manager_manager_data, "
+            "NULL AS engineer_info, NULL AS manager_id FROM employee "
+            "JOIN manager ON employee.id = manager.id "
+            "UNION ALL "
+            "SELECT employee.id AS employee_id, "
+            "employee.type AS employee_type, "
+            "employee.name AS employee_name, NULL AS manager_data, "
+            "engineer.engineer_info AS engineer_engineer_info, "
+            "engineer.manager_id AS engineer_manager_id "
+            "FROM employee JOIN engineer ON employee.id = engineer.id) "
+            "AS anon_1 "
+            "WHERE anon_1.employee_type IN (:type_1)",
+        )
+
+    def test_query_wpoly_single_inh_subclass(self):
+        Boss = self.classes.Boss
+
+        poly = self._with_poly_fixture()
+
+        s = Session()
+        q = s.query(Boss).with_polymorphic(Boss, poly)
+        self.assert_compile(
+            q,
+            "SELECT anon_1.employee_id AS anon_1_employee_id, "
+            "anon_1.employee_name AS anon_1_employee_name, "
+            "anon_1.employee_type AS anon_1_employee_type, "
+            "anon_1.manager_manager_data AS anon_1_manager_manager_data "
+            "FROM (SELECT employee.id AS employee_id, employee.type "
+            "AS employee_type, employee.name AS employee_name, "
+            "manager.manager_data AS manager_manager_data, "
+            "NULL AS engineer_info, NULL AS manager_id FROM employee "
+            "JOIN manager ON employee.id = manager.id "
+            "UNION ALL SELECT employee.id AS employee_id, "
+            "employee.type AS employee_type, employee.name AS employee_name, "
+            "NULL AS manager_data, "
+            "engineer.engineer_info AS engineer_engineer_info, "
+            "engineer.manager_id AS engineer_manager_id "
+            "FROM employee JOIN engineer ON employee.id = engineer.id) "
+            "AS anon_1 WHERE anon_1.employee_type IN (:type_1)",
+        )
+
+    def test_single_inh_subclass_join_joined_inh_subclass(self):
+        Boss, Engineer = self.classes("Boss", "Engineer")
+        s = Session()
+
+        q = s.query(Boss).join(Engineer, Engineer.manager_id == Boss.id)
+
+        self.assert_compile(
+            q,
+            "SELECT manager.id AS manager_id, employee.id AS employee_id, "
+            "employee.name AS employee_name, "
+            "employee.type AS employee_type, "
+            "manager.manager_data AS manager_manager_data "
+            "FROM employee JOIN manager ON employee.id = manager.id "
+            "JOIN (employee AS employee_1 JOIN engineer AS engineer_1 "
+            "ON employee_1.id = engineer_1.id) "
+            "ON engineer_1.manager_id = manager.id "
+            "WHERE employee.type IN (:type_1)",
+        )
+
+    def test_single_inh_subclass_join_wpoly_joined_inh_subclass(self):
+        Boss = self.classes.Boss
+        poly = with_polymorphic(
+            self.classes.Employee,
+            [self.classes.Boss, self.classes.Manager, self.classes.Engineer],
+            self._with_poly_fixture(),
+        )
+
+        s = Session()
+
+        q = s.query(Boss).join(
+            poly.Engineer, poly.Engineer.manager_id == Boss.id
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT manager.id AS manager_id, employee.id AS employee_id, "
+            "employee.name AS employee_name, employee.type AS employee_type, "
+            "manager.manager_data AS manager_manager_data "
+            "FROM employee JOIN manager ON employee.id = manager.id "
+            "JOIN (SELECT employee.id AS employee_id, "
+            "employee.type AS employee_type, employee.name AS employee_name, "
+            "manager.manager_data AS manager_manager_data, "
+            "NULL AS engineer_info, NULL AS manager_id "
+            "FROM employee JOIN manager ON employee.id = manager.id "
+            "UNION ALL "
+            "SELECT employee.id AS employee_id, "
+            "employee.type AS employee_type, employee.name AS employee_name, "
+            "NULL AS manager_data, "
+            "engineer.engineer_info AS engineer_engineer_info, "
+            "engineer.manager_id AS engineer_manager_id "
+            "FROM employee "
+            "JOIN engineer ON employee.id = engineer.id) AS anon_1 "
+            "ON anon_1.manager_id = manager.id "
+            "WHERE employee.type IN (:type_1)",
+        )
+
+    def test_joined_inh_subclass_join_single_inh_subclass(self):
+        Engineer = self.classes.Engineer
+        Boss = self.classes.Boss
+        s = Session()
+
+        q = s.query(Engineer).join(Boss, Engineer.manager_id == Boss.id)
+
+        self.assert_compile(
+            q,
+            "SELECT engineer.id AS engineer_id, employee.id AS employee_id, "
+            "employee.name AS employee_name, employee.type AS employee_type, "
+            "engineer.engineer_info AS engineer_engineer_info, "
+            "engineer.manager_id AS engineer_manager_id "
+            "FROM employee JOIN engineer ON employee.id = engineer.id "
+            "JOIN (employee AS employee_1 JOIN manager AS manager_1 "
+            "ON employee_1.id = manager_1.id) "
+            "ON engineer.manager_id = manager_1.id "
+            "AND employee_1.type IN (:type_1)",
+        )
 
 
 class EagerDefaultEvalTest(fixtures.DeclarativeMappedTest):
