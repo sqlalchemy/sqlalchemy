@@ -157,12 +157,12 @@ construction arguments, are as follows:
     :members: __init__
 
 
-MySQL-Python
-------------
+mysqlclient (fork of MySQL-Python)
+----------------------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
 
-pymysql
+PyMySQL
 -------
 
 .. automodule:: sqlalchemy.dialects.mysql.pymysql
