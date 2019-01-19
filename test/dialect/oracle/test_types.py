@@ -644,6 +644,53 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(value, decimal.Decimal)
 
     @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
+    def test_raw_numerics(self):
+        query_cases = [
+            (
+                "Max 32-bit Number",
+                "SELECT CAST(2147483647 AS NUMBER(19,0)) FROM dual",
+            ),
+            (
+                "Min 32-bit Number",
+                "SELECT CAST(-2147483648 AS NUMBER(19,0)) FROM dual",
+            ),
+            (
+                "32-bit Integer Overflow",
+                "SELECT CAST(2147483648 AS NUMBER(19,0)) FROM dual",
+            ),
+            (
+                "32-bit Integer Underflow",
+                "SELECT CAST(-2147483649 AS NUMBER(19,0)) FROM dual",
+            ),
+            (
+                "Max Number with Precision 19",
+                "SELECT CAST(9999999999999999999 AS NUMBER(19,0)) FROM dual",
+            ),
+            (
+                "Min Number with Precision 19",
+                "SELECT CAST(-9999999999999999999 AS NUMBER(19,0)) FROM dual",
+            ),
+        ]
+
+        with testing.db.connect() as conn:
+            for title, stmt in query_cases:
+                # get a brand new connection that definitely is not
+                # in the pool to avoid any outputtypehandlers
+                cx_oracle_raw = testing.db.pool._creator()
+                cursor = cx_oracle_raw.cursor()
+                cursor.execute(stmt)
+                cx_oracle_result = cursor.fetchone()[0]
+                cursor.close()
+
+                sqla_result = conn.scalar(stmt)
+
+                print(
+                    "%s cx_oracle=%s sqlalchemy=%s"
+                    % (title, cx_oracle_result, sqla_result)
+                )
+                eq_(sqla_result, cx_oracle_result)
+
+    @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
     @testing.fails_if(
         testing.requires.python3, "cx_oracle always returns unicode on py3k"
     )

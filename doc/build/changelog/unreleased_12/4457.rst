@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, oracle
+   :tickets: 4457
+
+   Fixed regression in integer precision logic due to the refactor of the
+   cx_Oracle dialect in 1.2.  We now no longer apply the cx_Oracle.NATIVE_INT
+   type to result columns sending integer values (detected as positive
+   precision with scale ==0) which encounters integer overflow issues with
+   values that go beyond the 32 bit boundary.  Instead, the output variable
+   is left untyped so that cx_Oracle can choose the best option.
