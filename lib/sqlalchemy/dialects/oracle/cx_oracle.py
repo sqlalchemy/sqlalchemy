@@ -344,10 +344,10 @@ class _OracleNumeric(sqltypes.Numeric):
         cx_Oracle = dialect.dbapi
 
         is_cx_oracle_6 = dialect._is_cx_oracle_6
-        has_native_int = dialect._has_native_int
 
         def handler(cursor, name, default_type, size, precision, scale):
             outconverter = None
+
             if precision:
                 if self.asdecimal:
                     if default_type == cx_Oracle.NATIVE_FLOAT:
@@ -362,13 +362,13 @@ class _OracleNumeric(sqltypes.Numeric):
                         outconverter = dialect._to_decimal
                 else:
                     if self.is_number and scale == 0:
-                        if has_native_int:
-                            type_ = cx_Oracle.NATIVE_INT
-                        else:
-                            type_ = cx_Oracle.NUMBER
-                            outconverter = int
+                        # integer. cx_Oracle is observed to handle the widest
+                        # variety of ints when no directives are passed,
+                        # from 5.2 to 7.0.  See [ticket:4457]
+                        return None
                     else:
                         type_ = cx_Oracle.NATIVE_FLOAT
+
             else:
                 if self.asdecimal:
                     if default_type == cx_Oracle.NATIVE_FLOAT:
@@ -381,11 +381,10 @@ class _OracleNumeric(sqltypes.Numeric):
                         outconverter = dialect._to_decimal
                 else:
                     if self.is_number and scale == 0:
-                        if has_native_int:
-                            type_ = cx_Oracle.NATIVE_INT
-                        else:
-                            type_ = cx_Oracle.NUMBER
-                            outconverter = int
+                        # integer. cx_Oracle is observed to handle the widest
+                        # variety of ints when no directives are passed,
+                        # from 5.2 to 7.0.  See [ticket:4457]
+                        return None
                     else:
                         type_ = cx_Oracle.NATIVE_FLOAT
 
@@ -777,8 +776,6 @@ class OracleDialect_cx_oracle(OracleDialect):
                 raise exc.InvalidRequestError(
                     "cx_Oracle version 5.2 and above are supported"
                 )
-
-            self._has_native_int = hasattr(cx_Oracle, "NATIVE_INT")
 
             self._include_setinputsizes = {
                 cx_Oracle.NCLOB,
