@@ -2278,6 +2278,82 @@ class QueryEvents(event.Events):
         The event should normally be listened with the ``retval=True``
         parameter set, so that the modified query may be returned.
 
+        .. seealso::
+
+            :meth:`.QueryEvents.before_compile_update`
+
+            :meth:`.QueryEvents.before_compile_delete`
+
+
+        """
+
+    def before_compile_update(self, query, update_context):
+        """Allow modifications to the :class:`.Query` object within
+        :meth:`.Query.update`.
+
+        Like the :meth:`.QueryEvents.before_compile` event, this event
+        should be configured with ``retval=True``, and the modified
+        :class:`.Query` object returned, as in ::
+
+            @event.listens_for(Query, "before_compile_update", retval=True)
+            def no_deleted(query, update_context):
+                for desc in query.column_descriptions:
+                    if desc['type'] is User:
+                        entity = desc['entity']
+                        query = query.filter(entity.deleted == False)
+                return query
+
+        :param query: a :class:`.Query` instance; this is also
+         the ``.query`` attribute of the given "update context"
+         object.
+
+        :param update_context: an "update context" object which is
+         the same kind of object as described in
+         :paramref:`.QueryEvents.after_bulk_update.update_context`.
+
+        .. versionadded:: 1.2.17
+
+        .. seealso::
+
+            :meth:`.QueryEvents.before_compile`
+
+            :meth:`.QueryEvents.before_compile_delete`
+
+
+        """
+
+    def before_compile_delete(self, query, delete_context):
+        """Allow modifications to the :class:`.Query` object within
+        :meth:`.Query.delete`.
+
+        Like the :meth:`.QueryEvents.before_compile` event, this event
+        should be configured with ``retval=True``, and the modified
+        :class:`.Query` object returned, as in ::
+
+            @event.listens_for(Query, "before_compile_delete", retval=True)
+            def no_deleted(query, delete_context):
+                for desc in query.column_descriptions:
+                    if desc['type'] is User:
+                        entity = desc['entity']
+                        query = query.filter(entity.deleted == False)
+                return query
+
+        :param query: a :class:`.Query` instance; this is also
+         the ``.query`` attribute of the given "delete context"
+         object.
+
+        :param delete_context: a "delete context" object which is
+         the same kind of object as described in
+         :paramref:`.QueryEvents.after_bulk_delete.delete_context`.
+
+        .. versionadded:: 1.2.17
+
+        .. seealso::
+
+            :meth:`.QueryEvents.before_compile`
+
+            :meth:`.QueryEvents.before_compile_update`
+
 
         """
 

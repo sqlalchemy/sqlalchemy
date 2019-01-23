@@ -1,0 +1,9 @@
+.. change::
+   :tags: feature, orm
+   :tickets: 4461
+
+   Added new event hooks :meth:`.QueryEvents.before_compile_update` and
+   :meth:`.QueryEvents.before_compile_delete` which complement
+   :meth:`.QueryEvents.before_compile` in the case of the :meth:`.Query.update`
+   and :meth:`.Query.delete` methods.
+

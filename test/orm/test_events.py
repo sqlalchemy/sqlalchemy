@@ -22,6 +22,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not_
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.mock import ANY
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
@@ -2787,7 +2788,10 @@ class SessionExtensionTest(_fixtures.FixtureTest):
 
 
 class QueryEventsTest(
-    _RemoveListeners, _fixtures.FixtureTest, AssertsCompiledSQL
+    _RemoveListeners,
+    _fixtures.FixtureTest,
+    AssertsCompiledSQL,
+    testing.AssertsExecutionResults,
 ):
     __dialect__ = "default"
 
@@ -2837,6 +2841,55 @@ class QueryEventsTest(
             checkparams={"id_1": 7},
         )
         eq_(q.all(), [(7, "jack")])
+
+    def test_before_compile_update(self):
+        @event.listens_for(query.Query, "before_compile_update", retval=True)
+        def no_deleted(query, update_context):
+            assert update_context.query is query
+
+            for desc in query.column_descriptions:
+                if desc["type"] is User:
+                    entity = desc["expr"]
+                    query = query.filter(entity.id != 10)
+            return query
+
+        User = self.classes.User
+        s = Session()
+
+        with self.sql_execution_asserter() as asserter:
+            q = s.query(User).filter_by(id=7).update({"name": "ed"})
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET name=:name WHERE "
+                "users.id = :id_1 AND users.id != :id_2",
+                [{"name": "ed", "id_1": 7, "id_2": 10}],
+            )
+        )
+
+    def test_before_compile_delete(self):
+        @event.listens_for(query.Query, "before_compile_delete", retval=True)
+        def no_deleted(query, delete_context):
+            assert delete_context.query is query
+
+            for desc in query.column_descriptions:
+                if desc["type"] is User:
+                    entity = desc["expr"]
+                    query = query.filter(entity.id != 10)
+            return query
+
+        User = self.classes.User
+        s = Session()
+
+        # note this deletes no rows
+        with self.sql_execution_asserter() as asserter:
+            q = s.query(User).filter_by(id=10).delete()
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM users WHERE "
+                "users.id = :id_1 AND users.id != :id_2",
+                [{"id_1": 10, "id_2": 10}],
+            )
+        )
 
 
 class RefreshFlushInReturningTest(fixtures.MappedTest):

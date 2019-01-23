@@ -1630,6 +1630,7 @@ class BulkUD(object):
             return klass(*arg)
 
     def exec_(self):
+        self._do_before_compile()
         self._do_pre()
         self._do_pre_synchronize()
         self._do_exec()
@@ -1642,9 +1643,13 @@ class BulkUD(object):
         )
         self.rowcount = self.result.rowcount
 
+    def _do_before_compile(self):
+        raise NotImplementedError()
+
     @util.dependencies("sqlalchemy.orm.query")
     def _do_pre(self, querylib):
         query = self.query
+
         self.context = querylib.QueryContext(query)
 
         if isinstance(query._entities[0], querylib._ColumnEntity):
@@ -1760,6 +1765,13 @@ class BulkUpdate(BulkUD):
             update_kwargs,
         )
 
+    def _do_before_compile(self):
+        if self.query.dispatch.before_compile_update:
+            for fn in self.query.dispatch.before_compile_update:
+                new_query = fn(self.query, self)
+                if new_query is not None:
+                    self.query = new_query
+
     @property
     def _resolved_values(self):
         values = []
@@ -1840,6 +1852,13 @@ class BulkDelete(BulkUD):
             synchronize_session,
             query,
         )
+
+    def _do_before_compile(self):
+        if self.query.dispatch.before_compile_delete:
+            for fn in self.query.dispatch.before_compile_delete:
+                new_query = fn(self.query, self)
+                if new_query is not None:
+                    self.query = new_query
 
     def _do_exec(self):
         delete_stmt = sql.delete(self.primary_table, self.context.whereclause)
