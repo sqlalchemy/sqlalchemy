@@ -14,6 +14,7 @@ from sqlalchemy import exc
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.testing import mock
 import re
 
 
@@ -1024,6 +1025,20 @@ class ReflectionTest(fixtures.TestBase):
             u'cc1': u'(a > 1) AND (a < 5)',
             u'cc2': u'(a = 1) OR ((a > 2) AND (a < 5))'
         })
+
+    def test_reflect_check_warning(self):
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.Mock(
+                fetchall=lambda: [("some name", "NOTCHECK foobar")]
+            )
+        )
+        with mock.patch.object(
+            testing.db.dialect, "get_table_oid", lambda *arg, **kw: 1
+        ):
+            with testing.expect_warnings(
+                "Could not parse CHECK constraint text: 'NOTCHECK foobar'"
+            ):
+                testing.db.dialect.get_check_constraints(conn, "foo")
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
