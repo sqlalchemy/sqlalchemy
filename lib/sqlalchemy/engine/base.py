@@ -332,6 +332,15 @@ class Connection(Connectable):
         self.dialect.set_connection_execution_options(c, opt)
         return c
 
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. seealso::
+
+            :meth:`.Connection.execution_options`
+        """
+        return self._execution_options
+
     @property
     def closed(self):
         """Return True if this connection is closed."""
@@ -1934,6 +1943,15 @@ class Engine(Connectable, log.Identified):
 
         """
         return OptionEngine(self, opt)
+
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. seealso::
+
+            :meth:`.Engine.execution_options`
+        """
+        return self._execution_options
 
     @property
     def name(self):

@@ -1272,6 +1272,21 @@ class ExecutionOptionsTest(fixtures.TestBase):
         c2_branch = c2.connect()
         eq_(c2_branch._execution_options, {"foo": "bar"})
 
+    def test_get_engine_execution_options(self):
+        engine = testing_engine("sqlite://")
+        engine.dialect = Mock()
+        e2 = engine.execution_options(foo="bar")
+
+        eq_(e2.get_execution_options(), {"foo": "bar"})
+
+    def test_get_connection_execution_options(self):
+        engine = testing_engine("sqlite://", options=dict(_initialize=False))
+        engine.dialect = Mock()
+        conn = engine.connect()
+        c = conn.execution_options(foo="bar")
+
+        eq_(c.get_execution_options(), {"foo": "bar"})
+
 
 class EngineEventsTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
