@@ -1,0 +1,8 @@
+.. change::
+   :tags: bug, postgresql
+   :tickets: 4463
+
+   Revised the query used when reflecting CHECK constraints to make use of the
+   ``pg_get_constraintdef`` function, as the ``consrc`` column is being
+   deprecated in PG 12.  Thanks to John A Stevenson for the tip.
+
