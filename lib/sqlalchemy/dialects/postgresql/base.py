@@ -3366,7 +3366,7 @@ class PGDialect(default.DefaultDialect):
         CHECK_SQL = """
             SELECT
                 cons.conname as name,
-                cons.consrc as src
+                pg_get_constraintdef(cons.oid) as src
             FROM
                 pg_catalog.pg_constraint cons
             WHERE
@@ -3376,8 +3376,19 @@ class PGDialect(default.DefaultDialect):
 
         c = connection.execute(sql.text(CHECK_SQL), table_oid=table_oid)
 
+        # samples:
+        # "CHECK (((a > 1) AND (a < 5)))"
+        # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
+        def match_cons(src):
+            m = re.match(r"^CHECK *\(\((.+)\)\)$", src)
+            if not m:
+                util.warn("Could not parse CHECK constraint text: %r" % src)
+                return ""
+            return m.group(1)
+
         return [
-            {"name": name, "sqltext": src[1:-1]} for name, src in c.fetchall()
+            {"name": name, "sqltext": match_cons(src)}
+            for name, src in c.fetchall()
         ]
 
     def _load_enums(self, connection, schema=None):

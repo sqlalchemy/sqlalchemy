@@ -28,6 +28,7 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql.schema import CheckConstraint
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
@@ -1382,6 +1383,20 @@ class ReflectionTest(fixtures.TestBase):
                 u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
             },
         )
+
+    def test_reflect_check_warning(self):
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.Mock(
+                fetchall=lambda: [("some name", "NOTCHECK foobar")]
+            )
+        )
+        with mock.patch.object(
+            testing.db.dialect, "get_table_oid", lambda *arg, **kw: 1
+        ):
+            with testing.expect_warnings(
+                "Could not parse CHECK constraint text: 'NOTCHECK foobar'"
+            ):
+                testing.db.dialect.get_check_constraints(conn, "foo")
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
