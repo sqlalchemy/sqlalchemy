@@ -18,7 +18,6 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
-from sqlalchemy.orm import comparable_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
@@ -555,7 +554,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             (relationship, (Address,)),
             (composite, (MyComposite, "id", "name")),
             (synonym, "foo"),
-            (comparable_property, "foo"),
         ]:
             obj = constructor(info={"x": "y"}, *args)
             eq_(obj.info, {"x": "y"})
@@ -630,35 +628,12 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
             name = property(_get_name, _set_name)
 
-            def _uc_name(self):
-                if self._name is None:
-                    return None
-                return self._name.upper()
-
-            uc_name = property(_uc_name)
-            uc_name2 = property(_uc_name)
-
         m = mapper(User, users)
         mapper(Address, addresses)
-
-        class UCComparator(sa.orm.PropComparator):
-            __hash__ = None
-
-            def __eq__(self, other):
-                cls = self.prop.parent.class_
-                col = getattr(cls, "name")
-                if other is None:
-                    return col is None
-                else:
-                    return sa.func.upper(col) == sa.func.upper(other)
 
         m.add_property("_name", deferred(users.c.name))
         m.add_property("name", synonym("_name"))
         m.add_property("addresses", relationship(Address))
-        m.add_property("uc_name", sa.orm.comparable_property(UCComparator))
-        m.add_property(
-            "uc_name2", sa.orm.comparable_property(UCComparator, User.uc_name2)
-        )
 
         sess = create_session(autocommit=False)
         assert sess.query(User).get(7)
@@ -671,8 +646,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 len(self.static.user_address_result[0].addresses),
             )
             eq_(u.name, "jack")
-            eq_(u.uc_name, "JACK")
-            eq_(u.uc_name2, "JACK")
             eq_(assert_col, [("get", "jack")], str(assert_col))
 
         self.sql_count_(2, go)
@@ -1410,52 +1383,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         eq_(result, [self.static.user_result[0]])
 
-    @testing.uses_deprecated("Mapper.order_by")
-    def test_cancel_order_by(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users, order_by=users.c.name.desc())
-
-        assert (
-            "order by users.name desc"
-            in str(create_session().query(User).statement).lower()
-        )
-        assert (
-            "order by"
-            not in str(
-                create_session().query(User).order_by(None).statement
-            ).lower()
-        )
-        assert (
-            "order by users.name asc"
-            in str(
-                create_session()
-                .query(User)
-                .order_by(User.name.asc())
-                .statement
-            ).lower()
-        )
-
-        eq_(
-            create_session().query(User).all(),
-            [
-                User(id=7, name="jack"),
-                User(id=9, name="fred"),
-                User(id=8, name="ed"),
-                User(id=10, name="chuck"),
-            ],
-        )
-
-        eq_(
-            create_session().query(User).order_by(User.name).all(),
-            [
-                User(id=10, name="chuck"),
-                User(id=8, name="ed"),
-                User(id=9, name="fred"),
-                User(id=7, name="jack"),
-            ],
-        )
-
     # 'Raises a "expression evaluation not supported" error at prepare time
     @testing.fails_on("firebird", "FIXME: unknown")
     def test_function(self):
@@ -1807,151 +1734,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     ("_user_id", users.c.id),
                 ]
             ),
-        )
-
-    def test_comparable(self):
-        users = self.tables.users
-
-        class extendedproperty(property):
-            attribute = 123
-
-            def method1(self):
-                return "method1"
-
-        from sqlalchemy.orm.properties import ColumnProperty
-
-        class UCComparator(ColumnProperty.Comparator):
-            __hash__ = None
-
-            def method1(self):
-                return "uccmethod1"
-
-            def method2(self, other):
-                return "method2"
-
-            def __eq__(self, other):
-                cls = self.prop.parent.class_
-                col = getattr(cls, "name")
-                if other is None:
-                    return col is None
-                else:
-                    return sa.func.upper(col) == sa.func.upper(other)
-
-        def map_(with_explicit_property):
-            class User(object):
-                @extendedproperty
-                def uc_name(self):
-                    if self.name is None:
-                        return None
-                    return self.name.upper()
-
-            if with_explicit_property:
-                args = (UCComparator, User.uc_name)
-            else:
-                args = (UCComparator,)
-            mapper(
-                User,
-                users,
-                properties=dict(uc_name=sa.orm.comparable_property(*args)),
-            )
-            return User
-
-        for User in (map_(True), map_(False)):
-            sess = create_session()
-            sess.begin()
-            q = sess.query(User)
-
-            assert hasattr(User, "name")
-            assert hasattr(User, "uc_name")
-
-            eq_(User.uc_name.method1(), "method1")
-            eq_(User.uc_name.method2("x"), "method2")
-
-            assert_raises_message(
-                AttributeError,
-                "Neither 'extendedproperty' object nor 'UCComparator' "
-                "object associated with User.uc_name has an attribute "
-                "'nonexistent'",
-                getattr,
-                User.uc_name,
-                "nonexistent",
-            )
-
-            # test compile
-            assert not isinstance(User.uc_name == "jack", bool)
-            u = q.filter(User.uc_name == "JACK").one()
-
-            assert u.uc_name == "JACK"
-            assert u not in sess.dirty
-
-            u.name = "some user name"
-            eq_(u.name, "some user name")
-            assert u in sess.dirty
-            eq_(u.uc_name, "SOME USER NAME")
-
-            sess.flush()
-            sess.expunge_all()
-
-            q = sess.query(User)
-            u2 = q.filter(User.name == "some user name").one()
-            u3 = q.filter(User.uc_name == "SOME USER NAME").one()
-
-            assert u2 is u3
-
-            eq_(User.uc_name.attribute, 123)
-            sess.rollback()
-
-    def test_comparable_column(self):
-        users, User = self.tables.users, self.classes.User
-
-        class MyComparator(sa.orm.properties.ColumnProperty.Comparator):
-            __hash__ = None
-
-            def __eq__(self, other):
-                # lower case comparison
-                return func.lower(self.__clause_element__()) == func.lower(
-                    other
-                )
-
-            def intersects(self, other):
-                # non-standard comparator
-                return self.__clause_element__().op("&=")(other)
-
-        mapper(
-            User,
-            users,
-            properties={
-                "name": sa.orm.column_property(
-                    users.c.name, comparator_factory=MyComparator
-                )
-            },
-        )
-
-        assert_raises_message(
-            AttributeError,
-            "Neither 'InstrumentedAttribute' object nor "
-            "'MyComparator' object associated with User.name has "
-            "an attribute 'nonexistent'",
-            getattr,
-            User.name,
-            "nonexistent",
-        )
-
-        eq_(
-            str(
-                (User.name == "ed").compile(
-                    dialect=sa.engine.default.DefaultDialect()
-                )
-            ),
-            "lower(users.name) = lower(:lower_1)",
-        )
-        eq_(
-            str(
-                (User.name.intersects("ed")).compile(
-                    dialect=sa.engine.default.DefaultDialect()
-                )
-            ),
-            "users.name &= :name_1",
         )
 
     def test_reentrant_compile(self):
@@ -2776,7 +2558,11 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         result = (
             sess.query(User)
             .order_by(User.id)
-            .options(sa.orm.joinedload_all("orders.items.keywords"))
+            .options(
+                sa.orm.joinedload("orders")
+                .joinedload("items")
+                .joinedload("keywords")
+            )
         ).all()
 
         def go():
@@ -2788,7 +2574,9 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         result = (
             sess.query(User).options(
-                sa.orm.subqueryload_all("orders.items.keywords")
+                sa.orm.subqueryload("orders")
+                .subqueryload("items")
+                .subqueryload("keywords")
             )
         ).all()
 
@@ -2885,7 +2673,6 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             (composite, DummyComposite, users.c.id, users.c.name),
             (relationship, Address),
             (backref, "address"),
-            (comparable_property,),
             (dynamic_loader, Address),
         ):
             fn = args[0]
@@ -3845,9 +3632,9 @@ class RequirementsTest(fixtures.MappedTest):
         h1s = (
             s.query(H1)
             .options(
-                sa.orm.joinedload_all("t6a.h1b"),
+                sa.orm.joinedload("t6a").joinedload("h1b"),
                 sa.orm.joinedload("h2s"),
-                sa.orm.joinedload_all("h3s.h1s"),
+                sa.orm.joinedload("h3s").joinedload("h1s"),
             )
             .all()
         )

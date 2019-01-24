@@ -73,7 +73,6 @@ class GenerativeQueryTest(fixtures.MappedTest):
 
         assert query[10:20][5] == orig[10:20][5]
 
-    @testing.uses_deprecated("Call to deprecated function apply_max")
     def test_aggregate(self):
         foo, Foo = self.tables.foo, self.classes.Foo
 

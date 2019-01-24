@@ -12,6 +12,7 @@ import re
 import textwrap
 import warnings
 
+from . import compat
 from .langhelpers import decorator
 from .. import exc
 
@@ -22,6 +23,21 @@ def warn_deprecated(msg, stacklevel=3):
 
 def warn_pending_deprecation(msg, stacklevel=3):
     warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=stacklevel)
+
+
+def deprecated_cls(version, message, constructor="__init__"):
+    header = ".. deprecated:: %s %s" % (version, (message or ""))
+
+    def decorate(cls):
+        return _decorate_cls_with_warning(
+            cls,
+            constructor,
+            exc.SADeprecationWarning,
+            message % dict(func=constructor),
+            header,
+        )
+
+    return decorate
 
 
 def deprecated(version, message=None, add_deprecation_to_docstring=True):
@@ -56,6 +72,74 @@ def deprecated(version, message=None, add_deprecation_to_docstring=True):
             message % dict(func=fn.__name__),
             header,
         )
+
+    return decorate
+
+
+def deprecated_params(**specs):
+    """Decorates a function to warn on use of certain parameters.
+
+    e.g. ::
+
+        @deprecated_params(
+            weak_identity_map=(
+                "0.7",
+                "the :paramref:`.Session.weak_identity_map parameter "
+                "is deprecated."
+            )
+
+        )
+
+    """
+
+    messages = {}
+    for param, (version, message) in specs.items():
+        messages[param] = _sanitize_restructured_text(message)
+
+    def decorate(fn):
+        spec = compat.inspect_getfullargspec(fn)
+        if spec.defaults is not None:
+            defaults = dict(
+                zip(
+                    spec.args[(len(spec.args) - len(spec.defaults)) :],
+                    spec.defaults,
+                )
+            )
+            check_defaults = set(defaults).intersection(messages)
+            check_kw = set(messages).difference(defaults)
+        else:
+            check_defaults = ()
+            check_kw = set(messages)
+
+        has_kw = spec.varkw is not None
+
+        @decorator
+        def warned(fn, *args, **kwargs):
+            for m in check_defaults:
+                if kwargs[m] != defaults[m]:
+                    warnings.warn(
+                        messages[m], exc.SADeprecationWarning, stacklevel=3
+                    )
+            for m in check_kw:
+                if m in kwargs:
+                    warnings.warn(
+                        messages[m], exc.SADeprecationWarning, stacklevel=3
+                    )
+
+            return fn(*args, **kwargs)
+
+        doc = fn.__doc__ is not None and fn.__doc__ or ""
+        if doc:
+            doc = inject_param_text(
+                doc,
+                {
+                    param: ".. deprecated:: %s %s" % (version, (message or ""))
+                    for param, (version, message) in specs.items()
+                },
+            )
+        decorated = warned(fn)
+        decorated.__doc__ = doc
+        return decorated
 
     return decorate
 
@@ -98,6 +182,14 @@ def pending_deprecation(
     return decorate
 
 
+def deprecated_option_value(parameter_value, default_value, warning_text):
+    if parameter_value is None:
+        return default_value
+    else:
+        warn_deprecated(warning_text)
+        return parameter_value
+
+
 def _sanitize_restructured_text(text):
     def repl(m):
         type_, name = m.group(1, 2)
@@ -106,6 +198,33 @@ def _sanitize_restructured_text(text):
         return name
 
     return re.sub(r"\:(\w+)\:`~?\.?(.+?)`", repl, text)
+
+
+def _decorate_cls_with_warning(
+    cls, constructor, wtype, message, docstring_header=None
+):
+    doc = cls.__doc__ is not None and cls.__doc__ or ""
+    if docstring_header is not None:
+        docstring_header %= dict(func=constructor)
+
+        doc = inject_docstring_text(doc, docstring_header, 1)
+
+        if type(cls) is type:
+            clsdict = dict(cls.__dict__)
+            clsdict["__doc__"] = doc
+            cls = type(cls.__name__, cls.__bases__, clsdict)
+            constructor_fn = clsdict[constructor]
+        else:
+            cls.__doc__ = doc
+            constructor_fn = getattr(cls, constructor)
+
+    setattr(
+        cls,
+        constructor,
+        _decorate_with_warning(constructor_fn, wtype, message, None),
+    )
+
+    return cls
 
 
 def _decorate_with_warning(func, wtype, message, docstring_header=None):
@@ -126,6 +245,7 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     decorated = warned(func)
     decorated.__doc__ = doc
+    decorated._sa_warn = lambda: warnings.warn(message, wtype, stacklevel=3)
     return decorated
 
 
@@ -154,4 +274,37 @@ def inject_docstring_text(doctext, injecttext, pos):
     inject_pos = blanks[min(pos, len(blanks) - 1)]
 
     lines = lines[0:inject_pos] + injectlines + lines[inject_pos:]
+    return "\n".join(lines)
+
+
+def inject_param_text(doctext, inject_params):
+    doclines = doctext.splitlines()
+    lines = []
+
+    to_inject = None
+    while doclines:
+        line = doclines.pop(0)
+        if to_inject is None:
+            m = re.match(r"(\s+):param (.+?):", line)
+            if m:
+                param = m.group(2)
+                if param in inject_params:
+                    # default indent to that of :param: plus one
+                    indent = " " * len(m.group(1)) + " "
+
+                    # but if the next line has text, use that line's
+                    # indentntation
+                    if doclines:
+                        m2 = re.match(r"(\s+)\S", doclines[0])
+                        if m2:
+                            indent = " " * len(m2.group(1))
+
+                    to_inject = indent + inject_params[param]
+        elif not line.rstrip():
+            lines.append(line)
+            lines.append(to_inject)
+            lines.append("\n")
+            to_inject = None
+        lines.append(line)
+
     return "\n".join(lines)

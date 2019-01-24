@@ -19,7 +19,6 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import Query
@@ -2096,7 +2095,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
 
         s.commit()
 
-        q = s.query(B, B.ds.any(D.id == 1)).options(joinedload_all("es"))
+        q = s.query(B, B.ds.any(D.id == 1)).options(joinedload("es"))
         q = q.join(C, C.b_id == B.id)
         q = q.limit(5)
         eq_(q.all(), [(b, True)])

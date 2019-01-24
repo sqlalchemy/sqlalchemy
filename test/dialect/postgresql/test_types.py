@@ -165,8 +165,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         'zxjdbc fails on ENUM: column "XXX" is of type '
         "XXX but expression is of type character varying",
     )
+    @testing.provide_metadata
     def test_create_table(self):
-        metadata = MetaData(testing.db)
+        metadata = self.metadata
         t1 = Table(
             "table",
             metadata,
@@ -175,19 +176,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 "value", Enum("one", "two", "three", name="onetwothreetype")
             ),
         )
-        t1.create()
-        t1.create(checkfirst=True)  # check the create
-        try:
-            t1.insert().execute(value="two")
-            t1.insert().execute(value="three")
-            t1.insert().execute(value="three")
+        with testing.db.connect() as conn:
+            t1.create(conn)
+            t1.create(conn, checkfirst=True)  # check the create
+            conn.execute(t1.insert(), value="two")
+            conn.execute(t1.insert(), value="three")
+            conn.execute(t1.insert(), value="three")
             eq_(
-                t1.select().order_by(t1.c.id).execute().fetchall(),
+                conn.execute(t1.select().order_by(t1.c.id)).fetchall(),
                 [(1, "two"), (2, "three"), (3, "three")],
             )
-        finally:
-            metadata.drop_all()
-            metadata.drop_all()
 
     def test_name_required(self):
         metadata = MetaData(testing.db)

@@ -283,7 +283,6 @@ class SingletonThreadPool(Pool):
     """
 
     def __init__(self, creator, pool_size=5, **kw):
-        kw["use_threadlocal"] = True
         Pool.__init__(self, creator, **kw)
         self._conn = threading.local()
         self._all_conns = set()

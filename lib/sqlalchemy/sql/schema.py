@@ -118,7 +118,8 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         "The :attr:`.SchemaItem.quote` attribute is deprecated and will be "
         "removed in a future release.  Use the :attr:`.quoted_name.quote` "
         "attribute on the ``name`` field of the target schema item to retrieve"
-        "quoted status.")
+        "quoted status.",
+    )
     def quote(self):
         """Return the value of the ``quote`` flag passed
         to this schema object, for those schema items which
@@ -394,7 +395,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         name, specify the flag ``quote_schema=True`` to the constructor, or use
         the :class:`.quoted_name` construct to specify the name.
 
-    :param useexisting: Deprecated.  Use :paramref:`.Table.extend_existing`.
+    :param useexisting: the same as :paramref:`.Table.extend_existing`.
 
     :param comment: Optional string that will render an SQL comment on table
          creation.
@@ -411,6 +412,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     __visit_name__ = "table"
 
+    @util.deprecated_params(
+        useexisting=(
+            "0.7",
+            "The :paramref:`.Table.useexisting` parameter is deprecated and "
+            "will be removed in a future release.  Please use "
+            ":paramref:`.Table.extend_existing`.",
+        )
+    )
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this
@@ -429,8 +438,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         keep_existing = kw.pop("keep_existing", False)
         extend_existing = kw.pop("extend_existing", False)
         if "useexisting" in kw:
-            msg = "useexisting is deprecated.  Use extend_existing."
-            util.warn_deprecated(msg)
             if extend_existing:
                 msg = "useexisting is synonymous with extend_existing."
                 raise exc.ArgumentError(msg)
@@ -475,7 +482,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         "The :meth:`.SchemaItem.quote` method is deprecated and will be "
         "removed in a future release.  Use the :attr:`.quoted_name.quote` "
         "attribute on the ``schema`` field of the target schema item to "
-        "retrieve quoted status.")
+        "retrieve quoted status.",
+    )
     def quote_schema(self):
         """Return the value of the ``quote_schema`` flag passed
         to this :class:`.Table`.
@@ -763,11 +771,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         constraint._set_parent_with_dispatch(self)
 
+    @util.deprecated(
+        "0.7",
+        "the :meth:`.Table.append_ddl_listener` method is deprecated and "
+        "will be removed in a future release.  Please refer to "
+        ":class:`.DDLEvents`.",
+    )
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``Table``.
-
-        .. deprecated:: 0.7
-            See :class:`.DDLEvents`.
 
         """
 
@@ -2579,22 +2590,15 @@ class DefaultClause(FetchedValue):
         return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
 
 
+@util.deprecated_cls(
+    "0.6",
+    ":class:`.PassiveDefault` is deprecated and will be removed in a "
+    "future release.  Please refer to :class:`.DefaultClause`.",
+)
 class PassiveDefault(DefaultClause):
     """A DDL-specified DEFAULT column value.
-
-    .. deprecated:: 0.6
-
-        The :class:`.PassiveDefault` class is deprecated and will be removed
-        in a future release.  Please use :class:`.DefaultClause`.
-
     """
 
-    @util.deprecated(
-        "0.6",
-        ":class:`.PassiveDefault` is deprecated and will be removed in a "
-        "future release. Use :class:`.DefaultClause`.",
-        False,
-    )
     def __init__(self, *arg, **kw):
         DefaultClause.__init__(self, *arg, **kw)
 
@@ -3711,13 +3715,21 @@ class MetaData(SchemaItem):
 
     __visit_name__ = "metadata"
 
+    @util.deprecated_params(
+        reflect=(
+            "0.8",
+            "The :paramref:`.MetaData.reflect` flag is deprecated and will "
+            "be removed in a future release.   Please use the "
+            ":meth:`.MetaData.reflect` method.",
+        )
+    )
     def __init__(
         self,
         bind=None,
         reflect=False,
         schema=None,
         quote_schema=None,
-        naming_convention=DEFAULT_NAMING_CONVENTION,
+        naming_convention=None,
         info=None,
     ):
         """Create a new MetaData object.
@@ -3730,12 +3742,6 @@ class MetaData(SchemaItem):
         :param reflect:
           Optional, automatically load all tables from the bound database.
           Defaults to False. ``bind`` is required when this option is set.
-
-          .. deprecated:: 0.8
-
-                The :paramref:`.MetaData.reflect` flag is deprecated and will
-                be removed in a future release.   Please use the
-                :meth:`.MetaData.reflect` method.
 
         :param schema:
            The default schema to use for the :class:`.Table`,
@@ -3877,7 +3883,11 @@ class MetaData(SchemaItem):
         """
         self.tables = util.immutabledict()
         self.schema = quoted_name(schema, quote_schema)
-        self.naming_convention = naming_convention
+        self.naming_convention = (
+            naming_convention
+            if naming_convention
+            else DEFAULT_NAMING_CONVENTION
+        )
         if info:
             self.info = info
         self._schemas = set()
@@ -3886,10 +3896,6 @@ class MetaData(SchemaItem):
 
         self.bind = bind
         if reflect:
-            util.warn_deprecated(
-                "reflect=True is deprecate; please "
-                "use the reflect() method."
-            )
             if not bind:
                 raise exc.ArgumentError(
                     "A bind must be supplied in conjunction "
@@ -4180,11 +4186,15 @@ class MetaData(SchemaItem):
                 except exc.UnreflectableTableError as uerr:
                     util.warn("Skipping table %s: %s" % (name, uerr))
 
+    @util.deprecated(
+        "0.7",
+        "the :meth:`.MetaData.append_ddl_listener` method is deprecated and "
+        "will be removed in a future release.  Please refer to "
+        ":class:`.DDLEvents`.",
+    )
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``MetaData``.
 
-        .. deprecated:: 0.7
-            See :class:`.DDLEvents`.
 
         """
 

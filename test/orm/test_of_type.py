@@ -8,11 +8,9 @@ from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.orm import subqueryload_all
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -562,8 +560,8 @@ class SubclassRelationshipTest(
         )
         s = Session(testing.db)
         q = s.query(ParentThing).options(
-            subqueryload_all(
-                ParentThing.container, DataContainer.jobs.of_type(SubJob)
+            subqueryload(ParentThing.container).subqueryload(
+                DataContainer.jobs.of_type(SubJob)
             )
         )
 
@@ -577,8 +575,8 @@ class SubclassRelationshipTest(
         s = Session(testing.db)
         sj_alias = aliased(SubJob)
         q = s.query(DataContainer).options(
-            subqueryload_all(
-                DataContainer.jobs.of_type(sj_alias), sj_alias.widget
+            subqueryload(DataContainer.jobs.of_type(sj_alias)).subqueryload(
+                sj_alias.widget
             )
         )
 
@@ -596,8 +594,8 @@ class SubclassRelationshipTest(
         )
         s = Session(testing.db)
         q = s.query(ParentThing).options(
-            joinedload_all(
-                ParentThing.container, DataContainer.jobs.of_type(SubJob)
+            joinedload(ParentThing.container).joinedload(
+                DataContainer.jobs.of_type(SubJob)
             )
         )
 

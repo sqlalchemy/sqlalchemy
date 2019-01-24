@@ -184,6 +184,15 @@ class DefaultDialect(interfaces.Dialect):
 
     """
 
+    @util.deprecated_params(
+        convert_unicode=(
+            "1.3",
+            "The :paramref:`.create_engine.convert_unicode` parameter "
+            "and corresponding dialect-level parameters are deprecated, "
+            "and will be removed in a future release.  Modern DBAPIs support "
+            "Python Unicode natively and this parameter is unnecessary.",
+        )
+    )
     def __init__(
         self,
         convert_unicode=False,

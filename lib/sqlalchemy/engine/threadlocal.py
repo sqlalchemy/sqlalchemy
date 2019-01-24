@@ -46,11 +46,22 @@ class TLEngine(base.Engine):
 
     _tl_connection_cls = TLConnection
 
+    @util.deprecated(
+        "1.3",
+        "The 'threadlocal' engine strategy is deprecated, and will be "
+        "removed in a future release.  The strategy is no longer relevant "
+        "to modern usage patterns (including that of the ORM "
+        ":class:`.Session` object) which make use of a :class:`.Connection` "
+        "object in order to invoke statements.",
+    )
     def __init__(self, *args, **kwargs):
         super(TLEngine, self).__init__(*args, **kwargs)
         self._connections = util.threading.local()
 
     def contextual_connect(self, **kw):
+        return self._contextual_connect(**kw)
+
+    def _contextual_connect(self, **kw):
         if not hasattr(self._connections, "conn"):
             connection = None
         else:
@@ -72,7 +83,7 @@ class TLEngine(base.Engine):
         if not hasattr(self._connections, "trans"):
             self._connections.trans = []
         self._connections.trans.append(
-            self.contextual_connect().begin_twophase(xid=xid)
+            self._contextual_connect().begin_twophase(xid=xid)
         )
         return self
 
@@ -80,14 +91,14 @@ class TLEngine(base.Engine):
         if not hasattr(self._connections, "trans"):
             self._connections.trans = []
         self._connections.trans.append(
-            self.contextual_connect().begin_nested()
+            self._contextual_connect().begin_nested()
         )
         return self
 
     def begin(self):
         if not hasattr(self._connections, "trans"):
             self._connections.trans = []
-        self._connections.trans.append(self.contextual_connect().begin())
+        self._connections.trans.append(self._contextual_connect().begin())
         return self
 
     def __enter__(self):
@@ -139,7 +150,7 @@ class TLEngine(base.Engine):
 
     def close(self):
         if not self.closed:
-            self.contextual_connect().close()
+            self._contextual_connect().close()
             connection = self._connections.conn()
             connection._force_close()
             del self._connections.conn

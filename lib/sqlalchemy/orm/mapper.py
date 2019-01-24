@@ -104,6 +104,22 @@ class Mapper(InspectionAttr):
     _new_mappers = False
     _dispose_called = False
 
+    @util.deprecated_params(
+        extension=(
+            "0.7",
+            ":class:`.MapperExtension` is deprecated in favor of the "
+            ":class:`.MapperEvents` listener interface.  The "
+            ":paramref:`.mapper.extension` parameter will be "
+            "removed in a future release.",
+        ),
+        order_by=(
+            "1.1",
+            "The :paramref:`.Mapper.order_by` parameter "
+            "is deprecated, and will be removed in a future release. "
+            "Use :meth:`.Query.order_by` to determine the ordering of a "
+            "result set.",
+        ),
+    )
     def __init__(
         self,
         class_,
@@ -272,13 +288,6 @@ class Mapper(InspectionAttr):
            list of :class:`.MapperExtension` instances which will be applied
            to all operations by this :class:`.Mapper`.
 
-           .. deprecated:: 0.7
-
-                :class:`.MapperExtension` is deprecated in favor of the
-                :class:`.MapperEvents` listener interface.  The
-                :paramref:`.mapper.extension` parameter will be
-                removed in a future release.
-
         :param include_properties: An inclusive list or set of string column
           names to map.
 
@@ -338,11 +347,6 @@ class Mapper(InspectionAttr):
            objects for which selection operations should use as the default
            ordering for entities.  By default mappers have no pre-defined
            ordering.
-
-           .. deprecated:: 1.1 The :paramref:`.Mapper.order_by` parameter
-              is deprecated, and will be removed in a future release.
-              Use :meth:`.Query.order_by` to determine the ordering of a
-              result set.
 
         :param passive_deletes: Indicates DELETE behavior of foreign key
            columns when a joined-table inheritance entity is being deleted.
@@ -604,12 +608,6 @@ class Mapper(InspectionAttr):
 
         if order_by is not False:
             self.order_by = util.to_list(order_by)
-            util.warn_deprecated(
-                "Mapper.order_by is deprecated."
-                "Use Query.order_by() in order to affect the ordering of ORM "
-                "result sets."
-            )
-
         else:
             self.order_by = order_by
 

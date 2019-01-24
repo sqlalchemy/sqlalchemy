@@ -1647,7 +1647,7 @@ class AlternateResultProxyTest(fixtures.TablesTest):
             "test",
             metadata,
             Column("x", Integer, primary_key=True),
-            Column("y", String(50, convert_unicode="force")),
+            Column("y", String(50)),
         )
 
     @classmethod

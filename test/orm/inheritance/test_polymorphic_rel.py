@@ -5,10 +5,9 @@ from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.orm import subqueryload_all
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
@@ -652,12 +651,10 @@ class _PolymorphicTestBase(object):
         )
 
     def test_subclass_option_pathing(self):
-        from sqlalchemy.orm import defer
-
         sess = create_session()
         dilbert = (
             sess.query(Person)
-            .options(defer(Engineer.machines, Machine.name))
+            .options(defaultload(Engineer.machines).defer(Machine.name))
             .filter(Person.name == "dilbert")
             .first()
         )
@@ -805,8 +802,8 @@ class _PolymorphicTestBase(object):
             eq_(
                 sess.query(Company)
                 .options(
-                    joinedload_all(
-                        Company.employees.of_type(Engineer), Engineer.machines
+                    joinedload(Company.employees.of_type(Engineer)).joinedload(
+                        Engineer.machines
                     )
                 )
                 .all(),
@@ -832,9 +829,9 @@ class _PolymorphicTestBase(object):
             eq_(
                 sess.query(Company)
                 .options(
-                    subqueryload_all(
-                        Company.employees.of_type(Engineer), Engineer.machines
-                    )
+                    subqueryload(
+                        Company.employees.of_type(Engineer)
+                    ).subqueryload(Engineer.machines)
                 )
                 .all(),
                 expected,

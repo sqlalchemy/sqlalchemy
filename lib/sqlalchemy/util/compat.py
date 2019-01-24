@@ -44,6 +44,19 @@ FullArgSpec = collections.namedtuple(
     ],
 )
 
+FullArgSpec = collections.namedtuple(
+    "FullArgSpec",
+    [
+        "args",
+        "varargs",
+        "varkw",
+        "defaults",
+        "kwonlyargs",
+        "kwonlydefaults",
+        "annotations",
+    ],
+)
+
 try:
     import threading
 except ImportError:

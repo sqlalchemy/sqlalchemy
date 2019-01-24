@@ -105,6 +105,15 @@ class RelationshipProperty(StrategizedProperty):
 
     _dependency_processor = None
 
+    @util.deprecated_params(
+        extension=(
+            "0.7",
+            ":class:`.AttributeExtension` is deprecated in favor of the "
+            ":class:`.AttributeEvents` listener interface.  The "
+            ":paramref:`.relationship.extension` parameter will be "
+            "removed in a future release.",
+        )
+    )
     def __init__(
         self,
         argument,
@@ -401,13 +410,6 @@ class RelationshipProperty(StrategizedProperty):
           an :class:`.AttributeExtension` instance, or list of extensions,
           which will be prepended to the list of attribute listeners for
           the resulting descriptor placed on the class.
-
-           .. deprecated:: 0.7
-
-                :class:`.AttributeExtension` is deprecated in favor of the
-                :class:`.AttributeEvents` listener interface. The
-                :paramref:`.relationship.extension` parameter will be
-                removed in a future release.
 
         :param foreign_keys:
 

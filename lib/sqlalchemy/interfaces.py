@@ -86,10 +86,23 @@ class PoolListener(object):
 
         """
 
-        listener = util.as_interface(
-            listener,
-            methods=("connect", "first_connect", "checkout", "checkin"),
-        )
+        methods = ["connect", "first_connect", "checkout", "checkin"]
+        listener = util.as_interface(listener, methods=methods)
+
+        for meth in methods:
+            me_meth = getattr(PoolListener, meth)
+            ls_meth = getattr(listener, meth, None)
+
+            if ls_meth is not None and not util.methods_equivalent(
+                me_meth, ls_meth
+            ):
+                util.warn_deprecated(
+                    "PoolListener.%s is deprecated.  The "
+                    "PoolListener class will be removed in a future "
+                    "release.  Please transition to the @event interface, "
+                    "using @event.listens_for(Engine, '%s')." % (meth, meth)
+                )
+
         if hasattr(listener, "connect"):
             event.listen(self, "connect", listener.connect)
         if hasattr(listener, "first_connect"):
@@ -195,6 +208,33 @@ class ConnectionProxy(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
+
+        methods = [
+            "execute",
+            "cursor_execute",
+            "begin",
+            "rollback",
+            "commit",
+            "savepoint",
+            "rollback_savepoint",
+            "release_savepoint",
+            "begin_twophase",
+            "prepare_twophase",
+            "rollback_twophase",
+            "commit_twophase",
+        ]
+        for meth in methods:
+            me_meth = getattr(ConnectionProxy, meth)
+            ls_meth = getattr(listener, meth)
+
+            if not util.methods_equivalent(me_meth, ls_meth):
+                util.warn_deprecated(
+                    "ConnectionProxy.%s is deprecated.  The "
+                    "ConnectionProxy class will be removed in a future "
+                    "release.  Please transition to the @event interface, "
+                    "using @event.listens_for(Engine, '%s')." % (meth, meth)
+                )
+
         def adapt_execute(conn, clauseelement, multiparams, params):
             def execute_wrapper(clauseelement, *multiparams, **params):
                 return clauseelement, multiparams, params

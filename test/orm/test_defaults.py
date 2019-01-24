@@ -40,29 +40,27 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                 "CREATE TRIGGER dt_ins AFTER INSERT ON dt "
                 "FOR EACH ROW BEGIN "
                 "UPDATE dt SET col2='ins', col4='ins' "
-                "WHERE dt.id = NEW.id; END",
-                on="sqlite",
-            ),
+                "WHERE dt.id = NEW.id; END"
+            ).execute_if(dialect="sqlite"),
             sa.DDL(
                 "CREATE TRIGGER dt_ins ON dt AFTER INSERT AS "
                 "UPDATE dt SET col2='ins', col4='ins' "
-                "WHERE dt.id IN (SELECT id FROM inserted);",
-                on="mssql",
-            ),
+                "WHERE dt.id IN (SELECT id FROM inserted);"
+            ).execute_if(dialect="mssql"),
             sa.DDL(
                 "CREATE TRIGGER dt_ins BEFORE INSERT "
                 "ON dt "
                 "FOR EACH ROW "
                 "BEGIN "
-                ":NEW.col2 := 'ins'; :NEW.col4 := 'ins'; END;",
-                on="oracle",
-            ),
+                ":NEW.col2 := 'ins'; :NEW.col4 := 'ins'; END;"
+            ).execute_if(dialect="oracle"),
             sa.DDL(
                 "CREATE TRIGGER dt_ins BEFORE INSERT ON dt "
                 "FOR EACH ROW BEGIN "
-                "SET NEW.col2='ins'; SET NEW.col4='ins'; END",
-                on=lambda ddl, event, target, bind, **kw: bind.engine.name
-                not in ("oracle", "mssql", "sqlite"),
+                "SET NEW.col2='ins'; SET NEW.col4='ins'; END"
+            ).execute_if(
+                callable_=lambda ddl, target, bind, **kw: bind.engine.name
+                not in ("oracle", "mssql", "sqlite")
             ),
         ):
             event.listen(dt, "after_create", ins)
@@ -74,27 +72,25 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                 "CREATE TRIGGER dt_up AFTER UPDATE ON dt "
                 "FOR EACH ROW BEGIN "
                 "UPDATE dt SET col3='up', col4='up' "
-                "WHERE dt.id = OLD.id; END",
-                on="sqlite",
-            ),
+                "WHERE dt.id = OLD.id; END"
+            ).execute_if(dialect="sqlite"),
             sa.DDL(
                 "CREATE TRIGGER dt_up ON dt AFTER UPDATE AS "
                 "UPDATE dt SET col3='up', col4='up' "
-                "WHERE dt.id IN (SELECT id FROM deleted);",
-                on="mssql",
-            ),
+                "WHERE dt.id IN (SELECT id FROM deleted);"
+            ).execute_if(dialect="mssql"),
             sa.DDL(
                 "CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
                 "FOR EACH ROW BEGIN "
-                ":NEW.col3 := 'up'; :NEW.col4 := 'up'; END;",
-                on="oracle",
-            ),
+                ":NEW.col3 := 'up'; :NEW.col4 := 'up'; END;"
+            ).execute_if(dialect="oracle"),
             sa.DDL(
                 "CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
                 "FOR EACH ROW BEGIN "
-                "SET NEW.col3='up'; SET NEW.col4='up'; END",
-                on=lambda ddl, event, target, bind, **kw: bind.engine.name
-                not in ("oracle", "mssql", "sqlite"),
+                "SET NEW.col3='up'; SET NEW.col4='up'; END"
+            ).execute_if(
+                callable_=lambda ddl, target, bind, **kw: bind.engine.name
+                not in ("oracle", "mssql", "sqlite")
             ),
         ):
             event.listen(dt, "after_create", up)

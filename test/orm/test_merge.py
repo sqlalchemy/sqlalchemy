@@ -12,14 +12,12 @@ from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import comparable_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import PropComparator
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -1283,13 +1281,10 @@ class MergeTest(_fixtures.FixtureTest):
         except sa.exc.InvalidRequestError as e:
             assert "load=False option does not support" in str(e)
 
-    def test_synonym_comparable(self):
+    def test_synonym(self):
         users = self.tables.users
 
         class User(object):
-            class Comparator(PropComparator):
-                pass
-
             def _getValue(self):
                 return self._value
 
@@ -1298,14 +1293,7 @@ class MergeTest(_fixtures.FixtureTest):
 
             value = property(_getValue, _setValue)
 
-        mapper(
-            User,
-            users,
-            properties={
-                "uid": synonym("id"),
-                "foobar": comparable_property(User.Comparator, User.value),
-            },
-        )
+        mapper(User, users, properties={"uid": synonym("id")})
 
         sess = create_session()
         u = User()

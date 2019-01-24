@@ -198,18 +198,6 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
 class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_legacy(self):
-        t = text(
-            "select * from foo where lala=:bar and hoho=:whee",
-            bindparams=[bindparam("bar", 4), bindparam("whee", 7)],
-        )
-
-        self.assert_compile(
-            t,
-            "select * from foo where lala=:bar and hoho=:whee",
-            checkparams={"bar": 4, "whee": 7},
-        )
-
     def test_positional(self):
         t = text("select * from foo where lala=:bar and hoho=:whee")
         t = t.bindparams(bindparam("bar", 4), bindparam("whee", 7))

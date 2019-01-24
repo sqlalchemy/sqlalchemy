@@ -12,6 +12,7 @@ import warnings
 import weakref
 
 from . import config
+from . import uses_deprecated
 from .util import decorator
 from .. import event
 from .. import pool
@@ -74,6 +75,7 @@ class ConnectionKiller(object):
         else:
             self._stop_test_ctx_aggressive()
 
+    @uses_deprecated()
     def _stop_test_ctx_minimal(self):
         self.close_all()
 
@@ -83,6 +85,7 @@ class ConnectionKiller(object):
             if rec is not config.db:
                 rec.dispose()
 
+    @uses_deprecated()
     def _stop_test_ctx_aggressive(self):
         self.close_all()
         for conn, rec in list(self.conns):

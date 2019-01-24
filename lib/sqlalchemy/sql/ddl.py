@@ -106,7 +106,7 @@ class DDLElement(Executable, _DDLCompiles):
         "The :meth:`.DDLElement.execute_at` method is deprecated and will "
         "be removed in a future release.  Please use the :class:`.DDLEvents` "
         "listener interface in conjunction with the "
-        ":meth:`.DDLElement.execute_if` method."
+        ":meth:`.DDLElement.execute_if` method.",
     )
     def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
@@ -317,6 +317,14 @@ class DDL(DDLElement):
 
     __visit_name__ = "ddl"
 
+    @util.deprecated_params(
+        on=(
+            "0.7",
+            "The :paramref:`.DDL.on` parameter is deprecated and will be "
+            "removed in a future release.  Please refer to "
+            ":meth:`.DDLElement.execute_if`.",
+        )
+    )
     def __init__(self, statement, on=None, context=None, bind=None):
         """Create a DDL statement.
 
@@ -330,12 +338,6 @@ class DDL(DDLElement):
           SQL bind parameters are not available in DDL statements.
 
         :param on:
-
-          .. deprecated:: 0.7
-
-            The :paramref:`.DDL.on` parameter is deprecated and will be
-            removed in a future release.  Please refer to
-            :meth:`.DDLElement.execute_if`.
 
           Optional filtering criteria.  May be a string, tuple or a callable
           predicate.  If a string, it will be compared to the name of the

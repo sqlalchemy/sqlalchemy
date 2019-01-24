@@ -461,21 +461,27 @@ class ClauseElement(Visitable):
                 "ascii", "backslashreplace"
             )  # noqa
 
+    @util.deprecated(
+        "0.9",
+        "The :meth:`.ClauseElement.__and__` method is deprecated and will "
+        "be removed in a future release.   Conjunctions should only be "
+        "used from a :class:`.ColumnElement` subclass, e.g. "
+        ":meth:`.ColumnElement.__and__`.",
+    )
     def __and__(self, other):
         """'and' at the ClauseElement level.
-
-        .. deprecated:: 0.9.5 - conjunctions are intended to be
-           at the :class:`.ColumnElement`. level
-
         """
         return and_(self, other)
 
+    @util.deprecated(
+        "0.9",
+        "The :meth:`.ClauseElement.__or__` method is deprecated and will "
+        "be removed in a future release.   Conjunctions should only be "
+        "used from a :class:`.ColumnElement` subclass, e.g. "
+        ":meth:`.ColumnElement.__or__`.",
+    )
     def __or__(self, other):
         """'or' at the ClauseElement level.
-
-        .. deprecated:: 0.9.5 - conjunctions are intended to be
-           at the :class:`.ColumnElement`. level
-
         """
         return or_(self, other)
 
@@ -1280,6 +1286,10 @@ class TextClause(Executable, ClauseElement):
     )
     _is_implicitly_boolean = False
 
+    def __and__(self, other):
+        # support use in select.where(), query.filter()
+        return and_(self, other)
+
     @property
     def _select_iterable(self):
         return (self,)
@@ -1311,6 +1321,28 @@ class TextClause(Executable, ClauseElement):
         self.text = self._bind_params_regex.sub(repl, text)
 
     @classmethod
+    @util.deprecated_params(
+        autocommit=(
+            "0.6",
+            "The :paramref:`.text.autocommit` parameter is deprecated and "
+            "will be removed in a future release.  Please use the "
+            ":paramref:`.Connection.execution_options.autocommit` parameter "
+            "in conjunction with the :meth:`.Executable.execution_options` "
+            "method.",
+        ),
+        bindparams=(
+            "0.9",
+            "The :paramref:`.text.bindparams` parameter "
+            "is deprecated and will be removed in a future release.  Please "
+            "refer to the :meth:`.TextClause.bindparams` method.",
+        ),
+        typemap=(
+            "0.9",
+            "The :paramref:`.text.typemap` parameter is "
+            "deprecated and will be removed in a future release.  Please "
+            "refer to the :meth:`.TextClause.columns` method.",
+        ),
+    )
     def _create_text(
         self, text, bind=None, bindparams=None, typemap=None, autocommit=None
     ):
@@ -1389,15 +1421,8 @@ class TextClause(Executable, ClauseElement):
           to specify bind parameters; they will be compiled to their
           engine-specific format.
 
-        :param autocommit:
-
-            .. deprecated:: 0.6
-
-                The :paramref:`.text.autocommit` flag is deprecated and
-                will be removed in a future release.  Please use the
-                :paramref:`.Connection.execution_options.autocommit` parameter
-                in conjunction with the :meth:`.Executable.execution_options`
-                method.
+        :param autocommit: whether or not to set the "autocommit" execution
+          option for this :class:`.TextClause` object.
 
         :param bind:
           an optional connection or engine to be used for this text query.
@@ -1405,26 +1430,21 @@ class TextClause(Executable, ClauseElement):
         :param bindparams:
           A list of :func:`.bindparam` instances used to
           provide information about parameters embedded in the statement.
+
           E.g.::
 
               stmt = text("SELECT * FROM table WHERE id=:id",
                         bindparams=[bindparam('id', value=5, type_=Integer)])
 
-          .. deprecated:: 0.9 the :paramref:`.TextClause.bindparams` parameter
-             is deprecated and will be removed in a future release.  Please
-             refer to the :meth:`.TextClause.bindparams` method.
-
         :param typemap:
           A dictionary mapping the names of columns represented in the columns
-          clause of a ``SELECT`` statement to type objects, e.g.::
+          clause of a ``SELECT`` statement to type objects.
+
+          E.g.::
 
               stmt = text("SELECT * FROM table",
                             typemap={'id': Integer, 'name': String},
                         )
-
-          .. deprecated:: 0.9  The :paramref:`.TextClause.typemap` argument is
-             deprecated and will be removed in a future release.  Please
-             refer to the :meth:`.TextClause.columns` method.
 
         .. seealso::
 
@@ -1439,10 +1459,6 @@ class TextClause(Executable, ClauseElement):
         if typemap:
             stmt = stmt.columns(**typemap)
         if autocommit is not None:
-            util.warn_deprecated(
-                "autocommit on text() is deprecated.  "
-                "Use .execution_options(autocommit=True)"
-            )
             stmt = stmt.execution_options(autocommit=autocommit)
 
         return stmt
@@ -1510,12 +1526,6 @@ class TextClause(Executable, ClauseElement):
                 name='jack',
                 timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
             )
-
-
-        .. versionadded:: 0.9.0 The :meth:`.TextClause.bindparams` method
-           supersedes the argument ``bindparams`` passed to
-           :func:`~.expression.text`.
-
 
         """
         self._bindparams = new_params = self._bindparams.copy()
@@ -1631,8 +1641,7 @@ class TextClause(Executable, ClauseElement):
 
         .. versionadded:: 0.9.0 :func:`.text` can now be converted into a
            fully featured "selectable" construct using the
-           :meth:`.TextClause.columns` method.  This method supersedes the
-           ``typemap`` argument to :func:`.text`.
+           :meth:`.TextClause.columns` method.
 
 
         """
@@ -3364,13 +3373,16 @@ class Over(ColumnElement):
         return lower, upper
 
     @property
+    @util.deprecated(
+        "1.1",
+        "the :attr:`.Over.func` member of the :class:`.Over` "
+        "class is deprecated and will be removed in a future release.  "
+        "Please refer to the :attr:`.Over.element` attribute.",
+    )
     def func(self):
         """the element referred to by this :class:`.Over`
         clause.
 
-        .. deprecated:: 1.1 the :attr:`.Over.func` member of the :class:`.Over`
-           class is deprecated and will be removed in a future release.  Please
-           refer to the :attr:`.Over.element` attribute.
 
         """
         return self.element

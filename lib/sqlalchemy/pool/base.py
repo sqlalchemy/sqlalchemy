@@ -60,6 +60,20 @@ class Pool(log.Identified):
 
     _dialect = _ConnDialect()
 
+    @util.deprecated_params(
+        use_threadlocal=(
+            "1.3",
+            "The :paramref:`.Pool.use_threadlocal` parameter is "
+            "deprecated and will be removed in a future release.",
+        ),
+        listeners=(
+            "0.7",
+            ":class:`.PoolListener` is deprecated in favor of the "
+            ":class:`.PoolEvents` listener interface.  The "
+            ":paramref:`.Pool.listeners` parameter will be removed in a "
+            "future release.",
+        ),
+    )
     def __init__(
         self,
         creator,
@@ -99,35 +113,9 @@ class Pool(log.Identified):
 
         :param use_threadlocal: If set to True, repeated calls to
           :meth:`connect` within the same application thread will be
-          guaranteed to return the same connection object, if one has
-          already been retrieved from the pool and has not been
-          returned yet.  Offers a slight performance advantage at the
-          cost of individual transactions by default.  The
-          :meth:`.Pool.unique_connection` method is provided to return
-          a consistently unique connection to bypass this behavior
-          when the flag is set.
-
-          .. warning::  The :paramref:`.Pool.use_threadlocal` flag
-             **does not affect the behavior** of :meth:`.Engine.connect`.
-             :meth:`.Engine.connect` makes use of the
-             :meth:`.Pool.unique_connection` method which **does not use thread
-             local context**.  To produce a :class:`.Connection` which refers
-             to the :meth:`.Pool.connect` method, use
-             :meth:`.Engine.contextual_connect`.
-
-             Note that other SQLAlchemy connectivity systems such as
-             :meth:`.Engine.execute` as well as the orm
-             :class:`.Session` make use of
-             :meth:`.Engine.contextual_connect` internally, so these functions
-             are compatible with the :paramref:`.Pool.use_threadlocal` setting.
-
-          .. seealso::
-
-            :ref:`threadlocal_strategy` - contains detail on the
-            "threadlocal" engine strategy, which provides a more comprehensive
-            approach to "threadlocal" connectivity for the specific
-            use case of using :class:`.Engine` and :class:`.Connection` objects
-            directly.
+          guaranteed to return the same connection object that is already
+          checked out.   This is a legacy use case and the flag has no
+          effect when using the pool with a :class:`.Engine` object.
 
         :param reset_on_return: Determine steps to take on
           connections as they are returned to the pool.
@@ -174,13 +162,6 @@ class Pool(log.Identified):
           dictionaries of callables that receive events when DB-API
           connections are created, checked out and checked in to the
           pool.
-
-          .. deprecated:: 0.7
-
-                :class:`.PoolListener` is deprecated in favor of the
-                :class:`.PoolEvents` listener interface.  The
-                :paramref:`.Pool.listeners` parameter will be removed in a
-                future release.
 
         :param dialect: a :class:`.Dialect` that will handle the job
          of calling rollback(), close(), or commit() on DBAPI connections.
@@ -235,12 +216,6 @@ class Pool(log.Identified):
             for fn, target in events:
                 event.listen(self, target, fn)
         if listeners:
-            util.warn_deprecated(
-                "The 'listeners' argument to Pool and create_engine() is "
-                "deprecated and will be removed in a future release. "
-                "Please refer to the PoolEvents class in conjunction "
-                "with event.listen()"
-            )
             for l in listeners:
                 self.add_listener(l)
 
@@ -290,9 +265,10 @@ class Pool(log.Identified):
             )
 
     @util.deprecated(
-        "0.7", "The :meth:`.Pool.add_listener` method is deprecated and "
+        "0.7",
+        "The :meth:`.Pool.add_listener` method is deprecated and "
         "will be removed in a future release.  Please use the "
-        ":class:`.PoolEvents` listener interface."
+        ":class:`.PoolEvents` listener interface.",
     )
     def add_listener(self, listener):
         """Add a :class:`.PoolListener`-like object to this pool.

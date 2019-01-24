@@ -23,6 +23,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.sql import operators
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -50,8 +51,8 @@ class ShardTest(object):
         def id_generator(ctx):
             # in reality, might want to use a separate transaction for this.
 
-            c = db1.contextual_connect()
-            nextid = c.execute(ids.select(for_update=True)).scalar()
+            c = db1.connect()
+            nextid = c.execute(ids.select().with_for_update()).scalar()
             c.execute(ids.update(values={ids.c.nextid: ids.c.nextid + 1}))
             return nextid
 
@@ -411,7 +412,7 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
     def _init_dbs(self):
         db1 = testing_engine(
             "sqlite:///shard1_%s.db" % provision.FOLLOWER_IDENT,
-            options=dict(pool_threadlocal=True),
+            options=dict(poolclass=SingletonThreadPool),
         )
         db2 = testing_engine(
             "sqlite:///shard2_%s.db" % provision.FOLLOWER_IDENT
@@ -551,8 +552,7 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
 class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
     def _init_dbs(self):
         self.db1 = db1 = testing_engine(
-            "sqlite:///shard1_%s.db" % provision.FOLLOWER_IDENT,
-            options=dict(pool_threadlocal=True),
+            "sqlite:///shard1_%s.db" % provision.FOLLOWER_IDENT
         )
         self.db2 = db2 = testing_engine(
             "sqlite:///shard2_%s.db" % provision.FOLLOWER_IDENT

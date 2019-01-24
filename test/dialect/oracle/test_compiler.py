@@ -211,7 +211,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(len(c._result_columns), 2)
         assert t.c.col1 in set(c._create_result_map()["col1"][1])
 
-        s = select([t], for_update=True).limit(10).order_by(t.c.col2)
+        s = select([t]).with_for_update().limit(10).order_by(t.c.col2)
         self.assert_compile(
             s,
             "SELECT col1, col2 FROM (SELECT "
@@ -222,7 +222,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         s = (
-            select([t], for_update=True)
+            select([t])
+            .with_for_update()
             .limit(10)
             .offset(20)
             .order_by(t.c.col2)

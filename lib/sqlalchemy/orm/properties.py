@@ -55,6 +55,15 @@ class ColumnProperty(StrategizedProperty):
         "_deferred_column_loader",
     )
 
+    @util.deprecated_params(
+        extension=(
+            "0.7",
+            ":class:`.AttributeExtension` is deprecated in favor of the "
+            ":class:`.AttributeEvents` listener interface.  The "
+            ":paramref:`.column_property.extension` parameter will be "
+            "removed in a future release.",
+        )
+    )
     def __init__(self, *columns, **kwargs):
         r"""Provide a column-level property for use with a Mapper.
 
@@ -119,13 +128,6 @@ class ColumnProperty(StrategizedProperty):
             an :class:`.AttributeExtension` instance, or list of extensions,
             which will be prepended to the list of attribute listeners for the
             resulting descriptor placed on the class.
-
-           .. deprecated:: 0.7
-
-                :class:`.AttributeExtension` is deprecated in favor of the
-                :class:`.AttributeEvents` listener interface.   The
-                :paramref:`.column_property.extension` parameter will be
-                removed in a future release.
 
         """
         super(ColumnProperty, self).__init__()

@@ -251,14 +251,14 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    @util.deprecated(
+        "0.8",
+        "The :meth:`.Dialect.get_primary_keys` method is deprecated and "
+        "will be removed in a future release.   Please refer to the "
+        ":meth:`.Dialect.get_pk_constraint` method. ",
+    )
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
-
-        .. deprecated:: 0.8
-
-            The :meth:`.Dialect.get_primary_keys` method is deprecated and
-            will be removed in a future release.   Please refer to the
-            :meth:`.Dialect.get_pk_constraint` method.
 
         """
 
@@ -1117,7 +1117,15 @@ class Connectable(object):
 
         """
 
-    def contextual_connect(self):
+    @util.deprecated(
+        "1.3",
+        "The :meth:`.Engine.contextual_connect` and "
+        ":meth:`.Connection.contextual_connect` methods are deprecated.  This "
+        "method is an artifact of the threadlocal engine strategy which is "
+        "also to be deprecated.   For explicit connections from an "
+        ":class:`.Engine`, use the :meth:`.Engine.connect` method.",
+    )
+    def contextual_connect(self, *arg, **kw):
         """Return a :class:`.Connection` object which may be part of an ongoing
         context.
 
@@ -1128,6 +1136,9 @@ class Connectable(object):
 
         """
 
+        return self._contextual_connect(*arg, **kw)
+
+    def _contextual_connect(self):
         raise NotImplementedError()
 
     @util.deprecated(
@@ -1136,7 +1147,7 @@ class Connectable(object):
         "removed in a future release.  Please use the ``.create()`` method "
         "on specific schema objects to emit DDL sequences, including "
         ":meth:`.Table.create`, :meth:`.Index.create`, and "
-        ":meth:`.MetaData.create_all`."
+        ":meth:`.MetaData.create_all`.",
     )
     def create(self, entity, **kwargs):
         """Emit CREATE statements for the given schema entity.
@@ -1150,7 +1161,8 @@ class Connectable(object):
         "removed in a future release.  Please use the ``.drop()`` method "
         "on specific schema objects to emit DDL sequences, including "
         ":meth:`.Table.drop`, :meth:`.Index.drop`, and "
-        ":meth:`.MetaData.drop_all`.")
+        ":meth:`.MetaData.drop_all`.",
+    )
     def drop(self, entity, **kwargs):
         """Emit DROP statements for the given schema entity.
         """

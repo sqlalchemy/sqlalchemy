@@ -407,7 +407,7 @@ class MiscBackendTest(
     @testing.fails_on("+zxjdbc", "psycopg2/pg8000 specific assertion")
     @testing.requires.psycopg2_or_pg8000_compatibility
     def test_numeric_raise(self):
-        stmt = text("select cast('hi' as char) as hi", typemap={"hi": Numeric})
+        stmt = text("select cast('hi' as char) as hi").columns(hi=Numeric)
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
 
     @testing.only_if(

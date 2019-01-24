@@ -1973,44 +1973,6 @@ class DeclarativeTest(DeclarativeTestBase):
         rt = sess.query(User).filter(User.namesyn == "someuser").one()
         eq_(rt, u1)
 
-    def test_comparable_using(self):
-        class NameComparator(sa.orm.PropComparator):
-            @property
-            def upperself(self):
-                cls = self.prop.parent.class_
-                col = getattr(cls, "name")
-                return sa.func.upper(col)
-
-            def operate(self, op, other, **kw):
-                return op(self.upperself, other, **kw)
-
-        class User(Base, fixtures.ComparableEntity):
-
-            __tablename__ = "users"
-            id = Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            )
-            name = Column("name", String(50))
-
-            @decl.comparable_using(NameComparator)
-            @property
-            def uc_name(self):
-                return self.name is not None and self.name.upper() or None
-
-        Base.metadata.create_all()
-        sess = create_session()
-        u1 = User(name="someuser")
-        eq_(u1.name, "someuser", u1.name)
-        eq_(u1.uc_name, "SOMEUSER", u1.uc_name)
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-        rt = sess.query(User).filter(User.uc_name == "SOMEUSER").one()
-        eq_(rt, u1)
-        sess.expunge_all()
-        rt = sess.query(User).filter(User.uc_name.startswith("SOMEUSE")).one()
-        eq_(rt, u1)
-
     def test_duplicate_classes_in_base(self):
         class Test(Base):
             __tablename__ = "a"

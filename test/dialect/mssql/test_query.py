@@ -211,34 +211,28 @@ class QueryUnicodeTest(fixtures.TestBase):
 
     @testing.requires.mssql_freetds
     @testing.requires.python2
+    @testing.provide_metadata
     def test_convert_unicode(self):
-        meta = MetaData(testing.db)
+        meta = self.metadata
         t1 = Table(
             "unitest_table",
             meta,
             Column("id", Integer, primary_key=True),
-            Column("descr", mssql.MSText(convert_unicode=True)),
+            Column("descr", mssql.MSText()),
         )
         meta.create_all()
-        con = testing.db.connect()
-
-        # encode in UTF-8 (sting object) because this is the default
-        # dialect encoding
-
-        con.execute(
-            ue(
-                "insert into unitest_table values ('bien u\
-                    umang\xc3\xa9')"
-            ).encode("UTF-8")
-        )
-        try:
-            r = t1.select().execute().first()
+        with testing.db.connect() as con:
+            con.execute(
+                ue(
+                    "insert into unitest_table values ('abc \xc3\xa9 def')"
+                ).encode("UTF-8")
+            )
+            r = con.execute(t1.select()).first()
             assert isinstance(r[1], util.text_type), (
                 "%s is %s instead of unicode, working on %s"
                 % (r[1], type(r[1]), meta.bind)
             )
-        finally:
-            meta.drop_all()
+            eq_(r[1], util.ue("abc \xc3\xa9 def"))
 
 
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):

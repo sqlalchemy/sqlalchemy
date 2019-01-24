@@ -512,7 +512,6 @@ class ResultMetaData(object):
                 "smaller than number of columns requested (%d)"
                 % (num_ctx_cols, len(cursor_description))
             )
-
         seen = set()
         for (
             idx,

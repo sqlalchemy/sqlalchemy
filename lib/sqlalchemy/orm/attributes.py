@@ -452,50 +452,57 @@ class AttributeImpl(object):
     ):
         r"""Construct an AttributeImpl.
 
-        \class_
-          associated class
+        :param \class_: associated class
 
-        key
-          string name of the attribute
+        :param key: string name of the attribute
 
-        \callable_
+        :param \callable_:
           optional function which generates a callable based on a parent
           instance, which produces the "default" values for a scalar or
           collection attribute when it's first accessed, if not present
           already.
 
-        trackparent
+        :param trackparent:
           if True, attempt to track if an instance has a parent attached
           to it via this attribute.
 
-        extension
+        :param extension:
           a single or list of AttributeExtension object(s) which will
-          receive set/delete/append/remove/etc. events.  Deprecated.
+          receive set/delete/append/remove/etc. events.
           The event package is now used.
 
-        compare_function
+          .. deprecated::  1.3
+
+            The :paramref:`.AttributeImpl.extension` parameter is deprecated
+            and will be removed in a future release, corresponding to the
+            "extension" parameter on the :class:`.MapperProprty` classes
+            like :func:`.column_property` and :func:`.relationship`  The
+            events system is now used.
+
+        :param compare_function:
           a function that compares two values which are normally
           assignable to this attribute.
 
-        active_history
+        :param active_history:
           indicates that get_history() should always return the "old" value,
           even if it means executing a lazy callable upon attribute change.
 
-        parent_token
+        :param parent_token:
           Usually references the MapperProperty, used as a key for
           the hasparent() function to identify an "owning" attribute.
           Allows multiple AttributeImpls to all match a single
           owner attribute.
 
-        expire_missing
+        :param expire_missing:
           if False, don't add an "expiry" callable to this attribute
           during state.expire_attributes(None), if no value is present
           for this key.
 
-        send_modified_events
+        :param send_modified_events:
           if False, the InstanceState._modified_event method will have no
           effect; this means the attribute will never show up as changed in a
           history entry.
+
         """
         self.class_ = class_
         self.key = key
@@ -1841,9 +1848,9 @@ def init_collection(obj, key):
     For an easier way to do the above, see
     :func:`~sqlalchemy.orm.attributes.set_committed_value`.
 
-    obj is an instrumented object instance.  An InstanceState
-    is accepted directly for backwards compatibility but
-    this usage is deprecated.
+    :param obj: a mapped object
+
+    :param key: string attribute name where the collection is located.
 
     """
     state = instance_state(obj)

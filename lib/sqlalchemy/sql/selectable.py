@@ -391,7 +391,7 @@ class FromClause(Selectable):
         message="The :meth:`.FromClause.count` method is deprecated, "
         "and will be removed in a future release.   Please use the "
         ":class:`.functions.count` function available from the "
-        ":attr:`.func` namespace."
+        ":attr:`.func` namespace.",
     )
     @util.dependencies("sqlalchemy.sql.functions")
     def count(self, functions, whereclause=None, **params):
@@ -973,6 +973,15 @@ class Join(FromClause):
         return self._join_condition(left, right, a_subset=left_right)
 
     @classmethod
+    @util.deprecated_params(
+        ignore_nonexistent_tables=(
+            "0.9",
+            "The :paramref:`.join_condition.ignore_nonexistent_tables` "
+            "parameter is deprecated and will be removed in a future "
+            "release.  Tables outside of the two tables being handled "
+            "are no longer considered.",
+        )
+    )
     def _join_condition(
         cls,
         a,
@@ -995,15 +1004,8 @@ class Join(FromClause):
         between the two selectables.   If there are multiple ways
         to join, or no way to join, an error is raised.
 
-        :param ignore_nonexistent_tables:
-
-            .. deprecated::  0.9
-
-                The :paramref:`_join_condition.ignore_nonexistent_tables`
-                parameter is deprecated and will be removed in a future
-                release.  Tables outside of the two tables being handled
-                are no longer considered.
-
+        :param ignore_nonexistent_tables: unused - tables outside of the
+         two tables being handled are not considered.
 
         :param a_subset: An optional expression that is a sub-component
          of ``a``.  An attempt will be made to join to just this sub-component
@@ -2026,7 +2028,7 @@ class SelectBase(HasCTE, Executable, FromClause):
         "and will be removed in a future release.   Please use the "
         "the :paramref:`.Connection.execution_options.autocommit` "
         "parameter in conjunction with the "
-        ":meth:`.Executable.execution_options` method."
+        ":meth:`.Executable.execution_options` method.",
     )
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to
@@ -2642,6 +2644,24 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     _memoized_property = SelectBase._memoized_property
     _is_select = True
 
+    @util.deprecated_params(
+        autocommit=(
+            "0.6",
+            "The :paramref:`.select.autocommit` parameter is deprecated "
+            "and will be removed in a future release.  Please refer to "
+            "the :paramref:`.Connection.execution_options.autocommit` "
+            "parameter in conjunction with the the "
+            ":meth:`.Executable.execution_options` method in order to "
+            "affect the autocommit behavior for a statement.",
+        ),
+        for_update=(
+            "0.9",
+            "The :paramref:`.select.for_update` parameter is deprecated and "
+            "will be removed in a future release.  Please refer to the "
+            ":meth:`.Select.with_for_update` to specify the "
+            "structure of the ``FOR UPDATE`` clause.",
+        ),
+    )
     def __init__(
         self,
         columns=None,
@@ -2712,16 +2732,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             :meth:`.Select.select_from` - full description of explicit
             FROM clause specification.
 
-        :param autocommit:
-
-            .. deprecated:: 0.6
-
-                The :paramref:`.select.autocommit` parameter is deprecated
-                and will be removed in a future release.  Please refer to
-                the :paramref:`.Connection.execution_options.autocommit`
-                parameter in conjunction with the the
-                :meth:`.Executable.execution_options` method in order to
-                affect the autocommit behavior for a statement.
+        :param autocommit: legacy autocommit parameter.
 
         :param bind=None:
           an :class:`~.Engine` or :class:`~.Connection` instance
@@ -2761,13 +2772,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         :param for_update=False:
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.
-
-          .. deprecated:: 0.9
-
-            The :paramref:`.select.for_update` parameter is deprecated and
-            will be removed in a future release.  Please refer to the
-            :meth:`.Select.with_for_update` to specify the
-            structure of the ``FOR UPDATE`` clause.
 
           ``for_update`` accepts various string values interpreted by
           specific backends, including:

@@ -9,6 +9,7 @@
 
 from . import event
 from . import exc
+from . import util
 from .engine import Connectable
 from .engine import Dialect
 from .engine import Engine
@@ -749,6 +750,13 @@ class ConnectionEvents(event.Events):
 
         """
 
+    @util.deprecated(
+        "0.9",
+        "The :meth:`.ConnectionEvents.dbapi_error` "
+        "event is deprecated and will be removed in a future release. "
+        "Please refer to the :meth:`.ConnectionEvents.handle_error` "
+        "event.",
+    )
     def dbapi_error(
         self, conn, cursor, statement, parameters, context, exception
     ):
@@ -791,11 +799,6 @@ class ConnectionEvents(event.Events):
          be ``None``.
         :param exception: The **unwrapped** exception emitted directly from the
          DBAPI.  The class here is specific to the DBAPI module in use.
-
-        .. deprecated:: 0.9 - The :meth:`.ConnectionEvents.dbapi_error`
-           event is deprecated and will be removed in a future release.
-           Please refer to the :meth:`.ConnectionEvents.handle_error`
-           event.
 
         """
 

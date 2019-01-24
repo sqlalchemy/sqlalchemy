@@ -2262,18 +2262,6 @@ class UseExistingTest(fixtures.TablesTest):
             extend_existing=True,
         )
 
-    @testing.uses_deprecated()
-    def test_existing_plus_useexisting_raises(self):
-        meta2 = self._useexisting_fixture()
-        assert_raises(
-            exc.ArgumentError,
-            Table,
-            "users",
-            meta2,
-            useexisting=True,
-            extend_existing=True,
-        )
-
     def test_keep_existing_no_dupe_constraints(self):
         meta2 = self._notexisting_fixture()
         users = Table(

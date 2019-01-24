@@ -427,7 +427,7 @@ class SessionTransaction(object):
                         "given Connection's Engine"
                     )
             else:
-                conn = bind.contextual_connect()
+                conn = bind._contextual_connect()
 
         if execution_options:
             conn = conn.execution_options(**execution_options)
@@ -642,6 +642,30 @@ class Session(_SessionClassMethods):
         "scalar",
     )
 
+    @util.deprecated_params(
+        weak_identity_map=(
+            "1.0",
+            "The :paramref:`.Session.weak_identity_map` parameter as well as "
+            "the strong-referencing identity map are deprecated, and will be "
+            "removed in a future release.  For the use case where objects "
+            "present in a :class:`.Session` need to be automatically strong "
+            "referenced, see the recipe at "
+            ":ref:`session_referencing_behavior` for an event-based approach "
+            "to maintaining strong identity references. ",
+        ),
+        _enable_transaction_accounting=(
+            "0.7",
+            "The :paramref:`.Session._enable_transaction_accounting` "
+            "parameter is deprecated and will be removed in a future release.",
+        ),
+        extension=(
+            "0.7",
+            ":class:`.SessionExtension` is deprecated in favor of the "
+            ":class:`.SessionEvents` listener interface.  The "
+            ":paramref:`.Session.extension` parameter will be "
+            "removed in a future release.",
+        ),
+    )
     def __init__(
         self,
         bind=None,
@@ -650,12 +674,12 @@ class Session(_SessionClassMethods):
         _enable_transaction_accounting=True,
         autocommit=False,
         twophase=False,
-        weak_identity_map=True,
+        weak_identity_map=None,
         binds=None,
         extension=None,
         enable_baked_queries=True,
         info=None,
-        query_cls=query.Query,
+        query_cls=None,
     ):
         r"""Construct a new Session.
 
@@ -754,14 +778,9 @@ class Session(_SessionClassMethods):
 
            .. versionadded:: 1.2
 
-        :param _enable_transaction_accounting:  Defaults to ``True``.  A
+        :param _enable_transaction_accounting:   A
            legacy-only flag which when ``False`` disables *all* 0.5-style
            object accounting on transaction boundaries.
-
-           .. deprecated::  0.7
-
-                the :paramref:`.Session._enable_transaction_accounting`
-                parameter will be removed in a future release.
 
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
            instances will be fully expired after each :meth:`~.commit`,
@@ -772,13 +791,6 @@ class Session(_SessionClassMethods):
            :class:`~.SessionExtension` instance, or a list
            of such instances, which will receive pre- and post- commit and
            flush events, as well as a post-rollback event.
-
-           .. deprecated:: 0.7
-
-                :class:`.SessionExtension` is deprecated in favor of the
-                :class:`.SessionEvents` listener interface.  The
-                :paramref:`.Session.extension` parameter will be
-                removed in a future release.
 
         :param info: optional dictionary of arbitrary data to be associated
            with this :class:`.Session`.  Is available via the
@@ -807,30 +819,14 @@ class Session(_SessionClassMethods):
            strongly referenced until explicitly removed or the
            :class:`.Session` is closed.
 
-           .. deprecated:: 1.0
-
-               The :paramref:`.Session.weak_identity_map` parameter as well as
-               the strong-referencing identity map are deprecated, and will be
-               removed in a future release.  For the use case where objects
-               present in a :class:`.Session` need to be automatically strong
-               referenced, see the recipe at
-               :ref:`session_referencing_behavior` for an event-based approach
-               to maintaining strong identity references.
-
 
         """
 
-        if weak_identity_map:
+        if weak_identity_map in (True, None):
             self._identity_cls = identity.WeakInstanceDict
         else:
-            util.warn_deprecated(
-                "weak_identity_map=False is deprecated.  "
-                "See the documentation on 'Session Referencing Behavior' "
-                "for an event-based approach to maintaining strong identity "
-                "references."
-            )
-
             self._identity_cls = identity.StrongInstanceDict
+
         self.identity_map = self._identity_cls()
 
         self._new = {}  # InstanceState->object, strong refs object
@@ -846,8 +842,9 @@ class Session(_SessionClassMethods):
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
         self._enable_transaction_accounting = _enable_transaction_accounting
+
         self.twophase = twophase
-        self._query_cls = query_cls
+        self._query_cls = query_cls if query_cls else query.Query
         if info:
             self.info.update(info)
 
@@ -1068,7 +1065,7 @@ class Session(_SessionClassMethods):
 
         Alternatively, if this :class:`.Session` is configured with
         ``autocommit=True``, an ad-hoc :class:`.Connection` is returned
-        using :meth:`.Engine.contextual_connect` on the underlying
+        using :meth:`.Engine.connect` on the underlying
         :class:`.Engine`.
 
         Ambiguity in multi-bind or unbound :class:`.Session` objects can be
@@ -1132,7 +1129,7 @@ class Session(_SessionClassMethods):
                 engine, execution_options
             )
         else:
-            conn = engine.contextual_connect(**kw)
+            conn = engine._contextual_connect(**kw)
             if execution_options:
                 conn = conn.execution_options(**execution_options)
             return conn
@@ -2872,7 +2869,15 @@ class Session(_SessionClassMethods):
         finally:
             self._flushing = False
 
-    def is_modified(self, instance, include_collections=True, passive=True):
+    @util.deprecated_params(
+        passive=(
+            "0.8",
+            "The :paramref:`.Session.is_modified.passive` flag is deprecated "
+            "and will be removed in a future release.  The flag is no longer "
+            "used and is ignored.",
+        )
+    )
+    def is_modified(self, instance, include_collections=True, passive=None):
         r"""Return ``True`` if the given instance has locally
         modified attributes.
 
@@ -2921,11 +2926,7 @@ class Session(_SessionClassMethods):
          way to detect only local-column based properties (i.e. scalar columns
          or many-to-one foreign keys) that would result in an UPDATE for this
          instance upon flush.
-        :param passive:
-
-         .. deprecated:: 0.8
-             The ``passive`` flag is deprecated and will be removed
-             in a future release.  The flag is no longer used and is ignored.
+        :param passive: not used
 
         """
         state = object_state(instance)

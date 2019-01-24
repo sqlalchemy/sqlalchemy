@@ -17,6 +17,65 @@ their applications from the 1.2 series of SQLAlchemy to 1.3.
 Please carefully review the sections on behavioral changes for
 potentially backwards-incompatible changes in behavior.
 
+General
+=======
+
+.. _change_4393_general:
+
+Deprecation warnings are emitted for all deprecated elements; new deprecations added
+------------------------------------------------------------------------------------
+
+Release 1.3 ensures that all behaviors and APIs that are deprecated, including
+all those that have been long listed as "legacy" for years, are emitting
+``DeprecationWarning`` warnings. This includes when making use of parameters
+such as :paramref:`.Session.weak_identity_map` and classes such as
+:class:`.MapperExtension`.     While all deprecations have been noted in the
+documentation, often they did not use a proper restructured text directive, or
+include in what version they were deprecated.  Whether or not a particular API
+feature actually emitted a deprecation warning was not consistent.  The general
+attitude was that most or all of these deprecated features were treated as
+long-term legacy features with no plans to remove them.
+
+The change includes that all documented deprecations now use a proper
+restructured text directive in the documentation with a version number, the
+verbiage that the feature or use case will be removed in a future release is
+made explicit (e.g., no more legacy forever use cases), and that use of any
+such feature or use case will definitely emit a ``DeprecationWarning``, which
+in Python 3 as well as when using modern testing tools like Pytest are now made
+more explicit in the standard error stream.  The goal is that these long
+deprecated features, going back as far as version 0.7 or 0.6, should start
+being removed entirely, rather than keeping them around as "legacy" features.
+Additionally, some major new deprecations are being added as of version 1.3.
+As SQLAlchemy has 14 years of real world use by thousands of developers, it's
+possible to point to a single stream of use cases that blend together well, and
+to trim away features and patterns that work against this single way of
+working.
+
+The larger context is that SQLAlchemy seeks to adjust to the coming Python
+3-only world, as well as a type-annotated world, and towards this goal there
+are **tentative** plans for a major rework of  SQLAlchemy which would hopefully
+greatly reduce the cognitive load of the API as well as perform a major pass
+over the great many differences in implementation and use between Core and ORM.
+As these two systems evolved dramatically after SQLAlchemy's first release, in
+particular the ORM still retains lots of "bolted on" behaviors that keep the
+wall of separation between Core and  ORM too high.  By focusing the API
+ahead of time on a single pattern for each supported use case, the eventual
+job of migrating to a significantly altered API becomes simpler.
+
+For the most major deprecations being added in 1.3, see the linked sections
+below.
+
+
+.. seealso::
+
+    :ref:`change_4393_threadlocal`
+
+    :ref:`change_4393_convertunicode`
+
+    :ref:`FIXME` - FIXME - link to non-primary mapper deprecation
+
+:ticket:`4393`
+
 New Features and Improvements - ORM
 ===================================
 
@@ -1055,6 +1114,125 @@ considered, however this was too much verbosity).
 
 
 
+Key Changes - Core
+==================
+
+.. _change_4393_threadlocal:
+
+"threadlocal" engine strategy deprecated
+-----------------------------------------
+
+The :ref:`"threadlocal" engine strategy <threadlocal_strategy>` was added
+around SQLAlchemy 0.2, as a solution to the problem that the standard way of
+operating in SQLAlchemy 0.1, which can be summed up as "threadlocal
+everything",  was found to be lacking. In retrospect, it seems fairly absurd
+that by SQLAlchemy's first releases which were in every regard "alpha", that
+there was concern that too many users had already settled on the existing API
+to simply change it.
+
+The original usage model for SQLAlchemy looked like this::
+
+    engine.begin()
+
+    table.insert().execute(<params>)
+    result = table.select().execute()
+
+    table.update().execute(<params>)
+
+    engine.commit()
+
+After a few months of real world use, it was clear that trying to pretend a
+"connection" or a "transaction" was a hidden implementation detail was a bad
+idea, particularly the moment someone needed to deal with more than one
+database connection at a time.   So the usage paradigm we see today was
+introduced, minus the context managers since they didn't yet exist in Python::
+
+    conn = engine.connect()
+    try:
+        trans = conn.begin()
+
+        conn.execute(table.insert(), <params>)
+        result = conn.execute(table.select())
+
+        conn.execute(table.update(), <params>)
+
+        trans.commit()
+    except:
+        trans.rollback()
+        raise
+    finally:
+        conn.close()
+
+The above paradigm was what people needed, but since it was still kind of
+verbose (because no context managers), the old way of working was kept around
+as well and it became the threadlocal engine strategy.
+
+Today, working with Core is much more succinct, and even more succinct than
+the original pattern, thanks to context managers::
+
+    with engine.begin() as conn:
+        conn.execute(table.insert(), <params>)
+        result = conn.execute(table.select())
+
+        conn.execute(table.update(), <params>)
+
+At this point, any remaining code that is still relying upon the "threadlocal"
+style will be encouraged via this deprecation to modernize - the feature should
+be removed totally by the next major series of SQLAlchemy, e.g. 1.4.  The
+connection pool parameter :paramref:`.Pool.use_threadlocal` is also deprecated
+as it does not actually have any effect in most cases, as is the
+:meth:`.Engine.contextual_connect` method, which is normally synonymous with
+the :meth:`.Engine.connect` method except in the case where the threadlocal
+engine is in use.
+
+.. seealso::
+
+    :ref:`threadlocal_strategy`
+
+
+:ticket:`4393`
+
+
+.. _change_4393_convertunicode:
+
+convert_unicode parameters deprecated
+--------------------------------------
+
+The parameters :paramref:`.String.convert_unicode` and
+:paramref:`.create_engine.convert_unicode` are deprecated.    The purpose of
+these parameters was to instruct SQLAlchemy to ensure that incoming Python
+Unicode objects under Python 2 were encoded to bytestrings before passing to
+the database, and to expect bytestrings from the database to be converted back
+to Python Unicode objects.   In the pre-Python 3 era, this was an enormous
+ordeal to get right, as virtually all Python DBAPIs had no Unicode support
+enabled by default, and most had major issues with the Unicode extensions that
+they did provide.    Eventually, SQLAlchemy added C extensions, one of the
+primary purposes of these extensions was to speed up the Unicode decode process
+within result sets.
+
+Once Python 3 was introduced, DBAPIs began to start supporting Unicode more
+fully, and more importantly, by default.  However, the conditions under which a
+particular DBAPI would or would not return Unicode data from a result, as well
+as accept Python Unicode values as parameters, remained extremely complicated.
+This was the beginning of the obsolesence of the "convert_unicode" flags,
+because they were no longer sufficient as a means of ensuring that
+encode/decode was occurring only where needed and not where it wasn't needed.
+Instead, "convert_unicode" started to be automatically detected by dialects.
+Part of this can be seen in the "SELECT 'test plain returns'" and "SELECT
+'test_unicode_returns'" SQL emitted by an engine the first time it connects;
+the dialect is testing that the current DBAPI with its current settings and
+backend database connection is returning Unicode by default or not.
+
+The end result is that end-user use of the "convert_unicode" flags should no
+longer be needed in any circumstances, and if they are, the SQLAlchemy project
+needs to know what those cases are and why.   Currently, hundreds of Unicode
+round trip tests pass across all major databases without the use of this flag
+so there is a fairly high level of confidence that they are no longer needed
+except in arguable non use cases such as accessing mis-encoded data from a
+legacy database, which would be better suited using custom types.
+
+
+:ticket:`4393`
 
 
 Dialect Improvements and Changes - PostgreSQL
