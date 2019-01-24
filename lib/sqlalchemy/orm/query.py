@@ -1554,6 +1554,15 @@ class Query(object):
         """
         return self.with_hint(None, text, dialect_name)
 
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. seealso::
+
+            :meth:`.Query.execution_options`
+        """
+        return self._execution_options
+
     @_generative()
     def execution_options(self, **kwargs):
         """ Set non-SQL options which take effect during execution.
