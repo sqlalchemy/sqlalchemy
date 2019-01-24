@@ -774,6 +774,12 @@ class QueuePoolTest(PoolTestBase):
         lazy_gc()
         assert not pool._refs
 
+    def test_timeout_accessor(self):
+        expected_timeout = 123
+        p = self._queuepool_fixture(
+            timeout=expected_timeout)
+        eq_(p.timeout(), expected_timeout)
+
     @testing.requires.timing_intensive
     def test_timeout(self):
         p = self._queuepool_fixture(pool_size=3, max_overflow=0, timeout=2)
