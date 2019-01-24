@@ -1769,10 +1769,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = s.execution_options(bar="baz")
         s3 = s.execution_options(foo="not bar")
         # The original select should not be modified.
-        assert s._execution_options == dict(foo="bar")
+        eq_(s.get_execution_options(), dict(foo="bar"))
         # s2 should have its execution_options based on s, though.
-        assert s2._execution_options == dict(foo="bar", bar="baz")
-        assert s3._execution_options == dict(foo="not bar")
+        eq_(s2.get_execution_options(), dict(foo="bar", bar="baz"))
+        eq_(s3.get_execution_options(), dict(foo="not bar"))
 
     def test_invalid_options(self):
         assert_raises(

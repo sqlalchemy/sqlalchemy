@@ -324,6 +324,15 @@ class Connection(Connectable):
 
             :ref:`schema_translating`
 
+        .. seealso::
+
+            :meth:`.Engine.execution_options`
+
+            :meth:`.Executable.execution_options`
+
+            :meth:`.Connection.get_execution_options`
+
+
         """  # noqa
         c = self._clone()
         c._execution_options = c._execution_options.union(opt)
@@ -331,6 +340,17 @@ class Connection(Connectable):
             self.dispatch.set_connection_execution_options(c, opt)
         self.dialect.set_connection_execution_options(c, opt)
         return c
+
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. versionadded:: 1.3
+
+        .. seealso::
+
+            :meth:`.Connection.execution_options`
+        """
+        return self._execution_options
 
     @property
     def closed(self):
@@ -1932,8 +1952,22 @@ class Engine(Connectable, log.Identified):
             :meth:`.Engine.update_execution_options` - update the execution
             options for a given :class:`.Engine` in place.
 
+            :meth:`.Engine.get_execution_options`
+
+
         """
         return OptionEngine(self, opt)
+
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. versionadded: 1.3
+
+        .. seealso::
+
+            :meth:`.Engine.execution_options`
+        """
+        return self._execution_options
 
     @property
     def name(self):
