@@ -28,6 +28,8 @@ from sqlalchemy.testing import mock
 
 
 class DeprecationWarningsTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_ident_preparer_force(self):
         preparer = testing.db.dialect.identifier_preparer
         preparer.quote("hi")

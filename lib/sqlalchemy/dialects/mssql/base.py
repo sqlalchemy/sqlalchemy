@@ -2019,14 +2019,24 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     def quote_schema(self, schema, force=None):
         """Prepare a quoted table and schema name."""
 
+        # need to re-implement the deprecation warning entirely
+        if force is not None:
+            # not using the util.deprecated_params() decorator in this
+            # case because of the additional function call overhead on this
+            # very performance-critical spot.
+            util.warn_deprecated(
+                "The IdentifierPreparer.quote_schema.force parameter is "
+                "deprecated and will be removed in a future release.  This "
+                "flag has no effect on the behavior of the "
+                "IdentifierPreparer.quote method; please refer to "
+                "quoted_name()."
+            )
+
         dbname, owner = _schema_elements(schema)
         if dbname:
-            result = "%s.%s" % (
-                self.quote(dbname, force),
-                self.quote(owner, force),
-            )
+            result = "%s.%s" % (self.quote(dbname), self.quote(owner))
         elif owner:
-            result = self.quote(owner, force)
+            result = self.quote(owner)
         else:
             result = ""
         return result

@@ -14,12 +14,13 @@ from ... import Table
 class TableDDLTest(fixtures.TestBase):
     __backend__ = True
 
-    def _simple_fixture(self):
+    def _simple_fixture(self, schema=None):
         return Table(
             "test_table",
             self.metadata,
             Column("id", Integer, primary_key=True, autoincrement=False),
             Column("data", String(50)),
+            schema=schema,
         )
 
     def _underscore_fixture(self):
@@ -40,6 +41,13 @@ class TableDDLTest(fixtures.TestBase):
     @util.provide_metadata
     def test_create_table(self):
         table = self._simple_fixture()
+        table.create(config.db, checkfirst=False)
+        self._simple_roundtrip(table)
+
+    @requirements.create_table
+    @util.provide_metadata
+    def test_create_table_schema(self):
+        table = self._simple_fixture(schema=config.test_schema)
         table.create(config.db, checkfirst=False)
         self._simple_roundtrip(table)
 
