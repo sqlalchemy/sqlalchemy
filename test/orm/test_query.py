@@ -5205,17 +5205,25 @@ class ExecutionOptionsTest(QueryTest):
         sess = create_session(bind=testing.db, autocommit=False)
 
         q1 = sess.query(User)
-        assert q1._execution_options == dict()
+        eq_(q1._execution_options, dict())
         q2 = q1.execution_options(foo="bar", stream_results=True)
         # q1's options should be unchanged.
-        assert q1._execution_options == dict()
+        eq_(q1._execution_options, dict())
         # q2 should have them set.
-        assert q2._execution_options == dict(foo="bar", stream_results=True)
+        eq_(q2._execution_options, dict(foo="bar", stream_results=True))
         q3 = q2.execution_options(foo="not bar", answer=42)
-        assert q2._execution_options == dict(foo="bar", stream_results=True)
+        eq_(q2._execution_options, dict(foo="bar", stream_results=True))
 
         q3_options = dict(foo="not bar", stream_results=True, answer=42)
-        assert q3._execution_options == q3_options
+        eq_(q3._execution_options, q3_options)
+
+    def test_get_options(self):
+        User = self.classes.User
+
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        q = sess.query(User).execution_options(foo="bar", stream_results=True)
+        eq_(q.get_execution_options(), dict(foo="bar", stream_results=True))
 
     def test_options_in_connection(self):
         User = self.classes.User

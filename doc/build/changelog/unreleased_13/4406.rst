@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, orm, engine
+   :tickets: 4406
+
+   Added accessors for execution options to Core and ORM, via
+   :meth:`.Query.get_execution_options`,
+   :meth:`.Connection.get_execution_options`,
+   :meth:`.Engine.get_execution_options`, and
+   :meth:`.Executable.get_execution_options`.  PR courtesy Daniel Lister.

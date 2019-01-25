@@ -1554,6 +1554,17 @@ class Query(object):
         """
         return self.with_hint(None, text, dialect_name)
 
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. versionadded:: 1.3
+
+        .. seealso::
+
+            :meth:`.Query.execution_options`
+        """
+        return self._execution_options
+
     @_generative()
     def execution_options(self, **kwargs):
         """ Set non-SQL options which take effect during execution.
@@ -1564,6 +1575,10 @@ class Query(object):
         Note that the ``stream_results`` execution option is enabled
         automatically if the :meth:`~sqlalchemy.orm.query.Query.yield_per()`
         method is used.
+
+        .. seealso::
+
+            :meth:`.Query.get_execution_options`
 
         """
         self._execution_options = self._execution_options.union(kwargs)

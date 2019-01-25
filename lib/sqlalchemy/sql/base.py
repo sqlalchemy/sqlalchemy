@@ -365,9 +365,11 @@ class Executable(Generative):
 
         .. seealso::
 
-            :meth:`.Connection.execution_options()`
+            :meth:`.Connection.execution_options`
 
-            :meth:`.Query.execution_options()`
+            :meth:`.Query.execution_options`
+
+            :meth:`.Executable.get_execution_options`
 
         """
         if "isolation_level" in kw:
@@ -383,6 +385,17 @@ class Executable(Generative):
                 "on Connection.execution_options(), not per statement."
             )
         self._execution_options = self._execution_options.union(kw)
+
+    def get_execution_options(self):
+        """ Get the non-SQL options which will take effect during execution.
+
+        .. versionadded:: 1.3
+
+        .. seealso::
+
+            :meth:`.Executable.execution_options`
+        """
+        return self._execution_options
 
     def execute(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`."""
