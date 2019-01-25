@@ -12,6 +12,6 @@
 
    .. seealso::
 
-      :ref:`.MapperEvents.before_mapper_configured`
+      :meth:`.MapperEvents.before_mapper_configured`
 
 
