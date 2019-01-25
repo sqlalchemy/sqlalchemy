@@ -1507,7 +1507,7 @@ class Session(_SessionClassMethods):
                     if cls in self.__binds:
                         return self.__binds[cls]
                 if clause is None:
-                    clause = mapper.mapped_table
+                    clause = mapper.persist_selectable
 
             if clause is not None:
                 for t in sql_util.find_tables(clause, include_crud=True):
@@ -1520,8 +1520,8 @@ class Session(_SessionClassMethods):
         if isinstance(clause, sql.expression.ClauseElement) and clause.bind:
             return clause.bind
 
-        if mapper and mapper.mapped_table.bind:
-            return mapper.mapped_table.bind
+        if mapper and mapper.persist_selectable.bind:
+            return mapper.persist_selectable.bind
 
         context = []
         if mapper is not None:

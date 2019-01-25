@@ -48,11 +48,11 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(User)
         is_(insp.local_table, user_table)
 
-    def test_mapped_table(self):
+    def test_persist_selectable(self):
         User = self.classes.User
         user_table = self.tables.users
         insp = inspect(User)
-        is_(insp.mapped_table, user_table)
+        is_(insp.persist_selectable, user_table)
 
     def test_mapper_selectable(self):
         User = self.classes.User

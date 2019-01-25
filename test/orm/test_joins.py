@@ -2912,7 +2912,7 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
         mapper(Child, child)
 
         derived = select([child]).alias()
-        npc = mapper(Child, derived, non_primary=True)
+        npc = aliased(Child, derived)
         cls.npc = npc
         cls.derived = derived
         mp.add_property("npc", relationship(npc))

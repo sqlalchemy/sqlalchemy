@@ -118,7 +118,7 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
         """
         return {}
 
-    def setup(self, context, entity, path, adapter, **kwargs):
+    def setup(self, context, query_entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
 
         Each MapperProperty associated with the target mapper processes the
@@ -542,13 +542,15 @@ class StrategizedProperty(MapperProperty):
             )
             return strategy
 
-    def setup(self, context, entity, path, adapter, **kwargs):
+    def setup(self, context, query_entity, path, adapter, **kwargs):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
             strat = self._get_strategy(loader.strategy)
         else:
             strat = self.strategy
-        strat.setup_query(context, entity, path, loader, adapter, **kwargs)
+        strat.setup_query(
+            context, query_entity, path, loader, adapter, **kwargs
+        )
 
     def create_row_processor(
         self, context, path, mapper, result, adapter, populators
@@ -722,7 +724,9 @@ class LoaderStrategy(object):
     def init_class_attribute(self, mapper):
         pass
 
-    def setup_query(self, context, entity, path, loadopt, adapter, **kwargs):
+    def setup_query(
+        self, context, query_entity, path, loadopt, adapter, **kwargs
+    ):
         """Establish column and other state for a given QueryContext.
 
         This method fulfills the contract specified by MapperProperty.setup().

@@ -211,6 +211,7 @@ class Load(Generative, MapperOption):
                 ent = inspect(existing_of_type)
             else:
                 ent = path.entity
+
             try:
                 # use getattr on the class to work around
                 # synonyms, hybrids, etc.

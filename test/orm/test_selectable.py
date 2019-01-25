@@ -74,7 +74,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         Subset, common = self.classes.Subset, self.tables.common
 
         subset_select = select([common.c.id, common.c.data]).alias()
-        subset_mapper = mapper(Subset, subset_select)
+        mapper(Subset, subset_select)
         sess = Session(bind=testing.db)
         sess.add(Subset(data=1))
         sess.flush()
@@ -84,7 +84,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         eq_(sess.query(Subset).filter(Subset.data == 1).one(), Subset(data=1))
         eq_(sess.query(Subset).filter(Subset.data != 1).first(), None)
 
-        subset_select = sa.orm.class_mapper(Subset).mapped_table
+        subset_select = sa.orm.class_mapper(Subset).persist_selectable
         eq_(
             sess.query(Subset).filter(subset_select.c.data == 1).one(),
             Subset(data=1),

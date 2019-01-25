@@ -2660,17 +2660,13 @@ class ManyToManyTest(_fixtures.FixtureTest):
 
         mapper(Keyword, keywords)
 
-        # note that we are breaking a rule here, making a second
-        # mapper(Keyword, keywords) the reorganization of mapper construction
-        # affected this, but was fixed again
-
         mapper(
             IKAssociation,
             item_keywords,
             primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
             properties=dict(
                 keyword=relationship(
-                    mapper(Keyword, keywords, non_primary=True),
+                    Keyword,
                     lazy="joined",
                     uselist=False,
                     # note here is a valid place where

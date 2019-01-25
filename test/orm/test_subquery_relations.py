@@ -3,6 +3,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
@@ -796,27 +797,111 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "1 FROM users",
         )
 
-    def test_double(self):
-        """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+    def test_double_w_ac_against_subquery(self):
 
-        users, orders, User, Address, Order, addresses = (
+        (
+            users,
+            orders,
+            User,
+            Address,
+            Order,
+            addresses,
+            Item,
+            items,
+            order_items,
+        ) = (
             self.tables.users,
             self.tables.orders,
             self.classes.User,
             self.classes.Address,
             self.classes.Order,
             self.tables.addresses,
+            self.classes.Item,
+            self.tables.items,
+            self.tables.order_items,
         )
 
-        openorders = sa.alias(orders, "openorders")
-        closedorders = sa.alias(orders, "closedorders")
+        mapper(Address, addresses)
+        mapper(
+            Order,
+            orders,
+            properties={
+                "items": relationship(
+                    Item,
+                    secondary=order_items,
+                    lazy="subquery",
+                    order_by=items.c.id,
+                )
+            },
+        )
+        mapper(Item, items)
+
+        open_mapper = aliased(
+            Order, select([orders]).where(orders.c.isopen == 1).alias()
+        )
+        closed_mapper = aliased(
+            Order, select([orders]).where(orders.c.isopen == 0).alias()
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    Address, lazy="subquery", order_by=addresses.c.id
+                ),
+                open_orders=relationship(
+                    open_mapper, lazy="subquery", order_by=open_mapper.id
+                ),
+                closed_orders=relationship(
+                    closed_mapper, lazy="subquery", order_by=closed_mapper.id
+                ),
+            ),
+        )
+
+        self._run_double_test()
+
+    def test_double_w_ac(self):
+
+        (
+            users,
+            orders,
+            User,
+            Address,
+            Order,
+            addresses,
+            Item,
+            items,
+            order_items,
+        ) = (
+            self.tables.users,
+            self.tables.orders,
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Order,
+            self.tables.addresses,
+            self.classes.Item,
+            self.tables.items,
+            self.tables.order_items,
+        )
 
         mapper(Address, addresses)
-        mapper(Order, orders)
+        mapper(
+            Order,
+            orders,
+            properties={
+                "items": relationship(
+                    Item,
+                    secondary=order_items,
+                    lazy="subquery",
+                    order_by=items.c.id,
+                )
+            },
+        )
+        mapper(Item, items)
 
-        open_mapper = mapper(Order, openorders, non_primary=True)
-        closed_mapper = mapper(Order, closedorders, non_primary=True)
+        open_mapper = aliased(Order, orders)
+        closed_mapper = aliased(Order, orders)
 
         mapper(
             User,
@@ -828,57 +913,25 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 open_orders=relationship(
                     open_mapper,
                     primaryjoin=sa.and_(
-                        openorders.c.isopen == 1,
-                        users.c.id == openorders.c.user_id,
+                        open_mapper.isopen == 1,
+                        users.c.id == open_mapper.user_id,
                     ),
                     lazy="subquery",
-                    order_by=openorders.c.id,
+                    order_by=open_mapper.id,
                 ),
                 closed_orders=relationship(
                     closed_mapper,
                     primaryjoin=sa.and_(
-                        closedorders.c.isopen == 0,
-                        users.c.id == closedorders.c.user_id,
+                        closed_mapper.isopen == 0,
+                        users.c.id == closed_mapper.user_id,
                     ),
                     lazy="subquery",
-                    order_by=closedorders.c.id,
+                    order_by=closed_mapper.id,
                 ),
             ),
         )
 
-        q = create_session().query(User).order_by(User.id)
-
-        def go():
-            eq_(
-                [
-                    User(
-                        id=7,
-                        addresses=[Address(id=1)],
-                        open_orders=[Order(id=3)],
-                        closed_orders=[Order(id=1), Order(id=5)],
-                    ),
-                    User(
-                        id=8,
-                        addresses=[
-                            Address(id=2),
-                            Address(id=3),
-                            Address(id=4),
-                        ],
-                        open_orders=[],
-                        closed_orders=[],
-                    ),
-                    User(
-                        id=9,
-                        addresses=[Address(id=5)],
-                        open_orders=[Order(id=4)],
-                        closed_orders=[Order(id=2)],
-                    ),
-                    User(id=10),
-                ],
-                q.all(),
-            )
-
-        self.assert_sql_count(testing.db, go, 4)
+        self._run_double_test()
 
     def test_double_same_mappers(self):
         """Eager loading with two relationships simultaneously,
@@ -945,7 +998,19 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 ),
             ),
         )
+        self._run_double_test()
+
+    def _run_double_test(self, no_items=False):
+        User, Address, Order, Item = self.classes(
+            "User", "Address", "Order", "Item"
+        )
         q = create_session().query(User).order_by(User.id)
+
+        def items(*ids):
+            if no_items:
+                return {}
+            else:
+                return {"items": [Item(id=id_) for id_ in ids]}
 
         def go():
             eq_(
@@ -953,18 +1018,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     User(
                         id=7,
                         addresses=[Address(id=1)],
-                        open_orders=[
-                            Order(
-                                id=3,
-                                items=[Item(id=3), Item(id=4), Item(id=5)],
-                            )
-                        ],
+                        open_orders=[Order(id=3, **items(3, 4, 5))],
                         closed_orders=[
-                            Order(
-                                id=1,
-                                items=[Item(id=1), Item(id=2), Item(id=3)],
-                            ),
-                            Order(id=5, items=[Item(id=5)]),
+                            Order(id=1, **items(1, 2, 3)),
+                            Order(id=5, **items(5)),
                         ],
                     ),
                     User(
@@ -980,22 +1037,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     User(
                         id=9,
                         addresses=[Address(id=5)],
-                        open_orders=[
-                            Order(id=4, items=[Item(id=1), Item(id=5)])
-                        ],
-                        closed_orders=[
-                            Order(
-                                id=2,
-                                items=[Item(id=1), Item(id=2), Item(id=3)],
-                            )
-                        ],
+                        open_orders=[Order(id=4, **items(1, 5))],
+                        closed_orders=[Order(id=2, **items(1, 2, 3))],
                     ),
                     User(id=10),
                 ],
                 q.all(),
             )
 
-        self.assert_sql_count(testing.db, go, 6)
+        if no_items:
+            self.assert_sql_count(testing.db, go, 4)
+        else:
+            self.assert_sql_count(testing.db, go, 6)
 
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
@@ -1139,9 +1192,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     order_by=orders.c.id,
                 ),
                 "max_order": relationship(
-                    mapper(Order, max_orders, non_primary=True),
-                    lazy="subquery",
-                    uselist=False,
+                    aliased(Order, max_orders), lazy="subquery", uselist=False
                 ),
             },
         )

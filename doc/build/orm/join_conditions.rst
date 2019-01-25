@@ -634,10 +634,18 @@ complexity is kept within the middle.
    as well as support within declarative to specify complex conditions such
    as joins involving class names as targets.
 
-.. _relationship_non_primary_mapper:
+.. _relationship_aliased_class:
 
-Relationship to Non Primary Mapper
+Relationship to Aliased Class
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.3
+    The :class:`.AliasedClass` construct can now be specified as the
+    target of a :func:`.relationship`, replacing the previous approach
+    of using non-primary mappers, which had limitations such that they did
+    not inherit sub-relationships of the mapped entity as well as that they
+    required complex configuration against an alternate selectable.  The
+    recipes in this section are now updated to use :class:`.AliasedClass`.
 
 In the previous section, we illustrated a technique where we used
 :paramref:`~.relationship.secondary` in order to place additional
@@ -648,15 +656,17 @@ however there are also join conditions between ``A`` and ``B``
 *directly*.  In this case, the join from ``A`` to ``B`` may be
 difficult to express with just a complex
 :paramref:`~.relationship.primaryjoin` condition, as the intermediary
-tables may need special handling, and it is also not expressable with
+tables may need special handling, and it is also not expressible with
 a :paramref:`~.relationship.secondary` object, since the
 ``A->secondary->B`` pattern does not support any references between
 ``A`` and ``B`` directly.  When this **extremely advanced** case
 arises, we can resort to creating a second mapping as a target for the
-relationship.  This is where we use :func:`.mapper` in order to make a
+relationship.  This is where we use :class:`.AliasedClass` in order to make a
 mapping to a class that includes all the additional tables we need for
 this join. In order to produce this mapper as an "alternative" mapping
-for our class, we use the :paramref:`~.mapper.non_primary` flag.
+for our class, we use the :func:`.aliased` function to produce the new
+construct, then use :func:`.relationship` against the object as though it
+were a plain mapped class.
 
 Below illustrates a :func:`.relationship` with a simple join from ``A`` to
 ``B``, however the primaryjoin condition is augmented with two additional
@@ -691,26 +701,12 @@ the rows in both ``A`` and ``B`` simultaneously::
     # to it in the mapping multiple times.
     j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
 
-    # 2. Create a new mapper() to B, with non_primary=True.
-    # Columns in the join with the same name must be
-    # disambiguated within the mapping, using named properties.
-    # we also have to make sure the primary key of the regular "B"
-    # mapping is maintained.
-    B_viacd = mapper(
-        B, j, non_primary=True, primary_key=[j.c.b_id],
-        properties={
-            "id": j.c.b_id,  # so that 'id' looks the same as before
-            "c_id": j.c.c_id,   # needed for disambiguation
-            "d_c_id": j.c.d_c_id,  # needed for disambiguation
-            "b_id": [j.c.b_id, j.c.d_b_id],
-            "d_id": j.c.d_id,
-        }
-    )
+    # 2. Create an AliasedClass to B
+    B_viacd = aliased(B, j, flat=True)
 
-    A.b = relationship(B_viacd, primaryjoin=A.b_id == B_viacd.c.b_id)
+    A.b = relationship(B_viacd, primaryjoin=A.b_id == j.c.b_id)
 
-In the above case, our non-primary mapper for ``B`` will emit for
-additional columns when we query; these can be ignored:
+With the above mapping, a simple join looks like:
 
 .. sourcecode:: python+sql
 
@@ -719,10 +715,13 @@ additional columns when we query; these can be ignored:
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
 
+.. _relationship_to_window_function:
+
 Row-Limited Relationships with Window Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Another interesting use case for non-primary mappers are situations where
+Another interesting use case for relationships to :class:`.AliasedClass`
+objects are situations where
 the relationship needs to join to a specialized SELECT of any form.   One
 scenario is when the use of a window function is desired, such as to limit
 how many rows should be returned for a relationship.  The example below
@@ -747,11 +746,11 @@ ten items for each collection::
         ).label('index')
     ]).alias()
 
-    partitioned_b = mapper(B, partition, non_primary=True)
+    partitioned_b = aliased(B, partition)
 
     A.partitioned_bs = relationship(
         partitioned_b,
-        primaryjoin=and_(partitioned_b.c.a_id == A.id, partitioned_b.c.index < 10)
+        primaryjoin=and_(partitioned_b.a_id == A.id, partition.c.index < 10)
     )
 
 We can use the above ``partitioned_bs`` relationship with most of the loader

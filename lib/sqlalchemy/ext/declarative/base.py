@@ -163,7 +163,7 @@ class _MapperConfig(object):
         # dict_ will be a dictproxy, which we can't write to, and we need to!
         self.dict_ = dict(dict_)
         self.classname = classname
-        self.mapped_table = None
+        self.persist_selectable = None
         self.properties = util.OrderedDict()
         self.declared_columns = set()
         self.column_copies = {}
@@ -584,7 +584,7 @@ class _MapperConfig(object):
         elif self.inherits:
             inherited_mapper = _declared_mapping_info(self.inherits)
             inherited_table = inherited_mapper.local_table
-            inherited_mapped_table = inherited_mapper.mapped_table
+            inherited_persist_selectable = inherited_mapper.persist_selectable
 
             if table is None:
                 # single table inheritance.
@@ -611,10 +611,10 @@ class _MapperConfig(object):
                         )
                     inherited_table.append_column(c)
                     if (
-                        inherited_mapped_table is not None
-                        and inherited_mapped_table is not inherited_table
+                        inherited_persist_selectable is not None
+                        and inherited_persist_selectable is not inherited_table
                     ):
-                        inherited_mapped_table._refresh_for_new_column(c)
+                        inherited_persist_selectable._refresh_for_new_column(c)
 
     def _prepare_mapper_arguments(self):
         properties = self.properties
