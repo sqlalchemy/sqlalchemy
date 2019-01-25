@@ -4028,8 +4028,8 @@ class MetaData(SchemaItem):
             automatic resolution of dependency cycles between tables, which
             are usually caused by mutually dependent foreign key constraints.
             To resolve these cycles, either the
-            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be applied
-            to those constraints, or use the
+            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be
+            applied to those constraints, or use the
             :func:`.schema.sort_tables_and_constraints` function which will
             break out foreign key constraints involved in cycles separately.
 

@@ -2842,8 +2842,8 @@ class Query(object):
         approach to the use case of applying an :func:`.aliased` construct
         explicitly throughout a query.  Instead of referring to the
         :func:`.aliased` construct explicitly,
-        :meth:`.Query.select_entity_from` automatically *adapts* all occurrences
-        of the entity to the target selectable.
+        :meth:`.Query.select_entity_from` automatically *adapts* all
+        occurrences of the entity to the target selectable.
 
         Given a case for :func:`.aliased` such as selecting ``User``
         objects from a SELECT statement::
