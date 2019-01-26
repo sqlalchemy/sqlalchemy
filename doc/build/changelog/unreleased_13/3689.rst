@@ -2,5 +2,5 @@
    :tags: feature, engine
    :tickets: 3689
 
-   Added public accessor :meth:`.Pool.timeout` that returns the configured
-   timeout for a :class:`.Pool` object.  Pull request courtesy Irina Delamare.
+   Added public accessor :meth:`.QueuePool.timeout` that returns the configured
+   timeout for a :class:`.QueuePool` object.  Pull request courtesy Irina Delamare.
