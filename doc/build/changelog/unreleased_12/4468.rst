@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4468
+
+    Fixed a regression in 1.2 where a wildcard/load_only loader option would
+    not work correctly against a loader path where of_type() were used to limit
+    to a particular subclass.  The fix only works for of_type() of a simple
+    subclass so far, not a with_polymorphic entity which will be addressed in a
+    separate issue; it is unlikely this latter case was working previously.
+
