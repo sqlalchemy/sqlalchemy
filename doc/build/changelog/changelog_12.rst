@@ -12,7 +12,50 @@
 
 .. changelog::
     :version: 1.2.17
-    :include_notes_from: unreleased_12
+    :released: January 25, 2019
+
+    .. change::
+       :tags: feature, orm
+       :tickets: 4461
+
+       Added new event hooks :meth:`.QueryEvents.before_compile_update` and
+       :meth:`.QueryEvents.before_compile_delete` which complement
+       :meth:`.QueryEvents.before_compile` in the case of the :meth:`.Query.update`
+       and :meth:`.Query.delete` methods.
+
+
+    .. change::
+       :tags: bug, postgresql
+       :tickets: 4463
+
+       Revised the query used when reflecting CHECK constraints to make use of the
+       ``pg_get_constraintdef`` function, as the ``consrc`` column is being
+       deprecated in PG 12.  Thanks to John A Stevenson for the tip.
+
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4454
+
+       Fixed issue where when using single-table inheritance in conjunction with a
+       joined inheritance hierarchy that uses "with polymorphic" loading, the
+       "single table criteria" for that single-table entity could get confused for
+       that of other entities from the same hierarchy used in the same query.The
+       adaption of the "single table criteria" is made more specific to the target
+       entity to avoid it accidentally getting adapted to other tables in the
+       query.
+
+
+    .. change::
+       :tags: bug, oracle
+       :tickets: 4457
+
+       Fixed regression in integer precision logic due to the refactor of the
+       cx_Oracle dialect in 1.2.  We now no longer apply the cx_Oracle.NATIVE_INT
+       type to result columns sending integer values (detected as positive
+       precision with scale ==0) which encounters integer overflow issues with
+       values that go beyond the 32 bit boundary.  Instead, the output variable
+       is left untyped so that cx_Oracle can choose the best option.
 
 .. changelog::
     :version: 1.2.16
