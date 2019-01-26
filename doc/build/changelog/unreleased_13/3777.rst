@@ -1,8 +1,0 @@
-.. change::
-   :tags: bug, orm
-   :tickets: 3777
-
-   Implemented the ``.get_history()`` method, which also implies availability
-   of :attr:`.AttributeState.history`, for :func:`.synonym` attributes.
-   Previously, trying to access attribute history via a synonym would raise an
-   ``AttributeError``.

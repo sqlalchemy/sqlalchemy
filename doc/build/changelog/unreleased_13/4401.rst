@@ -1,8 +1,0 @@
-.. change::
-   :tags: bug, ext
-   :tickets: 4401
-
-   Fixed a regression in 1.3.0b1 caused by :ticket:`3423` where association
-   proxy objects that access an attribute that's only present on a polymorphic
-   subclass would raise an ``AttributeError`` even though the actual instance
-   being accessed was an instance of that subclass.

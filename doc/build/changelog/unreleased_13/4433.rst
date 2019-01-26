@@ -1,8 +1,0 @@
-.. change::
-   :tags: bug, orm
-   :tickets: 4433
-
-   Improved error messages emitted by the ORM in the area of loader option
-   traversal.  This includes early detection of mis-matched loader strategies
-   along with a clearer explanation why these strategies don't match.
-

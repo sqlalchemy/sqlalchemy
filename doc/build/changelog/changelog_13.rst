@@ -12,7 +12,230 @@
 
 .. changelog::
     :version: 1.3.0b2
-    :include_notes_from: unreleased_13
+    :released: January 25, 2019
+
+    .. change::
+       :tags: bug, ext
+       :tickets: 4401
+
+       Fixed a regression in 1.3.0b1 caused by :ticket:`3423` where association
+       proxy objects that access an attribute that's only present on a polymorphic
+       subclass would raise an ``AttributeError`` even though the actual instance
+       being accessed was an instance of that subclass.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 1103
+
+        Fixed long-standing issue where duplicate collection members would cause a
+        backref to delete the association between the member and its parent object
+        when one of the duplicates were removed, as occurs as a side effect of
+        swapping two objects in one statement.
+
+        .. seealso::
+
+            :ref:`change_1103`
+
+    .. change::
+       :tags: bug, mssql
+       :tickets: 4222
+
+       The ``literal_processor`` for the :class:`.Unicode` and
+       :class:`.UnicodeText` datatypes now render an ``N`` character in front of
+       the literal string expression as required by SQL Server for Unicode string
+       values rendered in SQL expressions.
+
+    .. change::
+       :tags: feature, orm
+       :tickets: 4423
+
+       Implemented a new feature whereby the :class:`.AliasedClass` construct can
+       now be used as the target of a :func:`.relationship`.  This allows the
+       concept of "non primary mappers" to no longer be necessary, as the
+       :class:`.AliasedClass` is much easier to configure and automatically inherits
+       all the relationships of the mapped class, as well as preserves the
+       ability for loader options to work normally.
+
+       .. seealso::
+
+            :ref:`change_4423`
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4373
+
+       Extended the fix first made as part of :ticket:`3287`, where a loader option
+       made against a subclass using a wildcard would extend itself to include
+       application of the wildcard to attributes on the super classes as well, to a
+       "bound" loader option as well, e.g. in an expression like
+       ``Load(SomeSubClass).load_only('foo')``.  Columns that are part of the
+       parent class of ``SomeSubClass`` will also be excluded in the same way as if
+       the unbound option ``load_only('foo')`` were used.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4433
+
+       Improved error messages emitted by the ORM in the area of loader option
+       traversal.  This includes early detection of mis-matched loader strategies
+       along with a clearer explanation why these strategies don't match.
+
+
+    .. change::
+       :tags: change, orm
+       :tickets: 4412
+
+       Added a new function :func:`.close_all_sessions` which takes
+       over the task of the :meth:`.Session.close_all` method, which
+       is now deprecated as this is confusing as a classmethod.
+       Pull request courtesy Augustin Trancart.
+
+    .. change::
+       :tags: feature, orm
+       :tickets: 4397
+
+       Added new :meth:`.MapperEvents.before_mapper_configured` event.   This
+       event complements the other "configure" stage mapper events with a per
+       mapper event that receives each :class:`.Mapper` right before its
+       configure step, and additionally may be used to prevent or delay the
+       configuration of specific :class:`.Mapper` objects using a new
+       return value :attr:`.orm.interfaces.EXT_SKIP`.  See the
+       documentation link for an example.
+
+       .. seealso::
+
+          :meth:`.MapperEvents.before_mapper_configured`
+
+
+
+    .. change::
+       :tags: bug, orm
+
+       The "remove" event for collections is now called before the item is removed
+       in the case of the ``collection.remove()`` method, as is consistent with the
+       behavior for most other forms of collection item removal (such as
+       ``__delitem__``, replacement under ``__setitem__``).  For ``pop()`` methods,
+       the remove event still fires after the operation.
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 4372
+
+       Added a ``__clause_element__()`` method to :class:`.ColumnProperty` which
+       can allow the usage of a not-fully-declared column or deferred attribute in
+       a declarative mapped class slightly more friendly when it's used in a
+       constraint or other column-oriented scenario within the class declaration,
+       though this still can't work in open-ended expressions; prefer to call the
+       :attr:`.ColumnProperty.expression` attribute if receiving ``TypeError``.
+
+    .. change::
+       :tags: bug, orm, engine
+       :tickets: 4406
+
+       Added accessors for execution options to Core and ORM, via
+       :meth:`.Query.get_execution_options`,
+       :meth:`.Connection.get_execution_options`,
+       :meth:`.Engine.get_execution_options`, and
+       :meth:`.Executable.get_execution_options`.  PR courtesy Daniel Lister.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4446
+
+       Fixed issue in association proxy due to :ticket:`3423` which caused the use
+       of custom :class:`.PropComparator` objects with hybrid attribites, such as
+       the one demonstrated in  the ``dictlike-polymorphic`` example to not
+       function within an association proxy.  The strictness that was added in
+       :ticket:`3423` has been relaxed, and additional logic to accomodate for
+       an association proxy that links to a custom hybrid have been added.
+
+    .. change::
+       :tags: change, general
+       :tickets: 4393
+
+       A large change throughout the library has ensured that all objects,
+       parameters, and behaviors which have been noted as deprecated or legacy now
+       emit ``DeprecationWarning`` warnings when invoked.As the Python 3
+       interpreter now defaults to displaying deprecation warnings, as well as that
+       modern test suites based on tools like tox and pytest tend to display
+       deprecation warnings, this change should make it easier to note what API
+       features are obsolete. A major rationale for this change is so that long-
+       deprecated features that nonetheless still see continue to see real world
+       use can  finally be removed in the near future; the biggest example of this
+       are the :class:`.SessionExtension` and :class:`.MapperExtension` classes as
+       well as a handful of other pre-event extension hooks, which have been
+       deprecated since version 0.7 but still remain in the library.  Another is
+       that several major longstanding behaviors are to be deprecated as well,
+       including the threadlocal engine strategy, the convert_unicode flag, and non
+       primary mappers.
+
+       .. seealso::
+
+          :ref:`change_4393_general`
+
+
+    .. change::
+       :tags: change, engine
+       :tickets: 4393
+
+       The "threadlocal" engine strategy which has been a legacy feature of
+       SQLAlchemy since around version 0.2 is now deprecated, along with the
+       :paramref:`.Pool.threadlocal` parameter of :class:`.Pool` which has no
+       effect in most modern use cases.
+
+       .. seealso::
+
+          :ref:`change_4393_threadlocal`
+
+    .. change::
+       :tags: change, sql
+       :tickets: 4393
+
+       The :paramref:`.create_engine.convert_unicode` and
+       :paramref:`.String.convert_unicode` parameters have been deprecated.  These
+       parameters were built back when most Python DBAPIs had little to no support
+       for Python Unicode objects, and SQLAlchemy needed to take on the very
+       complex task of marshalling data and SQL strings between Unicode and
+       bytestrings throughout the system in a performant way.  Thanks to Python 3,
+       DBAPIs were compelled to adapt to Unicode-aware APIs and today all DBAPIs
+       supported by SQLAlchemy support Unicode natively, including on Python 2,
+       allowing this long-lived and very complicated feature to finally be (mostly)
+       removed.  There are still of course a few Python 2 edge cases where
+       SQLAlchemy has to deal with Unicode however these are handled automatically;
+       in modern use, there should be no need for end-user interaction with these
+       flags.
+
+       .. seealso::
+
+          :ref:`change_4393_convertunicode`
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 3777
+
+       Implemented the ``.get_history()`` method, which also implies availability
+       of :attr:`.AttributeState.history`, for :func:`.synonym` attributes.
+       Previously, trying to access attribute history via a synonym would raise an
+       ``AttributeError``.
+
+    .. change::
+       :tags: feature, engine
+       :tickets: 3689
+
+       Added public accessor :meth:`.QueuePool.timeout` that returns the configured
+       timeout for a :class:`.QueuePool` object.  Pull request courtesy Irina Delamare.
+
+    .. change::
+       :tags: feature, sql
+       :tickets: 4386
+
+       Amended the :class:`.AnsiFunction` class, the base of common SQL
+       functions like ``CURRENT_TIMESTAMP``, to accept positional arguments
+       like a regular ad-hoc function.  This to suit the case that many of
+       these functions on specific backends accept arguments such as
+       "fractional seconds" precision and such.  If the function is created
+       with arguments, it renders the parenthesis and the arguments.  If
+       no arguments are present, the compiler generates the non-parenthesized form.
 
 .. changelog::
     :version: 1.3.0b1
