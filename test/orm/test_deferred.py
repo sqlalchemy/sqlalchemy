@@ -1352,6 +1352,54 @@ class InheritanceTest(_Polymorphic):
             "people.person_id = managers.person_id ORDER BY people.person_id",
         )
 
+    def test_load_only_subclass_of_type(self):
+        s = Session()
+        q = s.query(Company).options(
+            joinedload(Company.employees.of_type(Manager)).load_only("status")
+        )
+        self.assert_compile(
+            q,
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, "
+            "anon_1.people_person_id AS anon_1_people_person_id, "
+            "anon_1.people_type AS anon_1_people_type, "
+            "anon_1.managers_person_id AS anon_1_managers_person_id, "
+            "anon_1.managers_status AS anon_1_managers_status "
+            "FROM companies LEFT OUTER JOIN "
+            "(SELECT people.person_id AS people_person_id, "
+            "people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, "
+            "managers.person_id AS managers_person_id, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people LEFT OUTER JOIN managers "
+            "ON people.person_id = managers.person_id) AS anon_1 "
+            "ON companies.company_id = anon_1.people_company_id "
+            "ORDER BY anon_1.people_person_id",
+        )
+
+    def test_wildcard_subclass_of_type(self):
+        s = Session()
+        q = s.query(Company).options(
+            joinedload(Company.employees.of_type(Manager)).defer("*")
+        )
+        self.assert_compile(
+            q,
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name "
+            "FROM companies LEFT OUTER JOIN "
+            "(SELECT people.person_id AS people_person_id, "
+            "people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, "
+            "managers.person_id AS managers_person_id, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people LEFT OUTER JOIN managers "
+            "ON people.person_id = managers.person_id) AS anon_1 "
+            "ON companies.company_id = anon_1.people_company_id "
+            "ORDER BY anon_1.people_person_id",
+        )
+
     def test_defer_super_name_on_subclass(self):
         s = Session()
         q = s.query(Manager).order_by(Person.person_id).options(defer("name"))

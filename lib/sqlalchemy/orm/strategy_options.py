@@ -203,6 +203,13 @@ class Load(Generative, MapperOption):
                     self.propagate_to_loaders = False
                 if wildcard_key:
                     attr = "%s:%s" % (wildcard_key, attr)
+
+                # TODO: AliasedInsp inside the path for of_type is not
+                # working for a with_polymorphic entity because the
+                # relationship loaders don't render the with_poly into the
+                # path.  See #4469 which will try to improve this
+                if existing_of_type and not existing_of_type.is_aliased_class:
+                    path = path.parent[existing_of_type]
                 path = path.token(attr)
                 self.path = path
                 return path
