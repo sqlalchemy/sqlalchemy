@@ -1554,6 +1554,77 @@ class InheritanceTest(_Polymorphic):
             "ORDER BY people.person_id",
         )
 
+    def test_load_only_from_with_polymorphic(self):
+        s = Session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            'Mapped attribute "Manager.status" does not apply to any of the '
+            "root entities in this query, e.g. "
+            r"with_polymorphic\(Person, \[Manager\]\).",
+            s.query(wp).options,
+            load_only(Manager.status),
+        )
+
+        q = s.query(wp).options(load_only(wp.Manager.status))
+        self.assert_compile(
+            q,
+            "SELECT people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.person_id AS managers_1_person_id, "
+            "managers_1.status AS managers_1_status "
+            "FROM people AS people_1 "
+            "LEFT OUTER JOIN managers AS managers_1 "
+            "ON people_1.person_id = managers_1.person_id",
+        )
+
+    def test_load_only_of_type_with_polymorphic(self):
+        s = Session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
+
+        # needs to be explicit, we don't currently dig onto all the
+        # sub-entities in the wp
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Can\'t find property named "status" on '
+            r"with_polymorphic\(Person, \[Manager\]\) in this Query.",
+            s.query(Company).options,
+            joinedload(Company.employees.of_type(wp)).load_only("status"),
+        )
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            'Attribute "Manager.status" does not link from element '
+            r'"with_polymorphic\(Person, \[Manager\]\)"',
+            s.query(Company).options,
+            joinedload(Company.employees.of_type(wp)).load_only(
+                Manager.status
+            ),
+        )
+
+        self.assert_compile(
+            s.query(Company).options(
+                joinedload(Company.employees.of_type(wp)).load_only(
+                    wp.Manager.status
+                )
+            ),
+            # should at least not have manager_name in it
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, "
+            "people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.person_id AS managers_1_person_id, "
+            "managers_1.status AS managers_1_status "
+            "FROM companies LEFT OUTER JOIN "
+            "(people AS people_1 LEFT OUTER JOIN managers AS managers_1 "
+            "ON people_1.person_id = managers_1.person_id) "
+            "ON companies.company_id = people_1.company_id "
+            "ORDER BY people_1.person_id",
+        )
+
 
 class WithExpressionTest(fixtures.DeclarativeMappedTest):
     @classmethod

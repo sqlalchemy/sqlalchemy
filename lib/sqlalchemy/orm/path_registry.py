@@ -62,14 +62,14 @@ class PathRegistry(object):
 
     def set(self, attributes, key, value):
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
-        attributes[(key, self.path)] = value
+        attributes[(key, self.natural_path)] = value
 
     def setdefault(self, attributes, key, value):
         log.debug("setdefault '%s' on path '%s' to '%s'", key, self, value)
-        attributes.setdefault((key, self.path), value)
+        attributes.setdefault((key, self.natural_path), value)
 
     def get(self, attributes, key, value=None):
-        key = (key, self.path)
+        key = (key, self.natural_path)
         if key in attributes:
             return attributes[key]
         else:
@@ -160,7 +160,7 @@ class RootRegistry(PathRegistry):
 
     """
 
-    path = ()
+    path = natural_path = ()
     has_entity = False
     is_aliased_class = False
     is_root = True
@@ -177,6 +177,7 @@ class TokenRegistry(PathRegistry):
         self.token = token
         self.parent = parent
         self.path = parent.path + (token,)
+        self.natural_path = parent.natural_path + (token,)
 
     has_entity = False
 
@@ -185,6 +186,13 @@ class TokenRegistry(PathRegistry):
     def generate_for_superclasses(self):
         if not self.parent.is_aliased_class and not self.parent.is_root:
             for ent in self.parent.mapper.iterate_to_root():
+                yield TokenRegistry(self.parent.parent[ent], self.token)
+        elif (
+            self.parent.is_aliased_class
+            and self.parent.entity._is_with_polymorphic
+        ):
+            yield self
+            for ent in self.parent.entity._with_polymorphic_entities:
                 yield TokenRegistry(self.parent.parent[ent], self.token)
         else:
             yield self
@@ -211,6 +219,7 @@ class PropRegistry(PathRegistry):
         self.prop = prop
         self.parent = parent
         self.path = parent.path + (prop,)
+        self.natural_path = parent.natural_path + (prop,)
 
         self._wildcard_path_loader_key = (
             "loader",
@@ -255,6 +264,24 @@ class EntityRegistry(PathRegistry, dict):
         self.is_aliased_class = entity.is_aliased_class
         self.entity = entity
         self.path = parent.path + (entity,)
+
+        # the "natural path" is the path that we get when Query is traversing
+        # from the lead entities into the various relationships; it corresponds
+        # to the structure of mappers and relationships. when we are given a
+        # path that comes from loader options, as of 1.3 it can have ac-hoc
+        # with_polymorphic() and other AliasedInsp objects inside of it, which
+        # are usually not present in mappings.  So here we track both the
+        # "enhanced" path in self.path and the "natural" path that doesn't
+        # include those objects so these two traversals can be matched up.
+        if parent.path and self.is_aliased_class:
+            if entity.mapper.isa(parent.natural_path[-1].entity):
+                self.natural_path = parent.natural_path + (entity.mapper,)
+            else:
+                self.natural_path = parent.natural_path + (
+                    parent.natural_path[-1].entity,
+                )
+        else:
+            self.natural_path = self.path
         self.entity_path = self
 
     @property

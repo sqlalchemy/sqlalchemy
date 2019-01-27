@@ -21,10 +21,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import util as orm_util
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
 from test.orm import _fixtures
+from .inheritance._poly_fixtures import _Polymorphic
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Engineer
+from .inheritance._poly_fixtures import Manager
+from .inheritance._poly_fixtures import Person
 
 
 class QueryTest(_fixtures.FixtureTest):
@@ -1236,6 +1242,80 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             message,
             create_session().query(column).options,
             joinedload(eager_option),
+        )
+
+
+class OptionsNoPropTestInh(_Polymorphic):
+    def test_missing_attr_wpoly_subclasss(self):
+        s = Session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Mapped attribute "Manager.status" does not apply to any of '
+            r"the root entities in this query, e.g. "
+            r"with_polymorphic\(Person, \[Manager\]\).",
+            s.query(wp).options,
+            load_only(Manager.status),
+        )
+
+    def test_missing_attr_of_type_subclass(self):
+        s = Session()
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Attribute "Manager.manager_name" does not link from element '
+            r'"with_polymorphic\(Person, \[Engineer\]\)"',
+            s.query(Company).options,
+            joinedload(Company.employees.of_type(Engineer)).load_only(
+                Manager.manager_name
+            ),
+        )
+
+    def test_missing_attr_of_type_subclass_name_matches(self):
+        s = Session()
+
+        # the name "status" is present on Engineer also, make sure
+        # that doesn't get mixed up here
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Attribute "Manager.status" does not link from element '
+            r'"with_polymorphic\(Person, \[Engineer\]\)"',
+            s.query(Company).options,
+            joinedload(Company.employees.of_type(Engineer)).load_only(
+                Manager.status
+            ),
+        )
+
+    def test_missing_str_attr_of_type_subclass(self):
+        s = Session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Can\'t find property named "manager_name" on '
+            "mapped class Engineer->engineers in this Query.",
+            s.query(Company).options,
+            joinedload(Company.employees.of_type(Engineer)).load_only(
+                "manager_name"
+            ),
+        )
+
+    def test_missing_attr_of_type_wpoly_subclass(self):
+        s = Session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Attribute "Manager.manager_name" does not link from '
+            r'element "with_polymorphic\(Person, \[Manager\]\)"',
+            s.query(Company).options,
+            joinedload(Company.employees.of_type(wp)).load_only(
+                Manager.manager_name
+            ),
         )
 
 

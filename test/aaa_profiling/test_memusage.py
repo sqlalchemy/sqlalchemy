@@ -738,12 +738,19 @@ class MemUsageWBackendTest(EnsureZeroed):
             Column("foo", Integer),
             Column("bar", Integer),
         )
-        m1 = mapper(A, a)
+        b = Table(
+            "b",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("a_id", ForeignKey("a.id")),
+        )
+        m1 = mapper(A, a, properties={"bs": relationship(B)})
+        m2 = mapper(B, b)
 
         @profile_memory()
         def go():
             ma = sa.inspect(aliased(A))
-            m1._path_registry[m1.attrs.foo][ma][m1.attrs.bar]
+            m1._path_registry[m1.attrs.bs][ma][m1.attrs.bar]
 
         go()
         clear_mappers()

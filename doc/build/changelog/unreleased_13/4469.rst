@@ -1,0 +1,11 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4469
+
+   Improved the behavior of :func:`.orm.with_polymorphic` in conjunction with
+   loader options, in particular wildcard operations as well as
+   :func:`.orm.load_only`.  The polymorphic object will be more accurately
+   targeted so that column-level options on the entity will correctly take
+   effect.The issue is a continuation of the same kinds of things fixed in
+   :ticket:`4468`.
+
