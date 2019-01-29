@@ -42,7 +42,7 @@
 
     .. change::
        :tags: bug, mssql
-       :tickets: 4222
+       :tickets: 4442
 
        The ``literal_processor`` for the :class:`.Unicode` and
        :class:`.UnicodeText` datatypes now render an ``N`` character in front of
