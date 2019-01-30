@@ -3,6 +3,7 @@
 """SQLite-specific tests."""
 import datetime
 import os
+import sqlite3
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -460,6 +461,21 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             testing.db.execute(t.select().order_by(t.c.x)).fetchall(),
             [(False,), (True,)],
+        )
+
+    @testing.provide_metadata
+    def test_function_default(self):
+        t = Table(
+            "t",
+            self.metadata,
+            Column("x", String, server_default=func.sqlite_version()),
+        )
+        t.create(testing.db)
+        testing.db.execute(t.insert())
+        testing.db.execute(t.insert().values(x="Test"))
+        eq_(
+            testing.db.execute(t.select().order_by(t.c.x)).fetchall(),
+            [(sqlite3.sqlite_version,), ("Test",)],
         )
 
     def test_old_style_default(self):

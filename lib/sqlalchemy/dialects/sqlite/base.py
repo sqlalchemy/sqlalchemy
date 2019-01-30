@@ -468,15 +468,16 @@ When using the per-:class:`.Engine` execution option, note that
 import datetime
 import re
 
-from ... import exc
-from ... import processors
-from ... import schema as sa_schema
-from ... import sql
-from ... import types as sqltypes
-from ... import util
-from ...engine import default
-from ...engine import reflection
-from ...sql import compiler
+from sqlalchemy import exc
+from sqlalchemy import processors
+from sqlalchemy import schema as sa_schema
+from sqlalchemy import sql
+from sqlalchemy import types as sqltypes
+from sqlalchemy import util
+from sqlalchemy.engine import default
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql import functions
 from ...types import BLOB  # noqa
 from ...types import BOOLEAN  # noqa
 from ...types import CHAR  # noqa
@@ -908,6 +909,8 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         colspec = self.preparer.format_column(column) + " " + coltype
         default = self.get_column_default_string(column)
         if default is not None:
+            if isinstance(column.server_default.arg, functions.Function):
+                default = '(' + default + ')'
             colspec += " DEFAULT " + default
 
         if not column.nullable:
