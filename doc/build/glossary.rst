@@ -938,6 +938,8 @@ Glossary
 
             http://en.wikipedia.org/wiki/Candidate_key
 
+            https://www.databasestar.com/database-keys/
+
     primary key
     primary key constraint
 
