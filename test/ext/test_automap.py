@@ -11,8 +11,11 @@ from sqlalchemy import testing
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.ext.automap import generate_relationship
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import interfaces
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
@@ -53,6 +56,23 @@ class AutomapTest(fixtures.MappedTest):
         a1 = Address(email_address="e1")
         u1 = User(name="u1", addresses_collection=set([a1]))
         assert a1.user is u1
+
+    def test_exception_prepare_not_called(self):
+        Base = automap_base(metadata=self.metadata)
+
+        class User(Base):
+            __tablename__ = "users"
+
+        s = Session()
+
+        assert_raises_message(
+            orm_exc.UnmappedClassError,
+            "Class test.ext.test_automap.User is a subclass of AutomapBase.  "
+            r"Mappings are not produced until the .prepare\(\) method is "
+            "called on the class hierarchy.",
+            s.query,
+            User,
+        )
 
     def test_relationship_explicit_override_m2o(self):
         Base = automap_base(metadata=self.metadata)

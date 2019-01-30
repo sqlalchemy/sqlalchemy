@@ -6,9 +6,11 @@ from sqlalchemy.ext import declarative as decl
 from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -253,6 +255,26 @@ class DeferredReflectionTest(DeferredReflectBase):
         a1 = sess.query(Address).filter(Address.email == "two").one()
         eq_(a1, Address(email="two"))
         eq_(a1.user, User(name="u1"))
+
+    def test_exception_prepare_not_called(self):
+        class User(decl.DeferredReflection, fixtures.ComparableEntity, Base):
+            __tablename__ = "users"
+            addresses = relationship("Address", backref="user")
+
+        class Address(
+            decl.DeferredReflection, fixtures.ComparableEntity, Base
+        ):
+            __tablename__ = "addresses"
+
+        assert_raises_message(
+            orm_exc.UnmappedClassError,
+            "Class test.ext.declarative.test_reflection.User is a "
+            "subclass of DeferredReflection.  Mappings are not produced "
+            r"until the .prepare\(\) method is called on the class "
+            "hierarchy.",
+            Session().query,
+            User,
+        )
 
     def test_basic_deferred(self):
         class User(decl.DeferredReflection, fixtures.ComparableEntity, Base):

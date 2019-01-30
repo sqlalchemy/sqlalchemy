@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, orm, declarative
+   :tickets: 4470
+
+   Added some helper exceptions that invoke when a mapping based on
+   :class:`.AbstractConcreteBase`, :class:`.DeferredReflection`, or
+   :class:`.AutoMap` is used before the mapping is ready to be used, which
+   contain descriptive information on the class, rather than falling through
+   into other failure modes that are less informative.
+

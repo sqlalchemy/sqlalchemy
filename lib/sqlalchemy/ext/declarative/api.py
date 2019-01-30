@@ -17,12 +17,15 @@ from .base import _DeferredMapperConfig
 from .base import _del_attribute
 from .clsregistry import _class_resolver
 from ... import exc
+from ... import inspection
 from ... import util
 from ...orm import attributes
 from ...orm import comparable_property
+from ...orm import exc as orm_exc
 from ...orm import interfaces
 from ...orm import properties
 from ...orm import synonym as _orm_synonym
+from ...orm.base import _inspect_mapped_class
 from ...orm.base import _mapper_or_none
 from ...orm.util import polymorphic_union
 from ...schema import MetaData
@@ -507,6 +510,32 @@ class AbstractConcreteBase(ConcreteBase):
     and is only used for selecting.  Compare to :class:`.ConcreteBase`,
     which does create a persisted table for the base class.
 
+    .. note::
+
+        The :class:`.AbstractConcreteBase` class does not intend to set up  the
+        mapping for the base class until all the subclasses have been defined,
+        as it needs to create a mapping against a selectable that will include
+        all subclass tables.  In order to achieve this, it waits for the
+        **mapper configuration event** to occur, at which point it scans
+        through all the configured subclasses and sets up a mapping that will
+        query against all subclasses at once.
+
+        While this event is normally invoked automatically, in the case of
+        :class:`.AbstractConcreteBase`, it may be necessary to invoke it
+        explicitly after **all** subclass mappings are defined, if the first
+        operation is to be a query against this base class.  To do so, invoke
+        :func:`.configure_mappers` once all the desired classes have been
+        configured::
+
+            from sqlalchemy.orm import configure_mappers
+
+            configure_mappers()
+
+        .. seealso::
+
+            :func:`.orm.configure_mappers`
+
+
     Example::
 
         from sqlalchemy.ext.declarative import AbstractConcreteBase
@@ -523,6 +552,8 @@ class AbstractConcreteBase(ConcreteBase):
             __mapper_args__ = {
                 'polymorphic_identity':'manager',
                 'concrete':True}
+
+        configure_mappers()
 
     The abstract base class is handled by declarative in a special way;
     at class configuration time, it behaves like a declarative mixin
@@ -559,6 +590,8 @@ class AbstractConcreteBase(ConcreteBase):
             __mapper_args__ = {
                 'polymorphic_identity':'manager',
                 'concrete':True}
+
+        configure_mappers()
 
     When we make use of our mappings however, both ``Manager`` and
     ``Employee`` will have an independently usable ``.company`` attribute::
@@ -634,6 +667,18 @@ class AbstractConcreteBase(ConcreteBase):
             sm = _mapper_or_none(scls)
             if sm and sm.concrete and cls in scls.__bases__:
                 sm._set_concrete_base(m)
+
+    @classmethod
+    def _sa_raise_deferred_config(cls):
+        raise orm_exc.UnmappedClassError(
+            cls,
+            msg="Class %s is a subclass of AbstractConcreteBase and "
+            "has a mapping pending until all subclasses are defined. "
+            "Call the sqlalchemy.orm.configure_mappers() function after "
+            "all subclasses have been defined to "
+            "complete the mapping of this class."
+            % orm_exc._safe_cls_name(cls),
+        )
 
 
 class DeferredReflection(object):
@@ -745,6 +790,16 @@ class DeferredReflection(object):
             cls._reflect_table(local_table, engine)
 
     @classmethod
+    def _sa_raise_deferred_config(cls):
+        raise orm_exc.UnmappedClassError(
+            cls,
+            msg="Class %s is a subclass of DeferredReflection.  "
+            "Mappings are not produced until the .prepare() "
+            "method is called on the class hierarchy."
+            % orm_exc._safe_cls_name(cls),
+        )
+
+    @classmethod
     def _reflect_table(cls, table, engine):
         Table(
             table.name,
@@ -755,3 +810,17 @@ class DeferredReflection(object):
             autoload_with=engine,
             schema=table.schema,
         )
+
+
+@inspection._inspects(DeclarativeMeta)
+def _inspect_decl_meta(cls):
+    mp = _inspect_mapped_class(cls)
+    if mp is None:
+        if _DeferredMapperConfig.has_cls(cls):
+            _DeferredMapperConfig.raise_unmapped_for_cls(cls)
+            raise orm_exc.UnmappedClassError(
+                cls,
+                msg="Class %s has a deferred mapping on it.  It is not yet "
+                "usable as a mapped class." % orm_exc._safe_cls_name(cls),
+            )
+    return mp
