@@ -504,12 +504,49 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("x", Boolean, server_default=sql.false()),
         )
         t.create(testing.db)
-        testing.db.execute(t.insert())
-        testing.db.execute(t.insert().values(x=True))
-        eq_(
-            testing.db.execute(t.select().order_by(t.c.x)).fetchall(),
-            [(False,), (True,)],
+        with testing.db.connect() as conn:
+            conn.execute(t.insert())
+            conn.execute(t.insert().values(x=True))
+            eq_(
+                conn.execute(t.select().order_by(t.c.x)).fetchall(),
+                [(False,), (True,)],
+            )
+
+    @testing.provide_metadata
+    def test_function_default(self):
+        t = Table(
+            "t",
+            self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", DateTime(), server_default=func.now()),
         )
+        t.create(testing.db)
+        with testing.db.connect() as conn:
+            now = conn.scalar(func.now())
+            today = datetime.datetime.today()
+            conn.execute(t.insert())
+            conn.execute(t.insert().values(x=today))
+            eq_(
+                conn.execute(select([t.c.x]).order_by(t.c.id)).fetchall(),
+                [(now,), (today,)],
+            )
+
+    @testing.provide_metadata
+    def test_expression_with_function_default(self):
+        t = Table(
+            "t",
+            self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer(), server_default=func.abs(-5) + 17),
+        )
+        t.create(testing.db)
+        with testing.db.connect() as conn:
+            conn.execute(t.insert())
+            conn.execute(t.insert().values(x=35))
+            eq_(
+                conn.execute(select([t.c.x]).order_by(t.c.id)).fetchall(),
+                [(22,), (35,)],
+            )
 
     def test_old_style_default(self):
         """test non-quoted integer value on older sqlite pragma"""
@@ -849,6 +886,36 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "t1_id INTEGER, "
             "PRIMARY KEY (id)"
             ")",
+        )
+
+    def test_column_defaults_ddl(self):
+
+        t = Table(
+            "t", MetaData(), Column("x", Boolean, server_default=sql.false())
+        )
+
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x BOOLEAN DEFAULT (0), CHECK (x IN (0, 1)))",
+        )
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", String(), server_default=func.sqlite_version()),
+        )
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (x VARCHAR DEFAULT (sqlite_version()))",
+        )
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer(), server_default=func.abs(-5) + 17),
+        )
+        self.assert_compile(
+            CreateTable(t), "CREATE TABLE t (x INTEGER DEFAULT (abs(-5) + 17))"
         )
 
     def test_create_partial_index(self):

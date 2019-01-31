@@ -1,0 +1,7 @@
+.. change::
+   :tags: bug, sqlite
+   :tickets: 4474
+
+   Fixed bug in SQLite DDL where using an expression as a server side default
+   required that it be contained within parenthesis to be accepted by the
+   sqlite parser.  Pull request courtesy Bartlomiej Biernacki.
