@@ -476,6 +476,7 @@ from ... import types as sqltypes
 from ... import util
 from ...engine import default
 from ...engine import reflection
+from ...sql import ColumnElement
 from ...sql import compiler
 from ...types import BLOB  # noqa
 from ...types import BOOLEAN  # noqa
@@ -908,6 +909,8 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         colspec = self.preparer.format_column(column) + " " + coltype
         default = self.get_column_default_string(column)
         if default is not None:
+            if isinstance(column.server_default.arg, ColumnElement):
+                default = "(" + default + ")"
             colspec += " DEFAULT " + default
 
         if not column.nullable:
