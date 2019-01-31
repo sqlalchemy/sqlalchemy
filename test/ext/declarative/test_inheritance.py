@@ -14,6 +14,7 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
@@ -29,7 +30,6 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm.test_events import _RemoveListeners
-
 
 Base = None
 
@@ -1317,7 +1317,9 @@ class OverlapColPrecedenceTest(DeclarativeTestBase):
         self._run_test(Engineer, "eid", "pid")
 
 
-class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
+class ConcreteInhTest(
+    _RemoveListeners, DeclarativeTestBase, testing.AssertsCompiledSQL
+):
     def _roundtrip(
         self,
         Employee,
@@ -1488,6 +1490,63 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             name = Column(String(50))
 
         self._roundtrip(Employee, Manager, Engineer, Boss, polymorphic=False)
+
+    def test_abstract_concrete_base_didnt_configure(self):
+        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+            pass
+
+        assert_raises_message(
+            orm_exc.UnmappedClassError,
+            "Class test.ext.declarative.test_inheritance.Employee is a "
+            "subclass of AbstractConcreteBase and has a mapping pending "
+            "until all subclasses are defined. Call the "
+            r"sqlalchemy.orm.configure_mappers\(\) function after all "
+            "subclasses have been defined to complete the "
+            "mapping of this class.",
+            Session().query,
+            Employee,
+        )
+
+        configure_mappers()
+
+        # no subclasses yet.
+        assert_raises_message(
+            orm_exc.UnmappedClassError,
+            ".*and has a mapping pending",
+            Session().query,
+            Employee,
+        )
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(50))
+            golf_swing = Column(String(40))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
+
+        # didnt call configure_mappers() again
+        assert_raises_message(
+            orm_exc.UnmappedClassError,
+            ".*and has a mapping pending",
+            Session().query,
+            Employee,
+        )
+
+        configure_mappers()
+
+        self.assert_compile(
+            Session().query(Employee),
+            "SELECT pjoin.employee_id AS pjoin_employee_id, "
+            "pjoin.name AS pjoin_name, pjoin.golf_swing AS pjoin_golf_swing, "
+            "pjoin.type AS pjoin_type FROM (SELECT manager.employee_id "
+            "AS employee_id, manager.name AS name, manager.golf_swing AS "
+            "golf_swing, 'manager' AS type FROM manager) AS pjoin",
+        )
 
     def test_abstract_concrete_extension(self):
         class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):

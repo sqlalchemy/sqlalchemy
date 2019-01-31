@@ -517,6 +517,7 @@ from .declarative import declarative_base as _declarative_base
 from .declarative.base import _DeferredMapperConfig
 from .. import util
 from ..orm import backref
+from ..orm import exc as orm_exc
 from ..orm import interfaces
 from ..orm import relationship
 from ..orm.mapper import _CONFIGURE_MUTEX
@@ -840,6 +841,16 @@ class AutomapBase(object):
     mapper() yet.
 
     """
+
+    @classmethod
+    def _sa_raise_deferred_config(cls):
+        raise orm_exc.UnmappedClassError(
+            cls,
+            msg="Class %s is a subclass of AutomapBase.  "
+            "Mappings are not produced until the .prepare() "
+            "method is called on the class hierarchy."
+            % orm_exc._safe_cls_name(cls),
+        )
 
 
 def automap_base(declarative_base=None, **kw):

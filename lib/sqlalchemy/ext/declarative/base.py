@@ -15,6 +15,7 @@ from ... import event
 from ... import exc
 from ... import util
 from ...orm import class_mapper
+from ...orm import exc as orm_exc
 from ...orm import mapper
 from ...orm import synonym
 from ...orm.attributes import QueryableAttribute
@@ -715,6 +716,17 @@ class _DeferredMapperConfig(_MapperConfig):
     def has_cls(cls, class_):
         # 2.6 fails on weakref if class_ is an old style class
         return isinstance(class_, type) and weakref.ref(class_) in cls._configs
+
+    @classmethod
+    def raise_unmapped_for_cls(cls, class_):
+        if hasattr(class_, "_sa_raise_deferred_config"):
+            class_._sa_raise_deferred_config()
+
+        raise orm_exc.UnmappedClassError(
+            class_,
+            msg="Class %s has a deferred mapping on it.  It is not yet "
+            "usable as a mapped class." % orm_exc._safe_cls_name(class_),
+        )
 
     @classmethod
     def config_for_cls(cls, class_):

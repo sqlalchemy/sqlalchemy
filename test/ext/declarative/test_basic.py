@@ -15,6 +15,7 @@ from sqlalchemy import util
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.declarative import synonym_for
+from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
@@ -25,6 +26,7 @@ from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import properties
@@ -115,6 +117,37 @@ class DeclarativeTest(DeclarativeTestBase):
         a1 = sess.query(Address).filter(Address.email == "two").one()
         eq_(a1, Address(email="two"))
         eq_(a1.user, User(name="u1"))
+
+    def test_deferred_reflection_default_error(self):
+        class MyExt(object):
+            @classmethod
+            def prepare(cls):
+                "sample prepare method"
+                to_map = _DeferredMapperConfig.classes_for_base(cls)
+                for thingy in to_map:
+                    thingy.map()
+
+            @classmethod
+            def _sa_decl_prepare(cls):
+                pass
+
+        class User(MyExt, Base):
+            __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
+
+        assert_raises_message(
+            orm_exc.UnmappedClassError,
+            "Class test.ext.declarative.test_basic.User has a deferred "
+            "mapping on it.  It is not yet usable as a mapped class.",
+            Session().query,
+            User,
+        )
+
+        User.prepare()
+
+        self.assert_compile(
+            Session().query(User), 'SELECT "user".id AS user_id FROM "user"'
+        )
 
     def test_unicode_string_resolve(self):
         class User(Base, fixtures.ComparableEntity):
