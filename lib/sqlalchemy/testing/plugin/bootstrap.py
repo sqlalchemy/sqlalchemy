@@ -1,5 +1,5 @@
 """
-Bootstrapper for nose/pytest plugins.
+Bootstrapper for test framework plugins.
 
 The entire rationale for this system is to get the modules in plugin/
 imported without importing all of the supporting library, so that we can
@@ -41,8 +41,5 @@ def load_file_as_module(name):
 if to_bootstrap == "pytest":
     sys.modules["sqla_plugin_base"] = load_file_as_module("plugin_base")
     sys.modules["sqla_pytestplugin"] = load_file_as_module("pytestplugin")
-elif to_bootstrap == "nose":
-    sys.modules["sqla_plugin_base"] = load_file_as_module("plugin_base")
-    sys.modules["sqla_noseplugin"] = load_file_as_module("noseplugin")
 else:
     raise Exception("unknown bootstrap: %s" % to_bootstrap)  # noqa

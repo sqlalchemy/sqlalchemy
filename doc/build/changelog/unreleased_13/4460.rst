@@ -1,0 +1,7 @@
+.. change::
+   :tags: change, tests
+   :tickets: 4460
+
+   The test system has removed support for Nose, which is unmaintained for
+   several years and is producing warnings under Python 3. The test suite is
+   currently standardized on Pytest.  Pull request courtesy Parth Shandilya.
