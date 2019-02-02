@@ -164,7 +164,7 @@ class IndexPropertyTest(fixtures.TestBase):
         assert j.default is None
         assert j.none is None
         j.none = 10
-        assert j.default is 10
+        assert j.default == 10
         assert j.none == 10
 
 
