@@ -134,7 +134,7 @@
 
     .. change::
        :tags: bug, orm, engine
-       :tickets: 4406
+       :tickets: 4464
 
        Added accessors for execution options to Core and ORM, via
        :meth:`.Query.get_execution_options`,
