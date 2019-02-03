@@ -8,8 +8,9 @@
 """Testing extensions.
 
 this module is designed to work as a testing-framework-agnostic library,
-so that we can continue to support nose and also begin adding new
-functionality via py.test.
+created so that multiple test frameworks can be supported at once
+(mostly so that we can migrate to new ones). The current target
+is py.test.
 
 """
 
@@ -244,8 +245,7 @@ def post_begin():
     for fn in post_configure:
         fn(options, file_config)
 
-    # late imports, has to happen after config as well
-    # as nose plugins like coverage
+    # late imports, has to happen after config.
     global util, fixtures, engines, exclusions, assertions
     global warnings, profiling, config, testing
     from sqlalchemy import testing  # noqa
@@ -575,7 +575,7 @@ def _setup_engine(cls):
 
 def before_test(test, test_module_name, test_class, test_name):
 
-    # like a nose id, e.g.:
+    # format looks like:
     # "test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause"
 
     name = getattr(test_class, "_sa_orig_cls_name", test_class.__name__)
