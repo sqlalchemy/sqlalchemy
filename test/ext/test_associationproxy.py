@@ -566,6 +566,25 @@ class CustomDictTest(_CollectionOperations):
 
         assert_raises(TypeError, set, [p1.children])
 
+    def test_bulk_replace(self):
+        Parent = self.Parent
+
+        p1 = Parent("foo")
+        p1.children = {"a": "v a", "b": "v b", "c": "v c"}
+        assocs = set(p1._children.values())
+        keep_assocs = {a for a in assocs if a.foo in ("a", "c")}
+        eq_(len(keep_assocs), 2)
+        remove_assocs = {a for a in assocs if a.foo == "b"}
+
+        p1.children = {"a": "v a", "d": "v d", "c": "v c"}
+        eq_(
+            {a for a in p1._children.values() if a.foo in ("a", "c")},
+            keep_assocs,
+        )
+        assert not remove_assocs.intersection(p1._children.values())
+
+        eq_(p1.children, {"a": "v a", "d": "v d", "c": "v c"})
+
 
 class SetTest(_CollectionOperations):
     collection_class = set
@@ -818,6 +837,22 @@ class SetTest(_CollectionOperations):
                         print("want", repr(control))
                         print("got", repr(p.children))
                         raise
+
+    def test_bulk_replace(self):
+        Parent = self.Parent
+
+        p1 = Parent("foo")
+        p1.children = {"a", "b", "c"}
+        assocs = set(p1._children)
+        keep_assocs = {a for a in assocs if a.name in ("a", "c")}
+        eq_(len(keep_assocs), 2)
+        remove_assocs = {a for a in assocs if a.name == "b"}
+
+        p1.children = {"a", "c", "d"}
+        eq_({a for a in p1._children if a.name in ("a", "c")}, keep_assocs)
+        assert not remove_assocs.intersection(p1._children)
+
+        eq_(p1.children, {"a", "c", "d"})
 
 
 class CustomSetTest(SetTest):

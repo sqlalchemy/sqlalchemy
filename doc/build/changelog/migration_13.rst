@@ -683,6 +683,54 @@ Note that this change may be revised if it leads to problems.
 
 :ticket:`4268`
 
+.. _change_2642:
+
+Implemented bulk replace for sets, dicts with AssociationProxy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Assignment of a set or dictionary to an association proxy collection should
+now work correctly, whereas before it would re-create association
+proxy members for existing keys, leading to the issue of potential flush
+failures due to the delete+insert of the same object it now should only create
+new association objects where appropriate::
+
+    class A(Base):
+        __tablename__ = "test_a"
+
+        id = Column(Integer, primary_key=True)
+        b_rel = relationship(
+            "B", collection_class=set, cascade="all, delete-orphan",
+        )
+        b = association_proxy("b_rel", "value", creator=lambda x: B(value=x))
+
+
+    class B(Base):
+        __tablename__ = "test_b"
+        __table_args__ = (UniqueConstraint("a_id", "value"),)
+
+        id = Column(Integer, primary_key=True)
+        a_id = Column(Integer, ForeignKey("test_a.id"), nullable=False)
+        value = Column(String)
+
+    # ...
+
+    s = Session(e)
+    a = A(b={"x", "y", "z"})
+    s.add(a)
+    s.commit()
+
+    # re-assign where one B should be deleted, one B added, two
+    # B's maintained
+    a.b = {"x", "z", "q"}
+
+    # only 'q' was added, so only one new B object.  previously
+    # all three would have been re-created leading to flush conflicts
+    # against the deleted ones.
+    assert len(s.new) == 1
+
+
+:ticket:`2642`
+
 .. _change_1103:
 
 Many-to-one backref checks for collection duplicates during remove operation

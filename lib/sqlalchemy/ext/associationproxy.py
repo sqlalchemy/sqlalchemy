@@ -560,8 +560,7 @@ class AssociationProxyInstance(object):
             proxy = self.get(obj)
             assert self.collection_class is not None
             if proxy is not values:
-                proxy.clear()
-                self._set(proxy, values)
+                proxy._bulk_replace(self, values)
 
     def delete(self, obj):
         if self.owning_class is None:
@@ -959,6 +958,10 @@ class _AssociationCollection(object):
         self.lazy_collection = state["lazy_collection"]
         self.parent._inflate(self)
 
+    def _bulk_replace(self, assoc_proxy, values):
+        self.clear()
+        assoc_proxy._set(self, values)
+
 
 class _AssociationList(_AssociationCollection):
     """Generic, converting, list-to-list proxy."""
@@ -1310,6 +1313,21 @@ class _AssociationDict(_AssociationCollection):
         for key, value in kw:
             self[key] = value
 
+    def _bulk_replace(self, assoc_proxy, values):
+        existing = set(self)
+        constants = existing.intersection(values or ())
+        additions = set(values or ()).difference(constants)
+        removals = existing.difference(constants)
+
+        for key, member in values.items() or ():
+            if key in additions:
+                self[key] = member
+            elif key in constants:
+                self[key] = member
+
+        for key in removals:
+            del self[key]
+
     def copy(self):
         return dict(self.items())
 
@@ -1393,6 +1411,24 @@ class _AssociationSet(_AssociationCollection):
     def update(self, other):
         for value in other:
             self.add(value)
+
+    def _bulk_replace(self, assoc_proxy, values):
+        existing = set(self)
+        constants = existing.intersection(values or ())
+        additions = set(values or ()).difference(constants)
+        removals = existing.difference(constants)
+
+        appender = self.add
+        remover = self.remove
+
+        for member in values or ():
+            if member in additions:
+                appender(member)
+            elif member in constants:
+                appender(member)
+
+        for member in removals:
+            remover(member)
 
     def __ior__(self, other):
         if not collections._set_binops_check_strict(self, other):
