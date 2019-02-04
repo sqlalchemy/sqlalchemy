@@ -1971,7 +1971,7 @@ class JoinedloadOverWPolyAliased(
         q = session.query(poly).options(
             joinedload(poly.Sub1.links)
             .joinedload(Link.child.of_type(Sub1))
-            .joinedload(poly.Sub1.links)
+            .joinedload(Sub1.links)
         )
         self.assert_compile(
             q,
@@ -1999,7 +1999,7 @@ class JoinedloadOverWPolyAliased(
         q = session.query(poly).options(
             joinedload(poly.Sub1.links, innerjoin=True)
             .joinedload(Link.child.of_type(Sub1), innerjoin=True)
-            .joinedload(poly.Sub1.links, innerjoin=True)
+            .joinedload(Sub1.links, innerjoin=True)
         )
         self.assert_compile(
             q,

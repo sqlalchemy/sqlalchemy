@@ -589,11 +589,31 @@ class AliasedInsp(InspectionAttr):
             self.persist_selectable
         ) = self.local_table = selectable
         self.name = name
-        self.with_polymorphic_mappers = with_polymorphic_mappers
         self.polymorphic_on = polymorphic_on
         self._base_alias = _base_alias or self
         self._use_mapper_path = _use_mapper_path
         self.represents_outer_join = represents_outer_join
+
+        if with_polymorphic_mappers:
+            self._is_with_polymorphic = True
+            self.with_polymorphic_mappers = with_polymorphic_mappers
+            self._with_polymorphic_entities = []
+            for poly in self.with_polymorphic_mappers:
+                if poly is not mapper:
+                    ent = AliasedClass(
+                        poly.class_,
+                        selectable,
+                        base_alias=self,
+                        adapt_on_names=adapt_on_names,
+                        use_mapper_path=_use_mapper_path,
+                    )
+
+                    setattr(self.entity, poly.class_.__name__, ent)
+                    self._with_polymorphic_entities.append(ent._aliased_insp)
+
+        else:
+            self._is_with_polymorphic = False
+            self.with_polymorphic_mappers = [mapper]
 
         self._adapter = sql_util.ColumnAdapter(
             selectable,
@@ -604,20 +624,6 @@ class AliasedInsp(InspectionAttr):
 
         self._adapt_on_names = adapt_on_names
         self._target = mapper.class_
-
-        for poly in self.with_polymorphic_mappers:
-            if poly is not mapper:
-                setattr(
-                    self.entity,
-                    poly.class_.__name__,
-                    AliasedClass(
-                        poly.class_,
-                        selectable,
-                        base_alias=self,
-                        adapt_on_names=adapt_on_names,
-                        use_mapper_path=_use_mapper_path,
-                    ),
-                )
 
     is_aliased_class = True
     "always returns True"
@@ -718,7 +724,17 @@ class AliasedInsp(InspectionAttr):
         )
 
     def __str__(self):
-        return "aliased(%s)" % (self._target.__name__,)
+        if self._is_with_polymorphic:
+            return "with_polymorphic(%s, [%s])" % (
+                self._target.__name__,
+                ", ".join(
+                    mp.class_.__name__
+                    for mp in self.with_polymorphic_mappers
+                    if mp is not self.mapper
+                ),
+            )
+        else:
+            return "aliased(%s)" % (self._target.__name__,)
 
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
@@ -1223,6 +1239,42 @@ def _entity_corresponds_to(given, entity):
             return entity is given
 
     return entity.common_parent(given)
+
+
+def _entity_corresponds_to_use_path_impl(given, entity):
+    """determine if 'given' corresponds to 'entity', in terms
+    of a path of loader options where a mapped attribute is taken to
+    be a member of a parent entity.
+
+    e.g.::
+
+        someoption(A).someoption(A.b)  # -> fn(A, A) -> True
+        someoption(A).someoption(C.d)  # -> fn(A, C) -> False
+
+        a1 = aliased(A)
+        someoption(a1).someoption(A.b) # -> fn(a1, A) -> False
+        someoption(a1).someoption(a1.b) # -> fn(a1, a1) -> True
+
+        wp = with_polymorphic(A, [A1, A2])
+        someoption(wp).someoption(A1.foo)  # -> fn(wp, A1) -> False
+        someoption(wp).someoption(wp.A1.foo)  # -> fn(wp, wp.A1) -> True
+
+
+    """
+    if given.is_aliased_class:
+        return (
+            entity.is_aliased_class
+            and not entity._use_mapper_path
+            and given is entity
+            or given in entity._with_polymorphic_entities
+        )
+    elif not entity.is_aliased_class:
+        return given.common_parent(entity.mapper)
+    else:
+        return (
+            entity._use_mapper_path
+            and given in entity.with_polymorphic_mappers
+        )
 
 
 def _entity_isa(given, mapper):
