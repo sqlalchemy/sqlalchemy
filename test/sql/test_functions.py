@@ -95,6 +95,43 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_underscores(self):
         self.assert_compile(func.if_(), "if()")
 
+    def test_underscores_packages(self):
+        self.assert_compile(func.foo_.bar_.if_(), "foo.bar.if()")
+
+    def test_uppercase(self):
+        # for now, we need to keep case insensitivity
+        self.assert_compile(func.NOW(), "NOW()")
+
+    def test_uppercase_packages(self):
+        # for now, we need to keep case insensitivity
+        self.assert_compile(func.FOO.BAR.NOW(), "FOO.BAR.NOW()")
+
+    def test_mixed_case(self):
+        # for now, we need to keep case insensitivity
+        self.assert_compile(func.SomeFunction(), "SomeFunction()")
+
+    def test_mixed_case_packages(self):
+        # for now, we need to keep case insensitivity
+        self.assert_compile(
+            func.Foo.Bar.SomeFunction(), "Foo.Bar.SomeFunction()"
+        )
+
+    def test_quote_special_chars(self):
+        # however we need to be quoting any other identifiers
+        self.assert_compile(
+            getattr(func, "im a function")(), '"im a function"()'
+        )
+
+    def test_quote_special_chars_packages(self):
+        # however we need to be quoting any other identifiers
+        self.assert_compile(
+            getattr(
+                getattr(getattr(func, "im foo package"), "im bar package"),
+                "im a function",
+            )(),
+            '"im foo package"."im bar package"."im a function"()',
+        )
+
     def test_generic_now(self):
         assert isinstance(func.now().type, sqltypes.DateTime)
 

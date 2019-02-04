@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4473
+
+    Fixed issue where using an uppercase name for an index type (e.g. GIST,
+    BTREE, etc. ) or an EXCLUDE constraint would treat it as an identifier to
+    be quoted, rather than rendering it as is. The new behavior converts these
+    types to lowercase and ensures they contain only valid SQL characters.

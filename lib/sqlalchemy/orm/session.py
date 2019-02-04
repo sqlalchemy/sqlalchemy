@@ -1257,7 +1257,9 @@ class Session(_SessionClassMethods):
             in order to execute the statement.
 
         """
-        clause = expression._literal_as_text(clause)
+        clause = expression._literal_as_text(
+            clause, allow_coercion_to_text=True
+        )
 
         if bind is None:
             bind = self.get_bind(mapper, clause=clause, **kw)

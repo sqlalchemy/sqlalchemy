@@ -948,6 +948,8 @@ except ImportError:
     _python_UUID = None
 
 
+IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
+
 AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|GRANT|REVOKE|"
     "IMPORT FOREIGN SCHEMA|REFRESH MATERIALIZED VIEW|TRUNCATE)",
@@ -1908,7 +1910,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         using = index.dialect_options["postgresql"]["using"]
         if using:
-            text += "USING %s " % preparer.quote(using)
+            text += (
+                "USING %s "
+                % self.preparer.validate_sql_phrase(using, IDX_USING).lower()
+            )
 
         ops = index.dialect_options["postgresql"]["ops"]
         text += "(%s)" % (
@@ -1983,7 +1988,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 "%s WITH %s" % (self.sql_compiler.process(expr, **kw), op)
             )
         text += "EXCLUDE USING %s (%s)" % (
-            constraint.using,
+            self.preparer.validate_sql_phrase(
+                constraint.using, IDX_USING
+            ).lower(),
             ", ".join(elements),
         )
         if constraint.where is not None:

@@ -42,6 +42,7 @@ from .base import ColumnCollection
 from .base import DialectKWArgs
 from .base import SchemaEventTarget
 from .elements import _as_truncated
+from .elements import _document_text_coercion
 from .elements import _literal_as_text
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -2884,6 +2885,11 @@ class CheckConstraint(ColumnCollectionConstraint):
 
     _allow_multiple_tables = True
 
+    @_document_text_coercion(
+        "sqltext",
+        ":class:`.CheckConstraint`",
+        ":paramref:`.CheckConstraint.sqltext`",
+    )
     def __init__(
         self,
         sqltext,
@@ -2925,7 +2931,7 @@ class CheckConstraint(ColumnCollectionConstraint):
 
         """
 
-        self.sqltext = _literal_as_text(sqltext, warn=False)
+        self.sqltext = _literal_as_text(sqltext, allow_coercion_to_text=True)
 
         columns = []
         visitors.traverse(self.sqltext, {}, {"column": columns.append})

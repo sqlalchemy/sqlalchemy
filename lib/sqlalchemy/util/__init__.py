@@ -93,6 +93,7 @@ from .deprecations import inject_docstring_text  # noqa
 from .deprecations import pending_deprecation  # noqa
 from .deprecations import warn_deprecated  # noqa
 from .deprecations import warn_pending_deprecation  # noqa
+from .langhelpers import add_parameter_text  # noqa
 from .langhelpers import as_interface  # noqa
 from .langhelpers import asbool  # noqa
 from .langhelpers import asint  # noqa

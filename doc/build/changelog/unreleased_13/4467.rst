@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, sql
+   :tickets: 4467
+
+   Quoting is applied to :class:`.Function` names, those which are usually but
+   not necessarily generated from the :attr:`.sql.func` construct,  at compile
+   time if they contain illegal characters, such as spaces or punctuation. The
+   names are as before treated as case insensitive however, meaning if the
+   names contain uppercase or mixed case characters, that alone does not
+   trigger quoting. The case insensitivity is currently maintained for
+   backwards compatibility.
+

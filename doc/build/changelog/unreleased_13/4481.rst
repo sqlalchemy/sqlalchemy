@@ -1,0 +1,18 @@
+.. change::
+   :tags: bug, sql
+   :tickets: 4481
+
+   Fully removed the behavior of strings passed directly as components of a
+   :func:`.select` or :class:`.Query` object being coerced to :func:`.text`
+   constructs automatically; the warning that has been emitted is now an
+   ArgumentError or in the case of order_by() / group_by() a CompileError.
+   This has emitted a warning since version 1.0 however its presence continues
+   to create concerns for the potential of mis-use of this behavior.
+
+   Note that public CVEs have been posted for order_by() / group_by() which
+   are resolved by this commit:  CVE-2019-7164  CVE-2019-7548
+
+
+   .. seealso::
+
+    :ref:`change_4481`

@@ -3536,6 +3536,60 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             schema_translate_map=schema_translate_map,
         )
 
+    def test_fk_render(self):
+        a = Table("a", MetaData(), Column("q", Integer))
+        b = Table("b", MetaData(), Column("p", Integer))
+
+        self.assert_compile(
+            schema.AddConstraint(
+                schema.ForeignKeyConstraint([a.c.q], [b.c.p])
+            ),
+            "ALTER TABLE a ADD FOREIGN KEY(q) REFERENCES b (p)",
+        )
+
+        self.assert_compile(
+            schema.AddConstraint(
+                schema.ForeignKeyConstraint(
+                    [a.c.q], [b.c.p], onupdate="SET NULL", ondelete="CASCADE"
+                )
+            ),
+            "ALTER TABLE a ADD FOREIGN KEY(q) REFERENCES b (p) "
+            "ON DELETE CASCADE ON UPDATE SET NULL",
+        )
+
+        self.assert_compile(
+            schema.AddConstraint(
+                schema.ForeignKeyConstraint(
+                    [a.c.q], [b.c.p], initially="DEFERRED"
+                )
+            ),
+            "ALTER TABLE a ADD FOREIGN KEY(q) REFERENCES b (p) "
+            "INITIALLY DEFERRED",
+        )
+
+    def test_fk_illegal_sql_phrases(self):
+        a = Table("a", MetaData(), Column("q", Integer))
+        b = Table("b", MetaData(), Column("p", Integer))
+
+        for kw in ("onupdate", "ondelete", "initially"):
+            for phrase in (
+                "NOT SQL",
+                "INITALLY NOT SQL",
+                "FOO RESTRICT",
+                "CASCADE WRONG",
+                "SET  NULL",
+            ):
+                const = schema.AddConstraint(
+                    schema.ForeignKeyConstraint(
+                        [a.c.q], [b.c.p], **{kw: phrase}
+                    )
+                )
+                assert_raises_message(
+                    exc.CompileError,
+                    r"Unexpected SQL phrase: '%s'" % phrase,
+                    const.compile,
+                )
+
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
