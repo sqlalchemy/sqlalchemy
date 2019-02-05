@@ -305,7 +305,7 @@ using the :func:`.joinedload` loader option:
         addresses_1.user_id AS addresses_1_user_id,
         users.id AS users_id, users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users
     LEFT OUTER JOIN addresses AS addresses_1
         ON users.id = addresses_1.user_id
@@ -347,7 +347,7 @@ an OUTER JOIN:
         addresses_1.user_id AS addresses_1_user_id,
         users.id AS users_id, users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users
     LEFT OUTER JOIN (
         addresses AS addresses_1 JOIN widgets AS widgets_1 ON
@@ -431,7 +431,7 @@ named in the query:
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users
     LEFT OUTER JOIN addresses AS addresses_1
         ON users.id = addresses_1.user_id
@@ -454,7 +454,7 @@ address is to use :meth:`.Query.join`:
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users
     JOIN addresses ON users.id = addresses.user_id
     WHERE users.name = ?
@@ -480,7 +480,7 @@ are ordering on, the other is used anonymously to load the contents of the
         addresses_1.user_id AS addresses_1_user_id,
         users.id AS users_id, users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users JOIN addresses
         ON users.id = addresses.user_id
     LEFT OUTER JOIN addresses AS addresses_1
@@ -513,7 +513,7 @@ to see why :func:`joinedload` does what it does, consider if we were
         addresses_1.user_id AS addresses_1_user_id,
         users.id AS users_id, users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users JOIN addresses
         ON users.id = addresses.user_id
     LEFT OUTER JOIN addresses AS addresses_1
@@ -545,7 +545,7 @@ into :func:`.subqueryload`:
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users
     JOIN addresses ON users.id = addresses.user_id
     WHERE
@@ -596,7 +596,7 @@ the collection members to load them at once:
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
-        users.password AS users_password
+        users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
     ('jack',)

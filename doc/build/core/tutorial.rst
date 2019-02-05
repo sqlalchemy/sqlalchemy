@@ -197,7 +197,7 @@ each table first before creating, so it's safe to call multiple times:
            Column('id', Integer, Sequence('user_id_seq'), primary_key=True),
            Column('name', String(50)),
            Column('fullname', String(50)),
-           Column('password', String(12))
+           Column('nickname', String(50))
         )
 
     We include this more verbose :class:`~.schema.Table` construct separately
