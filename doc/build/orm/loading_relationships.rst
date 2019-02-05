@@ -51,7 +51,7 @@ same result set as that of the parent:
     ... filter_by(name='jack').all()
     SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    users.fullname AS users_fullname, users.nickname AS users_nickname
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE users.name = ?
     ['jack']
@@ -68,7 +68,7 @@ parent objects:
     ... options(subqueryload('addresses')).\
     ... filter_by(name='jack').all()
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password
+    users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
     ('jack',)
@@ -270,7 +270,7 @@ is not valid - the ``Address`` entity is not named in the query:
     ... order_by(Address.email_address).all()
     {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    users.fullname AS users_fullname, users.nickname AS users_nickname
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE users.name = ? ORDER BY addresses.email_address   <-- this part is wrong !
     ['jack']
@@ -287,7 +287,7 @@ address is to use :meth:`.Query.join`:
     ... order_by(Address.email_address).all()
     {opensql}
     SELECT users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    users.fullname AS users_fullname, users.nickname AS users_nickname
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE users.name = ? ORDER BY addresses.email_address
     ['jack']
@@ -306,7 +306,7 @@ load the contents of the ``User.addresses`` collection:
     ... order_by(Address.email_address).all()
     {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    users.fullname AS users_fullname, users.nickname AS users_nickname
     FROM users JOIN addresses ON users.id = addresses.user_id
     LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE users.name = ? ORDER BY addresses.email_address
@@ -331,7 +331,7 @@ particular ``Address``:
     ... all()
     {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    users.fullname AS users_fullname, users.nickname AS users_nickname
     FROM users JOIN addresses ON users.id = addresses.user_id
     LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE users.name = ? AND addresses.email_address = ?
@@ -357,7 +357,7 @@ the actual ``User`` rows we want.  Below we change :func:`.joinedload` into
     ... filter(Address.email_address=='someaddress@foo.com').\
     ... all()
     {opensql}SELECT users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    users.fullname AS users_fullname, users.nickname AS users_nickname
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE users.name = ? AND addresses.email_address = ?
     ['jack', 'someaddress@foo.com']

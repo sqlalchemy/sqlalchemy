@@ -33,7 +33,7 @@ The remaining positional arguments are mostly
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(16), nullable=False),
         Column('email_address', String(60)),
-        Column('password', String(20), nullable=False)
+        Column('nickname', String(50), nullable=False)
     )
 
 Above, a table called ``user`` is described, which contains four columns. The
@@ -154,7 +154,7 @@ will issue the CREATE statements:
             Column('user_id', Integer, primary_key=True),
             Column('user_name', String(16), nullable=False),
             Column('email_address', String(60), key='email'),
-            Column('password', String(20), nullable=False)
+            Column('nickname', String(50), nullable=False)
         )
 
         user_prefs = Table('user_prefs', metadata,
@@ -170,7 +170,7 @@ will issue the CREATE statements:
                 user_id INTEGER NOT NULL PRIMARY KEY,
                 user_name VARCHAR(16) NOT NULL,
                 email_address VARCHAR(60),
-                password VARCHAR(20) NOT NULL
+                nickname VARCHAR(50) NOT NULL
         )
         PRAGMA table_info(user_prefs){}
         CREATE TABLE user_prefs(
