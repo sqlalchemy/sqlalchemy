@@ -122,11 +122,11 @@ the table name, and names and datatypes of columns::
     ...     id = Column(Integer, primary_key=True)
     ...     name = Column(String)
     ...     fullname = Column(String)
-    ...     password = Column(String)
+    ...     nickname = Column(String)
     ...
     ...     def __repr__(self):
-    ...        return "<User(name='%s', fullname='%s', password='%s')>" % (
-    ...                             self.name, self.fullname, self.password)
+    ...        return "<User(name='%s', fullname='%s', nickname='%s')>" % (
+    ...                             self.name, self.fullname, self.nickname)
 
 .. sidebar:: Tip
 
@@ -172,7 +172,7 @@ one for us.  We can see this object by inspecting the ``__table__`` attribute::
                 Column('id', Integer(), table=<users>, primary_key=True, nullable=False),
                 Column('name', String(), table=<users>),
                 Column('fullname', String(), table=<users>),
-                Column('password', String(), table=<users>), schema=None)
+                Column('nickname', String(), table=<users>), schema=None)
 
 .. sidebar:: Classical Mappings
 
@@ -215,7 +215,7 @@ the actual ``CREATE TABLE`` statement:
     CREATE TABLE users (
         id INTEGER NOT NULL, name VARCHAR,
         fullname VARCHAR,
-        password VARCHAR,
+        nickname VARCHAR,
         PRIMARY KEY (id)
     )
     ()
@@ -251,11 +251,11 @@ the actual ``CREATE TABLE`` statement:
             id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
             name = Column(String(50))
             fullname = Column(String(50))
-            password = Column(String(12))
+            nickname = Column(String(50))
 
             def __repr__(self):
-                return "<User(name='%s', fullname='%s', password='%s')>" % (
-                                        self.name, self.fullname, self.password)
+                return "<User(name='%s', fullname='%s', nickname='%s')>" % (
+                                        self.name, self.fullname, self.nickname)
 
     We include this more verbose table definition separately
     to highlight the difference between a minimal construct geared primarily
@@ -268,11 +268,11 @@ Create an Instance of the Mapped Class
 
 With mappings complete, let's now create and inspect a ``User`` object::
 
-    >>> ed_user = User(name='ed', fullname='Ed Jones', password='edspassword')
+    >>> ed_user = User(name='ed', fullname='Ed Jones', nickname='edsnickname')
     >>> ed_user.name
     'ed'
-    >>> ed_user.password
-    'edspassword'
+    >>> ed_user.nickname
+    'edsnickname'
     >>> str(ed_user.id)
     'None'
 
@@ -351,7 +351,7 @@ Adding and Updating Objects
 
 To persist our ``User`` object, we :meth:`~.Session.add` it to our :class:`~sqlalchemy.orm.session.Session`::
 
-    >>> ed_user = User(name='ed', fullname='Ed Jones', password='edspassword')
+    >>> ed_user = User(name='ed', fullname='Ed Jones', nickname='edsnickname')
     >>> session.add(ed_user)
 
 At this point, we say that the instance is **pending**; no SQL has yet been issued
@@ -371,18 +371,18 @@ added:
 
     {sql}>>> our_user = session.query(User).filter_by(name='ed').first() # doctest:+NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
-    ('ed', 'Ed Jones', 'edspassword')
+    INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
+    ('ed', 'Ed Jones', 'edsnickname')
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
      LIMIT ? OFFSET ?
     ('ed', 1, 0)
     {stop}>>> our_user
-    <User(name='ed', fullname='Ed Jones', password='edspassword')>
+    <User(name='ed', fullname='Ed Jones', nickname='edsnickname')>
 
 In fact, the :class:`~sqlalchemy.orm.session.Session` has identified that the
 row returned is the **same** row as one already represented within its
@@ -409,15 +409,15 @@ We can add more ``User`` objects at once using
 .. sourcecode:: python+sql
 
     >>> session.add_all([
-    ...     User(name='wendy', fullname='Wendy Williams', password='foobar'),
-    ...     User(name='mary', fullname='Mary Contrary', password='xxg527'),
-    ...     User(name='fred', fullname='Fred Flinstone', password='blah')])
+    ...     User(name='wendy', fullname='Wendy Williams', nickname='windy'),
+    ...     User(name='mary', fullname='Mary Contrary', nickname='mary'),
+    ...     User(name='fred', fullname='Fred Flintstone', nickname='freddy')])
 
-Also, we've decided the password for Ed isn't too secure, so lets change it:
+Also, we've decided Ed's nickname isn't that great, so lets change it:
 
 .. sourcecode:: python+sql
 
-    >>> ed_user.password = 'f8s7ccs'
+    >>> ed_user.nickname = 'eddie'
 
 The :class:`~sqlalchemy.orm.session.Session` is paying attention. It knows,
 for example, that ``Ed Jones`` has been modified:
@@ -425,35 +425,35 @@ for example, that ``Ed Jones`` has been modified:
 .. sourcecode:: python+sql
 
     >>> session.dirty
-    IdentitySet([<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>])
+    IdentitySet([<User(name='ed', fullname='Ed Jones', nickname='eddie')>])
 
 and that three new ``User`` objects are pending:
 
 .. sourcecode:: python+sql
 
     >>> session.new  # doctest: +SKIP
-    IdentitySet([<User(name='wendy', fullname='Wendy Williams', password='foobar')>,
-    <User(name='mary', fullname='Mary Contrary', password='xxg527')>,
-    <User(name='fred', fullname='Fred Flinstone', password='blah')>])
+    IdentitySet([<User(name='wendy', fullname='Wendy Williams', nickname='windy')>,
+    <User(name='mary', fullname='Mary Contrary', nickname='mary')>,
+    <User(name='fred', fullname='Fred Flintstone', nickname='freddy')>])
 
 We tell the :class:`~sqlalchemy.orm.session.Session` that we'd like to issue
 all remaining changes to the database and commit the transaction, which has
 been in progress throughout. We do this via :meth:`~.Session.commit`.  The
 :class:`~sqlalchemy.orm.session.Session` emits the ``UPDATE`` statement
-for the password change on "ed", as well as ``INSERT`` statements for the
+for the nickname change on "ed", as well as ``INSERT`` statements for the
 three new ``User`` objects we've added:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.commit()
-    UPDATE users SET password=? WHERE users.id = ?
-    ('f8s7ccs', 1)
-    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
-    ('wendy', 'Wendy Williams', 'foobar')
-    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
-    ('mary', 'Mary Contrary', 'xxg527')
-    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
-    ('fred', 'Fred Flinstone', 'blah')
+    UPDATE users SET nickname=? WHERE users.id = ?
+    ('eddie', 1)
+    INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
+    ('wendy', 'Wendy Williams', 'windy')
+    INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
+    ('mary', 'Mary Contrary', 'mary')
+    INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
+    ('fred', 'Fred Flintstone', 'freddy')
     COMMIT
 
 :meth:`~.Session.commit` flushes the remaining changes to the
@@ -471,7 +471,7 @@ If we look at Ed's ``id`` attribute, which earlier was ``None``, it now has a va
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.id = ?
     (1,)
@@ -509,7 +509,7 @@ and we'll add another erroneous user, ``fake_user``:
 
 .. sourcecode:: python+sql
 
-    >>> fake_user = User(name='fakeuser', fullname='Invalid', password='12345')
+    >>> fake_user = User(name='fakeuser', fullname='Invalid', nickname='12345')
     >>> session.add(fake_user)
 
 Querying the session, we can see that they're flushed into the current transaction:
@@ -519,16 +519,16 @@ Querying the session, we can see that they're flushed into the current transacti
     {sql}>>> session.query(User).filter(User.name.in_(['Edwardo', 'fakeuser'])).all()
     UPDATE users SET name=? WHERE users.id = ?
     ('Edwardo', 1)
-    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
+    INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
     ('fakeuser', 'Invalid', '12345')
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name IN (?, ?)
     ('Edwardo', 'fakeuser')
-    {stop}[<User(name='Edwardo', fullname='Ed Jones', password='f8s7ccs')>, <User(name='fakeuser', fullname='Invalid', password='12345')>]
+    {stop}[<User(name='Edwardo', fullname='Ed Jones', nickname='eddie')>, <User(name='fakeuser', fullname='Invalid', nickname='12345')>]
 
 Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and
 ``fake_user`` has been kicked out of the session:
@@ -544,7 +544,7 @@ Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.id = ?
     (1,)
@@ -560,11 +560,11 @@ issuing a SELECT illustrates the changes made to the database:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name IN (?, ?)
     ('ed', 'fakeuser')
-    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
+    {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
 .. _ormtutorial_querying:
 
@@ -587,13 +587,13 @@ returned:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users ORDER BY users.id
     ()
     {stop}ed Ed Jones
     wendy Wendy Williams
     mary Mary Contrary
-    fred Fred Flinstone
+    fred Fred Flintstone
 
 The :class:`~sqlalchemy.orm.query.Query` also accepts ORM-instrumented
 descriptors as arguments. Any time multiple class entities or column-based
@@ -612,7 +612,7 @@ is expressed as tuples:
     {stop}ed Ed Jones
     wendy Wendy Williams
     mary Mary Contrary
-    fred Fred Flinstone
+    fred Fred Flintstone
 
 The tuples returned by :class:`~sqlalchemy.orm.query.Query` are *named*
 tuples, supplied by the :class:`.KeyedTuple` class, and can be treated much like an
@@ -627,13 +627,13 @@ class:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     ()
-    {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')> ed
-    <User(name='wendy', fullname='Wendy Williams', password='foobar')> wendy
-    <User(name='mary', fullname='Mary Contrary', password='xxg527')> mary
-    <User(name='fred', fullname='Fred Flinstone', password='blah')> fred
+    {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')> ed
+    <User(name='wendy', fullname='Wendy Williams', nickname='windy')> wendy
+    <User(name='mary', fullname='Mary Contrary', nickname='mary')> mary
+    <User(name='fred', fullname='Fred Flintstone', nickname='freddy')> fred
 
 You can control the names of individual column expressions using the
 :meth:`~.ColumnElement.label` construct, which is available from
@@ -666,13 +666,13 @@ entities are present in the call to :meth:`~.Session.query`, can be controlled u
     SELECT user_alias.id AS user_alias_id,
             user_alias.name AS user_alias_name,
             user_alias.fullname AS user_alias_fullname,
-            user_alias.password AS user_alias_password
+            user_alias.nickname AS user_alias_nickname
     FROM users AS user_alias
     (){stop}
-    <User(name='ed', fullname='Ed Jones', password='f8s7ccs')>
-    <User(name='wendy', fullname='Wendy Williams', password='foobar')>
-    <User(name='mary', fullname='Mary Contrary', password='xxg527')>
-    <User(name='fred', fullname='Fred Flinstone', password='blah')>
+    <User(name='ed', fullname='Ed Jones', nickname='eddie')>
+    <User(name='wendy', fullname='Wendy Williams', nickname='windy')>
+    <User(name='mary', fullname='Mary Contrary', nickname='mary')>
+    <User(name='fred', fullname='Fred Flintstone', nickname='freddy')>
 
 Basic operations with :class:`~sqlalchemy.orm.query.Query` include issuing
 LIMIT and OFFSET, most conveniently using Python array slices and typically in
@@ -685,12 +685,12 @@ conjunction with ORDER BY:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users ORDER BY users.id
     LIMIT ? OFFSET ?
     (2, 1){stop}
-    <User(name='wendy', fullname='Wendy Williams', password='foobar')>
-    <User(name='mary', fullname='Mary Contrary', password='xxg527')>
+    <User(name='wendy', fullname='Wendy Williams', nickname='windy')>
+    <User(name='mary', fullname='Mary Contrary', nickname='mary')>
 
 and filtering results, which is accomplished either with
 :func:`~sqlalchemy.orm.query.Query.filter_by`, which uses keyword arguments:
@@ -735,11 +735,11 @@ users named "ed" with a full name of "Ed Jones", you can call
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name = ? AND users.fullname = ?
     ('ed', 'Ed Jones')
-    {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>
+    {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')>
 
 Common Filter Operators
 -----------------------
@@ -848,12 +848,12 @@ database results.  Here's a brief tour:
       SELECT users.id AS users_id,
               users.name AS users_name,
               users.fullname AS users_fullname,
-              users.password AS users_password
+              users.nickname AS users_nickname
       FROM users
       WHERE users.name LIKE ? ORDER BY users.id
       ('%ed',)
-      {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>,
-            <User(name='fred', fullname='Fred Flinstone', password='blah')>]
+      {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>,
+            <User(name='fred', fullname='Fred Flintstone', nickname='freddy')>]
 
 * :meth:`~.Query.first()` applies a limit of one and returns
   the first result as a scalar:
@@ -864,12 +864,12 @@ database results.  Here's a brief tour:
       SELECT users.id AS users_id,
               users.name AS users_name,
               users.fullname AS users_fullname,
-              users.password AS users_password
+              users.nickname AS users_nickname
       FROM users
       WHERE users.name LIKE ? ORDER BY users.id
        LIMIT ? OFFSET ?
       ('%ed', 1, 0)
-      {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>
+      {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')>
 
 * :meth:`~.Query.one()` fully fetches all rows, and if not
   exactly one object identity or composite row is present in the result, raises
@@ -937,7 +937,7 @@ by most applicable methods.  For example,
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE id<224 ORDER BY id
     ()
@@ -957,11 +957,11 @@ method:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE id<? and name=? ORDER BY users.id
     (224, 'fred')
-    {stop}<User(name='fred', fullname='Fred Flinstone', password='blah')>
+    {stop}<User(name='fred', fullname='Fred Flintstone', nickname='freddy')>
 
 To use an entirely string-based statement, a :func:`.text` construct
 representing a complete statement can be passed to
@@ -977,7 +977,7 @@ loading all columns:
     ...                     params(name='ed').all()
     SELECT * FROM users where name=?
     ('ed',)
-    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
+    {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
 Matching columns on name works for simple cases but can become unwieldy when
 dealing with complex statements that contain duplicate column names or when
@@ -991,13 +991,13 @@ by passing column expressions as positional arguments to the
 
 .. sourcecode:: python+sql
 
-    >>> stmt = text("SELECT name, id, fullname, password "
+    >>> stmt = text("SELECT name, id, fullname, nickname "
     ...             "FROM users where name=:name")
-    >>> stmt = stmt.columns(User.name, User.id, User.fullname, User.password)
+    >>> stmt = stmt.columns(User.name, User.id, User.fullname, User.nickname)
     {sql}>>> session.query(User).from_statement(stmt).params(name='ed').all()
-    SELECT name, id, fullname, password FROM users where name=?
+    SELECT name, id, fullname, nickname FROM users where name=?
     ('ed',)
-    {stop}[<User(name='ed', fullname='Ed Jones', password='f8s7ccs')>]
+    {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
 .. versionadded:: 1.1
 
@@ -1039,7 +1039,7 @@ counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
     FROM (SELECT users.id AS users_id,
                     users.name AS users_name,
                     users.fullname AS users_fullname,
-                    users.password AS users_password
+                    users.nickname AS users_nickname
     FROM users
     WHERE users.name LIKE ?) AS anon_1
     ('%ed',)
@@ -1226,7 +1226,7 @@ default, the collection is a Python list.
 
 .. sourcecode:: python+sql
 
-    >>> jack = User(name='jack', fullname='Jack Bean', password='gjffdd')
+    >>> jack = User(name='jack', fullname='Jack Bean', nickname='gjffdd')
     >>> jack.addresses
     []
 
@@ -1250,7 +1250,7 @@ using any SQL:
     <Address(email_address='j25@yahoo.com')>
 
     >>> jack.addresses[1].user
-    <User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
 
 Let's add and commit ``Jack Bean`` to the database. ``jack`` as well
 as the two ``Address`` members in the corresponding ``addresses``
@@ -1261,7 +1261,7 @@ known as **cascading**:
 
     >>> session.add(jack)
     {sql}>>> session.commit()
-    INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
+    INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
     ('jack', 'Jack Bean', 'gjffdd')
     INSERT INTO addresses (email_address, user_id) VALUES (?, ?)
     ('jack@google.com', 5)
@@ -1279,13 +1279,13 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
     ('jack',)
 
     {stop}>>> jack
-    <User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
 
 Let's look at the ``addresses`` collection.  Watch the SQL:
 
@@ -1332,7 +1332,7 @@ Below we load the ``User`` and ``Address`` entities at once using this method:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password,
+            users.nickname AS users_nickname,
             addresses.id AS addresses_id,
             addresses.email_address AS addresses_email_address,
             addresses.user_id AS addresses_user_id
@@ -1340,7 +1340,7 @@ Below we load the ``User`` and ``Address`` entities at once using this method:
     WHERE users.id = addresses.user_id
             AND addresses.email_address = ?
     ('jack@google.com',)
-    {stop}<User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    {stop}<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
     <Address(email_address='jack@google.com')>
 
 The actual SQL JOIN syntax, on the other hand, is most easily achieved
@@ -1354,11 +1354,11 @@ using the :meth:`.Query.join` method:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
     ('jack@google.com',)
-    {stop}[<User(name='jack', fullname='Jack Bean', password='gjffdd')>]
+    {stop}[<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>]
 
 :meth:`.Query.join` knows how to join between ``User``
 and ``Address`` because there's only one foreign key between them. If there
@@ -1470,7 +1470,7 @@ accessible through an attribute called ``c``:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password,
+            users.nickname AS users_nickname,
             anon_1.address_count AS anon_1_address_count
     FROM users LEFT OUTER JOIN
         (SELECT addresses.user_id AS user_id, count(?) AS address_count
@@ -1478,11 +1478,11 @@ accessible through an attribute called ``c``:
         ON users.id = anon_1.user_id
     ORDER BY users.id
     ('*',)
-    {stop}<User(name='ed', fullname='Ed Jones', password='f8s7ccs')> None
-    <User(name='wendy', fullname='Wendy Williams', password='foobar')> None
-    <User(name='mary', fullname='Mary Contrary', password='xxg527')> None
-    <User(name='fred', fullname='Fred Flinstone', password='blah')> None
-    <User(name='jack', fullname='Jack Bean', password='gjffdd')> 2
+    {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')> None
+    <User(name='wendy', fullname='Wendy Williams', nickname='windy')> None
+    <User(name='mary', fullname='Mary Contrary', nickname='mary')> None
+    <User(name='fred', fullname='Fred Flintstone', nickname='freddy')> None
+    <User(name='jack', fullname='Jack Bean', nickname='gjffdd')> 2
 
 Selecting Entities from Subqueries
 ----------------------------------
@@ -1504,7 +1504,7 @@ to associate an "alias" of a mapped class to a subquery:
     SELECT users.id AS users_id,
                 users.name AS users_name,
                 users.fullname AS users_fullname,
-                users.password AS users_password,
+                users.nickname AS users_nickname,
                 anon_1.id AS anon_1_id,
                 anon_1.email_address AS anon_1_email_address,
                 anon_1.user_id AS anon_1_user_id
@@ -1516,7 +1516,7 @@ to associate an "alias" of a mapped class to a subquery:
         WHERE addresses.email_address != ?) AS anon_1
         ON users.id = anon_1.user_id
     ('j25@yahoo.com',)
-    {stop}<User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    {stop}<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
     <Address(email_address='jack@google.com')>
 
 Using EXISTS
@@ -1663,7 +1663,7 @@ at once:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
     ('jack',)
@@ -1675,7 +1675,7 @@ at once:
     ORDER BY addresses.user_id, addresses.id
     (5,)
     {stop}>>> jack
-    <User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
 
     >>> jack.addresses
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
@@ -1702,7 +1702,7 @@ will emit the extra join regardless:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password,
+            users.nickname AS users_nickname,
             addresses_1.id AS addresses_1_id,
             addresses_1.email_address AS addresses_1_email_address,
             addresses_1.user_id AS addresses_1_user_id
@@ -1712,7 +1712,7 @@ will emit the extra join regardless:
     ('jack',)
 
     {stop}>>> jack
-    <User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
 
     >>> jack.addresses
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
@@ -1767,7 +1767,7 @@ attribute:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password,
+            users.nickname AS users_nickname,
             addresses.id AS addresses_id,
             addresses.email_address AS addresses_email_address,
             addresses.user_id AS addresses_user_id
@@ -1779,7 +1779,7 @@ attribute:
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
 
     >>> jacks_addresses[0].user
-    <User(name='jack', fullname='Jack Bean', password='gjffdd')>
+    <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
 
 For more information on eager loading, including how to configure various forms
 of loading by default, see the section :doc:`/orm/loading_relationships`.
@@ -1802,7 +1802,7 @@ in the session, then we'll issue a ``count`` query to see that no rows remain:
     FROM (SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?) AS anon_1
     ('jack',)
@@ -1857,14 +1857,14 @@ including the cascade configuration (we'll leave the constructor out too)::
     ...     id = Column(Integer, primary_key=True)
     ...     name = Column(String)
     ...     fullname = Column(String)
-    ...     password = Column(String)
+    ...     nickname = Column(String)
     ...
     ...     addresses = relationship("Address", back_populates='user',
     ...                     cascade="all, delete, delete-orphan")
     ...
     ...     def __repr__(self):
-    ...        return "<User(name='%s', fullname='%s', password='%s')>" % (
-    ...                                self.name, self.fullname, self.password)
+    ...        return "<User(name='%s', fullname='%s', nickname='%s')>" % (
+    ...                                self.name, self.fullname, self.nickname)
 
 Then we recreate ``Address``, noting that in this case we've created
 the ``Address.user`` relationship via the ``User`` class already::
@@ -1892,7 +1892,7 @@ being deleted:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.id = ?
     (5,)
@@ -1939,7 +1939,7 @@ with the user:
     FROM (SELECT users.id AS users_id,
                     users.name AS users_name,
                     users.fullname AS users_fullname,
-                    users.password AS users_password
+                    users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?) AS anon_1
     ('jack',)
@@ -2099,7 +2099,7 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.password AS users_password
+            users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
     ('wendy',)
@@ -2143,7 +2143,7 @@ keyword string 'firstpost'":
             AND keywords.id = post_keywords.keyword_id
             AND keywords.keyword = ?)
     ('firstpost',)
-    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', password='foobar')>)]
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', nickname='windy')>)]
 
 If we want to look up posts owned by the user ``wendy``, we can tell
 the query to narrow down to that ``User`` object as a parent:
@@ -2165,7 +2165,7 @@ the query to narrow down to that ``User`` object as a parent:
             AND keywords.id = post_keywords.keyword_id
             AND keywords.keyword = ?))
     (2, 'firstpost')
-    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', password='foobar')>)]
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', nickname='windy')>)]
 
 Or we can use Wendy's own ``posts`` relationship, which is a "dynamic"
 relationship, to query straight from there:
@@ -2186,7 +2186,7 @@ relationship, to query straight from there:
             AND keywords.id = post_keywords.keyword_id
             AND keywords.keyword = ?))
     (2, 'firstpost')
-    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', password='foobar')>)]
+    {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', nickname='windy')>)]
 
 Further Reference
 ==================
