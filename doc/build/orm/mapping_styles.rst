@@ -30,7 +30,7 @@ at once::
         id = Column(Integer, primary_key=True)
         name = Column(String)
         fullname = Column(String)
-        password = Column(String)
+        nickname = Column(String)
 
 Above, a basic single-table mapping with four columns.   Additional
 attributes, such as relationships to other mapped classes, are also
@@ -42,7 +42,7 @@ declared inline within the class definition::
         id = Column(Integer, primary_key=True)
         name = Column(String)
         fullname = Column(String)
-        password = Column(String)
+        nickname = Column(String)
 
         addresses = relationship("Address", backref="user", order_by="Address.id")
 
@@ -80,14 +80,14 @@ the :func:`.mapper` function::
                 Column('id', Integer, primary_key=True),
                 Column('name', String(50)),
                 Column('fullname', String(50)),
-                Column('password', String(12))
+                Column('nickname', String(12))
             )
 
     class User(object):
-        def __init__(self, name, fullname, password):
+        def __init__(self, name, fullname, nickname):
             self.name = name
             self.fullname = fullname
-            self.password = password
+            self.nickname = nickname
 
     mapper(User, user)
 
@@ -140,7 +140,7 @@ This is a namespace that can be viewed in a list format or
 via individual names::
 
     >>> list(insp.columns)
-    [Column('id', Integer(), table=<user>, primary_key=True, nullable=False), Column('name', String(length=50), table=<user>), Column('fullname', String(length=50), table=<user>), Column('password', String(length=12), table=<user>)]
+    [Column('id', Integer(), table=<user>, primary_key=True, nullable=False), Column('name', String(length=50), table=<user>), Column('fullname', String(length=50), table=<user>), Column('nickname', String(length=50), table=<user>)]
     >>> insp.columns.name
     Column('name', String(length=50), table=<user>)
 
@@ -150,12 +150,12 @@ attributes as well as hybrids, association proxies::
     >>> insp.all_orm_descriptors
     <sqlalchemy.util._collections.ImmutableProperties object at 0x1040e2c68>
     >>> insp.all_orm_descriptors.keys()
-    ['fullname', 'password', 'name', 'id']
+    ['fullname', 'nickname', 'name', 'id']
 
 As well as :attr:`.Mapper.column_attrs`::
 
     >>> list(insp.column_attrs)
-    [<ColumnProperty at 0x10403fde0; id>, <ColumnProperty at 0x10403fce8; name>, <ColumnProperty at 0x1040e9050; fullname>, <ColumnProperty at 0x1040e9148; password>]
+    [<ColumnProperty at 0x10403fde0; id>, <ColumnProperty at 0x10403fce8; name>, <ColumnProperty at 0x1040e9050; fullname>, <ColumnProperty at 0x1040e9148; nickname>]
     >>> insp.column_attrs.name
     <ColumnProperty at 0x10403fce8; name>
     >>> insp.column_attrs.name.expression
