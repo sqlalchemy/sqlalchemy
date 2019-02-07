@@ -1250,6 +1250,24 @@ considered, however this was too much verbosity).
 Key Changes - Core
 ==================
 
+.. _change_4481:
+
+Coercion of string SQL fragments to text() fully removed
+---------------------------------------------------------
+
+The warnings that were first added in version 1.0, described at
+:ref:`migration_2992`, have now been converted into exceptions.    Continued
+concerns have been raised regarding the automatic coercion of string fragments
+passed to methods like :meth:`.Query.filter` and :meth:`.Select.order_by` being
+converted to :func:`.text` constructs, even though this has emitted a warning.
+In the case of :meth:`.Select.order_by`, :meth:`.Query.order_by`,
+:meth:`.Select.group_by`, and :meth:`.Query.group_by`, a string label or column
+name is still resolved into the corresponding expression construct, however if
+the resolution fails, a :class:`.CompileError` is raised, thus preventing raw
+SQL text from being rendered directly.
+
+:ticket:`4481`
+
 .. _change_4393_threadlocal:
 
 "threadlocal" engine strategy deprecated

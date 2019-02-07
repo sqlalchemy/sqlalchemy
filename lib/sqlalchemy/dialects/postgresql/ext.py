@@ -91,6 +91,11 @@ class ExcludeConstraint(ColumnCollectionConstraint):
 
     where = None
 
+    @elements._document_text_coercion(
+        "where",
+        ":class:`.ExcludeConstraint`",
+        ":paramref:`.ExcludeConstraint.where`",
+    )
     def __init__(self, *elements, **kw):
         r"""
         Create an :class:`.ExcludeConstraint` object.
@@ -123,21 +128,15 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             )
 
         :param \*elements:
+
           A sequence of two tuples of the form ``(column, operator)`` where
           "column" is a SQL expression element or a raw SQL string, most
-          typically a :class:`.Column` object,
-          and "operator" is a string containing the operator to use.
-
-          .. note::
-
-                A plain string passed for the value of "column" is interpreted
-                as an arbitrary SQL  expression; when passing a plain string,
-                any necessary quoting and escaping syntaxes must be applied
-                manually. In order to specify a column name when a
-                :class:`.Column` object is not available, while ensuring that
-                any necessary quoting rules take effect, an ad-hoc
-                :class:`.Column` or :func:`.sql.expression.column` object may
-                be used.
+          typically a :class:`.Column` object, and "operator" is a string
+          containing the operator to use.   In order to specify a column name
+          when a  :class:`.Column` object is not available, while ensuring
+          that any necessary quoting rules take effect, an ad-hoc
+          :class:`.Column` or :func:`.sql.expression.column` object should be
+          used.
 
         :param name:
           Optional, the in-database name of this constraint.
@@ -159,12 +158,6 @@ class ExcludeConstraint(ColumnCollectionConstraint):
           If set, emit WHERE <predicate> when issuing DDL
           for this constraint.
 
-          .. note::
-
-                A plain string passed here is interpreted as an arbitrary SQL
-                expression; when passing a plain string, any necessary quoting
-                and escaping syntaxes must be applied manually.
-
         """
         columns = []
         render_exprs = []
@@ -184,11 +177,12 @@ class ExcludeConstraint(ColumnCollectionConstraint):
                 # backwards compat
                 self.operators[name] = operator
 
-            expr = expression._literal_as_text(expr)
+            expr = expression._literal_as_column(expr)
 
             render_exprs.append((expr, name, operator))
 
         self._render_exprs = render_exprs
+
         ColumnCollectionConstraint.__init__(
             self,
             *columns,
@@ -199,7 +193,9 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         self.using = kw.get("using", "gist")
         where = kw.get("where")
         if where is not None:
-            self.where = expression._literal_as_text(where)
+            self.where = expression._literal_as_text(
+                where, allow_coercion_to_text=True
+            )
 
     def copy(self, **kw):
         elements = [(col, self.operators[col]) for col in self.columns.keys()]

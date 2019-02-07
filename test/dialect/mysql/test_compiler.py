@@ -269,7 +269,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column(
                 "id",
                 Integer,
-                ForeignKey("t1.id", deferrable=True, initially="XYZ"),
+                ForeignKey("t1.id", deferrable=True, initially="DEFERRED"),
                 primary_key=True,
             ),
         )
@@ -278,7 +278,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t2),
             "CREATE TABLE t2 (id INTEGER NOT NULL, "
             "PRIMARY KEY (id), FOREIGN KEY(id) REFERENCES t1 (id) "
-            "DEFERRABLE INITIALLY XYZ)",
+            "DEFERRABLE INITIALLY DEFERRED)",
         )
 
     def test_match_kw_raises(self):

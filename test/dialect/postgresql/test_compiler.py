@@ -595,6 +595,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH (buffering = off)",
         )
 
+    def test_create_index_with_using_unusual_conditions(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        self.assert_compile(
+            schema.CreateIndex(
+                Index("test_idx1", tbl.c.data, postgresql_using="GIST")
+            ),
+            "CREATE INDEX test_idx1 ON testtbl " "USING gist (data)",
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(
+                Index(
+                    "test_idx1",
+                    tbl.c.data,
+                    postgresql_using="some_custom_method",
+                )
+            ),
+            "CREATE INDEX test_idx1 ON testtbl "
+            "USING some_custom_method (data)",
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unexpected SQL phrase: 'gin invalid sql'",
+            schema.CreateIndex(
+                Index(
+                    "test_idx2", tbl.c.data, postgresql_using="gin invalid sql"
+                )
+            ).compile,
+            dialect=postgresql.dialect(),
+        )
+
     def test_create_index_with_tablespace(self):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String))
@@ -787,6 +821,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
             "(room::TEXT WITH =)",
+        )
+
+    def test_exclude_constraint_colname_needs_quoting(self):
+        m = MetaData()
+        cons = ExcludeConstraint(("Some Column Name", "="))
+        Table("testtbl", m, Column("Some Column Name", String), cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist "
+            '("Some Column Name" WITH =)',
+        )
+
+    def test_exclude_constraint_with_using_unusual_conditions(self):
+        m = MetaData()
+        cons = ExcludeConstraint(("q", "="), using="not a keyword")
+        Table("testtbl", m, Column("q", String), cons)
+        assert_raises_message(
+            exc.CompileError,
+            "Unexpected SQL phrase: 'not a keyword'",
+            schema.AddConstraint(cons).compile,
+            dialect=postgresql.dialect(),
         )
 
     def test_exclude_constraint_cast(self):

@@ -22,10 +22,8 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.types import NullType
 
@@ -574,16 +572,12 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(set(t.element._bindparams), set(["bat", "foo", "bar"]))
 
 
-class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
+class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def _test(self, fn, arg, offending_clause, expected):
-        with expect_warnings("Textual "):
-            stmt = fn(arg)
-            self.assert_compile(stmt, expected)
-
+    def _test(self, fn, arg, offending_clause):
         assert_raises_message(
-            exc.SAWarning,
+            exc.ArgumentError,
             r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
             r"explicitly declared (?:with|as) text\(%(stmt)r\)"
             % {"stmt": util.ellipses_string(offending_clause)},
@@ -592,45 +586,28 @@ class TextWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_where(self):
-        self._test(
-            select([table1.c.myid]).where,
-            "myid == 5",
-            "myid == 5",
-            "SELECT mytable.myid FROM mytable WHERE myid == 5",
-        )
+        self._test(select([table1.c.myid]).where, "myid == 5", "myid == 5")
 
     def test_column(self):
-        self._test(select, ["myid"], "myid", "SELECT myid")
+        self._test(select, ["myid"], "myid")
 
     def test_having(self):
-        self._test(
-            select([table1.c.myid]).having,
-            "myid == 5",
-            "myid == 5",
-            "SELECT mytable.myid FROM mytable HAVING myid == 5",
-        )
+        self._test(select([table1.c.myid]).having, "myid == 5", "myid == 5")
 
     def test_from(self):
-        self._test(
-            select([table1.c.myid]).select_from,
-            "mytable",
-            "mytable",
-            "SELECT mytable.myid FROM mytable, mytable",  # two FROMs
-        )
+        self._test(select([table1.c.myid]).select_from, "mytable", "mytable")
 
 
 class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def _test_warning(self, stmt, offending_clause, expected):
-        with expect_warnings(
-            "Can't resolve label reference %r;" % offending_clause
-        ):
-            self.assert_compile(stmt, expected)
+    def _test_exception(self, stmt, offending_clause):
         assert_raises_message(
-            exc.SAWarning,
-            "Can't resolve label reference %r; converting to text"
-            % offending_clause,
+            exc.CompileError,
+            r"Can't resolve label reference for ORDER BY / GROUP BY. "
+            "Textual SQL "
+            "expression %r should be explicitly "
+            r"declared as text\(%r\)" % (offending_clause, offending_clause),
             stmt.compile,
         )
 
@@ -680,9 +657,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_unresolvable_warning_order_by(self):
         stmt = select([table1.c.myid]).order_by("foobar")
-        self._test_warning(
-            stmt, "foobar", "SELECT mytable.myid FROM mytable ORDER BY foobar"
-        )
+        self._test_exception(stmt, "foobar")
 
     def test_group_by_label(self):
         stmt = select([table1.c.myid.label("foo")]).group_by("foo")
@@ -698,9 +673,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_unresolvable_warning_group_by(self):
         stmt = select([table1.c.myid]).group_by("foobar")
-        self._test_warning(
-            stmt, "foobar", "SELECT mytable.myid FROM mytable GROUP BY foobar"
-        )
+        self._test_exception(stmt, "foobar")
 
     def test_asc(self):
         stmt = select([table1.c.myid]).order_by(asc("name"), "description")
@@ -799,23 +772,13 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             .order_by("myid", "t1name", "x")
         )
 
-        def go():
-            # the labels here are anonymized, so label naming
-            # can't catch these.
-            self.assert_compile(
-                s1,
-                "SELECT mytable_1.myid AS mytable_1_myid, "
-                "mytable_1.name AS name_1, foo(:foo_2) AS foo_1 "
-                "FROM mytable AS mytable_1 ORDER BY mytable_1.myid, t1name, x",
-            )
-
-        assert_warnings(
-            go,
-            [
-                "Can't resolve label reference 't1name'",
-                "Can't resolve label reference 'x'",
-            ],
-            regex=True,
+        assert_raises_message(
+            exc.CompileError,
+            r"Can't resolve label reference for ORDER BY / GROUP BY. "
+            "Textual SQL "
+            "expression 't1name' should be explicitly "
+            r"declared as text\('t1name'\)",
+            s1.compile,
         )
 
     def test_columnadapter_non_anonymized(self):

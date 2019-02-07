@@ -37,6 +37,20 @@ def _clone(element, **kw):
     return element._clone()
 
 
+def _document_text_coercion(paramname, meth_rst, param_rst):
+    return util.add_parameter_text(
+        paramname,
+        (
+            ".. warning:: "
+            "The %s argument to %s can be passed as a Python string argument, "
+            "which will be treated "
+            "as **trusted SQL text** and rendered as given.  **DO NOT PASS "
+            "UNTRUSTED INPUT TO THIS PARAMETER**."
+        )
+        % (param_rst, meth_rst),
+    )
+
+
 def collate(expression, collation):
     """Return the clause ``expression COLLATE collation``.
 
@@ -1343,6 +1357,7 @@ class TextClause(Executable, ClauseElement):
             "refer to the :meth:`.TextClause.columns` method.",
         ),
     )
+    @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
     def _create_text(
         self, text, bind=None, bindparams=None, typemap=None, autocommit=None
     ):
@@ -4430,30 +4445,62 @@ def _literal_and_labels_as_label_reference(element):
 
 
 def _expression_literal_as_text(element):
-    return _literal_as_text(element, warn=True)
+    return _literal_as_text(element)
 
 
-def _literal_as_text(element, warn=False):
+def _literal_as(element, text_fallback):
     if isinstance(element, Visitable):
         return element
     elif hasattr(element, "__clause_element__"):
         return element.__clause_element__()
     elif isinstance(element, util.string_types):
-        if warn:
-            util.warn_limited(
-                "Textual SQL expression %(expr)r should be "
-                "explicitly declared as text(%(expr)r)",
-                {"expr": util.ellipses_string(element)},
-            )
-
-        return TextClause(util.text_type(element))
+        return text_fallback(element)
     elif isinstance(element, (util.NoneType, bool)):
         return _const_expr(element)
     else:
         raise exc.ArgumentError(
-            "SQL expression object or string expected, got object of type %r "
+            "SQL expression object expected, got object of type %r "
             "instead" % type(element)
         )
+
+
+def _literal_as_text(element, allow_coercion_to_text=False):
+    if allow_coercion_to_text:
+        return _literal_as(element, TextClause)
+    else:
+        return _literal_as(element, _no_text_coercion)
+
+
+def _literal_as_column(element):
+    return _literal_as(element, ColumnClause)
+
+
+def _no_column_coercion(element):
+    element = str(element)
+    guess_is_literal = not _guess_straight_column.match(element)
+    raise exc.ArgumentError(
+        "Textual column expression %(column)r should be "
+        "explicitly declared with text(%(column)r), "
+        "or use %(literal_column)s(%(column)r) "
+        "for more specificity"
+        % {
+            "column": util.ellipses_string(element),
+            "literal_column": "literal_column"
+            if guess_is_literal
+            else "column",
+        }
+    )
+
+
+def _no_text_coercion(element, exc_cls=exc.ArgumentError, extra=None):
+    raise exc_cls(
+        "%(extra)sTextual SQL expression %(expr)r should be "
+        "explicitly declared as text(%(expr)r)"
+        % {
+            "expr": util.ellipses_string(element),
+            "extra": "%s " % extra if extra else "",
+        }
+    )
 
 
 def _no_literals(element):
@@ -4529,23 +4576,7 @@ def _interpret_as_column_or_from(element):
     elif isinstance(element, (numbers.Number)):
         return ColumnClause(str(element), is_literal=True)
     else:
-        element = str(element)
-        # give into temptation, as this fact we are guessing about
-        # is not one we've previously ever needed our users tell us;
-        # but let them know we are not happy about it
-        guess_is_literal = not _guess_straight_column.match(element)
-        util.warn_limited(
-            "Textual column expression %(column)r should be "
-            "explicitly declared with text(%(column)r), "
-            "or use %(literal_column)s(%(column)r) "
-            "for more specificity",
-            {
-                "column": util.ellipses_string(element),
-                "literal_column": "literal_column"
-                if guess_is_literal
-                else "column",
-            },
-        )
+        _no_column_coercion(element)
     return ColumnClause(element, is_literal=guess_is_literal)
 
 

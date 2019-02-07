@@ -9,11 +9,12 @@
 functionality."""
 
 import re
-import textwrap
 import warnings
 
 from . import compat
 from .langhelpers import decorator
+from .langhelpers import inject_docstring_text
+from .langhelpers import inject_param_text
 from .. import exc
 
 
@@ -247,64 +248,3 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     decorated.__doc__ = doc
     decorated._sa_warn = lambda: warnings.warn(message, wtype, stacklevel=3)
     return decorated
-
-
-def _dedent_docstring(text):
-    split_text = text.split("\n", 1)
-    if len(split_text) == 1:
-        return text
-    else:
-        firstline, remaining = split_text
-    if not firstline.startswith(" "):
-        return firstline + "\n" + textwrap.dedent(remaining)
-    else:
-        return textwrap.dedent(text)
-
-
-def inject_docstring_text(doctext, injecttext, pos):
-    doctext = _dedent_docstring(doctext or "")
-    lines = doctext.split("\n")
-    injectlines = textwrap.dedent(injecttext).split("\n")
-    if injectlines[0]:
-        injectlines.insert(0, "")
-
-    blanks = [num for num, line in enumerate(lines) if not line.strip()]
-    blanks.insert(0, 0)
-
-    inject_pos = blanks[min(pos, len(blanks) - 1)]
-
-    lines = lines[0:inject_pos] + injectlines + lines[inject_pos:]
-    return "\n".join(lines)
-
-
-def inject_param_text(doctext, inject_params):
-    doclines = doctext.splitlines()
-    lines = []
-
-    to_inject = None
-    while doclines:
-        line = doclines.pop(0)
-        if to_inject is None:
-            m = re.match(r"(\s+):param (.+?):", line)
-            if m:
-                param = m.group(2)
-                if param in inject_params:
-                    # default indent to that of :param: plus one
-                    indent = " " * len(m.group(1)) + " "
-
-                    # but if the next line has text, use that line's
-                    # indentntation
-                    if doclines:
-                        m2 = re.match(r"(\s+)\S", doclines[0])
-                        if m2:
-                            indent = " " * len(m2.group(1))
-
-                    to_inject = indent + inject_params[param]
-        elif not line.rstrip():
-            lines.append(line)
-            lines.append(to_inject)
-            lines.append("\n")
-            to_inject = None
-        lines.append(line)
-
-    return "\n".join(lines)

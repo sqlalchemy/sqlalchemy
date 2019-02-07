@@ -50,7 +50,6 @@ from sqlalchemy.orm.util import join
 from sqlalchemy.orm.util import with_parent
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators
-from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -2138,18 +2137,10 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         ua = aliased(User)
         q = s.query(ua).order_by("email_ad")
 
-        def go():
-            self.assert_compile(
-                q,
-                "SELECT (SELECT max(addresses.email_address) AS max_1 "
-                "FROM addresses WHERE addresses.user_id = users_1.id) "
-                "AS anon_1, users_1.id AS users_1_id, "
-                "users_1.name AS users_1_name FROM users AS users_1 "
-                "ORDER BY email_ad",
-            )
-
-        assert_warnings(
-            go, ["Can't resolve label reference 'email_ad'"], regex=True
+        assert_raises_message(
+            sa.exc.CompileError,
+            "Can't resolve label reference for ORDER BY / GROUP BY",
+            q.with_labels().statement.compile,
         )
 
     def test_order_by_column_labeled_prop_attr_aliased_one(self):
@@ -3973,14 +3964,12 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_fulltext(self):
         User = self.classes.User
 
-        with expect_warnings("Textual SQL"):
-            eq_(
-                create_session()
-                .query(User)
-                .from_statement("select * from users order by id")
-                .all(),
-                [User(id=7), User(id=8), User(id=9), User(id=10)],
-            )
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Textual SQL expression",
+            create_session().query(User).from_statement,
+            "select * from users order by id",
+        )
 
         eq_(
             create_session()
@@ -4027,15 +4016,13 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_binds_coerce(self):
         User = self.classes.User
 
-        with expect_warnings("Textual SQL expression"):
-            eq_(
-                create_session()
-                .query(User)
-                .filter("id in (:id1, :id2)")
-                .params(id1=8, id2=9)
-                .all(),
-                [User(id=8), User(id=9)],
-            )
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            r"Textual SQL expression 'id in \(:id1, :id2\)' "
+            "should be explicitly declared",
+            create_session().query(User).filter,
+            "id in (:id1, :id2)",
+        )
 
     def test_as_column(self):
         User = self.classes.User
@@ -4141,47 +4128,34 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # the queries here are again "invalid" from a SQL perspective, as the
         # "name" field isn't matched up to anything.
         #
-        with expect_warnings("Can't resolve label reference 'name';"):
-            self.assert_compile(
-                s.query(User)
-                .options(joinedload("addresses"))
-                .order_by(desc("name"))
-                .limit(1),
-                "SELECT anon_1.users_id AS anon_1_users_id, "
-                "anon_1.users_name AS anon_1_users_name, "
-                "addresses_1.id AS addresses_1_id, "
-                "addresses_1.user_id AS addresses_1_user_id, "
-                "addresses_1.email_address AS addresses_1_email_address "
-                "FROM (SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users ORDER BY users.name "
-                "DESC LIMIT :param_1) AS anon_1 "
-                "LEFT OUTER JOIN addresses AS addresses_1 "
-                "ON anon_1.users_id = addresses_1.user_id "
-                "ORDER BY name DESC, addresses_1.id",
-            )
+
+        q = (
+            s.query(User)
+            .options(joinedload("addresses"))
+            .order_by(desc("name"))
+            .limit(1)
+        )
+        assert_raises_message(
+            sa_exc.CompileError,
+            "Can't resolve label reference for ORDER BY / GROUP BY.",
+            q.with_labels().statement.compile,
+        )
 
     def test_order_by_w_eager_two(self):
         User = self.classes.User
         s = create_session()
 
-        with expect_warnings("Can't resolve label reference 'name';"):
-            self.assert_compile(
-                s.query(User)
-                .options(joinedload("addresses"))
-                .order_by("name")
-                .limit(1),
-                "SELECT anon_1.users_id AS anon_1_users_id, "
-                "anon_1.users_name AS anon_1_users_name, "
-                "addresses_1.id AS addresses_1_id, "
-                "addresses_1.user_id AS addresses_1_user_id, "
-                "addresses_1.email_address AS addresses_1_email_address "
-                "FROM (SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users ORDER BY users.name "
-                "LIMIT :param_1) AS anon_1 "
-                "LEFT OUTER JOIN addresses AS addresses_1 "
-                "ON anon_1.users_id = addresses_1.user_id "
-                "ORDER BY name, addresses_1.id",
-            )
+        q = (
+            s.query(User)
+            .options(joinedload("addresses"))
+            .order_by("name")
+            .limit(1)
+        )
+        assert_raises_message(
+            sa_exc.CompileError,
+            "Can't resolve label reference for ORDER BY / GROUP BY.",
+            q.with_labels().statement.compile,
+        )
 
     def test_order_by_w_eager_three(self):
         User = self.classes.User
@@ -4266,28 +4240,18 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             .limit(1)
             .offset(0)
         )
-        with expect_warnings(
-            "Can't resolve label reference 'email_address desc'"
-        ):
-            eq_(
-                [
-                    (
-                        User(
-                            id=7,
-                            orders=[Order(id=1), Order(id=3), Order(id=5)],
-                            addresses=[Address(id=1)],
-                        ),
-                        "jack@bean.com",
-                    )
-                ],
-                result.all(),
-            )
 
-
-class TextWarningTest(QueryTest, AssertsCompiledSQL):
-    def _test(self, fn, arg, offending_clause, expected):
         assert_raises_message(
-            sa.exc.SAWarning,
+            sa_exc.CompileError,
+            "Can't resolve label reference for ORDER BY / GROUP BY",
+            result.all,
+        )
+
+
+class TextErrorTest(QueryTest, AssertsCompiledSQL):
+    def _test(self, fn, arg, offending_clause):
+        assert_raises_message(
+            sa.exc.ArgumentError,
             r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
             r"explicitly declared (?:with|as) text\(%(stmt)r\)"
             % {"stmt": util.ellipses_string(offending_clause)},
@@ -4295,33 +4259,18 @@ class TextWarningTest(QueryTest, AssertsCompiledSQL):
             arg,
         )
 
-        with expect_warnings("Textual "):
-            stmt = fn(arg)
-            self.assert_compile(stmt, expected)
-
     def test_filter(self):
         User = self.classes.User
-        self._test(
-            Session().query(User.id).filter,
-            "myid == 5",
-            "myid == 5",
-            "SELECT users.id AS users_id FROM users WHERE myid == 5",
-        )
+        self._test(Session().query(User.id).filter, "myid == 5", "myid == 5")
 
     def test_having(self):
         User = self.classes.User
-        self._test(
-            Session().query(User.id).having,
-            "myid == 5",
-            "myid == 5",
-            "SELECT users.id AS users_id FROM users HAVING myid == 5",
-        )
+        self._test(Session().query(User.id).having, "myid == 5", "myid == 5")
 
     def test_from_statement(self):
         User = self.classes.User
         self._test(
             Session().query(User.id).from_statement,
-            "select id from user",
             "select id from user",
             "select id from user",
         )

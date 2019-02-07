@@ -101,6 +101,7 @@ from .elements import _expression_literal_as_text  # noqa
 from .elements import _is_column  # noqa
 from .elements import _labeled  # noqa
 from .elements import _literal_as_binds  # noqa
+from .elements import _literal_as_column  # noqa
 from .elements import _literal_as_label_reference  # noqa
 from .elements import _literal_as_text  # noqa
 from .elements import _only_column_elements  # noqa

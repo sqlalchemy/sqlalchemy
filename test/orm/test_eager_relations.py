@@ -32,7 +32,6 @@ from sqlalchemy.sql import operators
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -343,16 +342,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             .order_by("email_address")
         )
 
-        with expect_warnings("Can't resolve label reference 'email_address'"):
-            self.assert_compile(
-                q,
-                "SELECT users.id AS users_id, users.name AS users_name, "
-                "addresses_1.id AS addresses_1_id, addresses_1.user_id AS "
-                "addresses_1_user_id, addresses_1.email_address AS "
-                "addresses_1_email_address FROM users LEFT OUTER JOIN "
-                "addresses AS addresses_1 ON users.id = addresses_1.user_id "
-                "ORDER BY email_address",
-            )
+        assert_raises_message(
+            sa.exc.CompileError,
+            "Can't resolve label reference for ORDER BY / GROUP BY.",
+            q.all,
+        )
 
     def test_deferred_fk_col(self):
         users, Dingaling, User, dingalings, Address, addresses = (

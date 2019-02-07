@@ -31,11 +31,13 @@ from .elements import _clause_element_as_expr
 from .elements import _clone
 from .elements import _cloned_difference
 from .elements import _cloned_intersection
+from .elements import _document_text_coercion
 from .elements import _expand_cloned
 from .elements import _interpret_as_column_or_from
 from .elements import _literal_and_labels_as_label_reference
 from .elements import _literal_as_label_reference
 from .elements import _literal_as_text
+from .elements import _no_text_coercion
 from .elements import _select_iterables
 from .elements import and_
 from .elements import BindParameter
@@ -43,7 +45,6 @@ from .elements import ClauseElement
 from .elements import ClauseList
 from .elements import Grouping
 from .elements import literal_column
-from .elements import TextClause
 from .elements import True_
 from .elements import UnaryExpression
 from .. import exc
@@ -55,14 +56,7 @@ def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
     if insp is None:
         if isinstance(element, util.string_types):
-            util.warn_limited(
-                "Textual SQL FROM expression %(expr)r should be "
-                "explicitly declared as text(%(expr)r), "
-                "or use table(%(expr)r) for more specificity",
-                {"expr": util.ellipses_string(element)},
-            )
-
-            return TextClause(util.text_type(element))
+            _no_text_coercion(element)
     try:
         return insp.selectable
     except AttributeError:
@@ -266,6 +260,11 @@ class HasPrefixes(object):
     _prefixes = ()
 
     @_generative
+    @_document_text_coercion(
+        "expr",
+        ":meth:`.HasPrefixes.prefix_with`",
+        ":paramref:`.HasPrefixes.prefix_with.*expr`",
+    )
     def prefix_with(self, *expr, **kw):
         r"""Add one or more expressions following the statement keyword, i.e.
         SELECT, INSERT, UPDATE, or DELETE. Generative.
@@ -297,7 +296,10 @@ class HasPrefixes(object):
 
     def _setup_prefixes(self, prefixes, dialect=None):
         self._prefixes = self._prefixes + tuple(
-            [(_literal_as_text(p, warn=False), dialect) for p in prefixes]
+            [
+                (_literal_as_text(p, allow_coercion_to_text=True), dialect)
+                for p in prefixes
+            ]
         )
 
 
@@ -305,6 +307,11 @@ class HasSuffixes(object):
     _suffixes = ()
 
     @_generative
+    @_document_text_coercion(
+        "expr",
+        ":meth:`.HasSuffixes.suffix_with`",
+        ":paramref:`.HasSuffixes.suffix_with.*expr`",
+    )
     def suffix_with(self, *expr, **kw):
         r"""Add one or more expressions following the statement as a whole.
 
@@ -335,7 +342,10 @@ class HasSuffixes(object):
 
     def _setup_suffixes(self, suffixes, dialect=None):
         self._suffixes = self._suffixes + tuple(
-            [(_literal_as_text(p, warn=False), dialect) for p in suffixes]
+            [
+                (_literal_as_text(p, allow_coercion_to_text=True), dialect)
+                for p in suffixes
+            ]
         )
 
 
