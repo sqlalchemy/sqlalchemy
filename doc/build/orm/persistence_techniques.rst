@@ -12,14 +12,17 @@ expression instead of a literal value. It's especially useful for atomic
 updates, calling stored procedures, etc. All you do is assign an expression to
 an attribute::
 
-    class SomeClass(object):
-        pass
-    mapper(SomeClass, some_table)
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        # ...
+
+        value = Column(Integer)
 
     someobject = session.query(SomeClass).get(5)
 
     # set 'value' attribute to a SQL expression adding one
-    someobject.value = some_table.c.value + 1
+    someobject.value = SomeClass.value + 1
 
     # issues "UPDATE some_table SET value=value+1"
     session.commit()
