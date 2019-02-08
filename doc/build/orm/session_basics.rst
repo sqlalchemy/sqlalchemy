@@ -714,8 +714,11 @@ Additionally, autoflush can be temporarily disabled by setting the
     mysession = Session()
     mysession.autoflush = False
 
-Some autoflush-disable recipes are available at `DisableAutoFlush
-<http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DisableAutoflush>`_.
+More conveniently, it can be turned off within a context managed block using :attr:`.Session.no_autoflush`::
+
+    with mysession.no_autoflush:
+        mysession.add(some_object)
+        mysession.flush()
 
 The flush process *always* occurs within a transaction, even if the
 :class:`~sqlalchemy.orm.session.Session` has been configured with
