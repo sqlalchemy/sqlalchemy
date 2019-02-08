@@ -18,7 +18,6 @@ the database driver returns an incorrect type.
   ...               Column('login', String(32))
   ...              )
 
-
 SQLAlchemy will use the ``Integer`` and ``String(32)`` type
 information when issuing a ``CREATE TABLE`` statement and will use it
 again when reading back rows ``SELECTed`` from the database.

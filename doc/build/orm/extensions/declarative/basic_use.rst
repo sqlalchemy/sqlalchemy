@@ -70,6 +70,15 @@ added to the underlying :class:`.Table` and
 Classes which are constructed using declarative can interact freely
 with classes that are mapped explicitly with :func:`.mapper`.
 
+
+.. sidebar:: Using MyPy with SQLAlchemy models
+
+    If you are using PEP 484 static type checkers for Python, a `MyPy <http://mypy-lang.org/>`_
+    plugin is included with
+    `type stubs for SQLAlchemy <https://github.com/dropbox/sqlalchemy-stubs>`_.  The plugin
+    is tailored towards SQLAlchemy declarative models.
+
+
 It is recommended, though not required, that all tables
 share the same underlying :class:`~sqlalchemy.schema.MetaData` object,
 so that string-configured :class:`~sqlalchemy.schema.ForeignKey`
