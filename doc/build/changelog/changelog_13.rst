@@ -12,7 +12,106 @@
 
 .. changelog::
     :version: 1.3.0b3
-    :include_notes_from: unreleased_13
+    :released: February 8, 2019
+
+    .. change::
+       :tags: bug, ext
+       :tickets: 2642
+
+       Implemented a more comprehensive assignment operation (e.g. "bulk replace")
+       when using association proxy with sets or dictionaries.  Fixes the problem
+       of redundant proxy objects being created to replace the old ones, which
+       leads to excessive events and SQL and in the case of unique constraints
+       will cause the flush to fail.
+
+       .. seealso::
+
+          :ref:`change_2642`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4473
+
+        Fixed issue where using an uppercase name for an index type (e.g. GIST,
+        BTREE, etc. ) or an EXCLUDE constraint would treat it as an identifier to
+        be quoted, rather than rendering it as is. The new behavior converts these
+        types to lowercase and ensures they contain only valid SQL characters.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4469
+
+       Improved the behavior of :func:`.orm.with_polymorphic` in conjunction with
+       loader options, in particular wildcard operations as well as
+       :func:`.orm.load_only`.  The polymorphic object will be more accurately
+       targeted so that column-level options on the entity will correctly take
+       effect.The issue is a continuation of the same kinds of things fixed in
+       :ticket:`4468`.
+
+
+    .. change::
+       :tags: bug, sql
+       :tickets: 4481
+
+       Fully removed the behavior of strings passed directly as components of a
+       :func:`.select` or :class:`.Query` object being coerced to :func:`.text`
+       constructs automatically; the warning that has been emitted is now an
+       ArgumentError or in the case of order_by() / group_by() a CompileError.
+       This has emitted a warning since version 1.0 however its presence continues
+       to create concerns for the potential of mis-use of this behavior.
+
+       Note that public CVEs have been posted for order_by() / group_by() which
+       are resolved by this commit:  CVE-2019-7164  CVE-2019-7548
+
+
+       .. seealso::
+
+        :ref:`change_4481`
+
+    .. change::
+       :tags: bug, sql
+       :tickets: 4467
+
+       Quoting is applied to :class:`.Function` names, those which are usually but
+       not necessarily generated from the :attr:`.sql.func` construct,  at compile
+       time if they contain illegal characters, such as spaces or punctuation. The
+       names are as before treated as case insensitive however, meaning if the
+       names contain uppercase or mixed case characters, that alone does not
+       trigger quoting. The case insensitivity is currently maintained for
+       backwards compatibility.
+
+
+    .. change::
+       :tags: bug, sql
+       :tickets: 4481
+
+       Added "SQL phrase validation" to key DDL phrases that are accepted as plain
+       strings, including :paramref:`.ForeignKeyConstraint.on_delete`,
+       :paramref:`.ForeignKeyConstraint.on_update`,
+       :paramref:`.ExcludeConstraint.using`,
+       :paramref:`.ForeignKeyConstraint.initially`, for areas where a series of SQL
+       keywords only are expected.Any non-space characters that suggest the phrase
+       would need to be quoted will raise a :class:`.CompileError`.   This change
+       is related to the series of changes committed as part of :ticket:`4481`.
+
+    .. change::
+       :tags: bug, orm, declarative
+       :tickets: 4470
+
+       Added some helper exceptions that invoke when a mapping based on
+       :class:`.AbstractConcreteBase`, :class:`.DeferredReflection`, or
+       :class:`.AutoMap` is used before the mapping is ready to be used, which
+       contain descriptive information on the class, rather than falling through
+       into other failure modes that are less informative.
+
+
+    .. change::
+       :tags: change, tests
+       :tickets: 4460
+
+       The test system has removed support for Nose, which is unmaintained for
+       several years and is producing warnings under Python 3. The test suite is
+       currently standardized on Pytest.  Pull request courtesy Parth Shandilya.
 
 .. changelog::
     :version: 1.3.0b2
