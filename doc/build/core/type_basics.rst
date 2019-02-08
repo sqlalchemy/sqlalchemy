@@ -26,6 +26,9 @@ Functions that accept a type (such as :func:`~sqlalchemy.schema.Column`) will
 typically accept a type class or instance; ``Integer`` is equivalent
 to ``Integer()`` with no construction arguments in this case.
 
+If you are using PEP 484 static type checkers for Python, you can use
+`type stubs for SQLAlchemy (alpha) <https://github.com/dropbox/sqlalchemy-stubs>`_.
+
 .. _types_generic:
 
 Generic Types
