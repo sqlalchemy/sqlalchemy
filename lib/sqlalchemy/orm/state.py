@@ -880,11 +880,20 @@ class AttributeState(object):
 
     @property
     def history(self):
-        """Return the current pre-flush change history for
+        """Return the current **pre-flush** change history for
         this attribute, via the :class:`.History` interface.
 
         This method will **not** emit loader callables if the value of the
         attribute is unloaded.
+
+        .. note::
+
+            The attribute history system tracks changes on a **per flush
+            basis**. Each time the :class:`.Session` is flushed, the history
+            of each attribute is reset to empty.   The :class:`.Session` by
+            default autoflushes each time a :class:`.Query` is invoked.  For
+            options on how to control this, see :ref:`session_flushing`.
+
 
         .. seealso::
 
@@ -897,11 +906,19 @@ class AttributeState(object):
         return self.state.get_history(self.key, PASSIVE_NO_INITIALIZE)
 
     def load_history(self):
-        """Return the current pre-flush change history for
+        """Return the current **pre-flush** change history for
         this attribute, via the :class:`.History` interface.
 
         This method **will** emit loader callables if the value of the
         attribute is unloaded.
+
+        .. note::
+
+            The attribute history system tracks changes on a **per flush
+            basis**. Each time the :class:`.Session` is flushed, the history
+            of each attribute is reset to empty.   The :class:`.Session` by
+            default autoflushes each time a :class:`.Query` is invoked.  For
+            options on how to control this, see :ref:`session_flushing`.
 
         .. seealso::
 

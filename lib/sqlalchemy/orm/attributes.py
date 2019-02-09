@@ -1724,6 +1724,17 @@ def get_history(obj, key, passive=PASSIVE_OFF):
     """Return a :class:`.History` record for the given object
     and attribute key.
 
+    This is the **pre-flush** history for a given attribute, which is
+    reset each time the :class:`.Session` flushes changes to the
+    current database transaction.
+
+    .. note::
+
+        Prefer to use the :attr:`.AttributeState.history` and
+        :meth:`.AttributeState.load_history` accessors to retrieve the
+        :class:`.History` for instance attributes.
+
+
     :param obj: an object whose class is instrumented by the
       attributes package.
 
@@ -1734,6 +1745,13 @@ def get_history(obj, key, passive=PASSIVE_OFF):
        bitflag attribute, which defaults to the symbol
        :attr:`.PASSIVE_OFF` indicating all necessary SQL
        should be emitted.
+
+    .. seealso::
+
+        :attr:`.AttributeState.history`
+
+        :meth:`.AttributeState.load_history` - retrieve history
+        using loader callables if the value is not locally present.
 
     """
     if passive is True:
