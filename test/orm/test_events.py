@@ -2004,6 +2004,15 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             [call.pending_to_persistent(sess, u1), call.flag_checked(u1)],
         )
 
+        u1.name = 'u2'
+        sess.flush()
+
+        # event was not called again
+        eq_(
+            listener.mock_calls,
+            [call.pending_to_persistent(sess, u1), call.flag_checked(u1)],
+        )
+
     def test_pending_to_persistent_del(self):
         sess, User, start_events = self._fixture()
 

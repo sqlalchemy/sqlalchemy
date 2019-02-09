@@ -1827,7 +1827,14 @@ class Session(_SessionClassMethods):
             states, self, to_transient=to_transient
         )
 
-    def _register_newly_persistent(self, states):
+    def _register_persistent(self, states):
+        """Register all persistent objects from a flush.
+
+        This is used both for pending objects moving to the persistent
+        state as well as already persistent objects.
+
+        """
+
         pending_to_persistent = self.dispatch.pending_to_persistent or None
         for state in states:
             mapper = _state_mapper(state)
@@ -1871,6 +1878,9 @@ class Session(_SessionClassMethods):
                     )
                     state.key = instance_key
 
+                # there can be an existing state in the identity map
+                # that is replaced when the primary keys of two instances
+                # are swapped; see test/orm/test_naturalpks.py -> test_reverse
                 self.identity_map.replace(state)
                 state._orphaned_outside_of_session = False
 
@@ -1881,7 +1891,7 @@ class Session(_SessionClassMethods):
         self._register_altered(states)
 
         if pending_to_persistent is not None:
-            for state in states:
+            for state in states.intersection(self._new):
                 pending_to_persistent(self, state.obj())
 
         # remove from new last, might be the last strong ref

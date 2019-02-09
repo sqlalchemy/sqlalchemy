@@ -440,7 +440,7 @@ class UOWTransaction(object):
         if isdel:
             self.session._remove_newly_deleted(isdel)
         if other:
-            self.session._register_newly_persistent(other)
+            self.session._register_persistent(other)
 
 
 class IterateMappersMixin(object):
