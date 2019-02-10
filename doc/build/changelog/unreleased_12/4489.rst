@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4489
+
+   Fixed fairly simple but critical issue where the
+   :meth:`.SessionEvents.pending_to_persistent` event would be invoked for
+   objects not just when they move from pending to persistent, but when they
+   were also already persistent and just being updated, thus causing the event
+   to be invoked for all objects on every update.
