@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, mysql
+   :tickets: 4492
+
+   Fixed a second regression caused by :ticket:`4344` (the first was
+   :ticket:`4361`), which works around MySQL issue 88718, where the lower
+   casing function used was not correct for Python 2 with OSX/Windows casing
+   conventions, which would then raise ``TypeError``.  Full coverage has been
+   added to this logic so that every codepath is exercised in a mock style for
+   all three casing conventions on all versions of Python. MySQL 8.0 has
+   meanwhile fixed issue 88718 so the workaround is only applies to a
+   particular span of MySQL 8.0 versions.

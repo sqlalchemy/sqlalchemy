@@ -27,6 +27,7 @@ from sqlalchemy import TIMESTAMP
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy import UniqueConstraint
+from sqlalchemy import util
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import reflection as _reflection
 from sqlalchemy.schema import CreateIndex
@@ -36,6 +37,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 
 
 class TypeReflectionTest(fixtures.TestBase):
@@ -756,6 +758,117 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             insp.get_indexes("add_ix"),
             [{"name": "foo_idx", "column_names": ["x"], "unique": False}],
         )
+
+    def _bug_88718_casing_0(self):
+        fkeys_casing_0 = [
+            {
+                "name": "FK_PlaylistTTrackId",
+                "constrained_columns": ["TTrackID"],
+                "referred_schema": "test_schema",
+                "referred_table": "Track",
+                "referred_columns": ["trackid"],
+                "options": {},
+            },
+            {
+                "name": "FK_PlaylistTrackId",
+                "constrained_columns": ["TrackID"],
+                "referred_schema": None,
+                "referred_table": "Track",
+                "referred_columns": ["trackid"],
+                "options": {},
+            },
+        ]
+        ischema_casing_0 = [
+            ("test", "Track", "TrackID"),
+            ("test_schema", "Track", "TrackID"),
+        ]
+        return fkeys_casing_0, ischema_casing_0
+
+    def _bug_88718_casing_1(self):
+        fkeys_casing_1 = [
+            {
+                "name": "FK_PlaylistTTrackId",
+                "constrained_columns": ["TTrackID"],
+                "referred_schema": "test_schema",
+                "referred_table": "Track",
+                "referred_columns": ["trackid"],
+                "options": {},
+            },
+            {
+                "name": "FK_PlaylistTrackId",
+                "constrained_columns": ["TrackID"],
+                "referred_schema": None,
+                "referred_table": "Track",
+                "referred_columns": ["trackid"],
+                "options": {},
+            },
+        ]
+        ischema_casing_1 = [
+            (util.u("test"), util.u("Track"), "TrackID"),
+            (util.u("test_schema"), util.u("Track"), "TrackID"),
+        ]
+        return fkeys_casing_1, ischema_casing_1
+
+    def _bug_88718_casing_2(self):
+        fkeys_casing_2 = [
+            {
+                "name": "FK_PlaylistTTrackId",
+                "constrained_columns": ["TTrackID"],
+                "referred_schema": "test_schema",
+                "referred_table": "Track",
+                "referred_columns": ["trackid"],
+                "options": {},
+            },
+            {
+                "name": "FK_PlaylistTrackId",
+                "constrained_columns": ["TrackID"],
+                "referred_schema": None,
+                "referred_table": "Track",
+                "referred_columns": ["trackid"],
+                "options": {},
+            },
+        ]
+        ischema_casing_2 = [
+            ("test", "Track", "TrackID"),
+            ("test_schema", "Track", "TrackID"),
+        ]
+        return fkeys_casing_2, ischema_casing_2
+
+    def test_correct_for_mysql_bug_88718(self):
+        dialect = mysql.dialect()
+
+        for casing, (fkeys, ischema) in [
+            (0, self._bug_88718_casing_0()),
+            (1, self._bug_88718_casing_1()),
+            (2, self._bug_88718_casing_2()),
+        ]:
+            dialect._casing = casing
+            dialect.default_schema_name = "test"
+            connection = mock.Mock(
+                dialect=dialect, execute=lambda stmt, **params: ischema
+            )
+            dialect._correct_for_mysql_bug_88718(fkeys, connection)
+            eq_(
+                fkeys,
+                [
+                    {
+                        "name": "FK_PlaylistTTrackId",
+                        "constrained_columns": ["TTrackID"],
+                        "referred_schema": "test_schema",
+                        "referred_table": "Track",
+                        "referred_columns": ["TrackID"],
+                        "options": {},
+                    },
+                    {
+                        "name": "FK_PlaylistTrackId",
+                        "constrained_columns": ["TrackID"],
+                        "referred_schema": None,
+                        "referred_table": "Track",
+                        "referred_columns": ["TrackID"],
+                        "options": {},
+                    },
+                ],
+            )
 
     @testing.provide_metadata
     def test_case_sensitive_column_constraint_reflection(self):
