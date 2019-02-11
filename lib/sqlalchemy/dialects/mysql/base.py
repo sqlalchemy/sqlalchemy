@@ -2556,7 +2556,7 @@ class MySQLDialect(default.DefaultDialect):
         col_tuples = [
             (
                 lower(rec["referred_schema"] or default_schema_name),
-                lower(rec["referred_table"]),
+                lower(str(rec["referred_table"])),
                 col_name,
             )
             for rec in fkeys
@@ -2598,7 +2598,7 @@ class MySQLDialect(default.DefaultDialect):
                             lower(
                                 fkey["referred_schema"] or default_schema_name
                             ),
-                            lower(fkey["referred_table"]),
+                            lower(str(fkey["referred_table"])),
                         )
                     ][col.lower()]
                     for col in fkey["referred_columns"]
