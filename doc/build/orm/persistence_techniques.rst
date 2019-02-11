@@ -32,6 +32,44 @@ flush/commit operation, the ``value`` attribute on ``someobject`` above is
 expired, so that when next accessed the newly generated value will be loaded
 from the database.
 
+The feature also has conditional support to work in conjunction with
+primary key columns.  A database that supports RETURNING, e.g. PostgreSQL,
+Oracle, or SQL Server, or as a special case when using SQLite with the pysqlite
+driver and a single auto-increment column, a SQL expression may be assigned
+to a primary key column as well.  This allows both the SQL expression to
+be evaluated, as well as allows any server side triggers that modify the
+primary key value on INSERT, to be successfully retrieved by the ORM as
+part of the object's primary key::
+
+
+    class Foo(Base):
+        __tablename__ = 'foo'
+        pk = Column(Integer, primary_key=True)
+        bar = Column(Integer)
+
+    e = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    Base.metadata.create_all(e)
+
+    session = Session(e)
+
+    foo = Foo(pk=sql.select([sql.func.coalesce(sql.func.max(Foo.pk) + 1, 1)])
+    session.add(foo)
+    session.commit()
+
+On PostgreSQL, the above :class:`.Session` will emit the following INSERT:
+
+.. sourcecode:: sql
+
+    INSERT INTO foo (foopk, bar) VALUES
+    ((SELECT coalesce(max(foo.foopk) + %(max_1)s, %(coalesce_2)s) AS coalesce_1
+    FROM foo), %(bar)s) RETURNING foo.foopk
+
+.. versionadded:: 1.3
+    SQL expressions can now be passed to a primary key column during an ORM
+    flush; if the database supports RETURNING, or if pysqlite is in use, the
+    ORM will be able to retrieve the server-generated value as the value
+    of the primary key attribute.
+
 .. _session_sql_expressions:
 
 Using SQL Expressions with Sessions

@@ -16,6 +16,7 @@ from sqlalchemy import table
 from sqlalchemy import text
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import default
 from sqlalchemy.sql import crud
 from sqlalchemy.testing import assert_raises
@@ -1194,6 +1195,96 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "(%(id_m2)s, %(data_m2)s, %(foo_m2)s)",
             checkparams=checkparams,
             dialect=postgresql.dialect(),
+        )
+
+    def test_sql_expression_pk_autoinc_lastinserted(self):
+        # test that postfetch isn't invoked for a SQL expression
+        # in a primary key column.  the DB either needs to support a lastrowid
+        # that can return it, or RETURNING.  [ticket:3133]
+        metadata = MetaData()
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String),
+        )
+
+        stmt = table.insert().return_defaults().values(id=func.foobar())
+        compiled = stmt.compile(dialect=sqlite.dialect(), column_keys=["data"])
+        eq_(compiled.postfetch, [])
+        eq_(compiled.returning, [])
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (id, data) VALUES " "(foobar(), ?)",
+            checkparams={"data": "foo"},
+            params={"data": "foo"},
+            dialect=sqlite.dialect(),
+        )
+
+    def test_sql_expression_pk_autoinc_returning(self):
+        # test that return_defaults() works with a primary key where we are
+        # sending a SQL expression, and we need to get the server-calculated
+        # value back.  [ticket:3133]
+        metadata = MetaData()
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String),
+        )
+
+        stmt = table.insert().return_defaults().values(id=func.foobar())
+        returning_dialect = postgresql.dialect()
+        returning_dialect.implicit_returning = True
+        compiled = stmt.compile(
+            dialect=returning_dialect, column_keys=["data"]
+        )
+        eq_(compiled.postfetch, [])
+        eq_(compiled.returning, [table.c.id])
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (id, data) VALUES "
+            "(foobar(), %(data)s) RETURNING sometable.id",
+            checkparams={"data": "foo"},
+            params={"data": "foo"},
+            dialect=returning_dialect,
+        )
+
+    def test_sql_expression_pk_noautoinc_returning(self):
+        # test that return_defaults() works with a primary key where we are
+        # sending a SQL expression, and we need to get the server-calculated
+        # value back.  [ticket:3133]
+        metadata = MetaData()
+        table = Table(
+            "sometable",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                autoincrement=False,
+                primary_key=True,
+            ),
+            Column("data", String),
+        )
+
+        stmt = table.insert().return_defaults().values(id=func.foobar())
+        returning_dialect = postgresql.dialect()
+        returning_dialect.implicit_returning = True
+        compiled = stmt.compile(
+            dialect=returning_dialect, column_keys=["data"]
+        )
+        eq_(compiled.postfetch, [])
+        eq_(compiled.returning, [table.c.id])
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (id, data) VALUES "
+            "(foobar(), %(data)s) RETURNING sometable.id",
+            checkparams={"data": "foo"},
+            params={"data": "foo"},
+            dialect=returning_dialect,
         )
 
     def test_python_fn_default(self):

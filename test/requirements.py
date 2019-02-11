@@ -350,6 +350,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def sql_expressions_inserted_as_primary_key(self):
+        return only_if([self.returning, self.sqlite])
+
+    @property
     def correlated_outer_joins(self):
         """Target must support an outer join to a subquery which
         correlates to the parent."""

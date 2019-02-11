@@ -10,6 +10,7 @@ from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
@@ -499,6 +500,19 @@ class ClauseAttributesTest(fixtures.MappedTest):
             Column("value", Boolean),
         )
 
+        Table(
+            "pk_t",
+            metadata,
+            Column(
+                "p_id",
+                Integer,
+                key="id",
+                autoincrement=True,
+                primary_key=True,
+            ),
+            Column("data", String(30)),
+        )
+
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
@@ -507,12 +521,17 @@ class ClauseAttributesTest(fixtures.MappedTest):
         class HasBoolean(cls.Comparable):
             pass
 
+        class PkDefault(cls.Comparable):
+            pass
+
     @classmethod
     def setup_mappers(cls):
         User, users_t = cls.classes.User, cls.tables.users_t
         HasBoolean, boolean_t = cls.classes.HasBoolean, cls.tables.boolean_t
+        PkDefault, pk_t = cls.classes.PkDefault, cls.tables.pk_t
         mapper(User, users_t)
         mapper(HasBoolean, boolean_t)
+        mapper(PkDefault, pk_t)
 
     def test_update(self):
         User = self.classes.User
@@ -567,6 +586,19 @@ class ClauseAttributesTest(fixtures.MappedTest):
         session.flush()
 
         assert (u.counter == 5) is True
+
+    @testing.requires.sql_expressions_inserted_as_primary_key
+    def test_insert_pk_expression(self):
+        PkDefault = self.classes.PkDefault
+
+        pk = PkDefault(id=literal(5) + 10, data="some data")
+        session = Session()
+        session.add(pk)
+        session.flush()
+
+        eq_(pk.id, 15)
+        session.commit()
+        eq_(pk.id, 15)
 
     def test_update_special_comparator(self):
         HasBoolean = self.classes.HasBoolean
