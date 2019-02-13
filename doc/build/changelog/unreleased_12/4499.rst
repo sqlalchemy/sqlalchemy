@@ -1,0 +1,8 @@
+.. change::
+   :tags: bug, mssql
+   :tickets: 4499
+
+   Fixed bug where the SQL Server "IDENTITY_INSERT" logic that allows an INSERT
+   to proceed with an explicit value on an IDENTITY column was not detecting
+   the case where :meth:`.Insert.values` were used with a dictionary that
+   contained a :class:`.Column` as key and a SQL expression as a value.

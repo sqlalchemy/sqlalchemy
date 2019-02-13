@@ -476,6 +476,8 @@ class ForeignPKTest(fixtures.MappedTest):
 
 
 class ClauseAttributesTest(fixtures.MappedTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
