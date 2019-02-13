@@ -1380,13 +1380,21 @@ class MSExecutionContext(default.DefaultExecutionContext):
                     and (
                         (
                             self.compiled.statement._has_multi_parameters
-                            and seq_column.key
-                            in self.compiled.statement.parameters[0]
+                            and (
+                                seq_column.key
+                                in self.compiled.statement.parameters[0]
+                                or seq_column
+                                in self.compiled.statement.parameters[0]
+                            )
                         )
                         or (
                             not self.compiled.statement._has_multi_parameters
-                            and seq_column.key
-                            in self.compiled.statement.parameters
+                            and (
+                                seq_column.key
+                                in self.compiled.statement.parameters
+                                or seq_column
+                                in self.compiled.statement.parameters
+                            )
                         )
                     )
                 )

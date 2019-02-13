@@ -7,6 +7,7 @@ from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import PrimaryKeyConstraint
@@ -172,36 +173,68 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_execute(self):
-        cattable.insert().values(id=9, description="Python").execute()
+        with testing.db.connect() as conn:
+            conn.execute(cattable.insert().values(id=9, description="Python"))
 
-        cats = cattable.select().order_by(cattable.c.id).execute()
-        eq_([(9, "Python")], list(cats))
+            cats = conn.execute(cattable.select().order_by(cattable.c.id))
+            eq_([(9, "Python")], list(cats))
 
-        result = cattable.insert().values(description="PHP").execute()
-        eq_([10], result.inserted_primary_key)
-        lastcat = cattable.select().order_by(desc(cattable.c.id)).execute()
-        eq_((10, "PHP"), lastcat.first())
+            result = conn.execute(cattable.insert().values(description="PHP"))
+            eq_([10], result.inserted_primary_key)
+            lastcat = conn.execute(
+                cattable.select().order_by(desc(cattable.c.id))
+            )
+            eq_((10, "PHP"), lastcat.first())
 
     def test_executemany(self):
-        cattable.insert().execute(
-            [
-                {"id": 89, "description": "Python"},
-                {"id": 8, "description": "Ruby"},
-                {"id": 3, "description": "Perl"},
-                {"id": 1, "description": "Java"},
-            ]
-        )
-        cats = cattable.select().order_by(cattable.c.id).execute()
-        eq_(
-            [(1, "Java"), (3, "Perl"), (8, "Ruby"), (89, "Python")], list(cats)
-        )
-        cattable.insert().execute(
-            [{"description": "PHP"}, {"description": "Smalltalk"}]
-        )
-        lastcats = (
-            cattable.select().order_by(desc(cattable.c.id)).limit(2).execute()
-        )
-        eq_([(91, "Smalltalk"), (90, "PHP")], list(lastcats))
+        with testing.db.connect() as conn:
+            conn.execute(
+                cattable.insert(),
+                [
+                    {"id": 89, "description": "Python"},
+                    {"id": 8, "description": "Ruby"},
+                    {"id": 3, "description": "Perl"},
+                    {"id": 1, "description": "Java"},
+                ],
+            )
+            cats = conn.execute(cattable.select().order_by(cattable.c.id))
+            eq_(
+                [(1, "Java"), (3, "Perl"), (8, "Ruby"), (89, "Python")],
+                list(cats),
+            )
+            conn.execute(
+                cattable.insert(),
+                [{"description": "PHP"}, {"description": "Smalltalk"}],
+            )
+            lastcats = conn.execute(
+                cattable.select().order_by(desc(cattable.c.id)).limit(2)
+            )
+            eq_([(91, "Smalltalk"), (90, "PHP")], list(lastcats))
+
+    def test_insert_plain_param(self):
+        with testing.db.connect() as conn:
+            conn.execute(cattable.insert(), id=5)
+            eq_(conn.scalar(select([cattable.c.id])), 5)
+
+    def test_insert_values_key_plain(self):
+        with testing.db.connect() as conn:
+            conn.execute(cattable.insert().values(id=5))
+            eq_(conn.scalar(select([cattable.c.id])), 5)
+
+    def test_insert_values_key_expression(self):
+        with testing.db.connect() as conn:
+            conn.execute(cattable.insert().values(id=literal(5)))
+            eq_(conn.scalar(select([cattable.c.id])), 5)
+
+    def test_insert_values_col_plain(self):
+        with testing.db.connect() as conn:
+            conn.execute(cattable.insert().values({cattable.c.id: 5}))
+            eq_(conn.scalar(select([cattable.c.id])), 5)
+
+    def test_insert_values_col_expression(self):
+        with testing.db.connect() as conn:
+            conn.execute(cattable.insert().values({cattable.c.id: literal(5)}))
+            eq_(conn.scalar(select([cattable.c.id])), 5)
 
 
 class QueryUnicodeTest(fixtures.TestBase):
