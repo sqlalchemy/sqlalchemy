@@ -2216,6 +2216,10 @@ class JSON(Indexable, TypeEngine):
     def should_evaluate_none(self):
         return not self.none_as_null
 
+    @should_evaluate_none.setter
+    def should_evaluate_none(self, value):
+        self.none_as_null = value
+
     @util.memoized_property
     def _str_impl(self):
         return String(_expect_unicode=True)
