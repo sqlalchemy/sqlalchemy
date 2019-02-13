@@ -1,0 +1,8 @@
+.. change::
+   :tags: bug, sql
+   :tickets: 4485
+
+   Fixed issue where the :class:`.JSON` type had a read-only
+   :attr:`.JSON.should_evaluate_none` attribute, which would cause failures
+   when making use of the :meth:`.TypeEngine.evaluates_none` method in
+   conjunction with this type.  Pull request courtesy Sanjana S.
