@@ -2214,7 +2214,12 @@ class JSON(Indexable, TypeEngine):
 
     @property
     def should_evaluate_none(self):
+        """Alias of :attr:`.JSON.none_as_null`"""
         return not self.none_as_null
+
+    @should_evaluate_none.setter
+    def should_evaluate_none(self, value):
+        self.none_as_null = not value
 
     @util.memoized_property
     def _str_impl(self):
