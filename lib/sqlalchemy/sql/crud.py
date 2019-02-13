@@ -409,7 +409,12 @@ def _append_param_parameter(
             compiler.returning.append(c)
             value = compiler.process(value.self_group(), **kw)
         else:
-            compiler.postfetch.append(c)
+            # postfetch specifically means, "we can SELECT the row we just
+            # inserted by primary key to get back the server generated
+            # defaults". so by definition this can't be used to get the primary
+            # key value back, because we need to have it ahead of time.
+            if not c.primary_key:
+                compiler.postfetch.append(c)
             value = compiler.process(value.self_group(), **kw)
     values.append((c, value))
 

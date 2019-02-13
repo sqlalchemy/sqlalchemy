@@ -507,7 +507,7 @@ def _collect_insert_commands(
                 and hasattr(value, "__clause_element__")
                 or isinstance(value, sql.ClauseElement)
             ):
-                value_params[col.key] = (
+                value_params[col] = (
                     value.__clause_element__()
                     if hasattr(value, "__clause_element__")
                     else value
@@ -525,7 +525,7 @@ def _collect_insert_commands(
             for colkey in (
                 mapper._insert_cols_as_none[table]
                 .difference(params)
-                .difference(value_params)
+                .difference([c.key for c in value_params])
             ):
                 params[colkey] = None
 
@@ -932,6 +932,7 @@ def _emit_update_statements(
                         c,
                         c.context.compiled_parameters[0],
                         value_params,
+                        True,
                     )
                 rows += c.rowcount
                 check_rowcount = assert_singlerow
@@ -963,6 +964,7 @@ def _emit_update_statements(
                             c,
                             c.context.compiled_parameters[0],
                             value_params,
+                            True,
                         )
                     rows += c.rowcount
             else:
@@ -998,6 +1000,7 @@ def _emit_update_statements(
                             c,
                             c.context.compiled_parameters[0],
                             value_params,
+                            True,
                         )
 
         if check_rowcount:
@@ -1086,6 +1089,7 @@ def _emit_insert_statements(
                             c,
                             last_inserted_params,
                             value_params,
+                            False,
                         )
                     else:
                         _postfetch_bulk_save(mapper_rec, state_dict, table)
@@ -1117,14 +1121,16 @@ def _emit_insert_statements(
                     )
 
                 primary_key = result.context.inserted_primary_key
-
                 if primary_key is not None:
                     # set primary key attributes
                     for pk, col in zip(
                         primary_key, mapper._pks_by_table[table]
                     ):
                         prop = mapper_rec._columntoproperty[col]
-                        if state_dict.get(prop.key) is None:
+                        if pk is not None and (
+                            col in value_params
+                            or state_dict.get(prop.key) is None
+                        ):
                             state_dict[prop.key] = pk
                 if bookkeeping:
                     if state:
@@ -1137,6 +1143,7 @@ def _emit_insert_statements(
                             result,
                             result.context.compiled_parameters[0],
                             value_params,
+                            False,
                         )
                     else:
                         _postfetch_bulk_save(mapper_rec, state_dict, table)
@@ -1461,7 +1468,15 @@ def _postfetch_post_update(
 
 
 def _postfetch(
-    mapper, uowtransaction, table, state, dict_, result, params, value_params
+    mapper,
+    uowtransaction,
+    table,
+    state,
+    dict_,
+    result,
+    params,
+    value_params,
+    isupdate,
 ):
     """Expire attributes in need of newly persisted database state,
     after an INSERT or UPDATE statement has proceeded for that
@@ -1509,6 +1524,18 @@ def _postfetch(
     if refresh_flush and load_evt_attrs:
         mapper.class_manager.dispatch.refresh_flush(
             state, uowtransaction, load_evt_attrs
+        )
+
+    if isupdate and value_params:
+        # explicitly suit the use case specified by
+        # [ticket:3801], PK SQL expressions for UPDATE on non-RETURNING
+        # database which are set to themselves in order to do a version bump.
+        postfetch_cols.extend(
+            [
+                col
+                for col in value_params
+                if col.primary_key and col not in returning_cols
+            ]
         )
 
     if postfetch_cols:
