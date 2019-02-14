@@ -1,9 +1,11 @@
+from sqlalchemy import cast
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
@@ -2669,12 +2671,29 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             ),
         )
 
+        if testing.requires.json_type.enabled:
+            Table(
+                "test_has_json",
+                metadata,
+                Column(
+                    "id",
+                    Integer,
+                    primary_key=True,
+                    test_needs_autoincrement=True,
+                ),
+                Column("data", JSON(none_as_null=True).evaluates_none()),
+                Column("data_null", JSON(none_as_null=True)),
+            )
+
     @classmethod
     def setup_classes(cls):
         class Thing(cls.Basic):
             pass
 
         class AltNameThing(cls.Basic):
+            pass
+
+        class JSONThing(cls.Basic):
             pass
 
     @classmethod
@@ -2685,6 +2704,9 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         mapper(Thing, cls.tables.test)
 
         mapper(AltNameThing, cls.tables.test_w_renames, column_prefix="_foo_")
+
+        if testing.requires.json_type.enabled:
+            mapper(cls.classes.JSONThing, cls.tables.test_has_json)
 
     def _assert_col(self, name, value):
         Thing, AltNameThing = self.classes.Thing, self.classes.AltNameThing
@@ -2819,3 +2841,14 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         self._test_bulk_insert_novalue(
             "builtin_evals_null_default", "default_val"
         )
+
+    @testing.requires.json_type
+    def test_json_none_as_null(self):
+        JSONThing = self.classes.JSONThing
+
+        s = Session()
+        f1 = JSONThing(data=None, data_null=None)
+        s.add(f1)
+        s.commit()
+        eq_(s.query(cast(JSONThing.data, String)).scalar(), "null")
+        eq_(s.query(cast(JSONThing.data_null, String)).scalar(), None)

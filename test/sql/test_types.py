@@ -249,6 +249,8 @@ class AdaptTest(fixtures.TestBase):
                         or t1.__dict__[k] is None
                     )
 
+            eq_(t1.evaluates_none().should_evaluate_none, True)
+
     def test_python_type(self):
         eq_(types.Integer().python_type, int)
         eq_(types.Numeric().python_type, decimal.Decimal)
