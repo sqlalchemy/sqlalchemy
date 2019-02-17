@@ -920,12 +920,7 @@ class Query(object):
 
         :param ident: A scalar or tuple value representing
          the primary key.   For a composite primary key,
-         the order of identifiers corresponds in most cases
-         to that of the mapped :class:`.Table` object's
-         primary key columns.  For a :func:`.mapper` that
-         was given the ``primary key`` argument during
-         construction, the order of identifiers corresponds
-         to the elements present in this collection.
+         a dictionary with keys being primary key column names.
 
         :return: The object instance, or ``None``.
 
@@ -991,9 +986,11 @@ class Query(object):
         if hasattr(primary_key_identity, "__composite_values__"):
             primary_key_identity = primary_key_identity.__composite_values__()
 
-        primary_key_identity = util.to_list(primary_key_identity)
-
         mapper = self._only_full_mapper_zero("get")
+
+        is_dict = isinstance(primary_key_identity, dict)
+        if not is_dict:
+            primary_key_identity = util.to_list(primary_key_identity)
 
         if len(primary_key_identity) != len(mapper.primary_key):
             raise sa_exc.InvalidRequestError(
@@ -1001,6 +998,19 @@ class Query(object):
                 "primary key for query.get(); primary key columns are %s"
                 % ",".join("'%s'" % c for c in mapper.primary_key)
             )
+
+        if is_dict:
+            try:
+                primary_key_identity = list(
+                                             primary_key_identity[prop.key]
+                                             for prop in mapper._identity_key_props
+                                        )
+            except KeyError:
+                raise sa_exc.InvalidRequestError(
+                    "Incorrect names of values in identifier to formulate "
+                    "primary key for query.get(); primary key attribute names are %s"
+                    % ",".join("'%s'" % prop.key for prop in mapper._identity_key_props)
+                )
 
         if (
             not self._populate_existing
