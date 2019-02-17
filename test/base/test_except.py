@@ -70,9 +70,9 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message'] (Background on this error at: "
-                "http://sqlalche.me/e/e3q8)",
+                "(test.base.test_except.OperationalError) \n"
+                "[SQL: this is a message]\n"
+                "(Background on this error at: http://sqlalche.me/e/e3q8)",
             )
 
     def test_statement_error_no_code(self):
@@ -86,8 +86,8 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.StatementError as err:
             eq_(
                 str(err),
-                "(sqlalchemy.exc.InvalidRequestError) hello "
-                "[SQL: 'select * from table'] [parameters: [{'x': 1}]]",
+                "(sqlalchemy.exc.InvalidRequestError) hello\n"
+                "[SQL: select * from table]\n[parameters: [{'x': 1}]]",
             )
             eq_(err.args, ("(sqlalchemy.exc.InvalidRequestError) hello",))
 
@@ -102,8 +102,9 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.StatementError as err:
             eq_(
                 str(err),
-                "(sqlalchemy.exc.InvalidRequestError) hello "
-                "[SQL: 'select * from table'] [parameters: [{'x': 1}]] "
+                "(sqlalchemy.exc.InvalidRequestError) hello\n"
+                "[SQL: select * from table]\n"
+                "[parameters: [{'x': 1}]]\n"
                 "(Background on this error at: http://sqlalche.me/e/abcd)",
             )
             eq_(err.args, ("(sqlalchemy.exc.InvalidRequestError) hello",))
@@ -114,7 +115,7 @@ class WrapTest(fixtures.TestBase):
         orig.args = [2006, "Test raise operational error"]
         eq_(
             str(orig),
-            "(2006, 'Test raise operational error') "
+            "(2006, 'Test raise operational error')\n"
             "(Background on this error at: http://sqlalche.me/e/dbapi)",
         )
 
@@ -125,7 +126,7 @@ class WrapTest(fixtures.TestBase):
         eq_(
             compat.text_type(orig),
             compat.u(
-                "méil (Background on this error at: "
+                "méil\n(Background on this error at: "
                 "http://sqlalche.me/e/dbapi)"
             ),
         )
@@ -153,8 +154,9 @@ class WrapTest(fixtures.TestBase):
             )
         except sa_exceptions.DBAPIError as exc:
             assert str(exc).startswith(
-                "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message'] [parameters: {"
+                "(test.base.test_except.OperationalError) \n"
+                "[SQL: this is a message]\n"
+                "[parameters: {"
             )
 
     def test_tostring_large_list(self):
@@ -165,10 +167,10 @@ class WrapTest(fixtures.TestBase):
                 OperationalError(),
                 DatabaseError,
             )
-        except sa_exceptions.DBAPIError as exc:
-            assert str(exc).startswith(
-                "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message'] [parameters: "
+        except sa_exceptions.DBAPIError as ex:
+            assert str(ex).startswith(
+                "(test.base.test_except.OperationalError) \n"
+                "[SQL: this is a message]\n[parameters: "
                 "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]"
             )
 
@@ -194,11 +196,11 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(test.base.test_except.OperationalError) sql error "
-                "[SQL: 'this is a message'] [parameters: [{1: 1}, "
-                "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: "
-                "1}, {1: 1}, {1: 1}]] (Background on this error at: "
-                "http://sqlalche.me/e/e3q8)",
+                "(test.base.test_except.OperationalError) sql error\n"
+                "[SQL: this is a message]\n"
+                "[parameters: [{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1},"
+                " {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}]]\n"
+                "(Background on this error at: http://sqlalche.me/e/e3q8)",
             )
             eq_(
                 exc.args,
@@ -226,11 +228,12 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message'] [parameters: [{1: 1}, "
+                "(test.base.test_except.OperationalError) \n"
+                "[SQL: this is a message]\n"
+                "[parameters: [{1: 1}, "
                 "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, "
                 "{1: 1}, {1: 1}  ... displaying 10 of 11 total "
-                "bound parameter sets ...  {1: 1}, {1: 1}]] "
+                "bound parameter sets ...  {1: 1}, {1: 1}]]\n"
                 "(Background on this error at: http://sqlalche.me/e/e3q8)",
             )
         try:
@@ -244,9 +247,10 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message'] [parameters: [(1,), "
-                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]] "
+                "(test.base.test_except.OperationalError) \n"
+                "[SQL: this is a message]\n"
+                "[parameters: [(1,), "
+                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]]\n"
                 "(Background on this error at: http://sqlalche.me/e/e3q8)",
             )
         try:
@@ -271,11 +275,12 @@ class WrapTest(fixtures.TestBase):
         except sa_exceptions.DBAPIError as exc:
             eq_(
                 str(exc),
-                "(test.base.test_except.OperationalError)  "
-                "[SQL: 'this is a message'] [parameters: [(1,), "
+                "(test.base.test_except.OperationalError) \n"
+                "[SQL: this is a message]\n"
+                "[parameters: [(1,), "
                 "(1,), (1,), (1,), (1,), (1,), (1,), (1,)  "
                 "... displaying 10 of 11 total bound "
-                "parameter sets ...  (1,), (1,)]] "
+                "parameter sets ...  (1,), (1,)]]\n"
                 "(Background on this error at: http://sqlalche.me/e/e3q8)",
             )
 

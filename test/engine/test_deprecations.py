@@ -1114,7 +1114,7 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(.*SomeException\) " r"nope \[SQL\: u?'SELECT 1 ",
+                r"\(.*SomeException\) " r"nope\n\[SQL\: u?SELECT 1 ",
                 conn.execute,
                 select([1]).where(column("foo") == literal("bar", MyType())),
             )

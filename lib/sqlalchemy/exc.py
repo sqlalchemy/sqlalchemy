@@ -346,14 +346,14 @@ class StatementError(SQLAlchemyError):
 
         details = [self._message(as_unicode=as_unicode)]
         if self.statement:
-            details.append("[SQL: %r]" % self.statement)
+            details.append("[SQL: %s]" % self.statement)
             if self.params:
                 params_repr = util._repr_params(self.params, 10)
                 details.append("[parameters: %r]" % params_repr)
         code_str = self._code_str()
         if code_str:
             details.append(code_str)
-        return " ".join(["(%s)" % det for det in self.detail] + details)
+        return "\n".join(["(%s)" % det for det in self.detail] + details)
 
 
 class DBAPIError(StatementError):
