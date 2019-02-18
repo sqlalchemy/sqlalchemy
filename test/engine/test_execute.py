@@ -410,8 +410,8 @@ class ExecuteTest(fixtures.TestBase):
             assert_raises_message(
                 tsa.exc.StatementError,
                 util.u(
-                    "A value is required for bind parameter 'uname'"
-                    r".*SELECT users.user_name AS .m\\xe9il."
+                    "A value is required for bind parameter 'uname'\n"
+                    r".*SELECT users.user_name AS .m\xe9il."
                 )
                 if util.py2k
                 else util.u(
