@@ -667,7 +667,11 @@ class GetTest(QueryTest):
 
         s = Session()
         q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1,"j": '2',"k": 3})
+        assert_raises(
+            sa_exc.InvalidRequestError,
+            q.get,
+            {"i": 1, "j": '2', "k": 3}
+        )
 
     def test_get(self):
         User = self.classes.User

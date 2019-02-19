@@ -918,9 +918,15 @@ class Query(object):
         before querying the database.  See :doc:`/orm/loading_relationships`
         for further details on relationship loading.
 
-        :param ident: A scalar or tuple value representing
+        :param ident: A scalar or tuple value or dictionary representing
          the primary key.   For a composite primary key,
-         a dictionary with keys being primary key column names.
+         a dictionary with keys being primary key column names or tuple
+         in which the order of identifiers corresponds in most cases
+         to that of the mapped :class:`.Table` object's
+         primary key columns.  For a :func:`.mapper` that
+         was given the ``primary key`` argument during
+         construction, the order of identifiers corresponds
+         to the elements present in this collection.
 
         :return: The object instance, or ``None``.
 
@@ -1002,14 +1008,18 @@ class Query(object):
         if is_dict:
             try:
                 primary_key_identity = list(
-                                             primary_key_identity[prop.key]
-                                             for prop in mapper._identity_key_props
-                                        )
+                    primary_key_identity[prop.key]
+                    for prop in mapper._identity_key_props
+                )
+
             except KeyError:
                 raise sa_exc.InvalidRequestError(
                     "Incorrect names of values in identifier to formulate "
-                    "primary key for query.get(); primary key attribute names are %s"
-                    % ",".join("'%s'" % prop.key for prop in mapper._identity_key_props)
+                    "primary key for query.get(); primary key attribute names"
+                    " are %s" % ",".join(
+                        "'%s'" % prop.key
+                        for prop in mapper._identity_key_props
+                    )
                 )
 
         if (
