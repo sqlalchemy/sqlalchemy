@@ -782,23 +782,37 @@ class TypesTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_reflect_nvarchar(self):
         metadata = self.metadata
-        Table("tnv", metadata, Column("data", sqltypes.NVARCHAR(255)))
+        Table(
+            "tnv",
+            metadata,
+            Column("nv_data", sqltypes.NVARCHAR(255)),
+            Column("c_data", sqltypes.NCHAR(20)),
+        )
         metadata.create_all()
         m2 = MetaData(testing.db)
         t2 = Table("tnv", m2, autoload=True)
-        assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
+        assert isinstance(t2.c.nv_data.type, sqltypes.NVARCHAR)
+        assert isinstance(t2.c.c_data.type, sqltypes.NCHAR)
 
         if testing.against("oracle+cx_oracle"):
             assert isinstance(
-                t2.c.data.type.dialect_impl(testing.db.dialect),
+                t2.c.nv_data.type.dialect_impl(testing.db.dialect),
+                cx_oracle._OracleUnicodeStringNCHAR,
+            )
+
+            assert isinstance(
+                t2.c.c_data.type.dialect_impl(testing.db.dialect),
                 cx_oracle._OracleUnicodeStringNCHAR,
             )
 
         data = u("m’a réveillé.")
-        t2.insert().execute(data=data)
-        res = t2.select().execute().first()["data"]
-        eq_(res, data)
-        assert isinstance(res, util.text_type)
+        with testing.db.connect() as conn:
+            conn.execute(t2.insert(), dict(nv_data=data, c_data=data))
+            nv_data, c_data = conn.execute(t2.select()).first()
+            eq_(nv_data, data)
+            eq_(c_data, data + (" " * 7))  # char is space padded
+            assert isinstance(nv_data, util.text_type)
+            assert isinstance(c_data, util.text_type)
 
     @testing.provide_metadata
     def test_reflect_unicode_no_nvarchar(self):
@@ -830,6 +844,7 @@ class TypesTest(fixtures.TestBase):
             Column("c1", VARCHAR(50)),
             Column("c2", NVARCHAR(250)),
             Column("c3", CHAR(200)),
+            Column("c4", NCHAR(180)),
         )
         t1.create()
         m2 = MetaData(testing.db)
@@ -837,6 +852,7 @@ class TypesTest(fixtures.TestBase):
         eq_(t2.c.c1.type.length, 50)
         eq_(t2.c.c2.type.length, 250)
         eq_(t2.c.c3.type.length, 200)
+        eq_(t2.c.c4.type.length, 180)
 
     @testing.provide_metadata
     def test_long_type(self):
