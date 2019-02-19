@@ -1,0 +1,8 @@
+.. change::
+   :tags: bug, oracle
+   :tickets: 4506
+
+   Added support for reflection of the :class:`.NCHAR` datatype to the Oracle
+   dialect, and added :class:`.NCHAR` to the list of types exported by the
+   Oracle dialect.
+
