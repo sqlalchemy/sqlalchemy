@@ -346,7 +346,11 @@ class StatementError(SQLAlchemyError):
 
         details = [self._message(as_unicode=as_unicode)]
         if self.statement:
-            details.append("[SQL: %s]" % self.statement)
+            if not as_unicode:
+                stmt_detail = "[SQL: %s]" % repr(self.statement)[1:-1]
+            else:
+                stmt_detail = "[SQL: %s]" % self.statement
+            details.append(stmt_detail)
             if self.params:
                 params_repr = util._repr_params(self.params, 10)
                 details.append("[parameters: %r]" % params_repr)
