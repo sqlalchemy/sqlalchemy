@@ -1325,6 +1325,21 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             ),
         )
 
+    def test_simple_lazy_clause_no_race_on_generate(self):
+        User, Address = self._o2m_fixture()
+
+        expr1, paramdict1 = (
+            User.addresses.property._lazy_strategy._simple_lazy_clause
+        )
+
+        # delete the attr, as though a concurrent thread is also generating it
+        del User.addresses.property._lazy_strategy._simple_lazy_clause
+        expr2, paramdict2 = (
+            User.addresses.property._lazy_strategy._simple_lazy_clause
+        )
+
+        eq_(paramdict1, paramdict2)
+
     # additional tests:
     # 1. m2m w lazyload
     # 2. o2m lazyload where m2o backrefs have an eager load, test
