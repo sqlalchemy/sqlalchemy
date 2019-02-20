@@ -1,0 +1,18 @@
+.. change::
+   :tags: errors
+   :tickets: 4500
+
+   Change StatementError formatting (newlines and %s)
+    
+   This changes the error formatting for StatementError in two ways:
+   
+   1) Break each error detail up over multiple newlines instead of
+      spaced out on a single line. Hopefully, this helps readers scan
+      the error message more easily.
+   
+   2) Change the SQL representation in the message to use __str__ (%s)
+      instead of the current behavior that uses __repr__ (%r). This
+      should help readers recognize the structure of their SQL,
+      particularly if it is a multiline SQL statement. In the multiline
+      case, the SQL would be printed over multiple lines instead of
+      printing an escaped "\n". 

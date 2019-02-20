@@ -1662,3 +1662,40 @@ primary key column::
 :ticket:`4362`
 
 :ticket:`4235`
+
+Changed StatementError formatting (newlines and %s) 
+=================================================================================
+
+Two changes are introduced to ``StatementError``'s string representation.
+
+#. Previously: single line.
+   Now: each "detail" on it's own line.
+#. Previously: SQL in the message was emitted using ``__repr__``
+   Now: SQL in the message is emitted using ``__str__``
+
+This means that an error message that previously looked like this:
+    
+    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id' [SQL: 'select * from reviews where id = %(id)s'] (Background on this error at: http://sqlalche.me/e/cd3x)
+
+    (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id' [SQL: 'select * from reviews where id = %(id)s'] (Background on this error at: http://sqlalche.me/e/cd3x)
+
+Will now look like this:
+
+    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id'
+    [SQL: select * from reviews where id = %(id)s]
+    (Background on this error at: http://sqlalche.me/e/cd3x)
+    
+    (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id'
+    [SQL: select * from reviews where id = %(id)s]
+    (Background on this error at: http://sqlalche.me/e/cd3x)
+
+The primary impact of this change is that consumers can no longer assume:
+
+#. an exception message is on a single line
+#. SQL contained in an exception message will be escaped and on a single line.
+
+SQL being rendered with ``__str__`` instead of ``__repr__`` is the more interesting of the two.
+For one example, newlines will actually be rendered instead of escaped.
+
+:ticket:`4500`
+
