@@ -28,6 +28,7 @@ from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import util
+from sqlalchemy.sql import Alias
 from sqlalchemy.sql import column
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import expression
@@ -870,6 +871,18 @@ class SelectableTest(
         eq_(c1._label, "c1")
         Table("t1", MetaData(), c1)
         eq_(c1._label, "t1_c1")
+
+    def test_no_alias_construct(self):
+        a = table("a", column("x"))
+
+        assert_raises_message(
+            NotImplementedError,
+            "The Alias class is not intended to be constructed directly.  "
+            r"Please use the alias\(\) standalone function",
+            Alias,
+            a,
+            "foo",
+        )
 
 
 class RefreshForNewColTest(fixtures.TestBase):

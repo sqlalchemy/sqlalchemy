@@ -1,14 +1,18 @@
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import lateral
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
+from sqlalchemy.sql.selectable import Lateral
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 
@@ -149,4 +153,16 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             "FROM bookcases JOIN "
             "LATERAL generate_series(:generate_series_1, "
             "bookcases.bookcase_shelves) AS anon_1 ON true",
+        )
+
+    def test_no_alias_construct(self):
+        a = table("a", column("x"))
+
+        assert_raises_message(
+            NotImplementedError,
+            "The Lateral class is not intended to be constructed directly.  "
+            r"Please use the lateral\(\) standalone",
+            Lateral,
+            a,
+            "foo",
         )

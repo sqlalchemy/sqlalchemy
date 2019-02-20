@@ -21,6 +21,7 @@ from .expression import column  # noqa
 from .expression import ColumnCollection  # noqa
 from .expression import ColumnElement  # noqa
 from .expression import CompoundSelect  # noqa
+from .expression import cte  # noqa
 from .expression import Delete  # noqa
 from .expression import delete  # noqa
 from .expression import desc  # noqa

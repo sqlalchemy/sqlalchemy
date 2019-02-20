@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, sql
+   :tickets: 4509
+
+   The :class:`.Alias` class and related subclasses :class:`.CTE`,
+   :class:`.Lateral` and :class:`.TableSample` have been reworked so that it is
+   not possible for a user to construct the objects directly.  These constructs
+   require that the standalone construction function or selectable-bound method
+   be used to instantiate new objects.
+
