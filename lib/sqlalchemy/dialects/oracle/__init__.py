@@ -19,6 +19,7 @@ from .base import DOUBLE_PRECISION
 from .base import FLOAT
 from .base import INTERVAL
 from .base import LONG
+from .base import NCHAR
 from .base import NCLOB
 from .base import NUMBER
 from .base import NVARCHAR
@@ -36,6 +37,7 @@ __all__ = (
     "VARCHAR",
     "NVARCHAR",
     "CHAR",
+    "NCHAR",
     "DATE",
     "NUMBER",
     "BLOB",
