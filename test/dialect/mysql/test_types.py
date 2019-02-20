@@ -686,21 +686,22 @@ class TypesTest(
         # server-system-variables.html#sysvar_explicit_defaults_for_timestamp
         # changes this for 5.6 if set.
 
-        # normalize dates that are over the second boundary
+        # normalize dates for the amount of time the operation took
         def normalize(dt):
             if dt is None:
                 return None
-            elif (dt - now).seconds < 5:
+            elif now <= dt <= new_now:
                 return now
             else:
                 return dt
 
         with testing.db.begin() as conn:
             now = conn.scalar("select now()")
-
             conn.execute(ts_table.insert(), {"t1": now, "t2": None})
             conn.execute(ts_table.insert(), {"t1": None, "t2": None})
             conn.execute(ts_table.insert(), {"t2": None})
+
+            new_now = conn.scalar("select now()")
 
             eq_(
                 [
