@@ -26,3 +26,6 @@ sqlnet.log
 /test.py
 /mapping_setup.py
 *.rej
+test/test_schema.db
+*test_schema.db
+
