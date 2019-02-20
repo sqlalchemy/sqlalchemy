@@ -1662,3 +1662,33 @@ primary key column::
 :ticket:`4362`
 
 :ticket:`4235`
+
+.. _change_4500:
+
+Changed StatementError formatting (newlines and %s)
+=================================================================================
+
+Two changes are introduced to the string representation for ``StatementError``.
+The "detail" and "SQL" portions of the string representation are now
+separated by newlines, and newlines that are present in the original SQL
+statement are maintained.   The goal is to improve readability while still
+keeping the original error message on one line for logging purposes.
+
+This means that an error message that previously looked like this::
+
+    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id' [SQL: 'select * from reviews\nwhere id = ?'] (Background on this error at: http://sqlalche.me/e/cd3x)
+
+Will now look like this::
+
+    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id'
+    [SQL: select * from reviews
+    where id = ?]
+    (Background on this error at: http://sqlalche.me/e/cd3x)
+
+The primary impact of this change is that consumers can no longer assume that
+a complete exception message is on a single line, however the original
+"error" portion that is generated from the DBAPI driver or SQLAlchemy internals
+will still be on the first line.
+
+:ticket:`4500`
+

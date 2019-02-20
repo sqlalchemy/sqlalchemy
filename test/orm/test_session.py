@@ -1037,7 +1037,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.StatementError,
             "Can't resolve value for column users.id on object "
-            ".User.*.; the object is detached and the value was expired ",
+            ".User.*.; the object is detached and the value was expired",
             q.one,
         )
 
