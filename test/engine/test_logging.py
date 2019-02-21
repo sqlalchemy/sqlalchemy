@@ -103,7 +103,7 @@ class LogParamsTest(fixtures.TestBase):
         exception = tsa.exc.IntegrityError("foo", {"x": "y"}, None)
         eq_regex(
             str(exception),
-            r"\(.*.NoneType\) None \[SQL: 'foo'\] \[parameters: {'x': 'y'}\]",
+            r"\(.*.NoneType\) None\n\[SQL: foo\]\n\[parameters: {'x': 'y'}\]",
         )
 
     def test_exception_format_unexpected_parameter(self):
@@ -112,7 +112,7 @@ class LogParamsTest(fixtures.TestBase):
         exception = tsa.exc.IntegrityError("foo", "bar", "bat")
         eq_regex(
             str(exception),
-            r"\(.*.str\) bat \[SQL: 'foo'\] \[parameters: 'bar'\]",
+            r"\(.*.str\) bat\n\[SQL: foo\]\n\[parameters: 'bar'\]",
         )
 
     def test_exception_format_unexpected_member_parameter(self):
@@ -121,7 +121,7 @@ class LogParamsTest(fixtures.TestBase):
         exception = tsa.exc.IntegrityError("foo", ["bar", "bat"], "hoho")
         eq_regex(
             str(exception),
-            r"\(.*.str\) hoho \[SQL: 'foo'\] \[parameters: \['bar', 'bat'\]\]",
+            r"\(.*.str\) hoho\n\[SQL: foo\]\n\[parameters: \['bar', 'bat'\]\]",
         )
 
     def test_result_large_param(self):
@@ -169,7 +169,7 @@ class LogParamsTest(fixtures.TestBase):
     def test_error_large_dict(self):
         assert_raises_message(
             tsa.exc.DBAPIError,
-            r".*'INSERT INTO nonexistent \(data\) values \(:data\)'\] "
+            r".*INSERT INTO nonexistent \(data\) values \(:data\)\]\n"
             r"\[parameters: "
             r"\[{'data': '0'}, {'data': '1'}, {'data': '2'}, "
             r"{'data': '3'}, {'data': '4'}, {'data': '5'}, "
@@ -186,7 +186,7 @@ class LogParamsTest(fixtures.TestBase):
         assert_raises_message(
             tsa.exc.DBAPIError,
             r".*INSERT INTO nonexistent \(data\) values "
-            r"\(\?\)'\] \[parameters: \[\('0',\), \('1',\), \('2',\), "
+            r"\(\?\)\]\n\[parameters: \[\('0',\), \('1',\), \('2',\), "
             r"\('3',\), \('4',\), \('5',\), \('6',\), \('7',\)  "
             r"... displaying "
             r"10 of 100 total bound parameter sets ...  "

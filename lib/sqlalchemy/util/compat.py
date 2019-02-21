@@ -227,6 +227,15 @@ else:
             # error callback"
             return repr(text)[1:-1].decode()
 
+    def safe_bytestring(text):
+        # py2k only
+        if not isinstance(text, string_types):
+            return unicode(text).encode("ascii", errors="backslashreplace")
+        elif isinstance(text, unicode):
+            return text.encode("ascii", errors="backslashreplace")
+        else:
+            return text
+
     # not as nice as that of Py3K, but at least preserves
     # the code line where the issue occurred
     exec(

@@ -371,7 +371,7 @@ class ExecuteTest(fixtures.TestBase):
         def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(.*.SomeException\) " r"nope \[SQL\: u?'SELECT 1 ",
+                r"\(.*.SomeException\) " r"nope\n\[SQL\: u?SELECT 1 ",
                 conn.execute,
                 select([1]).where(column("foo") == literal("bar", MyType())),
             )
@@ -410,12 +410,12 @@ class ExecuteTest(fixtures.TestBase):
             assert_raises_message(
                 tsa.exc.StatementError,
                 util.u(
-                    "A value is required for bind parameter 'uname'"
-                    r".*SELECT users.user_name AS .m\\xe9il."
+                    "A value is required for bind parameter 'uname'\n"
+                    r".*SELECT users.user_name AS .m\xe9il."
                 )
                 if util.py2k
                 else util.u(
-                    "A value is required for bind parameter 'uname'"
+                    "A value is required for bind parameter 'uname'\n"
                     ".*SELECT users.user_name AS .méil."
                 ),
                 conn.execute,
@@ -2184,7 +2184,7 @@ class HandleErrorTest(fixtures.TestBase):
         with engine.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                r"\(.*.SomeException\) " r"nope \[SQL\: u?'SELECT 1 ",
+                r"\(.*.SomeException\) " r"nope\n\[SQL\: u?SELECT 1 ",
                 conn.execute,
                 select([1]).where(column("foo") == literal("bar", MyType())),
             )

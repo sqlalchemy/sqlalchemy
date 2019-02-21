@@ -60,8 +60,8 @@ class InsertExecTest(fixtures.TablesTest):
             exc.StatementError,
             r"\(sqlalchemy.exc.InvalidRequestError\) A value is required for "
             "bind parameter 'user_name', in "
-            "parameter group 2 "
-            r"\[SQL: u?'INSERT INTO users",
+            "parameter group 2\n"
+            r"\[SQL: u?INSERT INTO users",
             users.insert().execute,
             {"user_id": 7, "user_name": "jack"},
             {"user_id": 8, "user_name": "ed"},
