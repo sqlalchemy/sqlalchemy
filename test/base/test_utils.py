@@ -2305,6 +2305,10 @@ class AsInterfaceTest(fixtures.TestBase):
     class Object(object):
         pass
 
+    def test_no_cls_no_methods(self):
+        obj = object()
+        assert_raises(TypeError, util.as_interface, obj)
+
     def test_instance(self):
         obj = object()
         assert_raises(TypeError, util.as_interface, obj, cls=self.Something)
