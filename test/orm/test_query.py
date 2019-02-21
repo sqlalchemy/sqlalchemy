@@ -633,6 +633,46 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
 
 class GetTest(QueryTest):
+    def test_get_composite_pk_keyword_based_no_result(self):
+        CompositePk = self.classes.CompositePk
+
+        s = Session()
+        is_(s.query(CompositePk).get({"i": 100, "j": 100}), None)
+
+    def test_get_composite_pk_keyword_based_result(self):
+        CompositePk = self.classes.CompositePk
+
+        s = Session()
+        one_two = s.query(CompositePk).get({"i": 1, "j": 2})
+        eq_(one_two.i, 1)
+        eq_(one_two.j, 2)
+        eq_(one_two.k, 3)
+
+    def test_get_composite_pk_keyword_based_wrong_keys(self):
+        CompositePk = self.classes.CompositePk
+
+        s = Session()
+        q = s.query(CompositePk)
+        assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1, "k": 2})
+
+    def test_get_composite_pk_keyword_based_too_few_keys(self):
+        CompositePk = self.classes.CompositePk
+
+        s = Session()
+        q = s.query(CompositePk)
+        assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1})
+
+    def test_get_composite_pk_keyword_based_too_many_keys(self):
+        CompositePk = self.classes.CompositePk
+
+        s = Session()
+        q = s.query(CompositePk)
+        assert_raises(
+            sa_exc.InvalidRequestError,
+            q.get,
+            {"i": 1, "j": '2', "k": 3}
+        )
+
     def test_get(self):
         User = self.classes.User
 
