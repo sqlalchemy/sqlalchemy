@@ -4,12 +4,14 @@ from sqlalchemy.exc import CompileError
 from sqlalchemy.sql import and_
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import column
+from sqlalchemy.sql import cte
 from sqlalchemy.sql import exists
 from sqlalchemy.sql import func
 from sqlalchemy.sql import literal
 from sqlalchemy.sql import select
 from sqlalchemy.sql import table
 from sqlalchemy.sql.elements import quoted_name
+from sqlalchemy.sql.selectable import CTE
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1125,4 +1127,29 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM products) "
             "UPDATE products SET id=:id, price=:price FROM pd "
             "WHERE products.price = pd.price",
+        )
+
+    def test_standalone_function(self):
+        a = table("a", column("x"))
+        a_stmt = select([a])
+
+        stmt = select([cte(a_stmt)])
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (SELECT a.x AS x FROM a) "
+            "SELECT anon_1.x FROM anon_1",
+        )
+
+    def test_no_alias_construct(self):
+        a = table("a", column("x"))
+        a_stmt = select([a])
+
+        assert_raises_message(
+            NotImplementedError,
+            "The CTE class is not intended to be constructed directly.  "
+            r"Please use the cte\(\) standalone function",
+            CTE,
+            a_stmt,
+            "foo",
         )

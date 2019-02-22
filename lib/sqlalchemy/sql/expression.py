@@ -39,6 +39,7 @@ __all__ = [
     "case",
     "cast",
     "column",
+    "cte",
     "delete",
     "desc",
     "distinct",
@@ -148,7 +149,6 @@ from .functions import FunctionElement  # noqa
 from .functions import modifier  # noqa
 from .selectable import _interpret_as_from  # noqa
 from .selectable import Alias  # noqa
-from .selectable import alias  # noqa
 from .selectable import CompoundSelect  # noqa
 from .selectable import CTE  # noqa
 from .selectable import Exists  # noqa
@@ -160,7 +160,6 @@ from .selectable import HasPrefixes  # noqa
 from .selectable import HasSuffixes  # noqa
 from .selectable import Join  # noqa
 from .selectable import Lateral  # noqa
-from .selectable import lateral  # noqa
 from .selectable import ScalarSelect  # noqa
 from .selectable import Select  # noqa
 from .selectable import Selectable  # noqa
@@ -168,7 +167,6 @@ from .selectable import SelectBase  # noqa
 from .selectable import subquery  # noqa
 from .selectable import TableClause  # noqa
 from .selectable import TableSample  # noqa
-from .selectable import tablesample  # noqa
 from .selectable import TextAsFrom  # noqa
 from .visitors import Visitable  # noqa
 from ..util.langhelpers import public_factory  # noqa
@@ -182,6 +180,9 @@ from ..util.langhelpers import public_factory  # noqa
 all_ = public_factory(CollectionAggregate._create_all, ".expression.all_")
 any_ = public_factory(CollectionAggregate._create_any, ".expression.any_")
 and_ = public_factory(BooleanClauseList.and_, ".expression.and_")
+alias = public_factory(Alias._factory, ".expression.alias")
+tablesample = public_factory(TableSample._factory, ".expression.tablesample")
+lateral = public_factory(Lateral._factory, ".expression.lateral")
 or_ = public_factory(BooleanClauseList.or_, ".expression.or_")
 bindparam = public_factory(BindParameter, ".expression.bindparam")
 select = public_factory(Select, ".expression.select")
@@ -193,6 +194,7 @@ within_group = public_factory(WithinGroup, ".expression.within_group")
 label = public_factory(Label, ".expression.label")
 case = public_factory(Case, ".expression.case")
 cast = public_factory(Cast, ".expression.cast")
+cte = public_factory(CTE._factory, ".expression.cte")
 extract = public_factory(Extract, ".exp  # noqaression.extract")
 tuple_ = public_factory(Tuple, ".expression.tuple_")
 except_ = public_factory(CompoundSelect._create_except, ".expression.except_")

@@ -1,12 +1,16 @@
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import tablesample
 from sqlalchemy.engine import default
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
+from sqlalchemy.sql.selectable import TableSample
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 
@@ -58,4 +62,17 @@ class TableSampleTest(fixtures.TablesTest, AssertsCompiledSQL):
             select([table1.tablesample(text("1"), name="alias").c.people_id]),
             "SELECT alias.people_id FROM "
             "people AS alias TABLESAMPLE system(1)",
+        )
+
+    def test_no_alias_construct(self):
+        a = table("a", column("x"))
+
+        assert_raises_message(
+            NotImplementedError,
+            "The TableSample class is not intended to be constructed "
+            "directly.  "
+            r"Please use the tablesample\(\) standalone",
+            TableSample,
+            a,
+            "foo",
         )

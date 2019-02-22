@@ -133,117 +133,6 @@ def subquery(alias, *args, **kwargs):
     return Select(*args, **kwargs).alias(alias)
 
 
-def alias(selectable, name=None, flat=False):
-    """Return an :class:`.Alias` object.
-
-    An :class:`.Alias` represents any :class:`.FromClause`
-    with an alternate name assigned within SQL, typically using the ``AS``
-    clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
-
-    Similar functionality is available via the
-    :meth:`~.FromClause.alias` method
-    available on all :class:`.FromClause` subclasses.
-
-    When an :class:`.Alias` is created from a :class:`.Table` object,
-    this has the effect of the table being rendered
-    as ``tablename AS aliasname`` in a SELECT statement.
-
-    For :func:`.select` objects, the effect is that of creating a named
-    subquery, i.e. ``(select ...) AS aliasname``.
-
-    The ``name`` parameter is optional, and provides the name
-    to use in the rendered SQL.  If blank, an "anonymous" name
-    will be deterministically generated at compile time.
-    Deterministic means the name is guaranteed to be unique against
-    other constructs used in the same statement, and will also be the
-    same name for each successive compilation of the same statement
-    object.
-
-    :param selectable: any :class:`.FromClause` subclass,
-        such as a table, select statement, etc.
-
-    :param name: string name to be assigned as the alias.
-        If ``None``, a name will be deterministically generated
-        at compile time.
-
-    :param flat: Will be passed through to if the given selectable
-     is an instance of :class:`.Join` - see :meth:`.Join.alias`
-     for details.
-
-     .. versionadded:: 0.9.0
-
-    """
-    return _interpret_as_from(selectable).alias(name=name, flat=flat)
-
-
-def lateral(selectable, name=None):
-    """Return a :class:`.Lateral` object.
-
-    :class:`.Lateral` is an :class:`.Alias` subclass that represents
-    a subquery with the LATERAL keyword applied to it.
-
-    The special behavior of a LATERAL subquery is that it appears in the
-    FROM clause of an enclosing SELECT, but may correlate to other
-    FROM clauses of that SELECT.   It is a special case of subquery
-    only supported by a small number of backends, currently more recent
-    PostgreSQL versions.
-
-    .. versionadded:: 1.1
-
-    .. seealso::
-
-        :ref:`lateral_selects` -  overview of usage.
-
-    """
-    return _interpret_as_from(selectable).lateral(name=name)
-
-
-def tablesample(selectable, sampling, name=None, seed=None):
-    """Return a :class:`.TableSample` object.
-
-    :class:`.TableSample` is an :class:`.Alias` subclass that represents
-    a table with the TABLESAMPLE clause applied to it.
-    :func:`~.expression.tablesample`
-    is also available from the :class:`.FromClause` class via the
-    :meth:`.FromClause.tablesample` method.
-
-    The TABLESAMPLE clause allows selecting a randomly selected approximate
-    percentage of rows from a table. It supports multiple sampling methods,
-    most commonly BERNOULLI and SYSTEM.
-
-    e.g.::
-
-        from sqlalchemy import func
-
-        selectable = people.tablesample(
-                    func.bernoulli(1),
-                    name='alias',
-                    seed=func.random())
-        stmt = select([selectable.c.people_id])
-
-    Assuming ``people`` with a column ``people_id``, the above
-    statement would render as::
-
-        SELECT alias.people_id FROM
-        people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
-        REPEATABLE (random())
-
-    .. versionadded:: 1.1
-
-    :param sampling: a ``float`` percentage between 0 and 100 or
-        :class:`.functions.Function`.
-
-    :param name: optional alias name
-
-    :param seed: any real-valued SQL expression.  When specified, the
-     REPEATABLE sub-clause is also rendered.
-
-    """
-    return _interpret_as_from(selectable).tablesample(
-        sampling, name=name, seed=seed
-    )
-
-
 class Selectable(ClauseElement):
     """mark a class as being selectable"""
 
@@ -535,7 +424,7 @@ class FromClause(Selectable):
 
         """
 
-        return Alias(self, name)
+        return Alias._construct(self, name)
 
     def lateral(self, name=None):
         """Return a LATERAL alias of this :class:`.FromClause`.
@@ -550,7 +439,7 @@ class FromClause(Selectable):
             :ref:`lateral_selects` -  overview of usage.
 
         """
-        return Lateral(self, name)
+        return Lateral._construct(self, name)
 
     def tablesample(self, sampling, name=None, seed=None):
         """Return a TABLESAMPLE alias of this :class:`.FromClause`.
@@ -565,7 +454,7 @@ class FromClause(Selectable):
             :func:`~.expression.tablesample` - usage guidelines and parameters
 
         """
-        return TableSample(self, sampling, name, seed)
+        return TableSample._construct(self, sampling, name, seed)
 
     def is_derived_from(self, fromclause):
         """Return True if this FromClause is 'derived' from the given
@@ -1329,7 +1218,69 @@ class Alias(FromClause):
 
     _is_from_container = True
 
-    def __init__(self, selectable, name=None):
+    def __init__(self, *arg, **kw):
+        raise NotImplementedError(
+            "The %s class is not intended to be constructed "
+            "directly.  Please use the %s() standalone "
+            "function or the %s() method available from appropriate "
+            "selectable objects."
+            % (
+                self.__class__.__name__,
+                self.__class__.__name__.lower(),
+                self.__class__.__name__.lower(),
+            )
+        )
+
+    @classmethod
+    def _construct(cls, *arg, **kw):
+        obj = cls.__new__(cls)
+        obj._init(*arg, **kw)
+        return obj
+
+    @classmethod
+    def _factory(cls, selectable, name=None, flat=False):
+        """Return an :class:`.Alias` object.
+
+        An :class:`.Alias` represents any :class:`.FromClause`
+        with an alternate name assigned within SQL, typically using the ``AS``
+        clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
+
+        Similar functionality is available via the
+        :meth:`~.FromClause.alias` method
+        available on all :class:`.FromClause` subclasses.
+
+        When an :class:`.Alias` is created from a :class:`.Table` object,
+        this has the effect of the table being rendered
+        as ``tablename AS aliasname`` in a SELECT statement.
+
+        For :func:`.select` objects, the effect is that of creating a named
+        subquery, i.e. ``(select ...) AS aliasname``.
+
+        The ``name`` parameter is optional, and provides the name
+        to use in the rendered SQL.  If blank, an "anonymous" name
+        will be deterministically generated at compile time.
+        Deterministic means the name is guaranteed to be unique against
+        other constructs used in the same statement, and will also be the
+        same name for each successive compilation of the same statement
+        object.
+
+        :param selectable: any :class:`.FromClause` subclass,
+            such as a table, select statement, etc.
+
+        :param name: string name to be assigned as the alias.
+            If ``None``, a name will be deterministically generated
+            at compile time.
+
+        :param flat: Will be passed through to if the given selectable
+         is an instance of :class:`.Join` - see :meth:`.Join.alias`
+         for details.
+
+         .. versionadded:: 0.9.0
+
+        """
+        return _interpret_as_from(selectable).alias(name=name, flat=flat)
+
+    def _init(self, selectable, name=None):
         baseselectable = selectable
         while isinstance(baseselectable, Alias):
             baseselectable = baseselectable.element
@@ -1437,6 +1388,28 @@ class Lateral(Alias):
     __visit_name__ = "lateral"
     _is_lateral = True
 
+    @classmethod
+    def _factory(cls, selectable, name=None):
+        """Return a :class:`.Lateral` object.
+
+        :class:`.Lateral` is an :class:`.Alias` subclass that represents
+        a subquery with the LATERAL keyword applied to it.
+
+        The special behavior of a LATERAL subquery is that it appears in the
+        FROM clause of an enclosing SELECT, but may correlate to other
+        FROM clauses of that SELECT.   It is a special case of subquery
+        only supported by a small number of backends, currently more recent
+        PostgreSQL versions.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`lateral_selects` -  overview of usage.
+
+        """
+        return _interpret_as_from(selectable).lateral(name=name)
+
 
 class TableSample(Alias):
     """Represent a TABLESAMPLE clause.
@@ -1455,10 +1428,56 @@ class TableSample(Alias):
 
     __visit_name__ = "tablesample"
 
-    def __init__(self, selectable, sampling, name=None, seed=None):
+    @classmethod
+    def _factory(cls, selectable, sampling, name=None, seed=None):
+        """Return a :class:`.TableSample` object.
+
+        :class:`.TableSample` is an :class:`.Alias` subclass that represents
+        a table with the TABLESAMPLE clause applied to it.
+        :func:`~.expression.tablesample`
+        is also available from the :class:`.FromClause` class via the
+        :meth:`.FromClause.tablesample` method.
+
+        The TABLESAMPLE clause allows selecting a randomly selected approximate
+        percentage of rows from a table. It supports multiple sampling methods,
+        most commonly BERNOULLI and SYSTEM.
+
+        e.g.::
+
+            from sqlalchemy import func
+
+            selectable = people.tablesample(
+                        func.bernoulli(1),
+                        name='alias',
+                        seed=func.random())
+            stmt = select([selectable.c.people_id])
+
+        Assuming ``people`` with a column ``people_id``, the above
+        statement would render as::
+
+            SELECT alias.people_id FROM
+            people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
+            REPEATABLE (random())
+
+        .. versionadded:: 1.1
+
+        :param sampling: a ``float`` percentage between 0 and 100 or
+            :class:`.functions.Function`.
+
+        :param name: optional alias name
+
+        :param seed: any real-valued SQL expression.  When specified, the
+         REPEATABLE sub-clause is also rendered.
+
+        """
+        return _interpret_as_from(selectable).tablesample(
+            sampling, name=name, seed=seed
+        )
+
+    def _init(self, selectable, sampling, name=None, seed=None):
         self.sampling = sampling
         self.seed = seed
-        super(TableSample, self).__init__(selectable, name=name)
+        super(TableSample, self)._init(selectable, name=name)
 
     @util.dependencies("sqlalchemy.sql.functions")
     def _get_method(self, functions):
@@ -1479,7 +1498,18 @@ class CTE(Generative, HasSuffixes, Alias):
 
     __visit_name__ = "cte"
 
-    def __init__(
+    @classmethod
+    def _factory(cls, selectable, name=None, recursive=False):
+        r"""Return a new :class:`.CTE`, or Common Table Expression instance.
+
+        Please see :meth:`.HasCte.cte` for detail on CTE usage.
+
+        """
+        return _interpret_as_from(selectable).cte(
+            name=name, recursive=recursive
+        )
+
+    def _init(
         self,
         selectable,
         name=None,
@@ -1493,7 +1523,7 @@ class CTE(Generative, HasSuffixes, Alias):
         self._restates = _restates
         if _suffixes:
             self._suffixes = _suffixes
-        super(CTE, self).__init__(selectable, name=name)
+        super(CTE, self)._init(selectable, name=name)
 
     def _copy_internals(self, clone=_clone, **kw):
         super(CTE, self)._copy_internals(clone, **kw)
@@ -1513,7 +1543,7 @@ class CTE(Generative, HasSuffixes, Alias):
                 col._make_proxy(self)
 
     def alias(self, name=None, flat=False):
-        return CTE(
+        return CTE._construct(
             self.original,
             name=name,
             recursive=self.recursive,
@@ -1522,7 +1552,7 @@ class CTE(Generative, HasSuffixes, Alias):
         )
 
     def union(self, other):
-        return CTE(
+        return CTE._construct(
             self.original.union(other),
             name=self.name,
             recursive=self.recursive,
@@ -1531,7 +1561,7 @@ class CTE(Generative, HasSuffixes, Alias):
         )
 
     def union_all(self, other):
-        return CTE(
+        return CTE._construct(
             self.original.union_all(other),
             name=self.name,
             recursive=self.recursive,
@@ -1705,7 +1735,7 @@ class HasCTE(object):
             :meth:`.HasCTE.cte`.
 
         """
-        return CTE(self, name=name, recursive=recursive)
+        return CTE._construct(self, name=name, recursive=recursive)
 
 
 class FromGrouping(FromClause):
