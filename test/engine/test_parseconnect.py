@@ -8,7 +8,7 @@ from sqlalchemy.dialects import plugins
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy.engine.url as url
-from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises, ne_
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -144,6 +144,26 @@ class ParseConnectTest(fixtures.TestBase):
             str(u),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
         )
+
+
+class UrlTest(fixtures.TestBase):
+    def test_comparison(self):
+        components = ('drivername', 'username', 'password', 'host',
+                      'database', 'query', 'port')
+
+        common_url = "dbtype://username:password" \
+                     "@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar"
+        url1 = url.make_url(common_url)
+        url2 = url.make_url(common_url)
+
+        eq_(url1, url2)
+        assert not url1 != url2
+
+        for curr_component in components:
+            setattr(url2, curr_component, 'new_changed_value')
+            ne_(url1, url2)
+            assert not url1 == url2
+            setattr(url2, curr_component, getattr(url1, curr_component))
 
 
 class DialectImportTest(fixtures.TestBase):
