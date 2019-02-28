@@ -311,6 +311,24 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ``Table`` object. Defaults to ``None`` which indicates all columns
         should be reflected.
 
+    :param resolve_fks: Whether or not to reflect :class:`.Table` objects
+        related to this one via :class:`.ForeignKey` objects, when
+        :paramref:`.Table.autoload` or :paramref:`.Table.autoload_with` is
+        specified.   Defaults to True.  Set to False to disable reflection of
+        related tables as :class:`.ForeignKey` objects are encountered; may be
+        used either to save on SQL calls or to avoid issues with related tables
+        that can't be accessed. Note that if a related table is already present
+        in the :class:`.MetaData` collection, or becomes present later, a
+        :class:`.ForeignKey` object associated with this :class:`.Table` will
+        resolve to that table normally.
+
+        .. versionadded:: 1.3
+
+        .. seealso::
+
+            :paramref:`.MetaData.reflect.resolve_fks`
+
+
     :param info: Optional data dictionary which will be populated into the
         :attr:`.SchemaItem.info` attribute of this object.
 
@@ -537,6 +555,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         kwargs.pop("autoload_replace", True)
         _extend_on = kwargs.pop("_extend_on", None)
 
+        resolve_fks = kwargs.pop("resolve_fks", True)
         include_columns = kwargs.pop("include_columns", None)
 
         self.implicit_returning = kwargs.pop("implicit_returning", True)
@@ -559,7 +578,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         # circular foreign keys
         if autoload:
             self._autoload(
-                metadata, autoload_with, include_columns, _extend_on=_extend_on
+                metadata,
+                autoload_with,
+                include_columns,
+                _extend_on=_extend_on,
+                resolve_fks=resolve_fks,
             )
 
         # initialize all the column, etc. objects.  done after reflection to
@@ -572,6 +595,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         autoload_with,
         include_columns,
         exclude_columns=(),
+        resolve_fks=True,
         _extend_on=None,
     ):
 
@@ -581,6 +605,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 self,
                 include_columns,
                 exclude_columns,
+                resolve_fks,
                 _extend_on=_extend_on,
             )
         else:
@@ -597,6 +622,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 self,
                 include_columns,
                 exclude_columns,
+                resolve_fks,
                 _extend_on=_extend_on,
             )
 
@@ -636,6 +662,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         include_columns = kwargs.pop("include_columns", None)
 
+        resolve_fks = kwargs.pop("resolve_fks", True)
+
         if include_columns is not None:
             for c in self.c:
                 if c.name not in include_columns:
@@ -666,6 +694,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 autoload_with,
                 include_columns,
                 exclude_columns,
+                resolve_fks,
                 _extend_on=_extend_on,
             )
 
@@ -4065,6 +4094,7 @@ class MetaData(SchemaItem):
         only=None,
         extend_existing=False,
         autoload_replace=True,
+        resolve_fks=True,
         **dialect_kwargs
     ):
         r"""Load all available table definitions from the database.
@@ -4111,6 +4141,26 @@ class MetaData(SchemaItem):
 
           .. versionadded:: 0.9.1
 
+        :param resolve_fks: if True, reflect :class:`.Table` objects linked
+         to :class:`.ForeignKey` objects located in each :class:`.Table`.
+         For :meth:`.MetaData.reflect`, this has the effect of reflecting
+         related tables that might otherwise not be in the list of tables
+         being reflected, for example if the referenced table is in a
+         different schema or is omitted via the
+         :paramref:`.MetaData.reflect.only` parameter.  When False,
+         :class:`.ForeignKey` objects are not followed to the :class:`.Table`
+         in which they link, however if the related table is also part of the
+         list of tables that would be reflected in any case, the
+         :class:`.ForeignKey` object will still resolve to its related
+         :class:`.Table` after the :meth:`.MetaData.reflect` operation is
+         complete.   Defaults to True.
+
+         .. versionadded:: 1.3.0
+
+         .. seealso::
+
+            :paramref:`.Table.resolve_fks`
+
         :param \**dialect_kwargs: Additional keyword arguments not mentioned
          above are dialect specific, and passed in the form
          ``<dialectname>_<argname>``.  See the documentation regarding an
@@ -4133,6 +4183,7 @@ class MetaData(SchemaItem):
                 "autoload_with": conn,
                 "extend_existing": extend_existing,
                 "autoload_replace": autoload_replace,
+                "resolve_fks": resolve_fks,
                 "_extend_on": set(),
             }
 

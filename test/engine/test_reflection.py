@@ -23,8 +23,10 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import not_in_
 from sqlalchemy.testing import skip
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -141,6 +143,112 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         ]
         assert t1r.c.t2id.references(t2r.c.id)
         assert t1r.c.t3id.references(t3r.c.id)
+
+    @testing.provide_metadata
+    def test_resolve_fks_false_table(self):
+        meta = self.metadata
+        Table(
+            "t1",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+            Column("t2id", sa.Integer, sa.ForeignKey("t2.id")),
+            test_needs_fk=True,
+        )
+        Table(
+            "t2",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+            test_needs_fk=True,
+        )
+        meta.create_all()
+        meta2 = MetaData()
+        t1 = Table("t1", meta2, resolve_fks=False, autoload_with=testing.db)
+        in_("t1", meta2.tables)
+        not_in_("t2", meta2.tables)
+
+        assert_raises(
+            sa.exc.NoReferencedTableError,
+            lambda: list(t1.c.t2id.foreign_keys)[0].column,
+        )
+
+        t2 = Table("t2", meta2, autoload_with=testing.db)
+
+        # now it resolves
+        is_true(t1.c.t2id.references(t2.c.id))
+
+    @testing.provide_metadata
+    def test_resolve_fks_false_extend_existing(self):
+        meta = self.metadata
+        Table(
+            "t1",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+            Column("t2id", sa.Integer, sa.ForeignKey("t2.id")),
+            test_needs_fk=True,
+        )
+        Table(
+            "t2",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+            test_needs_fk=True,
+        )
+        meta.create_all()
+        meta2 = MetaData()
+        Table("t1", meta2)
+        in_("t1", meta2.tables)
+
+        t1 = Table(
+            "t1",
+            meta2,
+            resolve_fks=False,
+            autoload_with=testing.db,
+            extend_existing=True,
+        )
+        not_in_("t2", meta2.tables)
+
+        assert_raises(
+            sa.exc.NoReferencedTableError,
+            lambda: list(t1.c.t2id.foreign_keys)[0].column,
+        )
+
+        t2 = Table("t2", meta2, autoload_with=testing.db)
+
+        # now it resolves
+        is_true(t1.c.t2id.references(t2.c.id))
+
+    @testing.provide_metadata
+    def test_resolve_fks_false_metadata(self):
+        meta = self.metadata
+        Table(
+            "t1",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+            Column("t2id", sa.Integer, sa.ForeignKey("t2.id")),
+            test_needs_fk=True,
+        )
+        Table(
+            "t2",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+            test_needs_fk=True,
+        )
+        meta.create_all()
+        meta2 = MetaData()
+        meta2.reflect(testing.db, resolve_fks=False, only=["t1"])
+        in_("t1", meta2.tables)
+        not_in_("t2", meta2.tables)
+
+        t1 = meta2.tables["t1"]
+
+        assert_raises(
+            sa.exc.NoReferencedTableError,
+            lambda: list(t1.c.t2id.foreign_keys)[0].column,
+        )
+
+        meta2.reflect(testing.db, resolve_fks=False)
+
+        t2 = meta2.tables["t2"]
+        is_true(t1.c.t2id.references(t2.c.id))
 
     def test_nonexistent(self):
         meta = MetaData(testing.db)

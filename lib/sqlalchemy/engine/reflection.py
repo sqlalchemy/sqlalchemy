@@ -561,7 +561,12 @@ class Inspector(object):
         )
 
     def reflecttable(
-        self, table, include_columns, exclude_columns=(), _extend_on=None
+        self,
+        table,
+        include_columns,
+        exclude_columns=(),
+        resolve_fks=True,
+        _extend_on=None,
     ):
         """Given a Table object, load its internal constructs based on
         introspection.
@@ -650,6 +655,7 @@ class Inspector(object):
             table,
             cols_by_orig_name,
             exclude_columns,
+            resolve_fks,
             _extend_on,
             reflection_options,
         )
@@ -783,6 +789,7 @@ class Inspector(object):
         table,
         cols_by_orig_name,
         exclude_columns,
+        resolve_fks,
         _extend_on,
         reflection_options,
     ):
@@ -806,29 +813,31 @@ class Inspector(object):
             referred_columns = fkey_d["referred_columns"]
             refspec = []
             if referred_schema is not None:
-                sa_schema.Table(
-                    referred_table,
-                    table.metadata,
-                    autoload=True,
-                    schema=referred_schema,
-                    autoload_with=self.bind,
-                    _extend_on=_extend_on,
-                    **reflection_options
-                )
+                if resolve_fks:
+                    sa_schema.Table(
+                        referred_table,
+                        table.metadata,
+                        autoload=True,
+                        schema=referred_schema,
+                        autoload_with=self.bind,
+                        _extend_on=_extend_on,
+                        **reflection_options
+                    )
                 for column in referred_columns:
                     refspec.append(
                         ".".join([referred_schema, referred_table, column])
                     )
             else:
-                sa_schema.Table(
-                    referred_table,
-                    table.metadata,
-                    autoload=True,
-                    autoload_with=self.bind,
-                    schema=sa_schema.BLANK_SCHEMA,
-                    _extend_on=_extend_on,
-                    **reflection_options
-                )
+                if resolve_fks:
+                    sa_schema.Table(
+                        referred_table,
+                        table.metadata,
+                        autoload=True,
+                        autoload_with=self.bind,
+                        schema=sa_schema.BLANK_SCHEMA,
+                        _extend_on=_extend_on,
+                        **reflection_options
+                    )
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))
             if "options" in fkey_d:

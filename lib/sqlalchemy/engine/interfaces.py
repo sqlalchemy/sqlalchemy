@@ -197,7 +197,7 @@ class Dialect(object):
         pass
 
     def reflecttable(
-        self, connection, table, include_columns, exclude_columns
+        self, connection, table, include_columns, exclude_columns, resolve_fks
     ):
         """Load table description from the database.
 
