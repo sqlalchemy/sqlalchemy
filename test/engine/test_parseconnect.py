@@ -12,6 +12,8 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import MagicMock
@@ -21,7 +23,7 @@ from sqlalchemy.testing.mock import Mock
 dialect = None
 
 
-class ParseConnectTest(fixtures.TestBase):
+class URLTest(fixtures.TestBase):
     def test_rfc1738(self):
         for text in (
             "dbtype://username:password@hostspec:110//usr/db_file.db",
@@ -144,6 +146,29 @@ class ParseConnectTest(fixtures.TestBase):
             str(u),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
         )
+
+    def test_comparison(self):
+        components = ('drivername', 'username', 'password', 'host',
+                      'database', 'query', 'port')
+
+        common_url = "dbtype://username:password" \
+                     "@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar"
+        other_url = "dbtype://uname:pwd@host/"
+
+        url1 = url.make_url(common_url)
+        url2 = url.make_url(common_url)
+        url3 = url.make_url(other_url)
+
+        is_true(url1 == url2)
+        is_false(url1 != url2)
+        is_true(url1 != url3)
+        is_false(url1 == url3)
+
+        for curr_component in components:
+            setattr(url2, curr_component, 'new_changed_value')
+            is_true(url1 != url2)
+            is_false(url1 == url2)
+            setattr(url2, curr_component, getattr(url1, curr_component))
 
 
 class DialectImportTest(fixtures.TestBase):
