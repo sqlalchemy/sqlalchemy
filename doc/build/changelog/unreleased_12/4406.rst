@@ -1,0 +1,11 @@
+.. change::
+   :tags: bug, engine
+   :tickets: 4406
+
+   Comparing two objects of :class:`.URL` using ``__eq__()`` did not take port
+   number into consideration, two objects differing only by port number were
+   considered equal. Port comparison is now added in ``__eq__()`` method of
+   :class:`.URL`, objects differing by port number are now not equal.
+   Additionally, ``__ne__()`` was not implemented for :class:`.URL` which
+   caused unexpected result when ``!=`` was used in Python2, since there are no
+   implied relationships among the comparison operators in Python2.
