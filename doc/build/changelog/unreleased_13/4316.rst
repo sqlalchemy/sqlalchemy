@@ -1,8 +1,0 @@
-.. change::
-   :tags: feature, orm
-   :tickets: 4316
-
-   The :meth:`.Query.get` method can now accept a dictionary of attribute keys
-   and values as a means of indicating the primary key value to load; is
-   particularly useful for composite primary keys.  Pull request courtesy
-   Sanjana S.

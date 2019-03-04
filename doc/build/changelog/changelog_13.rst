@@ -12,10 +12,70 @@
 
 .. changelog::
     :version: 1.3.0
-    :include_notes_from: unreleased_13
+    :released: March 4, 2019
+
+    .. change::
+       :tags: feature, schema
+       :tickets: 4517
+
+       Added new parameters :paramref:`.Table.resolve_fks` and
+       :paramref:`.MetaData.reflect.resolve_fks` which when set to False will
+       disable the automatic reflection of related tables encountered in
+       :class:`.ForeignKey` objects, which can both reduce SQL overhead for omitted
+       tables as well as avoid tables that can't be reflected for database-specific
+       reasons.  Two :class:`.Table` objects present in the same :class:`.MetaData`
+       collection can still refer to each other even if the reflection of the two
+       tables occurred separately.
+
+
+    .. change::
+       :tags: feature, orm
+       :tickets: 4316
+
+       The :meth:`.Query.get` method can now accept a dictionary of attribute keys
+       and values as a means of indicating the primary key value to load; is
+       particularly useful for composite primary keys.  Pull request courtesy
+       Sanjana S.
+
+    .. change::
+       :tags: feature, orm
+       :tickets: 3133
+
+       A SQL expression can now be assigned to a primary key attribute for an ORM
+       flush in the same manner as ordinary attributes as described in
+       :ref:`flush_embedded_sql_expressions` where the expression will be evaulated
+       and then returned to the ORM using RETURNING, or in the case of pysqlite,
+       works using the cursor.lastrowid attribute.Requires either a database that
+       supports RETURNING (e.g. Postgresql, Oracle, SQL Server) or pysqlite.
+
+    .. change::
+       :tags: bug, sql
+       :tickets: 4509
+
+       The :class:`.Alias` class and related subclasses :class:`.CTE`,
+       :class:`.Lateral` and :class:`.TableSample` have been reworked so that it is
+       not possible for a user to construct the objects directly.  These constructs
+       require that the standalone construction function or selectable-bound method
+       be used to instantiate new objects.
+
+
+    .. change::
+       :tags: feature, engine
+       :tickets: 4500
+
+       Revised the formatting for :class:`.StatementError` when stringified. Each
+       error detail is broken up over multiple newlines instead of spaced out on a
+       single line.  Additionally, the SQL representation now stringifies the SQL
+       statement rather than using ``repr()``, so that newlines are rendered as is.
+       Pull request courtesy Nate Clark.
+
+       .. seealso::
+
+            :ref:`change_4500`
 
 .. changelog::
     :version: 1.3.0b3
+    :released: March 4, 2019
     :released: February 8, 2019
 
     .. change::
@@ -119,6 +179,7 @@
 
 .. changelog::
     :version: 1.3.0b2
+    :released: March 4, 2019
     :released: January 25, 2019
 
     .. change::
@@ -346,6 +407,7 @@
 
 .. changelog::
     :version: 1.3.0b1
+    :released: March 4, 2019
     :released: November 16, 2018
 
     .. change::
