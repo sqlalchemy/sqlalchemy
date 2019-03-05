@@ -39,6 +39,10 @@ class DescriptorProperty(MapperProperty):
             expire_missing = True
             collection = False
 
+            @property
+            def uses_objects(self):
+                return getattr(mapper.class_, prop.name).impl.uses_objects
+
             def __init__(self, key):
                 self.key = key
 

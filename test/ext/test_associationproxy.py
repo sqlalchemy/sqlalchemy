@@ -3089,6 +3089,58 @@ class MultiOwnerTest(
         self._assert_raises_ambiguous(lambda: D.c_data.any(B.id == 5))
 
 
+class ProxyOfSynonymTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
+    __dialect__ = "default"
+
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        from sqlalchemy.orm import synonym
+
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+            bs = relationship("B", backref="a")
+            data_syn = synonym("data")
+
+            b_data = association_proxy("bs", "data_syn")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            data = Column(String)
+            data_syn = synonym("data")
+
+            a_data = association_proxy("a", "data_syn")
+
+    def test_o2m_instance_getter(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="bdata1"), B(data="bdata2")])
+        eq_(a1.b_data, ["bdata1", "bdata2"])
+
+    def test_m2o_instance_getter(self):
+        A, B = self.classes("A", "B")
+
+        b1 = B(a=A(data="adata"))
+        eq_(b1.a_data, "adata")
+
+    def test_o2m_expr(self):
+        A, B = self.classes("A", "B")
+
+        self.assert_compile(
+            A.b_data == "foo",
+            "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
+            "AND b.data = :data_1)",
+        )
+
+
 class ProxyAttrTest(fixtures.DeclarativeMappedTest):
     @classmethod
     def setup_classes(cls):
