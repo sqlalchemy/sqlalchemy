@@ -1059,6 +1059,54 @@ The above suffix ``a79e`` is based on the md5 hash of the long name and will
 generate the same value every time to produce consistent names for a given
 schema.
 
+Note that the truncation logic also raises :class:`.IdentifierError` when a
+constraint name is explicitly too large for a given dialect.  This has been
+the behavior for an :class:`.Index` object for a long time, but is now applied
+to other kinds of constraints as well::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Integer
+    from sqlalchemy import MetaData
+    from sqlalchemy import Table
+    from sqlalchemy import UniqueConstraint
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy.schema import AddConstraint
+
+    m = MetaData()
+    t = Table("t", m, Column("x", Integer))
+    uq = UniqueConstraint(
+        t.c.x,
+        name="this_is_too_long_of_a_name_for_any_database_backend_even_postgresql",
+    )
+
+    print(AddConstraint(uq).compile(dialect=postgresql.dialect()))
+
+will output::
+
+    sqlalchemy.exc.IdentifierError: Identifier
+    'this_is_too_long_of_a_name_for_any_database_backend_even_postgresql'
+    exceeds maximum length of 63 characters
+
+The exception raise prevents the production of non-deterministic constraint
+names truncated by the database backend which are then not compatible with
+database migrations later on.
+
+To apply SQLAlchemy-side truncation rules to the above identifier, use the
+:func:`.conv` construct::
+
+    uq = UniqueConstraint(
+        t.c.x,
+        name=conv("this_is_too_long_of_a_name_for_any_database_backend_even_postgresql"),
+    )
+
+This will again output deterministically truncated SQL as in::
+
+    ALTER TABLE t ADD CONSTRAINT this_is_too_long_of_a_name_for_any_database_backend_eve_ac05 UNIQUE (x)
+
+There is not at the moment an option to have the names pass through to allow
+database-side truncation.  This has already been the case for :class:`.Index`
+names for some time and issues have not been raised.
+
 The change also repairs two other issues.  One is that the  ``column_0_key``
 token wasn't available even though this token was documented, the other was
 that the ``referred_column_0_name`` token would  inadvertently render the
