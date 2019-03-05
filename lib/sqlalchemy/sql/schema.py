@@ -2935,12 +2935,12 @@ class CheckConstraint(ColumnCollectionConstraint):
         r"""Construct a CHECK constraint.
 
         :param sqltext:
-          A string containing the constraint definition, which will be used
-          verbatim, or a SQL expression construct.   If given as a string,
-          the object is converted to a :class:`.Text` object.   If the textual
-          string includes a colon character, escape this using a backslash::
+         A string containing the constraint definition, which will be used
+         verbatim, or a SQL expression construct.   If given as a string,
+         the object is converted to a :func:`.text` object. If the textual
+         string includes a colon character, escape this using a backslash::
 
-            CheckConstraint(r"foo ~ E'a(?\:b|c)d")
+           CheckConstraint(r"foo ~ E'a(?\:b|c)d")
 
         :param name:
           Optional, the in-database name of the constraint.
