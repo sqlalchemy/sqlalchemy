@@ -509,7 +509,7 @@ reference the instrumented attribute back to the hybrid object::
 
         last_name = Column(String)
 
-        @FirstNameOnly.overrides.expression
+        @FirstNameOnly.name.overrides.expression
         def name(cls):
             return func.concat(cls.first_name, ' ', cls.last_name)
 
