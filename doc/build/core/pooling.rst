@@ -450,12 +450,12 @@ connections from the pool so that it makes all new ones.  Below is
 a simple version using ``multiprocessing.Process``, but this idea
 should be adapted to the style of forking in use::
 
-    eng = create_engine("...")
+    engine = create_engine("...")
 
     def run_in_process():
-      eng.dispose()
+      engine.dispose()
 
-      with eng.connect() as conn:
+      with engine.connect() as conn:
           conn.execute("...")
 
     p = Process(target=run_in_process)
@@ -468,7 +468,7 @@ This is a little more magical but probably more foolproof::
     from sqlalchemy import exc
     import os
 
-    eng = create_engine("...")
+    engine = create_engine("...")
 
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):
