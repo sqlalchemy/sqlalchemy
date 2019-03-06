@@ -595,6 +595,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         def visit_bindparam(bindparam):
             bindparam.unique = False
+
         visitors.traverse(criterion, {}, {"bindparam": visit_bindparam})
 
         def visit_bindparam(bindparam):

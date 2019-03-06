@@ -1041,7 +1041,8 @@ class Query(object):
                 raise sa_exc.InvalidRequestError(
                     "Incorrect names of values in identifier to formulate "
                     "primary key for query.get(); primary key attribute names"
-                    " are %s" % ",".join(
+                    " are %s"
+                    % ",".join(
                         "'%s'" % prop.key
                         for prop in mapper._identity_key_props
                     )

@@ -776,8 +776,7 @@ class QueuePoolTest(PoolTestBase):
 
     def test_timeout_accessor(self):
         expected_timeout = 123
-        p = self._queuepool_fixture(
-            timeout=expected_timeout)
+        p = self._queuepool_fixture(timeout=expected_timeout)
         eq_(p.timeout(), expected_timeout)
 
     @testing.requires.timing_intensive

@@ -506,11 +506,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
             "pk_t",
             metadata,
             Column(
-                "p_id",
-                Integer,
-                key="id",
-                autoincrement=True,
-                primary_key=True,
+                "p_id", Integer, key="id", autoincrement=True, primary_key=True
             ),
             Column("data", String(30)),
         )

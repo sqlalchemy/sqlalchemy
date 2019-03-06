@@ -1653,7 +1653,9 @@ def inject_param_text(doctext, inject_params):
             # TODO: this still wont cover if the code example itself has blank
             # lines in it, need to detect those via indentation.
             lines.append(line)
-            lines.append(doclines.pop(0))  # the blank line following a code example
+            lines.append(
+                doclines.pop(0)
+            )  # the blank line following a code example
             continue
         lines.append(line)
 

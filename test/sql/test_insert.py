@@ -1260,12 +1260,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table = Table(
             "sometable",
             metadata,
-            Column(
-                "id",
-                Integer,
-                autoincrement=False,
-                primary_key=True,
-            ),
+            Column("id", Integer, autoincrement=False, primary_key=True),
             Column("data", String),
         )
 

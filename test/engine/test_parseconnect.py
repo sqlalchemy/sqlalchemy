@@ -148,11 +148,20 @@ class URLTest(fixtures.TestBase):
         )
 
     def test_comparison(self):
-        components = ('drivername', 'username', 'password', 'host',
-                      'database', 'query', 'port')
+        components = (
+            "drivername",
+            "username",
+            "password",
+            "host",
+            "database",
+            "query",
+            "port",
+        )
 
-        common_url = "dbtype://username:password" \
-                     "@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar"
+        common_url = (
+            "dbtype://username:password"
+            "@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar"
+        )
         other_url = "dbtype://uname:pwd@host/"
 
         url1 = url.make_url(common_url)
@@ -165,7 +174,7 @@ class URLTest(fixtures.TestBase):
         is_false(url1 == url3)
 
         for curr_component in components:
-            setattr(url2, curr_component, 'new_changed_value')
+            setattr(url2, curr_component, "new_changed_value")
             is_true(url1 != url2)
             is_false(url1 == url2)
             setattr(url2, curr_component, getattr(url1, curr_component))

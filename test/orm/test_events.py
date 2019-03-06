@@ -2004,7 +2004,7 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             [call.pending_to_persistent(sess, u1), call.flag_checked(u1)],
         )
 
-        u1.name = 'u2'
+        u1.name = "u2"
         sess.flush()
 
         # event was not called again
