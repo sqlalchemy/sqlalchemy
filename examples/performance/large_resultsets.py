@@ -170,7 +170,7 @@ def _test_dbapi_raw(n, make_objects):
         # ORM land anyway :)
         class SimpleCustomer(object):
             def __init__(self, id_, name, description):
-                self.id = id_
+                self.id_ = id_
                 self.name = name
                 self.description = description
 
@@ -184,7 +184,7 @@ def _test_dbapi_raw(n, make_objects):
         for row in cursor.fetchall():
             # ensure that we fully fetch!
             customer = SimpleCustomer(
-                id=row[0], name=row[1], description=row[2]
+                id_=row[0], name=row[1], description=row[2]
             )
     else:
         for row in cursor.fetchall():
