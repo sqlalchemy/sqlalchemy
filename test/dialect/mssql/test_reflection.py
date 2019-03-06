@@ -42,8 +42,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("user_name", types.VARCHAR(20), nullable=False),
             Column("test1", types.CHAR(5), nullable=False),
             Column("test2", types.Float(5), nullable=False),
+            Column("test2.5", types.Float(), nullable=False),
             Column("test3", types.Text()),
             Column("test4", types.Numeric, nullable=False),
+            Column("test4.5", types.Numeric(10, 2), nullable=False),
             Column("test5", types.DateTime),
             Column(
                 "parent_user_id",
@@ -104,6 +106,19 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
     def test_money_type(self):
         self._test_specific_type(mssql.MONEY, "MONEY")
+
+    def test_numeric_prec_scale(self):
+        self._test_specific_type(mssql.NUMERIC(10, 2), "NUMERIC(10, 2)")
+
+    def test_float(self):
+        self._test_specific_type(mssql.FLOAT, "FLOAT(53)")
+
+    def test_real(self):
+        self._test_specific_type(mssql.REAL, "REAL")
+
+    def test_float_as_real(self):
+        # FLOAT(5) comes back as REAL
+        self._test_specific_type(mssql.FLOAT(5), "REAL")
 
     @testing.provide_metadata
     def test_identity(self):

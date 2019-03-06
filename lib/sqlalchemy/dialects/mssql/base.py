@@ -876,8 +876,10 @@ class REAL(sqltypes.REAL):
     __visit_name__ = "REAL"
 
     def __init__(self, **kw):
-        # REAL is a synonym for FLOAT(24) on SQL server
-        kw["precision"] = 24
+        # REAL is a synonym for FLOAT(24) on SQL server.
+        # it is only accepted as the word "REAL" in DDL, the numeric
+        # precision value is not allowed to be present
+        kw.setdefault("precision", 24)
         super(REAL, self).__init__(**kw)
 
 
@@ -2523,12 +2525,11 @@ class MSDialect(default.DefaultDialect):
                 )
                 coltype = sqltypes.NULLTYPE
             else:
-                if (
-                    issubclass(coltype, sqltypes.Numeric)
-                    and coltype is not MSReal
-                ):
-                    kwargs["scale"] = numericscale
+                if issubclass(coltype, sqltypes.Numeric):
                     kwargs["precision"] = numericprec
+
+                    if not issubclass(coltype, sqltypes.Float):
+                        kwargs["scale"] = numericscale
 
                 coltype = coltype(**kwargs)
             cdict = {
