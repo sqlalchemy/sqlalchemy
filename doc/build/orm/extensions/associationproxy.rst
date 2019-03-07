@@ -494,6 +494,59 @@ be used for querying::
             join(uka, User.keywords.local_attr).\
             join(ka, User.keywords.remote_attr)
 
+.. _cascade_scalar_deletes:
+
+Cascading Scalar Deletes
+------------------------
+
+.. versionadded:: 1.3
+
+Given a mapping as::
+
+    class A(Base):
+        __tablename__ = 'test_a'
+        id = Column(Integer, primary_key=True)
+        ab = relationship(
+            'AB', backref='a', uselist=False)
+        b = association_proxy(
+            'ab', 'b', creator=lambda b: AB(b=b),
+            cascade_scalar_deletes=True)
+
+
+    class B(Base):
+        __tablename__ = 'test_b'
+        id = Column(Integer, primary_key=True)
+        ab = relationship('AB', backref='b', cascade='all, delete-orphan')
+
+
+    class AB(Base):
+        __tablename__ = 'test_ab'
+        a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
+        b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
+
+An assigment to ``A.b`` will generate an ``AB`` object::
+
+    a.b = B()
+
+The ``A.b`` association is scalar, and includes use of the flag
+:paramref:`.AssociationProxy.cascade_scalar_deletes`.  When set, setting ``A.b``
+to ``None`` will remove ``A.ab`` as well::
+
+    a.b = None
+    assert a.ab is None
+
+When :paramref:`.AssociationProxy.cascade_scalar_deletes` is not set,
+the association object ``a.ab`` above would remain in place.
+
+Note that this is not the behavior for collection-based association proxies;
+in that case, the intermediary association object is always removed when
+members of the proxied collection are removed.  Whether or not the row is
+deleted depends on the relationship cascade setting.
+
+.. seealso::
+
+    :ref:`unitofwork_cascades`
+
 API Documentation
 -----------------
 

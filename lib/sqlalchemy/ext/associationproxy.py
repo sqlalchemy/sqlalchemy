@@ -140,6 +140,10 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
          .. versionadded:: 1.3
 
+         .. seealso::
+
+            :ref:`cascade_scalar_deletes` - complete usage example
+
         :param getset_factory: Optional.  Proxied attribute access is
           automatically handled by routines that get and set values based on
           the `attr` argument for this proxy.
