@@ -81,7 +81,6 @@ from ..sql import ddl  # noqa
 
 default_strategy = "plain"
 
-
 def create_engine(*args, **kwargs):
     """Create a new :class:`.Engine` instance.
 
@@ -147,44 +146,12 @@ def create_engine(*args, **kwargs):
         columns to accommodate Python Unicode objects directly as though the
         datatype were the :class:`.Unicode` type.
 
-          .. deprecated:: The :paramref:`.create_engine.convert_unicode` flag
-             and related Unicode conversion features are legacy Python 2
-             mechanisms which no longer have relevance under Python 3.
-             As all modern DBAPIs now support Python Unicode fully even
-             under Python 2, these flags will be removed in an upcoming
-             release.
+        .. deprecated:: 1.3
 
-        .. note::
-
-            SQLAlchemy's unicode-conversion flags and features only apply
-            to Python 2; in Python 3, all string objects are Unicode objects.
-            For this reason, as well as the fact that virtually all modern
-            DBAPIs now support Unicode natively even under Python 2,
-            the :paramref:`.Engine.convert_unicode` flag is inherently a
-            legacy feature.
-
-        .. note::
-
-            This flag does **not** imply that SQLAlchemy's unicode-conversion
-            services will be used, as all modern DBAPIs already handle
-            unicode natively; in most cases it only indicates that the
-            :class:`.String` datatype will return Python unicode objects,
-            rather than plain strings.   The :class:`.String` datatype itself
-            has additional options to force the usage of SQLAlchemy's unicode
-            converters.
-
-        .. note::
-
-            This flag does **not** impact "raw" SQL statements that have no
-            typing information set up; that is, if the :class:`.String`
-            datatype is not used, no unicode behavior is implied.
-
-        .. seealso::
-
-            :paramref:`.String.convert_unicode` - the flag local to the
-            :class:`.String` datatype has additional options
-            which can force unicode handling on a per-type basis.
-
+            The :paramref:`.create_engine.convert_unicode` parameter
+            is deprecated and will be removed in a future release.
+            All modern DBAPIs now support Python Unicode directly and this
+            parameter is unnecessary.
 
     :param creator: a callable which returns a DBAPI connection.
         This creation function will be passed to the underlying
