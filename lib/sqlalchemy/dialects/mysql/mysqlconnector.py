@@ -10,39 +10,8 @@ r"""
     :name: MySQL Connector/Python
     :dbapi: myconnpy
     :connectstring: mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
-    :url: http://dev.mysql.com/downloads/connector/python/
+    :url: https://pypi.org/project/mysql-connector-python/
 
-
-Current Issues
---------------
-
-The mysqlconnector driver has many issues that have gone unresolved
-for many years and it recommended that mysqlclient or pymysql be used
-if possible; as of June 27, 2018:
-
-* the values in cursor.description are randomly sent as either bytes
-  or text with no discernible pattern, so the dialect must test these
-  individually and attempt to decode
-
-* has been observed to leak interpreter memory (likely at the C code level)
-  under scenarios that do not leak memory when using mysqlclient
-
-* Under Python 2, the driver does not support SQL statements that contain
-  non-ascii characters within the SQL text, making it impossible to support
-  schema objects with non-ascii names; an ascii encoding error is raised.
-
-* additional random bytes-returned issues occur when running under MySQL 8.0
-  only
-
-* The driver does not accept the "utf8mb4" or "utf8mb3" charset parameters,
-  only "utf8", even though MySQL itself has deprecated this symbol
-
-* The driver produces deadlocks when trying to make use of SELECT..FOR UPDATE,
-  the reason is unknown.
-
-This list should be updated as these issues are resolved either in the
-upstream mysql-connector-python driver or if appropriate usage patterns
-are contributed to SQLAlchemy.
 
 """  # noqa
 
