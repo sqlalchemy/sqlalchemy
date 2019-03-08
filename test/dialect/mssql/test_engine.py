@@ -435,6 +435,40 @@ class VersionDetectionTest(fixtures.TestBase):
             eq_(dialect._get_server_version_info(conn), expected)
 
 
+class RealIsolationLevelTest(fixtures.TestBase):
+    __only_on__ = "mssql"
+    __backend__ = True
+
+    @testing.provide_metadata
+    def test_isolation_level(self):
+        Table("test", self.metadata, Column("id", Integer)).create(
+            checkfirst=True
+        )
+
+        with testing.db.connect() as c:
+            default = testing.db.dialect.get_isolation_level(c.connection)
+
+        values = [
+            "READ UNCOMMITTED",
+            "READ COMMITTED",
+            "REPEATABLE READ",
+            "SERIALIZABLE",
+            "SNAPSHOT",
+        ]
+        for value in values:
+            with testing.db.connect() as c:
+                c.execution_options(isolation_level=value)
+
+                c.execute("SELECT TOP 10 * FROM test")
+
+                eq_(
+                    testing.db.dialect.get_isolation_level(c.connection), value
+                )
+
+        with testing.db.connect() as c:
+            eq_(testing.db.dialect.get_isolation_level(c.connection), default)
+
+
 class IsolationLevelDetectTest(fixtures.TestBase):
     def _fixture(self, view):
         class Error(Exception):

@@ -2235,6 +2235,8 @@ class MSDialect(default.DefaultDialect):
         cursor = connection.cursor()
         cursor.execute("SET TRANSACTION ISOLATION LEVEL %s" % level)
         cursor.close()
+        if level == "SNAPSHOT":
+            connection.commit()
 
     def get_isolation_level(self, connection):
         if self.server_version_info < MS_2005_VERSION:
