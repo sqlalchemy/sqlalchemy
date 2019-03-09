@@ -81,6 +81,7 @@ from ..sql import ddl  # noqa
 
 default_strategy = "plain"
 
+
 def create_engine(*args, **kwargs):
     """Create a new :class:`.Engine` instance.
 
