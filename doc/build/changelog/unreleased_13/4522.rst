@@ -1,6 +1,0 @@
-.. change::
-   :tags: bug, orm, ext
-   :tickets: 4522
-
-   Fixed regression where an association proxy linked to a synonym would no
-   longer work, both at instance level and at class level.

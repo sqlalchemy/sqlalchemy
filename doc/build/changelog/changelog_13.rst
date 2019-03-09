@@ -12,7 +12,22 @@
 
 .. changelog::
     :version: 1.3.1
-    :include_notes_from: unreleased_13
+    :released: March 9, 2019
+
+    .. change::
+       :tags: bug, mssql
+       :tickets: 4525
+
+       Fixed regression in SQL Server reflection due to :ticket:`4393` where the
+       removal of open-ended ``**kw`` from the :class:`.Float` datatype caused
+       reflection of this type to fail due to a "scale" argument being passed.
+
+    .. change::
+       :tags: bug, orm, ext
+       :tickets: 4522
+
+       Fixed regression where an association proxy linked to a synonym would no
+       longer work, both at instance level and at class level.
 
 .. changelog::
     :version: 1.3.0

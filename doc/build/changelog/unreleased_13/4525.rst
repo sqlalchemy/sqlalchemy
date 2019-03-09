@@ -1,7 +1,0 @@
-.. change::
-   :tags: bug, mssql
-   :tickets: 4525
-
-   Fixed regression in SQL Server reflection due to :ticket:`4393` where the
-   removal of open-ended ``**kw`` from the :class:`.Float` datatype caused
-   reflection of this type to fail due to a "scale" argument being passed.
