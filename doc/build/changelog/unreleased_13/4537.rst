@@ -1,0 +1,13 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4537
+
+   Fixed bug where use of :func:`.with_polymorphic` or other aliased construct
+   would not properly adapt when the aliased target were used as the
+   :meth:`.Select.correlate_except` target of a subquery used inside of a
+   :func:`.column_property`. This required a fix to the clause adaption
+   mechanics to properly handle a selectable that shows up in the "correlate
+   except" list, in a similar manner as which occurs for selectables that show
+   up in the "correlate" list.  This is ultimately a fairly fundamental bug
+   that has lasted for a long time but it is hard to come across it.
+

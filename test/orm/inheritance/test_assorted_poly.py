@@ -16,6 +16,8 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import column_property
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
@@ -24,6 +26,7 @@ from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
@@ -503,7 +506,7 @@ for jointype in ["join1", "join2", "join3", "join4"]:
     for data in (True, False):
         _fn = _generate_test(jointype, data)
         setattr(RelationshipTest3, _fn.__name__, _fn)
-del func
+del _fn
 
 
 class RelationshipTest4(fixtures.MappedTest):
@@ -2138,4 +2141,112 @@ class ColSubclassTest(
             "SELECT a.id AS a_id FROM a JOIN "
             "(a AS a_1 JOIN b AS b_1 ON a_1.id = b_1.id) "
             "ON a.id = b_1.id WHERE b_1.x = :x_1",
+        )
+
+
+class CorrelateExceptWPolyAdaptTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
+):
+    # test [ticket:4537]'s test case.
+
+    run_create_tables = run_deletes = None
+    run_setup_classes = run_setup_mappers = run_define_tables = "each"
+    __dialect__ = "default"
+
+    def _fixture(self, use_correlate_except):
+
+        Base = self.DeclarativeBasic
+
+        class Superclass(Base):
+            __tablename__ = "s1"
+            id = Column(Integer, primary_key=True)
+            common_id = Column(ForeignKey("c.id"))
+            common_relationship = relationship(
+                "Common", uselist=False, innerjoin=True, lazy="noload"
+            )
+            discriminator_field = Column(String)
+            __mapper_args__ = {
+                "polymorphic_identity": "superclass",
+                "polymorphic_on": discriminator_field,
+            }
+
+        class Subclass(Superclass):
+            __tablename__ = "s2"
+            id = Column(ForeignKey("s1.id"), primary_key=True)
+            __mapper_args__ = {"polymorphic_identity": "subclass"}
+
+        class Common(Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+
+            if use_correlate_except:
+                num_superclass = column_property(
+                    select([func.count(Superclass.id)])
+                    .where(Superclass.common_id == id)
+                    .correlate_except(Superclass)
+                )
+
+        if not use_correlate_except:
+            Common.num_superclass = column_property(
+                select([func.count(Superclass.id)])
+                .where(Superclass.common_id == Common.id)
+                .correlate(Common)
+            )
+
+        return Common, Superclass
+
+    def test_poly_query_on_correlate(self):
+        Common, Superclass = self._fixture(False)
+
+        poly = with_polymorphic(Superclass, "*")
+
+        s = Session()
+        q = (
+            s.query(poly)
+            .options(contains_eager(poly.common_relationship))
+            .join(poly.common_relationship)
+            .filter(Common.id == 1)
+        )
+
+        # note the order of c.id, subquery changes based on if we
+        # used correlate or correlate_except; this is only with the
+        # patch in place.   Not sure why this happens.
+        self.assert_compile(
+            q,
+            "SELECT c.id AS c_id, (SELECT count(s1.id) AS count_1 "
+            "FROM s1 LEFT OUTER JOIN s2 ON s1.id = s2.id "
+            "WHERE s1.common_id = c.id) AS anon_1, "
+            "s1.id AS s1_id, "
+            "s1.common_id AS s1_common_id, "
+            "s1.discriminator_field AS s1_discriminator_field, "
+            "s2.id AS s2_id FROM s1 "
+            "LEFT OUTER JOIN s2 ON s1.id = s2.id "
+            "JOIN c ON c.id = s1.common_id WHERE c.id = :id_1",
+        )
+
+    def test_poly_query_on_correlate_except(self):
+        Common, Superclass = self._fixture(True)
+
+        poly = with_polymorphic(Superclass, "*")
+
+        s = Session()
+        q = (
+            s.query(poly)
+            .options(contains_eager(poly.common_relationship))
+            .join(poly.common_relationship)
+            .filter(Common.id == 1)
+        )
+
+        # c.id, subquery are reversed.
+        self.assert_compile(
+            q,
+            "SELECT (SELECT count(s1.id) AS count_1 "
+            "FROM s1 LEFT OUTER JOIN s2 ON s1.id = s2.id "
+            "WHERE s1.common_id = c.id) AS anon_1, "
+            "c.id AS c_id, s1.id AS s1_id, "
+            "s1.common_id AS s1_common_id, "
+            "s1.discriminator_field AS s1_discriminator_field, "
+            "s2.id AS s2_id FROM s1 "
+            "LEFT OUTER JOIN s2 ON s1.id = s2.id "
+            "JOIN c ON c.id = s1.common_id WHERE c.id = :id_1",
         )
