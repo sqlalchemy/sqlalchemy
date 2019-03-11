@@ -1088,6 +1088,90 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM table1 AS t1alias",
         )
 
+    def test_correlate_except_on_clone(self):
+        # test [ticket:4537]'s issue
+
+        t1alias = t1.alias("t1alias")
+        j = t1.join(t1alias, t1.c.col1 == t1alias.c.col2)
+
+        vis = sql_util.ClauseAdapter(j)
+
+        # "control" subquery - uses correlate which has worked w/ adaption
+        # for a long time
+        control_s = (
+            select([t2.c.col1])
+            .where(t2.c.col1 == t1.c.col1)
+            .correlate(t2)
+            .as_scalar()
+        )
+
+        # test subquery - given only t1 and t2 in the enclosing selectable,
+        # will do the same thing as the "control" query since the correlation
+        # works out the same
+        s = (
+            select([t2.c.col1])
+            .where(t2.c.col1 == t1.c.col1)
+            .correlate_except(t1)
+            .as_scalar()
+        )
+
+        # use both subqueries in statements
+        control_stmt = select([control_s, t1.c.col1, t2.c.col1]).select_from(
+            t1.join(t2, t1.c.col1 == t2.c.col1)
+        )
+
+        stmt = select([s, t1.c.col1, t2.c.col1]).select_from(
+            t1.join(t2, t1.c.col1 == t2.c.col1)
+        )
+        # they are the same
+        self.assert_compile(
+            control_stmt,
+            "SELECT "
+            "(SELECT table2.col1 FROM table1 "
+            "WHERE table2.col1 = table1.col1) AS anon_1, "
+            "table1.col1, table2.col1 "
+            "FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col1",
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT "
+            "(SELECT table2.col1 FROM table1 "
+            "WHERE table2.col1 = table1.col1) AS anon_1, "
+            "table1.col1, table2.col1 "
+            "FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col1",
+        )
+
+        # now test against the adaption of "t1" into "t1 JOIN t1alias".
+        # note in the control case, we aren't actually testing that
+        # Select is processing the "correlate" list during the adaption
+        # since we aren't adapting the "correlate"
+        self.assert_compile(
+            vis.traverse(control_stmt),
+            "SELECT "
+            "(SELECT table2.col1 FROM "
+            "table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
+            "WHERE table2.col1 = table1.col1) AS anon_1, "
+            "table1.col1, table2.col1 "
+            "FROM table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
+            "JOIN table2 ON table1.col1 = table2.col1",
+        )
+
+        # but here, correlate_except() does have the thing we're adapting
+        # so whatever is in there has to be expanded out to include
+        # the adaptation target, in this case "t1 JOIN t1alias".
+        self.assert_compile(
+            vis.traverse(stmt),
+            "SELECT "
+            "(SELECT table2.col1 FROM "
+            "table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
+            "WHERE table2.col1 = table1.col1) AS anon_1, "
+            "table1.col1, table2.col1 "
+            "FROM table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
+            "JOIN table2 ON table1.col1 = table2.col1",
+        )
+
     @testing.fails_on_everything_except()
     def test_joins_dont_adapt(self):
         # adapting to a join, i.e. ClauseAdapter(t1.join(t2)), doesn't

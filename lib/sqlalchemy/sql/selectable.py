@@ -3227,6 +3227,14 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         self._correlate = set(clone(f) for f in self._correlate).union(
             self._correlate
         )
+
+        # do something similar for _correlate_except - this is a more
+        # unusual case but same idea applies
+        if self._correlate_except:
+            self._correlate_except = set(
+                clone(f) for f in self._correlate_except
+            ).union(self._correlate_except)
+
         # 4. clone other things.   The difficulty here is that Column
         # objects are not actually cloned, and refer to their original
         # .table, resulting in the wrong "from" parent after a clone
