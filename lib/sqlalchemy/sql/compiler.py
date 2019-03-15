@@ -3470,7 +3470,7 @@ class IdentifierPreparer(object):
 
         return (
             self.initial_quote
-            + self._escape_identifier(value)
+            + self._escape_identifier(value).replace('.','].[')
             + self.final_quote
         )
 
@@ -3596,7 +3596,7 @@ class IdentifierPreparer(object):
         return name
 
     def format_label(self, label, name=None):
-        return self.quote(name or label.name)
+        return self.quote(name.replace('.','') or label.name.replace('.',''))
 
     def format_alias(self, alias, name=None):
         return self.quote(name or alias.name)
