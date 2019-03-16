@@ -182,7 +182,9 @@ class RelationshipProperty(StrategizedProperty):
         callables that evaluate the string as Python code, using the
         Declarative class-registry as a namespace.  This allows the lookup of
         related classes to be automatic via their string name, and removes the
-        need to import related classes at all into the local module space::
+        need to import related classes at all into the local module
+        space. (It does **not** remove the need to import related classes
+        at application startup.)
 
             from sqlalchemy.ext.declarative import declarative_base
 
