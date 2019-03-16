@@ -928,6 +928,7 @@ from ...engine import reflection
 from ...sql import compiler
 from ...sql import elements
 from ...sql import expression
+from ...sql import selectable
 from ...sql import sqltypes
 from ...types import BIGINT
 from ...types import BOOLEAN
@@ -1681,10 +1682,15 @@ class PGCompiler(compiler.SQLCompiler):
             tmp = " FOR UPDATE"
 
         if select._for_update_arg.of:
-            tables = util.OrderedSet(
-                c.table if isinstance(c, expression.ColumnClause) else c
-                for c in select._for_update_arg.of
-            )
+            tables = util.OrderedSet()
+            for clause in select._for_update_arg.of:
+                if isinstance(clause, expression.ColumnClause):
+                    tables.add(clause.table)
+                else:
+                    table_classes = (schema.Table, selectable.TableClause)
+                    for f in clause.select()._froms:
+                        if isinstance(f, table_classes):
+                            tables.add(f)
             tmp += " OF " + ", ".join(
                 self.process(table, ashint=True, use_schema=False, **kw)
                 for table in tables
