@@ -56,10 +56,10 @@ Pass through exact Pyodbc string
 A PyODBC connection string can also be sent exactly as specified in
 `ConnectionStrings <https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_
 into the driver using the parameter ``odbc_connect``.  The delimeters must be
-URL escaped, however, as illustrated below using ``urllib.quote_plus``::
+URL escaped, however, as illustrated below using ``urllib.parse.quote_plus``::
 
     import urllib
-    params = urllib.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
+    params = urllib.parse.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
 
     engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
