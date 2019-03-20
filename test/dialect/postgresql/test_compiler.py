@@ -1056,6 +1056,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mytable_1.myid = %(myid_1)s FOR UPDATE OF mytable_1",
         )
 
+        table2 = table("table2", column("mytable_id"))
+        join = table2.join(table1, table2.c.mytable_id == table1.c.myid)
+        self.assert_compile(
+            join.select(table2.c.mytable_id == 7).with_for_update(of=[join]),
+            "SELECT table2.mytable_id, "
+            "mytable.myid, mytable.name, mytable.description "
+            "FROM table2 "
+            "JOIN mytable ON table2.mytable_id = mytable.myid "
+            "WHERE table2.mytable_id = %(mytable_id_1)s "
+            "FOR UPDATE OF mytable, table2",
+        )
+
+        join = table2.join(ta, table2.c.mytable_id == ta.c.myid)
+        self.assert_compile(
+            join.select(table2.c.mytable_id == 7).with_for_update(of=[join]),
+            "SELECT table2.mytable_id, "
+            "mytable_1.myid, mytable_1.name, mytable_1.description "
+            "FROM table2 "
+            "JOIN mytable AS mytable_1 "
+            "ON table2.mytable_id = mytable_1.myid "
+            "WHERE table2.mytable_id = %(mytable_id_1)s "
+            "FOR UPDATE OF mytable_1, table2",
+        )
+
     def test_for_update_with_schema(self):
         m = MetaData()
         table1 = Table(

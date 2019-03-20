@@ -29,11 +29,13 @@ from .elements import ColumnElement
 from .elements import Null
 from .elements import UnaryExpression
 from .schema import Column
+from .selectable import Alias
 from .selectable import FromClause
 from .selectable import FromGrouping
 from .selectable import Join
 from .selectable import ScalarSelect
 from .selectable import SelectBase
+from .selectable import TableClause
 from .. import exc
 from .. import util
 
@@ -337,6 +339,20 @@ def surface_selectables(clause):
             stack.extend((elem.left, elem.right))
         elif isinstance(elem, FromGrouping):
             stack.append(elem.element)
+
+
+def surface_selectables_only(clause):
+    stack = [clause]
+    while stack:
+        elem = stack.pop()
+        if isinstance(elem, (TableClause, Alias)):
+            yield elem
+        if isinstance(elem, Join):
+            stack.extend((elem.left, elem.right))
+        elif isinstance(elem, FromGrouping):
+            stack.append(elem.element)
+        elif isinstance(elem, ColumnClause):
+            stack.append(elem.table)
 
 
 def surface_column_elements(clause, include_scalar_selects=True):
