@@ -1855,6 +1855,7 @@ class Engine(Connectable, log.Identified):
         echo=None,
         proxy=None,
         execution_options=None,
+        existing_logger=None
     ):
         self.pool = pool
         self.url = url
@@ -1863,11 +1864,17 @@ class Engine(Connectable, log.Identified):
             self.logging_name = logging_name
         self.echo = echo
         self.engine = self
-        log.instance_logger(self, echoflag=echo)
+        if existing_logger:
+            self.logger = existing_logger
+        else:
+            log.instance_logger(self, echoflag=echo)
         if proxy:
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
+
+    def add_existing_logger(self, logger):
+        self.logger = logger
 
     def update_execution_options(self, **opt):
         r"""Update the default execution_options dictionary
