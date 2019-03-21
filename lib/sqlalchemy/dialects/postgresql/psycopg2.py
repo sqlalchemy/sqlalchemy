@@ -83,6 +83,33 @@ using ``host`` as an additional keyword argument::
     `PQconnectdbParams \
     <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
+Empty DSN Connections / Environment Variable Connections
+---------------------------------------------------------
+
+The psycopg2 DBAPI can connect to PostgreSQL by passing an empty DSN to the
+libpq client library, which by default indicates to connect to a localhost
+PostgreSQL database that is open for "trust" connections.  This behavior can be
+further tailored using a particular set of environment variables which are
+prefixed with ``PG_...``, which are  consumed by ``libpq`` to take the place of
+any or all elements of the connection string.
+
+For this form, the URL can be passed without any elements other than the
+initial scheme::
+
+    engine = create_engine('postgresql+psycopg2://')
+
+In the above form, a blank "dsn" string is passed to the ``psycopg2.connect()``
+function which in turn represents an empty DSN passed to libpq.
+
+.. versionadded:: 1.3.2 support for parameter-less connections with psycopg2.
+
+.. seealso::
+
+    `Environment Variables\
+    <https://www.postgresql.org/docs/current/libpq-envars.html>`_ -
+    PostgreSQL documentation on how to use ``PG_...``
+    environment variables for connections.
+
 .. _psycopg2_execution_options:
 
 Per-Statement/Connection Execution Options
@@ -735,10 +762,16 @@ class PGDialect_psycopg2(PGDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")
-        if "port" in opts:
-            opts["port"] = int(opts["port"])
-        opts.update(url.query)
-        return ([], opts)
+        if opts:
+            if "port" in opts:
+                opts["port"] = int(opts["port"])
+            opts.update(url.query)
+            # send individual dbname, user, password, host, port
+            # parameters to psycopg2.connect()
+            return ([], opts)
+        else:
+            # send a blank string for "dsn" to psycopg2.connect()
+            return ([''], opts)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
