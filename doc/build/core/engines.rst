@@ -102,6 +102,15 @@ also available as a pure-Python substitute::
     # pg8000
     engine = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
 
+With the psycopg2 DBAPI, you can omit any connection parameters that are defined as
+`PG... environment variables <https://www.postgresql.org/docs/current/libpq-envars.html>`_.
+If *all* your connection parameters are defined as environment variables, you can
+specify an empty URL::
+
+    engine = create_engine('postgresql://')
+
+Again, this works only with the psycopg2 DBAPI.
+
 More notes on connecting to PostgreSQL at :ref:`postgresql_toplevel`.
 
 MySQL

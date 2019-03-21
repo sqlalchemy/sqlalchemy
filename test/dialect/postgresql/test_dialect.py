@@ -27,6 +27,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
 from sqlalchemy.testing import engines
@@ -113,6 +114,20 @@ class DialectTest(fixtures.TestBase):
 
         e = engine_from_config(config, _initialize=False)
         eq_(e.dialect.use_native_unicode, True)
+
+    def test_psycopg2_empty_connection_string(self):
+        dialect = psycopg2_dialect.dialect()
+        u = url.make_url("postgresql://")
+        cargs, cparams = dialect.create_connect_args(u)
+        assert cargs == ['']
+        assert cparams == {}
+
+    def test_psycopg2_nonempty_connection_string(self):
+        dialect = psycopg2_dialect.dialect()
+        u = url.make_url("postgresql://host")
+        cargs, cparams = dialect.create_connect_args(u)
+        assert cargs == []
+        assert cparams == {"host": "host"}
 
 
 class BatchInsertsTest(fixtures.TablesTest):

@@ -85,6 +85,17 @@ using ``host`` as an additional keyword argument::
 
 .. _psycopg2_execution_options:
 
+Environment Connection Parameters
+----------------------------------
+
+psycopg2, via its underlying ``libpq`` client library, allows any connection
+parameters to be omitted that are defined as `PG... environment variables
+<https://www.postgresql.org/docs/current/libpq-envars.html>`_. If *all* your
+required connection parameters are defined as environment variables, you can
+specify an empty URL::
+
+    create_engine("postgresql+psycopg2://")
+
 Per-Statement/Connection Execution Options
 -------------------------------------------
 
@@ -735,10 +746,13 @@ class PGDialect_psycopg2(PGDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")
-        if "port" in opts:
-            opts["port"] = int(opts["port"])
-        opts.update(url.query)
-        return ([], opts)
+        if opts:
+            if "port" in opts:
+                opts["port"] = int(opts["port"])
+            opts.update(url.query)
+            return ([], opts)
+        else:
+            return ([''], opts)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
