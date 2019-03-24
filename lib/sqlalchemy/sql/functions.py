@@ -37,9 +37,11 @@ from .. import util
 
 
 _registry = util.defaultdict(dict)
+_case_insensitive_functions = util.defaultdict(dict)
 
 
-def register_function(identifier, fn, package="_default"):
+def register_function(identifier, fn, package="_default",
+                      case_sensitive=True):
     """Associate a callable with a particular func. name.
 
     This is normally called by _GenericMeta, but is also
@@ -50,6 +52,10 @@ def register_function(identifier, fn, package="_default"):
     """
     reg = _registry[package]
     reg[identifier] = fn
+    if not case_sensitive:
+        _case_insensitive_functions[package][identifier.lower()] = identifier
+    elif identifier.lower() in _case_insensitive_functions[package]:
+        del _case_insensitive_functions[package][identifier.lower()]
 
 
 class FunctionElement(Executable, ColumnElement, FromClause):
@@ -440,7 +446,8 @@ class _FunctionGenerator(object):
             package = None
 
         if package is not None:
-            func = _registry[package].get(fname)
+            func = _registry[package].get(fname) or _registry[package].get(
+                _case_insensitive_functions[package].get(fname.lower()))
             if func is not None:
                 return func(*c, **o)
 
@@ -570,11 +577,13 @@ class _GenericMeta(VisitableType):
         if annotation.Annotated not in cls.__mro__:
             cls.name = name = clsdict.get("name", clsname)
             cls.identifier = identifier = clsdict.get("identifier", name)
+            cls.case_sensitive = case_sensitive = clsdict.get(
+                "case_sensitive", True)
             package = clsdict.pop("package", "_default")
             # legacy
             if "__return_type__" in clsdict:
                 cls.type = clsdict["__return_type__"]
-            register_function(identifier, cls, package)
+            register_function(identifier, cls, package, case_sensitive)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 

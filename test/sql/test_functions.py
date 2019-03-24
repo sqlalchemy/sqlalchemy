@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import pytest
 
 from sqlalchemy import ARRAY
 from sqlalchemy import bindparam
@@ -55,6 +56,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def tear_down(self):
         functions._registry.clear()
+        functions._case_insensitive_functions.clear()
 
     def test_compile(self):
         for dialect in all_dialects(exclude=("sybase",)):
@@ -217,6 +219,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         class myfunc(GenericFunction):
             __return_type__ = DateTime
 
+        with pytest.raises(AssertionError):
+            assert isinstance(func.MyFunc().type, DateTime)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.mYfUnC().type, DateTime)
+        assert isinstance(func.myfunc().type, DateTime)
+
+    def test_custom_legacy_type_case_insensitive(self):
+        # in case someone was using this system
+        class MyFunc(GenericFunction):
+            __return_type__ = DateTime
+            case_sensitive = False
+
+        assert isinstance(func.MyFunc().type, DateTime)
+        assert isinstance(func.mYfUnC().type, DateTime)
         assert isinstance(func.myfunc().type, DateTime)
 
     def test_custom_w_custom_name(self):
@@ -267,9 +283,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             type = Integer
             identifier = "buf3"
 
+        class GeoBufferFour(GenericFunction):
+            type = Integer
+            name = "BufferFour"
+            identifier = "Buf4"
+            case_sensitive = False
+
         self.assert_compile(func.geo.buf1(), "BufferOne()")
         self.assert_compile(func.buf2(), "BufferTwo()")
         self.assert_compile(func.buf3(), "BufferThree()")
+        self.assert_compile(func.Buf4(), "BufferFour()")
+        self.assert_compile(func.BuF4(), "BufferFour()")
+        self.assert_compile(func.bUf4(), "BufferFour()")
+        self.assert_compile(func.bUf4_(), "BufferFour()")
+        self.assert_compile(func.buf4(), "BufferFour()")
+
+        class geobufferfour(GenericFunction):
+            type = Integer
+            name = "BufferFour"
+            identifier = "Buf4"
+            case_sensitive = True
+
+        self.assert_compile(func.Buf4(), "BufferFour()")
+        with pytest.raises(AssertionError):
+            self.assert_compile(func.BuF4(), "BufferFour()")
+        with pytest.raises(AssertionError):
+            self.assert_compile(func.buf4(), "BufferFour()")
 
     def test_custom_args(self):
         class myfunc(GenericFunction):
