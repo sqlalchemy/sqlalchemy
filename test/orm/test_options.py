@@ -1266,7 +1266,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         assert_raises_message(
             sa.exc.ArgumentError,
             r'Attribute "Manager.manager_name" does not link from element '
-            r'"with_polymorphic\(Person, \[Engineer\]\)"',
+            r'"with_polymorphic\(Person, \[Engineer\]\)".$',
             s.query(Company).options,
             joinedload(Company.employees.of_type(Engineer)).load_only(
                 Manager.manager_name
@@ -1281,7 +1281,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         assert_raises_message(
             sa.exc.ArgumentError,
             r'Attribute "Manager.status" does not link from element '
-            r'"with_polymorphic\(Person, \[Engineer\]\)"',
+            r'"with_polymorphic\(Person, \[Engineer\]\)".$',
             s.query(Company).options,
             joinedload(Company.employees.of_type(Engineer)).load_only(
                 Manager.status
@@ -1296,7 +1296,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         assert_raises_message(
             sa.exc.ArgumentError,
             r'Can\'t find property named "manager_name" on '
-            "mapped class Engineer->engineers in this Query.",
+            r"mapped class Engineer->engineers in this Query.$",
             s.query(Company).options,
             joinedload(Company.employees.of_type(Engineer)).load_only(
                 "manager_name"
@@ -1311,12 +1311,36 @@ class OptionsNoPropTestInh(_Polymorphic):
         assert_raises_message(
             sa.exc.ArgumentError,
             r'Attribute "Manager.manager_name" does not link from '
-            r'element "with_polymorphic\(Person, \[Manager\]\)"',
+            r'element "with_polymorphic\(Person, \[Manager\]\)".$',
             s.query(Company).options,
             joinedload(Company.employees.of_type(wp)).load_only(
                 Manager.manager_name
             ),
         )
+
+    def test_missing_attr_is_missing_of_type_for_alias(self):
+        s = Session()
+
+        pa = aliased(Person)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'Attribute "AliasedClass_Person.name" does not link from '
+            r'element "mapped class Person->people".  Did you mean to use '
+            r"Company.employees.of_type\(AliasedClass_Person\)\?",
+            s.query(Company).options,
+            joinedload(Company.employees).load_only(pa.name),
+        )
+
+        q = s.query(Company).options(
+            joinedload(Company.employees.of_type(pa)).load_only(pa.name)
+        )
+        orig_path = inspect(Company)._path_registry[
+            Company.employees.property
+        ][inspect(pa)][pa.name.property]
+        key = ("loader", orig_path.natural_path)
+        loader = q._attributes[key]
+        eq_(loader.path, orig_path)
 
 
 class PickleTest(PathTest, QueryTest):

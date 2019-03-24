@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4566
+
+   Fixed regression where a new error message that was supposed to raise when
+   attempting to link a relationship option to an AliasedClass without using
+   :meth:`.PropComparator.of_type` would instead raise an ``AttributeError``.
+   Note that in 1.3, it is no longer valid to create an option path from a
+   plain mapper relationship to an :class:`.AliasedClass` without using
+   :meth:`.PropComparator.of_type`.

@@ -227,7 +227,7 @@ class Load(Generative, MapperOption):
                 if raiseerr:
                     raise sa_exc.ArgumentError(
                         'Can\'t find property named "%s" on '
-                        "%s in this Query. " % (attr, ent)
+                        "%s in this Query." % (attr, ent)
                     )
                 else:
                     return None
@@ -236,6 +236,9 @@ class Load(Generative, MapperOption):
 
             path = path[attr]
         elif _is_mapped_class(attr):
+            # TODO: this does not appear to be a valid codepath.  "attr"
+            # would never be a mapper.  This block is present in 1.2
+            # as well howver does not seem to be accessed in any tests.
             if not orm_util._entity_corresponds_to_use_path_impl(
                 attr.parent, path[-1]
             ):
@@ -255,7 +258,20 @@ class Load(Generative, MapperOption):
                 if raiseerr:
                     raise sa_exc.ArgumentError(
                         'Attribute "%s" does not '
-                        'link from element "%s"' % (attr, path.entity)
+                        'link from element "%s".%s'
+                        % (
+                            attr,
+                            path.entity,
+                            (
+                                "  Did you mean to use "
+                                "%s.of_type(%s)?"
+                                % (path[-2], attr.class_.__name__)
+                                if len(path) > 1
+                                and path.entity.is_mapper
+                                and attr.parent.is_aliased_class
+                                else ""
+                            ),
+                        )
                     )
                 else:
                     return None
