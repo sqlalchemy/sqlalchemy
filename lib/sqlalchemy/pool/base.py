@@ -495,7 +495,7 @@ class _ConnectionRecord(object):
         )
         _refs.add(rec)
         if echo:
-            pool.logger.debug(
+            pool.logger.info(
                 "Connection %r checked out from pool", dbapi_connection
             )
         return fairy
@@ -659,7 +659,7 @@ def _finalize_fairy(
 
     if connection is not None:
         if connection_record and echo:
-            pool.logger.debug(
+            pool.logger.info(
                 "Connection %r being returned to pool", connection
             )
 
