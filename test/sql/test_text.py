@@ -331,6 +331,19 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_double_colons_dont_actually_need_escaping(self):
+        # this is news to me. bound param won't work but you can put the
+        # double colons in
+        self.assert_compile(
+            text(
+                r"SELECT * FROM pg_attribute WHERE "
+                r"attrelid = foo::regclass"
+            ),
+            "SELECT * FROM pg_attribute WHERE " "attrelid = foo::regclass",
+            params={},
+            dialect="postgresql",
+        )
+
     def test_text_in_select_nonfrom(self):
 
         generate_series = text(
