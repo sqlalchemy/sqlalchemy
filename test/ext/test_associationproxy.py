@@ -3141,7 +3141,7 @@ class ProxyOfSynonymTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
         )
 
 
-class ProxyAttrTest(fixtures.DeclarativeMappedTest):
+class ProxyHybridTest(fixtures.DeclarativeMappedTest):
     @classmethod
     def setup_classes(cls):
         from sqlalchemy.ext.hybrid import hybrid_property
@@ -3225,6 +3225,15 @@ class ProxyAttrTest(fixtures.DeclarativeMappedTest):
             "a.id = b.aid AND b.data = :data_1)",
         )
 
+    def test_get_classlevel_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        eq_(
+            str(A.b_data),
+            "AmbiguousAssociationProxyInstance"
+            "(AssociationProxy('bs', 'value'))",
+        )
+
     def test_expr_ambiguous(self):
         A, B = self.classes("A", "B")
 
@@ -3232,9 +3241,70 @@ class ProxyAttrTest(fixtures.DeclarativeMappedTest):
             AttributeError,
             "Association proxy A.bs refers to an attribute "
             "'value' that is not directly mapped",
-            getattr,
-            A,
-            "b_data",
+            A.b_data.any,
+        )
+
+
+class ProxyPlainPropertyTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+            b_data = association_proxy("bs", "value")
+
+        class B(Base):
+            __tablename__ = "b"
+
+            id = Column(Integer, primary_key=True)
+            aid = Column(ForeignKey("a.id"))
+            data = Column(String(50))
+
+            @property
+            def value(self):
+                return self.data
+
+            @value.setter
+            def value(self, value):
+                self.data = value
+
+    def test_get_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="b1")])
+        eq_(a1.b_data[0], "b1")
+
+    def test_set_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B()])
+
+        a1.b_data[0] = "b1"
+        eq_(a1.b_data[0], "b1")
+
+    def test_get_classlevel_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        eq_(
+            str(A.b_data),
+            "AmbiguousAssociationProxyInstance"
+            "(AssociationProxy('bs', 'value'))",
+        )
+
+    def test_expr_ambiguous(self):
+        A, B = self.classes("A", "B")
+
+        assert_raises_message(
+            AttributeError,
+            "Association proxy A.bs refers to an attribute "
+            "'value' that is not directly mapped",
+            lambda: A.b_data == 5,
         )
 
 
