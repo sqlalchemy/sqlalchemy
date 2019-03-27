@@ -8,6 +8,9 @@
 """SQL function API, factories, and built-in functions.
 
 """
+from functools import partial
+import warnings
+
 from . import annotation
 from . import operators
 from . import schema
@@ -33,15 +36,17 @@ from .selectable import Alias
 from .selectable import FromClause
 from .selectable import Select
 from .visitors import VisitableType
+from .. import exc as sa_exc
 from .. import util
 
 
+_RegistryList = partial(util.defaultdict, list)
+
 _registry = util.defaultdict(dict)
-_case_insensitive_functions = util.defaultdict(dict)
+_case_sensitive_reg = util.defaultdict(_RegistryList)
 
 
-def register_function(identifier, fn, package="_default",
-                      case_sensitive=True):
+def register_function(identifier, fn, package="_default"):
     """Associate a callable with a particular func. name.
 
     This is normally called by _GenericMeta, but is also
@@ -51,11 +56,37 @@ def register_function(identifier, fn, package="_default",
 
     """
     reg = _registry[package]
-    reg[identifier] = fn
-    if not case_sensitive:
-        _case_insensitive_functions[package][identifier.lower()] = identifier
-    elif identifier.lower() in _case_insensitive_functions[package]:
-        del _case_insensitive_functions[package][identifier.lower()]
+    raw_identifier = identifier
+    identifier = identifier.lower()
+
+    # Check if a function with the same lowercase identifier is registered.
+    if identifier in _case_sensitive_reg[package]:
+        if (
+            raw_identifier not in _case_sensitive_reg[package][identifier]
+        ):
+            warnings.warn(
+                "GenericFunction(s) '{}' are already registered with "
+                "different letter cases and might interact with {}.".format(
+                    _case_sensitive_reg[package][identifier],
+                    raw_identifier),
+                sa_exc.SADeprecationWarning)
+        else:
+                warnings.warn(
+                    "The GenericFunction '{}' is already registered and "
+                    "is going to be overriden.".format(identifier))
+
+        # If a function with the same lowercase identifier is registered, then
+        # these 2 functions are considered as case-sensitive.
+        if len(_case_sensitive_reg[package][identifier]) == 1:
+            old_fn = reg[identifier]
+            del reg[identifier]
+            reg[_case_sensitive_reg[package][identifier][0]] = old_fn
+        reg[raw_identifier] = fn
+    else:
+        reg[identifier] = fn
+
+    if raw_identifier not in _case_sensitive_reg[package][identifier]:
+        _case_sensitive_reg[package][identifier].append(raw_identifier)
 
 
 class FunctionElement(Executable, ColumnElement, FromClause):
@@ -446,8 +477,12 @@ class _FunctionGenerator(object):
             package = None
 
         if package is not None:
-            func = _registry[package].get(fname) or _registry[package].get(
-                _case_insensitive_functions[package].get(fname.lower()))
+            if (
+                len(_case_sensitive_reg[package].get(fname.lower(), [])) > 1
+            ):
+                func = _registry[package].get(fname)
+            else:
+                func = _registry[package].get(fname.lower())
             if func is not None:
                 return func(*c, **o)
 
@@ -577,13 +612,11 @@ class _GenericMeta(VisitableType):
         if annotation.Annotated not in cls.__mro__:
             cls.name = name = clsdict.get("name", clsname)
             cls.identifier = identifier = clsdict.get("identifier", name)
-            cls.case_sensitive = case_sensitive = clsdict.get(
-                "case_sensitive", True)
             package = clsdict.pop("package", "_default")
             # legacy
             if "__return_type__" in clsdict:
                 cls.type = clsdict["__return_type__"]
-            register_function(identifier, cls, package, case_sensitive)
+            register_function(identifier, cls, package)
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
