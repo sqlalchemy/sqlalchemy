@@ -295,6 +295,12 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
 
         return getter, setter
 
+    def __repr__(self):
+        return "AssociationProxy(%r, %r)" % (
+            self.target_collection,
+            self.value_attr,
+        )
+
 
 class AssociationProxyInstance(object):
     """A per-class object that serves class- and object-specific results.
@@ -385,7 +391,11 @@ class AssociationProxyInstance(object):
             )
 
         attr = getattr(target_class, value_attr)
-        if attr._is_internal_proxy and not hasattr(attr, "impl"):
+        if (
+            not hasattr(attr, "_is_internal_proxy")
+            or attr._is_internal_proxy
+            and not hasattr(attr, "impl")
+        ):
             return AmbiguousAssociationProxyInstance(
                 parent, owning_class, target_class, value_attr
             )
@@ -724,6 +734,9 @@ class AssociationProxyInstance(object):
             criterion=criterion, is_has=True, **kwargs
         )
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.parent)
+
 
 class AmbiguousAssociationProxyInstance(AssociationProxyInstance):
     """an :class:`.AssociationProxyInstance` where we cannot determine
@@ -748,9 +761,15 @@ class AmbiguousAssociationProxyInstance(AssociationProxyInstance):
 
     def get(self, obj):
         if obj is None:
-            self._ambiguous()
+            return self
         else:
             return super(AmbiguousAssociationProxyInstance, self).get(obj)
+
+    def __eq__(self, obj):
+        self._ambiguous()
+
+    def __ne__(self, obj):
+        self._ambiguous()
 
     def any(self, criterion=None, **kwargs):
         self._ambiguous()
