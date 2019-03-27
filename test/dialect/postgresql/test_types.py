@@ -2628,7 +2628,7 @@ class _NumRangeTests(object):
         )
 
 
-class _DateRangeTests(object):
+class _DateRangeDefaultBoundsTests(object):
 
     _col_type = DATERANGE
     _col_str = "DATERANGE"
@@ -2637,6 +2637,30 @@ class _DateRangeTests(object):
     def _data_obj(self):
         return self.extras().DateRange(
             datetime.date(2013, 3, 23), datetime.date(2013, 3, 24)
+        )
+
+
+class _DateRangeInclusiveBoundsTests(object):
+
+    _col_type = DATERANGE
+    _col_str = "DATERANGE"
+    _data_str = "[2013-03-23,2013-03-24]"
+
+    def _data_obj(self):
+        return self.extras().DateRange(
+            datetime.date(2013, 3, 23), datetime.date(2013, 3, 24), bounds='[]'
+        )
+
+
+class _DateRangeExclusiveBoundsTests(object):
+
+    _col_type = DATERANGE
+    _col_str = "DATERANGE"
+    _data_str = "(2013-03-23,2013-03-24)"
+
+    def _data_obj(self):
+        return self.extras().DateRange(
+            datetime.date(2013, 3, 23), datetime.date(2013, 3, 24), bounds='()'
         )
 
 
@@ -2701,11 +2725,33 @@ class NumRangeRoundTripTest(_NumRangeTests, _RangeTypeRoundTrip):
     pass
 
 
-class DateRangeCompilationTest(_DateRangeTests, _RangeTypeCompilation):
+class DateRangeDefaultBoundsCompilationTest(_DateRangeDefaultBoundsTests,
+                                            _RangeTypeCompilation):
     pass
 
 
-class DateRangeRoundTripTest(_DateRangeTests, _RangeTypeRoundTrip):
+class DateRangeDefaultBoundsRoundTripTest(_DateRangeDefaultBoundsTests,
+                                          _RangeTypeRoundTrip):
+    pass
+
+
+class DateRangeInclusiveBoundsCompilationTest(_DateRangeInclusiveBoundsTests,
+                                              _RangeTypeCompilation):
+    pass
+
+
+class DateRangeInclusiveBoundsRoundTripTest(_DateRangeInclusiveBoundsTests,
+                                            _RangeTypeRoundTrip):
+    pass
+
+
+class DateRangeExclusiveBoundsCompilationTest(_DateRangeExclusiveBoundsTests,
+                                              _RangeTypeCompilation):
+    pass
+
+
+class DateRangeExclusiveBoundsRoundTripTest(_DateRangeExclusiveBoundsTests,
+                                            _RangeTypeRoundTrip):
     pass
 
 
