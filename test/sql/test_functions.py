@@ -1,5 +1,7 @@
+from copy import deepcopy
 import datetime
 import decimal
+
 import pytest
 
 from sqlalchemy import ARRAY
@@ -55,9 +57,13 @@ table1 = table(
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def tear_down(self):
-        functions._registry.clear()
-        functions._case_sensitive_functions.clear()
+    def setup_method(self):
+        self._registry = deepcopy(functions._registry)
+        self._case_sensitive_reg = deepcopy(functions._case_sensitive_reg)
+
+    def teardown_method(self):
+        functions._registry = self._registry
+        functions._case_sensitive_reg = self._case_sensitive_reg
 
     def test_compile(self):
         for dialect in all_dialects(exclude=("sybase",)):
@@ -222,6 +228,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert isinstance(func.myfunc().type, DateTime)
 
+    def test_case_sensitive(self):
+        class MYFUNC(GenericFunction):
+            type = DateTime
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, DateTime)
+        assert isinstance(func.mYfUnC().type, DateTime)
+        assert isinstance(func.myfunc().type, DateTime)
+
+        with testing.expect_deprecated():
+            class MyFunc(GenericFunction):
+                type = Integer
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, Integer)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.mYfUnC().type, Integer)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.myfunc().type, Integer)
+
     def test_replace_function(self):
 
         class replacable_func(GenericFunction):
@@ -252,18 +278,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert isinstance(func.Replacable_Func().type, Integer)
         assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
         assert isinstance(func.replacable_func().type, DateTime)
-
-    def test_custom_legacy_case_sensitive(self):
-        # in case someone was using this system
-        with testing.expect_deprecated():
-            class MyFunc(GenericFunction):
-                __return_type__ = Integer
-
-        assert isinstance(func.MyFunc().type, Integer)
-        with pytest.raises(AssertionError):
-            assert isinstance(func.mYfUnC().type, Integer)
-        with pytest.raises(AssertionError):
-            assert isinstance(func.myfunc().type, Integer)
 
     def test_custom_w_custom_name(self):
         class myfunc(GenericFunction):

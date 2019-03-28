@@ -71,9 +71,9 @@ def register_function(identifier, fn, package="_default"):
                     raw_identifier),
                 sa_exc.SADeprecationWarning)
         else:
-                warnings.warn(
-                    "The GenericFunction '{}' is already registered and "
-                    "is going to be overriden.".format(identifier))
+            warnings.warn(
+                "The GenericFunction '{}' is already registered and "
+                "is going to be overriden.".format(identifier))
 
         # If a function with the same lowercase identifier is registered, then
         # these 2 functions are considered as case-sensitive.
