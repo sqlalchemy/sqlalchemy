@@ -857,9 +857,16 @@ Using ENUM with ARRAY
 
 The combination of ENUM and ARRAY is not directly supported by backend
 DBAPIs at this time.   In order to send and receive an ARRAY of ENUM,
-use the following workaround type::
+use the following workaround type, which decorates the
+:class:`.postgresql.ARRAY` datatype.
 
-    class ArrayOfEnum(ARRAY):
+.. sourcecode:: python
+
+    from sqlalchemy import TypeDecorator
+    from sqlalchemy.dialects.postgresql import ARRAY
+
+    class ArrayOfEnum(TypeDecorator):
+        impl = ARRAY
 
         def bind_expression(self, bindvalue):
             return sa.cast(bindvalue, self)

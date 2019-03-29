@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, documentation, sql
+   :tickets: 4580
+
+   Thanks to :ref:`change_3981`, we no longer need to rely on recipes that
+   subclass dialect-specific types directly, :class:`.TypeDecorator` can now
+   handle all cases.   Additionally, the above change made it slightly less
+   likely that a direct subclass of a base SQLAlchemy type would work as
+   expected, which could be misleading.  Documentation has been updated to use
+   :class:`.TypeDecorator` for these examples including the PostgreSQL
+   "ArrayOfEnum" example datatype and direct support for the "subclass a type
+   directly" has been removed.

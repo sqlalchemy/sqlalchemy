@@ -48,10 +48,11 @@ to and from the database is required.
 .. note::
 
   The bind- and result-processing of :class:`.TypeDecorator`
-  is *in addition* to the processing already performed by the hosted
+  is **in addition** to the processing already performed by the hosted
   type, which is customized by SQLAlchemy on a per-DBAPI basis to perform
-  processing specific to that DBAPI.  To change the DBAPI-level processing
-  for an existing type, see the section :ref:`replacing_processors`.
+  processing specific to that DBAPI.  While it is possible to replace this
+  handling for a given type through direct subclassing, it is never needed in
+  practice and SQLAlchemy no longer supports this as a public use case.
 
 .. autoclass:: TypeDecorator
    :members:
@@ -283,56 +284,12 @@ have no meaning with a JSON object such as "LIKE", rather than automatically
 coercing to text.
 
 
-.. _replacing_processors:
-
-Replacing the Bind/Result Processing of Existing Types
-------------------------------------------------------
-
-Most augmentation of type behavior at the bind/result level
-is achieved using :class:`.TypeDecorator`.   For the rare scenario
-where the specific processing applied by SQLAlchemy at the DBAPI
-level needs to be replaced, the SQLAlchemy type can be subclassed
-directly, and the ``bind_processor()`` or ``result_processor()``
-methods can be overridden.   Doing so requires that the
-``adapt()`` method also be overridden.  This method is the mechanism
-by which SQLAlchemy produces DBAPI-specific type behavior during
-statement execution.  Overriding it allows a copy of the custom
-type to be used in lieu of a DBAPI-specific type.  Below we subclass
-the :class:`.types.TIME` type to have custom result processing behavior.
-The ``process()`` function will receive ``value`` from the DBAPI
-cursor directly::
-
-  class MySpecialTime(TIME):
-      def __init__(self, special_argument):
-          super(MySpecialTime, self).__init__()
-          self.special_argument = special_argument
-
-      def result_processor(self, dialect, coltype):
-          import datetime
-          time = datetime.time
-          def process(value):
-              if value is not None:
-                  microseconds = value.microseconds
-                  seconds = value.seconds
-                  minutes = seconds / 60
-                  return time(
-                            minutes / 60,
-                            minutes % 60,
-                            seconds - minutes * 60,
-                            microseconds)
-              else:
-                  return None
-          return process
-
-      def adapt(self, impltype, **kw):
-          return MySpecialTime(self.special_argument)
-
 .. _types_sql_value_processing:
 
 Applying SQL-level Bind/Result Processing
 -----------------------------------------
 
-As seen in the sections :ref:`types_typedecorator` and :ref:`replacing_processors`,
+As seen in the section :ref:`types_typedecorator`,
 SQLAlchemy allows Python functions to be invoked both when parameters are sent
 to a statement, as well as when result rows are loaded from the database, to apply
 transformations to the values as they are sent to or from the database.   It is also
@@ -401,19 +358,21 @@ Output::
     SELECT ST_AsText(geometry.geom_data) AS my_data
     FROM geometry
 
-For an example of subclassing a built in type directly, we subclass
+Another example is we decorate
 :class:`.postgresql.BYTEA` to provide a ``PGPString``, which will make use of the
 PostgreSQL ``pgcrypto`` extension to encrypt/decrypt values
 transparently::
 
     from sqlalchemy import create_engine, String, select, func, \
-            MetaData, Table, Column, type_coerce
+            MetaData, Table, Column, type_coerce, TypeDecorator
 
     from sqlalchemy.dialects.postgresql import BYTEA
 
-    class PGPString(BYTEA):
-        def __init__(self, passphrase, length=None):
-            super(PGPString, self).__init__(length)
+    class PGPString(TypeDecorator):
+        impl = BYTEA
+
+        def __init__(self, passphrase):
+            super(PGPString, self).__init__()
             self.passphrase = passphrase
 
         def bind_expression(self, bindvalue):
@@ -430,7 +389,7 @@ transparently::
     message = Table('message', metadata,
                     Column('username', String(50)),
                     Column('message',
-                        PGPString("this is my passphrase", length=1000)),
+                        PGPString("this is my passphrase")),
                 )
 
     engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
