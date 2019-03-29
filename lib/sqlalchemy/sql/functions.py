@@ -60,31 +60,32 @@ def register_function(identifier, fn, package="_default"):
     identifier = identifier.lower()
 
     # Check if a function with the same lowercase identifier is registered.
-    if identifier in _case_sensitive_reg[package]:
+    if identifier in _registry[package]:
         if (
             raw_identifier not in _case_sensitive_reg[package][identifier]
         ):
-            warnings.warn(
+            util.warn_deprecated(
                 "GenericFunction(s) '{}' are already registered with "
                 "different letter cases and might interact with {}.".format(
                     _case_sensitive_reg[package][identifier],
-                    raw_identifier),
-                sa_exc.SADeprecationWarning)
+                    raw_identifier))
+            # If a function with the same lowercase identifier is registered,
+            # then these 2 functions are considered as case-sensitive.
+            if len(_case_sensitive_reg[package][identifier]) == 1:
+                old_fn = reg[identifier]
+                del reg[identifier]
+                reg[_case_sensitive_reg[package][identifier][0]] = old_fn
         else:
             warnings.warn(
                 "The GenericFunction '{}' is already registered and "
-                "is going to be overriden.".format(identifier))
+                "is going to be overriden.".format(identifier),
+                sa_exc.SAWarning)
 
-        # If a function with the same lowercase identifier is registered, then
-        # these 2 functions are considered as case-sensitive.
-        if len(_case_sensitive_reg[package][identifier]) == 1:
-            old_fn = reg[identifier]
-            del reg[identifier]
-            reg[_case_sensitive_reg[package][identifier][0]] = old_fn
         reg[raw_identifier] = fn
     else:
         reg[identifier] = fn
 
+    # Add the raw_identifier to the case-sensitive registry
     if raw_identifier not in _case_sensitive_reg[package][identifier]:
         _case_sensitive_reg[package][identifier].append(raw_identifier)
 

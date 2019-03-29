@@ -1,11 +1,16 @@
 #! coding: utf-8
 
+from copy import deepcopy
+import pytest
+
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
+from sqlalchemy import DateTime
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
@@ -18,6 +23,9 @@ from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.schema import DDL
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import functions
+from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -25,10 +33,19 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_warnings
 
 
 class DeprecationWarningsTest(fixtures.TestBase):
     __backend__ = True
+
+    def setup_method(self):
+        self._registry = deepcopy(functions._registry)
+        self._case_sensitive_reg = deepcopy(functions._case_sensitive_reg)
+
+    def teardown_method(self):
+        functions._registry = self._registry
+        functions._case_sensitive_reg = self._case_sensitive_reg
 
     def test_ident_preparer_force(self):
         preparer = testing.db.dialect.identifier_preparer
@@ -134,6 +151,59 @@ class DeprecationWarningsTest(fixtures.TestBase):
                 extend_existing=True,
                 autoload_with=testing.db,
             )
+
+    def test_case_sensitive(self):
+        class MYFUNC(GenericFunction):
+            type = DateTime
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, DateTime)
+        assert isinstance(func.mYfUnC().type, DateTime)
+        assert isinstance(func.myfunc().type, DateTime)
+
+        with testing.expect_deprecated():
+            class MyFunc(GenericFunction):
+                type = Integer
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, Integer)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.mYfUnC().type, Integer)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.myfunc().type, Integer)
+
+    def test_replace_function_case_sensitive(self):
+
+        class replacable_func(GenericFunction):
+            __return_type__ = Integer
+            identifier = 'replacable_func'
+
+        assert isinstance(func.Replacable_Func().type, Integer)
+        assert isinstance(func.RePlAcaBlE_fUnC().type, Integer)
+        assert isinstance(func.replacable_func().type, Integer)
+
+        with testing.expect_deprecated():
+            class Replacable_Func(GenericFunction):
+                __return_type__ = DateTime
+                identifier = 'Replacable_Func'
+
+        assert isinstance(func.Replacable_Func().type, DateTime)
+        assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
+        assert isinstance(func.replacable_func().type, Integer)
+
+        with expect_warnings():
+            class replacable_func_override(GenericFunction):
+                __return_type__ = DateTime
+                identifier = 'replacable_func'
+
+        with expect_warnings():
+            class Replacable_Func_override(GenericFunction):
+                __return_type__ = Integer
+                identifier = 'Replacable_Func'
+
+        assert isinstance(func.Replacable_Func().type, Integer)
+        assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
+        assert isinstance(func.replacable_func().type, DateTime)
 
 
 class DDLListenerDeprecationsTest(fixtures.TestBase):

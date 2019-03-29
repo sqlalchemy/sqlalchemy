@@ -2,8 +2,6 @@ from copy import deepcopy
 import datetime
 import decimal
 
-import pytest
-
 from sqlalchemy import ARRAY
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
@@ -35,7 +33,6 @@ from sqlalchemy.sql import table
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
-from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -43,6 +40,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.engines import all_dialects
 
 
@@ -95,6 +93,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 % {"name": "fake_func_1", "position": 1},
                 dialect=dialect,
             )
+
+            functions._registry['_default'].pop('fake_func')
+            functions._case_sensitive_reg['_default'].pop('fake_func')
 
     def test_use_labels(self):
         self.assert_compile(
@@ -237,46 +238,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert isinstance(func.mYfUnC().type, DateTime)
         assert isinstance(func.myfunc().type, DateTime)
 
-        with testing.expect_deprecated():
-            class MyFunc(GenericFunction):
-                type = Integer
-
-        assert isinstance(func.MYFUNC().type, DateTime)
-        assert isinstance(func.MyFunc().type, Integer)
-        with pytest.raises(AssertionError):
-            assert isinstance(func.mYfUnC().type, Integer)
-        with pytest.raises(AssertionError):
-            assert isinstance(func.myfunc().type, Integer)
-
     def test_replace_function(self):
 
         class replacable_func(GenericFunction):
-            __return_type__ = Integer
+            type = Integer
             identifier = 'replacable_func'
 
         assert isinstance(func.Replacable_Func().type, Integer)
         assert isinstance(func.RePlAcaBlE_fUnC().type, Integer)
         assert isinstance(func.replacable_func().type, Integer)
 
-        with testing.expect_deprecated():
-            class Replacable_Func(GenericFunction):
-                __return_type__ = DateTime
-                identifier = 'Replacable_Func'
+        with expect_warnings():
+            class replacable_func_override(GenericFunction):
+                type = DateTime
+                identifier = 'replacable_func'
 
         assert isinstance(func.Replacable_Func().type, DateTime)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
-        assert isinstance(func.replacable_func().type, Integer)
-
-        class replacable_func_override(GenericFunction):
-            __return_type__ = DateTime
-            identifier = 'replacable_func'
-
-        class Replacable_Func_override(GenericFunction):
-            __return_type__ = Integer
-            identifier = 'Replacable_Func'
-
-        assert isinstance(func.Replacable_Func().type, Integer)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
+        assert isinstance(func.RePlAcaBlE_fUnC().type, DateTime)
         assert isinstance(func.replacable_func().type, DateTime)
 
     def test_custom_w_custom_name(self):
@@ -340,22 +318,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(func.bUf4(), "BufferFour()")
         self.assert_compile(func.bUf4_(), "BufferFour()")
         self.assert_compile(func.buf4(), "BufferFour()")
-
-        with testing.expect_deprecated():
-            class geobufferfour_lowercase(GenericFunction):
-                type = Integer
-                name = "BufferFour_lowercase"
-                identifier = "buf4"
-
-        with testing.expect_deprecated():
-            class geobufferfour_random_case(GenericFunction):
-                type = Integer
-                name = "BuFferFouR"
-                identifier = "BuF4"
-
-        self.assert_compile(func.Buf4(), "BufferFour()")
-        self.assert_compile(func.BuF4(), "BuFferFouR()")
-        self.assert_compile(func.buf4(), "BufferFour_lowercase()")
 
     def test_custom_args(self):
         class myfunc(GenericFunction):
