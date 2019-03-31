@@ -1,6 +1,7 @@
 #! coding: utf-8
 
 from copy import deepcopy
+
 import pytest
 
 from sqlalchemy import bindparam
@@ -22,8 +23,8 @@ from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.schema import DDL
-from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import functions
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises
