@@ -60,7 +60,7 @@ def register_function(identifier, fn, package="_default"):
     identifier = identifier.lower()
 
     # Check if a function with the same lowercase identifier is registered.
-    if identifier in _registry[package]:
+    if identifier in _case_sensitive_reg[package]:
         if (
             raw_identifier not in _case_sensitive_reg[package][identifier]
         ):

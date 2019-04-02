@@ -154,6 +154,9 @@ class DeprecationWarningsTest(fixtures.TestBase):
             )
 
     def test_case_sensitive(self):
+        reg = functions._registry
+        cs_reg = functions._case_sensitive_reg
+
         class MYFUNC(GenericFunction):
             type = DateTime
 
@@ -161,6 +164,12 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.MyFunc().type, DateTime)
         assert isinstance(func.mYfUnC().type, DateTime)
         assert isinstance(func.myfunc().type, DateTime)
+
+        assert "myfunc" in reg['_default']
+        assert "MYFUNC" not in reg['_default']
+        assert "MyFunc" not in reg['_default']
+        assert "myfunc" in cs_reg['_default']
+        assert cs_reg['_default']['myfunc'] == ['MYFUNC']
 
         with testing.expect_deprecated():
             class MyFunc(GenericFunction):
@@ -173,38 +182,75 @@ class DeprecationWarningsTest(fixtures.TestBase):
         with pytest.raises(AssertionError):
             assert isinstance(func.myfunc().type, Integer)
 
+        assert "myfunc" not in reg['_default']
+        assert "MYFUNC" in reg['_default']
+        assert "MyFunc" in reg['_default']
+        assert "myfunc" in cs_reg['_default']
+        assert cs_reg['_default']['myfunc'] == ['MYFUNC', 'MyFunc']
+
     def test_replace_function_case_sensitive(self):
+        reg = functions._registry
+        cs_reg = functions._case_sensitive_reg
 
-        class replacable_func(GenericFunction):
-            __return_type__ = Integer
-            identifier = 'replacable_func'
+        class replaceable_func(GenericFunction):
+            type = Integer
+            identifier = 'REPLACEABLE_FUNC'
 
-        assert isinstance(func.Replacable_Func().type, Integer)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, Integer)
-        assert isinstance(func.replacable_func().type, Integer)
+        assert isinstance(func.REPLACEABLE_FUNC().type, Integer)
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
+        assert isinstance(func.replaceable_func().type, Integer)
+
+        assert "replaceable_func" in reg['_default']
+        assert "REPLACEABLE_FUNC" not in reg['_default']
+        assert "Replaceable_Func" not in reg['_default']
+        assert "replaceable_func" in cs_reg['_default']
+        assert cs_reg['_default']['replaceable_func'] == ['REPLACEABLE_FUNC']
 
         with testing.expect_deprecated():
-            class Replacable_Func(GenericFunction):
-                __return_type__ = DateTime
-                identifier = 'Replacable_Func'
+            class Replaceable_Func(GenericFunction):
+                type = DateTime
+                identifier = 'Replaceable_Func'
 
-        assert isinstance(func.Replacable_Func().type, DateTime)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
-        assert isinstance(func.replacable_func().type, Integer)
+        assert isinstance(func.REPLACEABLE_FUNC().type, Integer)
+        assert isinstance(func.Replaceable_Func().type, DateTime)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
+        assert isinstance(func.replaceable_func().type, NullType)
+
+        assert "replaceable_func" not in reg['_default']
+        assert "REPLACEABLE_FUNC" in reg['_default']
+        assert "Replaceable_Func" in reg['_default']
+        assert "replaceable_func" in cs_reg['_default']
+        assert cs_reg['_default']['replaceable_func'] == ['REPLACEABLE_FUNC',
+                                                          'Replaceable_Func']
 
         with expect_warnings():
-            class replacable_func_override(GenericFunction):
-                __return_type__ = DateTime
-                identifier = 'replacable_func'
+            class replaceable_func_override(GenericFunction):
+                type = DateTime
+                identifier = 'REPLACEABLE_FUNC'
+
+        with testing.expect_deprecated():
+            class replaceable_func_lowercase(GenericFunction):
+                type = String
+                identifier = 'replaceable_func'
 
         with expect_warnings():
-            class Replacable_Func_override(GenericFunction):
-                __return_type__ = Integer
-                identifier = 'Replacable_Func'
+            class Replaceable_Func_override(GenericFunction):
+                type = Integer
+                identifier = 'Replaceable_Func'
 
-        assert isinstance(func.Replacable_Func().type, Integer)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, NullType)
-        assert isinstance(func.replacable_func().type, DateTime)
+        assert isinstance(func.REPLACEABLE_FUNC().type, DateTime)
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
+        assert isinstance(func.replaceable_func().type, String)
+
+        assert "replaceable_func" in reg['_default']
+        assert "REPLACEABLE_FUNC" in reg['_default']
+        assert "Replaceable_Func" in reg['_default']
+        assert "replaceable_func" in cs_reg['_default']
+        assert cs_reg['_default']['replaceable_func'] == ['REPLACEABLE_FUNC',
+                                                          'Replaceable_Func',
+                                                          'replaceable_func']
 
 
 class DDLListenerDeprecationsTest(fixtures.TestBase):
