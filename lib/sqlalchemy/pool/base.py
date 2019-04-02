@@ -105,10 +105,10 @@ class Pool(log.Identified):
           "sqlalchemy.pool" logger. Defaults to a hexstring of the object's
           id.
 
-        :param echo: If True, connections being pulled and retrieved
-          from the pool will be logged to the standard output, as well
-          as pool sizing information.  Echoing can also be achieved by
-          enabling logging for the "sqlalchemy.pool"
+        :param echo: if True, the connection pool will log
+          all pool disconnects and whether reconnection attempts have exhausted
+          or not to the logging stream, which defaults to sys.stdout. Echoing
+          can also be achieved by enabling logging for the "sqlalchemy.pool"
           namespace. Defaults to False.
 
         :param use_threadlocal: If set to True, repeated calls to
