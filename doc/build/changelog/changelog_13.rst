@@ -12,7 +12,82 @@
 
 .. changelog::
     :version: 1.3.2
-    :include_notes_from: unreleased_13
+    :released: April 2, 2019
+
+    .. change::
+       :tags: bug, documentation, sql
+       :tickets: 4580
+
+       Thanks to :ref:`change_3981`, we no longer need to rely on recipes that
+       subclass dialect-specific types directly, :class:`.TypeDecorator` can now
+       handle all cases.   Additionally, the above change made it slightly less
+       likely that a direct subclass of a base SQLAlchemy type would work as
+       expected, which could be misleading.  Documentation has been updated to use
+       :class:`.TypeDecorator` for these examples including the PostgreSQL
+       "ArrayOfEnum" example datatype and direct support for the "subclass a type
+       directly" has been removed.
+
+    .. change::
+       :tags: bug, postgresql
+       :tickets: 4550
+
+       Modified the :paramref:`.Select.with_for_update.of` parameter so that if a
+       join or other composed selectable is passed, the individual :class:`.Table`
+       objects will be filtered from it, allowing one to pass a join() object to
+       the parameter, as occurs normally when using joined table inheritance with
+       the ORM.  Pull request courtesy Raymond Lu.
+
+
+    .. change::
+        :tags: feature, postgresql
+        :tickets: 4562
+
+        Added support for parameter-less connection URLs for the psycopg2 dialect,
+        meaning, the URL can be passed to :func:`.create_engine` as
+        ``"postgresql+psycopg2://"`` with no additional arguments to indicate an
+        empty DSN passed to libpq, which indicates to connect to "localhost" with
+        no username, password, or database given. Pull request courtesy Julian
+        Mehnle.
+
+    .. change::
+       :tags: bug, orm, ext
+       :tickets: 4574, 4573
+
+       Restored instance-level support for plain Python descriptors, e.g.
+       ``@property`` objects, in conjunction with association proxies, in that if
+       the proxied object is not within ORM scope at all, it gets classified as
+       "ambiguous" but is proxed directly.  For class level access, a basic class
+       level``__get__()`` now returns the
+       :class:`.AmbiguousAssociationProxyInstance` directly, rather than raising
+       its exception, which is the closest approximation to the previous behavior
+       that returned the :class:`.AssociationProxy` itself that's possible.  Also
+       improved the stringification of these objects to be more descriptive of
+       current state.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4537
+
+       Fixed bug where use of :func:`.with_polymorphic` or other aliased construct
+       would not properly adapt when the aliased target were used as the
+       :meth:`.Select.correlate_except` target of a subquery used inside of a
+       :func:`.column_property`. This required a fix to the clause adaption
+       mechanics to properly handle a selectable that shows up in the "correlate
+       except" list, in a similar manner as which occurs for selectables that show
+       up in the "correlate" list.  This is ultimately a fairly fundamental bug
+       that has lasted for a long time but it is hard to come across it.
+
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4566
+
+       Fixed regression where a new error message that was supposed to raise when
+       attempting to link a relationship option to an AliasedClass without using
+       :meth:`.PropComparator.of_type` would instead raise an ``AttributeError``.
+       Note that in 1.3, it is no longer valid to create an option path from a
+       plain mapper relationship to an :class:`.AliasedClass` without using
+       :meth:`.PropComparator.of_type`.
 
 .. changelog::
     :version: 1.3.1
