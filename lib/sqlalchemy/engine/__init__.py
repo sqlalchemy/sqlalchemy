@@ -170,10 +170,10 @@ def create_engine(*args, **kwargs):
         information on how to configure logging directly.
 
     :param echo_pool=False: if True, the connection pool will log
-        all checkouts/checkins to the logging stream, which defaults to
-        sys.stdout. This flag ultimately controls a Python logger; see
-        :ref:`dbengine_logging` for information on how to configure logging
-        directly.
+        all pool disconnects and whether reconnection attempts have exhausted 
+        or not to the logging stream, which defaults to sys.stdout. This flag 
+        ultimately controls a Python logger; see :ref:`dbengine_logging` for 
+        information on how to configure logging directly.
 
     :param empty_in_strategy:  The SQL compilation strategy to use when
         rendering an IN or NOT IN expression for :meth:`.ColumnOperators.in_`

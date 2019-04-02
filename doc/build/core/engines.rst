@@ -275,7 +275,7 @@ namespace of SA loggers that can be turned on is as follows:
 
 * ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for SQL query output, ``logging.DEBUG`` for query + result set output.
 * ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details.
-* ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.INFO`` or lower to log connection pool checkouts/checkins.
+* ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.DEBUG`` or lower to log connection pool checkouts/checkins.
 * ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for information on mapper configurations.
 
 For example, to log SQL queries using Python logging instead of the ``echo=True`` flag::
