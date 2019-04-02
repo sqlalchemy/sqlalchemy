@@ -107,8 +107,9 @@ class Pool(log.Identified):
 
         :param echo: if True, the connection pool will log
           all pool disconnects and whether reconnection attempts have exhausted
-          or not to the logging stream, which defaults to sys.stdout. Echoing
-          can also be achieved by enabling logging for the "sqlalchemy.pool"
+          or not to the logging stream, which defaults to sys.stdout. This also logs
+          pool checkins/checkouts, but for that you need to set your log level to debug.
+          Echoing can also be achieved by enabling logging for the "sqlalchemy.pool"
           namespace. Defaults to False.
 
         :param use_threadlocal: If set to True, repeated calls to
