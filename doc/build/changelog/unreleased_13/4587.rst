@@ -1,0 +1,9 @@
+.. change::
+   :tags: bug, mssql
+   :tickets: 4587
+
+   Fixed issue in SQL Server dialect where if a bound parameter were present in
+   an ORDER BY expression that would ultimately not be rendered in the SQL
+   Server version of the statement, the parameters would still be part of the
+   execution parameters, leading to DBAPI-level errors.  Pull request courtesy
+   Matt Lewellyn.
