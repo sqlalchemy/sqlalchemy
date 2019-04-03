@@ -1818,6 +1818,31 @@ class SingletonThreadPoolTest(PoolTestBase):
             still_opened = len([c for c in sr if not c.close.call_count])
             eq_(still_opened, 3)
 
+    def test_no_rollback_from_nested_connections(self):
+        dbapi = MockDBAPI()
+
+        lock = threading.Lock()
+
+        def creator():
+            # the mock iterator isn't threadsafe...
+            with lock:
+                return dbapi.connect()
+
+        p = pool.SingletonThreadPool(creator=creator, pool_size=3)
+
+        c1 = p.connect()
+        mock_conn = c1.connection
+
+        c2 = p.connect()
+        is_(c1, c2)
+
+        c2.close()
+
+        eq_(mock_conn.mock_calls, [])
+        c1.close()
+
+        eq_(mock_conn.mock_calls, [call.rollback()])
+
 
 class AssertionPoolTest(PoolTestBase):
     def test_connect_error(self):
