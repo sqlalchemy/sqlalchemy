@@ -1559,6 +1559,81 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON dingalings.address_id = addresses_1.id",
         )
 
+    def test_clause_present_in_froms_twice_w_onclause(self):
+        # test [ticket:4584]
+        Order, Address, Dingaling, User = (
+            self.classes.Order,
+            self.classes.Address,
+            self.classes.Dingaling,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        a1 = aliased(Address)
+
+        q = sess.query(Order).select_from(Order, a1, User)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't determine which FROM clause to join from, there are "
+            "multiple FROMS which can join to this entity. "
+            "Try adding an explicit ON clause to help resolve the ambiguity.",
+            q.outerjoin,
+            a1,
+        )
+
+        # the condition which occurs here is: Query._from_obj contains both
+        # "a1" by itself as well as a join that "a1" is part of.
+        # find_left_clause_to_join_from() needs to include removal of froms
+        # that are in the _hide_froms of joins the same way
+        # Selectable._get_display_froms does.
+        q = sess.query(Order).select_from(Order, a1, User)
+        q = q.outerjoin(a1, a1.id == Order.address_id)
+        q = q.outerjoin(User, a1.user_id == User.id)
+
+        self.assert_compile(
+            q,
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, "
+            "orders.address_id AS orders_address_id, "
+            "orders.description AS orders_description, "
+            "orders.isopen AS orders_isopen "
+            "FROM orders "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON addresses_1.id = orders.address_id "
+            "LEFT OUTER JOIN users ON addresses_1.user_id = users.id",
+        )
+
+    def test_clause_present_in_froms_twice_wo_onclause(self):
+        # test [ticket:4584]
+        Order, Address, Dingaling, User = (
+            self.classes.Order,
+            self.classes.Address,
+            self.classes.Dingaling,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        a1 = aliased(Address)
+
+        # the condition which occurs here is: Query._from_obj contains both
+        # "a1" by itself as well as a join that "a1" is part of.
+        # find_left_clause_to_join_from() needs to include removal of froms
+        # that are in the _hide_froms of joins the same way
+        # Selectable._get_display_froms does.
+        q = sess.query(User).select_from(Dingaling, a1, User)
+        q = q.outerjoin(a1, User.id == a1.user_id)
+        q = q.outerjoin(Dingaling)
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id "
+            "LEFT OUTER JOIN dingalings "
+            "ON addresses_1.id = dingalings.address_id",
+        )
+
     def test_multiple_adaption(self):
         Item, Order, User = (
             self.classes.Item,

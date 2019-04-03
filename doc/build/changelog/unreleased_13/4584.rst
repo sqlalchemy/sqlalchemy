@@ -1,0 +1,12 @@
+.. change::
+   :tags: bug, orm
+   :tickets: 4584
+
+   Fixed 1.3 regression in new "ambiguous FROMs" query logic introduced in
+   :ref:`change_4365` where a :class:`.Query` that explicitly places an entity
+   in the FROM clause with :meth:`.Query.select_from` and also joins to it
+   using :meth:`.Query.join` would later cause an "ambiguous FROM" error if
+   that entity were used in additional joins, as the entity appears twice in
+   the "from" list of the :class:`.Query`.  The fix resolves this ambiguity by
+   folding the standalone entity into the join that it's already a part of in
+   the same way that ultimately happens when the SELECT statement is rendered.
