@@ -377,6 +377,36 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
+    def test_noorderby_parameters_insubquery(self):
+        """test that the ms-sql dialect does not include ORDER BY
+        positional parameters in subqueries"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        q = select(
+            [table1.c.myid, sql.literal('bar').label('c1')],
+            order_by=[table1.c.name + '-']
+        ).alias("foo")
+        crit = q.c.myid == table1.c.myid
+        dialect = mssql.dialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+        self.assert_compile(
+            select(["*"], crit),
+            "SELECT * FROM (SELECT mytable.myid AS "
+            "myid, ? AS c1 FROM mytable) AS foo, mytable WHERE "
+            "foo.myid = mytable.myid",
+            dialect=dialect,
+            checkparams={'param_1': 'bar'},
+            # if name_1 is included, too many parameters are passed to dbapi
+            checkpositional=('bar', )
+        )
+
     def test_force_schema_quoted_name_w_dot_case_insensitive(self):
         metadata = MetaData()
         tbl = Table(

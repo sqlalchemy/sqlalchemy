@@ -1753,10 +1753,16 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return ""
 
     def order_by_clause(self, select, **kw):
+        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
+        if self.is_subquery() and not select._limit:
+            # avoid processing the order by clause if we won't end up
+            # using it, because we don't want all the bind params tacked
+            # onto the positional list if that is what the dbapi requires
+            return ""
+
         order_by = self.process(select._order_by_clause, **kw)
 
-        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
-        if order_by and (not self.is_subquery() or select._limit):
+        if order_by:
             return " ORDER BY " + order_by
         else:
             return ""
