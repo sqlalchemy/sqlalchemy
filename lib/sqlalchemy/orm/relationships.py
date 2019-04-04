@@ -1210,8 +1210,8 @@ class RelationshipProperty(StrategizedProperty):
             will produce::
 
                 SELECT * FROM my_table WHERE
-                NOT EXISTS (SELECT 1 FROM related WHERE
-                related.my_id=my_table.id)
+                NOT (EXISTS (SELECT 1 FROM related WHERE
+                related.my_id=my_table.id))
 
             :meth:`~.RelationshipProperty.Comparator.any` is only
             valid for collections, i.e. a :func:`.relationship`
