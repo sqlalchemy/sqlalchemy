@@ -232,7 +232,16 @@ class Load(Generative, MapperOption):
                 else:
                     return None
             else:
-                attr = found_property = attr.property
+                try:
+                    attr = found_property = attr.property
+                except AttributeError:
+                    if isinstance(attr, property):
+                        raise sa_exc.ArgumentError(
+                            'The entity %s in this Query is a '
+                            'Python @property object and not an '
+                            'addressable column.' %  ent
+                            )
+                    raise
 
             path = path[attr]
         elif _is_mapped_class(attr):

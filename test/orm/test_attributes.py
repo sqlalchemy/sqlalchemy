@@ -20,6 +20,15 @@ from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import all_partial_orderings
 from sqlalchemy.testing.util import gc_collect
 
+# used for `InvalidLoadOnlyTest`
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 
 # global for pickling tests
 MyTest = None
@@ -3615,3 +3624,77 @@ class TestUnlink(fixtures.TestBase):
         state = attributes.instance_state(a1)
         _set_callable(state, state.dict, "bs", lambda: B())
         assert_raises(Warning, coll.append, B())
+
+
+class InvalidLoadOnlyTest(fixtures.MappedTest):
+    """Tests a situation where a `load_only` attribute is not a column."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a",
+            metadata,
+            Column("id", Integer, primary_key=True, ),
+            Column("b_id", Integer, ForeignKey("b.id", use_alter=True), ),
+        )
+        Table(
+            "b",
+            metadata,
+            Column("id", Integer, primary_key=True, ),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(Integer, ForeignKey("b.id"))
+
+            b = relationship("B", primaryjoin="A.b_id==B.id", uselist=False)
+
+        class B(Base):
+            __tablename__ = "b"
+
+            id = Column(Integer, primary_key=True)
+
+            @property
+            def id_string(self):
+                return "%s" % self.id
+
+        cls.classes.A = A
+        cls.classes.B = B
+
+    def test_invalid_load_only(self):
+        s = Session(testing.db)
+
+        # prep the session with some data
+        _B = self.classes.B()
+        _B.id = 2
+        s.add(_B)
+        _A = self.classes.A()
+        _A.id = 1
+        _A.b_id = 2
+        s.add(_A)
+        s.flush()
+
+        # core query
+        qCore = s.query(self.classes.A)
+
+        # ensure the property works and the selects generally work
+        r1 = qCore.options(joinedload('b')).first()
+        assert("%s" % r1.b_id == r1.b.id_string)
+        r2 = qCore.options(joinedload('b').load_only('id')).first()
+        assert("%s" % r2.b_id == r2.b.id_string)
+
+        # ensure the correct error is raised
+        _option = joinedload('b').load_only('id', 'id_string')
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "The entity mapped class B->b in this Query is a Python @property "
+            "object and not an addressable column.",
+            qCore.options,
+            _option,
+        )
