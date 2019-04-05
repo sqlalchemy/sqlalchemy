@@ -105,11 +105,20 @@ class Pool(log.Identified):
           "sqlalchemy.pool" logger. Defaults to a hexstring of the object's
           id.
 
-        :param echo: If True, connections being pulled and retrieved
-          from the pool will be logged to the standard output, as well
-          as pool sizing information.  Echoing can also be achieved by
-          enabling logging for the "sqlalchemy.pool"
-          namespace. Defaults to False.
+        :param echo: if True, the connection pool will log
+         informational output such as when connections are invalidated
+         as well as when connections are recycled to the default log handler,
+         which defaults to ``sys.stdout`` for output..   If set to the string
+         ``"debug"``, the logging will include pool checkouts and checkins.
+
+         The :paramref:`.Pool.echo` parameter can also be set from the
+         :func:`.create_engine` call by using the
+         :paramref:`.create_engine.echo_pool` parameter.
+
+         .. seealso::
+
+             :ref:`dbengine_logging` - further detail on how to configure
+             logging.
 
         :param use_threadlocal: If set to True, repeated calls to
           :meth:`connect` within the same application thread will be

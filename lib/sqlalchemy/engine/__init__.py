@@ -161,19 +161,31 @@ def create_engine(*args, **kwargs):
         parameters specified in the URL argument to be bypassed.
 
     :param echo=False: if True, the Engine will log all statements
-        as well as a repr() of their parameter lists to the engines
-        logger, which defaults to sys.stdout. The ``echo`` attribute of
-        ``Engine`` can be modified at any time to turn logging on and
-        off. If set to the string ``"debug"``, result rows will be
-        printed to the standard output as well. This flag ultimately
-        controls a Python logger; see :ref:`dbengine_logging` for
-        information on how to configure logging directly.
+        as well as a ``repr()`` of their parameter lists to the default log
+        handler, which defaults to ``sys.stdout`` for output.   If set to the
+        string ``"debug"``, result rows will be printed to the standard output
+        as well. The ``echo`` attribute of ``Engine`` can be modified at any
+        time to turn logging on and off; direct control of logging is also
+        available using the standard Python ``logging`` module.
+
+        .. seealso::
+
+            :ref:`dbengine_logging` - further detail on how to configure
+            logging.
 
     :param echo_pool=False: if True, the connection pool will log
-        all checkouts/checkins to the logging stream, which defaults to
-        sys.stdout. This flag ultimately controls a Python logger; see
-        :ref:`dbengine_logging` for information on how to configure logging
-        directly.
+        informational output such as when connections are invalidated
+        as well as when connections are recycled to the default log handler,
+        which defaults to ``sys.stdout`` for output.   If set to the string
+        ``"debug"``, the logging will include pool checkouts and checkins.
+        Direct control of logging is also available using the standard Python
+        ``logging`` module.
+
+        .. seealso::
+
+            :ref:`dbengine_logging` - further detail on how to configure
+            logging.
+
 
     :param empty_in_strategy:  The SQL compilation strategy to use when
         rendering an IN or NOT IN expression for :meth:`.ColumnOperators.in_`
