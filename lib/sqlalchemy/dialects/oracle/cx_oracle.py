@@ -9,7 +9,7 @@ r"""
     :name: cx-Oracle
     :dbapi: cx_oracle
     :connectstring: oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
-    :url: http://cx-oracle.sourceforge.net/
+    :url: https://oracle.github.io/python-cx_Oracle/
 
 Additional Connect Arguments
 ----------------------------
