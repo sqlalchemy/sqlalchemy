@@ -2717,10 +2717,20 @@ class SQLCompiler(Compiled):
 
 
 class StrSQLCompiler(SQLCompiler):
-    """"a compiler subclass with a few non-standard SQL features allowed.
+    """A :class:`.SQLCompiler` subclass which allows a small selection
+    of non-standard SQL features to render into a string value.
 
-    Used for stringification of SQL statements when a real dialect is not
-    available.
+    The :class:`.StrSQLCompiler` is invoked whenever a Core expression
+    element is directly stringified without calling upon the
+    :meth:`.ClauseElement.compile` method.   It can render a limited set
+    of non-standard SQL constructs to assist in basic stringification,
+    however for more substantial custom or dialect-specific SQL constructs,
+    it will be necessary to make use of :meth:`.ClauseElement.compile`
+    directly.
+
+    .. seealso::
+
+        :ref:`faq_sql_expression_string`
 
     """
 

@@ -11,19 +11,52 @@ SQL Expressions
 How do I render SQL expressions as strings, possibly with bound parameters inlined?
 ------------------------------------------------------------------------------------
 
-The "stringification" of a SQLAlchemy statement or Query in the vast majority
-of cases is as simple as::
+The "stringification" of a SQLAlchemy Core statement object or
+expression fragment, as well as that of an ORM :class:`.Query` object,
+in the majority of simple cases is as simple as using
+the ``str()`` builtin function, as below when use it with the ``print``
+function (note the Python ``print`` function also calls ``str()`` automatically
+if we don't use it explicitly)::
 
-    print(str(statement))
+    >>> from sqlalchemy import table, column, select
+    >>> t = table('my_table', column('x'))
+    >>> statement = select([t])
+    >>> print(str(statement))
+    SELECT my_table.x
+    FROM my_table
 
-this applies both to an ORM :class:`~.orm.query.Query` as well as any :func:`.select` or other
-statement.   Additionally, to get the statement as compiled to a
-specific dialect or engine, if the statement itself is not already
-bound to one you can pass this in to :meth:`.ClauseElement.compile`::
+The ``str()`` builtin, or an equivalent, can be invoked on ORM
+:class:`.Query`  object as well as any statement such as that of
+:func:`.select`, :func:`.insert` etc. and also any expression fragment, such
+as::
 
-    print(statement.compile(someengine))
+    >>> from sqlalchemy import column
+    >>> print(column('x') == 'some value')
+    x = :x_1
 
-or without an :class:`.Engine`::
+Stringifying for Specific Databases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A complication arises when the statement or fragment we are stringifying
+contains elements that have a database-specific string format, or when it
+contains elements that are only available within a certain kind of database.
+In these cases, we might get a stringified statement that is not in the correct
+syntax for the database we are targeting, or the operation may raise a
+:class:`.UnsupportedCompilationError` exception.   In these cases, it is
+necessary that we stringify the statement using the
+:meth:`.ClauseElement.compile` method, while passing along an :class:`.Engine`
+or :class:`.Dialect` object that represents the target database.  Such as
+below, if we have a MySQL database engine, we can stringify a statement in
+terms of the MySQL dialect::
+
+    from sqlalchemy import create_engine
+
+    engine = create_engine("mysql+pymysql://scott:tiger@localhost/test")
+    print(statement.compile(engine))
+
+More directly, without building up an :class:`.Engine` object we can
+instantiate a :class:`.Dialect` object directly, as below where we
+use a PostgreSQL dialect::
 
     from sqlalchemy.dialects import postgresql
     print(statement.compile(dialect=postgresql.dialect()))
@@ -35,6 +68,16 @@ accessor first::
 
     statement = query.statement
     print(statement.compile(someengine))
+
+Rendering Bound Parameters Inline
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. warning:: **Never** use this technique with string content received from
+   untrusted input, such as from web forms or other user-input applications.
+   SQLAlchemy's facilities to  coerce Python values into direct SQL string
+   values are **not secure against untrusted input and do not validate the type
+   of data being passed**. Always use bound parameters when programmatically
+   invoking non-DDL SQL statements against a relational database.
 
 The above forms will render the SQL statement as it is passed to the Python
 :term:`DBAPI`, which includes that bound parameters are not rendered inline.
@@ -52,7 +95,7 @@ flag, passed to ``compile_kwargs``::
 
     s = select([t]).where(t.c.x == 5)
 
-    print(s.compile(compile_kwargs={"literal_binds": True}))
+    print(s.compile(compile_kwargs={"literal_binds": True}))  # **do not use** with untrusted input!!!
 
 the above approach has the caveats that it is only supported for basic
 types, such as ints and strings, and furthermore if a :func:`.bindparam`

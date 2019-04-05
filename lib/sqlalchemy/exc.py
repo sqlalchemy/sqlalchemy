@@ -154,7 +154,14 @@ class CompileError(SQLAlchemyError):
 class UnsupportedCompilationError(CompileError):
     """Raised when an operation is not supported by the given compiler.
 
+    .. seealso::
+
+        :ref:`faq_sql_expression_string`
+
+        :ref:`error_l7de`
     """
+
+    code = "l7de"
 
     def __init__(self, compiler, element_type):
         super(UnsupportedCompilationError, self).__init__(
