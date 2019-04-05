@@ -318,6 +318,77 @@ the database driver (DBAPI), not SQLAlchemy itself.
 SQL Expression Language
 =======================
 
+.. _error_l7de:
+
+Compiler StrSQLCompiler can't render element of type <element type>
+-------------------------------------------------------------------
+
+This error usually occurs when attempting to stringify a SQL expression
+construct that includes elements which are not part of the default compilation;
+in this case, the error will be against the :class:`.StrSQLCompiler` class.
+In less common cases, it can also occur when the wrong kind of SQL expression
+is used with a particular type of database backend; in those cases, other
+kinds of SQL compiler classes will be named, such as ``SQLCompiler`` or
+``sqlalchemy.dialects.postgresql.PGCompiler``.  The guidance below is
+more specific to the "stringification" use case but describes the general
+background as well.
+
+Normally, a Core SQL construct or ORM :class:`.Query` object can be stringified
+directly, such as when we use ``print()``::
+
+  >>> from sqlalchemy import column
+  >>> print(column('x') == 5)
+  x = :x_1
+
+When the above SQL expression is stringified, the :class:`.StrSQLCompiler`
+compiler class is used, which is a special statement compiler that is invoked
+when a construct is stringified without any dialect-specific information.
+
+However, there are many constructs that are specific to some particular kind
+of database dialect, for which the :class:`.StrSQLCompiler` doesn't know how
+to turn into a string, such as the PostgreSQL
+`"insert on conflict" <postgresql_insert_on_conflict>`_ construct::
+
+  >>> from sqlalchemy.dialects.postgresql import insert
+  >>> from sqlalchemy import table, column
+  >>> my_table = table('my_table', column('x'), column('y'))
+  >>> insert_stmt = insert(my_table).values(x='foo')
+  >>> insert_stmt = insert_stmt.on_conflict_do_nothing(
+  ...     index_elements=['y']
+  ... )
+  >>> print(insert_stmt)
+  Traceback (most recent call last):
+
+  ...
+
+  sqlalchemy.exc.UnsupportedCompilationError:
+  Compiler <sqlalchemy.sql.compiler.StrSQLCompiler object at 0x7f04fc17e320>
+  can't render element of type
+  <class 'sqlalchemy.dialects.postgresql.dml.OnConflictDoNothing'>
+
+In order to stringify constructs that are specific to particular backend,
+the :meth:`.ClauseElement.compile` method must be used, passing either an
+:class:`.Engine` or a :class:`.Dialect` object which will invoke the correct
+compiler.   Below we use a PostgreSQL dialect::
+
+  >>> from sqlalchemy.dialects import postgresql
+  >>> print(insert_stmt.compile(dialect=postgresql.dialect()))
+  INSERT INTO my_table (x) VALUES (%(x)s) ON CONFLICT (y) DO NOTHING
+
+For an ORM :class:`.Query` object, the statement can be accessed using the
+:attr:`~.orm.query.Query.statement` accessor::
+
+    statement = query.statement
+    print(statement.compile(dialect=postgresql.dialect()))
+
+See the FAQ link below for additional detail on direct stringification /
+compilation of SQL elements.
+
+.. seealso::
+
+  :ref:`faq_sql_expression_string`
+
+
 .. _error_2afi:
 
 This Compiled object is not bound to any Engine or Connection

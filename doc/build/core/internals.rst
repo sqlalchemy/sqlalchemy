@@ -40,4 +40,7 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.sql.compiler.SQLCompiler
     :members:
 
+.. autoclass:: sqlalchemy.sql.compiler.StrSQLCompiler
+    :members:
+
 
