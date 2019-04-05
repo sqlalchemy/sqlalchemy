@@ -263,9 +263,11 @@ Python's standard `logging
 <http://docs.python.org/library/logging.html>`_ module is used to
 implement informational and debug log output with SQLAlchemy. This allows
 SQLAlchemy's logging to integrate in a standard way with other applications
-and libraries. The ``echo`` and ``echo_pool`` flags that are present on
-:func:`~sqlalchemy.create_engine`, as well as the ``echo_uow`` flag used on
-:class:`~sqlalchemy.orm.session.Session`, all interact with regular loggers.
+and libraries.   There are also two parameters
+:paramref:`.create_engine.echo` and :paramref:`.create_engine.echo_pool`
+present on :func:`.create_engine` which allow immediate logging to ``sys.stdout``
+for the purposes of local development; these parameters ultimately interact
+with the regular Python loggers described below.
 
 This section assumes familiarity with the above linked logging module. All
 logging performed by SQLAlchemy exists underneath the ``sqlalchemy``
@@ -273,12 +275,27 @@ namespace, as used by ``logging.getLogger('sqlalchemy')``. When logging has
 been configured (i.e. such as via ``logging.basicConfig()``), the general
 namespace of SA loggers that can be turned on is as follows:
 
-* ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for SQL query output, ``logging.DEBUG`` for query + result set output.
-* ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details.
-* ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.INFO`` or lower to log connection pool checkouts/checkins.
-* ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for information on mapper configurations.
+* ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for
+  SQL query output, ``logging.DEBUG`` for query + result set output.  These
+  settings are equivalent to ``echo=True`` and ``echo="debug"`` on
+  :paramref:`.create_engine.echo`, respectively.
 
-For example, to log SQL queries using Python logging instead of the ``echo=True`` flag::
+* ``sqlalchemy.pool`` - controls connection pool logging.  set to
+  ``logging.INFO`` to log connection invalidation and recycle events; set to
+  ``logging.DEBUG`` to additionally log all pool checkins and checkouts.
+  These settings are equivalent to ``pool_echo=True`` and ``pool_echo="debug"``
+  on :paramref:`.create_engine.echo_pool`, respectively.
+
+* ``sqlalchemy.dialects`` - controls custom logging for SQL dialects, to the
+  extend that logging is used within specific dialects, which is generally
+  minimal.
+
+* ``sqlalchemy.orm`` - controls logging of various ORM functions to the extent
+  that logging is used within the ORM, which is generally minimal.  Set to
+  ``logging.INFO`` to log some top-level information on mapper configurations.
+
+For example, to log SQL queries using Python logging instead of the
+``echo=True`` flag::
 
     import logging
 
