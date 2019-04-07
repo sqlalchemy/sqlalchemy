@@ -157,8 +157,8 @@ class DeprecationWarningsTest(fixtures.TestBase):
             )
 
     def test_case_sensitive(self):
-        reg = functions._registry
-        cs_reg = functions._case_sensitive_registry
+        reg = functions._registry['_default']
+        cs_reg = functions._case_sensitive_registry['_default']
 
         class MYFUNC(GenericFunction):
             type = DateTime
@@ -168,11 +168,11 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.mYfUnC().type, DateTime)
         assert isinstance(func.myfunc().type, DateTime)
 
-        in_("myfunc", reg['_default'])
-        not_in_("MYFUNC", reg['_default'])
-        not_in_("MyFunc", reg['_default'])
-        in_("myfunc", cs_reg['_default'])
-        eq_(list(cs_reg['_default']['myfunc'].keys()), ['MYFUNC'])
+        in_("myfunc", reg)
+        not_in_("MYFUNC", reg)
+        not_in_("MyFunc", reg)
+        in_("myfunc", cs_reg)
+        eq_(list(cs_reg['myfunc'].keys()), ['MYFUNC'])
 
         with testing.expect_deprecated():
             class MyFunc(GenericFunction):
@@ -185,15 +185,15 @@ class DeprecationWarningsTest(fixtures.TestBase):
         with pytest.raises(AssertionError):
             assert isinstance(func.myfunc().type, Integer)
 
-        not_in_("myfunc", reg['_default'])
-        in_("MYFUNC", reg['_default'])
-        in_("MyFunc", reg['_default'])
-        in_("myfunc", cs_reg['_default'])
-        eq_(list(cs_reg['_default']['myfunc'].keys()), ['MYFUNC', 'MyFunc'])
+        not_in_("myfunc", reg)
+        not_in_("MYFUNC", reg)
+        not_in_("MyFunc", reg)
+        in_("myfunc", cs_reg)
+        eq_(list(cs_reg['myfunc'].keys()), ['MYFUNC', 'MyFunc'])
 
     def test_replace_function_case_sensitive(self):
-        reg = functions._registry
-        cs_reg = functions._case_sensitive_registry
+        reg = functions._registry['_default']
+        cs_reg = functions._case_sensitive_registry['_default']
 
         class replaceable_func(GenericFunction):
             type = Integer
@@ -204,11 +204,11 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
         assert isinstance(func.replaceable_func().type, Integer)
 
-        in_("replaceable_func", reg['_default'])
-        not_in_("REPLACEABLE_FUNC", reg['_default'])
-        not_in_("Replaceable_Func", reg['_default'])
-        in_("replaceable_func", cs_reg['_default'])
-        eq_(list(cs_reg['_default']['replaceable_func'].keys()),
+        in_("replaceable_func", reg)
+        not_in_("REPLACEABLE_FUNC", reg)
+        not_in_("Replaceable_Func", reg)
+        in_("replaceable_func", cs_reg)
+        eq_(list(cs_reg['replaceable_func'].keys()),
             ['REPLACEABLE_FUNC'])
 
         with testing.expect_deprecated():
@@ -221,11 +221,11 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
         assert isinstance(func.replaceable_func().type, NullType)
 
-        not_in_("replaceable_func", reg['_default'])
-        in_("REPLACEABLE_FUNC", reg['_default'])
-        in_("Replaceable_Func", reg['_default'])
-        in_("replaceable_func", cs_reg['_default'])
-        eq_(list(cs_reg['_default']['replaceable_func'].keys()),
+        not_in_("replaceable_func", reg)
+        not_in_("REPLACEABLE_FUNC", reg)
+        not_in_("Replaceable_Func", reg)
+        in_("replaceable_func", cs_reg)
+        eq_(list(cs_reg['replaceable_func'].keys()),
             ['REPLACEABLE_FUNC', 'Replaceable_Func'])
 
         with expect_warnings():
@@ -248,11 +248,11 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
         assert isinstance(func.replaceable_func().type, String)
 
-        in_("replaceable_func", reg['_default'])
-        in_("REPLACEABLE_FUNC", reg['_default'])
-        in_("Replaceable_Func", reg['_default'])
-        in_("replaceable_func", cs_reg['_default'])
-        eq_(list(cs_reg['_default']['replaceable_func'].keys()),
+        not_in_("replaceable_func", reg)
+        not_in_("REPLACEABLE_FUNC", reg)
+        not_in_("Replaceable_Func", reg)
+        in_("replaceable_func", cs_reg)
+        eq_(list(cs_reg['replaceable_func'].keys()),
             ['REPLACEABLE_FUNC', 'Replaceable_Func', 'replaceable_func'])
 
 

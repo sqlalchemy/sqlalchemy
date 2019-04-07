@@ -60,7 +60,22 @@ def register_function(identifier, fn, package="_default"):
     identifier = identifier.lower()
 
     # Check if a function with the same lowercase identifier is registered.
-    if case_sensitive_reg[identifier]:
+    if identifier in reg:
+        if raw_identifier in case_sensitive_reg[identifier]:
+            warnings.warn(
+                "The GenericFunction '{}' is already registered and "
+                "is going to be overriden.".format(identifier),
+                sa_exc.SAWarning)
+            reg[identifier] = fn
+        else:
+            # If a function with the same lowercase identifier is registered,
+            # then these 2 functions are considered as case-sensitive.
+            # Note: This case should raise an error in a later release.
+            reg.pop(identifier)
+
+    # Check if a function with different letter case identifier is registered.
+    elif identifier in case_sensitive_reg:
+        # Note: This case will be removed in a later release.
         if (
             raw_identifier not in case_sensitive_reg[identifier]
         ):
@@ -69,11 +84,6 @@ def register_function(identifier, fn, package="_default"):
                 "different letter cases and might interact with {}.".format(
                     list(case_sensitive_reg[identifier].keys()),
                     raw_identifier))
-            # If a function with the same lowercase identifier is registered,
-            # then these 2 functions are considered as case-sensitive.
-            if len(case_sensitive_reg[identifier]) == 1:
-                reg.pop(identifier, None)
-                reg.update(case_sensitive_reg[identifier])
 
         else:
             warnings.warn(
@@ -81,13 +91,12 @@ def register_function(identifier, fn, package="_default"):
                 "is going to be overriden.".format(identifier),
                 sa_exc.SAWarning)
 
-        reg[raw_identifier] = fn
+    # Register by default
     else:
         reg[identifier] = fn
 
-    # Add the raw_identifier to the case-sensitive registry
-    if raw_identifier not in case_sensitive_reg[identifier]:
-        case_sensitive_reg[identifier][raw_identifier] = fn
+    # Always register in case-sensitive registry
+    case_sensitive_reg[identifier][raw_identifier] = fn
 
 
 class FunctionElement(Executable, ColumnElement, FromClause):
@@ -480,12 +489,9 @@ class _FunctionGenerator(object):
         if package is not None:
             reg = _registry[package]
             case_sensitive_reg = _case_sensitive_registry[package]
-            if (
-                len(case_sensitive_reg.get(fname.lower(), [])) > 1
-            ):
-                func = reg.get(fname)
-            else:
-                func = reg.get(fname.lower())
+            func = reg.get(fname.lower())
+            if func is None and fname.lower() in case_sensitive_reg:
+                func = case_sensitive_reg[fname.lower()].get(fname)
             if func is not None:
                 return func(*c, **o)
 
