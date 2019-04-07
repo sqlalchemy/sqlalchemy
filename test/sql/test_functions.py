@@ -57,11 +57,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def setup_method(self):
         self._registry = deepcopy(functions._registry)
-        self._case_sensitive_reg = deepcopy(functions._case_sensitive_reg)
+        self._case_sensitive_registry = deepcopy(
+            functions._case_sensitive_registry)
 
     def teardown_method(self):
         functions._registry = self._registry
-        functions._case_sensitive_reg = self._case_sensitive_reg
+        functions._case_sensitive_registry = self._case_sensitive_registry
 
     def test_compile(self):
         for dialect in all_dialects(exclude=("sybase",)):
@@ -95,7 +96,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
             functions._registry['_default'].pop('fake_func')
-            functions._case_sensitive_reg['_default'].pop('fake_func')
+            functions._case_sensitive_registry['_default'].pop('fake_func')
 
     def test_use_labels(self):
         self.assert_compile(

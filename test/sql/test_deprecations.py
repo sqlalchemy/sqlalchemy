@@ -33,7 +33,9 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import not_in_
 from sqlalchemy.testing.assertions import expect_warnings
 
 
@@ -42,11 +44,12 @@ class DeprecationWarningsTest(fixtures.TestBase):
 
     def setup_method(self):
         self._registry = deepcopy(functions._registry)
-        self._case_sensitive_reg = deepcopy(functions._case_sensitive_reg)
+        self._case_sensitive_registry = deepcopy(
+            functions._case_sensitive_registry)
 
     def teardown_method(self):
         functions._registry = self._registry
-        functions._case_sensitive_reg = self._case_sensitive_reg
+        functions._case_sensitive_registry = self._case_sensitive_registry
 
     def test_ident_preparer_force(self):
         preparer = testing.db.dialect.identifier_preparer
@@ -155,7 +158,7 @@ class DeprecationWarningsTest(fixtures.TestBase):
 
     def test_case_sensitive(self):
         reg = functions._registry
-        cs_reg = functions._case_sensitive_reg
+        cs_reg = functions._case_sensitive_registry
 
         class MYFUNC(GenericFunction):
             type = DateTime
@@ -165,11 +168,11 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.mYfUnC().type, DateTime)
         assert isinstance(func.myfunc().type, DateTime)
 
-        assert "myfunc" in reg['_default']
-        assert "MYFUNC" not in reg['_default']
-        assert "MyFunc" not in reg['_default']
-        assert "myfunc" in cs_reg['_default']
-        assert cs_reg['_default']['myfunc'] == ['MYFUNC']
+        in_("myfunc", reg['_default'])
+        not_in_("MYFUNC", reg['_default'])
+        not_in_("MyFunc", reg['_default'])
+        in_("myfunc", cs_reg['_default'])
+        eq_(list(cs_reg['_default']['myfunc'].keys()), ['MYFUNC'])
 
         with testing.expect_deprecated():
             class MyFunc(GenericFunction):
@@ -182,15 +185,15 @@ class DeprecationWarningsTest(fixtures.TestBase):
         with pytest.raises(AssertionError):
             assert isinstance(func.myfunc().type, Integer)
 
-        assert "myfunc" not in reg['_default']
-        assert "MYFUNC" in reg['_default']
-        assert "MyFunc" in reg['_default']
-        assert "myfunc" in cs_reg['_default']
-        assert cs_reg['_default']['myfunc'] == ['MYFUNC', 'MyFunc']
+        not_in_("myfunc", reg['_default'])
+        in_("MYFUNC", reg['_default'])
+        in_("MyFunc", reg['_default'])
+        in_("myfunc", cs_reg['_default'])
+        eq_(list(cs_reg['_default']['myfunc'].keys()), ['MYFUNC', 'MyFunc'])
 
     def test_replace_function_case_sensitive(self):
         reg = functions._registry
-        cs_reg = functions._case_sensitive_reg
+        cs_reg = functions._case_sensitive_registry
 
         class replaceable_func(GenericFunction):
             type = Integer
@@ -201,11 +204,12 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
         assert isinstance(func.replaceable_func().type, Integer)
 
-        assert "replaceable_func" in reg['_default']
-        assert "REPLACEABLE_FUNC" not in reg['_default']
-        assert "Replaceable_Func" not in reg['_default']
-        assert "replaceable_func" in cs_reg['_default']
-        assert cs_reg['_default']['replaceable_func'] == ['REPLACEABLE_FUNC']
+        in_("replaceable_func", reg['_default'])
+        not_in_("REPLACEABLE_FUNC", reg['_default'])
+        not_in_("Replaceable_Func", reg['_default'])
+        in_("replaceable_func", cs_reg['_default'])
+        eq_(list(cs_reg['_default']['replaceable_func'].keys()),
+            ['REPLACEABLE_FUNC'])
 
         with testing.expect_deprecated():
             class Replaceable_Func(GenericFunction):
@@ -217,12 +221,12 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
         assert isinstance(func.replaceable_func().type, NullType)
 
-        assert "replaceable_func" not in reg['_default']
-        assert "REPLACEABLE_FUNC" in reg['_default']
-        assert "Replaceable_Func" in reg['_default']
-        assert "replaceable_func" in cs_reg['_default']
-        assert cs_reg['_default']['replaceable_func'] == ['REPLACEABLE_FUNC',
-                                                          'Replaceable_Func']
+        not_in_("replaceable_func", reg['_default'])
+        in_("REPLACEABLE_FUNC", reg['_default'])
+        in_("Replaceable_Func", reg['_default'])
+        in_("replaceable_func", cs_reg['_default'])
+        eq_(list(cs_reg['_default']['replaceable_func'].keys()),
+            ['REPLACEABLE_FUNC', 'Replaceable_Func'])
 
         with expect_warnings():
             class replaceable_func_override(GenericFunction):
@@ -244,13 +248,12 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
         assert isinstance(func.replaceable_func().type, String)
 
-        assert "replaceable_func" in reg['_default']
-        assert "REPLACEABLE_FUNC" in reg['_default']
-        assert "Replaceable_Func" in reg['_default']
-        assert "replaceable_func" in cs_reg['_default']
-        assert cs_reg['_default']['replaceable_func'] == ['REPLACEABLE_FUNC',
-                                                          'Replaceable_Func',
-                                                          'replaceable_func']
+        in_("replaceable_func", reg['_default'])
+        in_("REPLACEABLE_FUNC", reg['_default'])
+        in_("Replaceable_Func", reg['_default'])
+        in_("replaceable_func", cs_reg['_default'])
+        eq_(list(cs_reg['_default']['replaceable_func'].keys()),
+            ['REPLACEABLE_FUNC', 'Replaceable_Func', 'replaceable_func'])
 
 
 class DDLListenerDeprecationsTest(fixtures.TestBase):

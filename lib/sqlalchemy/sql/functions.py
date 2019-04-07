@@ -8,7 +8,6 @@
 """SQL function API, factories, and built-in functions.
 
 """
-from functools import partial
 import warnings
 
 from . import annotation
@@ -40,10 +39,10 @@ from .. import exc as sa_exc
 from .. import util
 
 
-_RegistryList = partial(util.defaultdict, list)
-
 _registry = util.defaultdict(dict)
-_case_sensitive_reg = util.defaultdict(_RegistryList)
+_case_sensitive_registry = util.defaultdict(
+    lambda: util.defaultdict(dict)
+)
 
 
 def register_function(identifier, fn, package="_default"):
@@ -56,25 +55,26 @@ def register_function(identifier, fn, package="_default"):
 
     """
     reg = _registry[package]
+    case_sensitive_reg = _case_sensitive_registry[package]
     raw_identifier = identifier
     identifier = identifier.lower()
 
     # Check if a function with the same lowercase identifier is registered.
-    if identifier in _case_sensitive_reg[package]:
+    if case_sensitive_reg[identifier]:
         if (
-            raw_identifier not in _case_sensitive_reg[package][identifier]
+            raw_identifier not in case_sensitive_reg[identifier]
         ):
             util.warn_deprecated(
-                "GenericFunction(s) '{}' are already registered with "
+                "GenericFunction(s) {} are already registered with "
                 "different letter cases and might interact with {}.".format(
-                    _case_sensitive_reg[package][identifier],
+                    list(case_sensitive_reg[identifier].keys()),
                     raw_identifier))
             # If a function with the same lowercase identifier is registered,
             # then these 2 functions are considered as case-sensitive.
-            if len(_case_sensitive_reg[package][identifier]) == 1:
-                old_fn = reg[identifier]
-                del reg[identifier]
-                reg[_case_sensitive_reg[package][identifier][0]] = old_fn
+            if len(case_sensitive_reg[identifier]) == 1:
+                reg.pop(identifier, None)
+                reg.update(case_sensitive_reg[identifier])
+
         else:
             warnings.warn(
                 "The GenericFunction '{}' is already registered and "
@@ -86,8 +86,8 @@ def register_function(identifier, fn, package="_default"):
         reg[identifier] = fn
 
     # Add the raw_identifier to the case-sensitive registry
-    if raw_identifier not in _case_sensitive_reg[package][identifier]:
-        _case_sensitive_reg[package][identifier].append(raw_identifier)
+    if raw_identifier not in case_sensitive_reg[identifier]:
+        case_sensitive_reg[identifier][raw_identifier] = fn
 
 
 class FunctionElement(Executable, ColumnElement, FromClause):
@@ -478,12 +478,14 @@ class _FunctionGenerator(object):
             package = None
 
         if package is not None:
+            reg = _registry[package]
+            case_sensitive_reg = _case_sensitive_registry[package]
             if (
-                len(_case_sensitive_reg[package].get(fname.lower(), [])) > 1
+                len(case_sensitive_reg.get(fname.lower(), [])) > 1
             ):
-                func = _registry[package].get(fname)
+                func = reg.get(fname)
             else:
-                func = _registry[package].get(fname.lower())
+                func = reg.get(fname.lower())
             if func is not None:
                 return func(*c, **o)
 
