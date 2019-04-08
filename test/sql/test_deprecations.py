@@ -172,7 +172,7 @@ class DeprecationWarningsTest(fixtures.TestBase):
         not_in_("MYFUNC", reg)
         not_in_("MyFunc", reg)
         in_("myfunc", cs_reg)
-        eq_(list(cs_reg['myfunc'].keys()), ['MYFUNC'])
+        eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC']))
 
         with testing.expect_deprecated():
             class MyFunc(GenericFunction):
@@ -189,7 +189,7 @@ class DeprecationWarningsTest(fixtures.TestBase):
         not_in_("MYFUNC", reg)
         not_in_("MyFunc", reg)
         in_("myfunc", cs_reg)
-        eq_(list(cs_reg['myfunc'].keys()), ['MYFUNC', 'MyFunc'])
+        eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC', 'MyFunc']))
 
     def test_replace_function_case_sensitive(self):
         reg = functions._registry['_default']
@@ -208,8 +208,7 @@ class DeprecationWarningsTest(fixtures.TestBase):
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
-        eq_(list(cs_reg['replaceable_func'].keys()),
-            ['REPLACEABLE_FUNC'])
+        eq_(set(cs_reg['replaceable_func'].keys()), set(['REPLACEABLE_FUNC']))
 
         with testing.expect_deprecated():
             class Replaceable_Func(GenericFunction):
@@ -225,8 +224,8 @@ class DeprecationWarningsTest(fixtures.TestBase):
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
-        eq_(list(cs_reg['replaceable_func'].keys()),
-            ['REPLACEABLE_FUNC', 'Replaceable_Func'])
+        eq_(set(cs_reg['replaceable_func'].keys()),
+            set(['REPLACEABLE_FUNC', 'Replaceable_Func']))
 
         with expect_warnings():
             class replaceable_func_override(GenericFunction):
@@ -252,8 +251,8 @@ class DeprecationWarningsTest(fixtures.TestBase):
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
-        eq_(list(cs_reg['replaceable_func'].keys()),
-            ['REPLACEABLE_FUNC', 'Replaceable_Func', 'replaceable_func'])
+        eq_(set(cs_reg['replaceable_func'].keys()),
+            set(['REPLACEABLE_FUNC', 'Replaceable_Func', 'replaceable_func']))
 
 
 class DDLListenerDeprecationsTest(fixtures.TestBase):
