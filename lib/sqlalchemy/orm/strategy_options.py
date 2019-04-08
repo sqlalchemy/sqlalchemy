@@ -15,6 +15,7 @@ from .base import _is_aliased_class
 from .base import _is_mapped_class
 from .base import InspectionAttr
 from .interfaces import MapperOption
+from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _WILDCARD_TOKEN
@@ -235,11 +236,10 @@ class Load(Generative, MapperOption):
                 try:
                     attr = found_property = attr.property
                 except AttributeError:
-                    if isinstance(attr, property):
+                    if not isinstance(attr, MapperProperty):
                         raise sa_exc.ArgumentError(
-                            'The entity %s in this Query is a '
-                            'Python @property object and not an '
-                            'addressable column.' %  ent
+                            'Expected %s to be a mapped column; '
+                            'instead got %s object.' % (ent, type(attr))
                             )
                     raise
 

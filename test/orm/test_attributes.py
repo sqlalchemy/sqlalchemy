@@ -3693,8 +3693,8 @@ class InvalidLoadOnlyTest(fixtures.MappedTest):
         _option = joinedload('b').load_only('id', 'id_string')
         assert_raises_message(
             sa_exc.ArgumentError,
-            "The entity mapped class B->b in this Query is a Python @property "
-            "object and not an addressable column.",
+            "Expected mapped class B->b to be a mapped column; "
+            "instead got <type 'property'> object.",
             qCore.options,
             _option,
         )
