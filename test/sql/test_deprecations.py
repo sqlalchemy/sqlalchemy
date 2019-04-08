@@ -42,12 +42,12 @@ from sqlalchemy.testing.assertions import expect_warnings
 class DeprecationWarningsTest(fixtures.TestBase):
     __backend__ = True
 
-    def setup_method(self):
+    def setup(self):
         self._registry = deepcopy(functions._registry)
         self._case_sensitive_registry = deepcopy(
             functions._case_sensitive_registry)
 
-    def teardown_method(self):
+    def teardown(self):
         functions._registry = self._registry
         functions._case_sensitive_registry = self._case_sensitive_registry
 
