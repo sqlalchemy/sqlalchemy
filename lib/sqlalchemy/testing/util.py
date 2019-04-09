@@ -62,7 +62,7 @@ def picklers():
 
     # yes, this thing needs this much testing
     for pickle_ in picklers:
-        for protocol in -1, 0, 1, 2:
+        for protocol in range(-2, pickle.HIGHEST_PROTOCOL):
             yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
