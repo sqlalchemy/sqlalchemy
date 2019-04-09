@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4601
+
+    Fixed regression from release 1.3.2 caused by :ticket:`4562` where a URL
+    that contained only a query string and no hostname, such as for the
+    purposes of specifying a service file with connection information, would no
+    longer be propagated to psycopg2 properly.   The change in :ticket:`4562`
+    has been adjusted to further suit psycopg2's exact requirements, which is
+    that if there are any connection parameters whatsoever, the "dsn" parameter
+    is no longer required, so in this case the query string parameters are
+    passed alone.

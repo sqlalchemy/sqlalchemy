@@ -769,8 +769,13 @@ class PGDialect_psycopg2(PGDialect):
             # send individual dbname, user, password, host, port
             # parameters to psycopg2.connect()
             return ([], opts)
+        elif url.query:
+            # any other connection arguments, pass directly
+            opts.update(url.query)
+            return ([], opts)
         else:
-            # send a blank string for "dsn" to psycopg2.connect()
+            # no connection arguments whatsoever; psycopg2.connect()
+            # requires that "dsn" be present as a blank string.
             return ([''], opts)
 
     def is_disconnect(self, e, connection, cursor):

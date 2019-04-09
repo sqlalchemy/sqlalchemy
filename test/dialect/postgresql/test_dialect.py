@@ -129,6 +129,27 @@ class DialectTest(fixtures.TestBase):
         eq_(cargs, [])
         eq_(cparams, {"host": "host"})
 
+    def test_psycopg2_empty_connection_string_w_query_one(self):
+        dialect = psycopg2_dialect.dialect()
+        u = url.make_url("postgresql:///?service=swh-log")
+        cargs, cparams = dialect.create_connect_args(u)
+        eq_(cargs, [])
+        eq_(cparams, {"service": "swh-log"})
+
+    def test_psycopg2_empty_connection_string_w_query_two(self):
+        dialect = psycopg2_dialect.dialect()
+        u = url.make_url("postgresql:///?any_random_thing=yes")
+        cargs, cparams = dialect.create_connect_args(u)
+        eq_(cargs, [])
+        eq_(cparams, {"any_random_thing": "yes"})
+
+    def test_psycopg2_nonempty_connection_string_w_query(self):
+        dialect = psycopg2_dialect.dialect()
+        u = url.make_url("postgresql://somehost/?any_random_thing=yes")
+        cargs, cparams = dialect.create_connect_args(u)
+        eq_(cargs, [])
+        eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
+
 
 class BatchInsertsTest(fixtures.TablesTest):
     __only_on__ = "postgresql+psycopg2"
