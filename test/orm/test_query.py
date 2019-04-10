@@ -2880,6 +2880,15 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             checkparams={"email_address_1": "ed@ed.com", "name_1": "ed"},
         )
 
+    def test_empty_filters(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q1 = sess.query(User)
+
+        is_(None, q1.filter().whereclause)
+        is_(None, q1.filter_by().whereclause)
+
     def test_filter_by_no_property(self):
         addresses = self.tables.addresses
         sess = create_session()

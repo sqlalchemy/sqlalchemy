@@ -1791,7 +1791,7 @@ class Query(object):
             _entity_descriptor(self._joinpoint_zero(), key) == value
             for key, value in kwargs.items()
         ]
-        return self.filter(sql.and_(*clauses))
+        return self.filter(*clauses)
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def order_by(self, *criterion):
