@@ -771,6 +771,14 @@ class MutableList(Mutable, list):
 
     """
 
+    def __reduce_ex__(self, proto):
+        return (self.__class__, (list(self),))
+
+    # needed for backwards compatibility with
+    # older pickles
+    def __setstate__(self, state):
+        self[:] = state
+
     def __setitem__(self, index, value):
         """Detect list set events and emit change events."""
         list.__setitem__(self, index, value)
@@ -837,12 +845,6 @@ class MutableList(Mutable, list):
             return Mutable.coerce(index, value)
         else:
             return value
-
-    def __getstate__(self):
-        return list(self)
-
-    def __setstate__(self, state):
-        self[:] = state
 
 
 class MutableSet(Mutable, set):

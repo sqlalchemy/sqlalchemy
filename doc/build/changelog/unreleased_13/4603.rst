@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 4603
+
+    Fixed bug where using ``copy.copy()`` or ``copy.deepcopy()`` on
+    :class:`.MutableList` would cause the items within the list to be
+    duplicated, due to an inconsistency in how Python pickle and copy both make
+    use of ``__getstate__()`` and ``__setstate__()`` regarding lists.  In order
+    to resolve, a ``__reduce_ex__`` method had to be added to
+    :class:`.MutableList`.  In order to maintain backwards compatibility with
+    existing pickles based on ``__getstate__()``, the ``__setstate__()`` method
+    remains as well; the test suite asserts that pickles made against the old
+    version of the class can still be deserialized by the pickle module.
