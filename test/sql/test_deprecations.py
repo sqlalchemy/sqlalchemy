@@ -36,7 +36,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in_
-from sqlalchemy.testing.assertions import expect_warnings
 
 
 class DeprecationWarningsTest(fixtures.TestBase):
@@ -174,7 +173,14 @@ class DeprecationWarningsTest(fixtures.TestBase):
         in_("myfunc", cs_reg)
         eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC']))
 
-        with testing.expect_deprecated():
+        with testing.expect_deprecated(
+            "GenericFunction 'MyFunc' is already registered with"
+            " different letter case, so the previously registered function "
+            "'MYFUNC' is switched into case-sensitive mode. "
+            "GenericFunction objects will be fully case-insensitive in a "
+            "future release.",
+            regex=False
+        ):
             class MyFunc(GenericFunction):
                 type = Integer
 
@@ -185,7 +191,7 @@ class DeprecationWarningsTest(fixtures.TestBase):
         with pytest.raises(AssertionError):
             assert isinstance(func.myfunc().type, Integer)
 
-        not_in_("myfunc", reg)
+        eq_(reg["myfunc"], functions._CASE_SENSITIVE)
         not_in_("MYFUNC", reg)
         not_in_("MyFunc", reg)
         in_("myfunc", cs_reg)
@@ -210,7 +216,14 @@ class DeprecationWarningsTest(fixtures.TestBase):
         in_("replaceable_func", cs_reg)
         eq_(set(cs_reg['replaceable_func'].keys()), set(['REPLACEABLE_FUNC']))
 
-        with testing.expect_deprecated():
+        with testing.expect_deprecated(
+            "GenericFunction 'Replaceable_Func' is already registered with"
+            " different letter case, so the previously registered function "
+            "'REPLACEABLE_FUNC' is switched into case-sensitive mode. "
+            "GenericFunction objects will be fully case-insensitive in a "
+            "future release.",
+            regex=False
+        ):
             class Replaceable_Func(GenericFunction):
                 type = DateTime
                 identifier = 'Replaceable_Func'
@@ -220,24 +233,38 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
         assert isinstance(func.replaceable_func().type, NullType)
 
-        not_in_("replaceable_func", reg)
+        eq_(reg["replaceable_func"], functions._CASE_SENSITIVE)
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
         eq_(set(cs_reg['replaceable_func'].keys()),
             set(['REPLACEABLE_FUNC', 'Replaceable_Func']))
 
-        with expect_warnings():
+        with testing.expect_warnings(
+            "The GenericFunction 'REPLACEABLE_FUNC' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
             class replaceable_func_override(GenericFunction):
                 type = DateTime
                 identifier = 'REPLACEABLE_FUNC'
 
-        with testing.expect_deprecated():
+        with testing.expect_deprecated(
+            "GenericFunction(s) '['REPLACEABLE_FUNC', 'Replaceable_Func']' "
+            "are already registered with different letter cases and might "
+            "interact with 'replaceable_func'. GenericFunction objects will "
+            "be fully case-insensitive in a future release.",
+            regex=False
+        ):
             class replaceable_func_lowercase(GenericFunction):
                 type = String
                 identifier = 'replaceable_func'
 
-        with expect_warnings():
+        with testing.expect_warnings(
+            "The GenericFunction 'Replaceable_Func' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
             class Replaceable_Func_override(GenericFunction):
                 type = Integer
                 identifier = 'Replaceable_Func'
@@ -247,7 +274,7 @@ class DeprecationWarningsTest(fixtures.TestBase):
         assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
         assert isinstance(func.replaceable_func().type, String)
 
-        not_in_("replaceable_func", reg)
+        eq_(reg["replaceable_func"], functions._CASE_SENSITIVE)
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)

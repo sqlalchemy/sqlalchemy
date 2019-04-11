@@ -8,8 +8,6 @@
 """SQL function API, factories, and built-in functions.
 
 """
-import warnings
-
 from . import annotation
 from . import operators
 from . import schema
@@ -35,7 +33,6 @@ from .selectable import Alias
 from .selectable import FromClause
 from .selectable import Select
 from .visitors import VisitableType
-from .. import exc as sa_exc
 from .. import util
 
 
@@ -43,6 +40,10 @@ _registry = util.defaultdict(dict)
 _case_sensitive_registry = util.defaultdict(
     lambda: util.defaultdict(dict)
 )
+_CASE_SENSITIVE = util.symbol(
+    name="case_sensitive_function",
+    doc="Symbol to mark the functions that are switched into case-sensitive "
+    "mode.")
 
 
 def register_function(identifier, fn, package="_default"):
@@ -60,18 +61,26 @@ def register_function(identifier, fn, package="_default"):
     identifier = identifier.lower()
 
     # Check if a function with the same lowercase identifier is registered.
-    if identifier in reg:
+    if identifier in reg and reg[identifier] is not _CASE_SENSITIVE:
         if raw_identifier in case_sensitive_reg[identifier]:
-            warnings.warn(
+            util.warn(
                 "The GenericFunction '{}' is already registered and "
-                "is going to be overriden.".format(identifier),
-                sa_exc.SAWarning)
+                "is going to be overriden.".format(identifier))
             reg[identifier] = fn
         else:
             # If a function with the same lowercase identifier is registered,
             # then these 2 functions are considered as case-sensitive.
             # Note: This case should raise an error in a later release.
-            reg.pop(identifier)
+            util.warn_deprecated(
+                "GenericFunction '{}' is already registered with "
+                "different letter case, so the previously registered function "
+                "'{}' is switched into case-sensitive mode. "
+                "GenericFunction objects will be fully case-insensitive in a "
+                "future release.".format(
+                    raw_identifier,
+                    list(case_sensitive_reg[identifier].keys())[0],
+                ))
+            reg[identifier] = _CASE_SENSITIVE
 
     # Check if a function with different letter case identifier is registered.
     elif identifier in case_sensitive_reg:
@@ -80,16 +89,17 @@ def register_function(identifier, fn, package="_default"):
             raw_identifier not in case_sensitive_reg[identifier]
         ):
             util.warn_deprecated(
-                "GenericFunction(s) {} are already registered with "
-                "different letter cases and might interact with {}.".format(
+                "GenericFunction(s) '{}' are already registered with "
+                "different letter cases and might interact with '{}'. "
+                "GenericFunction objects will be fully case-insensitive in a "
+                "future release.".format(
                     list(case_sensitive_reg[identifier].keys()),
                     raw_identifier))
 
         else:
-            warnings.warn(
+            util.warn(
                 "The GenericFunction '{}' is already registered and "
-                "is going to be overriden.".format(identifier),
-                sa_exc.SAWarning)
+                "is going to be overriden.".format(raw_identifier))
 
     # Register by default
     else:
@@ -487,11 +497,11 @@ class _FunctionGenerator(object):
             package = None
 
         if package is not None:
-            reg = _registry[package]
-            case_sensitive_reg = _case_sensitive_registry[package]
-            func = reg.get(fname.lower())
-            if func is None and fname.lower() in case_sensitive_reg:
-                func = case_sensitive_reg[fname.lower()].get(fname)
+            func = _registry[package].get(fname.lower())
+            if func is _CASE_SENSITIVE:
+                case_sensitive_reg = _case_sensitive_registry[package]
+                func = case_sensitive_reg.get(fname.lower()).get(fname)
+
             if func is not None:
                 return func(*c, **o)
 

@@ -241,22 +241,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_replace_function(self):
 
-        class replacable_func(GenericFunction):
+        class replaceable_func(GenericFunction):
             type = Integer
-            identifier = 'replacable_func'
+            identifier = 'replaceable_func'
 
-        assert isinstance(func.Replacable_Func().type, Integer)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, Integer)
-        assert isinstance(func.replacable_func().type, Integer)
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
+        assert isinstance(func.replaceable_func().type, Integer)
 
-        with expect_warnings():
-            class replacable_func_override(GenericFunction):
+        with expect_warnings(
+            "The GenericFunction 'replaceable_func' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
+            class replaceable_func_override(GenericFunction):
                 type = DateTime
-                identifier = 'replacable_func'
+                identifier = 'replaceable_func'
 
-        assert isinstance(func.Replacable_Func().type, DateTime)
-        assert isinstance(func.RePlAcaBlE_fUnC().type, DateTime)
-        assert isinstance(func.replacable_func().type, DateTime)
+        assert isinstance(func.Replaceable_Func().type, DateTime)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, DateTime)
+        assert isinstance(func.replaceable_func().type, DateTime)
 
     def test_custom_w_custom_name(self):
         class myfunc(GenericFunction):
