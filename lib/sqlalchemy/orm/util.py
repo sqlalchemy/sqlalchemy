@@ -1265,10 +1265,7 @@ def _entity_corresponds_to_use_path_impl(given, entity):
         return (
             entity.is_aliased_class
             and not entity._use_mapper_path
-            and (
-                given is entity
-                or given in entity._with_polymorphic_entities
-            )
+            and (given is entity or given in entity._with_polymorphic_entities)
         )
     elif not entity.is_aliased_class:
         return given.common_parent(entity.mapper)

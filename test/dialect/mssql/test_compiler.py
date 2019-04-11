@@ -389,8 +389,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         q = select(
-            [table1.c.myid, sql.literal('bar').label('c1')],
-            order_by=[table1.c.name + '-']
+            [table1.c.myid, sql.literal("bar").label("c1")],
+            order_by=[table1.c.name + "-"],
         ).alias("foo")
         crit = q.c.myid == table1.c.myid
         dialect = mssql.dialect()
@@ -402,9 +402,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "myid, ? AS c1 FROM mytable) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
             dialect=dialect,
-            checkparams={'param_1': 'bar'},
+            checkparams={"param_1": "bar"},
             # if name_1 is included, too many parameters are passed to dbapi
-            checkpositional=('bar', )
+            checkpositional=("bar",),
         )
 
     def test_force_schema_quoted_name_w_dot_case_insensitive(self):

@@ -776,7 +776,7 @@ class PGDialect_psycopg2(PGDialect):
         else:
             # no connection arguments whatsoever; psycopg2.connect()
             # requires that "dsn" be present as a blank string.
-            return ([''], opts)
+            return ([""], opts)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):

@@ -119,7 +119,7 @@ class DialectTest(fixtures.TestBase):
         dialect = psycopg2_dialect.dialect()
         u = url.make_url("postgresql://")
         cargs, cparams = dialect.create_connect_args(u)
-        eq_(cargs, [''])
+        eq_(cargs, [""])
         eq_(cparams, {})
 
     def test_psycopg2_nonempty_connection_string(self):

@@ -156,9 +156,7 @@ def find_left_clause_to_join_from(clauses, join_to, onclause):
         toremove = set(
             chain(*[_expand_cloned(f._hide_froms) for f in clauses])
         )
-        idx = [
-            i for i in idx if clauses[i] not in toremove
-        ]
+        idx = [i for i in idx if clauses[i] not in toremove]
 
     # onclause was given and none of them resolved, so assume
     # all indexes can match
