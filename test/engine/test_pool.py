@@ -806,7 +806,6 @@ class QueuePoolTest(PoolTestBase):
             creator=lambda: dbapi.connect(delay=0.05),
             pool_size=2,
             max_overflow=1,
-            use_threadlocal=False,
             timeout=3,
         )
         timeouts = []
@@ -1498,7 +1497,6 @@ class QueuePoolTest(PoolTestBase):
         p2 = p.recreate()
         assert p2.size() == 1
         assert p2._reset_on_return is pool.reset_none
-        assert p2._use_threadlocal is False
         assert p2._max_overflow == 0
 
     def test_reconnect(self):

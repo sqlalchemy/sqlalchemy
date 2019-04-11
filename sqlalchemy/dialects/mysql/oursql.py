@@ -175,7 +175,7 @@ class MySQLDialect_oursql(MySQLDialect):
     ):
         return MySQLDialect._show_create_table(
             self,
-            connection._contextual_connect(
+            connection.connect(
                 close_with_result=True
             ).execution_options(_oursql_plain_query=True),
             table,

@@ -1,5 +1,6 @@
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
+from sqlalchemy import create_mock_engine
 from sqlalchemy import event
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -627,8 +628,8 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         def executor(*a, **kw):
             return None
 
-        engine = create_engine(
-            testing.db.name + "://", strategy="mock", executor=executor
+        engine = create_mock_engine(
+            testing.db.name + "://", executor
         )
         # fmt: off
         engine.dialect.identifier_preparer = \

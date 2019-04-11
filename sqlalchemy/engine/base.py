@@ -78,10 +78,6 @@ class Connection(Connectable):
     ):
         """Construct a new Connection.
 
-        The constructor here is not public and is only called only by an
-        :class:`.Engine`. See :meth:`.Engine.connect` and
-        :meth:`.Engine.contextual_connect` methods.
-
         """
         self.engine = engine
         self.dialect = engine.dialect
@@ -135,7 +131,7 @@ class Connection(Connectable):
         to invoke it distinctly - this is a very uncommon case.
 
         Userland code accesses _branch() when the connect() or
-        contextual_connect() methods are called.  The branched connection
+        method is  called.  The branched connection
         acts as much as possible like the parent, except that it stays
         connected when a close() event occurs.
 
@@ -498,7 +494,7 @@ class Connection(Connectable):
 
         return self.connection.info
 
-    def connect(self):
+    def connect(self, close_with_result=False):
         """Returns a branched version of this :class:`.Connection`.
 
         The :meth:`.Connection.close` method on the returned
@@ -511,9 +507,6 @@ class Connection(Connectable):
 
         """
 
-        return self._branch()
-
-    def _contextual_connect(self, **kwargs):
         return self._branch()
 
     def invalidate(self, exception=None):
@@ -2015,13 +2008,13 @@ class Engine(Connectable, log.Identified):
         self.dispatch.engine_disposed(self)
 
     def _execute_default(self, default):
-        with self._contextual_connect() as conn:
+        with self.connect() as conn:
             return conn._execute_default(default, (), {})
 
     @contextlib.contextmanager
     def _optional_conn_ctx_manager(self, connection=None):
         if connection is None:
-            with self._contextual_connect() as conn:
+            with self.connect() as conn:
                 yield conn
         else:
             yield connection
@@ -2080,7 +2073,7 @@ class Engine(Connectable, log.Identified):
             for a particular :class:`.Connection`.
 
         """
-        conn = self._contextual_connect(close_with_result=close_with_result)
+        conn = self.connect(close_with_result=close_with_result)
         try:
             trans = conn.begin()
         except:
@@ -2092,7 +2085,7 @@ class Engine(Connectable, log.Identified):
         r"""Execute the given function within a transaction boundary.
 
         The function is passed a :class:`.Connection` newly procured
-        from :meth:`.Engine.contextual_connect` as the first argument,
+        from :meth:`.Engine.connect` as the first argument,
         followed by the given \*args and \**kwargs.
 
         e.g.::
@@ -2127,7 +2120,7 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        with self._contextual_connect() as conn:
+        with self.connect() as conn:
             return conn.transaction(callable_, *args, **kwargs)
 
     def run_callable(self, callable_, *args, **kwargs):
@@ -2143,7 +2136,7 @@ class Engine(Connectable, log.Identified):
         which one is being dealt with.
 
         """
-        with self._contextual_connect() as conn:
+        with self.connect() as conn:
             return conn.run_callable(callable_, *args, **kwargs)
 
     def execute(self, statement, *multiparams, **params):
@@ -2153,7 +2146,7 @@ class Engine(Connectable, log.Identified):
         :meth:`.Connection.execute`.
 
         Here, a :class:`.Connection` is acquired using the
-        :meth:`~.Engine.contextual_connect` method, and the statement executed
+        :meth:`~.Engine.connect` method, and the statement executed
         with that connection. The returned :class:`.ResultProxy` is flagged
         such that when the :class:`.ResultProxy` is exhausted and its
         underlying cursor is closed, the :class:`.Connection` created here
@@ -2162,21 +2155,21 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        connection = self._contextual_connect(close_with_result=True)
+        connection = self.connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
 
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
-        connection = self._contextual_connect(close_with_result=True)
+        connection = self.connect(close_with_result=True)
         return connection._execute_clauseelement(elem, multiparams, params)
 
     def _execute_compiled(self, compiled, multiparams, params):
-        connection = self._contextual_connect(close_with_result=True)
+        connection = self.connect(close_with_result=True)
         return connection._execute_compiled(compiled, multiparams, params)
 
-    def connect(self, **kwargs):
+    def connect(self, close_with_result=False):
         """Return a new :class:`.Connection` object.
 
         The :class:`.Connection` object is a facade that uses a DBAPI
@@ -2190,51 +2183,14 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self._connection_cls(self, **kwargs)
-
-    @util.deprecated(
-        "1.3",
-        "The :meth:`.Engine.contextual_connect` method is deprecated.  This "
-        "method is an artifact of the threadlocal engine strategy which is "
-        "also to be deprecated.   For explicit connections from an "
-        ":class:`.Engine`, use the :meth:`.Engine.connect` method.",
-    )
-    def contextual_connect(self, close_with_result=False, **kwargs):
-        """Return a :class:`.Connection` object which may be part of some
-        ongoing context.
-
-        By default, this method does the same thing as :meth:`.Engine.connect`.
-        Subclasses of :class:`.Engine` may override this method
-        to provide contextual behavior.
-
-        :param close_with_result: When True, the first :class:`.ResultProxy`
-          created by the :class:`.Connection` will call the
-          :meth:`.Connection.close` method of that connection as soon as any
-          pending result rows are exhausted. This is used to supply the
-          "connectionless execution" behavior provided by the
-          :meth:`.Engine.execute` method.
-
-        """
-
-        return self._contextual_connect(
-            close_with_result=close_with_result, **kwargs
-        )
-
-    def _contextual_connect(self, close_with_result=False, **kwargs):
-        return self._connection_cls(
-            self,
-            self._wrap_pool_connect(self.pool.connect, None),
-            close_with_result=close_with_result,
-            **kwargs
-        )
+        return self._connection_cls(self, close_with_result=close_with_result)
 
     def table_names(self, schema=None, connection=None):
         """Return a list of all table names available in the database.
 
         :param schema: Optional, retrieve names from a non-default schema.
 
-        :param connection: Optional, use a specified connection. Default is
-          the ``contextual_connect`` for this ``Engine``.
+        :param connection: Optional, use a specified connection.
         """
 
         with self._optional_conn_ctx_manager(connection) as conn:
@@ -2289,9 +2245,7 @@ class Engine(Connectable, log.Identified):
             :ref:`dbapi_connections`
 
         """
-        return self._wrap_pool_connect(
-            self.pool.unique_connection, _connection
-        )
+        return self._wrap_pool_connect(self.pool.connect, _connection)
 
 
 class OptionEngine(Engine):

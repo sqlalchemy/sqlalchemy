@@ -38,7 +38,6 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -292,52 +291,6 @@ class DeprecatedAccountingFlagsTest(_LocalFixture):
         assert testing.db.execute(select([users.c.name])).fetchall() == [
             ("ed",)
         ]
-
-
-class TLTransactionTest(fixtures.MappedTest):
-    run_dispose_bind = "once"
-    __backend__ = True
-
-    @classmethod
-    def setup_bind(cls):
-        with testing.expect_deprecated(
-            ".*'threadlocal' engine strategy is deprecated"
-        ):
-            return engines.testing_engine(options=dict(strategy="threadlocal"))
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "users",
-            metadata,
-            Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            ),
-            Column("name", String(20)),
-            test_needs_acid=True,
-        )
-
-    @classmethod
-    def setup_classes(cls):
-        class User(cls.Basic):
-            pass
-
-    @classmethod
-    def setup_mappers(cls):
-        users, User = cls.tables.users, cls.classes.User
-
-        mapper(User, users)
-
-    @testing.exclude("mysql", "<", (5, 0, 3), "FIXME: unknown")
-    def test_session_nesting(self):
-        User = self.classes.User
-
-        sess = create_session(bind=self.bind)
-        self.bind.begin()
-        u = User(name="ed")
-        sess.add(u)
-        sess.flush()
-        self.bind.commit()
 
 
 class DeprecatedSessionFeatureTest(_fixtures.FixtureTest):

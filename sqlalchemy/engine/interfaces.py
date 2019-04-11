@@ -1118,30 +1118,6 @@ class Connectable(object):
         """
 
     @util.deprecated(
-        "1.3",
-        "The :meth:`.Engine.contextual_connect` and "
-        ":meth:`.Connection.contextual_connect` methods are deprecated.  This "
-        "method is an artifact of the threadlocal engine strategy which is "
-        "also to be deprecated.   For explicit connections from an "
-        ":class:`.Engine`, use the :meth:`.Engine.connect` method.",
-    )
-    def contextual_connect(self, *arg, **kw):
-        """Return a :class:`.Connection` object which may be part of an ongoing
-        context.
-
-        Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`.Connection`, or a newly
-        procured :class:`.Connection` if this object is an instance
-        of :class:`.Engine`.
-
-        """
-
-        return self._contextual_connect(*arg, **kw)
-
-    def _contextual_connect(self):
-        raise NotImplementedError()
-
-    @util.deprecated(
         "0.7",
         "The :meth:`.Connectable.create` method is deprecated and will be "
         "removed in a future release.  Please use the ``.create()`` method "

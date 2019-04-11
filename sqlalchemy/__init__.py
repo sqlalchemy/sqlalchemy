@@ -118,8 +118,12 @@ from .types import UnicodeText  # noqa
 from .types import VARBINARY  # noqa
 from .types import VARCHAR  # noqa
 
+# these are placed last because there are
+# cross dependencies between sqlalchemy.sql and
+# sqlalchemy.engine that cause import cycles
 from .engine import create_engine  # noqa nosort
 from .engine import engine_from_config  # noqa nosort
+from .engine import create_mock_engine  # noqa nosort
 
 
 __version__ = "2.0.0b1"

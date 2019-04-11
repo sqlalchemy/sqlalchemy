@@ -83,9 +83,11 @@ To get the string specific to a certain engine::
 There's also a special form of :class:`.Engine` that can let you dump an entire
 metadata creation sequence, using this recipe::
 
+    from sqlalchemy import create_mock_engine
+
     def dump(sql, *multiparams, **params):
         print(sql.compile(dialect=engine.dialect))
-    engine = create_engine('postgresql://', strategy='mock', executor=dump)
+    engine = create_mock_engine('postgresql://', dump)
     metadata.create_all(engine, checkfirst=False)
 
 The `Alembic <https://alembic.sqlalchemy.org>`_ tool also supports

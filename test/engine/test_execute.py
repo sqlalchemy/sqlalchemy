@@ -7,6 +7,7 @@ import weakref
 import sqlalchemy as tsa
 from sqlalchemy import bindparam
 from sqlalchemy import create_engine
+from sqlalchemy import create_mock_engine
 from sqlalchemy import event
 from sqlalchemy import func
 from sqlalchemy import INT
@@ -1027,7 +1028,7 @@ class MockStrategyTest(fixtures.TestBase):
         def dump(sql, *multiparams, **params):
             buf.write(util.text_type(sql.compile(dialect=engine.dialect)))
 
-        engine = create_engine("postgresql://", strategy="mock", executor=dump)
+        engine = create_mock_engine("postgresql://", executor=dump)
         return engine, buf
 
     def test_sequence_not_duped(self):
@@ -1482,16 +1483,8 @@ class EngineEventsTest(fixtures.TestBase):
         ):
             cursor_stmts.append((str(statement), parameters, None))
 
-        with testing.expect_deprecated(
-            "The 'threadlocal' engine strategy is deprecated"
-        ):
-            tl_engine = engines.testing_engine(
-                options=dict(implicit_returning=False, strategy="threadlocal")
-            )
-
         for engine in [
             engines.testing_engine(options=dict(implicit_returning=False)),
-            tl_engine,
             engines.testing_engine(
                 options=dict(implicit_returning=False)
             ).connect(),

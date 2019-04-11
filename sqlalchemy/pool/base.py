@@ -61,25 +61,19 @@ class Pool(log.Identified):
     _dialect = _ConnDialect()
 
     @util.deprecated_params(
-        use_threadlocal=(
-            "1.3",
-            "The :paramref:`.Pool.use_threadlocal` parameter is "
-            "deprecated and will be removed in a future release.",
-        ),
         listeners=(
             "0.7",
             ":class:`.PoolListener` is deprecated in favor of the "
             ":class:`.PoolEvents` listener interface.  The "
             ":paramref:`.Pool.listeners` parameter will be removed in a "
             "future release.",
-        ),
+        )
     )
     def __init__(
         self,
         creator,
         recycle=-1,
         echo=None,
-        use_threadlocal=False,
         logging_name=None,
         reset_on_return=True,
         listeners=None,
@@ -119,12 +113,6 @@ class Pool(log.Identified):
 
              :ref:`dbengine_logging` - further detail on how to configure
              logging.
-
-        :param use_threadlocal: If set to True, repeated calls to
-          :meth:`connect` within the same application thread will be
-          guaranteed to return the same connection object that is already
-          checked out.   This is a legacy use case and the flag has no
-          effect when using the pool with a :class:`.Engine` object.
 
         :param reset_on_return: Determine steps to take on
           connections as they are returned to the pool.
@@ -202,7 +190,6 @@ class Pool(log.Identified):
         self._creator = creator
         self._recycle = recycle
         self._invalidate_time = 0
-        self._use_threadlocal = use_threadlocal
         self._pre_ping = pre_ping
         if reset_on_return in ("rollback", True, reset_rollback):
             self._reset_on_return = reset_rollback
@@ -289,19 +276,6 @@ class Pool(log.Identified):
         """
         interfaces.PoolListener._adapt_listener(self, listener)
 
-    def unique_connection(self):
-        """Produce a DBAPI connection that is not referenced by any
-        thread-local context.
-
-        This method is equivalent to :meth:`.Pool.connect` when the
-        :paramref:`.Pool.use_threadlocal` flag is not set to True.
-        When :paramref:`.Pool.use_threadlocal` is True, the
-        :meth:`.Pool.unique_connection` method provides a means of bypassing
-        the threadlocal context.
-
-        """
-        return _ConnectionFairy._checkout(self)
-
     def _create_connection(self):
         """Called by subclasses to create a new ConnectionRecord."""
 
@@ -359,18 +333,7 @@ class Pool(log.Identified):
         the pool.
 
         """
-        if not self._use_threadlocal:
-            return _ConnectionFairy._checkout(self)
-
-        try:
-            rec = self._threadconns.current()
-        except AttributeError:
-            pass
-        else:
-            if rec is not None:
-                return rec._checkout_existing()
-
-        return _ConnectionFairy._checkout(self, self._threadconns)
+        return _ConnectionFairy._checkout(self)
 
     def _return_conn(self, record):
         """Given a _ConnectionRecord, return it to the :class:`.Pool`.
@@ -379,11 +342,6 @@ class Pool(log.Identified):
         has its ``close()`` method called.
 
         """
-        if self._use_threadlocal:
-            try:
-                del self._threadconns.current
-            except AttributeError:
-                pass
         self._do_return_conn(record)
 
     def _do_get(self):

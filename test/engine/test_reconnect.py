@@ -746,6 +746,7 @@ class RealReconnectTest(fixtures.TestBase):
 
         conn.close()
 
+    @testing.requires.independent_connections
     def test_multiple_invalidate(self):
         c1 = self.engine.connect()
         c2 = self.engine.connect()
