@@ -1,4 +1,4 @@
-.. |tutorial_title| replace:: SQLAlchemy 1.4 / 2.0 Tutorial
+.. |tutorial_title| replace:: SQLAlchemy 2.0 Tutorial
 .. |next| replace:: :doc:`engine`
 
 .. footer_topic:: |tutorial_title|
@@ -9,20 +9,21 @@
 
 .. rst-class:: orm_core
 
-=============================
-SQLAlchemy 1.4 / 2.0 Tutorial
-=============================
+========================
+SQLAlchemy 2.0 Tutorial
+========================
 
 .. admonition:: About this document
 
-    The new SQLAlchemy Tutorial is now integrated between Core and ORM and
-    serves as a unified introduction to SQLAlchemy as a whole.   In the new
-    :term:`2.0 style` of working, fully available in the :ref:`1.4 release
-    <migration_14_toplevel>`, the ORM now uses Core-style querying with the
+    The SQLAlchemy Tutorial for version 2.0, first published as a preview
+    within the 1.4 documentation, is integrated between the Core and ORM
+    components of SQLAlchemy and serves as a unified introduction to SQLAlchemy
+    as a whole. For users of SQLAlchemy within the 1.x series, in the
+    :term:`2.0 style` of working, the ORM uses Core-style querying with the
     :func:`_sql.select` construct, and transactional semantics between Core
-    connections and ORM sessions are equivalent.   Take note of the blue
-    border styles for each section, that will tell you how "ORM-ish" a
-    particular topic is!
+    connections and ORM sessions are equivalent. Take note of the blue border
+    styles for each section, that will tell you how "ORM-ish" a particular
+    topic is!
 
     Users who are already familiar with SQLAlchemy, and especially those
     looking to migrate existing applications to work under SQLAlchemy 2.0
@@ -132,32 +133,15 @@ the reader is invited to work with the code examples given in real time with
 their own Python interpreter.
 
 If running the examples, it is advised that the reader performs a quick check to
-verify that we are on  **version 1.4** of SQLAlchemy:
+verify that we are on  **version 2.0** of SQLAlchemy:
 
 .. sourcecode:: pycon+sql
 
     >>> import sqlalchemy
     >>> sqlalchemy.__version__  # doctest: +SKIP
-    1.4.0
+    2.0.0
 
 .. rst-class:: core-header, orm-dependency
-
-A Note on the Future
----------------------
-
-This tutorial describes a new API that's released in SQLAlchemy 1.4 known
-as :term:`2.0 style`.   The purpose of the 2.0-style API is to provide forwards
-compatibility with :ref:`SQLAlchemy 2.0 <migration_20_toplevel>`, which is
-planned as the next generation of SQLAlchemy.
-
-In order to provide the full 2.0 API, a new flag called ``future`` will be
-used, which will be seen as the tutorial describes the :class:`_engine.Engine`
-and :class:`_orm.Session` objects.   These flags fully enable 2.0-compatibility
-mode and allow the code in the tutorial to proceed fully.  When using the
-``future`` flag with the :func:`_sa.create_engine` function, the object
-returned is a subclass of :class:`sqlalchemy.engine.Engine` described as
-:class:`sqlalchemy.future.Engine`. This tutorial will be referring to
-:class:`sqlalchemy.future.Engine`.
 
 
 
