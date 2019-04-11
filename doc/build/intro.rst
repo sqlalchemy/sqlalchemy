@@ -68,21 +68,13 @@ Installation Guide
 Supported Platforms
 -------------------
 
-SQLAlchemy has been tested against the following platforms:
+SQLAlchemy supports the following platforms:
 
-* cPython 2.7
-* cPython 3.4 and higher
-* `PyPy <http://pypy.org/>`_ 2.1 or greater
+* cPython 3.5 and higher
+* Python-3 compatible versions of `PyPy <http://pypy.org/>`_
 
-.. versionchanged:: 1.2
-   Python 2.7 is now the minimum Python version supported.
-
-.. versionchanged:: 1.3
-   Within the Python 3 series, 3.4 is now the minimum Python 3 version supported.
-
-Platforms that don't currently have support include Jython and IronPython.
-Jython has been supported in the past and may be supported in future
-releases as well, depending on the state of Jython itself.
+.. versionchanged:: 2.0
+   SQLAlchemy now targets Python 3.5 and above.
 
 Supported Installation Methods
 -------------------------------
@@ -92,9 +84,6 @@ based on `setuptools <http://pypi.python.org/pypi/setuptools/>`_, either
 by referring to ``setup.py`` directly or by using
 `pip <http://pypi.python.org/pypi/pip/>`_ or other setuptools-compatible
 approaches.
-
-.. versionchanged:: 1.1 setuptools is now required by the setup.py file;
-   plain distutils installs are no longer supported.
 
 Install via pip
 ---------------
@@ -107,7 +96,7 @@ downloaded from PyPI and installed in one step::
 This command will download the latest **released** version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
 
-In order to install the latest **prerelease** version, such as ``1.3.0b1``,
+In order to install the latest **prerelease** version, such as ``2.0.0b1``,
 pip requires that the ``--pre`` flag be used::
 
     pip install --pre SQLAlchemy
@@ -162,7 +151,7 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 1.3. If you're working on a
+This documentation covers SQLAlchemy version 2.0. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -170,11 +159,11 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     1.3.0
+     2.0.0
 
 .. _migration:
 
-1.2 to 1.3 Migration
+1.x to 2.0 Migration
 =====================
 
-Notes on what's changed from 1.2 to 1.3 is available here at :doc:`changelog/migration_13`.
+Notes on the new API released in SQLAlchemy 2.0 is available here at :doc:`changelog/migration_20`.

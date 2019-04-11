@@ -1,4 +1,4 @@
 [gerrit]
 host=gerrit.sqlalchemy.org
 project=sqlalchemy/sqlalchemy
-defaultbranch=master
+defaultbranch=rel_2_0
