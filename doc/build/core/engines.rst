@@ -192,6 +192,8 @@ Engine Creation API
 
 .. autofunction:: sqlalchemy.engine_from_config
 
+.. autofunction:: sqlalchemy.create_mock_engine
+
 .. autofunction:: sqlalchemy.engine.url.make_url
 
 

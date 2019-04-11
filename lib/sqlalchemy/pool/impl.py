@@ -169,7 +169,6 @@ class QueuePool(Pool):
             recycle=self._recycle,
             echo=self.echo,
             logging_name=self._orig_logging_name,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             dialect=self._dialect,
@@ -245,7 +244,6 @@ class NullPool(Pool):
             recycle=self._recycle,
             echo=self.echo,
             logging_name=self._orig_logging_name,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             dialect=self._dialect,
@@ -301,7 +299,6 @@ class SingletonThreadPool(Pool):
             recycle=self._recycle,
             echo=self.echo,
             logging_name=self._orig_logging_name,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             _dispatch=self.dispatch,
             dialect=self._dialect,
@@ -349,7 +346,8 @@ class SingletonThreadPool(Pool):
         return c
 
     def connect(self):
-        # vendored from Pool to include use_threadlocal behavior
+        # vendored from Pool to include the now removed use_threadlocal
+        # behavior
         try:
             rec = self._fairy.current()
         except AttributeError:
@@ -400,7 +398,6 @@ class StaticPool(Pool):
         return self.__class__(
             creator=self._creator,
             recycle=self._recycle,
-            use_threadlocal=self._use_threadlocal,
             reset_on_return=self._reset_on_return,
             echo=self.echo,
             logging_name=self._orig_logging_name,

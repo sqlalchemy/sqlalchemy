@@ -285,7 +285,7 @@ def mock_engine(dialect_name=None):
 
     """
 
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_mock_engine
 
     if not dialect_name:
         dialect_name = config.db.name
@@ -303,8 +303,8 @@ def mock_engine(dialect_name=None):
         d = engine.dialect
         return "\n".join(str(s.compile(dialect=d)) for s in engine.mock)
 
-    engine = create_engine(
-        dialect_name + "://", strategy="mock", executor=executor
+    engine = create_mock_engine(
+        dialect_name + "://", executor
     )
     assert not hasattr(engine, "mock")
     engine.mock = buffer

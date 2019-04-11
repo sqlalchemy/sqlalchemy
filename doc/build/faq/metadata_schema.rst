@@ -66,6 +66,8 @@ This is available via the :attr:`.MetaData.sorted_tables` function::
     for t in ti:
         print(t)
 
+.. _faq_ddl_as_string:
+
 How can I get the CREATE TABLE/ DROP TABLE output as a string?
 ==============================================================
 
@@ -80,12 +82,15 @@ To get the string specific to a certain engine::
 
     print(CreateTable(mytable).compile(engine))
 
-There's also a special form of :class:`.Engine` that can let you dump an entire
-metadata creation sequence, using this recipe::
+There's also a special form of :class:`.Engine` available via
+:func:`.create_mock_engine` that allows one to dump an entire
+metadata creation sequence as a string, using this recipe::
+
+    from sqlalchemy import create_mock_engine
 
     def dump(sql, *multiparams, **params):
         print(sql.compile(dialect=engine.dialect))
-    engine = create_engine('postgresql://', strategy='mock', executor=dump)
+    engine = create_mock_engine('postgresql://', dump)
     metadata.create_all(engine, checkfirst=False)
 
 The `Alembic <https://alembic.sqlalchemy.org>`_ tool also supports
