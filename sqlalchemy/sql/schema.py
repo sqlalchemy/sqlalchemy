@@ -2572,19 +2572,6 @@ class DefaultClause(FetchedValue):
         return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
 
 
-@util.deprecated_cls(
-    "0.6",
-    ":class:`.PassiveDefault` is deprecated and will be removed in a "
-    "future release.  Please refer to :class:`.DefaultClause`.",
-)
-class PassiveDefault(DefaultClause):
-    """A DDL-specified DEFAULT column value.
-    """
-
-    def __init__(self, *arg, **kw):
-        DefaultClause.__init__(self, *arg, **kw)
-
-
 class Constraint(DialectKWArgs, SchemaItem):
     """A table-level SQL constraint."""
 
