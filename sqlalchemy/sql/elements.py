@@ -477,18 +477,6 @@ class ClauseElement(Visitable):
 
     @util.deprecated(
         "0.9",
-        "The :meth:`.ClauseElement.__and__` method is deprecated and will "
-        "be removed in a future release.   Conjunctions should only be "
-        "used from a :class:`.ColumnElement` subclass, e.g. "
-        ":meth:`.ColumnElement.__and__`.",
-    )
-    def __and__(self, other):
-        """'and' at the ClauseElement level.
-        """
-        return and_(self, other)
-
-    @util.deprecated(
-        "0.9",
         "The :meth:`.ClauseElement.__or__` method is deprecated and will "
         "be removed in a future release.   Conjunctions should only be "
         "used from a :class:`.ColumnElement` subclass, e.g. "
