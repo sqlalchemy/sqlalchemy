@@ -101,49 +101,6 @@ class DDLElement(Executable, _DDLCompiles):
         else:
             bind.engine.logger.info("DDL execution skipped, criteria not met.")
 
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.DDLElement.execute_at` method is deprecated and will "
-        "be removed in a future release.  Please use the :class:`.DDLEvents` "
-        "listener interface in conjunction with the "
-        ":meth:`.DDLElement.execute_if` method.",
-    )
-    def execute_at(self, event_name, target):
-        """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
-
-        Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance,
-        executing it when that schema item is created or dropped. The DDL
-        statement will be executed using the same Connection and transactional
-        context as the Table create/drop itself. The ``.bind`` property of
-        this statement is ignored.
-
-        :param event:
-          One of the events defined in the schema item's ``.ddl_events``;
-          e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
-
-        :param target:
-          The Table or MetaData instance for which this DDLElement will
-          be associated with.
-
-        A DDLElement instance can be linked to any number of schema items.
-
-        ``execute_at`` builds on the ``append_ddl_listener`` interface of
-        :class:`.MetaData` and :class:`.Table` objects.
-
-        Caveat: Creating or dropping a Table in isolation will also trigger
-        any DDL set to ``execute_at`` that Table's MetaData.  This may change
-        in a future release.
-
-        """
-
-        def call_event(target, connection, **kw):
-            if self._should_execute_deprecated(
-                event_name, target, connection, **kw
-            ):
-                return connection.execute(self.against(target))
-
-        event.listen(target, "" + event_name.replace("-", "_"), call_event)
-
     @_generative
     def against(self, target):
         """Return a copy of this DDL against a specific schema item."""
