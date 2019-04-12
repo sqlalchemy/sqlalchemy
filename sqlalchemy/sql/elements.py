@@ -475,18 +475,6 @@ class ClauseElement(Visitable):
                 "ascii", "backslashreplace"
             )  # noqa
 
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.ClauseElement.__or__` method is deprecated and will "
-        "be removed in a future release.   Conjunctions should only be "
-        "used from a :class:`.ColumnElement` subclass, e.g. "
-        ":meth:`.ColumnElement.__or__`.",
-    )
-    def __or__(self, other):
-        """'or' at the ClauseElement level.
-        """
-        return or_(self, other)
-
     def __invert__(self):
         if hasattr(self, "negation_clause"):
             return self.negation_clause
