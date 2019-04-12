@@ -1311,32 +1311,8 @@ class TextClause(Executable, ClauseElement):
         self.text = self._bind_params_regex.sub(repl, text)
 
     @classmethod
-    @util.deprecated_params(
-        autocommit=(
-            "0.6",
-            "The :paramref:`.text.autocommit` parameter is deprecated and "
-            "will be removed in a future release.  Please use the "
-            ":paramref:`.Connection.execution_options.autocommit` parameter "
-            "in conjunction with the :meth:`.Executable.execution_options` "
-            "method.",
-        ),
-        bindparams=(
-            "0.9",
-            "The :paramref:`.text.bindparams` parameter "
-            "is deprecated and will be removed in a future release.  Please "
-            "refer to the :meth:`.TextClause.bindparams` method.",
-        ),
-        typemap=(
-            "0.9",
-            "The :paramref:`.text.typemap` parameter is "
-            "deprecated and will be removed in a future release.  Please "
-            "refer to the :meth:`.TextClause.columns` method.",
-        ),
-    )
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
-    def _create_text(
-        self, text, bind=None, bindparams=None, typemap=None, autocommit=None
-    ):
+    def _create_text(self, text, bind=None):
         r"""Construct a new :class:`.TextClause` clause, representing
         a textual SQL string directly.
 
