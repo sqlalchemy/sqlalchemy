@@ -471,13 +471,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     metadata._remove_table(name, schema)
 
     @property
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.SchemaItem.quote` method is deprecated and will be "
-        "removed in a future release.  Use the :attr:`.quoted_name.quote` "
-        "attribute on the ``schema`` field of the target schema item to "
-        "retrieve quoted status.",
-    )
     def quote_schema(self):
         """Return the value of the ``quote_schema`` flag passed
         to this :class:`.Table`.
