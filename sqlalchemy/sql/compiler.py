@@ -318,18 +318,6 @@ class Compiled(object):
                 self.execution_options = statement._execution_options
             self.string = self.process(self.statement, **compile_kwargs)
 
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Compiled.compile` method is deprecated and will be "
-        "removed in a future release.   The :class:`.Compiled` object "
-        "now runs its compilation within the constructor, and this method "
-        "does nothing.",
-    )
-    def compile(self):
-        """Produce the internal string representation of this element.
-        """
-        pass
-
     def _execute_on_connection(self, connection, multiparams, params):
         if self.can_execute:
             return connection._execute_compiled(self, multiparams, params)
