@@ -3689,14 +3689,6 @@ class MetaData(SchemaItem):
 
     __visit_name__ = "metadata"
 
-    @util.deprecated_params(
-        reflect=(
-            "0.8",
-            "The :paramref:`.MetaData.reflect` flag is deprecated and will "
-            "be removed in a future release.   Please use the "
-            ":meth:`.MetaData.reflect` method.",
-        )
-    )
     def __init__(
         self,
         bind=None,
