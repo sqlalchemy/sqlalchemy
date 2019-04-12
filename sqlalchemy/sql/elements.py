@@ -3340,20 +3340,6 @@ class Over(ColumnElement):
         return lower, upper
 
     @property
-    @util.deprecated(
-        "1.1",
-        "the :attr:`.Over.func` member of the :class:`.Over` "
-        "class is deprecated and will be removed in a future release.  "
-        "Please refer to the :attr:`.Over.element` attribute.",
-    )
-    def func(self):
-        """the element referred to by this :class:`.Over`
-        clause.
-
-
-        """
-        return self.element
-
     @util.memoized_property
     def type(self):
         return self.element.type
