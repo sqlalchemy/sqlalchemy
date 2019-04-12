@@ -285,35 +285,6 @@ class FromClause(Selectable):
 
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
-    @util.deprecated(
-        "1.1",
-        message="The :meth:`.FromClause.count` method is deprecated, "
-        "and will be removed in a future release.   Please use the "
-        ":class:`.functions.count` function available from the "
-        ":attr:`.func` namespace.",
-    )
-    @util.dependencies("sqlalchemy.sql.functions")
-    def count(self, functions, whereclause=None, **params):
-        """return a SELECT COUNT generated against this
-        :class:`.FromClause`.
-
-        .. seealso::
-
-            :class:`.functions.count`
-
-        """
-
-        if self.primary_key:
-            col = list(self.primary_key)[0]
-        else:
-            col = list(self.columns)[0]
-        return Select(
-            [functions.func.count(col).label("tbl_row_count")],
-            whereclause,
-            from_obj=[self],
-            **params
-        )
-
     def select(self, whereclause=None, **params):
         """return a SELECT of this :class:`.FromClause`.
 
