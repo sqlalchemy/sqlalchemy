@@ -93,7 +93,11 @@ def instances(query, cursor, context):
                 post_load.invoke(context, path)
 
             if filtered and query._dedupe_rows:
-                dedupe_func = util.unique_list if query._dedupe_func is None else query._dedupe_func
+                dedupe_func = (
+                    util.unique_list
+                    if query._dedupe_func is None
+                    else query._dedupe_func
+                )
                 rows = dedupe_func(rows, filter_fn)
 
             for row in rows:
