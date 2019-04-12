@@ -5518,7 +5518,6 @@ class QueryClsTest(QueryTest):
 
 
 class DedupeQueryTest(QueryTest):
-
     def test_dedupe_rows_on(self):
         User = self.classes.User
         s = Session()
@@ -5542,11 +5541,17 @@ class DedupeQueryTest(QueryTest):
         s = Session()
 
         def remove_jacks(seq, hashfunc=None):
-            return [x for x in seq if x.name != 'jack']
+            return [x for x in seq if x.name != "jack"]
 
-        eq_(s.query(User).join("addresses").dedupe_rows(True, remove_jacks).all(),
-            [User(id=8, name='ed'),
-             User(id=8, name='ed'),
-             User(id=8, name='ed'),
-             User(id=9, name='fred')]
-            )
+        eq_(
+            s.query(User)
+            .join("addresses")
+            .dedupe_rows(True, remove_jacks)
+            .all(),
+            [
+                User(id=8, name="ed"),
+                User(id=8, name="ed"),
+                User(id=8, name="ed"),
+                User(id=9, name="fred"),
+            ],
+        )
