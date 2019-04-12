@@ -113,23 +113,6 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
     def __repr__(self):
         return util.generic_repr(self, omit_kwarg=["info"])
 
-    @property
-    @util.deprecated(
-        "0.9",
-        "The :attr:`.SchemaItem.quote` attribute is deprecated and will be "
-        "removed in a future release.  Use the :attr:`.quoted_name.quote` "
-        "attribute on the ``name`` field of the target schema item to retrieve"
-        "quoted status.",
-    )
-    def quote(self):
-        """Return the value of the ``quote`` flag passed
-        to this schema object, for those schema items which
-        have a ``name`` field.
-
-        """
-
-        return self.name.quote
-
     @util.memoized_property
     def info(self):
         """Info dictionary associated with the object, allowing user-defined
