@@ -3487,7 +3487,7 @@ class IdentifierPreparer(object):
         not taking case convention into account."""
         return not self.legal_characters.match(util.text_type(value))
 
-    def quote_schema(self, schema, force=None):
+    def quote_schema(self, schema):
         """Conditionally quote a schema name.
 
 
@@ -3499,28 +3499,8 @@ class IdentifierPreparer(object):
         quoting behavior for schema names.
 
         :param schema: string schema name
-        :param force: unused
-
-            .. deprecated:: 0.9
-
-                The :paramref:`.IdentifierPreparer.quote_schema.force`
-                parameter is deprecated and will be removed in a future
-                release.  This flag has no effect on the behavior of the
-                :meth:`.IdentifierPreparer.quote` method; please refer to
-                :class:`.quoted_name`.
 
         """
-        if force is not None:
-            # not using the util.deprecated_params() decorator in this
-            # case because of the additional function call overhead on this
-            # very performance-critical spot.
-            util.warn_deprecated(
-                "The IdentifierPreparer.quote_schema.force parameter is "
-                "deprecated and will be removed in a future release.  This "
-                "flag has no effect on the behavior of the "
-                "IdentifierPreparer.quote method; please refer to "
-                "quoted_name()."
-            )
 
         return self.quote(schema)
 
