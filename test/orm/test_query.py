@@ -5515,3 +5515,38 @@ class QueryClsTest(QueryTest):
 
     def test_fn_m2o_lazyload(self):
         self._test_m2o_lazyload(self._fn_fixture)
+
+
+class DedupeQueryTest(QueryTest):
+
+    def test_dedupe_rows_on(self):
+        User = self.classes.User
+        s = Session()
+
+        u = s.query(User).join("addresses").dedupe_rows(True).all()
+        c = s.query(User).join("addresses").count()
+        eq_(len(u), 3)
+        eq_(c, 5)
+
+    def test_dedupe_rows_off(self):
+        User = self.classes.User
+        s = Session()
+
+        u = s.query(User).join("addresses").dedupe_rows(False).all()
+        c = s.query(User).join("addresses").count()
+        eq_(len(u), 5)
+        eq_(len(u), c)
+
+    def test_dedupe_rows_custom_func(self):
+        User = self.classes.User
+        s = Session()
+
+        def remove_jacks(seq, hashfunc=None):
+            return [x for x in seq if x.name != 'jack']
+
+        eq_(s.query(User).join("addresses").dedupe_rows(True, remove_jacks).all(),
+            [User(id=8, name='ed'),
+             User(id=8, name='ed'),
+             User(id=8, name='ed'),
+             User(id=9, name='fred')]
+            )

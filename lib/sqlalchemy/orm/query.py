@@ -125,6 +125,8 @@ class Query(object):
     _orm_only_from_obj_alias = True
     _current_path = _path_registry
     _has_mapper_entities = False
+    _dedupe_rows = True
+    _dedupe_func = None
 
     lazy_loaded_from = None
     """An :class:`.InstanceState` that is using this :class:`.Query` for a
@@ -3189,6 +3191,21 @@ class Query(object):
             )
 
         self._statement = statement
+
+    @_generative()
+    def dedupe_rows(self, value, dedupe_func=None):
+        """Indicate whether the query execution results should be de-duplicated
+        and return the newly resulting ``Query``.
+
+        :param dedupe_func: optional function applied to the execution results.
+               User-provided functions must take two arguments: the sequence
+               to de-dupe, and the hash function for each row. The default of
+               None will result in :func:`.util._collections.unique_list` being
+               used.
+
+        """
+        self._dedupe_rows = value
+        self._dedupe_func = dedupe_func
 
     def first(self):
         """Return the first result of this ``Query`` or

@@ -92,8 +92,9 @@ def instances(query, cursor, context):
             for path, post_load in context.post_load_paths.items():
                 post_load.invoke(context, path)
 
-            if filtered:
-                rows = util.unique_list(rows, filter_fn)
+            if filtered and query._dedupe_rows:
+                dedupe_func = util.unique_list if query._dedupe_func is None else query._dedupe_func
+                rows = dedupe_func(rows, filter_fn)
 
             for row in rows:
                 yield row
