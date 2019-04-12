@@ -414,14 +414,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     __visit_name__ = "table"
 
-    @util.deprecated_params(
-        useexisting=(
-            "0.7",
-            "The :paramref:`.Table.useexisting` parameter is deprecated and "
-            "will be removed in a future release.  Please use "
-            ":paramref:`.Table.extend_existing`.",
-        )
-    )
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this
