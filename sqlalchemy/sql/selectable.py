@@ -843,20 +843,10 @@ class Join(FromClause):
         return self._join_condition(left, right, a_subset=left_right)
 
     @classmethod
-    @util.deprecated_params(
-        ignore_nonexistent_tables=(
-            "0.9",
-            "The :paramref:`.join_condition.ignore_nonexistent_tables` "
-            "parameter is deprecated and will be removed in a future "
-            "release.  Tables outside of the two tables being handled "
-            "are no longer considered.",
-        )
-    )
     def _join_condition(
         cls,
         a,
         b,
-        ignore_nonexistent_tables=False,
         a_subset=None,
         consider_as_foreign_keys=None,
     ):
