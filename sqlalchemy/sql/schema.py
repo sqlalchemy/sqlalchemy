@@ -4174,24 +4174,6 @@ class MetaData(SchemaItem):
                 except exc.UnreflectableTableError as uerr:
                     util.warn("Skipping table %s: %s" % (name, uerr))
 
-    @util.deprecated(
-        "0.7",
-        "the :meth:`.MetaData.append_ddl_listener` method is deprecated and "
-        "will be removed in a future release.  Please refer to "
-        ":class:`.DDLEvents`.",
-    )
-    def append_ddl_listener(self, event_name, listener):
-        """Append a DDL event listener to this ``MetaData``.
-
-
-        """
-
-        def adapt_listener(target, connection, **kw):
-            tables = kw["tables"]
-            listener(event, target, connection, tables=tables)
-
-        event.listen(self, "" + event_name.replace("-", "_"), adapt_listener)
-
     def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
 
