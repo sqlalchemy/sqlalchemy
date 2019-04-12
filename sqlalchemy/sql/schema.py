@@ -769,22 +769,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         constraint._set_parent_with_dispatch(self)
 
-    @util.deprecated(
-        "0.7",
-        "the :meth:`.Table.append_ddl_listener` method is deprecated and "
-        "will be removed in a future release.  Please refer to "
-        ":class:`.DDLEvents`.",
-    )
-    def append_ddl_listener(self, event_name, listener):
-        """Append a DDL event listener to this ``Table``.
-
-        """
-
-        def adapt_listener(target, connection, **kw):
-            listener(event_name, target, connection)
-
-        event.listen(self, "" + event_name.replace("-", "_"), adapt_listener)
-
     def _set_parent(self, metadata):
         metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
