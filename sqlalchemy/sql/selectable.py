@@ -2069,22 +2069,12 @@ class GenerativeSelect(SelectBase):
         order_by=None,
         group_by=None,
         bind=None,
-        autocommit=None,
     ):
         self.use_labels = use_labels
 
         if for_update is not False:
             self._for_update_arg = ForUpdateArg.parse_legacy_select(for_update)
 
-        if autocommit is not None:
-            util.warn_deprecated(
-                "The select.autocommit parameter is deprecated and will be "
-                "removed in a future release.  Please refer to the "
-                "Select.execution_options.autocommit` parameter."
-            )
-            self._execution_options = self._execution_options.union(
-                {"autocommit": autocommit}
-            )
         if limit is not None:
             self._limit_clause = _offset_or_limit_clause(limit)
         if offset is not None:
@@ -2627,24 +2617,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     _memoized_property = SelectBase._memoized_property
     _is_select = True
 
-    @util.deprecated_params(
-        autocommit=(
-            "0.6",
-            "The :paramref:`.select.autocommit` parameter is deprecated "
-            "and will be removed in a future release.  Please refer to "
-            "the :paramref:`.Connection.execution_options.autocommit` "
-            "parameter in conjunction with the the "
-            ":meth:`.Executable.execution_options` method in order to "
-            "affect the autocommit behavior for a statement.",
-        ),
-        for_update=(
-            "0.9",
-            "The :paramref:`.select.for_update` parameter is deprecated and "
-            "will be removed in a future release.  Please refer to the "
-            ":meth:`.Select.with_for_update` to specify the "
-            "structure of the ``FOR UPDATE`` clause.",
-        ),
-    )
     def __init__(
         self,
         columns=None,
