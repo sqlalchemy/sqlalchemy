@@ -274,15 +274,7 @@ class DDL(DDLElement):
 
     __visit_name__ = "ddl"
 
-    @util.deprecated_params(
-        on=(
-            "0.7",
-            "The :paramref:`.DDL.on` parameter is deprecated and will be "
-            "removed in a future release.  Please refer to "
-            ":meth:`.DDLElement.execute_if`.",
-        )
-    )
-    def __init__(self, statement, on=None, context=None, bind=None):
+    def __init__(self, statement, context=None, bind=None):
         """Create a DDL statement.
 
         :param statement:
@@ -293,18 +285,6 @@ class DDL(DDLElement):
           A literal '%' in a statement must be escaped as '%%'.
 
           SQL bind parameters are not available in DDL statements.
-
-        :param on:
-
-          Optional filtering criteria.  May be a string, tuple or a callable
-          predicate.  If a string, it will be compared to the name of the
-          executing database dialect::
-
-            DDL('something', on='postgresql')
-
-          If a tuple, specifies multiple dialect names::
-
-            DDL('something', on=('postgresql', 'mysql'))
 
           If a callable, it will be invoked with four positional arguments
           as well as optional keyword arguments:
