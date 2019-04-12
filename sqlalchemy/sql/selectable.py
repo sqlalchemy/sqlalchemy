@@ -2022,24 +2022,6 @@ class SelectBase(HasCTE, Executable, FromClause):
         """
         return self.as_scalar().label(name)
 
-    @_generative
-    @util.deprecated(
-        "0.6",
-        message="The :meth:`.SelectBase.autocommit` method is deprecated, "
-        "and will be removed in a future release.   Please use the "
-        "the :paramref:`.Connection.execution_options.autocommit` "
-        "parameter in conjunction with the "
-        ":meth:`.Executable.execution_options` method.",
-    )
-    def autocommit(self):
-        """return a new selectable with the 'autocommit' flag set to
-        True.
-        """
-
-        self._execution_options = self._execution_options.union(
-            {"autocommit": True}
-        )
-
     def _generate(self):
         """Override the default _generate() method to also clear out
         exported collections."""
