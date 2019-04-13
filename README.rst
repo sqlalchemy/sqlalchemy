@@ -114,13 +114,13 @@ Documentation
 
 Latest documentation is at:
 
-http://www.sqlalchemy.org/docs/
+https://www.docs.sqlalchemy.org/
 
 Installation / Requirements
 ---------------------------
 
 Full documentation for installation is at
-`Installation <http://www.sqlalchemy.org/docs/intro.html#installation>`_.
+`Installation <https://docs.sqlalchemy.org/intro.html#installation>`_.
 
 Getting Help / Development / Bug reporting
 ------------------------------------------
