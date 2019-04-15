@@ -1,7 +1,0 @@
-.. change::
-   :tags: bug, examples
-   :tickets: 4528
-
-   Fixed bug in large_resultsets example case where a re-named "id" variable
-   due to code reformatting caused the test to fail.  Pull request courtesy
-   Matt Schuchhardt.
