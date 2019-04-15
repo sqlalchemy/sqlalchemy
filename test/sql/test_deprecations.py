@@ -1,11 +1,17 @@
 #! coding: utf-8
 
+from copy import deepcopy
+
+import pytest
+
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
+from sqlalchemy import DateTime
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
@@ -17,14 +23,19 @@ from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.schema import DDL
+from sqlalchemy.sql import functions
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import not_in_
 
 
 class DeprecationWarningsTest(fixtures.TestBase):
@@ -134,6 +145,146 @@ class DeprecationWarningsTest(fixtures.TestBase):
                 extend_existing=True,
                 autoload_with=testing.db,
             )
+
+
+class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
+
+    def setup(self):
+        self._registry = deepcopy(functions._registry)
+        self._case_sensitive_registry = deepcopy(
+            functions._case_sensitive_registry)
+        functions._registry.clear()
+        functions._case_sensitive_registry.clear()
+
+    def teardown(self):
+        functions._registry = self._registry
+        functions._case_sensitive_registry = self._case_sensitive_registry
+
+    def test_case_sensitive(self):
+        reg = functions._registry['_default']
+        cs_reg = functions._case_sensitive_registry['_default']
+
+        class MYFUNC(GenericFunction):
+            type = DateTime
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, DateTime)
+        assert isinstance(func.mYfUnC().type, DateTime)
+        assert isinstance(func.myfunc().type, DateTime)
+
+        in_("myfunc", reg)
+        not_in_("MYFUNC", reg)
+        not_in_("MyFunc", reg)
+        in_("myfunc", cs_reg)
+        eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC']))
+
+        with testing.expect_deprecated(
+            "GenericFunction 'MyFunc' is already registered with"
+            " different letter case, so the previously registered function "
+            "'MYFUNC' is switched into case-sensitive mode. "
+            "GenericFunction objects will be fully case-insensitive in a "
+            "future release.",
+            regex=False
+        ):
+            class MyFunc(GenericFunction):
+                type = Integer
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, Integer)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.mYfUnC().type, Integer)
+        with pytest.raises(AssertionError):
+            assert isinstance(func.myfunc().type, Integer)
+
+        eq_(reg["myfunc"], functions._CASE_SENSITIVE)
+        not_in_("MYFUNC", reg)
+        not_in_("MyFunc", reg)
+        in_("myfunc", cs_reg)
+        eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC', 'MyFunc']))
+
+    def test_replace_function_case_sensitive(self):
+        reg = functions._registry['_default']
+        cs_reg = functions._case_sensitive_registry['_default']
+
+        class replaceable_func(GenericFunction):
+            type = Integer
+            identifier = 'REPLACEABLE_FUNC'
+
+        assert isinstance(func.REPLACEABLE_FUNC().type, Integer)
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
+        assert isinstance(func.replaceable_func().type, Integer)
+
+        in_("replaceable_func", reg)
+        not_in_("REPLACEABLE_FUNC", reg)
+        not_in_("Replaceable_Func", reg)
+        in_("replaceable_func", cs_reg)
+        eq_(set(cs_reg['replaceable_func'].keys()), set(['REPLACEABLE_FUNC']))
+
+        with testing.expect_deprecated(
+            "GenericFunction 'Replaceable_Func' is already registered with"
+            " different letter case, so the previously registered function "
+            "'REPLACEABLE_FUNC' is switched into case-sensitive mode. "
+            "GenericFunction objects will be fully case-insensitive in a "
+            "future release.",
+            regex=False
+        ):
+            class Replaceable_Func(GenericFunction):
+                type = DateTime
+                identifier = 'Replaceable_Func'
+
+        assert isinstance(func.REPLACEABLE_FUNC().type, Integer)
+        assert isinstance(func.Replaceable_Func().type, DateTime)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
+        assert isinstance(func.replaceable_func().type, NullType)
+
+        eq_(reg["replaceable_func"], functions._CASE_SENSITIVE)
+        not_in_("REPLACEABLE_FUNC", reg)
+        not_in_("Replaceable_Func", reg)
+        in_("replaceable_func", cs_reg)
+        eq_(set(cs_reg['replaceable_func'].keys()),
+            set(['REPLACEABLE_FUNC', 'Replaceable_Func']))
+
+        with testing.expect_warnings(
+            "The GenericFunction 'REPLACEABLE_FUNC' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
+            class replaceable_func_override(GenericFunction):
+                type = DateTime
+                identifier = 'REPLACEABLE_FUNC'
+
+        with testing.expect_deprecated(
+            "GenericFunction(s) '['REPLACEABLE_FUNC', 'Replaceable_Func']' "
+            "are already registered with different letter cases and might "
+            "interact with 'replaceable_func'. GenericFunction objects will "
+            "be fully case-insensitive in a future release.",
+            regex=False
+        ):
+            class replaceable_func_lowercase(GenericFunction):
+                type = String
+                identifier = 'replaceable_func'
+
+        with testing.expect_warnings(
+            "The GenericFunction 'Replaceable_Func' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
+            class Replaceable_Func_override(GenericFunction):
+                type = Integer
+                identifier = 'Replaceable_Func'
+
+        assert isinstance(func.REPLACEABLE_FUNC().type, DateTime)
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, NullType)
+        assert isinstance(func.replaceable_func().type, String)
+
+        eq_(reg["replaceable_func"], functions._CASE_SENSITIVE)
+        not_in_("REPLACEABLE_FUNC", reg)
+        not_in_("Replaceable_Func", reg)
+        in_("replaceable_func", cs_reg)
+        eq_(set(cs_reg['replaceable_func'].keys()),
+            set(['REPLACEABLE_FUNC', 'Replaceable_Func', 'replaceable_func']))
 
 
 class DDLListenerDeprecationsTest(fixtures.TestBase):
