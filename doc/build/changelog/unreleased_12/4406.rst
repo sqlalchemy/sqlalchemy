@@ -1,6 +1,7 @@
 .. change::
    :tags: bug, engine
    :tickets: 4406
+   :versions: 1.3.0
 
    Comparing two objects of :class:`.URL` using ``__eq__()`` did not take port
    number into consideration, two objects differing only by port number were

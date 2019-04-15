@@ -1,6 +1,7 @@
 .. change::
    :tags: bug, orm
    :tickets: 4507
+   :versions: 1.3.0
 
    Fixed a regression in 1.2 due to the introduction of baked queries for
    relationship lazy loaders, where a race condition is created during the
