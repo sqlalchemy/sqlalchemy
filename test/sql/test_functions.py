@@ -240,7 +240,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert isinstance(func.myfunc().type, DateTime)
 
     def test_replace_function(self):
-
         class replaceable_func(GenericFunction):
             type = Integer
             identifier = 'replaceable_func'

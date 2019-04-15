@@ -93,7 +93,7 @@ def register_function(identifier, fn, package="_default"):
                 "different letter cases and might interact with '{}'. "
                 "GenericFunction objects will be fully case-insensitive in a "
                 "future release.".format(
-                    list(case_sensitive_reg[identifier].keys()),
+                    sorted(case_sensitive_reg[identifier].keys()),
                     raw_identifier))
 
         else:

@@ -41,15 +41,6 @@ from sqlalchemy.testing import not_in_
 class DeprecationWarningsTest(fixtures.TestBase):
     __backend__ = True
 
-    def setup(self):
-        self._registry = deepcopy(functions._registry)
-        self._case_sensitive_registry = deepcopy(
-            functions._case_sensitive_registry)
-
-    def teardown(self):
-        functions._registry = self._registry
-        functions._case_sensitive_registry = self._case_sensitive_registry
-
     def test_ident_preparer_force(self):
         preparer = testing.db.dialect.identifier_preparer
         preparer.quote("hi")
@@ -154,6 +145,20 @@ class DeprecationWarningsTest(fixtures.TestBase):
                 extend_existing=True,
                 autoload_with=testing.db,
             )
+
+
+class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
+
+    def setup(self):
+        self._registry = deepcopy(functions._registry)
+        self._case_sensitive_registry = deepcopy(
+            functions._case_sensitive_registry)
+        functions._registry.clear()
+        functions._case_sensitive_registry.clear()
+
+    def teardown(self):
+        functions._registry = self._registry
+        functions._case_sensitive_registry = self._case_sensitive_registry
 
     def test_case_sensitive(self):
         reg = functions._registry['_default']
