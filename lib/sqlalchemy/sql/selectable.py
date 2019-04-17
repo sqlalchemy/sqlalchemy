@@ -1994,6 +1994,9 @@ class ForUpdateArg(ClauseElement):
             and other.of is self.of
         )
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __hash__(self):
         return id(self)
 
@@ -3940,6 +3943,12 @@ class TextAsFrom(SelectBase):
     def _copy_internals(self, clone=_clone, **kw):
         self._reset_exported()
         self.element = clone(self.element, **kw)
+
+    def get_children(self, column_collections=True, **kw):
+        if column_collections:
+            for c in self.column_args:
+                yield c
+        yield self.element
 
     def _scalar_type(self):
         return self.column_args[0].type

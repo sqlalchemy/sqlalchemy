@@ -274,6 +274,18 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
+    def test_functions_args_noname(self):
+        class myfunc(FunctionElement):
+            pass
+
+        @compiles(myfunc)
+        def visit_myfunc(element, compiler, **kw):
+            return "myfunc%s" % (compiler.process(element.clause_expr, **kw),)
+
+        self.assert_compile(myfunc(), "myfunc()")
+
+        self.assert_compile(myfunc(column("x"), column("y")), "myfunc(x, y)")
+
     def test_function_calls_base(self):
         from sqlalchemy.dialects import mssql
 
