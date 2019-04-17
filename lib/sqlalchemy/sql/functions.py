@@ -256,6 +256,9 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def get_children(self, **kwargs):
         return (self.clause_expr,)
 
+    def _cache_key(self, **kw):
+        return (FunctionElement, self.clause_expr._cache_key(**kw))
+
     def _copy_internals(self, clone=_clone, **kw):
         self.clause_expr = clone(self.clause_expr, **kw)
         self._reset_exported()
@@ -405,6 +408,14 @@ class FunctionAsBinary(BinaryExpression):
 
     def get_children(self, **kw):
         yield self.sql_function
+
+    def _cache_key(self, **kw):
+        return (
+            FunctionAsBinary,
+            self.sql_function._cache_key(**kw),
+            self.left_index,
+            self.right_index,
+        )
 
 
 class _FunctionGenerator(object):
@@ -566,6 +577,13 @@ class Function(FunctionElement):
             unique=True,
         )
 
+    def _cache_key(self, **kw):
+        return (
+            (Function,) + tuple(self.packagenames)
+            if self.packagenames
+            else () + (self.name, self.clause_expr._cache_key(**kw))
+        )
+
 
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
@@ -683,6 +701,9 @@ class next_value(GenericFunction):
         ), "next_value() accepts a Sequence object as input."
         self._bind = kw.get("bind", None)
         self.sequence = seq
+
+    def _cache_key(self, **kw):
+        return (next_value, self.sequence.name)
 
     def compare(self, other, **kw):
         return (

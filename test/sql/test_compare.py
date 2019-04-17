@@ -31,6 +31,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import True_
 from sqlalchemy.sql import type_coerce
+from sqlalchemy.sql import visitors
 from sqlalchemy.sql.elements import _label_reference
 from sqlalchemy.sql.elements import _textual_label_reference
 from sqlalchemy.sql.elements import Annotated
@@ -47,9 +48,13 @@ from sqlalchemy.sql.functions import ReturnTypeFromArgs
 from sqlalchemy.sql.selectable import _OffsetLimitParam
 from sqlalchemy.sql.selectable import FromGrouping
 from sqlalchemy.sql.selectable import Selectable
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import ne_
 from sqlalchemy.util import class_hierarchy
 
 
@@ -320,6 +325,109 @@ class CompareAndCopyTest(fixtures.TestBase):
                         ),
                         "%r == %r" % (case_a[a], case_b[b]),
                     )
+
+    def test_cache_key(self):
+        def assert_params_append(assert_params):
+            def append(param):
+                if param._value_required_for_cache:
+                    assert_params.append(param)
+                else:
+                    is_(param.value, None)
+
+            return append
+
+        for fixture in self.fixtures:
+            case_a = fixture()
+            case_b = fixture()
+
+            for a, b in itertools.combinations_with_replacement(
+                range(len(case_a)), 2
+            ):
+
+                assert_a_params = []
+                assert_b_params = []
+
+                visitors.traverse_depthfirst(
+                    case_a[a],
+                    {},
+                    {"bindparam": assert_params_append(assert_a_params)},
+                )
+                visitors.traverse_depthfirst(
+                    case_b[b],
+                    {},
+                    {"bindparam": assert_params_append(assert_b_params)},
+                )
+                if assert_a_params:
+                    assert_raises_message(
+                        NotImplementedError,
+                        "bindparams collection argument required ",
+                        case_a[a]._cache_key,
+                    )
+                if assert_b_params:
+                    assert_raises_message(
+                        NotImplementedError,
+                        "bindparams collection argument required ",
+                        case_b[b]._cache_key,
+                    )
+
+                if not assert_a_params and not assert_b_params:
+                    if a == b:
+                        eq_(case_a[a]._cache_key(), case_b[b]._cache_key())
+                    else:
+                        ne_(case_a[a]._cache_key(), case_b[b]._cache_key())
+
+    def test_cache_key_gather_bindparams(self):
+        for fixture in self.fixtures:
+            case_a = fixture()
+            case_b = fixture()
+
+            # in the "bindparams" case, the cache keys for bound parameters
+            # with only different values will be the same, but the params
+            # themselves are gathered into a collection.
+            for a, b in itertools.combinations_with_replacement(
+                range(len(case_a)), 2
+            ):
+                a_params = {"bindparams": []}
+                b_params = {"bindparams": []}
+                if a == b:
+                    a_key = case_a[a]._cache_key(**a_params)
+                    b_key = case_b[b]._cache_key(**b_params)
+                    eq_(a_key, b_key)
+
+                    if a_params["bindparams"]:
+                        for a_param, b_param in zip(
+                            a_params["bindparams"], b_params["bindparams"]
+                        ):
+                            assert a_param.compare(b_param)
+                else:
+                    a_key = case_a[a]._cache_key(**a_params)
+                    b_key = case_b[b]._cache_key(**b_params)
+
+                    if a_key == b_key:
+                        for a_param, b_param in zip(
+                            a_params["bindparams"], b_params["bindparams"]
+                        ):
+                            if not a_param.compare(b_param):
+                                break
+                        else:
+                            assert False, "Bound parameters are all the same"
+                    else:
+                        ne_(a_key, b_key)
+
+                assert_a_params = []
+                assert_b_params = []
+                visitors.traverse_depthfirst(
+                    case_a[a], {}, {"bindparam": assert_a_params.append}
+                )
+                visitors.traverse_depthfirst(
+                    case_b[b], {}, {"bindparam": assert_b_params.append}
+                )
+
+                # note we're asserting the order of the params as well as
+                # if there are dupes or not.  ordering has to be deterministic
+                # and matches what a traversal would provide.
+                eq_(a_params["bindparams"], assert_a_params)
+                eq_(b_params["bindparams"], assert_b_params)
 
     def test_compare_col_identity(self):
         stmt1 = (

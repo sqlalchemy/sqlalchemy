@@ -106,6 +106,7 @@ from .langhelpers import classproperty  # noqa
 from .langhelpers import clsname_as_plain_name  # noqa
 from .langhelpers import coerce_kw_type  # noqa
 from .langhelpers import constructor_copy  # noqa
+from .langhelpers import constructor_key  # noqa
 from .langhelpers import counter  # noqa
 from .langhelpers import decode_slice  # noqa
 from .langhelpers import decorator  # noqa

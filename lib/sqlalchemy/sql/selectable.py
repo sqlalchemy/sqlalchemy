@@ -864,6 +864,16 @@ class Join(FromClause):
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
 
+    def _cache_key(self, **kw):
+        return (
+            Join,
+            self.isouter,
+            self.full,
+            self.left._cache_key(**kw),
+            self.right._cache_key(**kw),
+            self.onclause._cache_key(**kw),
+        )
+
     def _match_primaries(self, left, right):
         if isinstance(left, Join):
             left_right = left.right
@@ -1289,6 +1299,7 @@ class Alias(FromClause):
         if self.supports_execution:
             self._execution_options = baseselectable._execution_options
         self.element = selectable
+        self._orig_name = name
         if name is None:
             if self.original.named_with_column:
                 name = getattr(self.original, "name", None)
@@ -1357,6 +1368,9 @@ class Alias(FromClause):
             for c in self.c:
                 yield c
         yield self.element
+
+    def _cache_key(self, **kw):
+        return (self.__class__, self.element._cache_key(**kw), self._orig_name)
 
     @property
     def _from_objects(self):
@@ -1777,6 +1791,9 @@ class FromGrouping(FromClause):
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
 
+    def _cache_key(self, **kw):
+        return (FromGrouping, self.element._cache_key(**kw))
+
     @property
     def _from_objects(self):
         return self.element._from_objects
@@ -1876,6 +1893,11 @@ class TableClause(Immutable, FromClause):
             return [c for c in self.c]
         else:
             return []
+
+    def _cache_key(self, **kw):
+        return (TableClause, self.name) + tuple(
+            col._cache_key(**kw) for col in self._columns
+        )
 
     @util.dependencies("sqlalchemy.sql.dml")
     def insert(self, dml, values=None, inline=False, **kwargs):
@@ -2003,6 +2025,15 @@ class ForUpdateArg(ClauseElement):
     def _copy_internals(self, clone=_clone, **kw):
         if self.of is not None:
             self.of = [clone(col, **kw) for col in self.of]
+
+    def _cache_key(self, **kw):
+        return (
+            ForUpdateArg,
+            self.nowait,
+            self.read,
+            self.skip_locked,
+            self.of._cache_key(**kw) if self.of is not None else None,
+        )
 
     def __init__(
         self,
@@ -2653,6 +2684,27 @@ class CompoundSelect(GenerativeSelect):
             + list(self.selects)
         )
 
+    def _cache_key(self, **kw):
+        return (
+            (CompoundSelect, self.keyword)
+            + tuple(stmt._cache_key(**kw) for stmt in self.selects)
+            + (
+                self._order_by_clause._cache_key(**kw)
+                if self._order_by_clause is not None
+                else None,
+            )
+            + (
+                self._group_by_clause._cache_key(**kw)
+                if self._group_by_clause is not None
+                else None,
+            )
+            + (
+                self._for_update_arg._cache_key(**kw)
+                if self._for_update_arg is not None
+                else None,
+            )
+        )
+
     def bind(self):
         if self._bind:
             return self._bind
@@ -3275,6 +3327,47 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 )
                 if x is not None
             ]
+        )
+
+    def _cache_key(self, **kw):
+        return (
+            (Select,)
+            + ("raw_columns",)
+            + tuple(elem._cache_key(**kw) for elem in self._raw_columns)
+            + ("elements",)
+            + tuple(
+                elem._cache_key(**kw) if elem is not None else None
+                for elem in (
+                    self._whereclause,
+                    self._having,
+                    self._order_by_clause,
+                    self._group_by_clause,
+                )
+            )
+            + ("from_obj",)
+            + tuple(elem._cache_key(**kw) for elem in self._from_obj)
+            + ("correlate",)
+            + tuple(
+                elem._cache_key(**kw)
+                for elem in (
+                    self._correlate if self._correlate is not None else ()
+                )
+            )
+            + ("correlate_except",)
+            + tuple(
+                elem._cache_key(**kw)
+                for elem in (
+                    self._correlate_except
+                    if self._correlate_except is not None
+                    else ()
+                )
+            )
+            + ("for_update",),
+            (
+                self._for_update_arg._cache_key(**kw)
+                if self._for_update_arg is not None
+                else None,
+            ),
         )
 
     @_generative
@@ -3949,6 +4042,11 @@ class TextAsFrom(SelectBase):
             for c in self.column_args:
                 yield c
         yield self.element
+
+    def _cache_key(self, **kw):
+        return (TextAsFrom, self.element._cache_key(**kw)) + tuple(
+            col._cache_key(**kw) for col in self.column_args
+        )
 
     def _scalar_type(self):
         return self.column_args[0].type
