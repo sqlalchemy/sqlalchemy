@@ -711,8 +711,8 @@ class RelationshipProperty(StrategizedProperty):
 
         :param primaryjoin:
           a SQL expression that will be used as the primary
-          join of this child object against the parent object, or in a
-          many-to-many relationship the join of the primary object to the
+          join of the child object against the parent object, or in a
+          many-to-many relationship the join of the parent object to the
           association table. By default, this value is computed based on the
           foreign key relationships of the parent and child tables (or
           association table).
