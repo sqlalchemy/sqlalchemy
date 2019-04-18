@@ -912,6 +912,14 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=self._dialect(False),
         )
 
+    def test_three_a_double(self):
+        c = column("x", Boolean)
+        self.assert_compile(
+            select([c]).where(~~c),
+            "SELECT x WHERE x = 1",
+            dialect=self._dialect(False),
+        )
+
     def test_three_b(self):
         c = column("x", Boolean)
         self.assert_compile(
@@ -925,6 +933,14 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             select([c]).where(~c),
             "SELECT x WHERE NOT x",
+            dialect=self._dialect(True),
+        )
+
+    def test_four_double(self):
+        c = column("x", Boolean)
+        self.assert_compile(
+            select([c]).where(~~c),
+            "SELECT x WHERE x",
             dialect=self._dialect(True),
         )
 
