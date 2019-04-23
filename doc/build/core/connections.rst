@@ -401,7 +401,7 @@ render the schema as ``user_schema_one``::
 The above code will invoke SQL on the database of the form::
 
     SELECT user_schema_one.user.id, user_schema_one.user.name FROM
-    user_schema.user
+    user_schema_one.user
 
 That is, the schema name is substituted with our translated name.  The
 map can specify any number of target->destination schemas::
