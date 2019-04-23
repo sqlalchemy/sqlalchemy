@@ -1,0 +1,10 @@
+.. change::
+   :tags: bug, mysql
+   :tickets: 4624
+
+   Enhanced MySQL/MariaDB version string parsing to accommodate for exotic
+   MariaDB version strings where the "MariaDB" word is embedded among other
+   alphanumeric characters such as "MariaDBV1".   This detection is critical in
+   order to correctly accomodate for API features that have split between MySQL
+   and MariaDB such as the "transaction_isolation" system variable.
+

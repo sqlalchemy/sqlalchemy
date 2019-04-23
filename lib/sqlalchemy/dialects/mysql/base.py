@@ -2210,13 +2210,20 @@ class MySQLDialect(default.DefaultDialect):
         if util.py3k and isinstance(val, bytes):
             val = val.decode()
 
+        return self._parse_server_version(val)
+
+    def _parse_server_version(self, val):
         version = []
         r = re.compile(r"[.\-]")
         for n in r.split(val):
             try:
                 version.append(int(n))
             except ValueError:
-                version.append(n)
+                mariadb = re.match(r"(.*)(MariaDB)(.*)", n)
+                if mariadb:
+                    version.extend(g for g in mariadb.groups() if g)
+                else:
+                    version.append(n)
         return tuple(version)
 
     def do_commit(self, dbapi_connection):
