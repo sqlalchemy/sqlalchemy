@@ -1360,6 +1360,10 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _result_proxy = None
     _lastrowid = None
 
+    def fire_sequence(self, seq, type_):
+        return self._execute_scalar((
+            "select NEXT VALUE FOR %s " %
+            self.dialect.identifier_preparer.format_sequence(seq)), type_)
     def _opt_encode(self, statement):
         if not self.dialect.supports_unicode_statements:
             return self.dialect._encoder(statement)[0]
