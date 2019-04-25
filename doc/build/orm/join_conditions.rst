@@ -305,7 +305,7 @@ To suit this use case, the :meth:`.FunctionElement.as_comparison` method
 can modify any SQL function, such as those invoked from the :data:`.func`
 namespace, to indicate to the ORM that the function produces a comparison of
 two expressions.  The below example illustrates this with the
-`Geoalchemy2 <https://geoalchemy-2.readthedocs.io/>` library::
+`Geoalchemy2 <https://geoalchemy-2.readthedocs.io/>`_ library::
 
     from geoalchemy2 import Geometry
     from sqlalchemy import Column, Integer, func
