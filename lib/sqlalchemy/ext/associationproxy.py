@@ -436,7 +436,7 @@ class AssociationProxyInstance(object):
         """The 'remote' :class:`.MapperProperty` referenced by this
         :class:`.AssociationProxyInstance`.
 
-        ..seealso::
+        .. seealso::
 
             :attr:`.AssociationProxyInstance.attr`
 
