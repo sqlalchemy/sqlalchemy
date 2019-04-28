@@ -2110,6 +2110,13 @@ class Session(_SessionClassMethods):
         key = state.key
 
         if key is None:
+            if state in self._new:
+                util.warn(
+                    "Instance %s is already pending in this Session yet is "
+                    "being merged again; this is probably not what you want "
+                    "to do" % state_str(state)
+                )
+
             if not load:
                 raise sa_exc.InvalidRequestError(
                     "merge() with load=False option does not support "
