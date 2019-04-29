@@ -74,7 +74,9 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def __init__(self, *clauses, **kwargs):
         """Construct a :class:`.FunctionElement`.
         """
-        args = [_literal_as_binds(c, self.name) for c in clauses]
+        args = [
+            _literal_as_binds(c, getattr(self, "name", None)) for c in clauses
+        ]
         self._has_args = self._has_args or bool(args)
         self.clause_expr = ClauseList(
             operator=operators.comma_op, group_contents=True, *args
@@ -376,12 +378,11 @@ class FunctionAsBinary(BinaryExpression):
         self.left_index = left_index
         self.right_index = right_index
 
-        super(FunctionAsBinary, self).__init__(
-            left,
-            right,
-            operators.function_as_comparison_op,
-            type_=sqltypes.BOOLEANTYPE,
-        )
+        self.operator = operators.function_as_comparison_op
+        self.type = sqltypes.BOOLEANTYPE
+        self.negate = None
+        self._is_implicitly_boolean = True
+        self.modifiers = {}
 
     @property
     def left(self):
@@ -399,10 +400,11 @@ class FunctionAsBinary(BinaryExpression):
     def right(self, value):
         self.sql_function.clauses.clauses[self.right_index - 1] = value
 
-    def _copy_internals(self, **kw):
-        clone = kw.pop("clone")
+    def _copy_internals(self, clone=_clone, **kw):
         self.sql_function = clone(self.sql_function, **kw)
-        super(FunctionAsBinary, self)._copy_internals(**kw)
+
+    def get_children(self, **kw):
+        yield self.sql_function
 
 
 class _FunctionGenerator(object):
@@ -681,6 +683,18 @@ class next_value(GenericFunction):
         ), "next_value() accepts a Sequence object as input."
         self._bind = kw.get("bind", None)
         self.sequence = seq
+
+    def compare(self, other, **kw):
+        return (
+            isinstance(other, next_value)
+            and self.sequence.name == other.sequence.name
+        )
+
+    def get_children(self, **kwargs):
+        return []
+
+    def _copy_internals(self, **kw):
+        pass
 
     @property
     def _from_objects(self):

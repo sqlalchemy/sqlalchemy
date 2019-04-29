@@ -17,6 +17,7 @@ import numbers
 import operator
 import re
 
+from . import clause_compare
 from . import operators
 from . import type_api
 from .annotation import Annotated
@@ -341,7 +342,7 @@ class ClauseElement(Visitable):
         (see :class:`.ColumnElement`)
 
         """
-        return self is other
+        return clause_compare.compare(self, other, **kw)
 
     def _copy_internals(self, clone=_clone, **kw):
         """Reassign internal elements to be clones of themselves.
@@ -810,34 +811,6 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
         selectable._columns[key] = co
         return co
 
-    def compare(self, other, use_proxies=False, equivalents=None, **kw):
-        """Compare this ColumnElement to another.
-
-        Special arguments understood:
-
-        :param use_proxies: when True, consider two columns that
-          share a common base column as equivalent (i.e. shares_lineage())
-
-        :param equivalents: a dictionary of columns as keys mapped to sets
-          of columns. If the given "other" column is present in this
-          dictionary, if any of the columns in the corresponding set() pass
-          the comparison test, the result is True. This is used to expand the
-          comparison to other columns that may be known to be equivalent to
-          this one via foreign key or other criterion.
-
-        """
-        to_compare = (other,)
-        if equivalents and other in equivalents:
-            to_compare = equivalents[other].union(to_compare)
-
-        for oth in to_compare:
-            if use_proxies and self.shares_lineage(oth):
-                return True
-            elif hash(oth) == hash(self):
-                return True
-        else:
-            return False
-
     def cast(self, type_):
         """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
 
@@ -1225,17 +1198,6 @@ class BindParameter(ColumnElement):
             self.key = _anonymous_label(
                 "%%(%d %s)s" % (id(self), self._orig_key or "param")
             )
-
-    def compare(self, other, **kw):
-        """Compare this :class:`BindParameter` to the given
-        clause."""
-
-        return (
-            isinstance(other, BindParameter)
-            and self.type._compare_type_affinity(other.type)
-            and self.value == other.value
-            and self.callable == other.callable
-        )
 
     def __getstate__(self):
         """execute a deferred value for serialization purposes."""
@@ -1696,9 +1658,6 @@ class TextClause(Executable, ClauseElement):
     def get_children(self, **kwargs):
         return list(self._bindparams.values())
 
-    def compare(self, other):
-        return isinstance(other, TextClause) and other.text == self.text
-
 
 class Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
@@ -1719,9 +1678,6 @@ class Null(ColumnElement):
         """Return a constant :class:`.Null` construct."""
 
         return Null()
-
-    def compare(self, other):
-        return isinstance(other, Null)
 
 
 class False_(ColumnElement):
@@ -1778,9 +1734,6 @@ class False_(ColumnElement):
         """
 
         return False_()
-
-    def compare(self, other):
-        return isinstance(other, False_)
 
 
 class True_(ColumnElement):
@@ -1845,9 +1798,6 @@ class True_(ColumnElement):
 
         return True_()
 
-    def compare(self, other):
-        return isinstance(other, True_)
-
 
 class ClauseList(ClauseElement):
     """Describe a list of clauses, separated by an operator.
@@ -1907,38 +1857,6 @@ class ClauseList(ClauseElement):
             return Grouping(self)
         else:
             return self
-
-    def compare(self, other, **kw):
-        """Compare this :class:`.ClauseList` to the given :class:`.ClauseList`,
-        including a comparison of all the clause items.
-
-        """
-        if not isinstance(other, ClauseList) and len(self.clauses) == 1:
-            return self.clauses[0].compare(other, **kw)
-        elif (
-            isinstance(other, ClauseList)
-            and len(self.clauses) == len(other.clauses)
-            and self.operator is other.operator
-        ):
-
-            if self.operator in (operators.and_, operators.or_):
-                completed = set()
-                for clause in self.clauses:
-                    for other_clause in set(other.clauses).difference(
-                        completed
-                    ):
-                        if clause.compare(other_clause, **kw):
-                            completed.add(other_clause)
-                            break
-                return len(completed) == len(other.clauses)
-            else:
-                for i in range(0, len(self.clauses)):
-                    if not self.clauses[i].compare(other.clauses[i], **kw):
-                        return False
-                else:
-                    return True
-        else:
-            return False
 
 
 class BooleanClauseList(ClauseList, ColumnElement):
@@ -2606,6 +2524,9 @@ class _label_reference(ColumnElement):
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
 
+    def get_children(self, **kwargs):
+        return [self.element]
+
     @property
     def _from_objects(self):
         return ()
@@ -2885,17 +2806,6 @@ class UnaryExpression(ColumnElement):
     def get_children(self, **kwargs):
         return (self.element,)
 
-    def compare(self, other, **kw):
-        """Compare this :class:`UnaryExpression` against the given
-        :class:`.ClauseElement`."""
-
-        return (
-            isinstance(other, UnaryExpression)
-            and self.operator == other.operator
-            and self.modifier == other.modifier
-            and self.element.compare(other.element, **kw)
-        )
-
     def _negate(self):
         if self.negate is not None:
             return UnaryExpression(
@@ -3103,24 +3013,6 @@ class BinaryExpression(ColumnElement):
     def get_children(self, **kwargs):
         return self.left, self.right
 
-    def compare(self, other, **kw):
-        """Compare this :class:`BinaryExpression` against the
-        given :class:`BinaryExpression`."""
-
-        return (
-            isinstance(other, BinaryExpression)
-            and self.operator == other.operator
-            and (
-                self.left.compare(other.left, **kw)
-                and self.right.compare(other.right, **kw)
-                or (
-                    operators.is_commutative(self.operator)
-                    and self.left.compare(other.right, **kw)
-                    and self.right.compare(other.left, **kw)
-                )
-            )
-        )
-
     def self_group(self, against=None):
         if operators.is_precedent(self.operator, against):
             return Grouping(self)
@@ -3212,11 +3104,6 @@ class Grouping(ColumnElement):
     def __setstate__(self, state):
         self.element = state["element"]
         self.type = state["type"]
-
-    def compare(self, other, **kw):
-        return isinstance(other, Grouping) and self.element.compare(
-            other.element
-        )
 
 
 RANGE_UNBOUNDED = util.symbol("RANGE_UNBOUNDED")

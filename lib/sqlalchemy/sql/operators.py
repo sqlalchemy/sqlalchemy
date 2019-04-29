@@ -1414,6 +1414,11 @@ def mirror(op):
 
 _associative = _commutative.union([concat_op, and_, or_]).difference([eq, ne])
 
+
+def is_associative(op):
+    return op in _associative
+
+
 _natural_self_precedent = _associative.union(
     [getitem, json_getitem_op, json_path_getitem_op]
 )

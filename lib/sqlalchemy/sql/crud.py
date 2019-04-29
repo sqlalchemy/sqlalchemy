@@ -482,6 +482,12 @@ class _multiparam_column(elements.ColumnElement):
         self.default = original.default
         self.type = original.type
 
+    def compare(self, other, **kw):
+        raise NotImplementedError()
+
+    def _copy_internals(self, other, **kw):
+        raise NotImplementedError()
+
     def __eq__(self, other):
         return (
             isinstance(other, _multiparam_column)
