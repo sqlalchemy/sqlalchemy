@@ -218,6 +218,28 @@ class ClauseElement(Visitable):
 
         return c
 
+    def _cache_key(self, **kw):
+        """return an optional cache key.
+
+        The cache key is a tuple which can contain any series of
+        objects that are hashable and also identifies
+        this object uniquely within the presence of a larger SQL expression
+        or statement, for the purposes of caching the resulting query.
+
+        The cache key should be based on the SQL compiled structure that would
+        ultimately be produced.   That is, two structures that are composed in
+        exactly the same way should produce the same cache key; any difference
+        in the strucures that would affect the SQL string or the type handlers
+        should result in a different cache key.
+
+        If a structure cannot produce a useful cache key, it should raise
+        NotImplementedError, which will result in the entire structure
+        for which it's part of not being useful as a cache key.
+
+
+        """
+        raise NotImplementedError(self.__class__)
+
     @property
     def _constructor(self):
         """return the 'constructor' for this ClauseElement.
@@ -712,6 +734,9 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
         else:
             return comparator_factory(self)
 
+    def _cache_key(self, **kw):
+        raise NotImplementedError(self.__class__)
+
     def __getattr__(self, key):
         try:
             return getattr(self.comparator, key)
@@ -1108,7 +1133,10 @@ class BindParameter(ColumnElement):
         if required is NO_ARG:
             required = value is NO_ARG and callable_ is None
         if value is NO_ARG:
+            self._value_required_for_cache = False
             value = None
+        else:
+            self._value_required_for_cache = True
 
         if quote is not None:
             key = quoted_name(key, quote)
@@ -1192,6 +1220,26 @@ class BindParameter(ColumnElement):
             )
         return c
 
+    def _cache_key(self, bindparams=None, **kw):
+        if bindparams is None:
+            # even though _cache_key is a private method, we would like to
+            # be super paranoid about this point.   You can't include the
+            # "value" or "callable" in the cache key, because the value is
+            # not part of the structure of a statement and is likely to
+            # change every time.  However you cannot *throw it away* either,
+            # because you can't invoke the statement without the parameter
+            # values that were explicitly placed.    So require that they
+            # are collected here to make sure this happens.
+            if self._value_required_for_cache:
+                raise NotImplementedError(
+                    "bindparams collection argument required for _cache_key "
+                    "implementation.  Bound parameter cache keys are not safe "
+                    "to use without accommodating for the value or callable "
+                    "within the parameter itself.")
+        else:
+            bindparams.append(self)
+        return (BindParameter, self.type._cache_key, self._orig_key)
+
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
@@ -1229,6 +1277,9 @@ class TypeClause(ClauseElement):
 
     def __init__(self, type_):
         self.type = type_
+
+    def _cache_key(self, **kw):
+        return (TypeClause, self.type._cache_key)
 
 
 class TextClause(Executable, ClauseElement):
@@ -1658,6 +1709,11 @@ class TextClause(Executable, ClauseElement):
     def get_children(self, **kwargs):
         return list(self._bindparams.values())
 
+    def _cache_key(self, **kw):
+        return (self.text,) + tuple(
+            bind._cache_key for bind in self._bindparams.values()
+        )
+
 
 class Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
@@ -1678,6 +1734,9 @@ class Null(ColumnElement):
         """Return a constant :class:`.Null` construct."""
 
         return Null()
+
+    def _cache_key(self, **kw):
+        return (Null,)
 
 
 class False_(ColumnElement):
@@ -1734,6 +1793,9 @@ class False_(ColumnElement):
         """
 
         return False_()
+
+    def _cache_key(self, **kw):
+        return (False_,)
 
 
 class True_(ColumnElement):
@@ -1798,6 +1860,9 @@ class True_(ColumnElement):
 
         return True_()
 
+    def _cache_key(self, **kw):
+        return (True_,)
+
 
 class ClauseList(ClauseElement):
     """Describe a list of clauses, separated by an operator.
@@ -1848,6 +1913,11 @@ class ClauseList(ClauseElement):
     def get_children(self, **kwargs):
         return self.clauses
 
+    def _cache_key(self, **kw):
+        return (ClauseList, self.operator) + tuple(
+            clause._cache_key(**kw) for clause in self.clauses
+        )
+
     @property
     def _from_objects(self):
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
@@ -1865,6 +1935,11 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
             "BooleanClauseList has a private constructor"
+        )
+
+    def _cache_key(self, **kw):
+        return (BooleanClauseList, self.operator) + tuple(
+            clause._cache_key(**kw) for clause in self.clauses
         )
 
     @classmethod
@@ -2029,6 +2104,11 @@ class Tuple(ClauseList, ColumnElement):
     @property
     def _select_iterable(self):
         return (self,)
+
+    def _cache_key(self, **kw):
+        return (Tuple,) + tuple(
+            clause._cache_key(**kw) for clause in self.clauses
+        )
 
     def _bind_param(self, operator, obj, type_=None):
         return Tuple(
@@ -2245,6 +2325,24 @@ class Case(ColumnElement):
         if self.else_ is not None:
             yield self.else_
 
+    def _cache_key(self, **kw):
+        return (
+            (
+                Case,
+                self.value._cache_key(**kw)
+                if self.value is not None
+                else None,
+            )
+            + tuple(
+                (x._cache_key(**kw), y._cache_key(**kw)) for x, y in self.whens
+            )
+            + (
+                self.else_._cache_key(**kw)
+                if self.else_ is not None
+                else None,
+            )
+        )
+
     @property
     def _from_objects(self):
         return list(
@@ -2367,6 +2465,13 @@ class Cast(ColumnElement):
     def get_children(self, **kwargs):
         return self.clause, self.typeclause
 
+    def _cache_key(self, **kw):
+        return (
+            Cast,
+            self.clause._cache_key(**kw),
+            self.typeclause._cache_key(**kw),
+        )
+
     @property
     def _from_objects(self):
         return self.clause._from_objects
@@ -2461,6 +2566,9 @@ class TypeCoerce(ColumnElement):
     def get_children(self, **kwargs):
         return (self.clause,)
 
+    def _cache_key(self, **kw):
+        return (TypeCoerce, self.type._cache_key, self.clause._cache_key(**kw))
+
     @property
     def _from_objects(self):
         return self.clause._from_objects
@@ -2498,6 +2606,9 @@ class Extract(ColumnElement):
     def get_children(self, **kwargs):
         return (self.expr,)
 
+    def _cache_key(self, **kw):
+        return (Extract, self.field, self.expr._cache_key(**kw))
+
     @property
     def _from_objects(self):
         return self.expr._from_objects
@@ -2524,6 +2635,9 @@ class _label_reference(ColumnElement):
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
 
+    def _cache_key(self, **kw):
+        return (_label_reference, self.element._cache_key(**kw))
+
     def get_children(self, **kwargs):
         return [self.element]
 
@@ -2541,6 +2655,9 @@ class _textual_label_reference(ColumnElement):
     @util.memoized_property
     def _text_clause(self):
         return TextClause._create_text(self.element)
+
+    def _cache_key(self, **kw):
+        return (_textual_label_reference, self.element)
 
 
 class UnaryExpression(ColumnElement):
@@ -2803,6 +2920,14 @@ class UnaryExpression(ColumnElement):
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
 
+    def _cache_key(self, **kw):
+        return (
+            UnaryExpression,
+            self.element._cache_key(**kw),
+            self.operator,
+            self.modifier,
+        )
+
     def get_children(self, **kwargs):
         return (self.element,)
 
@@ -2941,6 +3066,15 @@ class AsBoolean(UnaryExpression):
     def self_group(self, against=None):
         return self
 
+    def _cache_key(self, **kw):
+        return (
+            self.element._cache_key(**kw),
+            self.type._cache_key,
+            self.operator,
+            self.negate,
+            self.modifier,
+        )
+
     def _negate(self):
         if isinstance(self.element, (True_, False_)):
             return self.element._negate()
@@ -3013,6 +3147,13 @@ class BinaryExpression(ColumnElement):
     def get_children(self, **kwargs):
         return self.left, self.right
 
+    def _cache_key(self, **kw):
+        return (
+            BinaryExpression,
+            self.left._cache_key(**kw),
+            self.right._cache_key(**kw),
+        )
+
     def self_group(self, against=None):
         if operators.is_precedent(self.operator, against):
             return Grouping(self)
@@ -3053,6 +3194,9 @@ class Slice(ColumnElement):
         assert against is operator.getitem
         return self
 
+    def _cache_key(self, **kw):
+        return (Slice, self.start, self.stop, self.step)
+
 
 class IndexExpression(BinaryExpression):
     """Represent the class of expressions that are like an "index" operation.
@@ -3090,6 +3234,9 @@ class Grouping(ColumnElement):
 
     def get_children(self, **kwargs):
         return (self.element,)
+
+    def _cache_key(self, **kw):
+        return (Grouping, self.element._cache_key(**kw))
 
     @property
     def _from_objects(self):
@@ -3297,6 +3444,16 @@ class Over(ColumnElement):
             if c is not None
         ]
 
+    def _cache_key(self, **kw):
+        return (
+            (Over,)
+            + tuple(
+                e._cache_key(**kw) if e is not None else None
+                for e in (self.element, self.partition_by, self.order_by)
+            )
+            + (self.range_, self.rows)
+        )
+
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
         if self.partition_by is not None:
@@ -3407,6 +3564,17 @@ class WithinGroup(ColumnElement):
 
     def get_children(self, **kwargs):
         return [c for c in (self.element, self.order_by) if c is not None]
+
+    def _cache_key(self, **kw):
+        return (
+            WithinGroup,
+            self.element._cache_key(**kw)
+            if self.element is not None
+            else None,
+            self.order_by._cache_key(**kw)
+            if self.order_by is not None
+            else None,
+        )
 
     def _copy_internals(self, clone=_clone, **kw):
         self.element = clone(self.element, **kw)
@@ -3537,6 +3705,15 @@ class FunctionFilter(ColumnElement):
         if self.criterion is not None:
             self.criterion = clone(self.criterion, **kw)
 
+    def _cache_key(self, **kw):
+        return (
+            FunctionFilter,
+            self.func._cache_key(**kw),
+            self.criterion._cache_key(**kw)
+            if self.criterion is not None
+            else None,
+        )
+
     @property
     def _from_objects(self):
         return list(
@@ -3597,6 +3774,9 @@ class Label(ColumnElement):
 
     def __reduce__(self):
         return self.__class__, (self.name, self._element, self._type)
+
+    def _cache_key(self, **kw):
+        return (Label, self.element._cache_key(**kw), self._resolve_label)
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
@@ -3831,6 +4011,14 @@ class ColumnClause(Immutable, ColumnElement):
 
     table = property(_get_table, _set_table)
 
+    def _cache_key(self, **kw):
+        return (
+            self.name,
+            self.table.name if self.table is not None else None,
+            self.is_literal,
+            self.type._cache_key,
+        )
+
     @_memoized_property
     def _from_objects(self):
         t = self.table
@@ -3945,6 +4133,9 @@ class CollationClause(ColumnElement):
 
     def __init__(self, collation):
         self.collation = collation
+
+    def _cache_key(self, **kw):
+        return (CollationClause, self.collation)
 
 
 class _IdentifiedClause(Executable, ClauseElement):

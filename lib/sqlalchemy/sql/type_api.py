@@ -521,6 +521,10 @@ class TypeEngine(Visitable):
     def _gen_dialect_impl(self, dialect):
         return dialect.type_descriptor(self)
 
+    @util.memoized_property
+    def _cache_key(self):
+        return util.constructor_key(self, self.__class__)
+
     def adapt(self, cls, **kw):
         """Produce an "adapted" form of this type, given an "impl" class
         to work with.

@@ -1133,6 +1133,17 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
             kw[key] = type_(kw[key])
 
 
+def constructor_key(obj, cls):
+    """Produce a tuple structure that is cacheable using the __dict__ of
+    obj to retrieve values
+
+    """
+    names = get_cls_kwargs(cls)
+    return (cls,) + tuple(
+        (k, obj.__dict__[k]) for k in names if k in obj.__dict__
+    )
+
+
 def constructor_copy(obj, cls, *args, **kw):
     """Instantiate cls using the __dict__ of obj as constructor arguments.
 
