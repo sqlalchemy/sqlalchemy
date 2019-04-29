@@ -57,12 +57,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def setup(self):
         self._registry = deepcopy(functions._registry)
-        self._case_sensitive_registry = deepcopy(
-            functions._case_sensitive_registry)
 
     def teardown(self):
         functions._registry = self._registry
-        functions._case_sensitive_registry = self._case_sensitive_registry
 
     def test_compile(self):
         for dialect in all_dialects(exclude=("sybase",)):
@@ -96,7 +93,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
             functions._registry['_default'].pop('fake_func')
-            functions._case_sensitive_registry['_default'].pop('fake_func')
 
     def test_use_labels(self):
         self.assert_compile(
@@ -256,6 +252,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             class replaceable_func_override(GenericFunction):
                 type = DateTime
                 identifier = 'replaceable_func'
+
+        assert isinstance(func.Replaceable_Func().type, DateTime)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, DateTime)
+        assert isinstance(func.replaceable_func().type, DateTime)
+
+    def test_replace_function_case_insensitive(self):
+        class replaceable_func(GenericFunction):
+            type = Integer
+            identifier = 'replaceable_func'
+
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
+        assert isinstance(func.replaceable_func().type, Integer)
+
+        with expect_warnings(
+            "The GenericFunction 'replaceable_func' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
+            class replaceable_func_override(GenericFunction):
+                type = DateTime
+                identifier = 'REPLACEABLE_Func'
 
         assert isinstance(func.Replaceable_Func().type, DateTime)
         assert isinstance(func.RePlAcEaBlE_fUnC().type, DateTime)
