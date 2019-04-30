@@ -626,7 +626,7 @@ class ResultMetaData(object):
             if raiseerr:
                 raise exc.NoSuchColumnError(
                     "Could not locate column in row for column '%s'"
-                    % expression._string_or_unprintable(key)
+                    % util.string_or_unprintable(key)
                 )
             else:
                 return None

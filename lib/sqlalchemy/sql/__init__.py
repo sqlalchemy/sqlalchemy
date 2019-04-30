@@ -94,6 +94,22 @@ def __go(lcls):
     from .elements import ClauseList  # noqa
     from .selectable import AnnotatedFromClause  # noqa
 
+    from . import base
+    from . import coercions
+    from . import elements
+    from . import selectable
+    from . import schema
+    from . import sqltypes
+    from . import type_api
+
+    base.coercions = elements.coercions = coercions
+    base.elements = elements
+    base.type_api = type_api
+    coercions.elements = elements
+    coercions.schema = schema
+    coercions.selectable = selectable
+    coercions.sqltypes = sqltypes
+
     _prepare_annotations(ColumnElement, AnnotatedColumnElement)
     _prepare_annotations(FromClause, AnnotatedFromClause)
     _prepare_annotations(ClauseList, Annotated)

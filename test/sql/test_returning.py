@@ -222,7 +222,7 @@ class CompositeStatementTest(fixtures.TestBase):
 
             stmt = (
                 t2.insert()
-                .values(x=select([t1.c.x]).as_scalar())
+                .values(x=select([t1.c.x]).scalar_subquery())
                 .returning(t2.c.x)
             )
 

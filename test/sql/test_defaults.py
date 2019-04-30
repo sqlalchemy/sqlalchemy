@@ -657,8 +657,8 @@ class DefaultTest(fixtures.TestBase):
         ):
             assert_raises_message(
                 sa.exc.ArgumentError,
-                "SQL expression object expected, got object of type "
-                "<.* 'list'> instead",
+                r"SQL expression for WHERE/HAVING role expected, "
+                r"got \[(?:Sequence|ColumnDefault|DefaultClause)\('y'.*\)\]",
                 t.select,
                 [const],
             )
@@ -913,7 +913,7 @@ class PKDefaultTest(fixtures.TablesTest):
                 "id",
                 Integer,
                 primary_key=True,
-                default=sa.select([func.max(t2.c.nextid)]).as_scalar(),
+                default=sa.select([func.max(t2.c.nextid)]).scalar_subquery(),
             ),
             Column("data", String(30)),
         )
@@ -1740,7 +1740,7 @@ class SpecialTypePKTest(fixtures.TestBase):
         self._run_test(server_default="1", autoincrement=False)
 
     def test_clause(self):
-        stmt = select([cast("INT_1", type_=self.MyInteger)]).as_scalar()
+        stmt = select([cast("INT_1", type_=self.MyInteger)]).scalar_subquery()
         self._run_test(default=stmt)
 
     @testing.requires.returning

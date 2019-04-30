@@ -247,6 +247,10 @@ def le_(a, b, msg=None):
     assert a <= b, msg or "%r != %r" % (a, b)
 
 
+def is_instance_of(a, b, msg=None):
+    assert isinstance(a, b), msg or "%r is not an instance of %r" % (a, b)
+
+
 def is_true(a, msg=None):
     is_(a, True, msg=msg)
 

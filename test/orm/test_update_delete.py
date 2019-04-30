@@ -326,13 +326,15 @@ class UpdateDeleteTest(fixtures.MappedTest):
         assert_raises(
             exc.InvalidRequestError,
             sess.query(User)
-            .filter(User.name == select([func.max(User.name)]))
+            .filter(
+                User.name == select([func.max(User.name)]).scalar_subquery()
+            )
             .delete,
             synchronize_session="evaluate",
         )
 
         sess.query(User).filter(
-            User.name == select([func.max(User.name)])
+            User.name == select([func.max(User.name)]).scalar_subquery()
         ).delete(synchronize_session="fetch")
 
         assert john not in sess
@@ -969,7 +971,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         subq = (
             s.query(func.max(Document.title).label("title"))
             .group_by(Document.user_id)
-            .subquery()
+            .scalar_subquery()
         )
 
         s.query(Document).filter(Document.title.in_(subq)).update(
@@ -999,7 +1001,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         subq = (
             s.query(func.max(Document.title).label("title"))
             .group_by(Document.user_id)
-            .subquery()
+            .scalar_subquery()
         )
 
         # this would work with Firebird if you do literal_column('1')

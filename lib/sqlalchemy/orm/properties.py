@@ -19,7 +19,8 @@ from .interfaces import StrategizedProperty
 from .util import _orm_full_deannotate
 from .. import log
 from .. import util
-from ..sql import expression
+from ..sql import coercions
+from ..sql import roles
 
 
 __all__ = ["ColumnProperty"]
@@ -131,9 +132,14 @@ class ColumnProperty(StrategizedProperty):
 
         """
         super(ColumnProperty, self).__init__()
-        self._orig_columns = [expression._labeled(c) for c in columns]
+        self._orig_columns = [
+            coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
+        ]
         self.columns = [
-            expression._labeled(_orm_full_deannotate(c)) for c in columns
+            coercions.expect(
+                roles.LabeledColumnExprRole, _orm_full_deannotate(c)
+            )
+            for c in columns
         ]
         self.group = kwargs.pop("group", None)
         self.deferred = kwargs.pop("deferred", False)

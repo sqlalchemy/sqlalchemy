@@ -705,7 +705,7 @@ class DeclarativeTest(DeclarativeTestBase):
             rel = relationship("User", primaryjoin="User.id==Bar.__table__.id")
 
         assert_raises_message(
-            exc.InvalidRequestError,
+            AttributeError,
             "does not have a mapped column named " "'__table__'",
             configure_mappers,
         )
@@ -1469,7 +1469,7 @@ class DeclarativeTest(DeclarativeTestBase):
         User.address_count = sa.orm.column_property(
             sa.select([sa.func.count(Address.id)])
             .where(Address.user_id == User.id)
-            .as_scalar()
+            .scalar_subquery()
         )
         Base.metadata.create_all()
         u1 = User(
@@ -1514,9 +1514,9 @@ class DeclarativeTest(DeclarativeTestBase):
                 # this doesn't really gain us anything.  but if
                 # one is used, lets have it function as expected...
                 return sa.orm.column_property(
-                    sa.select([sa.func.count(Address.id)]).where(
-                        Address.user_id == cls.id
-                    )
+                    sa.select([sa.func.count(Address.id)])
+                    .where(Address.user_id == cls.id)
+                    .scalar_subquery()
                 )
 
         Base.metadata.create_all()
@@ -1616,7 +1616,7 @@ class DeclarativeTest(DeclarativeTestBase):
             adr_count = sa.orm.column_property(
                 sa.select(
                     [sa.func.count(Address.id)], Address.user_id == id
-                ).as_scalar()
+                ).scalar_subquery()
             )
             addresses = relationship(Address)
 
@@ -1920,7 +1920,7 @@ class DeclarativeTest(DeclarativeTestBase):
         User.address_count = sa.orm.column_property(
             sa.select([sa.func.count(Address.id)])
             .where(Address.user_id == User.id)
-            .as_scalar()
+            .scalar_subquery()
         )
         Base.metadata.create_all()
         u1 = User(

@@ -32,7 +32,8 @@ from .. import exc as sa_exc
 from .. import sql
 from .. import util
 from ..inspection import inspect
-from ..sql import expression
+from ..sql import coercions
+from ..sql import roles
 from ..sql import util as sql_util
 
 
@@ -1257,9 +1258,7 @@ class Session(_SessionClassMethods):
             in order to execute the statement.
 
         """
-        clause = expression._literal_as_text(
-            clause, allow_coercion_to_text=True
-        )
+        clause = coercions.expect(roles.CoerceTextStatementRole, clause)
 
         if bind is None:
             bind = self.get_bind(mapper, clause=clause, **kw)

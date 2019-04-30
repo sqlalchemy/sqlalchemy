@@ -6,6 +6,7 @@ from sqlalchemy import column
 from sqlalchemy import create_engine
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
@@ -17,6 +18,8 @@ from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.schema import DDL
+from sqlalchemy.sql import coercions
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -24,6 +27,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 
 
@@ -372,6 +376,117 @@ class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(s._for_update_arg.nowait, True)
 
 
+class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
+    def test_column_roles(self):
+        stmt = select([table1.c.myid])
+
+        for role in [
+            roles.WhereHavingRole,
+            roles.ExpressionElementRole,
+            roles.ByOfRole,
+            roles.OrderByRole,
+            # roles.LabeledColumnExprRole
+        ]:
+            with testing.expect_deprecated(
+                "coercing SELECT object to scalar "
+                "subquery in a column-expression context is deprecated"
+            ):
+                coerced = coercions.expect(role, stmt)
+                is_true(coerced.compare(stmt.scalar_subquery()))
+
+            with testing.expect_deprecated(
+                "coercing SELECT object to scalar "
+                "subquery in a column-expression context is deprecated"
+            ):
+                coerced = coercions.expect(role, stmt.alias())
+                is_true(coerced.compare(stmt.scalar_subquery()))
+
+    def test_labeled_role(self):
+        stmt = select([table1.c.myid])
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            coerced = coercions.expect(roles.LabeledColumnExprRole, stmt)
+            is_true(coerced.compare(stmt.scalar_subquery().label(None)))
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            coerced = coercions.expect(
+                roles.LabeledColumnExprRole, stmt.alias()
+            )
+            is_true(coerced.compare(stmt.scalar_subquery().label(None)))
+
+    def test_scalar_select(self):
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            self.assert_compile(
+                func.coalesce(select([table1.c.myid])),
+                "coalesce((SELECT mytable.myid FROM mytable))",
+            )
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            s = select([table1.c.myid]).alias()
+            self.assert_compile(
+                select([table1.c.myid]).where(table1.c.myid == s),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid = (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            self.assert_compile(
+                select([table1.c.myid]).where(s > table1.c.myid),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid < (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            s = select([table1.c.myid]).alias()
+            self.assert_compile(
+                select([table1.c.myid]).where(table1.c.myid == s),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid = (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar "
+            "subquery in a column-expression context is deprecated"
+        ):
+            self.assert_compile(
+                select([table1.c.myid]).where(s > table1.c.myid),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid < (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+    def test_as_scalar(self):
+        with testing.expect_deprecated(
+            r"The SelectBase.as_scalar\(\) method is deprecated and "
+            "will be removed in a future release."
+        ):
+            stmt = select([table1.c.myid]).as_scalar()
+
+        is_true(stmt.compare(select([table1.c.myid]).scalar_subquery()))
+
+
 class TextTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
@@ -425,3 +540,11 @@ class TextTest(fixtures.TestBase, AssertsCompiledSQL):
             "The text.autocommit parameter is deprecated"
         ):
             t = text("select id, name from user", autocommit=True)
+
+
+table1 = table(
+    "mytable",
+    column("myid", Integer),
+    column("name", String),
+    column("description", String),
+)

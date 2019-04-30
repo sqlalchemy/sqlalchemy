@@ -14,13 +14,14 @@ import datetime as dt
 import decimal
 import json
 
+from . import coercions
 from . import elements
 from . import operators
+from . import roles
 from . import type_api
 from .base import _bind_or_error
 from .base import SchemaEventTarget
 from .elements import _defer_name
-from .elements import _literal_as_binds
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
@@ -2187,19 +2188,21 @@ class JSON(Indexable, TypeEngine):
             if not isinstance(index, util.string_types) and isinstance(
                 index, compat.collections_abc.Sequence
             ):
-                index = default_comparator._check_literal(
-                    self.expr,
-                    operators.json_path_getitem_op,
+                index = coercions.expect(
+                    roles.BinaryElementRole,
                     index,
+                    expr=self.expr,
+                    operator=operators.json_path_getitem_op,
                     bindparam_type=JSON.JSONPathType,
                 )
 
                 operator = operators.json_path_getitem_op
             else:
-                index = default_comparator._check_literal(
-                    self.expr,
-                    operators.json_getitem_op,
+                index = coercions.expect(
+                    roles.BinaryElementRole,
                     index,
+                    expr=self.expr,
+                    operator=operators.json_getitem_op,
                     bindparam_type=JSON.JSONIndexType,
                 )
                 operator = operators.json_getitem_op
@@ -2372,17 +2375,20 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 if self.type.zero_indexes:
                     index = slice(index.start + 1, index.stop + 1, index.step)
                 index = Slice(
-                    _literal_as_binds(
+                    coercions.expect(
+                        roles.ExpressionElementRole,
                         index.start,
                         name=self.expr.key,
                         type_=type_api.INTEGERTYPE,
                     ),
-                    _literal_as_binds(
+                    coercions.expect(
+                        roles.ExpressionElementRole,
                         index.stop,
                         name=self.expr.key,
                         type_=type_api.INTEGERTYPE,
                     ),
-                    _literal_as_binds(
+                    coercions.expect(
+                        roles.ExpressionElementRole,
                         index.step,
                         name=self.expr.key,
                         type_=type_api.INTEGERTYPE,
@@ -2438,7 +2444,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             """
             operator = operator if operator else operators.eq
             return operator(
-                elements._literal_as_binds(other),
+                coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_any(self.expr),
             )
 
@@ -2473,7 +2479,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             """
             operator = operator if operator else operators.eq
             return operator(
-                elements._literal_as_binds(other),
+                coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_all(self.expr),
             )
 

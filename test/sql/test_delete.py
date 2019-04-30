@@ -109,13 +109,13 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             stmt, "DELETE FROM mytable AS t1 WHERE t1.myid = :myid_1"
         )
 
-    def test_correlated(self):
+    def test_non_correlated_select(self):
         table1, table2 = self.tables.mytable, self.tables.myothertable
 
         # test a non-correlated WHERE clause
         s = select([table2.c.othername], table2.c.otherid == 7)
         self.assert_compile(
-            delete(table1, table1.c.name == s),
+            delete(table1, table1.c.name == s.scalar_subquery()),
             "DELETE FROM mytable "
             "WHERE mytable.name = ("
             "SELECT myothertable.othername "
@@ -124,10 +124,13 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             ")",
         )
 
+    def test_correlated_select(self):
+        table1, table2 = self.tables.mytable, self.tables.myothertable
+
         # test one that is actually correlated...
         s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
         self.assert_compile(
-            table1.delete(table1.c.name == s),
+            table1.delete(table1.c.name == s.scalar_subquery()),
             "DELETE FROM mytable "
             "WHERE mytable.name = ("
             "SELECT myothertable.othername "

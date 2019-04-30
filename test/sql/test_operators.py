@@ -26,6 +26,7 @@ from sqlalchemy.schema import Table
 from sqlalchemy.sql import all_
 from sqlalchemy.sql import any_
 from sqlalchemy.sql import asc
+from sqlalchemy.sql import coercions
 from sqlalchemy.sql import collate
 from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
@@ -34,10 +35,10 @@ from sqlalchemy.sql import false
 from sqlalchemy.sql import literal
 from sqlalchemy.sql import null
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import true
-from sqlalchemy.sql.elements import _literal_as_text
 from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import BinaryExpression
@@ -82,13 +83,17 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
         assert left.comparator.operate(operator, right).compare(
             BinaryExpression(
-                _literal_as_text(left), _literal_as_text(right), operator
+                coercions.expect(roles.WhereHavingRole, left),
+                coercions.expect(roles.WhereHavingRole, right),
+                operator,
             )
         )
 
         assert operator(left, right).compare(
             BinaryExpression(
-                _literal_as_text(left), _literal_as_text(right), operator
+                coercions.expect(roles.WhereHavingRole, left),
+                coercions.expect(roles.WhereHavingRole, right),
+                operator,
             )
         )
 
@@ -227,8 +232,9 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         left = column("left")
         foo = ClauseList()
         assert_raises_message(
-            exc.InvalidRequestError,
-            r"in_\(\) accepts either a list of expressions, a selectable",
+            exc.ArgumentError,
+            r"IN expression list, SELECT construct, or bound parameter "
+            r"object expected, got .*ClauseList",
             left.in_,
             [foo],
         )
@@ -237,8 +243,9 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         left = column("left")
         right = column("right")
         assert_raises_message(
-            exc.InvalidRequestError,
-            r"in_\(\) accepts either a list of expressions, a selectable",
+            exc.ArgumentError,
+            r"IN expression list, SELECT construct, or bound parameter "
+            r"object expected, got .*ColumnClause",
             left.in_,
             right,
         )
@@ -253,8 +260,9 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         left = column("left")
         right = column("right", HasGetitem)
         assert_raises_message(
-            exc.InvalidRequestError,
-            r"in_\(\) accepts either a list of expressions, a selectable",
+            exc.ArgumentError,
+            r"IN expression list, SELECT construct, or bound parameter "
+            r"object expected, got .*ColumnClause",
             left.in_,
             right,
         )
@@ -1680,7 +1688,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             select(
                 [
                     self.table1.c.myid.in_(
-                        select([self.table2.c.otherid]).as_scalar()
+                        select([self.table2.c.otherid]).scalar_subquery()
                     )
                 ]
             ),
@@ -1736,6 +1744,29 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_28(self):
         self.assert_compile(
             self.table1.c.myid.in_([None]), "mytable.myid IN (NULL)"
+        )
+
+    def test_in_set(self):
+        self.assert_compile(
+            self.table1.c.myid.in_({1, 2, 3}),
+            "mytable.myid IN (:myid_1, :myid_2, :myid_3)",
+        )
+
+    def test_in_arbitrary_sequence(self):
+        class MySeq(object):
+            def __init__(self, d):
+                self.d = d
+
+            def __getitem__(self, idx):
+                return self.d[idx]
+
+            def __iter__(self):
+                return iter(self.d)
+
+        seq = MySeq([1, 2, 3])
+        self.assert_compile(
+            self.table1.c.myid.in_(seq),
+            "mytable.myid IN (:myid_1, :myid_2, :myid_3)",
         )
 
     def test_empty_in_dynamic_1(self):
@@ -2073,7 +2104,9 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert not (self.table1.c.myid + 5)._is_implicitly_boolean
         assert not not_(column("x", Boolean))._is_implicitly_boolean
         assert (
-            not select([self.table1.c.myid]).as_scalar()._is_implicitly_boolean
+            not select([self.table1.c.myid])
+            .scalar_subquery()
+            ._is_implicitly_boolean
         )
         assert not text("x = y")._is_implicitly_boolean
         assert not literal_column("x = y")._is_implicitly_boolean
@@ -2869,7 +2902,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         t = self._fixture()
 
         self.assert_compile(
-            5 == any_(select([t.c.data]).where(t.c.data < 10)),
+            5
+            == any_(select([t.c.data]).where(t.c.data < 10).scalar_subquery()),
             ":param_1 = ANY (SELECT tab1.data "
             "FROM tab1 WHERE tab1.data < :data_1)",
             checkparams={"data_1": 10, "param_1": 5},
@@ -2879,7 +2913,11 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         t = self._fixture()
 
         self.assert_compile(
-            5 == select([t.c.data]).where(t.c.data < 10).as_scalar().any_(),
+            5
+            == select([t.c.data])
+            .where(t.c.data < 10)
+            .scalar_subquery()
+            .any_(),
             ":param_1 = ANY (SELECT tab1.data "
             "FROM tab1 WHERE tab1.data < :data_1)",
             checkparams={"data_1": 10, "param_1": 5},
@@ -2889,7 +2927,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         t = self._fixture()
 
         self.assert_compile(
-            5 == all_(select([t.c.data]).where(t.c.data < 10)),
+            5
+            == all_(select([t.c.data]).where(t.c.data < 10).scalar_subquery()),
             ":param_1 = ALL (SELECT tab1.data "
             "FROM tab1 WHERE tab1.data < :data_1)",
             checkparams={"data_1": 10, "param_1": 5},
@@ -2899,7 +2938,11 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         t = self._fixture()
 
         self.assert_compile(
-            5 == select([t.c.data]).where(t.c.data < 10).as_scalar().all_(),
+            5
+            == select([t.c.data])
+            .where(t.c.data < 10)
+            .scalar_subquery()
+            .all_(),
             ":param_1 = ALL (SELECT tab1.data "
             "FROM tab1 WHERE tab1.data < :data_1)",
             checkparams={"data_1": 10, "param_1": 5},

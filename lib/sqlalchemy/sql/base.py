@@ -17,6 +17,9 @@ from .visitors import ClauseVisitor
 from .. import exc
 from .. import util
 
+coercions = None  # type: types.ModuleType
+elements = None  # type: types.ModuleType
+type_api = None  # type: types.ModuleType
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
@@ -589,8 +592,7 @@ class ColumnCollection(util.OrderedProperties):
 
     __hash__ = None
 
-    @util.dependencies("sqlalchemy.sql.elements")
-    def __eq__(self, elements, other):
+    def __eq__(self, other):
         l = []
         for c in getattr(other, "_all_columns", other):
             for local in self._all_columns:
@@ -636,8 +638,7 @@ class ColumnSet(util.ordered_column_set):
     def __add__(self, other):
         return list(self) + list(other)
 
-    @util.dependencies("sqlalchemy.sql.elements")
-    def __eq__(self, elements, other):
+    def __eq__(self, other):
         l = []
         for c in other:
             for local in self:

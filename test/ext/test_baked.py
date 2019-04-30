@@ -765,9 +765,11 @@ class ResultTest(BakedTest):
         )
 
         main_bq = self.bakery(
-            lambda s: s.query(Address.id, sub_bq.to_query(s).as_scalar())
+            lambda s: s.query(Address.id, sub_bq.to_query(s).scalar_subquery())
         )
-        main_bq += lambda q: q.filter(sub_bq.to_query(q).as_scalar() == "ed")
+        main_bq += lambda q: q.filter(
+            sub_bq.to_query(q).scalar_subquery() == "ed"
+        )
         main_bq += lambda q: q.order_by(Address.id)
 
         sess = Session()

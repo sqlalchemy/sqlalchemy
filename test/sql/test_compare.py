@@ -243,8 +243,8 @@ class CompareAndCopyTest(fixtures.TestBase):
             FromGrouping(table_a.alias("b")),
         ),
         lambda: (
-            select([table_a.c.a]).as_scalar(),
-            select([table_a.c.a]).where(table_a.c.b == 5).as_scalar(),
+            select([table_a.c.a]).scalar_subquery(),
+            select([table_a.c.a]).where(table_a.c.b == 5).scalar_subquery(),
         ),
         lambda: (
             exists().where(table_a.c.a == 5),
@@ -291,6 +291,7 @@ class CompareAndCopyTest(fixtures.TestBase):
             and "__init__" in cls.__dict__
             and not issubclass(cls, (Annotated))
             and "orm" not in cls.__module__
+            and "compiler" not in cls.__module__
             and "crud" not in cls.__module__
             and "dialects" not in cls.__module__  # TODO: dialects?
         ).difference({ColumnElement, UnaryExpression})

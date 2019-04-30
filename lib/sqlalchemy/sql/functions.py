@@ -9,14 +9,15 @@
 
 """
 from . import annotation
+from . import coercions
 from . import operators
+from . import roles
 from . import schema
 from . import sqltypes
 from . import util as sqlutil
 from .base import ColumnCollection
 from .base import Executable
 from .elements import _clone
-from .elements import _literal_as_binds
 from .elements import _type_from_args
 from .elements import BinaryExpression
 from .elements import BindParameter
@@ -83,7 +84,12 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         """Construct a :class:`.FunctionElement`.
         """
         args = [
-            _literal_as_binds(c, getattr(self, "name", None)) for c in clauses
+            coercions.expect(
+                roles.ExpressionElementRole,
+                c,
+                name=getattr(self, "name", None),
+            )
+            for c in clauses
         ]
         self._has_args = self._has_args or bool(args)
         self.clause_expr = ClauseList(
@@ -686,7 +692,12 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     def __init__(self, *args, **kwargs):
         parsed_args = kwargs.pop("_parsed_args", None)
         if parsed_args is None:
-            parsed_args = [_literal_as_binds(c, self.name) for c in args]
+            parsed_args = [
+                coercions.expect(
+                    roles.ExpressionElementRole, c, name=self.name
+                )
+                for c in args
+            ]
         self._has_args = self._has_args or bool(parsed_args)
         self.packagenames = []
         self._bind = kwargs.get("bind", None)
@@ -751,7 +762,10 @@ class ReturnTypeFromArgs(GenericFunction):
     """Define a function whose return type is the same as its arguments."""
 
     def __init__(self, *args, **kwargs):
-        args = [_literal_as_binds(c, self.name) for c in args]
+        args = [
+            coercions.expect(roles.ExpressionElementRole, c, name=self.name)
+            for c in args
+        ]
         kwargs.setdefault("type_", _type_from_args(args))
         kwargs["_parsed_args"] = args
         super(ReturnTypeFromArgs, self).__init__(*args, **kwargs)
@@ -880,7 +894,7 @@ class array_agg(GenericFunction):
     type = sqltypes.ARRAY
 
     def __init__(self, *args, **kwargs):
-        args = [_literal_as_binds(c) for c in args]
+        args = [coercions.expect(roles.ExpressionElementRole, c) for c in args]
 
         default_array_type = kwargs.pop("_default_array_type", sqltypes.ARRAY)
         if "type_" not in kwargs:

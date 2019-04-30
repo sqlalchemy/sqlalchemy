@@ -259,8 +259,8 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         self._test(s, self._f_b1a_where_in_b2a)
 
     def test_anon_scalar_subqueries(self):
-        s1 = select([1]).as_scalar()
-        s2 = select([2]).as_scalar()
+        s1 = select([1]).scalar_subquery()
+        s2 = select([2]).scalar_subquery()
 
         s = select([s1, s2]).apply_labels()
         self._test(s, self._anon_scalar_subqueries)

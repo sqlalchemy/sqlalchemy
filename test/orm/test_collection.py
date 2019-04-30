@@ -1827,15 +1827,15 @@ class DictHelpersTest(fixtures.MappedTest):
     def test_column_mapped_assertions(self):
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Column-based expression object expected "
-            "for argument 'mapping_spec'; got: 'a'",
+            "Column expression expected "
+            "for argument 'mapping_spec'; got 'a'.",
             collections.column_mapped_collection,
             "a",
         )
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Column-based expression object expected "
-            "for argument 'mapping_spec'; got: 'a'",
+            "Column expression expected "
+            "for argument 'mapping_spec'; got .*TextClause.",
             collections.column_mapped_collection,
             text("a"),
         )

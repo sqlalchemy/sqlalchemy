@@ -672,6 +672,7 @@ from ... import util
 from ...engine import default
 from ...engine import reflection
 from ...sql import compiler
+from ...sql import elements
 from ...sql import expression
 from ...sql import quoted_name
 from ...sql import util as sql_util
@@ -1671,9 +1672,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # translate for schema-qualified table aliases
             t = self._schema_aliased_table(column.table)
             if t is not None:
-                converted = expression._corresponding_column_or_error(
-                    t, column
-                )
+                converted = elements._corresponding_column_or_error(t, column)
                 if add_to_result_map is not None:
                     add_to_result_map(
                         column.name,

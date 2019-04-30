@@ -109,10 +109,6 @@ class QueryableAttribute(
             instance_state(instance), instance_dict(instance), passive
         )
 
-    def __selectable__(self):
-        # TODO: conditionally attach this method based on clause_element ?
-        return self
-
     @util.memoized_property
     def info(self):
         """Return the 'info' dictionary for the underlying SQL element.

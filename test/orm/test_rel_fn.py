@@ -470,7 +470,7 @@ class _JoinFixtures(object):
             self.left,
             self.right,
             primaryjoin=self.left.c.id == func.foo(self.right.c.lid),
-            consider_as_foreign_keys=[self.right.c.lid],
+            consider_as_foreign_keys={self.right.c.lid},
             **kw
         )
 
@@ -480,10 +480,10 @@ class _JoinFixtures(object):
             self.composite_multi_ref,
             self.composite_target,
             self.composite_multi_ref,
-            consider_as_foreign_keys=[
+            consider_as_foreign_keys={
                 self.composite_multi_ref.c.uid2,
                 self.composite_multi_ref.c.oid,
-            ],
+            },
             **kw
         )
 
@@ -1099,10 +1099,10 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
             self.m2mleft,
             self.m2mright,
             secondary=self.m2msecondary_ambig_fks,
-            consider_as_foreign_keys=[
+            consider_as_foreign_keys={
                 self.m2msecondary_ambig_fks.c.lid1,
                 self.m2msecondary_ambig_fks.c.rid1,
-            ],
+            },
         )
 
     def test_determine_join_w_fks_ambig_m2m(self):

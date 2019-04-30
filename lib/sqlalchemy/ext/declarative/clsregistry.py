@@ -217,7 +217,7 @@ class _GetColumns(object):
         mp = class_mapper(self.cls, configure=False)
         if mp:
             if key not in mp.all_orm_descriptors:
-                raise exc.InvalidRequestError(
+                raise AttributeError(
                     "Class %r does not have a mapped column named %r"
                     % (self.cls, key)
                 )

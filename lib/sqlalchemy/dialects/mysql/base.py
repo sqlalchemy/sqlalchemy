@@ -788,8 +788,10 @@ from ... import types as sqltypes
 from ... import util
 from ...engine import default
 from ...engine import reflection
+from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
+from ...sql import roles
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -1218,7 +1220,7 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_on_duplicate_key_update(self, on_duplicate, **kw):
         if on_duplicate._parameter_ordering:
             parameter_ordering = [
-                elements._column_as_key(key)
+                coercions.expect(roles.DMLColumnRole, key)
                 for key in on_duplicate._parameter_ordering
             ]
             ordered_keys = set(parameter_ordering)
@@ -1238,7 +1240,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             val = on_duplicate.update.get(column.key)
             if val is None:
                 continue
-            elif elements._is_literal(val):
+            elif coercions._is_literal(val):
                 val = elements.BindParameter(None, val, type_=column.type)
                 value_text = self.process(val.self_group(), use_schema=False)
             elif isinstance(val, elements.BindParameter) and val.type._isnull:

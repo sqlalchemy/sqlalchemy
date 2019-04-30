@@ -269,7 +269,8 @@ class BakedQuery(object):
                 User.id == Address.user_id).correlate(Address)
 
             main_bq = self.bakery(
-                lambda s: s.query(Address.id, sub_bq.to_query(q).as_scalar())
+                lambda s: s.query(
+                Address.id, sub_bq.to_query(q).scalar_subquery())
             )
 
         :param query_or_session: a :class:`.Query` object or a class

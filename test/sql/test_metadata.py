@@ -31,7 +31,6 @@ from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
 from sqlalchemy.engine import default
-from sqlalchemy.sql import elements
 from sqlalchemy.sql import naming
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -3378,7 +3377,8 @@ class ConstraintTest(fixtures.TestBase):
 
         assert_raises_message(
             exc.ArgumentError,
-            r"Element Table\('t2', .* is not a string name or column element",
+            r"String column name or column object for DDL constraint "
+            r"expected, got .*SomeClass",
             Index,
             "foo",
             SomeClass(),
@@ -4609,7 +4609,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         u1 = self._fixture(
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
-        ck = CheckConstraint(u1.c.data == "x", name=elements._defer_name(None))
+        ck = CheckConstraint(u1.c.data == "x", name=naming._defer_name(None))
 
         assert_raises_message(
             exc.InvalidRequestError,

@@ -47,11 +47,12 @@ from .. import inspection
 from .. import log
 from .. import sql
 from .. import util
+from ..sql import coercions
 from ..sql import expression
+from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.base import ColumnCollection
-from ..sql.expression import _interpret_as_from
 from ..sql.selectable import ForUpdateArg
 
 
@@ -252,7 +253,7 @@ class Query(object):
                         "expected when the base alias is being set."
                     )
                 fa.append(info.selectable)
-            elif not info.is_selectable:
+            elif not info.is_clause_element or not info._is_from_clause:
                 raise sa_exc.ArgumentError(
                     "argument is not a mapped class, mapper, "
                     "aliased(), or FromClause instance."
@@ -309,9 +310,7 @@ class Query(object):
 
     def _adapt_col_list(self, cols):
         return [
-            self._adapt_clause(
-                expression._literal_as_label_reference(o), True, True
-            )
+            self._adapt_clause(coercions.expect(roles.ByOfRole, o), True, True)
             for o in cols
         ]
 
@@ -637,6 +636,12 @@ class Query(object):
 
         return self.enable_eagerloads(False).statement.label(name)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Query.as_scalar` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":meth:`.Query.scalar_subquery`.",
+    )
     def as_scalar(self):
         """Return the full SELECT statement represented by this
         :class:`.Query`, converted to a scalar subquery.
@@ -644,19 +649,20 @@ class Query(object):
         Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.as_scalar`.
 
         """
+        return self.scalar_subquery()
 
-        return self.enable_eagerloads(False).statement.as_scalar()
+    def scalar_subquery(self):
+        """Return the full SELECT statement represented by this
+        :class:`.Query`, converted to a scalar subquery.
 
-    @property
-    def selectable(self):
-        """Return the :class:`.Select` object emitted by this :class:`.Query`.
+        Analogous to
+        :meth:`sqlalchemy.sql.expression.SelectBase.scalar_subquery`.
 
-        Used for :func:`.inspect` compatibility, this is equivalent to::
-
-            query.enable_eagerloads(False).with_labels().statement
-
+        .. versionchanged:: 1.4 the :meth:`.Query.scalar_subquery` method
+           replaces the :meth:`.Query.as_scalar` method.
         """
-        return self.__clause_element__()
+
+        return self.enable_eagerloads(False).statement.scalar_subquery()
 
     def __clause_element__(self):
         return self.enable_eagerloads(False).with_labels().statement
@@ -1094,7 +1100,9 @@ class Query(object):
                 self._correlate = self._correlate.union([None])
             else:
                 self._correlate = self._correlate.union(
-                    sql_util.surface_selectables(_interpret_as_from(s))
+                    sql_util.surface_selectables(
+                        coercions.expect(roles.FromClauseRole, s)
+                    )
                 )
 
     @_generative()
@@ -1757,7 +1765,7 @@ class Query(object):
 
         """
         for criterion in list(criterion):
-            criterion = expression._expression_literal_as_text(criterion)
+            criterion = coercions.expect(roles.WhereHavingRole, criterion)
 
             criterion = self._adapt_clause(criterion, True, True)
 
@@ -1870,7 +1878,7 @@ class Query(object):
 
         """
 
-        criterion = expression._expression_literal_as_text(criterion)
+        criterion = coercions.expect(roles.WhereHavingRole, criterion)
 
         if criterion is not None and not isinstance(
             criterion, sql.ClauseElement
@@ -3184,7 +3192,7 @@ class Query(object):
             ORM tutorial
 
         """
-        statement = expression._expression_literal_as_text(statement)
+        statement = coercions.expect(roles.SelectStatementRole, statement)
 
         if not isinstance(
             statement, (expression.TextClause, expression.SelectBase)
@@ -4651,7 +4659,7 @@ class QueryContext(object):
         if query._statement is not None:
             if (
                 isinstance(query._statement, expression.SelectBase)
-                and not query._statement._textual
+                and not query._statement._is_textual
                 and not query._statement.use_labels
             ):
                 self.statement = query._statement.apply_labels()

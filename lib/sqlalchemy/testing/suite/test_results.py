@@ -98,7 +98,7 @@ class RowFetchTest(fixtures.TablesTest):
 
         """
         datetable = self.tables.has_dates
-        s = select([datetable.alias("x").c.today]).as_scalar()
+        s = select([datetable.alias("x").c.today]).scalar_subquery()
         s2 = select([datetable.c.id, s.label("somelabel")])
         row = config.db.execute(s2).first()
 

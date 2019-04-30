@@ -5,6 +5,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
+from sqlalchemy.sql import ClauseElement
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 
@@ -37,5 +38,13 @@ class TestCoreInspection(fixtures.TestBase):
         # absence of __clause_element__ as a test for "this is the clause
         # element" must be maintained
 
+        class Foo(ClauseElement):
+            pass
+
+        assert not hasattr(Foo(), "__clause_element__")
+
+    def test_col_now_has_a_clauseelement(self):
+
         x = Column("foo", Integer)
-        assert not hasattr(x, "__clause_element__")
+
+        assert hasattr(x, "__clause_element__")

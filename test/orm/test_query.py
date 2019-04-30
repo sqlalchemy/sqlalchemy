@@ -467,7 +467,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
                     select([func.count(Address.id)])
                     .where(User.id == Address.user_id)
                     .correlate(User)
-                    .as_scalar(),
+                    .scalar_subquery(),
                 ]
             ),
             "SELECT users.name, addresses.id, "
@@ -489,7 +489,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
                     select([func.count(Address.id)])
                     .where(uu.id == Address.user_id)
                     .correlate(uu)
-                    .as_scalar(),
+                    .scalar_subquery(),
                 ]
             ),
             # for a long time, "uu.id = address.user_id" was reversed;
@@ -1072,7 +1072,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Object .*User.* is not legal as a SQL literal value",
+            "SQL expression element expected, got .*User",
             distinct,
             User,
         )
@@ -1080,7 +1080,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User)
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Object .*User.* is not legal as a SQL literal value",
+            "SQL expression element expected, got .*User",
             distinct,
             ua,
         )
@@ -1088,21 +1088,21 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         s = Session()
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Object .*User.* is not legal as a SQL literal value",
+            "SQL expression element or literal value expected, got .*User",
             lambda: s.query(User).filter(User.name == User),
         )
 
         u1 = User()
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Object .*User.* is not legal as a SQL literal value",
+            "SQL expression element expected, got .*User",
             distinct,
             u1,
         )
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Object .*User.* is not legal as a SQL literal value",
+            "SQL expression element or literal value expected, got .*User",
             lambda: s.query(User).filter(User.name == u1),
         )
 
@@ -1757,16 +1757,17 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         session = create_session()
 
-        q = session.query(User.id).filter(User.id == 7)
+        q = session.query(User.id).filter(User.id == 7).scalar_subquery()
 
         q = session.query(Address).filter(Address.user_id == q)
+
         assert isinstance(q._criterion.right, expression.ColumnElement)
         self.assert_compile(
             q,
             "SELECT addresses.id AS addresses_id, addresses.user_id "
             "AS addresses_user_id, addresses.email_address AS "
             "addresses_email_address FROM addresses WHERE "
-            "addresses.user_id = (SELECT users.id AS users_id "
+            "addresses.user_id = (SELECT users.id "
             "FROM users WHERE users.id = :id_1)",
         )
 
@@ -1842,12 +1843,12 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             "WHERE users.id = :id_1) AS foo",
         )
 
-    def test_as_scalar(self):
+    def test_scalar_subquery(self):
         User = self.classes.User
 
         session = create_session()
 
-        q = session.query(User.id).filter(User.id == 7).as_scalar()
+        q = session.query(User.id).filter(User.id == 7).scalar_subquery()
 
         self.assert_compile(
             session.query(User).filter(User.id.in_(q)),
@@ -1866,7 +1867,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             session.query(User.id)
             .filter(User.id == bindparam("foo"))
             .params(foo=7)
-            .subquery()
+            .scalar_subquery()
         )
 
         q = session.query(User).filter(User.id.in_(q))
@@ -2081,6 +2082,8 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
         if label:
             stmt = stmt.label("email_ad")
+        else:
+            stmt = stmt.scalar_subquery()
 
         mapper(
             User,
@@ -5491,7 +5494,7 @@ class SessionBindTest(QueryTest):
             column_property(
                 select([func.sum(Address.id)])
                 .where(Address.user_id == User.id)
-                .as_scalar()
+                .scalar_subquery()
             ),
         )
         session = Session()

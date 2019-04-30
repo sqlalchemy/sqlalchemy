@@ -110,8 +110,9 @@ from sqlalchemy.util.compat import inspect_getfullargspec
 from . import base
 from .. import exc as sa_exc
 from .. import util
+from ..sql import coercions
 from ..sql import expression
-
+from ..sql import roles
 
 __all__ = [
     "collection",
@@ -243,7 +244,7 @@ def column_mapped_collection(mapping_spec):
 
     """
     cols = [
-        expression._only_column_elements(q, "mapping_spec")
+        coercions.expect(roles.ColumnArgumentRole, q, argname="mapping_spec")
         for q in util.to_list(mapping_spec)
     ]
     keyfunc = _PlainColumnGetter(cols)

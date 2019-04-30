@@ -67,7 +67,6 @@ __all__ = [
     "outerjoin",
     "over",
     "select",
-    "subquery",
     "table",
     "text",
     "tuple_",
@@ -92,22 +91,7 @@ from .dml import Insert  # noqa
 from .dml import Update  # noqa
 from .dml import UpdateBase  # noqa
 from .dml import ValuesBase  # noqa
-from .elements import _clause_element_as_expr  # noqa
-from .elements import _clone  # noqa
-from .elements import _cloned_difference  # noqa
-from .elements import _cloned_intersection  # noqa
-from .elements import _column_as_key  # noqa
-from .elements import _corresponding_column_or_error  # noqa
-from .elements import _expression_literal_as_text  # noqa
-from .elements import _is_column  # noqa
-from .elements import _labeled  # noqa
-from .elements import _literal_as_binds  # noqa
-from .elements import _literal_as_column  # noqa
-from .elements import _literal_as_label_reference  # noqa
-from .elements import _literal_as_text  # noqa
-from .elements import _only_column_elements  # noqa
 from .elements import _select_iterables  # noqa
-from .elements import _string_or_unprintable  # noqa
 from .elements import _truncated_label  # noqa
 from .elements import between  # noqa
 from .elements import BinaryExpression  # noqa
@@ -147,7 +131,6 @@ from .functions import func  # noqa
 from .functions import Function  # noqa
 from .functions import FunctionElement  # noqa
 from .functions import modifier  # noqa
-from .selectable import _interpret_as_from  # noqa
 from .selectable import Alias  # noqa
 from .selectable import CompoundSelect  # noqa
 from .selectable import CTE  # noqa
@@ -160,6 +143,7 @@ from .selectable import HasPrefixes  # noqa
 from .selectable import HasSuffixes  # noqa
 from .selectable import Join  # noqa
 from .selectable import Lateral  # noqa
+from .selectable import ReturnsRows  # noqa
 from .selectable import ScalarSelect  # noqa
 from .selectable import Select  # noqa
 from .selectable import Selectable  # noqa
@@ -170,7 +154,6 @@ from .selectable import TableSample  # noqa
 from .selectable import TextAsFrom  # noqa
 from .visitors import Visitable  # noqa
 from ..util.langhelpers import public_factory  # noqa
-
 
 # factory functions - these pull class-bound constructors and classmethods
 # from SQL elements and selectables into public functions.  This allows

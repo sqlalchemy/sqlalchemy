@@ -247,7 +247,7 @@ class AnyAllTest(fixtures.TablesTest):
     def test_any_w_comparator(self):
         stuff = self.tables.stuff
         stmt = select([stuff.c.id]).where(
-            stuff.c.value > any_(select([stuff.c.value]))
+            stuff.c.value > any_(select([stuff.c.value]).scalar_subquery())
         )
 
         eq_(testing.db.execute(stmt).fetchall(), [(2,), (3,), (4,), (5,)])
@@ -255,13 +255,13 @@ class AnyAllTest(fixtures.TablesTest):
     def test_all_w_comparator(self):
         stuff = self.tables.stuff
         stmt = select([stuff.c.id]).where(
-            stuff.c.value >= all_(select([stuff.c.value]))
+            stuff.c.value >= all_(select([stuff.c.value]).scalar_subquery())
         )
 
         eq_(testing.db.execute(stmt).fetchall(), [(5,)])
 
     def test_any_literal(self):
         stuff = self.tables.stuff
-        stmt = select([4 == any_(select([stuff.c.value]))])
+        stmt = select([4 == any_(select([stuff.c.value]).scalar_subquery())])
 
         is_(testing.db.execute(stmt).scalar(), True)

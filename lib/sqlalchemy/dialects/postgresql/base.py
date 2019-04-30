@@ -932,9 +932,11 @@ from ... import sql
 from ... import util
 from ...engine import default
 from ...engine import reflection
+from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
 from ...sql import expression
+from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...types import BIGINT
@@ -1774,7 +1776,7 @@ class PGCompiler(compiler.SQLCompiler):
             col_key = c.key
             if col_key in set_parameters:
                 value = set_parameters.pop(col_key)
-                if elements._is_literal(value):
+                if coercions._is_literal(value):
                     value = elements.BindParameter(None, value, type_=c.type)
 
                 else:
@@ -1806,7 +1808,8 @@ class PGCompiler(compiler.SQLCompiler):
                     else self.process(k, use_schema=False)
                 )
                 value_text = self.process(
-                    elements._literal_as_binds(v), use_schema=False
+                    coercions.expect(roles.ExpressionElementRole, v),
+                    use_schema=False,
                 )
                 action_set_ops.append("%s = %s" % (key_text, value_text))
 

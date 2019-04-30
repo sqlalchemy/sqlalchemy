@@ -79,6 +79,16 @@ class safe_reraise(object):
             compat.reraise(type_, value, traceback)
 
 
+def string_or_unprintable(element):
+    if isinstance(element, compat.string_types):
+        return element
+    else:
+        try:
+            return str(element)
+        except Exception:
+            return "unprintable element %r" % element
+
+
 def clsname_as_plain_name(cls):
     return " ".join(
         n.lower() for n in re.findall(r"([A-Z][a-z]+)", cls.__name__)

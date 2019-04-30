@@ -71,7 +71,6 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import label
 from sqlalchemy.sql import table
-from sqlalchemy.sql.expression import _literal_as_text
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
 from sqlalchemy.testing import assert_raises
@@ -165,7 +164,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 "columns; use this object directly within a "
                 "column-level expression.",
                 lambda: hasattr(
-                    select([table1.c.myid]).as_scalar().self_group(), "columns"
+                    select([table1.c.myid]).scalar_subquery().self_group(),
+                    "columns",
                 ),
             )
             assert_raises_message(
@@ -174,14 +174,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 "columns; use this object directly within a "
                 "column-level expression.",
                 lambda: hasattr(
-                    select([table1.c.myid]).as_scalar(), "columns"
+                    select([table1.c.myid]).scalar_subquery(), "columns"
                 ),
             )
         else:
             assert not hasattr(
-                select([table1.c.myid]).as_scalar().self_group(), "columns"
+                select([table1.c.myid]).scalar_subquery().self_group(),
+                "columns",
             )
-            assert not hasattr(select([table1.c.myid]).as_scalar(), "columns")
+            assert not hasattr(
+                select([table1.c.myid]).scalar_subquery(), "columns"
+            )
 
     def test_prefix_constructor(self):
         class Pref(HasPrefixes):
@@ -327,7 +330,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_select_precol_compile_ordering(self):
-        s1 = select([column("x")]).select_from(text("a")).limit(5).as_scalar()
+        s1 = (
+            select([column("x")])
+            .select_from(text("a"))
+            .limit(5)
+            .scalar_subquery()
+        )
         s2 = select([s1]).limit(10)
 
         class MyCompiler(compiler.SQLCompiler):
@@ -631,7 +639,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            exists(s.as_scalar()),
+            exists(s.scalar_subquery()),
             "EXISTS (SELECT mytable.myid FROM mytable "
             "WHERE mytable.myid = :myid_1)",
         )
@@ -757,19 +765,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             table1.select(
                 table1.c.myid
-                == select([table1.c.myid], table1.c.name == "jack")
-            ),
-            "SELECT mytable.myid, mytable.name, "
-            "mytable.description FROM mytable WHERE "
-            "mytable.myid = (SELECT mytable.myid FROM "
-            "mytable WHERE mytable.name = :name_1)",
-        )
-        self.assert_compile(
-            table1.select(
-                table1.c.myid
                 == select(
                     [table2.c.otherid], table1.c.name == table2.c.othername
-                )
+                ).scalar_subquery()
             ),
             "SELECT mytable.myid, mytable.name, "
             "mytable.description FROM mytable WHERE "
@@ -822,7 +820,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 order_by=[
                     select(
                         [table2.c.otherid], table1.c.myid == table2.c.otherid
-                    )
+                    ).scalar_subquery()
                 ]
             ),
             "SELECT mytable.myid, mytable.name, "
@@ -831,42 +829,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable WHERE mytable.myid = "
             "myothertable.otherid)",
         )
-        self.assert_compile(
-            table1.select(
-                order_by=[
-                    desc(
-                        select(
-                            [table2.c.otherid],
-                            table1.c.myid == table2.c.otherid,
-                        )
-                    )
-                ]
-            ),
-            "SELECT mytable.myid, mytable.name, "
-            "mytable.description FROM mytable ORDER BY "
-            "(SELECT myothertable.otherid FROM "
-            "myothertable WHERE mytable.myid = "
-            "myothertable.otherid) DESC",
-        )
 
     def test_scalar_select(self):
-        assert_raises_message(
-            exc.InvalidRequestError,
-            r"Select objects don't have a type\.  Call as_scalar\(\) "
-            r"on this Select object to return a 'scalar' "
-            r"version of this Select\.",
-            func.coalesce,
-            select([table1.c.myid]),
+
+        self.assert_compile(
+            func.coalesce(select([table1.c.myid]).scalar_subquery()),
+            "coalesce((SELECT mytable.myid FROM mytable))",
         )
 
-        s = select([table1.c.myid], correlate=False).as_scalar()
+        s = select([table1.c.myid], correlate=False).scalar_subquery()
         self.assert_compile(
             select([table1, s]),
             "SELECT mytable.myid, mytable.name, "
             "mytable.description, (SELECT mytable.myid "
             "FROM mytable) AS anon_1 FROM mytable",
         )
-        s = select([table1.c.myid]).as_scalar()
+        s = select([table1.c.myid]).scalar_subquery()
         self.assert_compile(
             select([table2, s]),
             "SELECT myothertable.otherid, "
@@ -874,7 +852,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.myid FROM mytable) AS anon_1 FROM "
             "myothertable",
         )
-        s = select([table1.c.myid]).correlate(None).as_scalar()
+        s = select([table1.c.myid]).correlate(None).scalar_subquery()
         self.assert_compile(
             select([table1, s]),
             "SELECT mytable.myid, mytable.name, "
@@ -882,17 +860,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable) AS anon_1 FROM mytable",
         )
 
-        s = select([table1.c.myid]).as_scalar()
+        s = select([table1.c.myid]).scalar_subquery()
         s2 = s.where(table1.c.myid == 5)
         self.assert_compile(
             s2,
             "(SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)",
         )
         self.assert_compile(s, "(SELECT mytable.myid FROM mytable)")
-        # test that aliases use as_scalar() when used in an explicitly
+        # test that aliases use scalar_subquery() when used in an explicitly
         # scalar context
 
-        s = select([table1.c.myid]).alias()
+        s = select([table1.c.myid]).scalar_subquery()
         self.assert_compile(
             select([table1.c.myid]).where(table1.c.myid == s),
             "SELECT mytable.myid FROM mytable WHERE "
@@ -902,10 +880,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([table1.c.myid]).where(s > table1.c.myid),
             "SELECT mytable.myid FROM mytable WHERE "
-            "mytable.myid < (SELECT mytable.myid FROM "
-            "mytable)",
+            "(SELECT mytable.myid FROM mytable) > mytable.myid",
         )
-        s = select([table1.c.myid]).as_scalar()
+        s = select([table1.c.myid]).scalar_subquery()
         self.assert_compile(
             select([table2, s]),
             "SELECT myothertable.otherid, "
@@ -922,7 +899,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "- :param_1 AS anon_1",
         )
         self.assert_compile(
-            select([select([table1.c.name]).as_scalar() + literal("x")]),
+            select([select([table1.c.name]).scalar_subquery() + literal("x")]),
             "SELECT (SELECT mytable.name FROM mytable) "
             "|| :param_1 AS anon_1",
         )
@@ -939,7 +916,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # scalar selects should not have any attributes on their 'c' or
         # 'columns' attribute
 
-        s = select([table1.c.myid]).as_scalar()
+        s = select([table1.c.myid]).scalar_subquery()
         try:
             s.c.foo
         except exc.InvalidRequestError as err:
@@ -965,12 +942,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         qlat = (
             select([zips.c.latitude], zips.c.zipcode == zipcode)
             .correlate(None)
-            .as_scalar()
+            .scalar_subquery()
         )
         qlng = (
             select([zips.c.longitude], zips.c.zipcode == zipcode)
             .correlate(None)
-            .as_scalar()
+            .scalar_subquery()
         )
 
         q = select(
@@ -999,10 +976,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         zalias = zips.alias("main_zip")
         qlat = select(
             [zips.c.latitude], zips.c.zipcode == zalias.c.zipcode
-        ).as_scalar()
+        ).scalar_subquery()
         qlng = select(
             [zips.c.longitude], zips.c.zipcode == zalias.c.zipcode
-        ).as_scalar()
+        ).scalar_subquery()
         q = select(
             [
                 places.c.id,
@@ -1025,7 +1002,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         a1 = table2.alias("t2alias")
-        s1 = select([a1.c.otherid], table1.c.myid == a1.c.otherid).as_scalar()
+        s1 = select(
+            [a1.c.otherid], table1.c.myid == a1.c.otherid
+        ).scalar_subquery()
         j1 = table1.join(table2, table1.c.myid == table2.c.otherid)
         s2 = select([table1, s1], from_obj=j1)
         self.assert_compile(
@@ -2337,7 +2316,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert s3.compile().params == {"myid": 9, "myotherid": 7}
 
         # test using same 'unique' param object twice in one compile
-        s = select([table1.c.myid]).where(table1.c.myid == 12).as_scalar()
+        s = (
+            select([table1.c.myid])
+            .where(table1.c.myid == 12)
+            .scalar_subquery()
+        )
         s2 = select([table1, s], table1.c.myid == s)
         self.assert_compile(
             s2,
@@ -2884,7 +2867,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             lambda: sel1.c,
         )
 
-        # calling label or as_scalar doesn't compile
+        # calling label or scalar_subquery doesn't compile
         # anything.
         sel2 = select([func.substr(my_str, 2, 3)]).label("my_substr")
 
@@ -2895,7 +2878,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=default.DefaultDialect(),
         )
 
-        sel3 = select([my_str]).as_scalar()
+        sel3 = select([my_str]).scalar_subquery()
         assert_raises_message(
             exc.CompileError,
             "Cannot compile Column object until its 'name' is assigned.",
@@ -3919,13 +3902,13 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_correlate_semiauto_where(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_correlated(
-            select([t2]).where(t2.c.a == s1.correlate(t2))
+            select([t2]).where(t2.c.a == s1.correlate(t2).scalar_subquery())
         )
 
     def test_correlate_semiauto_column(self):
         t1, t2, s1 = self._fixture()
         self._assert_column_correlated(
-            select([t2, s1.correlate(t2).as_scalar()])
+            select([t2, s1.correlate(t2).scalar_subquery()])
         )
 
     def test_correlate_semiauto_from(self):
@@ -3935,31 +3918,35 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_correlate_semiauto_having(self):
         t1, t2, s1 = self._fixture()
         self._assert_having_correlated(
-            select([t2]).having(t2.c.a == s1.correlate(t2))
+            select([t2]).having(t2.c.a == s1.correlate(t2).scalar_subquery())
         )
 
     def test_correlate_except_inclusion_where(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_correlated(
-            select([t2]).where(t2.c.a == s1.correlate_except(t1))
+            select([t2]).where(
+                t2.c.a == s1.correlate_except(t1).scalar_subquery()
+            )
         )
 
     def test_correlate_except_exclusion_where(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_uncorrelated(
-            select([t2]).where(t2.c.a == s1.correlate_except(t2))
+            select([t2]).where(
+                t2.c.a == s1.correlate_except(t2).scalar_subquery()
+            )
         )
 
     def test_correlate_except_inclusion_column(self):
         t1, t2, s1 = self._fixture()
         self._assert_column_correlated(
-            select([t2, s1.correlate_except(t1).as_scalar()])
+            select([t2, s1.correlate_except(t1).scalar_subquery()])
         )
 
     def test_correlate_except_exclusion_column(self):
         t1, t2, s1 = self._fixture()
         self._assert_column_uncorrelated(
-            select([t2, s1.correlate_except(t2).as_scalar()])
+            select([t2, s1.correlate_except(t2).scalar_subquery()])
         )
 
     def test_correlate_except_inclusion_from(self):
@@ -3977,22 +3964,28 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_correlate_except_none(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_all_correlated(
-            select([t1, t2]).where(t2.c.a == s1.correlate_except(None))
+            select([t1, t2]).where(
+                t2.c.a == s1.correlate_except(None).scalar_subquery()
+            )
         )
 
     def test_correlate_except_having(self):
         t1, t2, s1 = self._fixture()
         self._assert_having_correlated(
-            select([t2]).having(t2.c.a == s1.correlate_except(t1))
+            select([t2]).having(
+                t2.c.a == s1.correlate_except(t1).scalar_subquery()
+            )
         )
 
     def test_correlate_auto_where(self):
         t1, t2, s1 = self._fixture()
-        self._assert_where_correlated(select([t2]).where(t2.c.a == s1))
+        self._assert_where_correlated(
+            select([t2]).where(t2.c.a == s1.scalar_subquery())
+        )
 
     def test_correlate_auto_column(self):
         t1, t2, s1 = self._fixture()
-        self._assert_column_correlated(select([t2, s1.as_scalar()]))
+        self._assert_column_correlated(select([t2, s1.scalar_subquery()]))
 
     def test_correlate_auto_from(self):
         t1, t2, s1 = self._fixture()
@@ -4000,18 +3993,20 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_correlate_auto_having(self):
         t1, t2, s1 = self._fixture()
-        self._assert_having_correlated(select([t2]).having(t2.c.a == s1))
+        self._assert_having_correlated(
+            select([t2]).having(t2.c.a == s1.scalar_subquery())
+        )
 
     def test_correlate_disabled_where(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_uncorrelated(
-            select([t2]).where(t2.c.a == s1.correlate(None))
+            select([t2]).where(t2.c.a == s1.correlate(None).scalar_subquery())
         )
 
     def test_correlate_disabled_column(self):
         t1, t2, s1 = self._fixture()
         self._assert_column_uncorrelated(
-            select([t2, s1.correlate(None).as_scalar()])
+            select([t2, s1.correlate(None).scalar_subquery()])
         )
 
     def test_correlate_disabled_from(self):
@@ -4023,19 +4018,21 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_correlate_disabled_having(self):
         t1, t2, s1 = self._fixture()
         self._assert_having_uncorrelated(
-            select([t2]).having(t2.c.a == s1.correlate(None))
+            select([t2]).having(t2.c.a == s1.correlate(None).scalar_subquery())
         )
 
     def test_correlate_all_where(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_all_correlated(
-            select([t1, t2]).where(t2.c.a == s1.correlate(t1, t2))
+            select([t1, t2]).where(
+                t2.c.a == s1.correlate(t1, t2).scalar_subquery()
+            )
         )
 
     def test_correlate_all_column(self):
         t1, t2, s1 = self._fixture()
         self._assert_column_all_correlated(
-            select([t1, t2, s1.correlate(t1, t2).as_scalar()])
+            select([t1, t2, s1.correlate(t1, t2).scalar_subquery()])
         )
 
     def test_correlate_all_from(self):
@@ -4049,7 +4046,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.InvalidRequestError,
             "returned no FROM clauses due to auto-correlation",
-            select([t1, t2]).where(t2.c.a == s1).compile,
+            select([t1, t2]).where(t2.c.a == s1.scalar_subquery()).compile,
         )
 
     def test_correlate_from_all_ok(self):
@@ -4063,7 +4060,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_correlate_auto_where_singlefrom(self):
         t1, t2, s1 = self._fixture()
         s = select([t1.c.a])
-        s2 = select([t1]).where(t1.c.a == s)
+        s2 = select([t1]).where(t1.c.a == s.scalar_subquery())
         self.assert_compile(
             s2, "SELECT t1.a FROM t1 WHERE t1.a = " "(SELECT t1.a FROM t1)"
         )
@@ -4073,7 +4070,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select([t1.c.a])
 
-        s2 = select([t1]).where(t1.c.a == s.correlate(t1))
+        s2 = select([t1]).where(t1.c.a == s.correlate(t1).scalar_subquery())
         self._assert_where_single_full_correlated(s2)
 
     def test_correlate_except_semiauto_where_singlefrom(self):
@@ -4081,7 +4078,9 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select([t1.c.a])
 
-        s2 = select([t1]).where(t1.c.a == s.correlate_except(t2))
+        s2 = select([t1]).where(
+            t1.c.a == s.correlate_except(t2).scalar_subquery()
+        )
         self._assert_where_single_full_correlated(s2)
 
     def test_correlate_alone_noeffect(self):
@@ -4098,7 +4097,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([t2.c.b]).where(t1.c.a == t2.c.a)
         s = s.correlate_except(t2).alias("s")
 
-        s2 = select([func.foo(s.c.b)]).as_scalar()
+        s2 = select([func.foo(s.c.b)]).scalar_subquery()
         s3 = select([t1], order_by=s2)
 
         self.assert_compile(
@@ -4155,8 +4154,8 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         t3 = table("t3", column("z"))
 
         s = select([t1.c.x]).where(t1.c.x == t2.c.y)
-        s2 = select([t3.c.z]).where(t3.c.z == s.as_scalar())
-        s3 = select([t1]).where(t1.c.x == s2.as_scalar())
+        s2 = select([t3.c.z]).where(t3.c.z == s.scalar_subquery())
+        s3 = select([t1]).where(t1.c.x == s2.scalar_subquery())
 
         self.assert_compile(
             s3,
@@ -4213,15 +4212,6 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT t.x FROM t WHERE t.x = 0",
             dialect=default.DefaultDialect(supports_native_boolean=False),
         )
-
-    def test_null_constant(self):
-        self.assert_compile(_literal_as_text(None), "NULL")
-
-    def test_false_constant(self):
-        self.assert_compile(_literal_as_text(False), "false")
-
-    def test_true_constant(self):
-        self.assert_compile(_literal_as_text(True), "true")
 
     def test_val_and_false(self):
         t = self._fixture()

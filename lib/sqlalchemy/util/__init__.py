@@ -140,6 +140,7 @@ from .langhelpers import portable_instancemethod  # noqa
 from .langhelpers import quoted_token_parser  # noqa
 from .langhelpers import safe_reraise  # noqa
 from .langhelpers import set_creation_order  # noqa
+from .langhelpers import string_or_unprintable  # noqa
 from .langhelpers import symbol  # noqa
 from .langhelpers import unbound_method_to_callable  # noqa
 from .langhelpers import warn  # noqa

@@ -131,7 +131,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_literal_interpretation_ambiguous(self):
         assert_raises_message(
             exc.ArgumentError,
-            r"Ambiguous literal: 'x'.  Use the 'text\(\)' function",
+            r"Column expression expected, got 'x'",
             case,
             [("x", "y")],
         )
@@ -139,7 +139,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_literal_interpretation_ambiguous_tuple(self):
         assert_raises_message(
             exc.ArgumentError,
-            r"Ambiguous literal: \('x', 'y'\).  Use the 'text\(\)' function",
+            r"Column expression expected, got \('x', 'y'\)",
             case,
             [(("x", "y"), "z")],
         )

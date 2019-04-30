@@ -24,7 +24,8 @@ from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import inspect
 from .. import util
-from ..sql import expression as sql_expr
+from ..sql import coercions
+from ..sql import roles
 from ..sql.base import _generative
 from ..sql.base import Generative
 
@@ -1543,7 +1544,9 @@ def with_expression(loadopt, key, expression):
 
     """
 
-    expression = sql_expr._labeled(_orm_full_deannotate(expression))
+    expression = coercions.expect(
+        roles.LabeledColumnExprRole, _orm_full_deannotate(expression)
+    )
 
     return loadopt.set_column_strategy(
         (key,), {"query_expression": True}, opts={"expression": expression}

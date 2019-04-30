@@ -2288,9 +2288,8 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
             assert_raises_message(
                 sa.exc.ArgumentError,
-                "Column-based expression object expected "
-                "for argument '%s'; got: '%s', type %r"
-                % (argname, arg[0], type(arg[0])),
+                "Column expression expected "
+                "for argument '%s'; got '%s'" % (argname, arg[0]),
                 configure_mappers,
             )
 

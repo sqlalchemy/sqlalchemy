@@ -28,7 +28,9 @@ from .base import state_str
 from .. import exc as sa_exc
 from .. import sql
 from .. import util
+from ..sql import coercions
 from ..sql import expression
+from ..sql import roles
 from ..sql.base import _from_objects
 
 
@@ -1914,7 +1916,7 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
         values = self._resolved_values_keys_as_propnames
         for key, value in values:
             self.value_evaluators[key] = evaluator_compiler.process(
-                expression._literal_as_binds(value)
+                coercions.expect(roles.ExpressionElementRole, value)
             )
 
     def _do_post_synchronize(self):

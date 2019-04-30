@@ -15,8 +15,9 @@ import itertools
 import operator
 from operator import attrgetter
 
-from sqlalchemy.sql.visitors import Visitable
+from . import coercions
 from . import operators
+from . import roles
 from . import type_api
 from .annotation import Annotated
 from .base import _from_objects
@@ -26,18 +27,12 @@ from .base import ColumnSet
 from .base import Executable
 from .base import Generative
 from .base import Immutable
+from .coercions import _document_text_coercion
 from .elements import _anonymous_label
-from .elements import _clause_element_as_expr
 from .elements import _clone
 from .elements import _cloned_difference
 from .elements import _cloned_intersection
-from .elements import _document_text_coercion
 from .elements import _expand_cloned
-from .elements import _interpret_as_column_or_from
-from .elements import _literal_and_labels_as_label_reference
-from .elements import _literal_as_label_reference
-from .elements import _literal_as_text
-from .elements import _no_text_coercion
 from .elements import _select_iterables
 from .elements import and_
 from .elements import BindParameter
@@ -48,73 +43,13 @@ from .elements import literal_column
 from .elements import True_
 from .elements import UnaryExpression
 from .. import exc
-from .. import inspection
 from .. import util
-
-
-def _interpret_as_from(element):
-    insp = inspection.inspect(element, raiseerr=False)
-    if insp is None:
-        if isinstance(element, util.string_types):
-            _no_text_coercion(element)
-    try:
-        return insp.selectable
-    except AttributeError:
-        raise exc.ArgumentError("FROM expression expected")
-
-
-def _interpret_as_select(element):
-    element = _interpret_as_from(element)
-    if isinstance(element, Alias):
-        element = element.original
-    if not isinstance(element, SelectBase):
-        element = element.select()
-    return element
 
 
 class _OffsetLimitParam(BindParameter):
     @property
     def _limit_offset_value(self):
         return self.effective_value
-
-
-def _offset_or_limit_clause(element, name=None, type_=None):
-    """Convert the given value to an "offset or limit" clause.
-
-    This handles incoming integers and converts to an expression; if
-    an expression is already given, it is passed through.
-
-    """
-    if element is None:
-        return None
-    elif hasattr(element, "__clause_element__"):
-        return element.__clause_element__()
-    elif isinstance(element, Visitable):
-        return element
-    else:
-        value = util.asint(element)
-        return _OffsetLimitParam(name, value, type_=type_, unique=True)
-
-
-def _offset_or_limit_clause_asint(clause, attrname):
-    """Convert the "offset or limit" clause of a select construct to an
-    integer.
-
-    This is only possible if the value is stored as a simple bound parameter.
-    Otherwise, a compilation error is raised.
-
-    """
-    if clause is None:
-        return None
-    try:
-        value = clause._limit_offset_value
-    except AttributeError:
-        raise exc.CompileError(
-            "This SELECT structure does not use a simple "
-            "integer value for %s" % attrname
-        )
-    else:
-        return util.asint(value)
 
 
 def subquery(alias, *args, **kwargs):
@@ -133,8 +68,42 @@ def subquery(alias, *args, **kwargs):
     return Select(*args, **kwargs).alias(alias)
 
 
-class Selectable(ClauseElement):
-    """mark a class as being selectable"""
+class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
+    """The basemost class for Core contructs that have some concept of
+    columns that can represent rows.
+
+    While the SELECT statement and TABLE are the primary things we think
+    of in this category,  DML like INSERT, UPDATE and DELETE can also specify
+    RETURNING which means they can be used in CTEs and other forms, and
+    PostgreSQL has functions that return rows also.
+
+    .. versionadded:: 1.4
+
+    """
+
+    _is_returns_rows = True
+
+    # sub-elements of returns_rows
+    _is_from_clause = False
+    _is_select_statement = False
+    _is_lateral = False
+
+    @property
+    def selectable(self):
+        raise NotImplementedError(
+            "This object is a base ReturnsRows object, but is not a "
+            "FromClause so has no .c. collection."
+        )
+
+
+class Selectable(ReturnsRows):
+    """mark a class as being selectable.
+
+    This class is legacy as of 1.4 as the concept of a SQL construct which
+    "returns rows" is more generalized than one which can be the subject
+    of a SELECT.
+
+    """
 
     __visit_name__ = "selectable"
 
@@ -190,7 +159,7 @@ class HasPrefixes(object):
     def _setup_prefixes(self, prefixes, dialect=None):
         self._prefixes = self._prefixes + tuple(
             [
-                (_literal_as_text(p, allow_coercion_to_text=True), dialect)
+                (coercions.expect(roles.StatementOptionRole, p), dialect)
                 for p in prefixes
             ]
         )
@@ -236,13 +205,13 @@ class HasSuffixes(object):
     def _setup_suffixes(self, suffixes, dialect=None):
         self._suffixes = self._suffixes + tuple(
             [
-                (_literal_as_text(p, allow_coercion_to_text=True), dialect)
+                (coercions.expect(roles.StatementOptionRole, p), dialect)
                 for p in suffixes
             ]
         )
 
 
-class FromClause(Selectable):
+class FromClause(roles.FromClauseRole, Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
@@ -265,16 +234,6 @@ class FromClause(Selectable):
     named_with_column = False
     _hide_froms = []
 
-    _is_join = False
-    _is_select = False
-    _is_from_container = False
-
-    _is_lateral = False
-
-    _textual = False
-    """a marker that allows us to easily distinguish a :class:`.TextAsFrom`
-    or similar object from other kinds of :class:`.FromClause` objects."""
-
     schema = None
     """Define the 'schema' attribute for this :class:`.FromClause`.
 
@@ -283,6 +242,11 @@ class FromClause(Selectable):
     :paramref:`.Table.schema` argument.
 
     """
+
+    is_selectable = has_selectable = True
+    _is_from_clause = True
+    _is_text_as_from = False
+    _is_join = False
 
     def _translate_schema(self, effective_schema, map_):
         return effective_schema
@@ -726,8 +690,8 @@ class Join(FromClause):
         :class:`.FromClause` object.
 
         """
-        self.left = _interpret_as_from(left)
-        self.right = _interpret_as_from(right).self_group()
+        self.left = coercions.expect(roles.FromClauseRole, left)
+        self.right = coercions.expect(roles.FromClauseRole, right).self_group()
 
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
@@ -1292,7 +1256,9 @@ class Alias(FromClause):
          .. versionadded:: 0.9.0
 
         """
-        return _interpret_as_from(selectable).alias(name=name, flat=flat)
+        return coercions.expect(roles.FromClauseRole, selectable).alias(
+            name=name, flat=flat
+        )
 
     def _init(self, selectable, name=None):
         baseselectable = selectable
@@ -1326,14 +1292,6 @@ class Alias(FromClause):
             return self.name
         else:
             return self.name.encode("ascii", "backslashreplace")
-
-    def as_scalar(self):
-        try:
-            return self.element.as_scalar()
-        except AttributeError:
-            raise AttributeError(
-                "Element %s does not support " "'as_scalar()'" % self.element
-            )
 
     def is_derived_from(self, fromclause):
         if fromclause in self._cloned_set:
@@ -1426,7 +1384,9 @@ class Lateral(Alias):
             :ref:`lateral_selects` -  overview of usage.
 
         """
-        return _interpret_as_from(selectable).lateral(name=name)
+        return coercions.expect(roles.FromClauseRole, selectable).lateral(
+            name=name
+        )
 
 
 class TableSample(Alias):
@@ -1488,7 +1448,7 @@ class TableSample(Alias):
          REPEATABLE sub-clause is also rendered.
 
         """
-        return _interpret_as_from(selectable).tablesample(
+        return coercions.expect(roles.FromClauseRole, selectable).tablesample(
             sampling, name=name, seed=seed
         )
 
@@ -1523,7 +1483,7 @@ class CTE(Generative, HasSuffixes, Alias):
         Please see :meth:`.HasCte.cte` for detail on CTE usage.
 
         """
-        return _interpret_as_from(selectable).cte(
+        return coercions.expect(roles.HasCTERole, selectable).cte(
             name=name, recursive=recursive
         )
 
@@ -1588,7 +1548,7 @@ class CTE(Generative, HasSuffixes, Alias):
         )
 
 
-class HasCTE(object):
+class HasCTE(roles.HasCTERole):
     """Mixin that declares a class to include CTE support.
 
     .. versionadded:: 1.1
@@ -2059,13 +2019,22 @@ class ForUpdateArg(ClauseElement):
         self.key_share = key_share
         if of is not None:
             self.of = [
-                _interpret_as_column_or_from(elem) for elem in util.to_list(of)
+                coercions.expect(roles.ColumnsClauseRole, elem)
+                for elem in util.to_list(of)
             ]
         else:
             self.of = None
 
 
-class SelectBase(HasCTE, Executable, FromClause):
+class SelectBase(
+    roles.SelectStatementRole,
+    roles.DMLSelectRole,
+    roles.CompoundElementRole,
+    roles.InElementRole,
+    HasCTE,
+    Executable,
+    FromClause,
+):
     """Base class for SELECT statements.
 
 
@@ -2075,15 +2044,32 @@ class SelectBase(HasCTE, Executable, FromClause):
 
     """
 
+    _is_select_statement = True
+
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.SelectBase.as_scalar` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":meth:`.SelectBase.scalar_subquery`.",
+    )
     def as_scalar(self):
+        return self.scalar_subquery()
+
+    def scalar_subquery(self):
         """return a 'scalar' representation of this selectable, which can be
         used as a column expression.
 
         Typically, a select statement which has only one column in its columns
-        clause is eligible to be used as a scalar expression.
+        clause is eligible to be used as a scalar expression.  The scalar
+        subquery can then be used in the WHERE clause or columns clause of
+        an enclosing SELECT.
 
-        The returned object is an instance of
-        :class:`ScalarSelect`.
+        Note that the scalar subquery differentiates from the FROM-level
+        subquery that can be produced using the :meth:`.SelectBase.subquery`
+        method.
+
+        .. versionchanged: 1.4 - the ``.as_scalar()`` method was renamed to
+           :meth:`.SelectBase.scalar_subquery`.
 
         """
         return ScalarSelect(self)
@@ -2097,7 +2083,7 @@ class SelectBase(HasCTE, Executable, FromClause):
             :meth:`~.SelectBase.as_scalar`.
 
         """
-        return self.as_scalar().label(name)
+        return self.scalar_subquery().label(name)
 
     @_generative
     @util.deprecated(
@@ -2181,20 +2167,19 @@ class GenerativeSelect(SelectBase):
                 {"autocommit": autocommit}
             )
         if limit is not None:
-            self._limit_clause = _offset_or_limit_clause(limit)
+            self._limit_clause = self._offset_or_limit_clause(limit)
         if offset is not None:
-            self._offset_clause = _offset_or_limit_clause(offset)
+            self._offset_clause = self._offset_or_limit_clause(offset)
         self._bind = bind
 
         if order_by is not None:
             self._order_by_clause = ClauseList(
                 *util.to_list(order_by),
-                _literal_as_text=_literal_and_labels_as_label_reference
+                _literal_as_text_role=roles.OrderByRole
             )
         if group_by is not None:
             self._group_by_clause = ClauseList(
-                *util.to_list(group_by),
-                _literal_as_text=_literal_as_label_reference
+                *util.to_list(group_by), _literal_as_text_role=roles.ByOfRole
             )
 
     @property
@@ -2287,6 +2272,37 @@ class GenerativeSelect(SelectBase):
         """
         self.use_labels = True
 
+    def _offset_or_limit_clause(self, element, name=None, type_=None):
+        """Convert the given value to an "offset or limit" clause.
+
+        This handles incoming integers and converts to an expression; if
+        an expression is already given, it is passed through.
+
+        """
+        return coercions.expect(
+            roles.LimitOffsetRole, element, name=name, type_=type_
+        )
+
+    def _offset_or_limit_clause_asint(self, clause, attrname):
+        """Convert the "offset or limit" clause of a select construct to an
+        integer.
+
+        This is only possible if the value is stored as a simple bound
+        parameter. Otherwise, a compilation error is raised.
+
+        """
+        if clause is None:
+            return None
+        try:
+            value = clause._limit_offset_value
+        except AttributeError:
+            raise exc.CompileError(
+                "This SELECT structure does not use a simple "
+                "integer value for %s" % attrname
+            )
+        else:
+            return util.asint(value)
+
     @property
     def _limit(self):
         """Get an integer value for the limit.  This should only be used
@@ -2295,7 +2311,7 @@ class GenerativeSelect(SelectBase):
         isn't currently set to an integer.
 
         """
-        return _offset_or_limit_clause_asint(self._limit_clause, "limit")
+        return self._offset_or_limit_clause_asint(self._limit_clause, "limit")
 
     @property
     def _simple_int_limit(self):
@@ -2319,7 +2335,9 @@ class GenerativeSelect(SelectBase):
         offset isn't currently set to an integer.
 
         """
-        return _offset_or_limit_clause_asint(self._offset_clause, "offset")
+        return self._offset_or_limit_clause_asint(
+            self._offset_clause, "offset"
+        )
 
     @_generative
     def limit(self, limit):
@@ -2339,7 +2357,7 @@ class GenerativeSelect(SelectBase):
 
         """
 
-        self._limit_clause = _offset_or_limit_clause(limit)
+        self._limit_clause = self._offset_or_limit_clause(limit)
 
     @_generative
     def offset(self, offset):
@@ -2361,7 +2379,7 @@ class GenerativeSelect(SelectBase):
 
         """
 
-        self._offset_clause = _offset_or_limit_clause(offset)
+        self._offset_clause = self._offset_or_limit_clause(offset)
 
     @_generative
     def order_by(self, *clauses):
@@ -2403,8 +2421,7 @@ class GenerativeSelect(SelectBase):
             if getattr(self, "_order_by_clause", None) is not None:
                 clauses = list(self._order_by_clause) + list(clauses)
             self._order_by_clause = ClauseList(
-                *clauses,
-                _literal_as_text=_literal_and_labels_as_label_reference
+                *clauses, _literal_as_text_role=roles.OrderByRole
             )
 
     def append_group_by(self, *clauses):
@@ -2423,7 +2440,7 @@ class GenerativeSelect(SelectBase):
             if getattr(self, "_group_by_clause", None) is not None:
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(
-                *clauses, _literal_as_text=_literal_as_label_reference
+                *clauses, _literal_as_text_role=roles.ByOfRole
             )
 
     @property
@@ -2478,7 +2495,7 @@ class CompoundSelect(GenerativeSelect):
 
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for n, s in enumerate(selects):
-            s = _clause_element_as_expr(s)
+            s = coercions.expect(roles.CompoundElementRole, s)
 
             if not numcols:
                 numcols = len(s.c._all_columns)
@@ -2741,7 +2758,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     _correlate = ()
     _correlate_except = None
     _memoized_property = SelectBase._memoized_property
-    _is_select = True
 
     @util.deprecated_params(
         autocommit=(
@@ -2965,12 +2981,14 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 self._distinct = True
             else:
                 self._distinct = [
-                    _literal_as_text(e) for e in util.to_list(distinct)
+                    coercions.expect(roles.WhereHavingRole, e)
+                    for e in util.to_list(distinct)
                 ]
 
         if from_obj is not None:
             self._from_obj = util.OrderedSet(
-                _interpret_as_from(f) for f in util.to_list(from_obj)
+                coercions.expect(roles.FromClauseRole, f)
+                for f in util.to_list(from_obj)
             )
         else:
             self._from_obj = util.OrderedSet()
@@ -2986,7 +3004,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         if cols_present:
             self._raw_columns = []
             for c in columns:
-                c = _interpret_as_column_or_from(c)
+                c = coercions.expect(roles.ColumnsClauseRole, c)
                 if isinstance(c, ScalarSelect):
                     c = c.self_group(against=operators.comma_op)
                 self._raw_columns.append(c)
@@ -2994,16 +3012,16 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._raw_columns = []
 
         if whereclause is not None:
-            self._whereclause = _literal_as_text(whereclause).self_group(
-                against=operators._asbool
-            )
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            ).self_group(against=operators._asbool)
         else:
             self._whereclause = None
 
         if having is not None:
-            self._having = _literal_as_text(having).self_group(
-                against=operators._asbool
-            )
+            self._having = coercions.expect(
+                roles.WhereHavingRole, having
+            ).self_group(against=operators._asbool)
         else:
             self._having = None
 
@@ -3201,15 +3219,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._statement_hints += ((dialect_name, text),)
         else:
             self._hints = self._hints.union({(selectable, dialect_name): text})
-
-    @property
-    def type(self):
-        raise exc.InvalidRequestError(
-            "Select objects don't have a type.  "
-            "Call as_scalar() on this Select "
-            "object to return a 'scalar' version "
-            "of this Select."
-        )
 
     @_memoized_property.method
     def locate_all_froms(self):
@@ -3496,7 +3505,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         self._reset_exported()
         rc = []
         for c in columns:
-            c = _interpret_as_column_or_from(c)
+            c = coercions.expect(roles.ColumnsClauseRole, c)
             if isinstance(c, ScalarSelect):
                 c = c.self_group(against=operators.comma_op)
             rc.append(c)
@@ -3530,7 +3539,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         """
         if expr:
-            expr = [_literal_as_label_reference(e) for e in expr]
+            expr = [coercions.expect(roles.ByOfRole, e) for e in expr]
             if isinstance(self._distinct, list):
                 self._distinct = self._distinct + expr
             else:
@@ -3618,7 +3627,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._correlate = ()
         else:
             self._correlate = set(self._correlate).union(
-                _interpret_as_from(f) for f in fromclauses
+                coercions.expect(roles.FromClauseRole, f) for f in fromclauses
             )
 
     @_generative
@@ -3653,7 +3662,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             self._correlate_except = ()
         else:
             self._correlate_except = set(self._correlate_except or ()).union(
-                _interpret_as_from(f) for f in fromclauses
+                coercions.expect(roles.FromClauseRole, f) for f in fromclauses
             )
 
     def append_correlation(self, fromclause):
@@ -3668,7 +3677,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         self._auto_correlate = False
         self._correlate = set(self._correlate).union(
-            _interpret_as_from(f) for f in fromclause
+            coercions.expect(roles.FromClauseRole, f) for f in fromclause
         )
 
     def append_column(self, column):
@@ -3689,7 +3698,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         """
         self._reset_exported()
-        column = _interpret_as_column_or_from(column)
+        column = coercions.expect(roles.ColumnsClauseRole, column)
 
         if isinstance(column, ScalarSelect):
             column = column.self_group(against=operators.comma_op)
@@ -3705,7 +3714,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         standard :term:`method chaining`.
 
         """
-        clause = _literal_as_text(clause)
+        clause = coercions.expect(roles.WhereHavingRole, clause)
         self._prefixes = self._prefixes + (clause,)
 
     def append_whereclause(self, whereclause):
@@ -3747,7 +3756,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         """
         self._reset_exported()
-        fromclause = _interpret_as_from(fromclause)
+        fromclause = coercions.expect(roles.FromClauseRole, fromclause)
         self._from_obj = self._from_obj.union([fromclause])
 
     @_memoized_property
@@ -3894,7 +3903,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     bind = property(bind, _set_bind)
 
 
-class ScalarSelect(Generative, Grouping):
+class ScalarSelect(roles.InElementRole, Generative, Grouping):
     _from_objects = []
     _is_from_container = True
     _is_implicitly_boolean = False
@@ -3956,7 +3965,7 @@ class Exists(UnaryExpression):
         else:
             if not args:
                 args = ([literal_column("*")],)
-            s = Select(*args, **kwargs).as_scalar().self_group()
+            s = Select(*args, **kwargs).scalar_subquery().self_group()
 
         UnaryExpression.__init__(
             self,
@@ -3999,6 +4008,7 @@ class Exists(UnaryExpression):
         return e
 
 
+# TODO: rename to TextualSelect, this is not a FROM clause
 class TextAsFrom(SelectBase):
     """Wrap a :class:`.TextClause` construct within a :class:`.SelectBase`
     interface.
@@ -4022,7 +4032,7 @@ class TextAsFrom(SelectBase):
 
     __visit_name__ = "text_as_from"
 
-    _textual = True
+    _is_textual = True
 
     def __init__(self, text, columns, positional=False):
         self.element = text

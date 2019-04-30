@@ -45,8 +45,10 @@ from .. import log
 from .. import schema
 from .. import sql
 from .. import util
+from ..sql import coercions
 from ..sql import expression
 from ..sql import operators
+from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
 
@@ -644,8 +646,14 @@ class Mapper(InspectionAttr):
         self.batch = batch
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
-        self.polymorphic_on = expression._clause_element_as_expr(
-            polymorphic_on
+        self.polymorphic_on = (
+            coercions.expect(
+                roles.ColumnArgumentOrKeyRole,
+                polymorphic_on,
+                argname="polymorphic_on",
+            )
+            if polymorphic_on is not None
+            else None
         )
         self._dependency_processors = []
         self.validators = util.immutabledict()
@@ -1548,14 +1556,6 @@ class Mapper(InspectionAttr):
                         "can be passed for polymorphic_on"
                     )
                 prop = self.polymorphic_on
-            elif not expression._is_column(self.polymorphic_on):
-                # polymorphic_on is not a Column and not a ColumnProperty;
-                # not supported right now.
-                raise sa_exc.ArgumentError(
-                    "Only direct column-mapped "
-                    "property or SQL expression "
-                    "can be passed for polymorphic_on"
-                )
             else:
                 # polymorphic_on is a Column or SQL expression and
                 # doesn't appear to be mapped. this means it can be 1.
@@ -1851,11 +1851,7 @@ class Mapper(InspectionAttr):
         # generate a properties.ColumnProperty
         columns = util.to_list(prop)
         column = columns[0]
-        if not expression._is_column(column):
-            raise sa_exc.ArgumentError(
-                "%s=%r is not an instance of MapperProperty or Column"
-                % (key, prop)
-            )
+        assert isinstance(column, expression.ColumnElement)
 
         prop = self._props.get(key, None)
 
@@ -2259,6 +2255,9 @@ class Mapper(InspectionAttr):
             )
             for table, columns in self._cols_by_table.items()
         )
+
+    def __clause_element__(self):
+        return self.selectable
 
     @property
     def selectable(self):

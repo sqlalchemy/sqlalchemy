@@ -10,6 +10,7 @@ to invoke them for a create/drop call.
 
 """
 
+from . import roles
 from .base import _bind_or_error
 from .base import _generative
 from .base import Executable
@@ -29,7 +30,7 @@ class _DDLCompiles(ClauseElement):
         return dialect.ddl_compiler(dialect, self, **kw)
 
 
-class DDLElement(Executable, _DDLCompiles):
+class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
     """Base class for DDL expression constructs.
 
     This class is the base for the general purpose :class:`.DDL` class,

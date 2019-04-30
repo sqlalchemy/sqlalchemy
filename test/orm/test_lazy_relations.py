@@ -1290,7 +1290,7 @@ class CorrelatedTest(fixtures.MappedTest):
                     Stuff,
                     primaryjoin=sa.and_(
                         user_t.c.id == stuff.c.user_id,
-                        stuff.c.id == (stuff_view.as_scalar()),
+                        stuff.c.id == (stuff_view.scalar_subquery()),
                     ),
                 )
             },

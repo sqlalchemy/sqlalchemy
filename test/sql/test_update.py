@@ -179,7 +179,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         # test a non-correlated WHERE clause
         s = select([table2.c.othername], table2.c.otherid == 7)
-        u = update(table1, table1.c.name == s)
+        u = update(table1, table1.c.name == s.scalar_subquery())
         self.assert_compile(
             u,
             "UPDATE mytable SET myid=:myid, name=:name, "
@@ -194,7 +194,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         # test one that is actually correlated...
         s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
-        u = table1.update(table1.c.name == s)
+        u = table1.update(table1.c.name == s.scalar_subquery())
         self.assert_compile(
             u,
             "UPDATE mytable SET myid=:myid, name=:name, "

@@ -34,16 +34,16 @@ import collections
 import operator
 
 import sqlalchemy
+from . import coercions
 from . import ddl
+from . import roles
 from . import type_api
 from . import visitors
 from .base import _bind_or_error
 from .base import ColumnCollection
 from .base import DialectKWArgs
 from .base import SchemaEventTarget
-from .elements import _as_truncated
-from .elements import _document_text_coercion
-from .elements import _literal_as_text
+from .coercions import _document_text_coercion
 from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
@@ -1583,7 +1583,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             )
         try:
             c = self._constructor(
-                _as_truncated(name or self.name)
+                coercions.expect(
+                    roles.TruncatedLabelRole, name if name else self.name
+                )
                 if name_is_truncatable
                 else (name or self.name),
                 self.type,
@@ -2109,13 +2111,19 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
 
 class _NotAColumnExpr(object):
+    # the coercions system is not used in crud.py for the values passed in
+    # the insert().values() and update().values() methods, so the usual
+    # pathways to rejecting a coercion in the unlikely case of adding defaut
+    # generator objects to insert() or update() constructs aren't available;
+    # create a quick coercion rejection here that is specific to what crud.py
+    # calls on value objects.
     def _not_a_column_expr(self):
         raise exc.InvalidRequestError(
             "This %s cannot be used directly "
             "as a column expression." % self.__class__.__name__
         )
 
-    __clause_element__ = self_group = lambda self: self._not_a_column_expr()
+    self_group = lambda self: self._not_a_column_expr()  # noqa
     _from_objects = property(lambda self: self._not_a_column_expr())
 
 
@@ -2274,7 +2282,7 @@ class ColumnDefault(DefaultGenerator):
         return "ColumnDefault(%r)" % (self.arg,)
 
 
-class Sequence(DefaultGenerator):
+class Sequence(roles.StatementRole, DefaultGenerator):
     """Represents a named database sequence.
 
     The :class:`.Sequence` object represents the name and configurational
@@ -2759,25 +2767,6 @@ class ColumnCollectionMixin(object):
         if _autoattach and self._pending_colargs:
             self._check_attach()
 
-    @classmethod
-    def _extract_col_expression_collection(cls, expressions):
-        for expr in expressions:
-            strname = None
-            column = None
-            if hasattr(expr, "__clause_element__"):
-                expr = expr.__clause_element__()
-
-            if not isinstance(expr, (ColumnElement, TextClause)):
-                # this assumes a string
-                strname = expr
-            else:
-                cols = []
-                visitors.traverse(expr, {}, {"column": cols.append})
-                if cols:
-                    column = cols[0]
-            add_element = column if column is not None else strname
-            yield expr, column, strname, add_element
-
     def _check_attach(self, evt=False):
         col_objs = [c for c in self._pending_colargs if isinstance(c, Column)]
 
@@ -2960,7 +2949,7 @@ class CheckConstraint(ColumnCollectionConstraint):
 
         """
 
-        self.sqltext = _literal_as_text(sqltext, allow_coercion_to_text=True)
+        self.sqltext = coercions.expect(roles.DDLExpressionRole, sqltext)
 
         columns = []
         visitors.traverse(self.sqltext, {}, {"column": columns.append})
@@ -3630,7 +3619,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             column,
             strname,
             add_element,
-        ) in self._extract_col_expression_collection(expressions):
+        ) in coercions.expect_col_expression_collection(
+            roles.DDLConstraintColumnRole, expressions
+        ):
             if add_element is not None:
                 columns.append(add_element)
             processed_expressions.append(expr)

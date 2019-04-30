@@ -57,6 +57,9 @@ class TypeEngine(Visitable):
 
         default_comparator = None
 
+        def __clause_element__(self):
+            return self.expr
+
         def __init__(self, expr):
             self.expr = expr
             self.type = expr.type

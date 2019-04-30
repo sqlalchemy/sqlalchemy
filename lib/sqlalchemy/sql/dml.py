@@ -9,18 +9,16 @@ Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
 
+from . import coercions
+from . import roles
 from .base import _from_objects
 from .base import _generative
 from .base import DialectKWArgs
 from .base import Executable
 from .elements import _clone
-from .elements import _column_as_key
-from .elements import _literal_as_text
 from .elements import and_
 from .elements import ClauseElement
 from .elements import Null
-from .selectable import _interpret_as_from
-from .selectable import _interpret_as_select
 from .selectable import HasCTE
 from .selectable import HasPrefixes
 from .. import exc
@@ -28,7 +26,12 @@ from .. import util
 
 
 class UpdateBase(
-    HasCTE, DialectKWArgs, HasPrefixes, Executable, ClauseElement
+    roles.DMLRole,
+    HasCTE,
+    DialectKWArgs,
+    HasPrefixes,
+    Executable,
+    ClauseElement,
 ):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
 
@@ -210,7 +213,7 @@ class ValuesBase(UpdateBase):
     _post_values_clause = None
 
     def __init__(self, table, values, prefixes):
-        self.table = _interpret_as_from(table)
+        self.table = coercions.expect(roles.FromClauseRole, table)
         self.parameters, self._has_multi_parameters = self._process_colparams(
             values
         )
@@ -604,13 +607,16 @@ class Insert(ValuesBase):
             )
 
         self.parameters, self._has_multi_parameters = self._process_colparams(
-            {_column_as_key(n): Null() for n in names}
+            {
+                coercions.expect(roles.DMLColumnRole, n, as_key=True): Null()
+                for n in names
+            }
         )
 
         self.select_names = names
         self.inline = True
         self.include_insert_from_select_defaults = include_defaults
-        self.select = _interpret_as_select(select)
+        self.select = coercions.expect(roles.DMLSelectRole, select)
 
     def _copy_internals(self, clone=_clone, **kw):
         # TODO: coverage
@@ -678,7 +684,7 @@ class Update(ValuesBase):
             users.update().values(name='ed').where(
                     users.c.name==select([addresses.c.email_address]).\
                                 where(addresses.c.user_id==users.c.id).\
-                                as_scalar()
+                                scalar_subquery()
                     )
 
         :param values:
@@ -744,7 +750,7 @@ class Update(ValuesBase):
             users.update().values(
                     name=select([addresses.c.email_address]).\
                             where(addresses.c.user_id==users.c.id).\
-                            as_scalar()
+                            scalar_subquery()
                 )
 
         .. seealso::
@@ -759,7 +765,9 @@ class Update(ValuesBase):
         self._bind = bind
         self._returning = returning
         if whereclause is not None:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
         else:
             self._whereclause = None
         self.inline = inline
@@ -785,10 +793,13 @@ class Update(ValuesBase):
         """
         if self._whereclause is not None:
             self._whereclause = and_(
-                self._whereclause, _literal_as_text(whereclause)
+                self._whereclause,
+                coercions.expect(roles.WhereHavingRole, whereclause),
             )
         else:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
 
     @property
     def _extra_froms(self):
@@ -846,7 +857,7 @@ class Delete(UpdateBase):
             users.delete().where(
                     users.c.name==select([addresses.c.email_address]).\
                                 where(addresses.c.user_id==users.c.id).\
-                                as_scalar()
+                                scalar_subquery()
                     )
 
          .. versionchanged:: 1.2.0
@@ -858,14 +869,16 @@ class Delete(UpdateBase):
 
         """
         self._bind = bind
-        self.table = _interpret_as_from(table)
+        self.table = coercions.expect(roles.FromClauseRole, table)
         self._returning = returning
 
         if prefixes:
             self._setup_prefixes(prefixes)
 
         if whereclause is not None:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
         else:
             self._whereclause = None
 
@@ -883,10 +896,13 @@ class Delete(UpdateBase):
 
         if self._whereclause is not None:
             self._whereclause = and_(
-                self._whereclause, _literal_as_text(whereclause)
+                self._whereclause,
+                coercions.expect(roles.WhereHavingRole, whereclause),
             )
         else:
-            self._whereclause = _literal_as_text(whereclause)
+            self._whereclause = coercions.expect(
+                roles.WhereHavingRole, whereclause
+            )
 
     @property
     def _extra_froms(self):

@@ -198,9 +198,9 @@ class CTETest(fixtures.TablesTest):
             conn.execute(
                 some_other_table.delete().where(
                     some_other_table.c.data
-                    == select([cte.c.data]).where(
-                        cte.c.id == some_other_table.c.id
-                    )
+                    == select([cte.c.data])
+                    .where(cte.c.id == some_other_table.c.id)
+                    .scalar_subquery()
                 )
             )
             eq_(

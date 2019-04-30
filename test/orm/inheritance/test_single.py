@@ -962,7 +962,7 @@ class RelationshipToSingleTest(
             .select_from(Engineer)
             .filter(Engineer.company_id == Company.company_id)
             .correlate(Company)
-            .as_scalar()
+            .scalar_subquery()
         )
 
         self.assert_compile(

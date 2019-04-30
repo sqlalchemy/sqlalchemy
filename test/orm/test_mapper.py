@@ -764,7 +764,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         expr = User.name + "name"
         expr2 = sa.select([User.name, users.c.id])
         m.add_property("x", column_property(expr))
-        m.add_property("y", column_property(expr2))
+        m.add_property("y", column_property(expr2.scalar_subquery()))
 
         assert User.x.property.columns[0] is not expr
         assert User.x.property.columns[0].element.left is users.c.name

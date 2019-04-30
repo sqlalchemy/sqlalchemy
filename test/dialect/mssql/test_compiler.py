@@ -267,7 +267,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = table.update().values(
             val=select([other.c.newval])
             .where(table.c.sym == other.c.sym)
-            .as_scalar()
+            .scalar_subquery()
         )
 
         self.assert_compile(
@@ -334,14 +334,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t = table("sometable", column("somecolumn"))
         self.assert_compile(
-            t.select().where(t.c.somecolumn == t.select()),
+            t.select().where(t.c.somecolumn == t.select().scalar_subquery()),
             "SELECT sometable.somecolumn FROM "
             "sometable WHERE sometable.somecolumn = "
             "(SELECT sometable.somecolumn FROM "
             "sometable)",
         )
         self.assert_compile(
-            t.select().where(t.c.somecolumn != t.select()),
+            t.select().where(t.c.somecolumn != t.select().scalar_subquery()),
             "SELECT sometable.somecolumn FROM "
             "sometable WHERE sometable.somecolumn != "
             "(SELECT sometable.somecolumn FROM "
@@ -844,7 +844,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t1", column("x", Integer), column("y", Integer))
         t2 = table("t2", column("x", Integer), column("y", Integer))
 
-        order_by = select([t2.c.y]).where(t1.c.x == t2.c.x).as_scalar()
+        order_by = select([t2.c.y]).where(t1.c.x == t2.c.x).scalar_subquery()
         s = (
             select([t1])
             .where(t1.c.x == 5)
@@ -1135,7 +1135,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx = Index("test_idx_data_1", tbl.c.data, mssql_where=tbl.c.data > 1)
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE INDEX test_idx_data_1 ON test (data) WHERE data > 1"
+            "CREATE INDEX test_idx_data_1 ON test (data) WHERE data > 1",
         )
 
     def test_index_ordering(self):

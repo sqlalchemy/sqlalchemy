@@ -2608,7 +2608,8 @@ class ExpressionTest(
 
         assert_raises_message(
             exc.ArgumentError,
-            r"Object some_sqla_thing\(\) is not legal as a SQL literal value",
+            r"SQL expression element or literal value expected, got "
+            r"some_sqla_thing\(\).",
             lambda: column("a", String) == SomeSQLAThing(),
         )
 

@@ -22,7 +22,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
-from sqlalchemy.sql.expression import _clone
+from sqlalchemy.sql.elements import _clone
 from sqlalchemy.sql.expression import _from_objects
 from sqlalchemy.sql.visitors import ClauseVisitor
 from sqlalchemy.sql.visitors import cloned_traverse
@@ -306,7 +306,7 @@ class BinaryEndpointTraversalTest(fixtures.TestBase):
 
     def test_subquery(self):
         a, b, c = column("a"), column("b"), column("c")
-        subq = select([c]).where(c == a).as_scalar()
+        subq = select([c]).where(c == a).scalar_subquery()
         expr = and_(a == b, b == subq)
         self._assert_traversal(
             expr, [(operators.eq, a, b), (operators.eq, b, subq)]
@@ -706,7 +706,9 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
                 select.append_whereclause(t1.c.col2 == 7)
 
         self.assert_compile(
-            select([t2]).where(t2.c.col1 == Vis().traverse(s)),
+            select([t2]).where(
+                t2.c.col1 == Vis().traverse(s).scalar_subquery()
+            ),
             "SELECT table2.col1, table2.col2, table2.col3 "
             "FROM table2 WHERE table2.col1 = "
             "(SELECT * FROM table1 WHERE table1.col1 = table2.col1 "
@@ -739,7 +741,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         t1a = t1.alias()
 
         s = select([1], t1.c.col1 == t1a.c.col1, from_obj=t1a).correlate(t1a)
-        s = select([t1]).where(t1.c.col1 == s)
+        s = select([t1]).where(t1.c.col1 == s.scalar_subquery())
         self.assert_compile(
             s,
             "SELECT table1.col1, table1.col2, table1.col3 FROM table1 "
@@ -760,7 +762,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([t1]).where(t1.c.col1 == "foo").alias()
 
         s2 = select([1], t1.c.col1 == s.c.col1, from_obj=s).correlate(t1)
-        s3 = select([t1]).where(t1.c.col1 == s2)
+        s3 = select([t1]).where(t1.c.col1 == s2.scalar_subquery())
         self.assert_compile(
             s3,
             "SELECT table1.col1, table1.col2, table1.col3 "
@@ -982,7 +984,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select(
             [literal_column("*")], from_obj=[t1alias, t2alias]
-        ).as_scalar()
+        ).scalar_subquery()
         assert t2alias in s._froms
         assert t1alias in s._froms
 
@@ -1011,7 +1013,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         s = (
             select([literal_column("*")], from_obj=[t1alias, t2alias])
             .correlate(t2alias)
-            .as_scalar()
+            .scalar_subquery()
         )
         self.assert_compile(
             select([literal_column("*")], t2alias.c.col1 == s),
@@ -1037,7 +1039,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         s = (
             select([literal_column("*")])
             .where(t1.c.col1 == t2.c.col1)
-            .as_scalar()
+            .scalar_subquery()
         )
         self.assert_compile(
             select([t1.c.col1, s]),
@@ -1064,7 +1066,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             select([literal_column("*")])
             .where(t1.c.col1 == t2.c.col1)
             .correlate(t1)
-            .as_scalar()
+            .scalar_subquery()
         )
         self.assert_compile(
             select([t1.c.col1, s]),
@@ -1102,7 +1104,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             select([t2.c.col1])
             .where(t2.c.col1 == t1.c.col1)
             .correlate(t2)
-            .as_scalar()
+            .scalar_subquery()
         )
 
         # test subquery - given only t1 and t2 in the enclosing selectable,
@@ -1112,7 +1114,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             select([t2.c.col1])
             .where(t2.c.col1 == t1.c.col1)
             .correlate_except(t1)
-            .as_scalar()
+            .scalar_subquery()
         )
 
         # use both subqueries in statements
@@ -1257,7 +1259,9 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                         [literal_column("*")],
                         t1.c.col1 == t2.c.col2,
                         from_obj=[t1, t2],
-                    ).correlate(t1)
+                    )
+                    .correlate(t1)
+                    .scalar_subquery()
                 )
             ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
@@ -1277,7 +1281,9 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                         [literal_column("*")],
                         t1.c.col1 == t2.c.col2,
                         from_obj=[t1, t2],
-                    ).correlate(t2)
+                    )
+                    .correlate(t2)
+                    .scalar_subquery()
                 )
             ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
@@ -1381,9 +1387,9 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             select([t1alias, t2alias]).where(
                 t1alias.c.col1
                 == vis.traverse(
-                    select(
-                        ["*"], t1.c.col1 == t2.c.col2, from_obj=[t1, t2]
-                    ).correlate(t1)
+                    select(["*"], t1.c.col1 == t2.c.col2, from_obj=[t1, t2])
+                    .correlate(t1)
+                    .scalar_subquery()
                 )
             ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
@@ -1403,9 +1409,9 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             t2alias.select().where(
                 t2alias.c.col2
                 == vis.traverse(
-                    select(
-                        ["*"], t1.c.col1 == t2.c.col2, from_obj=[t1, t2]
-                    ).correlate(t2)
+                    select(["*"], t1.c.col1 == t2.c.col2, from_obj=[t1, t2])
+                    .correlate(t2)
+                    .scalar_subquery()
                 )
             ),
             "SELECT t2alias.col1, t2alias.col2, t2alias.col3 "

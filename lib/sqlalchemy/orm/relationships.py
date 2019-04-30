@@ -36,8 +36,10 @@ from .. import schema
 from .. import sql
 from .. import util
 from ..inspection import inspect
+from ..sql import coercions
 from ..sql import expression
 from ..sql import operators
+from ..sql import roles
 from ..sql import visitors
 from ..sql.util import _deep_deannotate
 from ..sql.util import _shallow_annotate
@@ -63,7 +65,7 @@ def remote(expr):
 
     """
     return _annotate_columns(
-        expression._clause_element_as_expr(expr), {"remote": True}
+        coercions.expect(roles.ColumnArgumentRole, expr), {"remote": True}
     )
 
 
@@ -83,7 +85,7 @@ def foreign(expr):
     """
 
     return _annotate_columns(
-        expression._clause_element_as_expr(expr), {"foreign": True}
+        coercions.expect(roles.ColumnArgumentRole, expr), {"foreign": True}
     )
 
 
@@ -1897,7 +1899,9 @@ class RelationshipProperty(StrategizedProperty):
                     self,
                     attr,
                     _orm_deannotate(
-                        expression._only_column_elements(val, attr)
+                        coercions.expect(
+                            roles.ColumnArgumentRole, val, argname=attr
+                        )
                     ),
                 )
 
@@ -1905,17 +1909,23 @@ class RelationshipProperty(StrategizedProperty):
         # remote_side are all columns, not strings.
         if self.order_by is not False and self.order_by is not None:
             self.order_by = [
-                expression._only_column_elements(x, "order_by")
+                coercions.expect(
+                    roles.ColumnArgumentRole, x, argname="order_by"
+                )
                 for x in util.to_list(self.order_by)
             ]
 
         self._user_defined_foreign_keys = util.column_set(
-            expression._only_column_elements(x, "foreign_keys")
+            coercions.expect(
+                roles.ColumnArgumentRole, x, argname="foreign_keys"
+            )
             for x in util.to_column_set(self._user_defined_foreign_keys)
         )
 
         self.remote_side = util.column_set(
-            expression._only_column_elements(x, "remote_side")
+            coercions.expect(
+                roles.ColumnArgumentRole, x, argname="remote_side"
+            )
             for x in util.to_column_set(self.remote_side)
         )
 
@@ -2653,7 +2663,9 @@ class JoinCondition(object):
         else:
 
             def repl(element):
-                if element in remote_side:
+                # use set() to avoid generating ``__eq__()`` expressions
+                # against each element
+                if element in set(remote_side):
                     return element._annotate({"remote": True})
 
             self.primaryjoin = visitors.replacement_traverse(

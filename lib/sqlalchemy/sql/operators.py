@@ -1053,7 +1053,7 @@ class ColumnOperators(Operators):
             expr = 5 == mytable.c.somearray.any_()
 
             # mysql '5 = ANY (SELECT value FROM table)'
-            expr = 5 == select([table.c.value]).as_scalar().any_()
+            expr = 5 == select([table.c.value]).scalar_subquery().any_()
 
         .. seealso::
 
@@ -1078,7 +1078,7 @@ class ColumnOperators(Operators):
             expr = 5 == mytable.c.somearray.all_()
 
             # mysql '5 = ALL (SELECT value FROM table)'
-            expr = 5 == select([table.c.value]).as_scalar().all_()
+            expr = 5 == select([table.c.value]).scalar_subquery().all_()
 
         .. seealso::
 

@@ -628,6 +628,9 @@ class AliasedInsp(InspectionAttr):
     is_aliased_class = True
     "always returns True"
 
+    def __clause_element__(self):
+        return self.selectable
+
     @property
     def class_(self):
         """Return the mapped class ultimately represented by this

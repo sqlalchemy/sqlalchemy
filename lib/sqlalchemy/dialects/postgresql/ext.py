@@ -6,9 +6,12 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .array import ARRAY
+from ... import util
+from ...sql import coercions
 from ...sql import elements
 from ...sql import expression
 from ...sql import functions
+from ...sql import roles
 from ...sql.schema import ColumnCollectionConstraint
 
 
@@ -50,16 +53,18 @@ class aggregate_order_by(expression.ColumnElement):
     __visit_name__ = "aggregate_order_by"
 
     def __init__(self, target, *order_by):
-        self.target = elements._literal_as_binds(target)
+        self.target = coercions.expect(roles.ExpressionElementRole, target)
 
         _lob = len(order_by)
         if _lob == 0:
             raise TypeError("at least one ORDER BY element is required")
         elif _lob == 1:
-            self.order_by = elements._literal_as_binds(order_by[0])
+            self.order_by = coercions.expect(
+                roles.ExpressionElementRole, order_by[0]
+            )
         else:
             self.order_by = elements.ClauseList(
-                *order_by, _literal_as_text=elements._literal_as_binds
+                *order_by, _literal_as_text_role=roles.ExpressionElementRole
             )
 
     def self_group(self, against=None):
@@ -166,7 +171,10 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         expressions, operators = zip(*elements)
 
         for (expr, column, strname, add_element), operator in zip(
-            self._extract_col_expression_collection(expressions), operators
+            coercions.expect_col_expression_collection(
+                roles.DDLConstraintColumnRole, expressions
+            ),
+            operators,
         ):
             if add_element is not None:
                 columns.append(add_element)
@@ -176,8 +184,6 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             if name is not None:
                 # backwards compat
                 self.operators[name] = operator
-
-            expr = expression._literal_as_column(expr)
 
             render_exprs.append((expr, name, operator))
 
@@ -193,9 +199,21 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         self.using = kw.get("using", "gist")
         where = kw.get("where")
         if where is not None:
-            self.where = expression._literal_as_text(
-                where, allow_coercion_to_text=True
+            self.where = coercions.expect(roles.StatementOptionRole, where)
+
+    def _set_parent(self, table):
+        super(ExcludeConstraint, self)._set_parent(table)
+
+        self._render_exprs = [
+            (
+                expr if isinstance(expr, elements.ClauseElement) else colexpr,
+                name,
+                operator,
             )
+            for (expr, name, operator), colexpr in util.zip_longest(
+                self._render_exprs, self.columns
+            )
+        ]
 
     def copy(self, **kw):
         elements = [(col, self.operators[col]) for col in self.columns.keys()]

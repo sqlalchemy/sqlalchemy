@@ -121,7 +121,7 @@ class ResultProxyTest(fixtures.TablesTest):
         sel = (
             select([users.c.user_id])
             .where(users.c.user_name == "jack")
-            .as_scalar()
+            .scalar_subquery()
         )
         for row in select([sel + 1, sel + 3], bind=users.bind).execute():
             eq_(row["anon_1"], 8)

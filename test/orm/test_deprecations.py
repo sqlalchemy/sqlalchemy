@@ -550,6 +550,17 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
 class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def test_query_as_scalar(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        s = Session()
+        with assertions.expect_deprecated(
+            r"The Query.as_scalar\(\) method is deprecated and will "
+            "be removed in a future release."
+        ):
+            s.query(User).as_scalar()
+
     def test_cancel_order_by(self):
         users, User = self.tables.users, self.classes.User
 

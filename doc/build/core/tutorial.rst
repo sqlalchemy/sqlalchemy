@@ -1590,24 +1590,24 @@ is often a :term:`correlated subquery`, which relies upon the enclosing
 SELECT statement in order to acquire at least one of its FROM clauses.
 
 The :func:`.select` construct can be modified to act as a
-column expression by calling either the :meth:`~.SelectBase.as_scalar`
+column expression by calling either the :meth:`~.SelectBase.scalar_subquery`
 or :meth:`~.SelectBase.label` method:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = select([func.count(addresses.c.id)]).\
+    >>> subq = select([func.count(addresses.c.id)]).\
     ...             where(users.c.id == addresses.c.user_id).\
-    ...             as_scalar()
+    ...             scalar_subquery()
 
 The above construct is now a :class:`~.expression.ScalarSelect` object,
-and is no longer part of the :class:`~.expression.FromClause` hierarchy;
-it instead is within the :class:`~.expression.ColumnElement` family of
-expression constructs.  We can place this construct the same as any
+which is an adapter around the original :class:`.~expression.Select`
+object; it participates within the :class:`~.expression.ColumnElement`
+family of expression constructs.  We can place this construct the same as any
 other column within another :func:`.select`:
 
 .. sourcecode:: pycon+sql
 
-    >>> conn.execute(select([users.c.name, stmt])).fetchall()
+    >>> conn.execute(select([users.c.name, subq])).fetchall()
     {opensql}SELECT users.name, (SELECT count(addresses.id) AS count_1
     FROM addresses
     WHERE users.id = addresses.user_id) AS anon_1
@@ -1620,10 +1620,10 @@ it using :meth:`.SelectBase.label` instead:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = select([func.count(addresses.c.id)]).\
+    >>> subq = select([func.count(addresses.c.id)]).\
     ...             where(users.c.id == addresses.c.user_id).\
     ...             label("address_count")
-    >>> conn.execute(select([users.c.name, stmt])).fetchall()
+    >>> conn.execute(select([users.c.name, subq])).fetchall()
     {opensql}SELECT users.name, (SELECT count(addresses.id) AS count_1
     FROM addresses
     WHERE users.id = addresses.user_id) AS address_count
@@ -1633,7 +1633,7 @@ it using :meth:`.SelectBase.label` instead:
 
 .. seealso::
 
-    :meth:`.Select.as_scalar`
+    :meth:`.Select.scalar_subquery`
 
     :meth:`.Select.label`
 
@@ -1642,7 +1642,7 @@ it using :meth:`.SelectBase.label` instead:
 Correlated Subqueries
 ---------------------
 
-Notice in the examples on :ref:`scalar_selects`, the FROM clause of each embedded
+In the examples on :ref:`scalar_selects`, the FROM clause of each embedded
 select did not contain the ``users`` table in its FROM clause. This is because
 SQLAlchemy automatically :term:`correlates` embedded FROM objects to that
 of an enclosing query, if present, and if the inner SELECT statement would
@@ -1653,7 +1653,8 @@ still have at least one FROM clause of its own.  For example:
     >>> stmt = select([addresses.c.user_id]).\
     ...             where(addresses.c.user_id == users.c.id).\
     ...             where(addresses.c.email_address == 'jack@yahoo.com')
-    >>> enclosing_stmt = select([users.c.name]).where(users.c.id == stmt)
+    >>> enclosing_stmt = select([users.c.name]).\
+    ...             where(users.c.id == stmt.scalar_subquery())
     >>> conn.execute(enclosing_stmt).fetchall()
     {opensql}SELECT users.name
     FROM users
@@ -1679,7 +1680,7 @@ may be correlated:
     >>> enclosing_stmt = select(
     ...         [users.c.name, addresses.c.email_address]).\
     ...     select_from(users.join(addresses)).\
-    ...     where(users.c.id == stmt)
+    ...     where(users.c.id == stmt.scalar_subquery())
     >>> conn.execute(enclosing_stmt).fetchall()
     {opensql}SELECT users.name, addresses.email_address
      FROM users JOIN addresses ON users.id = addresses.user_id
@@ -1698,7 +1699,7 @@ as the argument:
     ...             where(users.c.name == 'wendy').\
     ...             correlate(None)
     >>> enclosing_stmt = select([users.c.name]).\
-    ...     where(users.c.id == stmt)
+    ...     where(users.c.id == stmt.scalar_subquery())
     >>> conn.execute(enclosing_stmt).fetchall()
     {opensql}SELECT users.name
      FROM users
@@ -1721,7 +1722,7 @@ by telling it to correlate all FROM clauses except for ``users``:
     >>> enclosing_stmt = select(
     ...         [users.c.name, addresses.c.email_address]).\
     ...     select_from(users.join(addresses)).\
-    ...     where(users.c.id == stmt)
+    ...     where(users.c.id == stmt.scalar_subquery())
     >>> conn.execute(enclosing_stmt).fetchall()
     {opensql}SELECT users.name, addresses.email_address
      FROM users JOIN addresses ON users.id = addresses.user_id

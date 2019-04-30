@@ -1295,7 +1295,7 @@ class _PolymorphicTestBase(object):
         subq = (
             sess.query(engineers.c.person_id)
             .filter(Engineer.primary_language == "java")
-            .statement.as_scalar()
+            .statement.scalar_subquery()
         )
         eq_(sess.query(Person).filter(Person.person_id.in_(subq)).one(), e1)
 
@@ -1634,15 +1634,16 @@ class _PolymorphicTestBase(object):
 
         # this for a long time did not work with PolymorphicAliased and
         # PolymorphicUnions, which was due to the no_replacement_traverse
-        # annotation added to query.statement which then went into as_scalar().
-        # this is removed as of :ticket:`4304` so now works.
+        # annotation added to query.statement which then went into
+        # scalar_subquery(). this is removed as of :ticket:`4304` so now
+        # works.
         eq_(
             sess.query(Person.name)
             .filter(
                 sess.query(Company.name)
                 .filter(Company.company_id == Person.company_id)
                 .correlate(Person)
-                .as_scalar()
+                .scalar_subquery()
                 == "Elbonia, Inc."
             )
             .all(),
@@ -1660,7 +1661,7 @@ class _PolymorphicTestBase(object):
                 sess.query(Company.name)
                 .filter(Company.company_id == paliased.company_id)
                 .correlate(paliased)
-                .as_scalar()
+                .scalar_subquery()
                 == "Elbonia, Inc."
             )
             .all(),
@@ -1678,7 +1679,7 @@ class _PolymorphicTestBase(object):
                 sess.query(Company.name)
                 .filter(Company.company_id == paliased.company_id)
                 .correlate(paliased)
-                .as_scalar()
+                .scalar_subquery()
                 == "Elbonia, Inc."
             )
             .all(),
@@ -1720,7 +1721,7 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
                 sess.query(Company.name)
                 .filter(Company.company_id == p_poly.company_id)
                 .correlate(p_poly)
-                .as_scalar()
+                .scalar_subquery()
                 == "Elbonia, Inc."
             )
             .all(),
@@ -1739,7 +1740,7 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
                 sess.query(Company.name)
                 .filter(Company.company_id == p_poly.company_id)
                 .correlate(p_poly)
-                .as_scalar()
+                .scalar_subquery()
                 == "Elbonia, Inc."
             )
             .all(),

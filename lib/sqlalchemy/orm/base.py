@@ -15,7 +15,6 @@ from . import exc
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
-from ..sql import expression
 
 
 PASSIVE_NO_RESULT = util.symbol(
@@ -354,13 +353,6 @@ def _is_mapped_class(entity):
         and not insp.is_clause_element
         and (insp.is_mapper or insp.is_aliased_class)
     )
-
-
-def _attr_as_key(attr):
-    if hasattr(attr, "key"):
-        return attr.key
-    else:
-        return expression._column_as_key(attr)
 
 
 def _orm_columns(entity):

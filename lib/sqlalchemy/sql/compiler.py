@@ -27,14 +27,15 @@ import contextlib
 import itertools
 import re
 
+from . import coercions
 from . import crud
 from . import elements
 from . import functions
 from . import operators
+from . import roles
 from . import schema
 from . import selectable
 from . import sqltypes
-from . import visitors
 from .. import exc
 from .. import util
 
@@ -400,7 +401,9 @@ class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
         return type_._compiler_dispatch(self, **kw)
 
 
-class _CompileLabel(visitors.Visitable):
+# this was a Visitable, but to allow accurate detection of
+# column elements this is actually a column element
+class _CompileLabel(elements.ColumnElement):
 
     """lightweight label object which acts as an expression.Label."""
 
@@ -766,10 +769,10 @@ class SQLCompiler(Compiled):
             else:
                 col = with_cols[element.element]
         except KeyError:
-            elements._no_text_coercion(
+            coercions._no_text_coercion(
                 element.element,
-                exc.CompileError,
-                "Can't resolve label reference for ORDER BY / GROUP BY.",
+                extra="Can't resolve label reference for ORDER BY / GROUP BY.",
+                exc_cls=exc.CompileError,
             )
         else:
             kwargs["render_label_as_label"] = col
@@ -1635,7 +1638,6 @@ class SQLCompiler(Compiled):
         if is_new_cte:
             self.ctes_by_name[cte_name] = cte
 
-            # look for embedded DML ctes and propagate autocommit
             if (
                 "autocommit" in cte.element._execution_options
                 and "autocommit" not in self.execution_options
@@ -1656,10 +1658,10 @@ class SQLCompiler(Compiled):
                     self.ctes_recursive = True
                 text = self.preparer.format_alias(cte, cte_name)
                 if cte.recursive:
-                    if isinstance(cte.original, selectable.Select):
-                        col_source = cte.original
-                    elif isinstance(cte.original, selectable.CompoundSelect):
-                        col_source = cte.original.selects[0]
+                    if isinstance(cte.element, selectable.Select):
+                        col_source = cte.element
+                    elif isinstance(cte.element, selectable.CompoundSelect):
+                        col_source = cte.element.selects[0]
                     else:
                         assert False
                     recur_cols = [
@@ -1810,7 +1812,7 @@ class SQLCompiler(Compiled):
         ):
             result_expr = _CompileLabel(
                 col_expr,
-                elements._as_truncated(column.name),
+                coercions.expect(roles.TruncatedLabelRole, column.name),
                 alt_names=(column.key,),
             )
         elif (
@@ -1830,7 +1832,7 @@ class SQLCompiler(Compiled):
             # assert isinstance(column, elements.ColumnClause)
             result_expr = _CompileLabel(
                 col_expr,
-                elements._as_truncated(column.name),
+                coercions.expect(roles.TruncatedLabelRole, column.name),
                 alt_names=(column.key,),
             )
         else:
@@ -1880,7 +1882,7 @@ class SQLCompiler(Compiled):
             newelem = cloned[element] = element._clone()
 
             if (
-                newelem.is_selectable
+                newelem._is_from_clause
                 and newelem._is_join
                 and isinstance(newelem.right, selectable.FromGrouping)
             ):
@@ -1933,7 +1935,7 @@ class SQLCompiler(Compiled):
                 # marker in the stack.
                 kw["transform_clue"] = "select_container"
                 newelem._copy_internals(clone=visit, **kw)
-            elif newelem.is_selectable and newelem._is_select:
+            elif newelem._is_returns_rows and newelem._is_select_statement:
                 barrier_select = (
                     kw.get("transform_clue", None) == "select_container"
                 )
@@ -2349,6 +2351,7 @@ class SQLCompiler(Compiled):
             + join_type
             + join.right._compiler_dispatch(self, asfrom=True, **kwargs)
             + " ON "
+            # TODO: likely need asfrom=True here?
             + join.onclause._compiler_dispatch(self, **kwargs)
         )
 

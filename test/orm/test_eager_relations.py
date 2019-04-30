@@ -3258,7 +3258,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             b_table.c.a_id == a_table.c.id
         )
 
-        self._fixture({"summation": column_property(cp)})
+        self._fixture({"summation": column_property(cp.scalar_subquery())})
         self.assert_compile(
             create_session()
             .query(A)
@@ -3281,7 +3281,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             b_table.c.a_id == a_table.c.id
         )
 
-        self._fixture({"summation": column_property(cp)})
+        self._fixture({"summation": column_property(cp.scalar_subquery())})
         self.assert_compile(
             create_session()
             .query(A)
@@ -3306,7 +3306,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             .correlate(a_table)
         )
 
-        self._fixture({"summation": column_property(cp)})
+        self._fixture({"summation": column_property(cp.scalar_subquery())})
         self.assert_compile(
             create_session()
             .query(A)
@@ -3330,7 +3330,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             select([func.sum(b_table.c.value)])
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
-            .as_scalar()
+            .scalar_subquery()
         )
 
         # up until 0.8, this was ordering by a new subquery.
@@ -3360,7 +3360,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             select([func.sum(b_table.c.value)])
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
-            .as_scalar()
+            .scalar_subquery()
             .label("foo")
         )
         self.assert_compile(
@@ -3387,7 +3387,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             select([func.sum(b_table.c.value)])
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
-            .as_scalar()
+            .scalar_subquery()
         )
         # test a different unary operator
         self.assert_compile(
@@ -4689,7 +4689,7 @@ class SubqueryTest(fixtures.MappedTest):
                 tag_score = tag_score.label(labelname)
                 user_score = user_score.label(labelname)
             else:
-                user_score = user_score.as_scalar()
+                user_score = user_score.scalar_subquery()
 
             mapper(
                 Tag,
@@ -4798,40 +4798,28 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
         )
 
     def test_labeled_on_date_noalias(self):
-        self._do_test("label", True, False)
+        self._do_test(True, True, False)
 
     def test_scalar_on_date_noalias(self):
-        self._do_test("scalar", True, False)
-
-    def test_plain_on_date_noalias(self):
-        self._do_test("none", True, False)
+        self._do_test(False, True, False)
 
     def test_labeled_on_limitid_noalias(self):
-        self._do_test("label", False, False)
+        self._do_test(True, False, False)
 
     def test_scalar_on_limitid_noalias(self):
-        self._do_test("scalar", False, False)
-
-    def test_plain_on_limitid_noalias(self):
-        self._do_test("none", False, False)
+        self._do_test(False, False, False)
 
     def test_labeled_on_date_alias(self):
-        self._do_test("label", True, True)
+        self._do_test(True, True, True)
 
     def test_scalar_on_date_alias(self):
-        self._do_test("scalar", True, True)
-
-    def test_plain_on_date_alias(self):
-        self._do_test("none", True, True)
+        self._do_test(False, True, True)
 
     def test_labeled_on_limitid_alias(self):
-        self._do_test("label", False, True)
+        self._do_test(True, False, True)
 
     def test_scalar_on_limitid_alias(self):
-        self._do_test("scalar", False, True)
-
-    def test_plain_on_limitid_alias(self):
-        self._do_test("none", False, True)
+        self._do_test(False, False, True)
 
     def _do_test(self, labeled, ondate, aliasstuff):
         stuff, users = self.tables.stuff, self.tables.users
@@ -4843,7 +4831,6 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             pass
 
         mapper(Stuff, stuff)
-
         if aliasstuff:
             salias = stuff.alias()
         else:
@@ -4879,11 +4866,11 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
         else:
             operator = operators.eq
 
-        if labeled == "label":
+        if labeled:
             stuff_view = stuff_view.label("foo")
             operator = operators.eq
-        elif labeled == "scalar":
-            stuff_view = stuff_view.as_scalar()
+        else:
+            stuff_view = stuff_view.scalar_subquery()
 
         if ondate:
             mapper(

@@ -564,7 +564,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_scalar_subquery(self):
         t = text("select id from user").columns(id=Integer)
-        subq = t.as_scalar()
+        subq = t.scalar_subquery()
 
         assert subq.type._type_affinity is Integer()._type_affinity
 

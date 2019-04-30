@@ -344,8 +344,8 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Only direct column-mapped property or "
-            "SQL expression can be passed for polymorphic_on",
+            r"Column expression or string key expected for argument "
+            r"'polymorphic_on'; got .*function",
             go,
         )
 

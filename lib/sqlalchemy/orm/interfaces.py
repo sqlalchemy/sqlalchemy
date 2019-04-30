@@ -35,6 +35,7 @@ from .base import MANYTOONE
 from .base import NOT_EXTENSION
 from .base import ONETOMANY
 from .. import inspect
+from .. import inspection
 from .. import util
 from ..sql import operators
 
@@ -270,6 +271,7 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
         )
 
 
+@inspection._self_inspects
 class PropComparator(operators.ColumnOperators):
     r"""Defines SQL operators for :class:`.MapperProperty` objects.
 
