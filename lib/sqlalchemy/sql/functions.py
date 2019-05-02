@@ -603,7 +603,17 @@ class _GenericMeta(VisitableType):
             # legacy
             if "__return_type__" in clsdict:
                 cls.type = clsdict["__return_type__"]
-            register_function(identifier, cls, package)
+
+            # Check _register attribute status
+            cls._register = getattr(cls, '_register', True)
+
+            # Register the function if required
+            if cls._register:
+                register_function(identifier, cls, package)
+            else:
+                # Set _register to True to register child classes by default
+                cls._register = True
+
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
@@ -671,6 +681,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     """
 
     coerce_arguments = True
+    _register = False
 
     def __init__(self, *args, **kwargs):
         parsed_args = kwargs.pop("_parsed_args", None)

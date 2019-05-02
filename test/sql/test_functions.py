@@ -1075,3 +1075,43 @@ def exec_sorted(statement, *args, **kw):
     return sorted(
         [tuple(row) for row in statement.execute(*args, **kw).fetchall()]
     )
+
+
+class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def setup(self):
+        self._registry = deepcopy(functions._registry)
+
+    def teardown(self):
+        functions._registry = self._registry
+
+    def test_GenericFunction_is_registered(self):
+        assert 'GenericFunction' not in functions._registry['_default']
+
+    def test_register_function(self):
+
+            # test generic function registering
+            class registered_func(GenericFunction):
+                _register = True
+
+                def __init__(self, *args, **kwargs):
+                    GenericFunction.__init__(self, *args, **kwargs)
+
+            class registered_func_child(registered_func):
+                type = sqltypes.Integer
+
+            assert 'registered_func' in functions._registry['_default']
+            assert isinstance(func.registered_func_child().type, Integer)
+
+            class not_registered_func(GenericFunction):
+                _register = False
+
+                def __init__(self, *args, **kwargs):
+                    GenericFunction.__init__(self, *args, **kwargs)
+
+            class not_registered_func_child(not_registered_func):
+                type = sqltypes.Integer
+
+            assert 'not_registered_func' not in functions._registry['_default']
+            assert isinstance(func.not_registered_func_child().type, Integer)
