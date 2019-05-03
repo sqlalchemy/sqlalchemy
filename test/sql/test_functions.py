@@ -1091,27 +1091,27 @@ class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_register_function(self):
 
-            # test generic function registering
-            class registered_func(GenericFunction):
-                _register = True
+        # test generic function registering
+        class registered_func(GenericFunction):
+            _register = True
 
-                def __init__(self, *args, **kwargs):
-                    GenericFunction.__init__(self, *args, **kwargs)
+            def __init__(self, *args, **kwargs):
+                GenericFunction.__init__(self, *args, **kwargs)
 
-            class registered_func_child(registered_func):
-                type = sqltypes.Integer
+        class registered_func_child(registered_func):
+            type = sqltypes.Integer
 
-            assert 'registered_func' in functions._registry['_default']
-            assert isinstance(func.registered_func_child().type, Integer)
+        assert 'registered_func' in functions._registry['_default']
+        assert isinstance(func.registered_func_child().type, Integer)
 
-            class not_registered_func(GenericFunction):
-                _register = False
+        class not_registered_func(GenericFunction):
+            _register = False
 
-                def __init__(self, *args, **kwargs):
-                    GenericFunction.__init__(self, *args, **kwargs)
+            def __init__(self, *args, **kwargs):
+                GenericFunction.__init__(self, *args, **kwargs)
 
-            class not_registered_func_child(not_registered_func):
-                type = sqltypes.Integer
+        class not_registered_func_child(not_registered_func):
+            type = sqltypes.Integer
 
-            assert 'not_registered_func' not in functions._registry['_default']
-            assert isinstance(func.not_registered_func_child().type, Integer)
+        assert 'not_registered_func' not in functions._registry['_default']
+        assert isinstance(func.not_registered_func_child().type, Integer)
