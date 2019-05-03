@@ -1693,6 +1693,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         elif isinstance(constraint, sa_schema.UniqueConstraint):
             qual = "INDEX "
             const = self.preparer.format_constraint(constraint)
+        elif isinstance(constraint, sa_schema.CheckConstraint):
+            qual = "CHECK "
+            if self.dialect._is_mariadb:
+                qual = "CONSTRAINT "
+            const = self.preparer.format_constraint(constraint)
         else:
             qual = ""
             const = self.preparer.format_constraint(constraint)
@@ -2387,7 +2392,8 @@ class MySQLDialect(default.DefaultDialect):
 
     @property
     def _is_mariadb(self):
-        return "MariaDB" in self.server_version_info
+        return self.server_version_info\
+            and "MariaDB" in self.server_version_info
 
     @property
     def _is_mysql(self):
