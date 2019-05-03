@@ -1335,6 +1335,7 @@ def _emit_delete_statements(
 
         if (
             base_mapper.confirm_deleted_rows
+            and connection.dialect.supports_sane_multi_rowcount
             and rows_matched > -1
             and expected != rows_matched
         ):

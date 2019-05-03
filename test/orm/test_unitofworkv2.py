@@ -1758,6 +1758,24 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             sess.flush,
         )
 
+    def test_delete_multi_broken_multi_rowcount(self):
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        p2 = Parent(id=2, data=3, child=None)
+        sess.add_all([p1, p2])
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+        sess.delete(p1)
+        sess.delete(p2)
+
+        with patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            # no warning
+            sess.flush()
+
     def test_delete_multi_missing_allow(self):
         Parent, Child = self._fixture(confirm_deleted_rows=False)
         sess = Session()
