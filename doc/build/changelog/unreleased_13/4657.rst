@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, mssql
+    :tickets: 4657
+
+    Added support for SQL Server filtered indexes, via the ``mssql_where``
+    parameter which works similarly to that of the ``postgresql_where`` index
+    function in the PostgreSQL dialect.
+
+    .. seealso::
+
+        :ref:`mssql_index_where`
