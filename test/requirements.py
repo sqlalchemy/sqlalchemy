@@ -52,7 +52,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must also enforce check constraints."""
 
         return self.check_constraints + fails_on(
-            self._mysql_not_mariadb_102,
+            self._mysql_check_constraints_dont_exist,
             "check constraints don't enforce on MySQL, MariaDB<10.2",
         )
 
@@ -457,7 +457,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def check_constraint_reflection(self):
         return fails_on_everything_except(
-            "postgresql", "sqlite", "oracle", self._mariadb_102
+            "postgresql",
+            "sqlite",
+            "oracle",
+            self._mysql_and_check_constraints_exist,
         )
 
     @property
@@ -1310,6 +1313,33 @@ class DefaultRequirements(SuiteRequirements):
             and config.db.dialect._is_mariadb
             and config.db.dialect._mariadb_normalized_version_info > (10, 2)
         )
+
+    def _mysql_and_check_constraints_exist(self, config):
+        # 1. we have mysql / mariadb and
+        # 2. it enforces check constraints
+        if exclusions.against(config, "mysql"):
+            if config.db.dialect._is_mariadb:
+                norm_version_info = (
+                    config.db.dialect._mariadb_normalized_version_info
+                )
+                return norm_version_info >= (10, 2)
+            else:
+                norm_version_info = config.db.dialect.server_version_info
+                return norm_version_info >= (8, 0, 16)
+        else:
+            return False
+
+    def _mysql_check_constraints_exist(self, config):
+        # 1. we dont have mysql / mariadb or
+        # 2. we have mysql / mariadb that enforces check constraints
+        return not exclusions.against(
+            config, "mysql"
+        ) or self._mysql_and_check_constraints_exist(config)
+
+    def _mysql_check_constraints_dont_exist(self, config):
+        # 1. we have mysql / mariadb and
+        # 2. they dont enforce check constraints
+        return not self._mysql_check_constraints_exist(config)
 
     def _mysql_not_mariadb_102(self, config):
         return against(config, "mysql") and (

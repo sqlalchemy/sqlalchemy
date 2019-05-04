@@ -2610,7 +2610,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_check_constraints(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(
             connection, table_name, schema, **kw
         )

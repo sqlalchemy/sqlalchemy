@@ -1388,7 +1388,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             if isinstance(const, sa.CheckConstraint)
         ][0]
 
-        eq_regex(ck.sqltext.text, r".?q.? > 10")
+        eq_regex(ck.sqltext.text, r"[\(`]*q[\)`]* > 10")
         eq_(ck.name, "ck1")
 
     @testing.provide_metadata
