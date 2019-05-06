@@ -1,0 +1,7 @@
+.. change::
+   :tags: bug, orm, postgresql
+   :tickets: 4663
+
+   Added additional rollback during engine creation for postgresql
+   engines that prevents the first connection starting having an
+   implicit transaction created earlier than usual.

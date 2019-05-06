@@ -312,8 +312,6 @@ class DefaultDialect(interfaces.Dialect):
         ):
             self._description_decoder = self.description_encoding = None
 
-        self.do_rollback(connection.connection)
-
     def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 

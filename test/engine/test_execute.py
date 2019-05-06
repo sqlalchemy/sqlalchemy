@@ -660,6 +660,15 @@ class ExecuteTest(fixtures.TestBase):
         eq_(conn._execution_options, {"autocommit": True})
         conn.close()
 
+    def test_initialize_rollback(self):
+        """test a rollback happens during first connect"""
+        eng = create_engine(testing.db.url)
+        with patch.object(eng.dialect, "do_rollback") as do_rollback:
+            assert do_rollback.call_count == 0
+            connection = eng.connect()
+            assert do_rollback.call_count == 1
+        connection.close()
+
     @testing.requires.ad_hoc_engines
     def test_dialect_init_uses_options(self):
         eng = create_engine(testing.db.url)

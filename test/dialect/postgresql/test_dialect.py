@@ -500,6 +500,12 @@ class MiscBackendTest(
                 "c %s NOT NULL" % expected,
             )
 
+    def test_initial_transaction_state(self):
+        from psycopg2.extensions import STATUS_IN_TRANSACTION
+        engine = engines.testing_engine()
+        with engine.connect() as conn:
+            assert conn.connection.status != STATUS_IN_TRANSACTION
+
 
 class AutocommitTextTest(test_execute.AutocommitTextTest):
     __only_on__ = "postgresql"
