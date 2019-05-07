@@ -1,0 +1,8 @@
+.. change::
+   :tags: bug, postgresql, orm
+   :tickets: 4661
+
+   Fixed an issue where the "number of rows matched" warning would emit even if
+   the dialect reported "supports_sane_multi_rowcount=False", as is the case
+   for psycogp2 with ``use_batch_mode=True`` and others.
+
