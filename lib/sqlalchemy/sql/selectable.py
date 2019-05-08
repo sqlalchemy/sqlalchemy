@@ -165,6 +165,9 @@ class HasPrefixes(object):
 
             stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
 
+            # MySQL 5.7 optimizer hints
+            stmt = select([table]).prefix_with("/*+ BKA(t1) */", dialect="mysql")
+
         Multiple prefixes can be specified by multiple calls
         to :meth:`.prefix_with`.
 
@@ -3151,6 +3154,10 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         .. seealso::
 
             :meth:`.Select.with_hint`
+
+            :meth:.`.Select.prefix_with` - generic SELECT prefixing which also
+            can suit some database-specific HINT syntaxes such as MySQL
+            optimizer hints
 
         """
         return self.with_hint(None, text, dialect_name)
