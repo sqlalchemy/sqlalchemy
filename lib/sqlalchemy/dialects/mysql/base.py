@@ -323,13 +323,21 @@ available.
 * INSERT..ON DUPLICATE KEY UPDATE:  See
   :ref:`mysql_insert_on_duplicate_key_update`
 
-* SELECT pragma::
+* SELECT pragma, use :meth:`.Select.prefix_with` and :meth:`.Query.prefix_with`::
 
-    select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
+    select(...).prefix_with(['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
 
 * UPDATE with LIMIT::
 
     update(..., mysql_limit=10)
+
+* optimizer hints, use :meth:`.Select.prefix_with` and :meth:`.Query.prefix_with`::
+
+    select(...).prefix_with("/*+ NO_RANGE_OPTIMIZATION(t4 PRIMARY) */")
+
+* index hints, use :meth:`.Select.with_hint` and :meth:`.Query.with_hint`::
+
+    select(...).with_hint(some_table, "USE INDEX xyz")
 
 .. _mysql_insert_on_duplicate_key_update:
 
