@@ -39,6 +39,7 @@ from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.testing.mock import Mock
 from ...engine import test_execute
 
@@ -499,6 +500,14 @@ class MiscBackendTest(
                 ddl_compiler.get_column_specification(t.c.c),
                 "c %s NOT NULL" % expected,
             )
+
+    @testing.requires.psycopg2_compatibility
+    def test_initial_transaction_state(self):
+        from psycopg2.extensions import STATUS_IN_TRANSACTION
+
+        engine = engines.testing_engine()
+        with engine.connect() as conn:
+            ne_(conn.connection.status, STATUS_IN_TRANSACTION)
 
 
 class AutocommitTextTest(test_execute.AutocommitTextTest):
