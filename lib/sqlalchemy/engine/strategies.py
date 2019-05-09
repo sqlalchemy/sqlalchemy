@@ -197,6 +197,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 )
                 c._execution_options = util.immutabledict()
                 dialect.initialize(c)
+                dialect.do_rollback(c.connection)
 
             event.listen(pool, "first_connect", first_connect, once=True)
 
