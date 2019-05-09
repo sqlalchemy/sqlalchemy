@@ -6,7 +6,7 @@ Developing new Dialects
 
    When studying this file, it's probably a good idea to also
    familiarize with the  README.unittests.rst file, which discusses
-   SQLAlchemy's usage and extension of the Nose test runner.
+   SQLAlchemy's usage and extension of the py.test test runner.
 
 While SQLAlchemy includes many dialects within the core distribution, the
 trend for new dialects should be that they are published as external
@@ -24,8 +24,6 @@ be viewed as the primary target for new dialects, and as it continues
 to grow and mature it should become a more thorough and efficient system
 of testing new dialects.
 
-As of SQLAlchemy 0.9.4, both nose and pytest are supported for running tests,
-and pytest is now preferred.
 
 Dialect Layout
 ===============
@@ -70,7 +68,7 @@ Key aspects of this file layout include:
     create_engine("access+pyodbc://user:pw@dsn")
 
 * setup.cfg - this file contains the traditional contents such as [egg_info],
-  [pytest] and [nosetests] directives, but also contains new directives that are used
+  and [tool:pytest] directives, but also contains new directives that are used
   by SQLAlchemy's testing framework.  E.g. for Access::
 
     [egg_info]
@@ -90,10 +88,8 @@ Key aspects of this file layout include:
 
   Above, the ``[sqla_testing]`` section contains configuration used by
   SQLAlchemy's test plugin.  The ``[tool:pytest]`` section
-  include directives to help with these runners; in the case of
-  Nose, the directive ``with-sql_testing = true``, which indicates to Nose that
-  the SQLAlchemy nose plugin should be used.  In the case of pytest, the
-  test/conftest.py file will bootstrap SQLAlchemy's plugin.
+  include directives to help with these runners.  When using pytest
+  the test/conftest.py file will bootstrap SQLAlchemy's plugin.
 
 * test/conftest.py - This script bootstraps SQLAlchemy's pytest plugin
   into the pytest runner.  This
@@ -155,8 +151,7 @@ Key aspects of this file layout include:
   The requirements system can also be used when running SQLAlchemy's
   primary test suite against the external dialect.  In this use case,
   a ``--dburi`` as well as a ``--requirements`` flag are passed to SQLAlchemy's
-  main test runner ``./sqla_nose.py`` so that exclusions specific to the
-  dialect take place::
+  test runner so that exclusions specific to the dialect take place::
 
     cd /path/to/sqlalchemy
     py.test -v \
