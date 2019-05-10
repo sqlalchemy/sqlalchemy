@@ -278,7 +278,8 @@ class HasPrefixes(object):
             stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
 
             # MySQL 5.7 optimizer hints
-            stmt = select([table]).prefix_with("/*+ BKA(t1) */", dialect="mysql")
+            stmt = select([table]).prefix_with(
+                "/*+ BKA(t1) */", dialect="mysql")
 
         Multiple prefixes can be specified by multiple calls
         to :meth:`.prefix_with`.
