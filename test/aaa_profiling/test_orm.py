@@ -1015,7 +1015,9 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         Table(
             "a",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("data", String(50)),
         )
 
