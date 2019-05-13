@@ -206,7 +206,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         return self._as_instance(class_, obj).delete(obj)
 
     def for_class(self, class_, obj=None):
-        """Return the internal state local to a specific mapped class.
+        r"""Return the internal state local to a specific mapped class.
 
         E.g., given a class ``User``::
 
@@ -225,7 +225,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         is specific to the ``User`` class.   The :class:`.AssociationProxy`
         object remains agnostic of its parent class.
 
-        :param class_: the class that we are returning state for.
+        :param class\_: the class that we are returning state for.
 
         :param obj: optional, an instance of the class that is required
          if the attribute refers to a polymorphic target, e.g. where we have
