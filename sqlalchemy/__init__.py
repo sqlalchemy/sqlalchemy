@@ -126,7 +126,11 @@ from .engine import engine_from_config  # noqa nosort
 from .engine import create_mock_engine  # noqa nosort
 
 
+<<<<<<< HEAD:sqlalchemy/__init__.py
 __version__ = "2.0.0b1"
+=======
+__version__ = "1.3.4"
+>>>>>>> b26642e2364836fe9a8ee25c1cf4551901ce0c37:lib/sqlalchemy/__init__.py
 
 
 def __go(lcls):

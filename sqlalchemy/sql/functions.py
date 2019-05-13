@@ -49,6 +49,14 @@ def register_function(identifier, fn, package="_default"):
 
     """
     reg = _registry[package]
+    raw_identifier = identifier
+    identifier = identifier.lower()
+
+    # Check if a function with the same identifier is registered.
+    if identifier in reg:
+        util.warn(
+            "The GenericFunction '{}' is already registered and "
+            "is going to be overriden.".format(identifier))
     reg[identifier] = fn
 
 
@@ -74,7 +82,9 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def __init__(self, *clauses, **kwargs):
         """Construct a :class:`.FunctionElement`.
         """
-        args = [_literal_as_binds(c, self.name) for c in clauses]
+        args = [
+            _literal_as_binds(c, getattr(self, "name", None)) for c in clauses
+        ]
         self._has_args = self._has_args or bool(args)
         self.clause_expr = ClauseList(
             operator=operators.comma_op, group_contents=True, *args
@@ -254,6 +264,9 @@ class FunctionElement(Executable, ColumnElement, FromClause):
     def get_children(self, **kwargs):
         return (self.clause_expr,)
 
+    def _cache_key(self, **kw):
+        return (FunctionElement, self.clause_expr._cache_key(**kw))
+
     def _copy_internals(self, clone=_clone, **kw):
         self.clause_expr = clone(self.clause_expr, **kw)
         self._reset_exported()
@@ -376,12 +389,11 @@ class FunctionAsBinary(BinaryExpression):
         self.left_index = left_index
         self.right_index = right_index
 
-        super(FunctionAsBinary, self).__init__(
-            left,
-            right,
-            operators.function_as_comparison_op,
-            type_=sqltypes.BOOLEANTYPE,
-        )
+        self.operator = operators.function_as_comparison_op
+        self.type = sqltypes.BOOLEANTYPE
+        self.negate = None
+        self._is_implicitly_boolean = True
+        self.modifiers = {}
 
     @property
     def left(self):
@@ -399,10 +411,19 @@ class FunctionAsBinary(BinaryExpression):
     def right(self, value):
         self.sql_function.clauses.clauses[self.right_index - 1] = value
 
-    def _copy_internals(self, **kw):
-        clone = kw.pop("clone")
+    def _copy_internals(self, clone=_clone, **kw):
         self.sql_function = clone(self.sql_function, **kw)
-        super(FunctionAsBinary, self)._copy_internals(**kw)
+
+    def get_children(self, **kw):
+        yield self.sql_function
+
+    def _cache_key(self, **kw):
+        return (
+            FunctionAsBinary,
+            self.sql_function._cache_key(**kw),
+            self.left_index,
+            self.right_index,
+        )
 
 
 class _FunctionGenerator(object):
@@ -440,7 +461,8 @@ class _FunctionGenerator(object):
             package = None
 
         if package is not None:
-            func = _registry[package].get(fname)
+            func = _registry[package].get(fname.lower())
+
             if func is not None:
                 return func(*c, **o)
 
@@ -564,6 +586,13 @@ class Function(FunctionElement):
             unique=True,
         )
 
+    def _cache_key(self, **kw):
+        return (
+            (Function,) + tuple(self.packagenames)
+            if self.packagenames
+            else () + (self.name, self.clause_expr._cache_key(**kw))
+        )
+
 
 class _GenericMeta(VisitableType):
     def __init__(cls, clsname, bases, clsdict):
@@ -574,7 +603,17 @@ class _GenericMeta(VisitableType):
             # legacy
             if "__return_type__" in clsdict:
                 cls.type = clsdict["__return_type__"]
-            register_function(identifier, cls, package)
+
+            # Check _register attribute status
+            cls._register = getattr(cls, '_register', True)
+
+            # Register the function if required
+            if cls._register:
+                register_function(identifier, cls, package)
+            else:
+                # Set _register to True to register child classes by default
+                cls._register = True
+
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
@@ -642,6 +681,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     """
 
     coerce_arguments = True
+    _register = False
 
     def __init__(self, *args, **kwargs):
         parsed_args = kwargs.pop("_parsed_args", None)
@@ -681,6 +721,21 @@ class next_value(GenericFunction):
         ), "next_value() accepts a Sequence object as input."
         self._bind = kw.get("bind", None)
         self.sequence = seq
+
+    def _cache_key(self, **kw):
+        return (next_value, self.sequence.name)
+
+    def compare(self, other, **kw):
+        return (
+            isinstance(other, next_value)
+            and self.sequence.name == other.sequence.name
+        )
+
+    def get_children(self, **kwargs):
+        return []
+
+    def _copy_internals(self, **kw):
+        pass
 
     @property
     def _from_objects(self):

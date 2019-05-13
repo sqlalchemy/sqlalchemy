@@ -1,3 +1,4 @@
+from copy import deepcopy
 import datetime
 import decimal
 
@@ -39,6 +40,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.engines import all_dialects
 
 
@@ -53,8 +55,11 @@ table1 = table(
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def tear_down(self):
-        functions._registry.clear()
+    def setup(self):
+        self._registry = deepcopy(functions._registry)
+
+    def teardown(self):
+        functions._registry = self._registry
 
     def test_compile(self):
         for dialect in all_dialects(exclude=("sybase",)):
@@ -87,6 +92,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 dialect=dialect,
             )
 
+            functions._registry['_default'].pop('fake_func')
+
     def test_use_labels(self):
         self.assert_compile(
             select([func.foo()], use_labels=True), "SELECT foo() AS foo_1"
@@ -100,7 +107,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_uppercase(self):
         # for now, we need to keep case insensitivity
-        self.assert_compile(func.NOW(), "NOW()")
+        self.assert_compile(func.UNREGISTERED_FN(), "UNREGISTERED_FN()")
 
     def test_uppercase_packages(self):
         # for now, we need to keep case insensitivity
@@ -219,6 +226,59 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert isinstance(func.myfunc().type, DateTime)
 
+    def test_case_sensitive(self):
+        class MYFUNC(GenericFunction):
+            type = DateTime
+
+        assert isinstance(func.MYFUNC().type, DateTime)
+        assert isinstance(func.MyFunc().type, DateTime)
+        assert isinstance(func.mYfUnC().type, DateTime)
+        assert isinstance(func.myfunc().type, DateTime)
+
+    def test_replace_function(self):
+        class replaceable_func(GenericFunction):
+            type = Integer
+            identifier = 'replaceable_func'
+
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
+        assert isinstance(func.replaceable_func().type, Integer)
+
+        with expect_warnings(
+            "The GenericFunction 'replaceable_func' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
+            class replaceable_func_override(GenericFunction):
+                type = DateTime
+                identifier = 'replaceable_func'
+
+        assert isinstance(func.Replaceable_Func().type, DateTime)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, DateTime)
+        assert isinstance(func.replaceable_func().type, DateTime)
+
+    def test_replace_function_case_insensitive(self):
+        class replaceable_func(GenericFunction):
+            type = Integer
+            identifier = 'replaceable_func'
+
+        assert isinstance(func.Replaceable_Func().type, Integer)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
+        assert isinstance(func.replaceable_func().type, Integer)
+
+        with expect_warnings(
+            "The GenericFunction 'replaceable_func' is already registered and "
+            "is going to be overriden.",
+            regex=False
+        ):
+            class replaceable_func_override(GenericFunction):
+                type = DateTime
+                identifier = 'REPLACEABLE_Func'
+
+        assert isinstance(func.Replaceable_Func().type, DateTime)
+        assert isinstance(func.RePlAcEaBlE_fUnC().type, DateTime)
+        assert isinstance(func.replaceable_func().type, DateTime)
+
     def test_custom_w_custom_name(self):
         class myfunc(GenericFunction):
             name = "notmyfunc"
@@ -267,9 +327,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             type = Integer
             identifier = "buf3"
 
+        class GeoBufferFour(GenericFunction):
+            type = Integer
+            name = "BufferFour"
+            identifier = "Buf4"
+
         self.assert_compile(func.geo.buf1(), "BufferOne()")
         self.assert_compile(func.buf2(), "BufferTwo()")
         self.assert_compile(func.buf3(), "BufferThree()")
+        self.assert_compile(func.Buf4(), "BufferFour()")
+        self.assert_compile(func.BuF4(), "BufferFour()")
+        self.assert_compile(func.bUf4(), "BufferFour()")
+        self.assert_compile(func.bUf4_(), "BufferFour()")
+        self.assert_compile(func.buf4(), "BufferFour()")
 
     def test_custom_args(self):
         class myfunc(GenericFunction):
@@ -1005,3 +1075,43 @@ def exec_sorted(statement, *args, **kw):
     return sorted(
         [tuple(row) for row in statement.execute(*args, **kw).fetchall()]
     )
+
+
+class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def setup(self):
+        self._registry = deepcopy(functions._registry)
+
+    def teardown(self):
+        functions._registry = self._registry
+
+    def test_GenericFunction_is_registered(self):
+        assert 'GenericFunction' not in functions._registry['_default']
+
+    def test_register_function(self):
+
+        # test generic function registering
+        class registered_func(GenericFunction):
+            _register = True
+
+            def __init__(self, *args, **kwargs):
+                GenericFunction.__init__(self, *args, **kwargs)
+
+        class registered_func_child(registered_func):
+            type = sqltypes.Integer
+
+        assert 'registered_func' in functions._registry['_default']
+        assert isinstance(func.registered_func_child().type, Integer)
+
+        class not_registered_func(GenericFunction):
+            _register = False
+
+            def __init__(self, *args, **kwargs):
+                GenericFunction.__init__(self, *args, **kwargs)
+
+        class not_registered_func_child(not_registered_func):
+            type = sqltypes.Integer
+
+        assert 'not_registered_func' not in functions._registry['_default']
+        assert isinstance(func.not_registered_func_child().type, Integer)

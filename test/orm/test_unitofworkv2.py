@@ -1569,6 +1569,8 @@ class RowswitchM2OTest(fixtures.MappedTest):
 
 
 class BasicStaleChecksTest(fixtures.MappedTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1757,6 +1759,93 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             r"delete 2 row\(s\); 0 were matched.",
             sess.flush,
         )
+
+    def test_update_single_broken_multi_rowcount_still_raises(self):
+        # raise occurs for single row UPDATE that misses even if
+        # supports_sane_multi_rowcount is False
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        sess.add(p1)
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+        p1.data = 3
+
+        with patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            assert_raises_message(
+                orm_exc.StaleDataError,
+                r"UPDATE statement on table 'parent' expected to "
+                r"update 1 row\(s\); 0 were matched.",
+                sess.flush,
+            )
+
+    def test_update_multi_broken_multi_rowcount_doesnt_raise(self):
+        # raise does not occur for multirow UPDATE that misses if
+        # supports_sane_multi_rowcount is False, even if rowcount is still
+        # correct
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        p2 = Parent(id=2, data=3, child=None)
+        sess.add_all([p1, p2])
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+        p1.data = 3
+        p2.data = 4
+
+        with patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            # no raise
+            sess.flush()
+
+    def test_delete_single_broken_multi_rowcount_still_warns(self):
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        sess.add(p1)
+        sess.flush()
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+        sess.delete(p1)
+
+        # only one row, so it warns
+        with patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            assert_raises_message(
+                exc.SAWarning,
+                r"DELETE statement on table 'parent' expected to "
+                r"delete 1 row\(s\); 0 were matched.",
+                sess.flush,
+            )
+
+    def test_delete_multi_broken_multi_rowcount_doesnt_warn(self):
+        Parent, Child = self._fixture()
+        sess = Session()
+        p1 = Parent(id=1, data=2, child=None)
+        p2 = Parent(id=2, data=3, child=None)
+        sess.add_all([p1, p2])
+        sess.flush()
+
+        sess.execute(self.tables.parent.delete())
+        sess.delete(p1)
+        sess.delete(p2)
+
+        # if the dialect reports supports_sane_multi_rowcount as false,
+        # if there were more than one row deleted, need to ensure the
+        # rowcount result is ignored.  psycopg2 + batch mode reports the
+        # wrong number, not -1. see issue #4661
+        with patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            # no warning
+            sess.flush()
 
     def test_delete_multi_missing_allow(self):
         Parent, Child = self._fixture(confirm_deleted_rows=False)

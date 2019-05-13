@@ -540,6 +540,20 @@ names::
 
 would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
 
+.. _mssql_index_where:
+
+Filtered Indexes
+^^^^^^^^^^^^^^^^
+
+The ``mssql_where`` option renders WHERE(condition) for the given string
+names::
+
+    Index("my_index", table.c.x, mssql_where=table.c.x > 10)
+
+would render the index as ``CREATE INDEX my_index ON table (x) WHERE x > 10``.
+
+.. versionadded:: 1.3.4
+
 Index ordering
 ^^^^^^^^^^^^^^
 
@@ -1950,6 +1964,14 @@ class MSDDLCompiler(compiler.DDLCompiler):
             ),
         )
 
+        whereclause = index.dialect_options["mssql"]["where"]
+
+        if whereclause is not None:
+            where_compiled = self.sql_compiler.process(
+                whereclause, include_table=False, literal_binds=True
+            )
+            text += " WHERE " + where_compiled
+
         # handle other included columns
         if index.dialect_options["mssql"]["include"]:
             inclusions = [
@@ -2182,7 +2204,7 @@ class MSDialect(default.DefaultDialect):
     construct_arguments = [
         (sa_schema.PrimaryKeyConstraint, {"clustered": None}),
         (sa_schema.UniqueConstraint, {"clustered": None}),
-        (sa_schema.Index, {"clustered": None, "include": None}),
+        (sa_schema.Index, {"clustered": None, "include": None, "where": None}),
         (sa_schema.Column, {"identity_start": 1, "identity_increment": 1}),
     ]
 

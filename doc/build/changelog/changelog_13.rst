@@ -11,8 +11,93 @@
         :start-line: 5
 
 .. changelog::
-    :version: 1.3.3
+    :version: 1.3.4
     :include_notes_from: unreleased_13
+
+.. changelog::
+    :version: 1.3.3
+    :released: April 15, 2019
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4601
+
+        Fixed regression from release 1.3.2 caused by :ticket:`4562` where a URL
+        that contained only a query string and no hostname, such as for the
+        purposes of specifying a service file with connection information, would no
+        longer be propagated to psycopg2 properly.   The change in :ticket:`4562`
+        has been adjusted to further suit psycopg2's exact requirements, which is
+        that if there are any connection parameters whatsoever, the "dsn" parameter
+        is no longer required, so in this case the query string parameters are
+        passed alone.
+
+    .. change::
+       :tags: bug, pool
+       :tickets: 4585
+
+       Fixed behavioral regression as a result of deprecating the "use_threadlocal"
+       flag for :class:`.Pool`, where the :class:`.SingletonThreadPool` no longer
+       makes use of this option which causes the "rollback on return" logic to take
+       place when the same :class:`.Engine` is used multiple times in the context
+       of a transaction to connect or implicitly execute, thereby cancelling the
+       transaction.   While this is not the recommended way to work with engines
+       and connections, it is nonetheless a confusing behavioral change as when
+       using :class:`.SingletonThreadPool`, the transaction should stay open
+       regardless of what else is done with the same engine in the same thread.
+       The ``use_threadlocal`` flag remains deprecated however the
+       :class:`.SingletonThreadPool` now implements its own version of the same
+       logic.
+
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4584
+
+       Fixed 1.3 regression in new "ambiguous FROMs" query logic introduced in
+       :ref:`change_4365` where a :class:`.Query` that explicitly places an entity
+       in the FROM clause with :meth:`.Query.select_from` and also joins to it
+       using :meth:`.Query.join` would later cause an "ambiguous FROM" error if
+       that entity were used in additional joins, as the entity appears twice in
+       the "from" list of the :class:`.Query`.  The fix resolves this ambiguity by
+       folding the standalone entity into the join that it's already a part of in
+       the same way that ultimately happens when the SELECT statement is rendered.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 4603
+
+        Fixed bug where using ``copy.copy()`` or ``copy.deepcopy()`` on
+        :class:`.MutableList` would cause the items within the list to be
+        duplicated, due to an inconsistency in how Python pickle and copy both make
+        use of ``__getstate__()`` and ``__setstate__()`` regarding lists.  In order
+        to resolve, a ``__reduce_ex__`` method had to be added to
+        :class:`.MutableList`.  In order to maintain backwards compatibility with
+        existing pickles based on ``__getstate__()``, the ``__setstate__()`` method
+        remains as well; the test suite asserts that pickles made against the old
+        version of the class can still be deserialized by the pickle module.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4606
+
+       Adjusted the :meth:`.Query.filter_by` method to not call :func:`.and()`
+       internally against multiple criteria, instead passing it off to
+       :meth:`.Query.filter` as a series of criteria, instead of a single criteria.
+       This allows :meth:`.Query.filter_by` to defer to :meth:`.Query.filter`'s
+       treatment of variable numbers of clauses, including the case where the list
+       is empty.  In this case, the :class:`.Query` object will not have a
+       ``.whereclause``, which allows subsequent "no whereclause" methods like
+       :meth:`.Query.select_from` to behave consistently.
+
+    .. change::
+       :tags: bug, mssql
+       :tickets: 4587
+
+       Fixed issue in SQL Server dialect where if a bound parameter were present in
+       an ORDER BY expression that would ultimately not be rendered in the SQL
+       Server version of the statement, the parameters would still be part of the
+       execution parameters, leading to DBAPI-level errors.  Pull request courtesy
+       Matt Lewellyn.
 
 .. changelog::
     :version: 1.3.2

@@ -1301,15 +1301,11 @@ def _emit_delete_statements(
         expected = len(del_objects)
         rows_matched = -1
         only_warn = False
-        if connection.dialect.supports_sane_multi_rowcount:
-            c = connection.execute(statement, del_objects)
 
-            if not need_version_id:
-                only_warn = True
-
-            rows_matched = c.rowcount
-
-        elif need_version_id:
+        if (
+            need_version_id
+            and not connection.dialect.supports_sane_multi_rowcount
+        ):
             if connection.dialect.supports_sane_rowcount:
                 rows_matched = 0
                 # execute deletes individually so that versioned
@@ -1337,7 +1333,13 @@ def _emit_delete_statements(
             base_mapper.confirm_deleted_rows
             and rows_matched > -1
             and expected != rows_matched
+            and (
+                connection.dialect.supports_sane_multi_rowcount
+                or len(del_objects) == 1
+            )
         ):
+            # TODO: why does this "only warn" if versioning is turned off,
+            # whereas the UPDATE raises?
             if only_warn:
                 util.warn(
                     "DELETE statement on table '%s' expected to "

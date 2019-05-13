@@ -433,10 +433,10 @@ class AssociationProxyInstance(object):
 
     @property
     def remote_attr(self):
-        """The 'remote' :class:`.MapperProperty` referenced by this
+        """The 'remote' class attribute referenced by this
         :class:`.AssociationProxyInstance`.
 
-        ..seealso::
+        .. seealso::
 
             :attr:`.AssociationProxyInstance.attr`
 
@@ -447,7 +447,7 @@ class AssociationProxyInstance(object):
 
     @property
     def local_attr(self):
-        """The 'local' :class:`.MapperProperty` referenced by this
+        """The 'local' class attribute referenced by this
         :class:`.AssociationProxyInstance`.
 
         .. seealso::

@@ -38,6 +38,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import true
 from sqlalchemy.sql.elements import _literal_as_text
+from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.expression import ClauseList
@@ -193,7 +194,13 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         assert left.comparator.operate(operators.in_op, [1, 2, 3]).compare(
             BinaryExpression(
                 left,
-                Grouping(ClauseList(literal(1), literal(2), literal(3))),
+                Grouping(
+                    ClauseList(
+                        BindParameter("left", value=1, unique=True),
+                        BindParameter("left", value=2, unique=True),
+                        BindParameter("left", value=3, unique=True),
+                    )
+                ),
                 operators.in_op,
             )
         )
@@ -204,7 +211,13 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         assert left.comparator.operate(operators.notin_op, [1, 2, 3]).compare(
             BinaryExpression(
                 left,
-                Grouping(ClauseList(literal(1), literal(2), literal(3))),
+                Grouping(
+                    ClauseList(
+                        BindParameter("left", value=1, unique=True),
+                        BindParameter("left", value=2, unique=True),
+                        BindParameter("left", value=3, unique=True),
+                    )
+                ),
                 operators.notin_op,
             )
         )
@@ -912,6 +925,14 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=self._dialect(False),
         )
 
+    def test_three_a_double(self):
+        c = column("x", Boolean)
+        self.assert_compile(
+            select([c]).where(~~c),
+            "SELECT x WHERE x = 1",
+            dialect=self._dialect(False),
+        )
+
     def test_three_b(self):
         c = column("x", Boolean)
         self.assert_compile(
@@ -925,6 +946,14 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             select([c]).where(~c),
             "SELECT x WHERE NOT x",
+            dialect=self._dialect(True),
+        )
+
+    def test_four_double(self):
+        c = column("x", Boolean)
+        self.assert_compile(
+            select([c]).where(~~c),
+            "SELECT x WHERE x",
             dialect=self._dialect(True),
         )
 

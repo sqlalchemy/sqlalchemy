@@ -26,6 +26,7 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in_
@@ -83,6 +84,36 @@ class MergeTest(_fixtures.FixtureTest):
             sess.merge(u)
 
         self.assert_sql_count(testing.db, go, 0)
+
+    def test_warn_transient_already_pending_nopk(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = create_session()
+        u = User(name="fred")
+
+        sess.add(u)
+
+        with expect_warnings(
+            "Instance <User.*> is already pending in this Session yet is "
+            "being merged again; this is probably not what you want to do"
+        ):
+            u2 = sess.merge(u)
+
+    def test_warn_transient_already_pending_pk(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = create_session()
+        u = User(id=1, name="fred")
+
+        sess.add(u)
+
+        with expect_warnings(
+            "Instance <User.*> is already pending in this Session yet is "
+            "being merged again; this is probably not what you want to do"
+        ):
+            u2 = sess.merge(u)
 
     def test_transient_to_pending_collection(self):
         User, Address, addresses, users = (

@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4618
+
+    Fixed issue where double negation of a boolean column wouldn't reset
+    the "NOT" operator.

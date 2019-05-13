@@ -50,13 +50,21 @@ Version Check
 =============
 
 
+<<<<<<< HEAD
 A quick check to verify that we are on at least **version 2.0** of SQLAlchemy:
+=======
+A quick check to verify that we are on at least **version 1.4** of SQLAlchemy:
+>>>>>>> b26642e2364836fe9a8ee25c1cf4551901ce0c37
 
 .. sourcecode:: pycon+sql
 
     >>> import sqlalchemy
     >>> sqlalchemy.__version__  # doctest: +SKIP
+<<<<<<< HEAD
     2.0.0
+=======
+    1.4.0
+>>>>>>> b26642e2364836fe9a8ee25c1cf4551901ce0c37
 
 Connecting
 ==========

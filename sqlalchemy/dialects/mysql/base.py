@@ -323,13 +323,21 @@ available.
 * INSERT..ON DUPLICATE KEY UPDATE:  See
   :ref:`mysql_insert_on_duplicate_key_update`
 
-* SELECT pragma::
+* SELECT pragma, use :meth:`.Select.prefix_with` and :meth:`.Query.prefix_with`::
 
-    select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
+    select(...).prefix_with(['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
 
 * UPDATE with LIMIT::
 
     update(..., mysql_limit=10)
+
+* optimizer hints, use :meth:`.Select.prefix_with` and :meth:`.Query.prefix_with`::
+
+    select(...).prefix_with("/*+ NO_RANGE_OPTIMIZATION(t4 PRIMARY) */")
+
+* index hints, use :meth:`.Select.with_hint` and :meth:`.Query.with_hint`::
+
+    select(...).with_hint(some_table, "USE INDEX xyz")
 
 .. _mysql_insert_on_duplicate_key_update:
 
@@ -2193,13 +2201,20 @@ class MySQLDialect(default.DefaultDialect):
         if util.py3k and isinstance(val, bytes):
             val = val.decode()
 
+        return self._parse_server_version(val)
+
+    def _parse_server_version(self, val):
         version = []
         r = re.compile(r"[.\-]")
         for n in r.split(val):
             try:
                 version.append(int(n))
             except ValueError:
-                version.append(n)
+                mariadb = re.match(r"(.*)(MariaDB)(.*)", n)
+                if mariadb:
+                    version.extend(g for g in mariadb.groups() if g)
+                else:
+                    version.append(n)
         return tuple(version)
 
     def do_commit(self, dbapi_connection):
@@ -2610,7 +2625,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_check_constraints(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(
             connection, table_name, schema, **kw
         )

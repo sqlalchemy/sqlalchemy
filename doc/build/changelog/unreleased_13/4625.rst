@@ -1,0 +1,6 @@
+.. change::
+   :tags: bug, misc
+   :tickets: 4625
+
+   Removed errant "sqla_nose.py" symbol from MANIFEST.in which created an
+   undesirable warning message.

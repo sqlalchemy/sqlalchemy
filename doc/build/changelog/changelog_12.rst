@@ -11,8 +11,64 @@
         :start-line: 5
 
 .. changelog::
-    :version: 1.2.19
+    :version: 1.2.20
     :include_notes_from: unreleased_12
+
+.. changelog::
+    :version: 1.2.19
+    :released: April 15, 2019
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4507
+
+       Fixed a regression in 1.2 due to the introduction of baked queries for
+       relationship lazy loaders, where a race condition is created during the
+       generation of the "lazy clause" which occurs within a memoized attribute. If
+       two threads initialize the memoized attribute concurrently, the baked query
+       could be generated with bind parameter keys that are then replaced with new
+       keys by the next run, leading to a lazy load query that specifies the
+       related criteria as ``None``. The fix establishes that the parameter names
+       are fixed before the new clause and parameter objects are generated, so that
+       the names are the same every time.
+
+    .. change::
+       :tags: bug, oracle
+       :tickets: 4506
+
+       Added support for reflection of the :class:`.NCHAR` datatype to the Oracle
+       dialect, and added :class:`.NCHAR` to the list of types exported by the
+       Oracle dialect.
+
+
+    .. change::
+       :tags: bug, examples
+       :tickets: 4528
+
+       Fixed bug in large_resultsets example case where a re-named "id" variable
+       due to code reformatting caused the test to fail.  Pull request courtesy
+       Matt Schuchhardt.
+
+    .. change::
+       :tags: bug, mssql
+       :tickets: 4536
+       :versions: 1.3.1
+
+       A commit() is emitted after an isolation level change to SNAPSHOT, as both
+       pyodbc and pymssql open an implicit transaction which blocks subsequent SQL
+       from being emitted in the current transaction.
+
+    .. change::
+       :tags: bug, engine
+       :tickets: 4406
+
+       Comparing two objects of :class:`.URL` using ``__eq__()`` did not take port
+       number into consideration, two objects differing only by port number were
+       considered equal. Port comparison is now added in ``__eq__()`` method of
+       :class:`.URL`, objects differing by port number are now not equal.
+       Additionally, ``__ne__()`` was not implemented for :class:`.URL` which
+       caused unexpected result when ``!=`` was used in Python2, since there are no
+       implied relationships among the comparison operators in Python2.
 
 .. changelog::
     :version: 1.2.18

@@ -1,0 +1,11 @@
+.. change::
+   :tags: bug, engine, postgresql
+   :tickets: 4663
+
+   Moved the "rollback" which occurs during dialect initialization so that it
+   occurs after additional dialect-specific initialize steps, in particular
+   those of the psycopg2 dialect which would inadvertently leave transactional
+   state on the first new connection, which could interfere with some
+   psycopg2-specific APIs which require that no transaction is started.  Pull
+   request courtesy Matthew Wilkes.
+

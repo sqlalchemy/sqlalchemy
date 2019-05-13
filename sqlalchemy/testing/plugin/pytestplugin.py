@@ -129,31 +129,35 @@ def pytest_collection_modifyitems(session, config, items):
     # it's to suit the rather odd use case here which is that we are adding
     # new classes to a module on the fly.
 
-    rebuilt_items = collections.defaultdict(list)
+    rebuilt_items = collections.defaultdict(
+        lambda: collections.defaultdict(list)
+    )
     items[:] = [
         item
         for item in items
         if isinstance(item.parent, pytest.Instance)
         and not item.parent.parent.name.startswith("_")
     ]
+
     test_classes = set(item.parent for item in items)
     for test_class in test_classes:
         for sub_cls in plugin_base.generate_sub_tests(
             test_class.cls, test_class.parent.module
         ):
             if sub_cls is not test_class.cls:
-                list_ = rebuilt_items[test_class.cls]
+                per_cls_dict = rebuilt_items[test_class.cls]
 
+                names = [i.name for i in items]
                 for inst in pytest.Class(
                     sub_cls.__name__, parent=test_class.parent.parent
                 ).collect():
-                    list_.extend(inst.collect())
+                    for t in inst.collect():
+                        per_cls_dict[t.name].append(t)
 
     newitems = []
     for item in items:
         if item.parent.cls in rebuilt_items:
-            newitems.extend(rebuilt_items[item.parent.cls])
-            rebuilt_items[item.parent.cls][:] = []
+            newitems.extend(rebuilt_items[item.parent.cls][item.name])
         else:
             newitems.append(item)
 

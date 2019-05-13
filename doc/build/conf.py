@@ -106,9 +106,15 @@ copyright = u'2007-2019, the SQLAlchemy authors and contributors'
 # built documents.
 #
 # The short X.Y version.
+<<<<<<< HEAD
 version = "2.0"
 # The full version, including alpha/beta/rc tags.
 release = "2.0.0b1"
+=======
+version = "1.4"
+# The full version, including alpha/beta/rc tags.
+release = "1.4.0b1"
+>>>>>>> b26642e2364836fe9a8ee25c1cf4551901ce0c37
 
 release_date = None
 

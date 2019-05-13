@@ -14,7 +14,11 @@ A high level view and getting set up.
 :doc:`Overview <intro>` |
 :ref:`Installation Guide <installation>` |
 :doc:`Frequently Asked Questions <faq/index>` |
+<<<<<<< HEAD
 :doc:`Migration from 1.x <changelog/migration_20>` |
+=======
+:doc:`Migration from 1.3 <changelog/migration_14>` |
+>>>>>>> b26642e2364836fe9a8ee25c1cf4551901ce0c37
 :doc:`Glossary <glossary>` |
 :doc:`Error Messages <errors>` |
 :doc:`Changelog catalog <changelog/index>`

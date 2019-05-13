@@ -294,6 +294,45 @@ Will render as::
    flag to assist in the creation of :func:`.relationship` constructs using
    custom operators.
 
+Custom operators based on SQL functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A variant to the use case for :paramref:`~.Operators.op.is_comparison` is
+when we aren't using an operator, but a SQL function.   The typical example
+of this use case is the PostgreSQL PostGIS functions however any SQL
+function on any database that resolves to a binary condition may apply.
+To suit this use case, the :meth:`.FunctionElement.as_comparison` method
+can modify any SQL function, such as those invoked from the :data:`.func`
+namespace, to indicate to the ORM that the function produces a comparison of
+two expressions.  The below example illustrates this with the
+`Geoalchemy2 <https://geoalchemy-2.readthedocs.io/>`_ library::
+
+    from geoalchemy2 import Geometry
+    from sqlalchemy import Column, Integer, func
+    from sqlalchemy.orm import relationship, foreign
+
+    class Polygon(Base):
+        __tablename__ = "polygon"
+        id = Column(Integer, primary_key=True)
+        geom = Column(Geometry("POLYGON", srid=4326))
+        points = relationship(
+            "Point",
+            primaryjoin="func.ST_Contains(foreign(Polygon.geom), Point.geom).as_comparison(1, 2)",
+            viewonly=True,
+        )
+
+    class Point(Base):
+        __tablename__ = "point"
+        id = Column(Integer, primary_key=True)
+        geom = Column(Geometry("POINT", srid=4326))
+
+Above, the :meth:`.FunctionElement.as_comparison` indicates that the
+``func.ST_Contains()`` SQL function is comparing the ``Polygon.geom`` and
+``Point.geom`` expressions. The :func:`.foreign` annotation additionally notes
+which column takes on the "foreign key" role in this particular relationship.
+
+.. versionadded:: 1.3 Added :meth:`.FunctionElement.as_comparison`.
+
 .. _relationship_overlapping_foreignkeys:
 
 Overlapping Foreign Keys
