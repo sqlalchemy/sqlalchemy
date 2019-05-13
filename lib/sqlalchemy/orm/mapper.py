@@ -1244,9 +1244,9 @@ class Mapper(InspectionAttr):
     def _configure_class_instrumentation(self):
         """If this mapper is to be a primary mapper (i.e. the
         non_primary flag is not set), associate this Mapper with the
-        given class_ and entity name.
+        given class and entity name.
 
-        Subsequent calls to ``class_mapper()`` for the class_/entity
+        Subsequent calls to ``class_mapper()`` for the ``class_`` / ``entity``
         name combination will return this mapper.  Also decorate the
         `__init__` method on the mapped class to include optional
         auto-session attachment logic.
@@ -2986,10 +2986,10 @@ class Mapper(InspectionAttr):
         return self._subclass_load_via_in(self)
 
     def cascade_iterator(self, type_, state, halt_on=None):
-        """Iterate each element and its mapper in an object graph,
+        r"""Iterate each element and its mapper in an object graph,
         for all relationships that meet the given cascade rule.
 
-        :param type_:
+        :param type\_:
           The name of the cascade rule (i.e. ``"save-update"``, ``"delete"``,
           etc.).
 
