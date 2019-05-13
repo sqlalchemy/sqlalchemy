@@ -4604,8 +4604,18 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def _fixture1(self):
-        User, Address = self.classes.User, self.classes.Address
-        users, addresses = self.tables.users, self.tables.addresses
+        User, Address, Dingaling, HasDingaling = (
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Dingaling,
+            self.classes.HasDingaling,
+        )
+        users, addresses, dingalings, has_dingaling = (
+            self.tables.users,
+            self.tables.addresses,
+            self.tables.dingalings,
+            self.tables.has_dingaling,
+        )
 
         mapper(User, users)
         mapper(
@@ -4620,6 +4630,20 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
                         users.c.name == addresses.c.email_address,
                     ),
                 ),
+            },
+        )
+        mapper(Dingaling, dingalings)
+        mapper(
+            HasDingaling,
+            has_dingaling,
+            properties={
+                "dingaling": relationship(
+                    Dingaling,
+                    primaryjoin=and_(
+                        dingalings.c.id == has_dingaling.c.dingaling_id,
+                        dingalings.c.data == "hi",
+                    ),
+                )
             },
         )
 
@@ -4695,6 +4719,86 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "AND :param_2 = addresses.email_address",
                 checkparams={"param_1": None, "param_2": None},
             )
+
+    def test_filter_with_persistent_non_pk_col_is_default_null(self):
+        # test #4676 - comparison to a persistent column that is
+        # NULL in the database, but is not fetched
+        self._fixture1()
+        Dingaling, HasDingaling = (
+            self.classes.Dingaling,
+            self.classes.HasDingaling,
+        )
+        s = Session()
+        d = Dingaling(id=1)
+        s.add(d)
+        s.flush()
+        assert "data" not in d.__dict__
+
+        q = s.query(HasDingaling).filter_by(dingaling=d)
+
+        with expect_warnings("Got None for value of column"):
+            self.assert_compile(
+                q,
+                "SELECT has_dingaling.id AS has_dingaling_id, "
+                "has_dingaling.dingaling_id AS has_dingaling_dingaling_id "
+                "FROM has_dingaling WHERE :param_1 = "
+                "has_dingaling.dingaling_id AND :param_2 = :data_1",
+                checkparams={"param_1": 1, "param_2": None, "data_1": "hi"},
+            )
+
+    def test_filter_with_detached_non_pk_col_is_default_null(self):
+        self._fixture1()
+        Dingaling, HasDingaling = (
+            self.classes.Dingaling,
+            self.classes.HasDingaling,
+        )
+        s = Session()
+        d = Dingaling()
+        s.add(d)
+        s.flush()
+        s.commit()
+        d.id
+        s.expire(d, ["data"])
+        s.expunge(d)
+        assert "data" not in d.__dict__
+        assert "id" in d.__dict__
+
+        q = s.query(HasDingaling).filter_by(dingaling=d)
+
+        # this case we still can't handle, object is detached so we assume
+        # nothing
+
+        assert_raises_message(
+            sa_exc.StatementError,
+            r"Can't resolve value for column dingalings.data on "
+            r"object .*Dingaling.* the object is detached and "
+            r"the value was expired",
+            q.all,
+        )
+
+    def test_filter_with_detached_non_pk_col_has_value(self):
+        self._fixture1()
+        Dingaling, HasDingaling = (
+            self.classes.Dingaling,
+            self.classes.HasDingaling,
+        )
+        s = Session()
+        d = Dingaling(data="some data")
+        s.add(d)
+        s.commit()
+        s.expire(d)
+        assert "data" not in d.__dict__
+
+        q = s.query(HasDingaling).filter_by(dingaling=d)
+
+        self.assert_compile(
+            q,
+            "SELECT has_dingaling.id AS has_dingaling_id, "
+            "has_dingaling.dingaling_id AS has_dingaling_dingaling_id "
+            "FROM has_dingaling WHERE :param_1 = "
+            "has_dingaling.dingaling_id AND :param_2 = :data_1",
+            checkparams={"param_1": 1, "param_2": "some data", "data_1": "hi"},
+        )
 
     def test_with_parent_with_transient_assume_pk(self):
         self._fixture1()

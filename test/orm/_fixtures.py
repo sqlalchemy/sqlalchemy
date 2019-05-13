@@ -48,6 +48,9 @@ class FixtureTest(fixtures.MappedTest):
         class Dingaling(Base):
             pass
 
+        class HasDingaling(Base):
+            pass
+
         class Node(Base):
             pass
 
@@ -219,6 +222,17 @@ class FixtureTest(fixtures.MappedTest):
             ),
             Column("address_id", None, ForeignKey("addresses.id")),
             Column("data", String(30)),
+            test_needs_acid=True,
+            test_needs_fk=True,
+        )
+
+        Table(
+            "has_dingaling",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("dingaling_id", None, ForeignKey("dingalings.id")),
             test_needs_acid=True,
             test_needs_fk=True,
         )
