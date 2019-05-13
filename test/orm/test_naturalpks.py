@@ -16,6 +16,7 @@ from sqlalchemy.orm.session import make_transient
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.schema import Column
@@ -677,6 +678,17 @@ class NaturalPKTest(fixtures.MappedTest):
 
         del u2.username
 
+        # object is persistent, so since we deleted, we get None
+        with expect_warnings("Got None for value of column "):
+            eq_(expr.left.callable(), None)
+
+        s.expunge(u2)
+
+        # however that None isn't in the dict, that's just the default
+        # attribute value, so after expunge it's gone
+        assert "username" not in u2.__dict__
+
+        # detached, we don't have it
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "Can't resolve value for column users.username",

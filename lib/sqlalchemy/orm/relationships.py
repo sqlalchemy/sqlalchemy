@@ -1574,7 +1574,7 @@ class RelationshipProperty(StrategizedProperty):
                 state,
                 dict_,
                 column,
-                passive=attributes.PASSIVE_RETURN_NEVER_SET
+                passive=attributes.PASSIVE_OFF
                 if state.persistent
                 else attributes.PASSIVE_NO_FETCH ^ attributes.INIT_OK,
             )
