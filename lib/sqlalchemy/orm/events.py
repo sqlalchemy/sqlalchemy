@@ -2114,7 +2114,7 @@ class AttributeEvents(event.Events):
         """
 
     def init_scalar(self, target, value, dict_):
-        """Receive a scalar "init" event.
+        r"""Receive a scalar "init" event.
 
         This event is invoked when an uninitialized, unpersisted scalar
         attribute is accessed, e.g. read::
@@ -2212,7 +2212,7 @@ class AttributeEvents(event.Events):
          listener were invoked.  This value begins as the value ``None``,
          however will be the return value of the previous event handler
          function if multiple listeners are present.
-        :param dict_: the attribute dictionary of this mapped object.
+        :param dict\_: the attribute dictionary of this mapped object.
          This is normally the ``__dict__`` of the object, but in all cases
          represents the destination that the attribute system uses to get
          at the actual value of this attribute.  Placing the value in this

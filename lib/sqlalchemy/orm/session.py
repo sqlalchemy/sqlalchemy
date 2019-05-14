@@ -3162,7 +3162,7 @@ class sessionmaker(_SessionClassMethods):
 
         :param bind: a :class:`.Engine` or other :class:`.Connectable` with
          which newly created :class:`.Session` objects will be associated.
-        :param class_: class to use in order to create new :class:`.Session`
+        :param class\_: class to use in order to create new :class:`.Session`
          objects.  Defaults to :class:`.Session`.
         :param autoflush: The autoflush setting to use with newly created
          :class:`.Session` objects.

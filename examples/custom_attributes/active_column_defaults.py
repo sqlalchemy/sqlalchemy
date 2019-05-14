@@ -28,7 +28,7 @@ def configure_listener(mapper, class_):
 def default_listener(col_attr, default):
     """Establish a default-setting listener.
 
-    Given a class_, attrname, and a :class:`.DefaultGenerator` instance.
+    Given a class attribute and a :class:`.DefaultGenerator` instance.
     The default generator should be a :class:`.ColumnDefault` object with a
     plain Python value or callable default; otherwise, the appropriate behavior
     for SQL functions and defaults should be determined here by the
