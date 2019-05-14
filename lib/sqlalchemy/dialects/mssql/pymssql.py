@@ -98,6 +98,7 @@ class MSDialect_pymssql(MSDialect):
             "Connection is closed",
             "message 20006",  # Write to the server failed
             "message 20017",  # Unexpected EOF from the server
+            "message 20047",  # DBPROCESS is dead or not enabled
         ):
             if msg in str(e):
                 return True

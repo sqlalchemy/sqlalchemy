@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4680
+
+    Added error code 20047 to "is_disconnect" for pymssql.  Pull request
+    courtesy Jon Schuff.
+
