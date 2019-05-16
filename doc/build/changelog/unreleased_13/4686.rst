@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4686
+
+    Applied the mapper "configure mutex" against the declarative class mapping
+    process, to guard against the race which can occur if mappers are used
+    while dynamic module import schemes are still in the process of configuring
+    mappers for related classes.  This does not guard against all possible race
+    conditions, such as if the concurrent import has not yet encountered the
+    dependent classes as of yet, however it guards against as much as possible
+    within the SQLAlchemy declarative process.

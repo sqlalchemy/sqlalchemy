@@ -17,6 +17,7 @@ from ... import util
 from ...orm import class_mapper
 from ...orm import exc as orm_exc
 from ...orm import mapper
+from ...orm import mapperlib
 from ...orm import synonym
 from ...orm.attributes import QueryableAttribute
 from ...orm.base import _is_mapped_class
@@ -155,6 +156,7 @@ class _MapperConfig(object):
             cfg_cls = _DeferredMapperConfig
         else:
             cfg_cls = _MapperConfig
+
         cfg_cls(cls_, classname, dict_)
 
     def __init__(self, cls_, classname, dict_):
@@ -177,17 +179,21 @@ class _MapperConfig(object):
 
         self._scan_attributes()
 
-        clsregistry.add_class(self.classname, self.cls)
+        mapperlib._CONFIGURE_MUTEX.acquire()
+        try:
+            clsregistry.add_class(self.classname, self.cls)
 
-        self._extract_mappable_attributes()
+            self._extract_mappable_attributes()
 
-        self._extract_declared_columns()
+            self._extract_declared_columns()
 
-        self._setup_table()
+            self._setup_table()
 
-        self._setup_inheritance()
+            self._setup_inheritance()
 
-        self._early_mapping()
+            self._early_mapping()
+        finally:
+            mapperlib._CONFIGURE_MUTEX.release()
 
     def _early_mapping(self):
         self.map()
