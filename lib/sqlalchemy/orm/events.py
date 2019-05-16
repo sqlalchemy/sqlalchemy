@@ -1535,11 +1535,18 @@ class SessionEvents(event.Events):
             * ``session`` - the :class:`.Session` involved
             * ``query`` -the :class:`.Query` object that this update operation
               was called upon.
+            * ``values`` The "values" dictionary that was passed to
+              :meth:`.Query.update`.
             * ``context`` The :class:`.QueryContext` object, corresponding
               to the invocation of an ORM query.
             * ``result`` the :class:`.ResultProxy` returned as a result of the
               bulk UPDATE operation.
 
+        .. seealso::
+
+            :meth:`.QueryEvents.before_compile_update`
+
+            :meth:`.SessionEvents.after_bulk_delete`
 
         """
 
@@ -1569,6 +1576,11 @@ class SessionEvents(event.Events):
             * ``result`` the :class:`.ResultProxy` returned as a result of the
               bulk DELETE operation.
 
+        .. seealso::
+
+            :meth:`.QueryEvents.before_compile_delete`
+
+            :meth:`.SessionEvents.after_bulk_update`
 
         """
 
@@ -2291,8 +2303,9 @@ class QueryEvents(event.Events):
         """Allow modifications to the :class:`.Query` object within
         :meth:`.Query.update`.
 
-        Like the :meth:`.QueryEvents.before_compile` event, this event
-        should be configured with ``retval=True``, and the modified
+        Like the :meth:`.QueryEvents.before_compile` event, if the event
+        is to be used to alter the :class:`.Query` object, it should
+        be configured with ``retval=True``, and the modified
         :class:`.Query` object returned, as in ::
 
             @event.listens_for(Query, "before_compile_update", retval=True)
@@ -2301,7 +2314,12 @@ class QueryEvents(event.Events):
                     if desc['type'] is User:
                         entity = desc['entity']
                         query = query.filter(entity.deleted == False)
+
+                        update_context.values['timestamp'] = datetime.utcnow()
                 return query
+
+        The ``.values`` dictionary of the "update context" object can also
+        be modified in place as illustrated above.
 
         :param query: a :class:`.Query` instance; this is also
          the ``.query`` attribute of the given "update context"
@@ -2310,6 +2328,10 @@ class QueryEvents(event.Events):
         :param update_context: an "update context" object which is
          the same kind of object as described in
          :paramref:`.QueryEvents.after_bulk_update.update_context`.
+         The object has a ``.values`` attribute in an UPDATE context which is
+         the dictionary of parameters passed to :meth:`.Query.update`.  This
+         dictionary can be modified to alter the VALUES clause of the
+         resulting UPDATE statement.
 
         .. versionadded:: 1.2.17
 
