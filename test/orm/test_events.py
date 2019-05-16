@@ -1496,7 +1496,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         u2 = User(name="u1", id=1)
         sess.add(u2)
-        assert_raises(sa.orm.exc.FlushError, sess.commit)
+        assert_raises(sa.exc.SAWarning, sess.commit)
         sess.rollback()
         eq_(
             canary,
@@ -1548,7 +1548,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         u2 = User(name="u1", id=1)
         sess.add(u2)
-        assert_raises(sa.orm.exc.FlushError, sess.commit)
+        assert_raises(sa.exc.SAWarning, sess.commit)
         sess.rollback()
         eq_(assertions, [True, True])
 

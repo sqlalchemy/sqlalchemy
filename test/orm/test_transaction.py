@@ -701,7 +701,9 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.commit()
 
         sess.add(User(id=1, name="u2"))
-        assert_raises(orm_exc.FlushError, sess.flush)
+
+        with expect_warnings("New instance"):
+            assert_raises(sa_exc.IntegrityError, sess.flush)
         return sess, u1
 
     def test_execution_options_begin_transaction(self):
@@ -1232,7 +1234,9 @@ class RollbackRecoverTest(_LocalFixture):
         u1.name = "edward"
         a1.email_address = "foober"
         s.add(u2)
-        assert_raises(orm_exc.FlushError, s.commit)
+
+        with expect_warnings("New instance"):
+            assert_raises(sa_exc.IntegrityError, s.commit)
         assert_raises(sa_exc.InvalidRequestError, s.commit)
         s.rollback()
         assert u2 not in s
@@ -1271,7 +1275,9 @@ class RollbackRecoverTest(_LocalFixture):
         a1.email_address = "foober"
         s.begin_nested()
         s.add(u2)
-        assert_raises(orm_exc.FlushError, s.commit)
+
+        with expect_warnings("New instance"):
+            assert_raises(sa_exc.IntegrityError, s.commit)
         assert_raises(sa_exc.InvalidRequestError, s.commit)
         s.rollback()
         assert u2 not in s
@@ -1683,7 +1689,8 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
 
         u5 = User(name="u3")
         session.add(u5)
-        assert_raises(orm_exc.FlushError, session.flush)
+        with expect_warnings("New instance"):
+            assert_raises(sa_exc.IntegrityError, session.flush)
 
         assert u5 not in session
         assert u2 not in session.deleted
