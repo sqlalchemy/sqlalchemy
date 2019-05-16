@@ -2460,6 +2460,10 @@ class QueryEventsTest(
                 if desc["type"] is User:
                     entity = desc["expr"]
                     query = query.filter(entity.id != 10)
+
+                    update_context.values["name"] = (
+                        update_context.values["name"] + "_modified"
+                    )
             return query
 
         User = self.classes.User
@@ -2471,7 +2475,7 @@ class QueryEventsTest(
             CompiledSQL(
                 "UPDATE users SET name=:name WHERE "
                 "users.id = :id_1 AND users.id != :id_2",
-                [{"name": "ed", "id_1": 7, "id_2": 10}],
+                [{"name": "ed_modified", "id_1": 7, "id_2": 10}],
             )
         )
 
