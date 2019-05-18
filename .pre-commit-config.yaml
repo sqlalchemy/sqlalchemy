@@ -1,0 +1,15 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/python/black/
+    rev: 19.3b0
+    hooks:
+    -   id: black
+        args: [-l 79]
+
+-   repo: https://github.com/sqlalchemyorg/zimports/
+    rev: master
+    hooks:
+    -   id: zimports
+
+
