@@ -562,6 +562,17 @@ class CompareClausesTest(fixtures.TestBase):
 
         is_false(l1.compare(l2))
 
+    def test_compare_labels(self):
+        is_true(column("q").label(None).compare(column("q").label(None)))
+
+        is_false(column("q").label("foo").compare(column("q").label(None)))
+
+        is_false(column("q").label(None).compare(column("q").label("foo")))
+
+        is_false(column("q").label("foo").compare(column("q").label("bar")))
+
+        is_true(column("q").label("foo").compare(column("q").label("foo")))
+
     def test_compare_binds(self):
         b1 = bindparam("foo", type_=Integer())
         b2 = bindparam("foo", type_=Integer())

@@ -228,7 +228,7 @@ class StructureComparatorStrategy(object):
     def compare_label(self, elements, left, right, **kw):
         return left._type._compare_type_affinity(right._type) and (
             left.name == right.name
-            if not isinstance(left, elements._anonymous_label)
+            if not isinstance(left.name, elements._anonymous_label)
             else isinstance(right.name, elements._anonymous_label)
         )
 
