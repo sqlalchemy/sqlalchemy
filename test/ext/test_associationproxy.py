@@ -1,6 +1,7 @@
 import copy
 import pickle
 
+from sqlalchemy import cast
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
@@ -3141,7 +3142,9 @@ class ProxyOfSynonymTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
         )
 
 
-class ProxyHybridTest(fixtures.DeclarativeMappedTest):
+class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
     @classmethod
     def setup_classes(cls):
         from sqlalchemy.ext.hybrid import hybrid_property
@@ -3185,8 +3188,29 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest):
             class value(PropComparator):
                 # comparator has no proxy __getattr__, so we can't
                 # get to impl to see what we ar proxying towards.
+                # as of #4690 we assume column-oriented proxying
                 def __init__(self, cls):
                     self.cls = cls
+
+            @hybrid_property
+            def well_behaved_w_expr(self):
+                return self.data
+
+            @well_behaved_w_expr.setter
+            def well_behaved_w_expr(self, value):
+                self.data = value
+
+            @well_behaved_w_expr.expression
+            def well_behaved_w_expr(cls):
+                return cast(cls.data, Integer)
+
+        class C(Base):
+            __tablename__ = "c"
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+            _b = relationship("B")
+            attr = association_proxy("_b", "well_behaved_w_expr")
 
     def test_get_ambiguous(self):
         A, B = self.classes("A", "B")
@@ -3230,18 +3254,29 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest):
 
         eq_(
             str(A.b_data),
-            "AmbiguousAssociationProxyInstance"
+            "ColumnAssociationProxyInstance"
             "(AssociationProxy('bs', 'value'))",
         )
 
-    def test_expr_ambiguous(self):
+    def test_comparator_ambiguous(self):
         A, B = self.classes("A", "B")
 
-        assert_raises_message(
-            AttributeError,
-            "Association proxy A.bs refers to an attribute "
-            "'value' that is not directly mapped",
-            A.b_data.any,
+        s = Session()
+        self.assert_compile(
+            s.query(A).filter(A.b_data.any()),
+            "SELECT a.id AS a_id FROM a WHERE EXISTS "
+            "(SELECT 1 FROM b WHERE a.id = b.aid)",
+        )
+
+    def test_explicit_expr(self):
+        C, = self.classes("C")
+
+        s = Session()
+        self.assert_compile(
+            s.query(C).filter_by(attr=5),
+            "SELECT c.id AS c_id, c.b_id AS c_b_id FROM c WHERE EXISTS "
+            "(SELECT 1 FROM b WHERE b.id = c.b_id AND "
+            "CAST(b.data AS INTEGER) = :param_1)",
         )
 
 
