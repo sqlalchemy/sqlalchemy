@@ -240,7 +240,9 @@ class RelationshipTest2(fixtures.MappedTest):
         if jointype == "join1":
             poly_union = polymorphic_union(
                 {
-                    "person": people.select(people.c.type == "person"),
+                    "person": people.select(
+                        people.c.type == "person"
+                    ).subquery(),
                     "manager": join(
                         people,
                         managers,
@@ -253,7 +255,9 @@ class RelationshipTest2(fixtures.MappedTest):
         elif jointype == "join2":
             poly_union = polymorphic_union(
                 {
-                    "person": people.select(people.c.type == "person"),
+                    "person": people.select(
+                        people.c.type == "person"
+                    ).subquery(),
                     "manager": managers.join(
                         people, people.c.person_id == managers.c.person_id
                     ),
@@ -399,7 +403,9 @@ def _generate_test(jointype="join1", usedata=False):
                     "manager": managers.join(
                         people, people.c.person_id == managers.c.person_id
                     ),
-                    "person": people.select(people.c.type == "person"),
+                    "person": people.select(
+                        people.c.type == "person"
+                    ).subquery(),
                 },
                 None,
             )
@@ -411,7 +417,9 @@ def _generate_test(jointype="join1", usedata=False):
                         managers,
                         people.c.person_id == managers.c.person_id,
                     ),
-                    "person": people.select(people.c.type == "person"),
+                    "person": people.select(
+                        people.c.type == "person"
+                    ).subquery(),
                 },
                 None,
             )
@@ -1001,7 +1009,8 @@ class RelationshipTest7(fixtures.MappedTest):
             {
                 "car": cars.outerjoin(offroad_cars)
                 .select(offroad_cars.c.car_id == None)
-                .reduce_columns(),  # noqa
+                .reduce_columns()
+                .subquery(),
                 "offroad": cars.join(offroad_cars),
             },
             "type",
@@ -1434,10 +1443,10 @@ class MultiLevelTest(fixtures.MappedTest):
                     [table_Employee, table_Engineer.c.machine],
                     table_Employee.c.atype == "Engineer",
                     from_obj=[table_Employee.join(table_Engineer)],
-                ),
+                ).subquery(),
                 "Employee": table_Employee.select(
                     table_Employee.c.atype == "Employee"
-                ),
+                ).subquery(),
             },
             None,
             "pu_employee",
@@ -1460,7 +1469,7 @@ class MultiLevelTest(fixtures.MappedTest):
                     [table_Employee, table_Engineer.c.machine],
                     table_Employee.c.atype == "Engineer",
                     from_obj=[table_Employee.join(table_Engineer)],
-                ),
+                ).subquery(),
             },
             None,
             "pu_engineer",
@@ -1554,7 +1563,7 @@ class ManyToManyPolyTest(fixtures.MappedTest):
             {
                 "BaseItem": base_item_table.select(
                     base_item_table.c.child_name == "BaseItem"
-                ),
+                ).subquery(),
                 "Item": base_item_table.join(item_table),
             },
             None,
@@ -1622,7 +1631,7 @@ class CustomPKTest(fixtures.MappedTest):
         # a 2-col pk in any case but the leading select has a NULL for the
         # "t2id" column
         d = util.OrderedDict()
-        d["t1"] = t1.select(t1.c.type == "t1")
+        d["t1"] = t1.select(t1.c.type == "t1").subquery()
         d["t2"] = t1.join(t2)
         pjoin = polymorphic_union(d, None, "pjoin")
 
@@ -1668,7 +1677,7 @@ class CustomPKTest(fixtures.MappedTest):
         # a 2-col pk in any case but the leading select has a NULL for the
         # "t2id" column
         d = util.OrderedDict()
-        d["t1"] = t1.select(t1.c.type == "t1")
+        d["t1"] = t1.select(t1.c.type == "t1").subquery()
         d["t2"] = t1.join(t2)
         pjoin = polymorphic_union(d, None, "pjoin")
 

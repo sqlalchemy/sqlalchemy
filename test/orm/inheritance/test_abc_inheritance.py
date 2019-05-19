@@ -155,11 +155,12 @@ def produce_test(parent, child, direction):
                     "a": ta.select(
                         tb.c.id == None,  # noqa
                         from_obj=[ta.outerjoin(tb, onclause=atob)],
-                    ),
+                    ).subquery(),
                     "b": ta.join(tb, onclause=atob)
                     .outerjoin(tc, onclause=btoc)
                     .select(tc.c.id == None)
-                    .reduce_columns(),  # noqa
+                    .reduce_columns()
+                    .subquery(),  # noqa
                     "c": tc.join(tb, onclause=btoc).join(ta, onclause=atob),
                 },
                 "type",
@@ -171,7 +172,8 @@ def produce_test(parent, child, direction):
                     "b": ta.join(tb, onclause=atob)
                     .outerjoin(tc, onclause=btoc)
                     .select(tc.c.id == None)
-                    .reduce_columns(),  # noqa
+                    .reduce_columns()
+                    .subquery(),  # noqa
                     "c": tc.join(tb, onclause=btoc).join(ta, onclause=atob),
                 },
                 "type",

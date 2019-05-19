@@ -486,6 +486,18 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         is_true(stmt.compare(select([table1.c.myid]).scalar_subquery()))
 
+    def test_fromclause_subquery(self):
+        stmt = select([table1.c.myid])
+        with testing.expect_deprecated(
+            "Implicit coercion of SELECT and textual SELECT constructs "
+            "into FROM clauses is deprecated"
+        ):
+            coerced = coercions.expect(
+                roles.StrictFromClauseRole, stmt, allow_select=True
+            )
+
+        is_true(coerced.compare(stmt.subquery()))
+
 
 class TextTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"

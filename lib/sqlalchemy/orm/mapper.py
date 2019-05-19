@@ -638,7 +638,13 @@ class Mapper(InspectionAttr):
         self.concrete = concrete
         self.single = False
         self.inherits = inherits
-        self.local_table = local_table
+        if local_table is not None:
+            self.local_table = coercions.expect(
+                roles.StrictFromClauseRole, local_table
+            )
+        else:
+            self.local_table = None
+
         self.inherit_condition = inherit_condition
         self.inherit_foreign_keys = inherit_foreign_keys
         self._init_properties = properties or {}
@@ -673,14 +679,6 @@ class Mapper(InspectionAttr):
             self.confirm_deleted_rows = False
         else:
             self.confirm_deleted_rows = confirm_deleted_rows
-
-        if isinstance(self.local_table, expression.SelectBase):
-            raise sa_exc.InvalidRequestError(
-                "When mapping against a select() construct, map against "
-                "an alias() of the construct instead."
-                "This because several databases don't allow a "
-                "SELECT from a subquery that does not have an alias."
-            )
 
         self._set_with_polymorphic(with_polymorphic)
         self.polymorphic_load = polymorphic_load
@@ -1154,20 +1152,14 @@ class Mapper(InspectionAttr):
         else:
             self.with_polymorphic = None
 
-        if isinstance(self.local_table, expression.SelectBase):
-            raise sa_exc.InvalidRequestError(
-                "When mapping against a select() construct, map against "
-                "an alias() of the construct instead."
-                "This because several databases don't allow a "
-                "SELECT from a subquery that does not have an alias."
-            )
-
-        if self.with_polymorphic and isinstance(
-            self.with_polymorphic[1], expression.SelectBase
-        ):
+        if self.with_polymorphic and self.with_polymorphic[1] is not None:
             self.with_polymorphic = (
                 self.with_polymorphic[0],
-                self.with_polymorphic[1].alias(),
+                coercions.expect(
+                    roles.StrictFromClauseRole,
+                    self.with_polymorphic[1],
+                    allow_select=True,
+                ),
             )
 
         if self.configured:
@@ -2274,6 +2266,11 @@ class Mapper(InspectionAttr):
     def _with_polymorphic_args(
         self, spec=None, selectable=False, innerjoin=False
     ):
+        if selectable not in (None, False):
+            selectable = coercions.expect(
+                roles.StrictFromClauseRole, selectable, allow_select=True
+            )
+
         if self.with_polymorphic:
             if not spec:
                 spec = self.with_polymorphic[0]

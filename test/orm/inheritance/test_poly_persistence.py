@@ -127,7 +127,7 @@ class InsertOrderTest(PolymorphTest):
             {
                 "engineer": people.join(engineers),
                 "manager": people.join(managers),
-                "person": people.select(people.c.type == "person"),
+                "person": people.select(people.c.type == "person").subquery(),
             },
             None,
             "pjoin",
@@ -226,7 +226,9 @@ def _generate_round_trip_test(
                     {
                         "engineer": people.join(engineers),
                         "manager": people.join(managers),
-                        "person": people.select(people.c.type == "person"),
+                        "person": people.select(
+                            people.c.type == "person"
+                        ).subquery(),
                     },
                     None,
                     "pjoin",

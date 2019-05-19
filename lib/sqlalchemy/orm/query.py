@@ -259,8 +259,9 @@ class Query(object):
                     "aliased(), or FromClause instance."
                 )
             else:
-                if isinstance(from_obj, expression.SelectBase):
-                    from_obj = from_obj.alias()
+                from_obj = coercions.expect(
+                    roles.StrictFromClauseRole, from_obj, allow_select=True
+                )
                 if set_base_alias:
                     select_from_alias = from_obj
                 fa.append(from_obj)
@@ -1401,7 +1402,9 @@ class Query(object):
         fromclause = (
             self.with_labels()
             .enable_eagerloads(False)
-            .statement.correlate(None)
+            .correlate(None)
+            .subquery()
+            ._anonymous_fromclause()
         )
         q = self._from_selectable(fromclause)
         q._enable_single_crit = False
@@ -1897,7 +1900,7 @@ class Query(object):
 
     def _set_op(self, expr_fn, *q):
         return self._from_selectable(
-            expr_fn(*([self] + list(q)))
+            expr_fn(*([self] + list(q))).subquery()
         )._set_enable_single_crit(False)
 
     def union(self, *q):
@@ -2918,7 +2921,7 @@ class Query(object):
         used at the start of the query to adapt the existing ``User`` entity::
 
             q = session.query(User).\
-                select_entity_from(select_stmt).\
+                select_entity_from(select_stmt.subquery()).\
                 filter(User.name == 'ed')
 
         Above, the generated SQL will show that the ``User`` entity is
@@ -2955,7 +2958,7 @@ class Query(object):
         :meth:`.TextClause.columns` method::
 
             text_stmt = text("select id, name from user").columns(
-                User.id, User.name)
+                User.id, User.name).subquery()
             q = session.query(User).select_entity_from(text_stmt)
 
         :meth:`.Query.select_entity_from` itself accepts an :func:`.aliased`

@@ -1105,7 +1105,7 @@ class RelationshipProperty(StrategizedProperty):
                     info.is_aliased_class,
                 )
                 if self.property._is_self_referential and not is_aliased_class:
-                    to_selectable = to_selectable.alias()
+                    to_selectable = to_selectable._anonymous_fromclause()
 
                 single_crit = target_mapper._single_table_criterion
                 if single_crit is not None:
@@ -1502,9 +1502,9 @@ class RelationshipProperty(StrategizedProperty):
                 )
 
         if self.secondary is not None and alias_secondary:
-            criterion = ClauseAdapter(self.secondary.alias()).traverse(
-                criterion
-            )
+            criterion = ClauseAdapter(
+                self.secondary._anonymous_fromclause()
+            ).traverse(criterion)
 
         criterion = visitors.cloned_traverse(
             criterion, {}, {"bindparam": visit_bindparam}
@@ -2173,7 +2173,7 @@ class RelationshipProperty(StrategizedProperty):
                 aliased = True
 
             if self._is_self_referential and source_selectable is None:
-                dest_selectable = dest_selectable.alias()
+                dest_selectable = dest_selectable._anonymous_fromclause()
                 aliased = True
         else:
             aliased = True
@@ -3143,7 +3143,7 @@ class JoinCondition(object):
 
         if aliased:
             if secondary is not None:
-                secondary = secondary.alias(flat=True)
+                secondary = secondary._anonymous_fromclause(flat=True)
                 primary_aliasizer = ClauseAdapter(secondary)
                 secondary_aliasizer = ClauseAdapter(
                     dest_selectable, equivalents=self.child_equivalents

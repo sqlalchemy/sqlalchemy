@@ -66,9 +66,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         Subset, common = self.classes.Subset, self.tables.common
 
         subset_select = select([common.c.id, common.c.data])
-        assert_raises(
-            sa.exc.InvalidRequestError, mapper, Subset, subset_select
-        )
+        assert_raises(sa.exc.ArgumentError, mapper, Subset, subset_select)
 
     def test_basic(self):
         Subset, common = self.classes.Subset, self.tables.common

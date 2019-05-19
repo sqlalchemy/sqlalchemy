@@ -1711,7 +1711,7 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
             {
                 "BaseItem": base_item_table.select(
                     base_item_table.c.child_name == "BaseItem"
-                ),
+                ).subquery(),
                 "Item": base_item_table.join(item_table),
             },
             None,

@@ -662,7 +662,7 @@ class FromClause(roles.FromClauseRole, Selectable):
             return None
 
 
-class Join(FromClause):
+class Join(roles.AnonymizedFromClauseRole, FromClause):
     """represent a ``JOIN`` construct between two :class:`.FromClause`
     elements.
 
@@ -1178,7 +1178,7 @@ class Join(FromClause):
         )
 
 
-class Alias(FromClause):
+class Alias(roles.AnonymizedFromClauseRole, FromClause):
     """Represents an table or selectable alias (AS).
 
     Represents an alias, as typically applied to any table or
@@ -1772,7 +1772,7 @@ class FromGrouping(FromClause):
         self.element = state["element"]
 
 
-class TableClause(Immutable, FromClause):
+class TableClause(roles.AnonymizedFromClauseRole, Immutable, FromClause):
     """Represents a minimal "table" construct.
 
     This is a lightweight table object that has only a name and a
@@ -2115,6 +2115,42 @@ class SelectBase(
     @property
     def _from_objects(self):
         return [self]
+
+    def subquery(self, name=None):
+        """Return a subquery of this :class:`.SelectBase`.
+
+        A subquery is from a SQL perspective a parentheized, named construct
+        that can be placed in the FROM clause of another SELECT statement.
+
+        Given a SELECT statement such as::
+
+            stmt = select([table.c.id, table.c.name])
+
+        The above statement might look like::
+
+            SELECT table.id, table.name FROM table
+
+        The subquery form by itself renders the same way, however when
+        embedded into the FROM clause of another SELECT statement, it becomes
+        a named sub-element::
+
+            subq = stmt.subquery()
+            new_stmt = select([subq])
+
+        The above renders as::
+
+            SELECT anon_1.id, anon_1.name
+            FROM (SELECT table.id, table.name FROM table) AS anon_1
+
+        Historically, :meth:`.SelectBase.subquery` is equivalent to calling
+        the :meth:`.FromClause.alias` method on a FROM object; however,
+        as a :class:`.SelectBase` object is not directly  FROM object,
+        the :meth:`.SelectBase.subquery` method provides clearer semantics.
+
+        .. versionadded:: 1.4
+
+        """
+        return self.alias()
 
 
 class GenerativeSelect(SelectBase):
