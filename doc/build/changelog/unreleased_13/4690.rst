@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4690
+
+    Fixed regression where new association proxy system was still not proxying
+    hybrid attributes when they made use of the ``@hybrid_property.expression``
+    decorator to return an alternate SQL expression, or when the hybrid
+    returned an arbitrary :class:`.PropComparator`, at the expression level.
+    This involved futher generalization of the heuristics used to detect the
+    type of object being proxied at the level of :class:`.QueryableAttribute`,
+    to better detect if the descriptor ultimately serves mapped classes or
+    column expressions.

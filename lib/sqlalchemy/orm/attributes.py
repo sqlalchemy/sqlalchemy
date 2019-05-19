@@ -104,6 +104,10 @@ class QueryableAttribute(
     def _supports_population(self):
         return self.impl.supports_population
 
+    @property
+    def _impl_uses_objects(self):
+        return self.impl.uses_objects
+
     def get_history(self, instance, passive=PASSIVE_OFF):
         return self.impl.get_history(
             instance_state(instance), instance_dict(instance), passive
@@ -312,6 +316,13 @@ def create_proxied_attribute(descriptor):
             self.__doc__ = doc
 
         _is_internal_proxy = True
+
+        @property
+        def _impl_uses_objects(self):
+            return (
+                self.original_property is not None
+                and getattr(self.class_, self.key).impl.uses_objects
+            )
 
         @property
         def property(self):

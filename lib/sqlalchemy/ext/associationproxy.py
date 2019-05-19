@@ -391,15 +391,11 @@ class AssociationProxyInstance(object):
             )
 
         attr = getattr(target_class, value_attr)
-        if (
-            not hasattr(attr, "_is_internal_proxy")
-            or attr._is_internal_proxy
-            and not hasattr(attr, "impl")
-        ):
+        if not hasattr(attr, "_is_internal_proxy"):
             return AmbiguousAssociationProxyInstance(
                 parent, owning_class, target_class, value_attr
             )
-        is_object = attr.impl.uses_objects
+        is_object = attr._impl_uses_objects
         if is_object:
             return ObjectAssociationProxyInstance(
                 parent, owning_class, target_class, value_attr
