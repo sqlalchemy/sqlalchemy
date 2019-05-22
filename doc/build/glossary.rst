@@ -107,7 +107,7 @@ Glossary
         made available.  The SQLAlchemy :term:`mapping` process,
         among other things, adds database-enabled :term:`descriptors`
         to a mapped
-        class which each represent a particular database column
+        class each of which represents a particular database column
         or relationship to a related class.
 
     identity map
