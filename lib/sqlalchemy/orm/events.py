@@ -1890,14 +1890,14 @@ class AttributeEvents(event.Events):
 
         from sqlalchemy import event
 
+        @event.listens_for(MyClass.collection, 'append', propagate=True)
         def my_append_listener(target, value, initiator):
-            print "received append event for target: %s" % target
+            print("received append event for target: %s" % target)
 
-        event.listen(MyClass.collection, 'append', my_append_listener)
 
-    Listeners have the option to return a possibly modified version
-    of the value, when the ``retval=True`` flag is passed
-    to :func:`~.event.listen`::
+    Listeners have the option to return a possibly modified version of the
+    value, when the :paramref:`.AttributeEvents.retval` flag is passed to
+    :func:`.event.listen` or :func:`.event.listens_for`::
 
         def validate_phone(target, value, oldvalue, initiator):
             "Strip non-numeric characters from a phone number"
@@ -1911,7 +1911,17 @@ class AttributeEvents(event.Events):
     A validation function like the above can also raise an exception
     such as :exc:`ValueError` to halt the operation.
 
-    Several modifiers are available to the :func:`~.event.listen` function.
+    The :paramref:`.AttributeEvents.propagate` flag is also important when
+    applying listeners to mapped classes that also have mapped subclasses,
+    as when using mapper inheritance patterns::
+
+
+        @event.listens_for(MySuperClass.attr, 'set', propagate=True)
+        def receive_set(target, value, initiator):
+            print("value set: %s" % target)
+
+    The full list of modifiers available to the :func:`.event.listen`
+    and :func:`.event.listens_for` functions are below.
 
     :param active_history=False: When True, indicates that the
       "set" event would like to receive the "old" value being
@@ -2024,6 +2034,9 @@ class AttributeEvents(event.Events):
 
         .. seealso::
 
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
+
             :meth:`.AttributeEvents.bulk_replace`
 
         """
@@ -2072,6 +2085,12 @@ class AttributeEvents(event.Events):
         :param initiator: An instance of :class:`.attributes.Event`
           representing the initiation of the event.
 
+        .. seealso::
+
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
+
+
         """
 
     def remove(self, target, value, initiator):
@@ -2092,6 +2111,13 @@ class AttributeEvents(event.Events):
              events.
 
         :return: No return value is defined for this event.
+
+
+        .. seealso::
+
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
+
         """
 
     def set(self, target, value, oldvalue, initiator):
@@ -2122,6 +2148,11 @@ class AttributeEvents(event.Events):
 
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
+
+        .. seealso::
+
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
 
         """
 
@@ -2234,6 +2265,9 @@ class AttributeEvents(event.Events):
 
         .. seealso::
 
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
+
             :ref:`examples_instrumentation` - see the
             ``active_column_defaults.py`` example.
 
@@ -2271,6 +2305,11 @@ class AttributeEvents(event.Events):
            and :meth:`.AttributeEvents.dispose_collection` events supersede
            the :class:`.orm.collection.linker` hook.
 
+        .. seealso::
+
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
+
         """
 
     def dispose_collection(self, target, collection, collection_adapter):
@@ -2294,6 +2333,11 @@ class AttributeEvents(event.Events):
            and :meth:`.AttributeEvents.dispose_collection` events supersede
            the :class:`.collection.linker` hook.
 
+        .. seealso::
+
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
+
         """
 
     def modified(self, target, initiator):
@@ -2311,6 +2355,11 @@ class AttributeEvents(event.Events):
 
         :param initiator: An instance of :class:`.attributes.Event`
           representing the initiation of the event.
+
+        .. seealso::
+
+            :class:`.AttributeEvents` - background on listener options such
+            as propagation to subclasses.
 
         """
 
