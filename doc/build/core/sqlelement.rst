@@ -3,7 +3,7 @@ Column Elements and Expressions
 
 .. module:: sqlalchemy.sql.expression
 
-The expression API consists of a series of classes that each represent a
+The expression API consists of a series of classes each of which represents a
 specific lexical element within a SQL string.  Composed together
 into a larger structure, they form a statement construct that may
 be *compiled* into a string representation that can be passed to a database.
