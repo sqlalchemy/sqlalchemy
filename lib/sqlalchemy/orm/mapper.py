@@ -2715,7 +2715,7 @@ class Mapper(InspectionAttr):
         return self._identity_key_from_state(state, attributes.PASSIVE_OFF)
 
     def _identity_key_from_state(
-        self, state, passive=attributes.PASSIVE_RETURN_NEVER_SET
+        self, state, passive=attributes.PASSIVE_RETURN_NO_VALUE
     ):
         dict_ = state.dict
         manager = state.manager
@@ -2769,7 +2769,7 @@ class Mapper(InspectionAttr):
         return {prop.key for prop in self._all_pk_props}
 
     def _get_state_attr_by_column(
-        self, state, dict_, column, passive=attributes.PASSIVE_RETURN_NEVER_SET
+        self, state, dict_, column, passive=attributes.PASSIVE_RETURN_NO_VALUE
     ):
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
@@ -2790,7 +2790,7 @@ class Mapper(InspectionAttr):
         )
 
     def _get_committed_state_attr_by_column(
-        self, state, dict_, column, passive=attributes.PASSIVE_RETURN_NEVER_SET
+        self, state, dict_, column, passive=attributes.PASSIVE_RETURN_NO_VALUE
     ):
 
         prop = self._columntoproperty[column]

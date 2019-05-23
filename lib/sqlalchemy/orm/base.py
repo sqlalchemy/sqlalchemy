@@ -45,13 +45,12 @@ NO_VALUE = util.symbol(
     and flags indicated we were not to load it.
     """,
 )
+NEVER_SET = NO_VALUE
+"""
+Synonymous with NO_VALUE
 
-NEVER_SET = util.symbol(
-    "NEVER_SET",
-    """Symbol which may be placed as the 'previous' value of an attribute
-    indicating that the attribute had not been assigned to previously.
-    """,
-)
+.. versionchanged:: 1.4   NEVER_SET was merged with NO_VALUE
+"""
 
 NO_CHANGE = util.symbol(
     "NO_CHANGE",
@@ -126,15 +125,15 @@ PASSIVE_OFF = util.symbol(
         RELATED_OBJECT_OK | NON_PERSISTENT_OK | INIT_OK | CALLABLES_OK | SQL_OK
     ),
 )
-PASSIVE_RETURN_NEVER_SET = util.symbol(
-    "PASSIVE_RETURN_NEVER_SET",
+PASSIVE_RETURN_NO_VALUE = util.symbol(
+    "PASSIVE_RETURN_NO_VALUE",
     """PASSIVE_OFF ^ INIT_OK""",
     canonical=PASSIVE_OFF ^ INIT_OK,
 )
 PASSIVE_NO_INITIALIZE = util.symbol(
     "PASSIVE_NO_INITIALIZE",
-    "PASSIVE_RETURN_NEVER_SET ^ CALLABLES_OK",
-    canonical=PASSIVE_RETURN_NEVER_SET ^ CALLABLES_OK,
+    "PASSIVE_RETURN_NO_VALUE ^ CALLABLES_OK",
+    canonical=PASSIVE_RETURN_NO_VALUE ^ CALLABLES_OK,
 )
 PASSIVE_NO_FETCH = util.symbol(
     "PASSIVE_NO_FETCH", "PASSIVE_OFF ^ SQL_OK", canonical=PASSIVE_OFF ^ SQL_OK
