@@ -3462,8 +3462,88 @@ class ListenerTest(fixtures.ORMTest):
         # reversal of approach in #3061
         eq_(canary.mock_calls, [])
 
+
+class EventPropagateTest(fixtures.TestBase):
+    # tests that were expanded as of #4695
+    # in particular these reveal the inconsistency we have in returning the
+    # "old" value between object and non-object.
+    # this inconsistency might not be a bug, since the nature of scalar
+    # SQL attributes and ORM related objects is fundamentally different.
+
+    # the inconsistency is:
+
+    # with active_history=False if old value is not present, for scalar we
+    # return NO VALUE, for object we return NEVER SET
+    # with active_history=True if old value is not present, for scalar we
+    # return NEVER SET, for object we return None
+    # so it is basically fully inconsistent across both directions.
+
+    def test_propagate_active_history(self):
+        for (A, B, C, D), canary in self._test_propagate_fixtures(True, False):
+            b = B()
+            b.attrib = "foo"
+            eq_(b.attrib, "foo")
+            eq_(canary, [("foo", attributes.NEVER_SET)])
+
+            c = C()
+            c.attrib = "bar"
+            eq_(c.attrib, "bar")
+            eq_(
+                canary,
+                [("foo", attributes.NEVER_SET), ("bar", attributes.NEVER_SET)],
+            )
+
     def test_propagate(self):
-        classes = [None, None, None]
+        for (A, B, C, D), canary in self._test_propagate_fixtures(
+            False, False
+        ):
+            b = B()
+            b.attrib = "foo"
+            eq_(b.attrib, "foo")
+
+            eq_(canary, [("foo", attributes.NO_VALUE)])
+
+            c = C()
+            c.attrib = "bar"
+            eq_(c.attrib, "bar")
+            eq_(
+                canary,
+                [("foo", attributes.NO_VALUE), ("bar", attributes.NO_VALUE)],
+            )
+
+    def test_propagate_useobject_active_history(self):
+        for (A, B, C, D), canary in self._test_propagate_fixtures(True, True):
+            b = B()
+            d1 = D()
+            b.attrib = d1
+            is_(b.attrib, d1)
+            eq_(canary, [(d1, None)])
+
+            c = C()
+            d2 = D()
+            c.attrib = d2
+            is_(c.attrib, d2)
+            eq_(canary, [(d1, None), (d2, None)])
+
+    def test_propagate_useobject(self):
+        for (A, B, C, D), canary in self._test_propagate_fixtures(False, True):
+            b = B()
+            d1 = D()
+            b.attrib = d1
+            is_(b.attrib, d1)
+            eq_(canary, [(d1, attributes.NEVER_SET)])
+
+            c = C()
+            d2 = D()
+            c.attrib = d2
+            is_(c.attrib, d2)
+            eq_(
+                canary,
+                [(d1, attributes.NEVER_SET), (d2, attributes.NEVER_SET)],
+            )
+
+    def _test_propagate_fixtures(self, active_history, useobject):
+        classes = [None, None, None, None]
         canary = []
 
         def make_a():
@@ -3484,6 +3564,13 @@ class ListenerTest(fixtures.ORMTest):
 
             classes[2] = C
 
+        def make_d():
+            class D(object):
+                pass
+
+            classes[3] = D
+            return D
+
         def instrument_a():
             instrumentation.register_class(classes[0])
 
@@ -3493,30 +3580,35 @@ class ListenerTest(fixtures.ORMTest):
         def instrument_c():
             instrumentation.register_class(classes[2])
 
+        def instrument_d():
+            instrumentation.register_class(classes[3])
+
         def attr_a():
             attributes.register_attribute(
-                classes[0], "attrib", uselist=False, useobject=False
+                classes[0], "attrib", uselist=False, useobject=useobject
             )
 
         def attr_b():
             attributes.register_attribute(
-                classes[1], "attrib", uselist=False, useobject=False
+                classes[1], "attrib", uselist=False, useobject=useobject
             )
 
         def attr_c():
             attributes.register_attribute(
-                classes[2], "attrib", uselist=False, useobject=False
+                classes[2], "attrib", uselist=False, useobject=useobject
             )
 
         def set_(state, value, oldvalue, initiator):
-            canary.append(value)
+            canary.append((value, oldvalue))
 
         def events_a():
-            event.listen(classes[0].attrib, "set", set_, propagate=True)
-
-        def teardown():
-            classes[:] = [None, None, None]
-            canary[:] = []
+            event.listen(
+                classes[0].attrib,
+                "set",
+                set_,
+                propagate=True,
+                active_history=active_history,
+            )
 
         ordering = [
             (instrument_a, instrument_b),
@@ -3550,17 +3642,14 @@ class ListenerTest(fixtures.ORMTest):
             for fn in series:
                 fn()
 
-            b = classes[1]()
-            b.attrib = "foo"
-            eq_(b.attrib, "foo")
-            eq_(canary, ["foo"])
+            if useobject:
+                D = make_d()
+                instrument_d()
 
-            c = classes[2]()
-            c.attrib = "bar"
-            eq_(c.attrib, "bar")
-            eq_(canary, ["foo", "bar"])
+            yield classes, canary
 
-            teardown()
+            classes[:] = [None, None, None, None]
+            canary[:] = []
 
 
 class TestUnlink(fixtures.TestBase):

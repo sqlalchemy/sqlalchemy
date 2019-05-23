@@ -99,6 +99,8 @@ class QueryableAttribute(
             for base in manager._bases:
                 if key in base:
                     self.dispatch._update(base[key].dispatch)
+                    if base[key].dispatch._active_history:
+                        self.dispatch._active_history = True
 
     @util.memoized_property
     def _supports_population(self):

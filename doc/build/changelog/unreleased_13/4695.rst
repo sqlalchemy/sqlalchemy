@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4695
+
+    Fixed issue where the :paramref:`.AttributeEvents.active_history` flag
+    would not be set for an event listener that propgated to a subclass via the
+    :paramref:`.AttributeEvents.propagate` flag.   This bug has been present
+    for the full span of the :class:`.AttributeEvents` system.
+
