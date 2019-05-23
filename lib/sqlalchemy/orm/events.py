@@ -2009,6 +2009,8 @@ class AttributeEvents(event.Events):
                 event_key.with_dispatch_target(mgr[target.key]).base_listen(
                     propagate=True
                 )
+                if active_history:
+                    mgr[target.key].dispatch._active_history = True
 
     def append(self, target, value, initiator):
         """Receive a collection append event.
