@@ -18,6 +18,8 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -136,6 +138,44 @@ class CollectionsTest(fixtures.ORMTest):
 
         adapter.remove_with_event(e1)
         assert_eq()
+
+        self._test_empty_init(typecallable, creator=creator)
+
+    def _test_empty_init(self, typecallable, creator=None):
+        if creator is None:
+            creator = self.entity_maker
+
+        class Foo(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        d = attributes.register_attribute(
+            Foo,
+            "attr",
+            uselist=True,
+            typecallable=typecallable,
+            useobject=True,
+        )
+
+        obj = Foo()
+        e1 = creator()
+        e2 = creator()
+        implicit_collection = obj.attr
+        is_true("attr" not in obj.__dict__)
+        adapter = collections.collection_adapter(implicit_collection)
+        is_true(adapter.empty)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This is a special 'empty'",
+            adapter.append_without_event,
+            e1,
+        )
+
+        adapter.append_with_event(e1)
+        is_false(adapter.empty)
+        is_true("attr" in obj.__dict__)
+        adapter.append_without_event(e2)
+        eq_(set(adapter), {e1, e2})
 
     def _test_list(self, typecallable, creator=None):
         if creator is None:

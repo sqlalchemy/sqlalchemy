@@ -653,8 +653,8 @@ class AttributeImpl(object):
         """
         raise NotImplementedError()
 
-    def initialize(self, state, dict_):
-        """Initialize the given state's attribute with an empty value."""
+    def _default_value(self, state, dict_):
+        """Produce an empty value for an uninitialized scalar attribute."""
 
         value = None
         for fn in self.dispatch.init_scalar:
@@ -710,8 +710,7 @@ class AttributeImpl(object):
             if not passive & INIT_OK:
                 return NO_VALUE
             else:
-                # Return a new, empty value
-                return self.initialize(state, dict_)
+                return self._default_value(state, dict_)
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         self.set(state, dict_, value, initiator, passive=passive)
@@ -1184,11 +1183,14 @@ class CollectionAttributeImpl(AttributeImpl):
         # del is a no-op if collection not present.
         del dict_[self.key]
 
-    def initialize(self, state, dict_):
-        """Initialize this attribute with an empty collection."""
+    def _default_value(self, state, dict_):
+        """Produce an empty collection for an un-initialized attribute"""
 
-        _, user_data = self._initialize_collection(state)
-        dict_[self.key] = user_data
+        if self.key in state._empty_collections:
+            return state._empty_collections[self.key]
+
+        adapter, user_data = self._initialize_collection(state)
+        adapter._set_empty(user_data)
         return user_data
 
     def _initialize_collection(self, state):
@@ -1287,7 +1289,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         if old is PASSIVE_NO_RESULT:
-            old = self.initialize(state, dict_)
+            old = self._default_value(state, dict_)
         elif old is orig_iterable:
             # ignore re-assignment of the current collection, as happens
             # implicitly with in-place operators (foo.collection |= other)
@@ -1699,7 +1701,6 @@ class History(History):
     @classmethod
     def from_collection(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
-
         if current is NO_VALUE:
             return cls((), (), ())
 
@@ -1892,8 +1893,10 @@ def init_state_collection(state, dict_, key):
     """Initialize a collection attribute and return the collection adapter."""
 
     attr = state.manager[key].impl
-    user_data = attr.initialize(state, dict_)
-    return attr.get_collection(state, dict_, user_data)
+    user_data = attr._default_value(state, dict_)
+    adapter = attr.get_collection(state, dict_, user_data)
+    adapter._reset_empty()
+    return adapter
 
 
 def set_committed_value(instance, key, value):

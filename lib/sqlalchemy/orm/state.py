@@ -311,6 +311,10 @@ class InstanceState(interfaces.InspectionAttrInfo):
         return {}
 
     @util.memoized_property
+    def _empty_collections(self):
+        return {}
+
+    @util.memoized_property
     def mapper(self):
         """Return the :class:`.Mapper` used for this mapped object."""
         return self.manager.mapper

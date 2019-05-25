@@ -614,6 +614,7 @@ class CollectionAdapter(object):
         "owner_state",
         "_converter",
         "invalidated",
+        "empty",
     )
 
     def __init__(self, attr, owner_state, data):
@@ -624,6 +625,7 @@ class CollectionAdapter(object):
         data._sa_adapter = self
         self._converter = data._sa_converter
         self.invalidated = False
+        self.empty = False
 
     def _warn_invalidated(self):
         util.warn("This collection has been invalidated.")
@@ -651,12 +653,39 @@ class CollectionAdapter(object):
 
         self._data()._sa_appender(item, _sa_initiator=initiator)
 
+    def _set_empty(self, user_data):
+        assert (
+            not self.empty
+        ), "This collection adapter is alreay in the 'empty' state"
+        self.empty = True
+        self.owner_state._empty_collections[self._key] = user_data
+
+    def _reset_empty(self):
+        assert (
+            self.empty
+        ), "This collection adapter is not in the 'empty' state"
+        self.empty = False
+        self.owner_state.dict[
+            self._key
+        ] = self.owner_state._empty_collections.pop(self._key)
+
+    def _refuse_empty(self):
+        raise sa_exc.InvalidRequestError(
+            "This is a special 'empty' collection which cannot accommodate "
+            "internal mutation operations"
+        )
+
     def append_without_event(self, item):
         """Add or restore an entity to the collection, firing no events."""
+
+        if self.empty:
+            self._refuse_empty()
         self._data()._sa_appender(item, _sa_initiator=False)
 
     def append_multiple_without_event(self, items):
         """Add or restore an entity to the collection, firing no events."""
+        if self.empty:
+            self._refuse_empty()
         appender = self._data()._sa_appender
         for item in items:
             appender(item, _sa_initiator=False)
@@ -670,11 +699,15 @@ class CollectionAdapter(object):
 
     def remove_without_event(self, item):
         """Remove an entity from the collection, firing no events."""
+        if self.empty:
+            self._refuse_empty()
         self._data()._sa_remover(item, _sa_initiator=False)
 
     def clear_with_event(self, initiator=None):
         """Empty the collection, firing a mutation event for each entity."""
 
+        if self.empty:
+            self._refuse_empty()
         remover = self._data()._sa_remover
         for item in list(self):
             remover(item, _sa_initiator=initiator)
@@ -682,6 +715,8 @@ class CollectionAdapter(object):
     def clear_without_event(self):
         """Empty the collection, firing no events."""
 
+        if self.empty:
+            self._refuse_empty()
         remover = self._data()._sa_remover
         for item in list(self):
             remover(item, _sa_initiator=False)
@@ -712,6 +747,10 @@ class CollectionAdapter(object):
         if initiator is not False:
             if self.invalidated:
                 self._warn_invalidated()
+
+            if self.empty:
+                self._reset_empty()
+
             return self.attr.fire_append_event(
                 self.owner_state, self.owner_state.dict, item, initiator
             )
@@ -729,6 +768,10 @@ class CollectionAdapter(object):
         if initiator is not False:
             if self.invalidated:
                 self._warn_invalidated()
+
+            if self.empty:
+                self._reset_empty()
+
             self.attr.fire_remove_event(
                 self.owner_state, self.owner_state.dict, item, initiator
             )
@@ -753,6 +796,7 @@ class CollectionAdapter(object):
             "owner_cls": self.owner_state.class_,
             "data": self.data,
             "invalidated": self.invalidated,
+            "empty": self.empty,
         }
 
     def __setstate__(self, d):
@@ -763,6 +807,7 @@ class CollectionAdapter(object):
         d["data"]._sa_adapter = self
         self.invalidated = d["invalidated"]
         self.attr = getattr(d["owner_cls"], self._key).impl
+        self.empty = d.get("empty", False)
 
 
 def bulk_replace(values, existing_adapter, new_adapter, initiator=None):

@@ -173,6 +173,39 @@ class MergeTest(_fixtures.FixtureTest):
             ),
         )
 
+    def test_transient_non_mutated_collection(self):
+        User, Address, addresses, users = (
+            self.classes.User,
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        s = Session()
+        u = User(
+            id=7,
+            name="fred",
+            addresses=[Address(id=1, email_address="jack@bean.com")],
+        )
+        s.add(u)
+        s.commit()
+        s.close()
+
+        u = User(id=7, name="fred")
+        # access address collection to get implicit blank collection
+        eq_(u.addresses, [])
+        u2 = s.merge(u)
+
+        # collection wasn't emptied
+        eq_(u2.addresses, [Address()])
+
     def test_transient_to_pending_collection_pk_none(self):
         User, Address, addresses, users = (
             self.classes.User,

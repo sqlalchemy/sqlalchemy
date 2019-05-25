@@ -352,8 +352,8 @@ class TestORMInspection(_fixtures.FixtureTest):
         eq_(insp.attrs.addresses.loaded_value, NO_VALUE)
         # regular accessor sets it
         eq_(insp.attrs.addresses.value, [])
-        # now the None is there
-        eq_(insp.attrs.addresses.loaded_value, [])
+        # stays as NO_VALUE, this is #4519
+        eq_(insp.attrs.addresses.loaded_value, NO_VALUE)
 
     def test_instance_state_collection_attr_hist(self):
         User = self.classes.User
@@ -363,7 +363,8 @@ class TestORMInspection(_fixtures.FixtureTest):
         eq_(hist.unchanged, None)
         u1.addresses
         hist = insp.attrs.addresses.history
-        eq_(hist.unchanged, [])
+        # stays, this is #4519
+        eq_(hist.unchanged, None)
 
     def test_instance_state_scalar_attr_hist(self):
         User = self.classes.User
@@ -385,7 +386,8 @@ class TestORMInspection(_fixtures.FixtureTest):
         eq_(hist.unchanged, ())
         u1.addresses
         hist = insp.attrs.addresses.load_history()
-        eq_(hist.unchanged, [])
+        # stays, this is #4519
+        eq_(hist.unchanged, ())
 
     def test_instance_state_scalar_attr_hist_load(self):
         User = self.classes.User
