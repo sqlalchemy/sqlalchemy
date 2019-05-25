@@ -1028,31 +1028,27 @@ class GetNoValueTest(fixtures.ORMTest):
             attributes.PASSIVE_NO_RESULT,
         )
 
-    def test_passive_no_result_never_set(self):
-        attr, state, dict_ = self._fixture(attributes.NEVER_SET)
+    def test_passive_no_result_no_value(self):
+        attr, state, dict_ = self._fixture(attributes.NO_VALUE)
         eq_(
             attr.get(state, dict_, passive=attributes.PASSIVE_NO_INITIALIZE),
             attributes.PASSIVE_NO_RESULT,
         )
         assert "attr" not in dict_
 
-    def test_passive_ret_never_set_never_set(self):
-        attr, state, dict_ = self._fixture(attributes.NEVER_SET)
+    def test_passive_ret_no_value(self):
+        attr, state, dict_ = self._fixture(attributes.NO_VALUE)
         eq_(
-            attr.get(
-                state, dict_, passive=attributes.PASSIVE_RETURN_NEVER_SET
-            ),
-            attributes.NEVER_SET,
+            attr.get(state, dict_, passive=attributes.PASSIVE_RETURN_NO_VALUE),
+            attributes.NO_VALUE,
         )
         assert "attr" not in dict_
 
-    def test_passive_ret_never_set_empty(self):
+    def test_passive_ret_no_value_empty(self):
         attr, state, dict_ = self._fixture(None)
         eq_(
-            attr.get(
-                state, dict_, passive=attributes.PASSIVE_RETURN_NEVER_SET
-            ),
-            attributes.NEVER_SET,
+            attr.get(state, dict_, passive=attributes.PASSIVE_RETURN_NO_VALUE),
+            attributes.NO_VALUE,
         )
         assert "attr" not in dict_
 
@@ -1581,7 +1577,7 @@ class PendingBackrefTest(fixtures.ORMTest):
         )
         eq_(lazy_posts.call_count, 1)
 
-    def test_passive_history_collection_never_set(self):
+    def test_passive_history_collection_no_value(self):
         Post, Blog, lazy_posts = self._fixture()
 
         lazy_posts.return_value = attributes.PASSIVE_NO_RESULT
@@ -1594,10 +1590,10 @@ class PendingBackrefTest(fixtures.ORMTest):
             attributes.instance_dict(b),
         )
 
-        # this sets up NEVER_SET on b.posts
+        # this sets up NO_VALUE on b.posts
         p.blog = b
 
-        eq_(state.committed_state, {"posts": attributes.NEVER_SET})
+        eq_(state.committed_state, {"posts": attributes.NO_VALUE})
         assert "posts" not in dict_
 
         # then suppose the object was made transient again,
@@ -1607,7 +1603,7 @@ class PendingBackrefTest(fixtures.ORMTest):
         p2 = Post("asdf")
         p2.blog = b
 
-        eq_(state.committed_state, {"posts": attributes.NEVER_SET})
+        eq_(state.committed_state, {"posts": attributes.NO_VALUE})
         eq_(dict_["posts"], [p2])
 
         # then this would fail.
@@ -2080,17 +2076,17 @@ class HistoryTest(fixtures.TestBase):
         assert "someattr" not in f.__dict__
         assert "someattr" not in attributes.instance_state(f).committed_state
 
-    def test_collection_never_set(self):
+    def test_collection_no_value(self):
         Foo = self._fixture(uselist=True, useobject=True, active_history=True)
         f = Foo()
         eq_(self._someattr_history(f, passive=True), (None, None, None))
 
-    def test_scalar_obj_never_set(self):
+    def test_scalar_obj_no_value(self):
         Foo = self._fixture(uselist=False, useobject=True, active_history=True)
         f = Foo()
         eq_(self._someattr_history(f, passive=True), (None, None, None))
 
-    def test_scalar_never_set(self):
+    def test_scalar_no_value(self):
         Foo = self._fixture(
             uselist=False, useobject=False, active_history=True
         )
@@ -3483,14 +3479,14 @@ class EventPropagateTest(fixtures.TestBase):
             b = B()
             b.attrib = "foo"
             eq_(b.attrib, "foo")
-            eq_(canary, [("foo", attributes.NEVER_SET)])
+            eq_(canary, [("foo", attributes.NO_VALUE)])
 
             c = C()
             c.attrib = "bar"
             eq_(c.attrib, "bar")
             eq_(
                 canary,
-                [("foo", attributes.NEVER_SET), ("bar", attributes.NEVER_SET)],
+                [("foo", attributes.NO_VALUE), ("bar", attributes.NO_VALUE)],
             )
 
     def test_propagate(self):
@@ -3531,16 +3527,13 @@ class EventPropagateTest(fixtures.TestBase):
             d1 = D()
             b.attrib = d1
             is_(b.attrib, d1)
-            eq_(canary, [(d1, attributes.NEVER_SET)])
+            eq_(canary, [(d1, attributes.NO_VALUE)])
 
             c = C()
             d2 = D()
             c.attrib = d2
             is_(c.attrib, d2)
-            eq_(
-                canary,
-                [(d1, attributes.NEVER_SET), (d2, attributes.NEVER_SET)],
-            )
+            eq_(canary, [(d1, attributes.NO_VALUE), (d2, attributes.NO_VALUE)])
 
     def _test_propagate_fixtures(self, active_history, useobject):
         classes = [None, None, None, None]

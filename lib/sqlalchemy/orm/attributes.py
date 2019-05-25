@@ -28,7 +28,7 @@ from .base import instance_state
 from .base import instance_str
 from .base import LOAD_AGAINST_COMMITTED
 from .base import manager_of_class
-from .base import NEVER_SET
+from .base import NEVER_SET  # noqa
 from .base import NO_AUTOFLUSH
 from .base import NO_CHANGE  # noqa
 from .base import NO_RAISE
@@ -40,7 +40,7 @@ from .base import PASSIVE_NO_INITIALIZE
 from .base import PASSIVE_NO_RESULT
 from .base import PASSIVE_OFF
 from .base import PASSIVE_ONLY_PERSISTENT
-from .base import PASSIVE_RETURN_NEVER_SET
+from .base import PASSIVE_RETURN_NO_VALUE
 from .base import RELATED_OBJECT_OK  # noqa
 from .base import SQL_OK  # noqa
 from .base import state_str
@@ -677,7 +677,7 @@ class AttributeImpl(object):
             key = self.key
             if (
                 key not in state.committed_state
-                or state.committed_state[key] is NEVER_SET
+                or state.committed_state[key] is NO_VALUE
             ):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
@@ -692,7 +692,7 @@ class AttributeImpl(object):
                 else:
                     value = ATTR_EMPTY
 
-                if value is PASSIVE_NO_RESULT or value is NEVER_SET:
+                if value is PASSIVE_NO_RESULT or value is NO_VALUE:
                     return value
                 elif value is ATTR_WAS_SET:
                     try:
@@ -708,7 +708,7 @@ class AttributeImpl(object):
                     return self.set_committed_value(state, dict_, value)
 
             if not passive & INIT_OK:
-                return NEVER_SET
+                return NO_VALUE
             else:
                 # Return a new, empty value
                 return self.initialize(state, dict_)
@@ -749,7 +749,7 @@ class AttributeImpl(object):
 
         if self.key in state.committed_state:
             value = state.committed_state[self.key]
-            if value in (NO_VALUE, NEVER_SET):
+            if value is NO_VALUE:
                 return None
             else:
                 return value
@@ -782,7 +782,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
     def delete(self, state, dict_):
         if self.dispatch._active_history:
-            old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
+            old = self.get(state, dict_, PASSIVE_RETURN_NO_VALUE)
         else:
             old = dict_.get(self.key, NO_VALUE)
 
@@ -802,6 +802,8 @@ class ScalarAttributeImpl(AttributeImpl):
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         if self.key in dict_:
             return History.from_scalar_attribute(self, state, dict_[self.key])
+        elif self.key in state.committed_state:
+            return History.from_scalar_attribute(self, state, NO_VALUE)
         else:
             if passive & INIT_OK:
                 passive ^= INIT_OK
@@ -822,7 +824,7 @@ class ScalarAttributeImpl(AttributeImpl):
         pop=False,
     ):
         if self.dispatch._active_history:
-            old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
+            old = self.get(state, dict_, PASSIVE_RETURN_NO_VALUE)
         else:
             old = dict_.get(self.key, NO_VALUE)
 
@@ -920,7 +922,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if (
             current is not None
             and current is not PASSIVE_NO_RESULT
-            and current is not NEVER_SET
+            and current is not NO_VALUE
         ):
             ret = [(instance_state(current), current)]
         else:
@@ -931,7 +933,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             if (
                 original is not None
                 and original is not PASSIVE_NO_RESULT
-                and original is not NEVER_SET
+                and original is not NO_VALUE
                 and original is not current
             ):
 
@@ -998,7 +1000,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             if previous is not value and previous not in (
                 None,
                 PASSIVE_NO_RESULT,
-                NEVER_SET,
+                NO_VALUE,
             ):
                 self.sethasparent(instance_state(previous), state, False)
 
@@ -1109,7 +1111,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         if self.key in state.committed_state:
             original = state.committed_state[self.key]
-            if original not in (NO_VALUE, NEVER_SET):
+            if original is not NO_VALUE:
                 current_states = [
                     ((c is not None) and instance_state(c) or None, c)
                     for c in current
@@ -1142,7 +1144,7 @@ class CollectionAttributeImpl(AttributeImpl):
         for fn in self.dispatch.append:
             value = fn(state, value, initiator or self._append_token)
 
-        state._modified_event(dict_, self, NEVER_SET, True)
+        state._modified_event(dict_, self, NO_VALUE, True)
 
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), state, True)
@@ -1158,7 +1160,7 @@ class CollectionAttributeImpl(AttributeImpl):
         operations (even though set.pop is the one where it is really needed).
 
         """
-        state._modified_event(dict_, self, NEVER_SET, True)
+        state._modified_event(dict_, self, NO_VALUE, True)
 
     def fire_remove_event(self, state, dict_, value, initiator):
         if self.trackparent and value is not None:
@@ -1167,13 +1169,13 @@ class CollectionAttributeImpl(AttributeImpl):
         for fn in self.dispatch.remove:
             fn(state, value, initiator or self._remove_token)
 
-        state._modified_event(dict_, self, NEVER_SET, True)
+        state._modified_event(dict_, self, NO_VALUE, True)
 
     def delete(self, state, dict_):
         if self.key not in dict_:
             return
 
-        state._modified_event(dict_, self, NEVER_SET, True)
+        state._modified_event(dict_, self, NO_VALUE, True)
 
         collection = self.get_collection(state, state.dict)
         collection.clear_with_event()
@@ -1386,7 +1388,7 @@ def backref_listeners(attribute, key, uselist):
         if (
             oldchild is not None
             and oldchild is not PASSIVE_NO_RESULT
-            and oldchild is not NEVER_SET
+            and oldchild is not NO_VALUE
         ):
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
@@ -1481,7 +1483,7 @@ def backref_listeners(attribute, key, uselist):
         if (
             child is not None
             and child is not PASSIVE_NO_RESULT
-            and child is not NEVER_SET
+            and child is not NO_VALUE
         ):
             child_state, child_dict = (
                 instance_state(child),
@@ -1549,9 +1551,7 @@ def backref_listeners(attribute, key, uselist):
 
 
 _NO_HISTORY = util.symbol("NO_HISTORY")
-_NO_STATE_SYMBOLS = frozenset(
-    [id(PASSIVE_NO_RESULT), id(NO_VALUE), id(NEVER_SET)]
-)
+_NO_STATE_SYMBOLS = frozenset([id(PASSIVE_NO_RESULT), id(NO_VALUE)])
 
 History = util.namedtuple("History", ["added", "unchanged", "deleted"])
 
@@ -1637,12 +1637,15 @@ class History(History):
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
 
         if original is _NO_HISTORY:
-            if current is NEVER_SET:
+            if current is NO_VALUE:
                 return cls((), (), ())
             else:
                 return cls((), [current], ())
         # don't let ClauseElement expressions here trip things up
-        elif attribute.is_equal(current, original) is True:
+        elif (
+            current is not NO_VALUE
+            and attribute.is_equal(current, original) is True
+        ):
             return cls((), [current], ())
         else:
             # current convention on native scalars is to not
@@ -1658,7 +1661,7 @@ class History(History):
                     current = None
             else:
                 deleted = [original]
-            if current is NEVER_SET:
+            if current is NO_VALUE:
                 return cls((), (), deleted)
             else:
                 return cls([current], (), deleted)
@@ -1668,11 +1671,11 @@ class History(History):
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
 
         if original is _NO_HISTORY:
-            if current is NO_VALUE or current is NEVER_SET:
+            if current is NO_VALUE:
                 return cls((), (), ())
             else:
                 return cls((), [current], ())
-        elif current is original and current is not NEVER_SET:
+        elif current is original and current is not NO_VALUE:
             return cls((), [current], ())
         else:
             # current convention on related objects is to not
@@ -1688,7 +1691,7 @@ class History(History):
                     current = None
             else:
                 deleted = [original]
-            if current is NO_VALUE or current is NEVER_SET:
+            if current is NO_VALUE:
                 return cls((), (), deleted)
             else:
                 return cls([current], (), deleted)
@@ -1697,11 +1700,11 @@ class History(History):
     def from_collection(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
 
-        if current is NO_VALUE or current is NEVER_SET:
+        if current is NO_VALUE:
             return cls((), (), ())
 
         current = getattr(current, "_sa_adapter")
-        if original in (NO_VALUE, NEVER_SET):
+        if original is NO_VALUE:
             return cls(list(current), (), ())
         elif original is _NO_HISTORY:
             return cls((), list(current), ())

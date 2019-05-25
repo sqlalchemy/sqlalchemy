@@ -1096,9 +1096,9 @@ class GetterStateTest(_fixtures.FixtureTest):
             Address.user.impl.get(
                 attributes.instance_state(a1),
                 attributes.instance_dict(a1),
-                passive=attributes.PASSIVE_RETURN_NEVER_SET,
+                passive=attributes.PASSIVE_RETURN_NO_VALUE,
             ),
-            attributes.NEVER_SET,
+            attributes.NO_VALUE,
         )
         assert "user_id" not in a1.__dict__
         assert "user" not in a1.__dict__
@@ -1109,7 +1109,7 @@ class GetterStateTest(_fixtures.FixtureTest):
             Address.user.impl.get_history(
                 attributes.instance_state(a1),
                 attributes.instance_dict(a1),
-                passive=attributes.PASSIVE_RETURN_NEVER_SET,
+                passive=attributes.PASSIVE_RETURN_NO_VALUE,
             ),
             ((), (), ()),
         )
@@ -1174,7 +1174,7 @@ class GetterStateTest(_fixtures.FixtureTest):
             Address.user.impl.get(
                 attributes.instance_state(a1),
                 attributes.instance_dict(a1),
-                passive=attributes.PASSIVE_RETURN_NEVER_SET,
+                passive=attributes.PASSIVE_RETURN_NO_VALUE,
             ),
             User(name="ed"),
         )
@@ -1185,7 +1185,7 @@ class GetterStateTest(_fixtures.FixtureTest):
             Address.user.impl.get_history(
                 attributes.instance_state(a1),
                 attributes.instance_dict(a1),
-                passive=attributes.PASSIVE_RETURN_NEVER_SET,
+                passive=attributes.PASSIVE_RETURN_NO_VALUE,
             ),
             ((), [User(name="ed")], ()),
         )
