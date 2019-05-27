@@ -2267,6 +2267,9 @@ class AttributeEvents(event.Events):
 
         .. seealso::
 
+            :meth:`.AttributeEvents.init_collection` - collection version
+            of this event
+
             :class:`.AttributeEvents` - background on listener options such
             as propagation to subclasses.
 
@@ -2311,6 +2314,9 @@ class AttributeEvents(event.Events):
 
             :class:`.AttributeEvents` - background on listener options such
             as propagation to subclasses.
+
+            :meth:`.AttributeEvents.init_scalar` - "scalar" version of this
+            event.
 
         """
 

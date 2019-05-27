@@ -1653,12 +1653,13 @@ class RelationshipProperty(StrategizedProperty):
             return
 
         if self.uselist:
-            instances = source_state.get_impl(self.key).get(
-                source_state, source_dict
-            )
-            if hasattr(instances, "_sa_adapter"):
-                # convert collections to adapters to get a true iterator
-                instances = instances._sa_adapter
+            impl = source_state.get_impl(self.key)
+            instances_iterable = impl.get_collection(source_state, source_dict)
+
+            # if this is a CollectionAttributeImpl, then empty should
+            # be False, otherwise "self.key in source_dict" should not be
+            # True
+            assert not instances_iterable.empty if impl.collection else True
 
             if load:
                 # for a full merge, pre-load the destination collection,
@@ -1669,7 +1670,7 @@ class RelationshipProperty(StrategizedProperty):
                 dest_state.get_impl(self.key).get(dest_state, dest_dict)
 
             dest_list = []
-            for current in instances:
+            for current in instances_iterable:
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True

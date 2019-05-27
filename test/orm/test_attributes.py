@@ -3448,15 +3448,31 @@ class ListenerTest(fixtures.ORMTest):
         class Foo(object):
             pass
 
+        class Bar(object):
+            pass
+
         instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, "bar", useobject=True, uselist=True)
 
         event.listen(Foo.bar, "set", canary)
 
         f1 = Foo()
         eq_(f1.bar, [])
+
+        assert "bar" not in f1.__dict__
+
+        adapter = Foo.bar.impl.get_collection(
+            attributes.instance_state(f1), attributes.instance_dict(f1)
+        )
+        assert adapter.empty
+
         # reversal of approach in #3061
         eq_(canary.mock_calls, [])
+
+        f1.bar.append(Bar())
+        assert "bar" in f1.__dict__
+        assert not adapter.empty
 
 
 class EventPropagateTest(fixtures.TestBase):

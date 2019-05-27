@@ -488,7 +488,7 @@ class NoLoader(AbstractRelationshipLoader):
     ):
         def invoke_no_load(state, dict_, row):
             if self.uselist:
-                state.manager.get_impl(self.key).initialize(state, dict_)
+                attributes.init_state_collection(state, dict_, self.key)
             else:
                 dict_[self.key] = None
 
