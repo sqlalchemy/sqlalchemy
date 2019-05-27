@@ -5,6 +5,7 @@ from sqlalchemy import BOOLEAN
 from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import CHAR
+from sqlalchemy import CheckConstraint
 from sqlalchemy import CLOB
 from sqlalchemy import Column
 from sqlalchemy import DATE
@@ -126,6 +127,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx2),
             "CREATE INDEX test_idx2 ON testtbl (data(5))",
+        )
+
+    def test_drop_constraint_mysql(self):
+        m = MetaData()
+        table_name = "testtbl"
+        constraint_name = "constraint"
+        constraint = CheckConstraint("data IS NOT NULL", name=constraint_name)
+        tbl = Table(table_name, m, Column("data", String(255)), constraint)
+        dialect = mysql.dialect()
+        self.assert_compile(
+            schema.DropConstraint(constraint),
+            "ALTER TABLE %s DROP CHECK `%s`"
+            % (table_name, constraint_name),
+            dialect=dialect
+        )
+
+    def test_drop_constraint_mariadb(self):
+        m = MetaData()
+        table_name = "testtbl"
+        constraint_name = "constraint"
+        constraint = CheckConstraint("data IS NOT NULL", name=constraint_name)
+        tbl = Table(table_name, m, Column("data", String(255)), constraint)
+        dialect = mysql.dialect()
+        dialect.server_version_info = (10, 1, 1, "MariaDB")
+        self.assert_compile(
+            schema.DropConstraint(constraint),
+            "ALTER TABLE %s DROP CONSTRAINT `%s`"
+            % (table_name, constraint_name),
+            dialect=dialect
         )
 
     def test_create_index_with_length_quoted(self):
