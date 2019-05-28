@@ -3,18 +3,23 @@ import threading
 import time
 
 from sqlalchemy import Column
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import fixtures
 
 
 class ConcurrentUseDeclMappingTest(fixtures.TestBase):
+    def teardown(self):
+        clear_mappers()
+
     @classmethod
     def make_a(cls, Base):
         class A(Base):
@@ -34,12 +39,19 @@ class ConcurrentUseDeclMappingTest(fixtures.TestBase):
         A = cls.A
         try:
             s.query(A).join(A.bs)
-        except Exception as err:
-            result[0] = err
-            print(err)
-        else:
+        except orm_exc.UnmappedClassError as oe:
+            # this is the failure mode, where B is being handled by
+            # declarative and is in the registry but not mapped yet.
+            result[0] = oe
+        except exc.InvalidRequestError as err:
+            # if make_b() starts too slowly, we can reach here, because
+            # B isn't in the registry yet.  We can't guard against this
+            # case in the library because a class can refer to a name that
+            # doesn't exist and that has to raise.
             result[0] = True
-            print("worked")
+        else:
+            # no conflict
+            result[0] = True
 
     @classmethod
     def make_b(cls, Base):
@@ -74,5 +86,5 @@ class ConcurrentUseDeclMappingTest(fixtures.TestBase):
             for t in threads:
                 t.join()
 
-            if isinstance(result[0], Exception):
+            if isinstance(result[0], orm_exc.UnmappedClassError):
                 raise result[0]
