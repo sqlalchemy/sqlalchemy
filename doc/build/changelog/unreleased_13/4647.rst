@@ -1,9 +1,0 @@
-.. change::
-   :tags: bug, orm
-   :tickets: 4647
-
-   A warning is now emitted for the case where a transient object is being
-   merged into the session with :meth:`.Session.merge` when that object is
-   already transient in the :class:`.Session`.   This warns for the case where
-   the object would normally be double-inserted.
-

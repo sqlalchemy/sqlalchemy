@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4653
-
-    Fixed that the :class:`.GenericFunction` class was inadvertently
-    registering itself as one of the named functions.  Pull request courtesy
-    Adrien Berchet.
