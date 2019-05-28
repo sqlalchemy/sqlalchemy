@@ -12,7 +12,155 @@
 
 .. changelog::
     :version: 1.3.4
-    :include_notes_from: unreleased_13
+    :released: May 27, 2019
+
+    .. change::
+        :tags: feature, mssql
+        :tickets: 4657
+
+        Added support for SQL Server filtered indexes, via the ``mssql_where``
+        parameter which works similarly to that of the ``postgresql_where`` index
+        function in the PostgreSQL dialect.
+
+        .. seealso::
+
+            :ref:`mssql_index_where`
+
+    .. change::
+       :tags: bug, misc
+       :tickets: 4625
+
+       Removed errant "sqla_nose.py" symbol from MANIFEST.in which created an
+       undesirable warning message.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4653
+
+        Fixed that the :class:`.GenericFunction` class was inadvertently
+        registering itself as one of the named functions.  Pull request courtesy
+        Adrien Berchet.
+
+    .. change::
+       :tags: bug, engine, postgresql
+       :tickets: 4663
+
+       Moved the "rollback" which occurs during dialect initialization so that it
+       occurs after additional dialect-specific initialize steps, in particular
+       those of the psycopg2 dialect which would inadvertently leave transactional
+       state on the first new connection, which could interfere with some
+       psycopg2-specific APIs which require that no transaction is started.  Pull
+       request courtesy Matthew Wilkes.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4695
+
+        Fixed issue where the :paramref:`.AttributeEvents.active_history` flag
+        would not be set for an event listener that propgated to a subclass via the
+        :paramref:`.AttributeEvents.propagate` flag.   This bug has been present
+        for the full span of the :class:`.AttributeEvents` system.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4690
+
+        Fixed regression where new association proxy system was still not proxying
+        hybrid attributes when they made use of the ``@hybrid_property.expression``
+        decorator to return an alternate SQL expression, or when the hybrid
+        returned an arbitrary :class:`.PropComparator`, at the expression level.
+        This involved futher generalization of the heuristics used to detect the
+        type of object being proxied at the level of :class:`.QueryableAttribute`,
+        to better detect if the descriptor ultimately serves mapped classes or
+        column expressions.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4686
+
+        Applied the mapper "configure mutex" against the declarative class mapping
+        process, to guard against the race which can occur if mappers are used
+        while dynamic module import schemes are still in the process of configuring
+        mappers for related classes.  This does not guard against all possible race
+        conditions, such as if the concurrent import has not yet encountered the
+        dependent classes as of yet, however it guards against as much as possible
+        within the SQLAlchemy declarative process.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4680
+
+        Added error code 20047 to "is_disconnect" for pymssql.  Pull request
+        courtesy Jon Schuff.
+
+
+    .. change::
+       :tags: bug, postgresql, orm
+       :tickets: 4661
+
+       Fixed an issue where the "number of rows matched" warning would emit even if
+       the dialect reported "supports_sane_multi_rowcount=False", as is the case
+       for psycogp2 with ``use_batch_mode=True`` and others.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4618
+
+        Fixed issue where double negation of a boolean column wouldn't reset
+        the "NOT" operator.
+
+    .. change::
+        :tags: mysql, bug
+        :tickets: 4650
+
+        Added support for DROP CHECK constraint which is required by MySQL 8.0.16
+        to drop a CHECK constraint; MariaDB supports plain DROP CONSTRAINT.  The
+        logic distinguishes between the two syntaxes by checking the server version
+        string for MariaDB presence.    Alembic migrations has already worked
+        around this issue by implementing its own DROP for MySQL / MariaDB CHECK
+        constraints, however this change implements it straight in Core so that its
+        available for general use.   Pull request courtesy Hannes Hansen.
+
+    .. change::
+       :tags: bug, orm
+       :tickets: 4647
+
+       A warning is now emitted for the case where a transient object is being
+       merged into the session with :meth:`.Session.merge` when that object is
+       already transient in the :class:`.Session`.   This warns for the case where
+       the object would normally be double-inserted.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4676
+
+        Fixed regression in new relationship m2o comparison logic first introduced
+        at :ref:`change_4359` when comparing to an attribute that is persisted as
+        NULL and is in an un-fetched state in the mapped instance.  Since the
+        attribute has no explicit default, it needs to default to NULL when
+        accessed in a persistent setting.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4569
+
+        The :class:`.GenericFunction` namespace is being migrated so that function
+        names are looked up in a case-insensitive manner, as SQL  functions do not
+        collide on case sensitive differences nor is this something which would
+        occur with user-defined functions or stored procedures.   Lookups for
+        functions declared with :class:`.GenericFunction` now use a case
+        insensitive scheme,  however a deprecation case is supported which allows
+        two or more :class:`.GenericFunction` objects with the same name of
+        different cases to exist, which will cause case sensitive lookups to occur
+        for that particular name, while emitting a warning at function registration
+        time.  Thanks to Adrien Berchet for a lot of work on this complicated
+        feature.
+
 
 .. changelog::
     :version: 1.3.3
