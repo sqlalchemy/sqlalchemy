@@ -154,7 +154,7 @@ def run_setup(with_cext):
         },
         packages=find_packages("lib"),
         package_dir={"": "lib"},
-        license="MIT License",
+        license="MIT",
         cmdclass=cmdclass,
         tests_require=[
             "pytest>=2.5.2,!=3.9.1,!=3.9.2",
