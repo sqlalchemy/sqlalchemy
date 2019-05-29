@@ -390,7 +390,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         eq_(
             sess.query(Manager)
-            .select_from(employees.select().limit(10))
+            .select_entity_from(employees.select().limit(10).subquery())
             .all(),
             [m1, m2],
         )

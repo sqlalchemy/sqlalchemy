@@ -199,7 +199,7 @@ def _no_text_coercion(
 
 
 class _NoTextCoercion(object):
-    def _literal_coercion(self, element, argname=None):
+    def _literal_coercion(self, element, argname=None, **kw):
         if isinstance(element, util.string_types) and issubclass(
             elements.TextClause, self._role_class
         ):
@@ -216,7 +216,7 @@ class _CoerceLiterals(object):
     def _text_coercion(self, element, argname=None):
         return _no_text_coercion(element, argname)
 
-    def _literal_coercion(self, element, argname=None):
+    def _literal_coercion(self, element, argname=None, **kw):
         if isinstance(element, util.string_types):
             if self._coerce_star and element == "*":
                 return elements.ColumnClause("*", is_literal=True)
@@ -240,7 +240,9 @@ class _CoerceLiterals(object):
 class ExpressionElementImpl(
     _ColumnCoercions, RoleImpl, roles.ExpressionElementRole
 ):
-    def _literal_coercion(self, element, name=None, type_=None, argname=None):
+    def _literal_coercion(
+        self, element, name=None, type_=None, argname=None, **kw
+    ):
         if element is None:
             return elements.Null()
         else:
@@ -256,7 +258,7 @@ class BinaryElementImpl(
     ExpressionElementImpl, RoleImpl, roles.BinaryElementRole
 ):
     def _literal_coercion(
-        self, element, expr, operator, bindparam_type=None, argname=None
+        self, element, expr, operator, bindparam_type=None, argname=None, **kw
     ):
         try:
             return expr._bind_param(operator, element, type_=bindparam_type)
@@ -393,7 +395,7 @@ class DMLColumnImpl(_ReturnsStringKey, RoleImpl, roles.DMLColumnRole):
 
 
 class ConstExprImpl(RoleImpl, roles.ConstExprRole):
-    def _literal_coercion(self, element, argname=None):
+    def _literal_coercion(self, element, argname=None, **kw):
         if element is None:
             return elements.Null()
         elif element is False:
@@ -413,7 +415,7 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl, roles.TruncatedLabelRole):
         else:
             self._raise_for_expected(original_element, argname)
 
-    def _literal_coercion(self, element, argname=None):
+    def _literal_coercion(self, element, argname=None, **kw):
         """coerce the given value to :class:`._truncated_label`.
 
         Existing :class:`._truncated_label` and
@@ -540,6 +542,34 @@ class FromClauseImpl(_NoTextCoercion, RoleImpl, roles.FromClauseRole):
             return resolved
         else:
             self._raise_for_expected(original_element, argname)
+
+
+class StrictFromClauseImpl(FromClauseImpl, roles.StrictFromClauseRole):
+    def _implicit_coercions(
+        self,
+        original_element,
+        resolved,
+        argname=None,
+        allow_select=False,
+        **kw
+    ):
+        if resolved._is_select_statement and allow_select:
+            util.warn_deprecated(
+                "Implicit coercion of SELECT and textual SELECT constructs "
+                "into FROM clauses is deprecated; please call .subquery() "
+                "on any Core select or ORM Query object in order to produce a "
+                "subquery object."
+            )
+            return resolved.subquery()
+        else:
+            self._raise_for_expected(original_element, argname)
+
+
+class AnonymizedFromClauseImpl(
+    StrictFromClauseImpl, roles.AnonymizedFromClauseRole
+):
+    def _post_coercion(self, element, flat=False, **kw):
+        return element.alias(flat=flat)
 
 
 class DMLSelectImpl(_NoTextCoercion, RoleImpl, roles.DMLSelectRole):

@@ -4138,7 +4138,9 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         eq_(
             s.query(User)
             .select_from(
-                text("select * from users").columns(id=Integer, name=String)
+                text("select * from users")
+                .columns(id=Integer, name=String)
+                .subquery()
             )
             .order_by(User.id)
             .all(),

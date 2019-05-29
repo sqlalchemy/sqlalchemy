@@ -29,7 +29,9 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import sql
 from .. import util
+from ..sql import coercions
 from ..sql import expression
+from ..sql import roles
 from ..sql import util as sql_util
 
 
@@ -204,11 +206,10 @@ def polymorphic_union(
     for key in table_map:
         table = table_map[key]
 
-        # mysql doesn't like selecting from a select;
-        # make it an alias of the select
-        if isinstance(table, sql.Select):
-            table = table.alias()
-            table_map[key] = table
+        table = coercions.expect(
+            roles.StrictFromClauseRole, table, allow_select=True
+        )
+        table_map[key] = table
 
         m = {}
         for c in table.c:
@@ -466,7 +467,7 @@ class AliasedClass(object):
     ):
         mapper = _class_to_mapper(cls)
         if alias is None:
-            alias = mapper._with_polymorphic_selectable.alias(
+            alias = mapper._with_polymorphic_selectable._anonymous_fromclause(
                 name=name, flat=flat
             )
 
@@ -829,7 +830,7 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
             raise sa_exc.ArgumentError(
                 "adapt_on_names only applies to ORM elements"
             )
-        return element.alias(name, flat=flat)
+        return element._anonymous_fromclause(name=name, flat=flat)
     else:
         return AliasedClass(
             element,
@@ -896,7 +897,7 @@ def with_polymorphic(
 
      .. seealso:: :meth:`.Join.alias`
 
-    :param selectable: a table or select() statement that will
+    :param selectable: a table or subquery that will
         be used in place of the generated FROM clause. This argument is
         required if any of the desired classes use concrete table
         inheritance, since SQLAlchemy currently cannot generate UNIONs
@@ -930,7 +931,7 @@ def with_polymorphic(
         classes, selectable, innerjoin=innerjoin
     )
     if aliased or flat:
-        selectable = selectable.alias(flat=flat)
+        selectable = selectable._anonymous_fromclause(flat=flat)
     return AliasedClass(
         base,
         selectable,

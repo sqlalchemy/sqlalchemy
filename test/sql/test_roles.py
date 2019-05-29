@@ -195,6 +195,39 @@ class RoleTest(fixtures.TestBase):
         d1 = DDL("hi")
         is_(expect(roles.CoerceTextStatementRole, d1), d1)
 
+    def test_strict_from_clause_role(self):
+        stmt = select([t]).subquery()
+        is_true(
+            expect(roles.StrictFromClauseRole, stmt).compare(
+                select([t]).subquery()
+            )
+        )
+
+    def test_strict_from_clause_role_disallow_select(self):
+        stmt = select([t])
+        assert_raises_message(
+            exc.ArgumentError,
+            r"FROM expression, such as a Table or alias\(\) "
+            "object expected, got .*Select",
+            expect,
+            roles.StrictFromClauseRole,
+            stmt,
+        )
+
+    def test_anonymized_from_clause_role(self):
+        is_true(expect(roles.AnonymizedFromClauseRole, t).compare(t.alias()))
+
+        # note the compare for subquery().alias(), even if it is two
+        # plain Alias objects (which it won't be once we introduce the
+        # Subquery class), still compares based on alias() being present
+        # twice, that is, alias().alias() builds an alias of an alias, rather
+        # than just replacing the outer alias.
+        is_true(
+            expect(
+                roles.AnonymizedFromClauseRole, select([t]).subquery()
+            ).compare(select([t]).subquery().alias())
+        )
+
     def test_statement_coercion_sequence(self):
         s1 = Sequence("hi")
         is_(expect(roles.CoerceTextStatementRole, s1), s1)

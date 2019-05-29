@@ -7,8 +7,10 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy.ext.declarative import comparable_using
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import AttributeExtension
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import collections
@@ -16,6 +18,7 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import comparable_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
@@ -33,7 +36,9 @@ from sqlalchemy.orm import SessionExtension
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import collection
+from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
@@ -42,11 +47,13 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util.compat import pypy
 from . import _fixtures
+from .inheritance import _poly_fixtures
 from .test_options import PathTest as OptionsPathTest
 from .test_transaction import _LocalFixture
 
@@ -547,19 +554,446 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
         self.assert_(len(s.identity_map) == 0)
 
 
-class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_query_as_scalar(self):
-        users, User = self.tables.users, self.classes.User
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
 
-        mapper(User, users)
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    @classmethod
+    def _expect_implicit_subquery(cls):
+        return assertions.expect_deprecated(
+            "Implicit coercion of SELECT and textual SELECT constructs into "
+            r"FROM clauses is deprecated; please call \.subquery\(\) on any "
+            "Core select or ORM Query object in order to produce a "
+            "subquery object."
+        )
+
+    def test_via_textasfrom_select_from(self):
+        User = self.classes.User
+        s = create_session()
+
+        with self._expect_implicit_subquery():
+            eq_(
+                s.query(User)
+                .select_from(
+                    text("select * from users").columns(
+                        id=Integer, name=String
+                    )
+                )
+                .order_by(User.id)
+                .all(),
+                [User(id=7), User(id=8), User(id=9), User(id=10)],
+            )
+
+    def test_query_as_scalar(self):
+        User = self.classes.User
+
         s = Session()
         with assertions.expect_deprecated(
             r"The Query.as_scalar\(\) method is deprecated and will "
             "be removed in a future release."
         ):
             s.query(User).as_scalar()
+
+    def test_select_entity_from_crit(self):
+        User, users = self.classes.User, self.tables.users
+
+        sel = users.select()
+        sess = create_session()
+
+        with self._expect_implicit_subquery():
+            eq_(
+                sess.query(User)
+                .select_entity_from(sel)
+                .filter(User.id.in_([7, 8]))
+                .all(),
+                [User(name="jack", id=7), User(name="ed", id=8)],
+            )
+
+    def test_select_entity_from_select(self):
+        User, users = self.classes.User, self.tables.users
+
+        sess = create_session()
+        with self._expect_implicit_subquery():
+            self.assert_compile(
+                sess.query(User.name).select_entity_from(
+                    users.select().where(users.c.id > 5)
+                ),
+                "SELECT anon_1.name AS anon_1_name FROM "
+                "(SELECT users.id AS id, users.name AS name FROM users "
+                "WHERE users.id > :id_1) AS anon_1",
+            )
+
+    def test_select_entity_from_q_statement(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        q = sess.query(User)
+        with self._expect_implicit_subquery():
+            q = sess.query(User).select_entity_from(q.statement)
+        self.assert_compile(
+            q.filter(User.name == "ed"),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name FROM "
+            "users) AS anon_1 WHERE anon_1.name = :name_1",
+        )
+
+    def test_select_from_q_statement_no_aliasing(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User)
+        with self._expect_implicit_subquery():
+            q = sess.query(User).select_from(q.statement)
+        self.assert_compile(
+            q.filter(User.name == "ed"),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users, (SELECT users.id AS id, users.name AS name FROM "
+            "users) AS anon_1 WHERE users.name = :name_1",
+        )
+
+    def test_from_alias_three(self):
+        User, addresses, users = (
+            self.classes.User,
+            self.tables.addresses,
+            self.tables.users,
+        )
+
+        query = (
+            users.select(users.c.id == 7)
+            .union(users.select(users.c.id > 7))
+            .alias("ulist")
+            .outerjoin(addresses)
+            .select(
+                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
+            )
+        )
+        sess = create_session()
+
+        # better way.  use select_entity_from()
+        def go():
+            with self._expect_implicit_subquery():
+                result = (
+                    sess.query(User)
+                    .select_entity_from(query)
+                    .options(contains_eager("addresses"))
+                    .all()
+                )
+            assert self.static.user_address_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_from_alias_four(self):
+        User, addresses, users = (
+            self.classes.User,
+            self.tables.addresses,
+            self.tables.users,
+        )
+
+        sess = create_session()
+
+        # same thing, but alias addresses, so that the adapter
+        # generated by select_entity_from() is wrapped within
+        # the adapter created by contains_eager()
+        adalias = addresses.alias()
+        query = (
+            users.select(users.c.id == 7)
+            .union(users.select(users.c.id > 7))
+            .alias("ulist")
+            .outerjoin(adalias)
+            .select(use_labels=True, order_by=[text("ulist.id"), adalias.c.id])
+        )
+
+        def go():
+            with self._expect_implicit_subquery():
+                result = (
+                    sess.query(User)
+                    .select_entity_from(query)
+                    .options(contains_eager("addresses", alias=adalias))
+                    .all()
+                )
+            assert self.static.user_address_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_select(self):
+        addresses, users = self.tables.addresses, self.tables.users
+
+        sess = create_session()
+
+        with self._expect_implicit_subquery():
+            self.assert_compile(
+                sess.query(users)
+                .select_entity_from(users.select())
+                .with_labels()
+                .statement,
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users, "
+                "(SELECT users.id AS id, users.name AS name FROM users) "
+                "AS anon_1",
+            )
+
+    def test_join(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        # mapper(User, users, properties={"addresses": relationship(Address)})
+        # mapper(Address, addresses)
+
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+
+        with self._expect_implicit_subquery():
+            result = (
+                sess.query(User)
+                .select_entity_from(sel)
+                .join("addresses")
+                .add_entity(Address)
+                .order_by(User.id)
+                .order_by(Address.id)
+                .all()
+            )
+
+        eq_(
+            result,
+            [
+                (
+                    User(name="jack", id=7),
+                    Address(user_id=7, email_address="jack@bean.com", id=1),
+                ),
+                (
+                    User(name="ed", id=8),
+                    Address(user_id=8, email_address="ed@wood.com", id=2),
+                ),
+                (
+                    User(name="ed", id=8),
+                    Address(user_id=8, email_address="ed@bettyboop.com", id=3),
+                ),
+                (
+                    User(name="ed", id=8),
+                    Address(user_id=8, email_address="ed@lala.com", id=4),
+                ),
+            ],
+        )
+
+        adalias = aliased(Address)
+        with self._expect_implicit_subquery():
+            result = (
+                sess.query(User)
+                .select_entity_from(sel)
+                .join(adalias, "addresses")
+                .add_entity(adalias)
+                .order_by(User.id)
+                .order_by(adalias.id)
+                .all()
+            )
+        eq_(
+            result,
+            [
+                (
+                    User(name="jack", id=7),
+                    Address(user_id=7, email_address="jack@bean.com", id=1),
+                ),
+                (
+                    User(name="ed", id=8),
+                    Address(user_id=8, email_address="ed@wood.com", id=2),
+                ),
+                (
+                    User(name="ed", id=8),
+                    Address(user_id=8, email_address="ed@bettyboop.com", id=3),
+                ),
+                (
+                    User(name="ed", id=8),
+                    Address(user_id=8, email_address="ed@lala.com", id=4),
+                ),
+            ],
+        )
+
+    def test_more_joins(self):
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
+            self.tables.users,
+            self.classes.Keyword,
+            self.tables.orders,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.keywords,
+            self.tables.item_keywords,
+        )
+
+        sess = create_session()
+        sel = users.select(users.c.id.in_([7, 8]))
+
+        with self._expect_implicit_subquery():
+            eq_(
+                sess.query(User)
+                .select_entity_from(sel)
+                .join("orders", "items", "keywords")
+                .filter(Keyword.name.in_(["red", "big", "round"]))
+                .all(),
+                [User(name="jack", id=7)],
+            )
+
+        with self._expect_implicit_subquery():
+            eq_(
+                sess.query(User)
+                .select_entity_from(sel)
+                .join("orders", "items", "keywords", aliased=True)
+                .filter(Keyword.name.in_(["red", "big", "round"]))
+                .all(),
+                [User(name="jack", id=7)],
+            )
+
+    def test_join_no_order_by(self):
+        User, users = self.classes.User, self.tables.users
+
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+
+        with self._expect_implicit_subquery():
+            eq_(
+                sess.query(User).select_entity_from(sel).all(),
+                [User(name="jack", id=7), User(name="ed", id=8)],
+            )
+
+    def test_replace_with_eager(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        sel = users.select(users.c.id.in_([7, 8]))
+        sess = create_session()
+
+        def go():
+            with self._expect_implicit_subquery():
+                eq_(
+                    sess.query(User)
+                    .options(joinedload("addresses"))
+                    .select_entity_from(sel)
+                    .order_by(User.id)
+                    .all(),
+                    [
+                        User(id=7, addresses=[Address(id=1)]),
+                        User(
+                            id=8,
+                            addresses=[
+                                Address(id=2),
+                                Address(id=3),
+                                Address(id=4),
+                            ],
+                        ),
+                    ],
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+        sess.expunge_all()
+
+        def go():
+            with self._expect_implicit_subquery():
+                eq_(
+                    sess.query(User)
+                    .options(joinedload("addresses"))
+                    .select_entity_from(sel)
+                    .filter(User.id == 8)
+                    .order_by(User.id)
+                    .all(),
+                    [
+                        User(
+                            id=8,
+                            addresses=[
+                                Address(id=2),
+                                Address(id=3),
+                                Address(id=4),
+                            ],
+                        )
+                    ],
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+        sess.expunge_all()
+
+        def go():
+            with self._expect_implicit_subquery():
+                eq_(
+                    sess.query(User)
+                    .options(joinedload("addresses"))
+                    .select_entity_from(sel)
+                    .order_by(User.id)[1],
+                    User(
+                        id=8,
+                        addresses=[
+                            Address(id=2),
+                            Address(id=3),
+                            Address(id=4),
+                        ],
+                    ),
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+
+class DeprecatedInhTest(_poly_fixtures._Polymorphic):
+    def test_with_polymorphic(self):
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+
+        with DeprecatedQueryTest._expect_implicit_subquery():
+            p_poly = with_polymorphic(Person, [Engineer], select([Person]))
+
+        is_true(
+            sa.inspect(p_poly).selectable.compare(select([Person]).subquery())
+        )
+
+
+class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_polymorphic_union_w_select(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        with DeprecatedQueryTest._expect_implicit_subquery():
+            dep = polymorphic_union(
+                {"u": users.select(), "a": addresses.select()},
+                "type",
+                "bcjoin",
+            )
+
+        subq_version = polymorphic_union(
+            {
+                "u": users.select().subquery(),
+                "a": addresses.select().subquery(),
+            },
+            "type",
+            "bcjoin",
+        )
+        is_true(dep.compare(subq_version))
 
     def test_cancel_order_by(self):
         users, User = self.tables.users, self.classes.User
@@ -1962,10 +2396,11 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
         sel = users.select(users.c.id.in_([7, 8]))
         sess = create_session()
 
-        eq_(
-            sess.query(User).select_entity_from(sel).all(),
-            [User(name="jack", id=7), User(name="ed", id=8)],
-        )
+        with DeprecatedQueryTest._expect_implicit_subquery():
+            eq_(
+                sess.query(User).select_entity_from(sel).all(),
+                [User(name="jack", id=7), User(name="ed", id=8)],
+            )
 
     def test_defer_addtl_attrs(self):
         users, User, Address, addresses = (

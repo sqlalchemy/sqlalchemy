@@ -254,7 +254,7 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
                     ),
                     "p": self.tables.page.select(
                         self.tables.page.c.type == "p"
-                    ),
+                    ).subquery(),
                 },
                 None,
                 "page_join",

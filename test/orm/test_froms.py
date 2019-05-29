@@ -294,7 +294,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(users)
-            .select_entity_from(users.select())
+            .select_entity_from(users.select().subquery())
             .with_labels()
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -591,7 +591,7 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         q = sess.query(User)
-        q = sess.query(User).select_entity_from(q.statement)
+        q = sess.query(User).select_entity_from(q.statement.subquery())
         self.assert_compile(
             q.filter(User.name == "ed"),
             "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
@@ -616,7 +616,7 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         q = sess.query(User)
-        q = sess.query(User).select_from(q.statement)
+        q = sess.query(User).select_from(q.statement.subquery())
         self.assert_compile(
             q.filter(User.name == "ed"),
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -933,7 +933,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         def go():
             result = (
                 sess.query(User)
-                .select_entity_from(query)
+                .select_entity_from(query.subquery())
                 .options(contains_eager("addresses"))
                 .all()
             )
@@ -965,7 +965,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         def go():
             result = (
                 sess.query(User)
-                .select_entity_from(query)
+                .select_entity_from(query.subquery())
                 .options(contains_eager("addresses", alias=adalias))
                 .all()
             )
@@ -2668,7 +2668,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         # here for comparison
         self.assert_compile(
             sess.query(User.name).select_entity_from(
-                users.select().where(users.c.id > 5)
+                users.select().where(users.c.id > 5).subquery()
             ),
             "SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id, "
             "users.name AS name FROM users WHERE users.id > :id_1) AS anon_1",
@@ -2683,7 +2683,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         eq_(
-            sess.query(User).select_entity_from(sel).all(),
+            sess.query(User).select_entity_from(sel.subquery()).all(),
             [User(name="jack", id=7), User(name="ed", id=8)],
         )
 
@@ -2762,7 +2762,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             sess.query(User)
-            .select_entity_from(sel)
+            .select_entity_from(sel.subquery())
             .join("addresses")
             .add_entity(Address)
             .order_by(User.id)
@@ -2791,7 +2791,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         adalias = aliased(Address)
         eq_(
             sess.query(User)
-            .select_entity_from(sel)
+            .select_entity_from(sel.subquery())
             .join(adalias, "addresses")
             .add_entity(adalias)
             .order_by(User.id)
@@ -2873,7 +2873,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             sess.query(User)
-            .select_entity_from(sel)
+            .select_entity_from(sel.subquery())
             .join("orders", "items", "keywords")
             .filter(Keyword.name.in_(["red", "big", "round"]))
             .all(),
@@ -2882,7 +2882,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             sess.query(User)
-            .select_entity_from(sel)
+            .select_entity_from(sel.subquery())
             .join("orders", "items", "keywords", aliased=True)
             .filter(Keyword.name.in_(["red", "big", "round"]))
             .all(),
@@ -2946,7 +2946,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         def go():
             eq_(
                 sess.query(User)
-                .select_entity_from(sel)
+                .select_entity_from(sel.subquery())
                 .options(
                     joinedload("orders")
                     .joinedload("items")
@@ -3024,7 +3024,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         sel2 = orders.select(orders.c.id.in_([1, 2, 3]))
         eq_(
             sess.query(Order)
-            .select_entity_from(sel2)
+            .select_entity_from(sel2.subquery())
             .join("items", "keywords")
             .filter(Keyword.name == "red")
             .order_by(Order.id)
@@ -3036,7 +3036,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
         eq_(
             sess.query(Order)
-            .select_entity_from(sel2)
+            .select_entity_from(sel2.subquery())
             .join("items", "keywords", aliased=True)
             .filter(Keyword.name == "red")
             .order_by(Order.id)
@@ -3071,7 +3071,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .options(joinedload("addresses"))
-                .select_entity_from(sel)
+                .select_entity_from(sel.subquery())
                 .order_by(User.id)
                 .all(),
                 [
@@ -3094,7 +3094,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .options(joinedload("addresses"))
-                .select_entity_from(sel)
+                .select_entity_from(sel.subquery())
                 .filter(User.id == 8)
                 .order_by(User.id)
                 .all(),
@@ -3117,7 +3117,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .options(joinedload("addresses"))
-                .select_entity_from(sel)
+                .select_entity_from(sel.subquery())
                 .order_by(User.id)[1],
                 User(
                     id=8,
