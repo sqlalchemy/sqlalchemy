@@ -3,7 +3,6 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
-from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
@@ -20,6 +19,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.util import compat
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 
@@ -72,12 +72,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert Point.zero
 
-        # TODO: I don't quite understand this
-        # still
-        if util.py2k:
-            assert not getattr(alias, "zero")
-        else:
-            assert getattr(alias, "zero")
+        assert getattr(alias, "zero")
 
     def test_classmethod(self):
         class Point(object):
@@ -246,6 +241,106 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             sess.query(alias.x_syn).filter(alias.x_syn > Point.x_syn),
             "SELECT point_1.x AS point_1_x FROM point AS point_1, point "
             "WHERE point_1.x > point.x",
+        )
+
+    def test_meta_getattr_one(self):
+        class MetaPoint(type):
+            def __getattr__(cls, key):
+                if key == "x_syn":
+                    return cls.x
+                raise AttributeError(key)
+
+        class Point(compat.with_metaclass(MetaPoint)):
+            pass
+
+        self._fixture(Point)
+        alias = aliased(Point)
+
+        eq_(str(Point.x_syn), "Point.x")
+        eq_(str(alias.x_syn), "AliasedClass_Point.x")
+
+        # from __clause_element__() perspective, Point.x_syn
+        # and Point.x return the same thing, so that's good
+        eq_(str(Point.x.__clause_element__()), "point.x")
+        eq_(str(Point.x_syn.__clause_element__()), "point.x")
+
+        # same for the alias
+        eq_(str(alias.x + 1), "point_1.x + :x_1")
+        eq_(str(alias.x_syn + 1), "point_1.x + :x_1")
+
+        is_(Point.x_syn.__clause_element__(), Point.x.__clause_element__())
+
+        eq_(str(alias.x_syn == alias.x), "point_1.x = point_1.x")
+
+        a2 = aliased(Point)
+        eq_(str(a2.x_syn == alias.x), "point_1.x = point_2.x")
+
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(alias).filter(alias.x_syn > Point.x),
+            "SELECT point_1.id AS point_1_id, point_1.x AS point_1_x, "
+            "point_1.y AS point_1_y FROM point AS point_1, point "
+            "WHERE point_1.x > point.x",
+        )
+
+    def test_meta_getattr_two(self):
+        class MetaPoint(type):
+            def __getattr__(cls, key):
+                if key == "double_x":
+                    return cls._impl_double_x
+                raise AttributeError(key)
+
+        class Point(compat.with_metaclass(MetaPoint)):
+            @hybrid_property
+            def _impl_double_x(self):
+                return self.x * 2
+
+        self._fixture(Point)
+        alias = aliased(Point)
+
+        eq_(str(Point.double_x), "Point._impl_double_x")
+        eq_(str(alias.double_x), "AliasedClass_Point._impl_double_x")
+        eq_(str(Point.double_x.__clause_element__()), "point.x * :x_1")
+        eq_(str(alias.double_x.__clause_element__()), "point_1.x * :x_1")
+
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(alias).filter(alias.double_x > Point.x),
+            "SELECT point_1.id AS point_1_id, point_1.x AS point_1_x, "
+            "point_1.y AS point_1_y FROM point AS point_1, point "
+            "WHERE point_1.x * :x_1 > point.x",
+        )
+
+    def test_meta_getattr_three(self):
+        class MetaPoint(type):
+            def __getattr__(cls, key):
+                @hybrid_property
+                def double_x(me):
+                    return me.x * 2
+
+                if key == "double_x":
+                    return double_x.__get__(None, cls)
+                raise AttributeError(key)
+
+        class Point(compat.with_metaclass(MetaPoint)):
+            pass
+
+        self._fixture(Point)
+
+        alias = aliased(Point)
+
+        eq_(str(Point.double_x.__clause_element__()), "point.x * :x_1")
+        eq_(str(alias.double_x.__clause_element__()), "point_1.x * :x_1")
+
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(alias).filter(alias.double_x > Point.x),
+            "SELECT point_1.id AS point_1_id, point_1.x AS point_1_x, "
+            "point_1.y AS point_1_y FROM point AS point_1, point "
+            "WHERE point_1.x * :x_1 > point.x",
         )
 
     def test_parententity_vs_parentmapper(self):

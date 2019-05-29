@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4694
+
+    Reworked the attribute mechanics used by :class:`.AliasedClass` to no
+    longer rely upon calling ``__getattribute__`` on the MRO of the wrapped
+    class, and to instead resolve the attribute normally on the wrapped class
+    using getattr(), and then unwrap/adapt that.  This allows a greater range
+    of attribute styles on the mapped class including special ``__getattr__()``
+    schemes; but it also makes the code simpler and more resilient in general.

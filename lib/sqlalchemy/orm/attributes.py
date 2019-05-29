@@ -350,10 +350,14 @@ def create_proxied_attribute(descriptor):
             )
 
         def __get__(self, instance, owner):
-            if instance is None:
+            retval = self.descriptor.__get__(instance, owner)
+            # detect if this is a plain Python @property, which just returns
+            # itself for class level access.  If so, then return us.
+            # Otherwise, return the object returned by the descriptor.
+            if retval is self.descriptor and instance is None:
                 return self
             else:
-                return self.descriptor.__get__(instance, owner)
+                return retval
 
         def __str__(self):
             return "%s.%s" % (self.class_.__name__, self.key)
