@@ -7,6 +7,7 @@
 
 
 import re
+import types
 
 from . import attributes  # noqa
 from .base import _class_to_mapper  # noqa
@@ -495,34 +496,28 @@ class AliasedClass(object):
         except KeyError:
             raise AttributeError()
         else:
-            for base in _aliased_insp._target.__mro__:
-                try:
-                    attr = object.__getattribute__(base, key)
-                except AttributeError:
-                    continue
-                else:
-                    break
-            else:
-                raise AttributeError(key)
+            target = _aliased_insp._target
+            # maintain all getattr mechanics
+            attr = getattr(target, key)
 
-        if isinstance(attr, PropComparator):
-            ret = attr.adapt_to_entity(_aliased_insp)
-            setattr(self, key, ret)
-            return ret
-        elif hasattr(attr, "func_code"):
-            is_method = getattr(_aliased_insp._target, key, None)
-            if is_method and is_method.__self__ is not None:
-                return util.types.MethodType(attr.__func__, self, self)
-            else:
-                return None
-        elif hasattr(attr, "__get__"):
-            ret = attr.__get__(None, self)
-            if isinstance(ret, PropComparator):
-                return ret.adapt_to_entity(_aliased_insp)
-            else:
-                return ret
-        else:
-            return attr
+        # attribute is a method, that will be invoked against a
+        # "self"; so just return a new method with the same function and
+        # new self
+        if hasattr(attr, "__call__") and hasattr(attr, "__self__"):
+            return types.MethodType(attr.__func__, self)
+
+        # attribute is a descriptor, that will be invoked against a
+        # "self"; so invoke the descriptor against this self
+        if hasattr(attr, "__get__"):
+            attr = attr.__get__(None, self)
+
+        # attributes within the QueryableAttribute system will want this
+        # to be invoked so the object can be adapted
+        if hasattr(attr, "adapt_to_entity"):
+            attr = attr.adapt_to_entity(_aliased_insp)
+            setattr(self, key, attr)
+
+        return attr
 
     def __repr__(self):
         return "<AliasedClass at 0x%x; %s>" % (
