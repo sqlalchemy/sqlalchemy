@@ -79,7 +79,7 @@ class CompileTest(fixtures.ORMTest):
 
         order_join = order.select().alias("pjoin")
 
-        order_mapper = mapper(
+        mapper(
             Order,
             order,
             with_polymorphic=("*", order_join),
@@ -161,7 +161,7 @@ class CompileTest(fixtures.ORMTest):
 
         order_join = order.select().alias("pjoin")
 
-        order_mapper = mapper(
+        mapper(
             Order,
             order,
             with_polymorphic=("*", order_join),
@@ -225,9 +225,9 @@ class CompileTest(fixtures.ORMTest):
             class Host(object):
                 pass
 
-            node_mapper = mapper(Node, node_table)
-            host_mapper = mapper(Host, host_table)
-            node_name_mapper = mapper(
+            mapper(Node, node_table)
+            mapper(Host, host_table)
+            mapper(
                 NodeName,
                 node_name_table,
                 properties={

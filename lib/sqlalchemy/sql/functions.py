@@ -37,13 +37,12 @@ from .. import util
 
 
 _registry = util.defaultdict(dict)
-_case_sensitive_registry = util.defaultdict(
-    lambda: util.defaultdict(dict)
-)
+_case_sensitive_registry = util.defaultdict(lambda: util.defaultdict(dict))
 _CASE_SENSITIVE = util.symbol(
     name="case_sensitive_function",
     doc="Symbol to mark the functions that are switched into case-sensitive "
-    "mode.")
+    "mode.",
+)
 
 
 def register_function(identifier, fn, package="_default"):
@@ -65,7 +64,8 @@ def register_function(identifier, fn, package="_default"):
         if raw_identifier in case_sensitive_reg[identifier]:
             util.warn(
                 "The GenericFunction '{}' is already registered and "
-                "is going to be overriden.".format(identifier))
+                "is going to be overriden.".format(identifier)
+            )
             reg[identifier] = fn
         else:
             # If a function with the same lowercase identifier is registered,
@@ -79,27 +79,29 @@ def register_function(identifier, fn, package="_default"):
                 "future release.".format(
                     raw_identifier,
                     list(case_sensitive_reg[identifier].keys())[0],
-                ))
+                )
+            )
             reg[identifier] = _CASE_SENSITIVE
 
     # Check if a function with different letter case identifier is registered.
     elif identifier in case_sensitive_reg:
         # Note: This case will be removed in a later release.
-        if (
-            raw_identifier not in case_sensitive_reg[identifier]
-        ):
+        if raw_identifier not in case_sensitive_reg[identifier]:
             util.warn_deprecated(
                 "GenericFunction(s) '{}' are already registered with "
                 "different letter cases and might interact with '{}'. "
                 "GenericFunction objects will be fully case-insensitive in a "
                 "future release.".format(
                     sorted(case_sensitive_reg[identifier].keys()),
-                    raw_identifier))
+                    raw_identifier,
+                )
+            )
 
         else:
             util.warn(
                 "The GenericFunction '{}' is already registered and "
-                "is going to be overriden.".format(raw_identifier))
+                "is going to be overriden.".format(raw_identifier)
+            )
 
     # Register by default
     else:
@@ -429,6 +431,7 @@ class FunctionAsBinary(BinaryExpression):
     def __init__(self, fn, left_index, right_index):
         left = fn.clauses.clauses[left_index - 1]
         right = fn.clauses.clauses[right_index - 1]
+
         self.sql_function = fn
         self.left_index = left_index
         self.right_index = right_index
@@ -637,7 +640,7 @@ class _GenericMeta(VisitableType):
                 cls.type = clsdict["__return_type__"]
 
             # Check _register attribute status
-            cls._register = getattr(cls, '_register', True)
+            cls._register = getattr(cls, "_register", True)
 
             # Register the function if required
             if cls._register:

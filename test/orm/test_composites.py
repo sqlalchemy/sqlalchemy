@@ -142,11 +142,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(e.end, Point(18, 4))
 
     def test_not_none(self):
-        Graph, Edge, Point = (
-            self.classes.Graph,
-            self.classes.Edge,
-            self.classes.Point,
-        )
+        Edge = self.classes.Edge
 
         # current contract.   the composite is None
         # when hasn't been populated etc. on a

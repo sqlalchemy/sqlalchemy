@@ -1505,7 +1505,7 @@ class OrderBySecondaryTest(fixtures.MappedTest):
 class BaseRelationFromJoinedSubclassTest(_Polymorphic):
     @classmethod
     def define_tables(cls, metadata):
-        people = Table(
+        Table(
             "people",
             metadata,
             Column(
@@ -1520,7 +1520,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
 
         # to test fully, PK of engineers table must be
         # named differently from that of people
-        engineers = Table(
+        Table(
             "engineers",
             metadata,
             Column(
@@ -1532,7 +1532,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             Column("primary_language", String(50)),
         )
 
-        paperwork = Table(
+        Table(
             "paperwork",
             metadata,
             Column(
@@ -1545,7 +1545,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             Column("person_id", Integer, ForeignKey("people.person_id")),
         )
 
-        pages = Table(
+        Table(
             "pages",
             metadata,
             Column(
@@ -2691,7 +2691,7 @@ class CyclicalInheritingEagerTestTwo(
         session.commit()
 
         close_all_sessions()
-        d = session.query(Director).options(subqueryload("*")).first()
+        d = session.query(Director).options(subqueryload("*")).first()  # noqa
         assert len(list(session)) == 3
 
 
@@ -2852,7 +2852,7 @@ class SubqueryloadDistinctTest(
                 ),
             )
 
-        movies = q.all()
+        movies = q.all()  # noqa
 
         # check number of persistent objects in session
         eq_(len(list(s)), 5)

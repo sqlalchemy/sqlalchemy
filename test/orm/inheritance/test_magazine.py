@@ -201,9 +201,9 @@ class MagazineTest(fixtures.MappedTest):
 
 def _generate_round_trip_test(use_unions=False, use_joins=False):
     def test_roundtrip(self):
-        publication_mapper = mapper(Publication, self.tables.publication)
+        mapper(Publication, self.tables.publication)
 
-        issue_mapper = mapper(
+        mapper(
             Issue,
             self.tables.issue,
             properties={
@@ -214,9 +214,9 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
             },
         )
 
-        location_name_mapper = mapper(LocationName, self.tables.location_name)
+        mapper(LocationName, self.tables.location_name)
 
-        location_mapper = mapper(
+        mapper(
             Location,
             self.tables.location,
             properties={
@@ -232,9 +232,9 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
             },
         )
 
-        page_size_mapper = mapper(PageSize, self.tables.page_size)
+        mapper(PageSize, self.tables.page_size)
 
-        magazine_mapper = mapper(
+        mapper(
             Magazine,
             self.tables.magazine,
             properties={
@@ -346,7 +346,7 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
                 },
             )
 
-        classified_page_mapper = mapper(
+        mapper(
             ClassifiedPage,
             self.tables.classified_page,
             inherits=magazine_page_mapper,

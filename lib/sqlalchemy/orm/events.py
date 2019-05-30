@@ -194,11 +194,7 @@ class InstanceEvents(event.Events):
 
     @classmethod
     def _listen(cls, event_key, raw=False, propagate=False, **kw):
-        target, identifier, fn = (
-            event_key.dispatch_target,
-            event_key.identifier,
-            event_key._listen_fn,
-        )
+        target, fn = (event_key.dispatch_target, event_key._listen_fn)
 
         if not raw:
 
@@ -444,11 +440,7 @@ class _EventsHold(event.RefCollection):
         def _listen(
             cls, event_key, raw=False, propagate=False, retval=False, **kw
         ):
-            target, identifier, fn = (
-                event_key.dispatch_target,
-                event_key.identifier,
-                event_key.fn,
-            )
+            target = event_key.dispatch_target
 
             if target.class_ in target.all_holds:
                 collection = target.all_holds[target.class_]
@@ -472,11 +464,7 @@ class _EventsHold(event.RefCollection):
                         )
 
     def remove(self, event_key):
-        target, identifier, fn = (
-            event_key.dispatch_target,
-            event_key.identifier,
-            event_key.fn,
-        )
+        target = event_key.dispatch_target
 
         if isinstance(target, _EventsHold):
             collection = target.all_holds[target.class_]
@@ -1974,11 +1962,7 @@ class AttributeEvents(event.Events):
         propagate=False,
     ):
 
-        target, identifier, fn = (
-            event_key.dispatch_target,
-            event_key.identifier,
-            event_key._listen_fn,
-        )
+        target, fn = event_key.dispatch_target, event_key._listen_fn
 
         if active_history:
             target.dispatch._active_history = True

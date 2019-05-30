@@ -151,14 +151,14 @@ class ConcreteTest(fixtures.MappedTest):
             "pjoin",
         )
         employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        engineer_mapper = mapper(
+        mapper(
             Engineer,
             engineers_table,
             inherits=employee_mapper,
@@ -202,7 +202,7 @@ class ConcreteTest(fixtures.MappedTest):
             "pjoin2",
         )
         employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers_table,
             inherits=employee_mapper,
@@ -218,7 +218,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        hacker_mapper = mapper(
+        mapper(
             Hacker,
             hackers_table,
             inherits=engineer_mapper,
@@ -399,7 +399,7 @@ class ConcreteTest(fixtures.MappedTest):
             with_polymorphic=("*", pjoin),
             polymorphic_on=pjoin.c.type,
         )
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers_table,
             inherits=employee_mapper,
@@ -415,7 +415,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        hacker_mapper = mapper(
+        mapper(
             Hacker,
             hackers_table,
             inherits=engineer_mapper,
@@ -488,7 +488,7 @@ class ConcreteTest(fixtures.MappedTest):
         employee_mapper = mapper(
             Employee, employees_table, polymorphic_identity="employee"
         )
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers_table,
             inherits=employee_mapper,
@@ -502,7 +502,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        hacker_mapper = mapper(
+        mapper(
             Hacker,
             hackers_table,
             inherits=engineer_mapper,
@@ -615,14 +615,14 @@ class ConcreteTest(fixtures.MappedTest):
             properties={"employees": relationship(Employee)},
         )
         employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        engineer_mapper = mapper(
+        mapper(
             Engineer,
             engineers_table,
             inherits=employee_mapper,
@@ -1203,14 +1203,14 @@ class ColKeysTest(fixtures.MappedTest):
             polymorphic_on=pjoin.c.type,
             polymorphic_identity="location",
         )
-        office_mapper = mapper(
+        mapper(
             Office,
             offices_table,
             inherits=location_mapper,
             concrete=True,
             polymorphic_identity="office",
         )
-        refugee_mapper = mapper(
+        mapper(
             Refugee,
             refugees_table,
             inherits=location_mapper,

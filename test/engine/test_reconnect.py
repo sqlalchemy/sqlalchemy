@@ -286,8 +286,6 @@ class MockReconnectTest(fixtures.TestBase):
         connection, and additionally dispose the previous connection
         pool and recreate."""
 
-        db_pool = self.db.pool
-
         # make a connection
 
         conn = self.db.connect()
@@ -540,8 +538,6 @@ class MockReconnectTest(fixtures.TestBase):
 
         dbapi = self.dbapi
 
-        mock_dialect = Mock()
-
         class MyURL(URL):
             def _get_entrypoint(self):
                 return Dialect
@@ -553,9 +549,9 @@ class MockReconnectTest(fixtures.TestBase):
             initialize = Mock()
 
         engine = create_engine(MyURL("foo://"), module=dbapi)
-        c1 = engine.connect()
+        engine.connect()
         engine.dispose()
-        c2 = engine.connect()
+        engine.connect()
         eq_(Dialect.initialize.call_count, 1)
 
     def test_invalidate_conn_w_contextmanager_interrupt(self):
@@ -752,7 +748,6 @@ class RealReconnectTest(fixtures.TestBase):
 
         eq_(c1.execute(select([1])).scalar(), 1)
 
-        p1 = self.engine.pool
         self.engine.test_shutdown()
 
         _assert_invalidated(c1.execute, select([1]))
@@ -844,7 +839,7 @@ class RealReconnectTest(fixtures.TestBase):
     @testing.requires.savepoints
     def test_rollback_on_invalid_savepoint(self):
         conn = self.engine.connect()
-        trans = conn.begin()
+        conn.begin()
         trans2 = conn.begin_nested()
         conn.invalidate()
         trans2.rollback()
@@ -878,8 +873,6 @@ class RealReconnectTest(fixtures.TestBase):
             connection.execute("select fake_stuff from _fake_table")
 
         engine.dialect.initialize = broken_initialize
-
-        p1 = engine.pool
 
         def is_disconnect(e, conn, cursor):
             return True

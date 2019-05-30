@@ -154,18 +154,16 @@ class PolymorphicCircularTest(fixtures.MappedTest):
             },
         )
 
-        table1b_mapper = mapper(
-            Table1B, inherits=table1_mapper, polymorphic_identity="table1b"
-        )
+        mapper(Table1B, inherits=table1_mapper, polymorphic_identity="table1b")
 
-        table2_mapper = mapper(
+        mapper(
             Table2,
             table2,
             inherits=table1_mapper,
             polymorphic_identity="table2",
         )
 
-        table3_mapper = mapper(
+        mapper(
             Table3,
             table3,
             inherits=table1_mapper,

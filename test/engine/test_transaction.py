@@ -145,7 +145,7 @@ class TransactionTest(fixtures.TestBase):
                     trans2.rollback()
                     raise
                 transaction.rollback()
-            except Exception as e:
+            except Exception:
                 transaction.rollback()
                 raise
         except Exception as e:
@@ -300,7 +300,7 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=2, user_name="user2")
         try:
             connection.execute(users.insert(), user_id=2, user_name="user2.5")
-        except Exception as e:
+        except Exception:
             trans.__exit__(*sys.exc_info())
 
         assert not trans.is_active
@@ -404,7 +404,7 @@ class TransactionTest(fixtures.TestBase):
         connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
-        trans2 = connection.begin_nested()
+        connection.begin_nested()
         connection.execute(users.insert(), user_id=2, user_name="user2")
         trans3 = connection.begin()
         connection.execute(users.insert(), user_id=3, user_name="user3")
@@ -557,7 +557,7 @@ class TransactionTest(fixtures.TestBase):
         with eng.connect() as conn:
             rec = conn.connection._connection_record
             raw_dbapi_con = rec.connection
-            xa = conn.begin_twophase()
+            conn.begin_twophase()
             conn.execute(users.insert(), user_id=1, user_name="user1")
 
         assert rec.connection is raw_dbapi_con

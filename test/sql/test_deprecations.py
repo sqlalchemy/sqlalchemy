@@ -109,14 +109,14 @@ class DeprecationWarningsTest(fixtures.TestBase):
             "The select.autocommit parameter is deprecated and "
             "will be removed in a future release."
         ):
-            stmt = select([column("x")], autocommit=True)
+            select([column("x")], autocommit=True)
 
     def test_select_for_update(self):
         with testing.expect_deprecated(
             "The select.for_update parameter is deprecated and "
             "will be removed in a future release."
         ):
-            stmt = select([column("x")], for_update=True)
+            select([column("x")], for_update=True)
 
     @testing.provide_metadata
     def test_table_useexisting(self):
@@ -148,11 +148,11 @@ class DeprecationWarningsTest(fixtures.TestBase):
 
 
 class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
-
     def setup(self):
         self._registry = deepcopy(functions._registry)
         self._case_sensitive_registry = deepcopy(
-            functions._case_sensitive_registry)
+            functions._case_sensitive_registry
+        )
         functions._registry.clear()
         functions._case_sensitive_registry.clear()
 
@@ -161,8 +161,8 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         functions._case_sensitive_registry = self._case_sensitive_registry
 
     def test_case_sensitive(self):
-        reg = functions._registry['_default']
-        cs_reg = functions._case_sensitive_registry['_default']
+        reg = functions._registry["_default"]
+        cs_reg = functions._case_sensitive_registry["_default"]
 
         class MYFUNC(GenericFunction):
             type = DateTime
@@ -176,7 +176,7 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         not_in_("MYFUNC", reg)
         not_in_("MyFunc", reg)
         in_("myfunc", cs_reg)
-        eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC']))
+        eq_(set(cs_reg["myfunc"].keys()), set(["MYFUNC"]))
 
         with testing.expect_deprecated(
             "GenericFunction 'MyFunc' is already registered with"
@@ -184,8 +184,9 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
             "'MYFUNC' is switched into case-sensitive mode. "
             "GenericFunction objects will be fully case-insensitive in a "
             "future release.",
-            regex=False
+            regex=False,
         ):
+
             class MyFunc(GenericFunction):
                 type = Integer
 
@@ -200,15 +201,15 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         not_in_("MYFUNC", reg)
         not_in_("MyFunc", reg)
         in_("myfunc", cs_reg)
-        eq_(set(cs_reg['myfunc'].keys()), set(['MYFUNC', 'MyFunc']))
+        eq_(set(cs_reg["myfunc"].keys()), set(["MYFUNC", "MyFunc"]))
 
     def test_replace_function_case_sensitive(self):
-        reg = functions._registry['_default']
-        cs_reg = functions._case_sensitive_registry['_default']
+        reg = functions._registry["_default"]
+        cs_reg = functions._case_sensitive_registry["_default"]
 
         class replaceable_func(GenericFunction):
             type = Integer
-            identifier = 'REPLACEABLE_FUNC'
+            identifier = "REPLACEABLE_FUNC"
 
         assert isinstance(func.REPLACEABLE_FUNC().type, Integer)
         assert isinstance(func.Replaceable_Func().type, Integer)
@@ -219,7 +220,7 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
-        eq_(set(cs_reg['replaceable_func'].keys()), set(['REPLACEABLE_FUNC']))
+        eq_(set(cs_reg["replaceable_func"].keys()), set(["REPLACEABLE_FUNC"]))
 
         with testing.expect_deprecated(
             "GenericFunction 'Replaceable_Func' is already registered with"
@@ -227,11 +228,12 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
             "'REPLACEABLE_FUNC' is switched into case-sensitive mode. "
             "GenericFunction objects will be fully case-insensitive in a "
             "future release.",
-            regex=False
+            regex=False,
         ):
+
             class Replaceable_Func(GenericFunction):
                 type = DateTime
-                identifier = 'Replaceable_Func'
+                identifier = "Replaceable_Func"
 
         assert isinstance(func.REPLACEABLE_FUNC().type, Integer)
         assert isinstance(func.Replaceable_Func().type, DateTime)
@@ -242,37 +244,42 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
-        eq_(set(cs_reg['replaceable_func'].keys()),
-            set(['REPLACEABLE_FUNC', 'Replaceable_Func']))
+        eq_(
+            set(cs_reg["replaceable_func"].keys()),
+            set(["REPLACEABLE_FUNC", "Replaceable_Func"]),
+        )
 
         with testing.expect_warnings(
             "The GenericFunction 'REPLACEABLE_FUNC' is already registered and "
             "is going to be overriden.",
-            regex=False
+            regex=False,
         ):
+
             class replaceable_func_override(GenericFunction):
                 type = DateTime
-                identifier = 'REPLACEABLE_FUNC'
+                identifier = "REPLACEABLE_FUNC"
 
         with testing.expect_deprecated(
             "GenericFunction(s) '['REPLACEABLE_FUNC', 'Replaceable_Func']' "
             "are already registered with different letter cases and might "
             "interact with 'replaceable_func'. GenericFunction objects will "
             "be fully case-insensitive in a future release.",
-            regex=False
+            regex=False,
         ):
+
             class replaceable_func_lowercase(GenericFunction):
                 type = String
-                identifier = 'replaceable_func'
+                identifier = "replaceable_func"
 
         with testing.expect_warnings(
             "The GenericFunction 'Replaceable_Func' is already registered and "
             "is going to be overriden.",
-            regex=False
+            regex=False,
         ):
+
             class Replaceable_Func_override(GenericFunction):
                 type = Integer
-                identifier = 'Replaceable_Func'
+                identifier = "Replaceable_Func"
 
         assert isinstance(func.REPLACEABLE_FUNC().type, DateTime)
         assert isinstance(func.Replaceable_Func().type, Integer)
@@ -283,8 +290,10 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         not_in_("REPLACEABLE_FUNC", reg)
         not_in_("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
-        eq_(set(cs_reg['replaceable_func'].keys()),
-            set(['REPLACEABLE_FUNC', 'Replaceable_Func', 'replaceable_func']))
+        eq_(
+            set(cs_reg["replaceable_func"].keys()),
+            set(["REPLACEABLE_FUNC", "Replaceable_Func", "replaceable_func"]),
+        )
 
 
 class DDLListenerDeprecationsTest(fixtures.TestBase):
@@ -300,7 +309,7 @@ class DDLListenerDeprecationsTest(fixtures.TestBase):
         )
 
     def test_append_listener(self):
-        metadata, table, bind = self.metadata, self.table, self.bind
+        metadata, table = self.metadata, self.table
 
         def fn(*a):
             return None
@@ -356,7 +365,7 @@ class DDLListenerDeprecationsTest(fixtures.TestBase):
         assert "fnord" in canary
 
     def test_deprecated_append_ddl_listener_metadata(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
+        metadata, engine = self.metadata, self.engine
         canary = []
         with testing.expect_deprecated(".* is deprecated .*"):
             metadata.append_ddl_listener(
@@ -575,4 +584,4 @@ class TextTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The text.autocommit parameter is deprecated"
         ):
-            t = text("select id, name from user", autocommit=True)
+            text("select id, name from user", autocommit=True)

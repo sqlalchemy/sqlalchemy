@@ -55,7 +55,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         def go():
             result = q.all()
             o2 = result[2]
-            x = o2.description
+            o2.description
 
         self.sql_eq_(
             go,
@@ -192,7 +192,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_save(self):
         Order, orders = self.classes.Order, self.tables.orders
 
-        m = mapper(
+        mapper(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},

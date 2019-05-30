@@ -104,7 +104,7 @@ class ExpireTest(_fixtures.FixtureTest):
         s.expire_all()
 
         def go():
-            u = s.query(User).get(10)  # get() refreshes
+            s.query(User).get(10)  # get() refreshes
 
         self.assert_sql_count(testing.db, go, 1)
 
@@ -114,7 +114,7 @@ class ExpireTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
         def go():
-            u = s.query(User).get(10)  # expire flag reset, so not expired
+            s.query(User).get(10)  # expire flag reset, so not expired
 
         self.assert_sql_count(testing.db, go, 0)
 
@@ -1065,7 +1065,6 @@ class ExpireTest(_fixtures.FixtureTest):
         eq_(len(list(sess)), 4)  # since addresses were gc'ed
 
         userlist = sess.query(User).order_by(User.id).all()
-        u = userlist[1]
         eq_(self.static.user_address_result, userlist)
         eq_(len(list(sess)), 9)
 
@@ -1269,7 +1268,7 @@ class PolymorphicExpireTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        people = Table(
+        Table(
             "people",
             metadata,
             Column(
@@ -1282,7 +1281,7 @@ class PolymorphicExpireTest(fixtures.MappedTest):
             Column("type", String(30)),
         )
 
-        engineers = Table(
+        Table(
             "engineers",
             metadata,
             Column(

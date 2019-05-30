@@ -462,8 +462,7 @@ class SubclassRelationshipTest(
         return [p.container for p in cls._fixture()]
 
     def test_contains_eager_wpoly(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -484,8 +483,7 @@ class SubclassRelationshipTest(
         self.assert_sql_count(testing.db, go, 5)
 
     def test_joinedload_wpoly(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -504,10 +502,8 @@ class SubclassRelationshipTest(
         self.assert_sql_count(testing.db, go, 5)
 
     def test_joinedload_wsubclass(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, SubJob = (
             self.classes.DataContainer,
-            self.classes.Job,
             self.classes.SubJob,
         )
         s = Session(testing.db)
@@ -535,10 +531,8 @@ class SubclassRelationshipTest(
         self.assert_sql_count(testing.db, go, 11)
 
     def test_subquery_wsubclass(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, SubJob = (
             self.classes.DataContainer,
-            self.classes.Job,
             self.classes.SubJob,
         )
         s = Session(testing.db)
@@ -552,10 +546,9 @@ class SubclassRelationshipTest(
         self.assert_sql_count(testing.db, go, 6)
 
     def test_twolevel_subqueryload_wsubclass(self):
-        ParentThing, DataContainer, Job, SubJob = (
+        ParentThing, DataContainer, SubJob = (
             self.classes.ParentThing,
             self.classes.DataContainer,
-            self.classes.Job,
             self.classes.SubJob,
         )
         s = Session(testing.db)
@@ -586,10 +579,9 @@ class SubclassRelationshipTest(
         self.assert_sql_count(testing.db, go, 3)
 
     def test_twolevel_joinedload_wsubclass(self):
-        ParentThing, DataContainer, Job, SubJob = (
+        ParentThing, DataContainer, SubJob = (
             self.classes.ParentThing,
             self.classes.DataContainer,
-            self.classes.Job,
             self.classes.SubJob,
         )
         s = Session(testing.db)
@@ -605,8 +597,7 @@ class SubclassRelationshipTest(
         self.assert_sql_count(testing.db, go, 5)
 
     def test_any_wpoly(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -637,12 +628,7 @@ class SubclassRelationshipTest(
         )
 
     def test_any_walias(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
-            self.classes.DataContainer,
-            self.classes.Job,
-            self.classes.SubJob,
-        )
+        DataContainer, Job, = (self.classes.DataContainer, self.classes.Job)
 
         Job_A = aliased(Job)
 
@@ -670,8 +656,7 @@ class SubclassRelationshipTest(
         )
 
     def test_join_wpoly(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -692,10 +677,8 @@ class SubclassRelationshipTest(
         )
 
     def test_join_wsubclass(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, SubJob = (
             self.classes.DataContainer,
-            self.classes.Job,
             self.classes.SubJob,
         )
 
@@ -715,8 +698,7 @@ class SubclassRelationshipTest(
         )
 
     def test_join_wpoly_innerjoin(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -736,12 +718,7 @@ class SubclassRelationshipTest(
         )
 
     def test_join_walias(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
-            self.classes.DataContainer,
-            self.classes.Job,
-            self.classes.SubJob,
-        )
+        DataContainer, Job, = (self.classes.DataContainer, self.classes.Job)
 
         Job_A = aliased(Job)
 
@@ -756,8 +733,7 @@ class SubclassRelationshipTest(
         )
 
     def test_join_explicit_wpoly_noalias(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -778,8 +754,7 @@ class SubclassRelationshipTest(
         )
 
     def test_join_explicit_wpoly_flat(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,
@@ -800,8 +775,7 @@ class SubclassRelationshipTest(
         )
 
     def test_join_explicit_wpoly_full_alias(self):
-        ParentThing, DataContainer, Job, SubJob = (
-            self.classes.ParentThing,
+        DataContainer, Job, SubJob = (
             self.classes.DataContainer,
             self.classes.Job,
             self.classes.SubJob,

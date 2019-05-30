@@ -2675,7 +2675,6 @@ class MSDialect(default.DefaultDialect):
 
         # group rows by constraint ID, to handle multi-column FKs
         fkeys = []
-        fknm, scols, rcols = (None, [], [])
 
         def fkey_rec():
             return {

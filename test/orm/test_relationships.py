@@ -1216,7 +1216,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def _test_join_aliasing(self, sess):
-        Employee, Company = self.classes.Employee, self.classes.Company
+        Employee = self.classes.Employee
         eq_(
             [
                 n
@@ -1282,7 +1282,7 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
         mapper(Child, child)
 
     def test_joins_fully(self):
-        Parent, Child = self.classes.Parent, self.classes.Child
+        Parent = self.classes.Parent
 
         self.assert_compile(
             Parent.children.property.strategy._lazywhere,
@@ -3558,7 +3558,7 @@ class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
         )
 
     def test_lazyload(self):
-        Network, Address = self.classes.Network, self.classes.Address
+        Network = self.classes.Network
 
         session = Session(testing.db)
 
@@ -4180,7 +4180,7 @@ class SecondaryNestedJoinTest(
         sess.commit()
 
     def test_render_join(self):
-        A, D = self.classes.A, self.classes.D
+        A = self.classes.A
         sess = Session()
         self.assert_compile(
             sess.query(A).join(A.d),
@@ -4192,7 +4192,7 @@ class SecondaryNestedJoinTest(
         )
 
     def test_render_joinedload(self):
-        A, D = self.classes.A, self.classes.D
+        A = self.classes.A
         sess = Session()
         self.assert_compile(
             sess.query(A).options(joinedload(A.d)),
@@ -4207,7 +4207,7 @@ class SecondaryNestedJoinTest(
     def test_render_lazyload(self):
         from sqlalchemy.testing.assertsql import CompiledSQL
 
-        A, D = self.classes.A, self.classes.D
+        A = self.classes.A
         sess = Session()
         a1 = sess.query(A).filter(A.name == "a1").first()
 
@@ -4240,7 +4240,7 @@ class SecondaryNestedJoinTest(
             eq_(self.mapping[a.name], d.name if d is not None else None)
 
     def test_joinedload(self):
-        A, D = self.classes.A, self.classes.D
+        A = self.classes.A
         sess = Session()
 
         for a in sess.query(A).options(joinedload(A.d)):
@@ -4248,7 +4248,7 @@ class SecondaryNestedJoinTest(
             eq_(self.mapping[a.name], d.name if d is not None else None)
 
     def test_lazyload(self):
-        A, D = self.classes.A, self.classes.D
+        A = self.classes.A
         sess = Session()
 
         for a in sess.query(A):

@@ -266,7 +266,7 @@ def _inspect_func_args(fn):
         nargs = co.co_argcount
         return (
             list(co.co_varnames[:nargs]),
-            bool(co.co_flags & inspect.CO_VARKEYWORDS),
+            bool(co.co_flags & co_varkeywords),
         )
 
 

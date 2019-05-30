@@ -43,7 +43,7 @@ class ConcurrentUseDeclMappingTest(fixtures.TestBase):
             # this is the failure mode, where B is being handled by
             # declarative and is in the registry but not mapped yet.
             result[0] = oe
-        except exc.InvalidRequestError as err:
+        except exc.InvalidRequestError:
             # if make_b() starts too slowly, we can reach here, because
             # B isn't in the registry yet.  We can't guard against this
             # case in the library because a class can refer to a name that

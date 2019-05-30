@@ -121,7 +121,7 @@ class PickleTest(fixtures.MappedTest):
     def test_no_mappers(self):
         users = self.tables.users
 
-        umapper = mapper(User, users)
+        mapper(User, users)
         u1 = User(name="ed")
         u1_pickled = pickle.dumps(u1, -1)
 
@@ -138,13 +138,13 @@ class PickleTest(fixtures.MappedTest):
     def test_no_instrumentation(self):
         users = self.tables.users
 
-        umapper = mapper(User, users)
+        mapper(User, users)
         u1 = User(name="ed")
         u1_pickled = pickle.dumps(u1, -1)
 
         clear_mappers()
 
-        umapper = mapper(User, users)
+        mapper(User, users)
 
         u1 = pickle.loads(u1_pickled)
         # this fails unless the InstanceState
@@ -454,7 +454,7 @@ class PickleTest(fixtures.MappedTest):
             eq_(opt.path, opt2.path)
 
         u1 = sess.query(User).options(opt).first()
-        u2 = pickle.loads(pickle.dumps(u1))
+        pickle.loads(pickle.dumps(u1))
 
     def test_collection_setstate(self):
         """test a particular cycle that requires CollectionAdapter
@@ -614,7 +614,7 @@ class OptionsTest(_Polymorphic):
             .first()
         )
 
-        e2 = pickle.loads(pickle.dumps(emp))
+        pickle.loads(pickle.dumps(emp))
 
 
 class PolymorphicDeferredTest(fixtures.MappedTest):
@@ -697,7 +697,6 @@ class TupleLabelTest(_fixtures.FixtureTest):
         )  # m2o
 
     def test_tuple_labeling(self):
-        users = self.tables.users
         sess = create_session()
 
         # test pickle + all the protocols !

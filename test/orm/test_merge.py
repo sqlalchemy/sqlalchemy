@@ -98,7 +98,7 @@ class MergeTest(_fixtures.FixtureTest):
             "Instance <User.*> is already pending in this Session yet is "
             "being merged again; this is probably not what you want to do"
         ):
-            u2 = sess.merge(u)
+            sess.merge(u)
 
     def test_warn_transient_already_pending_pk(self):
         User, users = self.classes.User, self.tables.users
@@ -113,7 +113,7 @@ class MergeTest(_fixtures.FixtureTest):
             "Instance <User.*> is already pending in this Session yet is "
             "being merged again; this is probably not what you want to do"
         ):
-            u2 = sess.merge(u)
+            sess.merge(u)
 
     def test_transient_to_pending_collection(self):
         User, Address, addresses, users = (
@@ -510,7 +510,7 @@ class MergeTest(_fixtures.FixtureTest):
         # attribute maintains modified state.
         # (usually autoflush would have happened
         # here anyway).
-        u4 = sess.merge(User(id=2))
+        u4 = sess.merge(User(id=2))  # noqa
         eq_(u3.__dict__["data"], "bar")
 
         sess.flush()
@@ -538,7 +538,7 @@ class MergeTest(_fixtures.FixtureTest):
         # set it to None.  this is actually
         # a change so gets preserved.
         u6.data = None
-        u7 = sess.merge(User(id=3))
+        u7 = sess.merge(User(id=3))  # noqa
         assert u6.__dict__["data"] is None
 
     def test_merge_irregular_collection(self):
@@ -1132,7 +1132,7 @@ class MergeTest(_fixtures.FixtureTest):
         u2 = sess2.query(User).options(sa.orm.joinedload("addresses")).get(7)
 
         sess3 = create_session()
-        u3 = sess3.merge(u2, load=False)
+        u3 = sess3.merge(u2, load=False)  # noqa
 
         def go():
             sess3.flush()
@@ -1171,7 +1171,7 @@ class MergeTest(_fixtures.FixtureTest):
         u2 = sess2.query(User).get(7)
 
         sess3 = create_session()
-        u3 = sess3.merge(u2, load=False)
+        u3 = sess3.merge(u2, load=False)  # noqa
         assert not sess3.dirty
 
         def go():
@@ -1374,7 +1374,7 @@ class MergeTest(_fixtures.FixtureTest):
         )
 
         sess = create_session(autoflush=True, autocommit=False)
-        m = mapper(
+        mapper(
             User,
             users,
             properties={
@@ -1689,7 +1689,7 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
 
         def go():
             u1 = User(id=1, addresses=[Address(id=1), Address(id=2)])
-            u2 = s.merge(u1)
+            s.merge(u1)
 
         self.assert_sql_count(testing.db, go, 2)
 
@@ -1954,13 +1954,13 @@ class LoadOnPendingTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        rocks_table = Table(
+        Table(
             "rocks",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("description", String(10)),
         )
-        bugs_table = Table(
+        Table(
             "bugs",
             metadata,
             Column("id", Integer, primary_key=True),

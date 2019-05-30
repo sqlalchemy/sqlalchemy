@@ -2555,11 +2555,6 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_select_with_bindparam_offset_limit_w_cast(self):
         User = self.classes.User
         sess = create_session()
-        q1 = (
-            sess.query(self.classes.User)
-            .order_by(self.classes.User.id)
-            .limit(bindparam("n"))
-        )
         eq_(
             list(
                 sess.query(User)
@@ -4274,7 +4269,6 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
         Address = self.classes.Address
-        Order = self.classes.Order
 
         sess = create_session()
 

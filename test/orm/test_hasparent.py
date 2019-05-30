@@ -172,7 +172,7 @@ class ParentRemovalTest(fixtures.MappedTest):
         User = self.classes.User
         s, u1, a1 = self._fixture()
 
-        u2 = User(addresses=[a1])
+        u2 = User(addresses=[a1])  # noqa
 
         s.expire(a1)
         u1.addresses.remove(a1)
@@ -209,13 +209,11 @@ class ParentRemovalTest(fixtures.MappedTest):
         self._assert_hasparent(a1)
 
     def test_fresh_state_positive(self):
-        User = self.classes.User
         s, u1, a1 = self._fixture()
 
         self._assert_hasparent(a1)
 
     def test_fresh_state_negative(self):
-        User = self.classes.User
         s, u1, a1 = self._fixture()
 
         u1.addresses.remove(a1)

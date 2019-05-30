@@ -29,7 +29,7 @@ def worker():
     while True:
         conn = engine.connect()
         try:
-            trans = conn.begin()
+            conn.begin()
             for i in range(5):
                 conn.execute("SELECT 1+1")
                 gevent.sleep(random.random() * 1.01)

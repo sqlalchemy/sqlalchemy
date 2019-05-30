@@ -287,7 +287,7 @@ class PolymorphicResolutionMultiLevel(
 class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        t1 = Table(
+        Table(
             "t1",
             metadata,
             Column(
@@ -296,7 +296,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             Column("x", String(10)),
             Column("q", String(10)),
         )
-        t2 = Table(
+        Table(
             "t2",
             metadata,
             Column(
@@ -332,21 +332,18 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         )
 
     def test_polymorphic_on_non_expr_prop(self):
-        t2, t1 = self.tables.t2, self.tables.t1
+        t2 = self.tables.t2
         Parent = self.classes.Parent
-
-        t1t2_join = select([t1.c.x], from_obj=[t1.join(t2)]).alias()
-
-        def go():
-            interface_m = mapper(
-                Parent, t2, polymorphic_on=lambda: "hi", polymorphic_identity=0
-            )
 
         assert_raises_message(
             sa_exc.ArgumentError,
             "Only direct column-mapped property or "
             "SQL expression can be passed for polymorphic_on",
-            go,
+            mapper,
+            Parent,
+            t2,
+            polymorphic_on=lambda: "hi",
+            polymorphic_identity=0,
         )
 
     def test_polymorphic_on_not_present_col(self):
@@ -356,7 +353,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
 
         def go():
             t1t2_join_2 = select([t1.c.q], from_obj=[t1.join(t2)]).alias()
-            interface_m = mapper(
+            mapper(
                 Parent,
                 t2,
                 polymorphic_on=t1t2_join.c.x,
@@ -393,7 +390,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         # if with_polymorphic, but its not present, not OK
         def go():
             t1t2_join_2 = select([t1.c.q], from_obj=[t1.join(t2)]).alias()
-            interface_m = mapper(
+            mapper(
                 Parent,
                 t2,
                 polymorphic_on=t1t2_join.c.x,
@@ -447,7 +444,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_expr_implicit_map_no_label_single(self):
         """test that single_table_criterion is propagated
         with a standalone expr"""
-        t2, t1 = self.tables.t2, self.tables.t1
+        t1 = self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case([(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")])
         mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
@@ -458,7 +455,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_expr_implicit_map_w_label_single(self):
         """test that single_table_criterion is propagated
         with a standalone expr"""
-        t2, t1 = self.tables.t2, self.tables.t1
+        t1 = self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case(
             [(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")]
@@ -501,8 +498,8 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         self._roundtrip(parent_ident="p", child_ident="c")
 
     def test_polymorphic_on_synonym(self):
-        t2, t1 = self.tables.t2, self.tables.t1
-        Parent, Child = self.classes.Parent, self.classes.Child
+        t1 = self.tables.t1
+        Parent = self.classes.Parent
         cprop = column_property(t1.c.x)
         assert_raises_message(
             sa_exc.ArgumentError,
@@ -1392,7 +1389,7 @@ class FlushTest(fixtures.MappedTest):
         class Admin(User):
             pass
 
-        role_mapper = mapper(Role, roles)
+        mapper(Role, roles)
         user_mapper = mapper(
             User,
             users,
@@ -1402,7 +1399,7 @@ class FlushTest(fixtures.MappedTest):
                 )
             },
         )
-        admin_mapper = mapper(Admin, admins, inherits=user_mapper)
+        mapper(Admin, admins, inherits=user_mapper)
         sess = create_session()
         adminrole = Role()
         sess.add(adminrole)
@@ -1440,7 +1437,7 @@ class FlushTest(fixtures.MappedTest):
         class Admin(User):
             pass
 
-        role_mapper = mapper(Role, roles)
+        mapper(Role, roles)
         user_mapper = mapper(
             User,
             users,
@@ -1451,7 +1448,7 @@ class FlushTest(fixtures.MappedTest):
             },
         )
 
-        admin_mapper = mapper(Admin, admins, inherits=user_mapper)
+        mapper(Admin, admins, inherits=user_mapper)
 
         # create roles
         adminrole = Role("admin")
@@ -2874,9 +2871,7 @@ class InhCondTest(fixtures.TestBase):
             Column("id", Integer, ForeignKey("base.id"), primary_key=True),
             Column("order_id", Integer, ForeignKey("order.foo")),
         )
-        order_table = Table(
-            "order", m, Column("id", Integer, primary_key=True)
-        )
+        Table("order", m, Column("id", Integer, primary_key=True))
 
         class Base(object):
             pass
@@ -2983,7 +2978,7 @@ class InhCondTest(fixtures.TestBase):
 class PKDiscriminatorTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        parents = Table(
+        Table(
             "parents",
             metadata,
             Column(
@@ -2992,7 +2987,7 @@ class PKDiscriminatorTest(fixtures.MappedTest):
             Column("name", String(60)),
         )
 
-        children = Table(
+        Table(
             "children",
             metadata,
             Column("id", Integer, ForeignKey("parents.id"), primary_key=True),
@@ -3266,7 +3261,7 @@ class PolymorphicUnionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class NameConflictTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        content = Table(
+        Table(
             "content",
             metadata,
             Column(
@@ -3274,7 +3269,7 @@ class NameConflictTest(fixtures.MappedTest):
             ),
             Column("type", String(30)),
         )
-        foo = Table(
+        Table(
             "foo",
             metadata,
             Column("id", Integer, ForeignKey("content.id"), primary_key=True),

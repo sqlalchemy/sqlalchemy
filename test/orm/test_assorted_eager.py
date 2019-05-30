@@ -438,7 +438,7 @@ class EagerTest2(fixtures.MappedTest):
         session.add(p)
         session.flush()
         session.expunge_all()
-        obj = session.query(Left).filter_by(data="l1").one()
+        session.query(Left).filter_by(data="l1").one()
 
 
 class EagerTest3(fixtures.MappedTest):
@@ -733,7 +733,7 @@ class EagerTest5(fixtures.MappedTest):
             self.tables.derivedII,
         )
 
-        commentMapper = mapper(Comment, comments)
+        mapper(Comment, comments)
 
         baseMapper = mapper(
             Base,
@@ -1135,11 +1135,10 @@ class EagerTest8(fixtures.MappedTest):
             pass
 
     def test_nested_joins(self):
-        task, Task_Type, Joined, prj, task_type, msg = (
+        task, Task_Type, Joined, task_type, msg = (
             self.tables.task,
             self.classes.Task_Type,
             self.classes.Joined,
-            self.tables.prj,
             self.tables.task_type,
             self.tables.msg,
         )
@@ -1149,8 +1148,6 @@ class EagerTest8(fixtures.MappedTest):
         # as well as how mapper sets up its column properties
 
         mapper(Task_Type, task_type)
-
-        tsk_cnt_join = sa.outerjoin(prj, task, task.c.prj_id == prj.c.id)
 
         j = sa.outerjoin(task, msg, task.c.id == msg.c.task_id)
         jj = sa.select(
@@ -1290,12 +1287,12 @@ class EagerTest9(fixtures.MappedTest):
         tx2 = Transaction(name="tx2")
 
         acc1 = Account(name="acc1")
-        ent11 = Entry(name="ent11", account=acc1, transaction=tx1)
-        ent12 = Entry(name="ent12", account=acc1, transaction=tx2)
+        Entry(name="ent11", account=acc1, transaction=tx1)
+        Entry(name="ent12", account=acc1, transaction=tx2)
 
         acc2 = Account(name="acc2")
-        ent21 = Entry(name="ent21", account=acc2, transaction=tx1)
-        ent22 = Entry(name="ent22", account=acc2, transaction=tx2)
+        Entry(name="ent21", account=acc2, transaction=tx1)
+        Entry(name="ent22", account=acc2, transaction=tx2)
 
         session.add(acc1)
         session.flush()

@@ -64,7 +64,7 @@ def test_orm_full_objects_list(n):
     """Load fully tracked ORM objects into one big list()."""
 
     sess = Session(engine)
-    objects = list(sess.query(Customer).limit(n))
+    list(sess.query(Customer).limit(n))
 
 
 @Profiler.profile
@@ -108,7 +108,7 @@ def test_core_fetchall(n):
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
         for row in result:
-            data = row["id"], row["name"], row["description"]
+            row["id"], row["name"], row["description"]
 
 
 @Profiler.profile
@@ -124,7 +124,7 @@ def test_core_fetchmany_w_streaming(n):
             if not chunk:
                 break
             for row in chunk:
-                data = row["id"], row["name"], row["description"]
+                row["id"], row["name"], row["description"]
 
 
 @Profiler.profile
@@ -138,7 +138,7 @@ def test_core_fetchmany(n):
             if not chunk:
                 break
             for row in chunk:
-                data = row["id"], row["name"], row["description"]
+                row["id"], row["name"], row["description"]
 
 
 @Profiler.profile
@@ -183,13 +183,11 @@ def _test_dbapi_raw(n, make_objects):
     if make_objects:
         for row in cursor.fetchall():
             # ensure that we fully fetch!
-            customer = SimpleCustomer(
-                id_=row[0], name=row[1], description=row[2]
-            )
+            SimpleCustomer(id_=row[0], name=row[1], description=row[2])
     else:
         for row in cursor.fetchall():
             # ensure that we fully fetch!
-            data = row[0], row[1], row[2]
+            row[0], row[1], row[2]
 
     conn.close()
 

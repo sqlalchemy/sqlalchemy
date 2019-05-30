@@ -514,7 +514,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_table_alias_column(self):
         t = self._xy_table_fixture()
-        x, y = t.c.x, t.c.y
+        x = t.c.x
 
         ta = t.alias()
         s = text("select ta.x, ta.y FROM t AS ta").columns(ta.c.x, ta.c.y)
@@ -523,7 +523,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_label_alt_name_table_alias_column(self):
         t = self._xy_table_fixture()
-        x, y = t.c.x, t.c.y
+        x = t.c.x
 
         ta = t.alias()
         l1, l2 = ta.c.x.label("a"), ta.c.y.label("b")

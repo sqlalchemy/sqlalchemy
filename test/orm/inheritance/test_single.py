@@ -95,8 +95,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         )
 
     def _fixture_one(self):
-        Employee, JuniorEngineer, Manager, Engineer = (
-            self.classes.Employee,
+        JuniorEngineer, Manager, Engineer = (
             self.classes.JuniorEngineer,
             self.classes.Manager,
             self.classes.Engineer,
@@ -139,11 +138,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         assert row.employee_id == e1.employee_id
 
     def test_multi_qualification(self):
-        JuniorEngineer, Manager, Engineer = (
-            self.classes.JuniorEngineer,
-            self.classes.Manager,
-            self.classes.Engineer,
-        )
+        Manager, Engineer = (self.classes.Manager, self.classes.Engineer)
 
         session, m1, e1, e2 = self._fixture_one()
 
@@ -1318,7 +1313,6 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_assert_joinedload_sql(self):
         Parent = self.classes.Parent
-        Child = self.classes.Child
 
         s = Session()
 

@@ -164,7 +164,7 @@ def _test_dbapi_raw(n, connect):
             conn = engine.pool._creator()
             cursor = conn.cursor()
             cursor.execute(sql, arg)
-            lastrowid = cursor.lastrowid
+            cursor.lastrowid
             conn.commit()
             conn.close()
     else:
@@ -172,7 +172,7 @@ def _test_dbapi_raw(n, connect):
             conn = engine.raw_connection()
             cursor = conn.cursor()
             cursor.execute(sql, arg)
-            lastrowid = cursor.lastrowid
+            cursor.lastrowid
             conn.commit()
             conn.close()
 

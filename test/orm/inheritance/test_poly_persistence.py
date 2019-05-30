@@ -340,8 +340,6 @@ def _generate_round_trip_test(
             ),
         ]
 
-        pointy = employees[0]
-        jsmith = employees[-1]
         dilbert = employees[1]
 
         session = create_session()
@@ -463,7 +461,7 @@ def _generate_round_trip_test(
         def go():
             # assert that only primary table is queried for
             # already-present-in-session
-            d = (
+            (
                 session.query(Person)
                 .filter(getattr(Person, person_attribute_name) == "dilbert")
                 .first()

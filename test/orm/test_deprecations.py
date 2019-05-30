@@ -195,7 +195,7 @@ class DeprecationWarningsTest(fixtures.DeclarativeMappedTest):
             "the Session._enable_transaction_accounting parameter is "
             "deprecated"
         ):
-            s = Session(_enable_transaction_accounting=False)
+            Session(_enable_transaction_accounting=False)
 
     def test_session_is_modified(self):
         class Foo(self.DeclarativeBasic):
@@ -750,9 +750,6 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_info(self):
-        users = self.tables.users
-        Address = self.classes.Address
-
         class MyComposite(object):
             pass
 
@@ -833,8 +830,6 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.sql_count_(1, go)
 
     def test_kwarg_accepted(self):
-        users, Address = self.tables.users, self.classes.Address
-
         class DummyComposite(object):
             def __init__(self, x, y):
                 pass
@@ -2067,7 +2062,7 @@ class InstrumentationTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        attributes.register_attribute(
             Foo, "attr", uselist=True, typecallable=MyDict, useobject=True
         )
 
@@ -2448,7 +2443,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class AddressUser(User):
             pass
 
-        m1 = mapper(User, users, polymorphic_identity="user")
+        mapper(User, users, polymorphic_identity="user")
         m2 = mapper(
             AddressUser,
             addresses,

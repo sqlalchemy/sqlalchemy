@@ -57,7 +57,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
         class Point(object):
             pass
 
-        table = self._fixture(Point)
+        self._fixture(Point)
         alias = aliased(Point)
 
         assert_raises(TypeError, alias)
@@ -67,7 +67,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             def zero(self):
                 self.x, self.y = 0, 0
 
-        table = self._fixture(Point)
+        self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.zero
@@ -80,7 +80,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             def max_x(cls):
                 return 100
 
-        table = self._fixture(Point)
+        self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.max_x
@@ -93,7 +93,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             def max_x(self):
                 return 100
 
-        table = self._fixture(Point)
+        self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.max_x
@@ -122,7 +122,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             def thing(self, arg):
                 return arg.center
 
-        table = self._fixture(Point)
+        self._fixture(Point)
         alias = aliased(Point)
 
         assert Point.thing != (0, 0)

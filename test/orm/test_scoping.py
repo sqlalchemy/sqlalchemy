@@ -90,7 +90,7 @@ class ScopedSessionTest(fixtures.MappedTest):
     def test_config_errors(self):
         Session = scoped_session(sa.orm.sessionmaker())
 
-        s = Session()
+        s = Session()  # noqa
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "Scoped session is already present",

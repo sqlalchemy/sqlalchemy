@@ -49,7 +49,7 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             "sqla_testing", "postgres_test_db_link"
         )
 
-        testtable = Table(
+        Table(
             "testtable",
             metadata,
             Column("id", Integer, primary_key=True),
@@ -86,13 +86,13 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
 
     def test_get_foreign_table_names(self):
         inspector = inspect(testing.db)
-        with testing.db.connect() as conn:
+        with testing.db.connect():
             ft_names = inspector.get_foreign_table_names()
             eq_(ft_names, ["test_foreigntable"])
 
     def test_get_table_names_no_foreign(self):
         inspector = inspect(testing.db)
-        with testing.db.connect() as conn:
+        with testing.db.connect():
             names = inspector.get_table_names()
             eq_(names, ["testtable"])
 
@@ -450,7 +450,7 @@ class ReflectionTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_renamed_sequence_reflection(self):
         metadata = self.metadata
-        t = Table("t", metadata, Column("id", Integer, primary_key=True))
+        Table("t", metadata, Column("id", Integer, primary_key=True))
         metadata.create_all()
         m2 = MetaData(testing.db)
         t2 = Table("t", m2, autoload=True, implicit_returning=False)
@@ -472,7 +472,7 @@ class ReflectionTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_altered_type_autoincrement_pk_reflection(self):
         metadata = self.metadata
-        t = Table(
+        Table(
             "t",
             metadata,
             Column("id", Integer, primary_key=True),
@@ -490,7 +490,7 @@ class ReflectionTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_renamed_pk_reflection(self):
         metadata = self.metadata
-        t = Table("t", metadata, Column("id", Integer, primary_key=True))
+        Table("t", metadata, Column("id", Integer, primary_key=True))
         metadata.create_all()
         testing.db.connect().execution_options(autocommit=True).execute(
             "alter table t rename id to t_id"
@@ -705,9 +705,7 @@ class ReflectionTest(fixtures.TestBase):
 
             m1 = MetaData(conn)
 
-            t1_schema = Table(
-                "some_table", m1, schema="test_schema", autoload=True
-            )
+            Table("some_table", m1, schema="test_schema", autoload=True)
             t2_schema = Table(
                 "some_other_table", m1, schema="test_schema_2", autoload=True
             )
@@ -855,7 +853,7 @@ class ReflectionTest(fixtures.TestBase):
 
         metadata = self.metadata
 
-        t1 = Table(
+        Table(
             "party",
             metadata,
             Column("id", String(10), nullable=False),
@@ -994,7 +992,7 @@ class ReflectionTest(fixtures.TestBase):
 
         metadata = self.metadata
 
-        t1 = Table(
+        Table(
             "t",
             metadata,
             Column("id", Integer, primary_key=True),

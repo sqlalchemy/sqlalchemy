@@ -164,7 +164,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        people = Table(
+        Table(
             "people",
             metadata,
             Column(
@@ -177,7 +177,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
             Column("type", String(30)),
         )
 
-        engineers = Table(
+        Table(
             "engineers",
             metadata,
             Column(
@@ -190,7 +190,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
             Column("reports_to_id", Integer, ForeignKey("managers.person_id")),
         )
 
-        managers = Table(
+        Table(
             "managers",
             metadata,
             Column(
@@ -343,7 +343,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        people = Table(
+        Table(
             "people",
             metadata,
             Column(
@@ -356,7 +356,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
             Column("type", String(30)),
         )
 
-        engineers = Table(
+        Table(
             "engineers",
             metadata,
             Column(
@@ -494,7 +494,7 @@ class M2MFilterTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        organizations = Table(
+        Table(
             "organizations",
             metadata,
             Column(
@@ -503,14 +503,14 @@ class M2MFilterTest(fixtures.MappedTest):
             Column("name", String(50)),
         )
 
-        engineers_to_org = Table(
+        Table(
             "engineers_to_org",
             metadata,
             Column("org_id", Integer, ForeignKey("organizations.id")),
             Column("engineer_id", Integer, ForeignKey("engineers.person_id")),
         )
 
-        people = Table(
+        Table(
             "people",
             metadata,
             Column(
@@ -523,7 +523,7 @@ class M2MFilterTest(fixtures.MappedTest):
             Column("type", String(30)),
         )
 
-        engineers = Table(
+        Table(
             "engineers",
             metadata,
             Column(
@@ -2159,11 +2159,10 @@ class JoinAcrossJoinedInhMultiPath(
         )
 
     def test_joinedload(self):
-        Root, Intermediate, Sub1, Target = (
+        Root, Intermediate, Sub1 = (
             self.classes.Root,
             self.classes.Intermediate,
             self.classes.Sub1,
-            self.classes.Target,
         )
 
         sess = Session()
@@ -2257,12 +2256,7 @@ class MultipleAdaptUsesEntityOverTableTest(
         mapper(D, d, inherits=A)
 
     def _two_join_fixture(self):
-        A, B, C, D = (
-            self.classes.A,
-            self.classes.B,
-            self.classes.C,
-            self.classes.D,
-        )
+        B, C, D = (self.classes.B, self.classes.C, self.classes.D)
         s = Session()
         return (
             s.query(B.name, C.name, D.name)
@@ -2272,7 +2266,7 @@ class MultipleAdaptUsesEntityOverTableTest(
         )
 
     def test_two_joins_adaption(self):
-        a, b, c, d = self.tables.a, self.tables.b, self.tables.c, self.tables.d
+        a, c, d = self.tables.a, self.tables.c, self.tables.d
         q = self._two_join_fixture()
 
         btoc = q._from_obj[0].left

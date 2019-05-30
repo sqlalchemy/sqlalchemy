@@ -48,7 +48,7 @@ class InitTest(fixtures.ORMTest):
             def __init__(self):
                 inits.append((A, "__init__"))
 
-        obj = A()
+        A()
         eq_(inits, [(A, "__init__")])
 
     def test_A(self):
@@ -59,7 +59,7 @@ class InitTest(fixtures.ORMTest):
 
         self.register(A, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A)])
 
     def test_Ai(self):
@@ -71,7 +71,7 @@ class InitTest(fixtures.ORMTest):
 
         self.register(A, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
     def test_ai_B(self):
@@ -86,12 +86,12 @@ class InitTest(fixtures.ORMTest):
 
         self.register(B, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (A, "__init__")])
 
     def test_ai_Bi(self):
@@ -108,12 +108,12 @@ class InitTest(fixtures.ORMTest):
 
         self.register(B, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (B, "__init__"), (A, "__init__")])
 
     def test_Ai_bi(self):
@@ -130,12 +130,12 @@ class InitTest(fixtures.ORMTest):
                 inits.append((B, "__init__"))
                 super(B, self).__init__()
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "__init__"), (A, "init", B), (A, "__init__")])
 
     def test_Ai_Bi(self):
@@ -154,12 +154,12 @@ class InitTest(fixtures.ORMTest):
 
         self.register(B, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (B, "__init__"), (A, "__init__")])
 
     def test_Ai_B(self):
@@ -176,12 +176,12 @@ class InitTest(fixtures.ORMTest):
 
         self.register(B, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (A, "__init__")])
 
     def test_Ai_Bi_Ci(self):
@@ -207,16 +207,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (B, "__init__"), (A, "__init__")])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(
             inits,
             [
@@ -248,16 +248,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "__init__"), (A, "init", B), (A, "__init__")])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(
             inits,
             [
@@ -287,16 +287,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(A, "init", B), (A, "__init__")])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(inits, [(C, "init", C), (C, "__init__"), (A, "__init__")])
 
     def test_Ai_B_Ci(self):
@@ -320,16 +320,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (A, "__init__")])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(inits, [(C, "init", C), (C, "__init__"), (A, "__init__")])
 
     def test_Ai_B_C(self):
@@ -351,16 +351,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A), (A, "__init__")])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (A, "__init__")])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(inits, [(C, "init", C), (A, "__init__")])
 
     def test_A_Bi_C(self):
@@ -382,16 +382,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A)])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B), (B, "__init__")])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(inits, [(C, "init", C), (B, "__init__")])
 
     def test_A_B_Ci(self):
@@ -413,16 +413,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A)])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B)])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(inits, [(C, "init", C), (C, "__init__")])
 
     def test_A_B_C(self):
@@ -443,16 +443,16 @@ class InitTest(fixtures.ORMTest):
 
         self.register(C, inits)
 
-        obj = A()
+        A()
         eq_(inits, [(A, "init", A)])
 
         del inits[:]
 
-        obj = B()
+        B()
         eq_(inits, [(B, "init", B)])
 
         del inits[:]
-        obj = C()
+        C()
         eq_(inits, [(C, "init", C)])
 
     def test_defaulted_init(self):
@@ -512,7 +512,7 @@ class MapperInitTest(fixtures.ORMTest):
             def __init__(self, x):
                 pass
 
-        m = mapper(A, self.fixture())
+        mapper(A, self.fixture())
 
         # B is not mapped in the current implementation
         assert_raises(sa.orm.exc.UnmappedClassError, class_mapper, B)
@@ -559,7 +559,7 @@ class OnLoadTest(fixtures.ORMTest):
 
             a = A()
             p_a = pickle.dumps(a)
-            re_a = pickle.loads(p_a)
+            pickle.loads(p_a)
         finally:
             del A
 
@@ -628,23 +628,23 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
     def test_kw_only_args(self):
         cls, canary = self._kw_only_fixture()
 
-        a = cls("a", b="b", c="c")
+        cls("a", b="b", c="c")
         eq_(canary, [(("a",), {"b": "b", "c": "c"})])
 
     def test_kw_plus_posn_args(self):
         cls, canary = self._kw_plus_posn_fixture()
 
-        a = cls("a", 1, 2, 3, b="b", c="c")
+        cls("a", 1, 2, 3, b="b", c="c")
         eq_(canary, [(("a", 1, 2, 3), {"b": "b", "c": "c"})])
 
     def test_kw_only_args_plus_opt(self):
         cls, canary = self._kw_opt_fixture()
 
-        a = cls("a", b="b")
+        cls("a", b="b")
         eq_(canary, [(("a",), {"b": "b", "c": "c"})])
 
         canary[:] = []
-        a = cls("a", b="b", c="d")
+        cls("a", b="b", c="d")
         eq_(canary, [(("a",), {"b": "b", "c": "d"})])
 
     def test_kw_only_sig(self):

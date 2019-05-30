@@ -1306,7 +1306,7 @@ class EngineEventsTest(fixtures.TestBase):
         Engine._has_events = False
 
     def _assert_stmts(self, expected, received):
-        orig = list(received)
+        list(received)
         for stmt, params, posn in expected:
             if not received:
                 assert False, "Nothing available for stmt: %s" % stmt
@@ -2162,7 +2162,7 @@ class HandleErrorTest(fixtures.TestBase):
             r"is.*(?:i_dont_exist|does not exist)",
             py2konly=True,
         ):
-            with patch.object(conn.dialect, "do_rollback", boom) as patched:
+            with patch.object(conn.dialect, "do_rollback", boom):
                 assert_raises_message(
                     tsa.exc.OperationalError,
                     "rollback failed",

@@ -148,7 +148,7 @@ class TriggerDefaultsTest(fixtures.MappedTest):
 class ExcludedDefaultsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        dt = Table(
+        Table(
             "dt",
             metadata,
             Column(

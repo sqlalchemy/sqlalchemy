@@ -147,7 +147,6 @@ def pytest_collection_modifyitems(session, config, items):
             if sub_cls is not test_class.cls:
                 per_cls_dict = rebuilt_items[test_class.cls]
 
-                names = [i.name for i in items]
                 for inst in pytest.Class(
                     sub_cls.__name__, parent=test_class.parent.parent
                 ).collect():
