@@ -50,14 +50,14 @@ def register_function(identifier, fn, package="_default"):
 
     """
     reg = _registry[package]
-    raw_identifier = identifier
     identifier = identifier.lower()
 
     # Check if a function with the same identifier is registered.
     if identifier in reg:
         util.warn(
             "The GenericFunction '{}' is already registered and "
-            "is going to be overriden.".format(identifier))
+            "is going to be overriden.".format(identifier)
+        )
     reg[identifier] = fn
 
 
@@ -389,8 +389,6 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
 class FunctionAsBinary(BinaryExpression):
     def __init__(self, fn, left_index, right_index):
-        left = fn.clauses.clauses[left_index - 1]
-        right = fn.clauses.clauses[right_index - 1]
         self.sql_function = fn
         self.left_index = left_index
         self.right_index = right_index
@@ -611,7 +609,7 @@ class _GenericMeta(VisitableType):
                 cls.type = clsdict["__return_type__"]
 
             # Check _register attribute status
-            cls._register = getattr(cls, '_register', True)
+            cls._register = getattr(cls, "_register", True)
 
             # Register the function if required
             if cls._register:

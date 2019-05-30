@@ -235,7 +235,6 @@ class SelectableTest(
         s1c1 = s1._clone()
         s1c2 = s1._clone()
         s2c1 = s2._clone()
-        s2c2 = s2._clone()
         s3c1 = s3._clone()
 
         eq_(
@@ -658,7 +657,7 @@ class SelectableTest(
 
     def test_scalar_cloned_comparator(self):
         sel = select([table1.c.col1]).scalar_subquery()
-        expr = sel == table1.c.col1
+        sel == table1.c.col1
 
         sel2 = visitors.ReplacingCloningVisitor().traverse(sel)
 
@@ -773,7 +772,7 @@ class SelectableTest(
         c1 = Column("c1", Integer)
         c2 = Column("c2", Integer)
 
-        s = select([c1])
+        select([c1])
 
         t = Table("t", MetaData(), c1, c2)
 
@@ -787,7 +786,7 @@ class SelectableTest(
         c1 = Column("c1", Integer)
         c2 = Column("c2", Integer)
 
-        s = select([c1]).where(c1 == 5)
+        select([c1]).where(c1 == 5)
 
         t = Table("t", MetaData(), c1, c2)
 
@@ -802,7 +801,7 @@ class SelectableTest(
         t1 = Table("t1", m, Column("x", Integer))
 
         c1 = Column("c1", Integer)
-        s = select([c1]).where(c1 == 5).select_from(t1)
+        select([c1]).where(c1 == 5).select_from(t1)
 
         t2 = Table("t2", MetaData(), c1)
 
@@ -1094,7 +1093,7 @@ class AnonLabelTest(fixtures.TestBase):
         assert c1.label(None) is not c1
 
         eq_(str(select([c1])), "SELECT count(:count_2) AS count_1")
-        c2 = select([c1]).compile()
+        select([c1]).compile()
 
         eq_(str(select([c1.label(None)])), "SELECT count(:count_2) AS count_1")
 
@@ -2008,7 +2007,7 @@ class AnnotationsTest(fixtures.TestBase):
             pass
 
         col = MyColumn("x", Integer)
-        binary_1 = col == 5
+        col == 5
         col_anno = MyColumn("x", Integer)._annotate({"foo": "bar"})
         binary_2 = col_anno == 5
         eq_(binary_2.left._annotations, {"foo": "bar"})
@@ -2275,10 +2274,10 @@ class AnnotationsTest(fixtures.TestBase):
         c = column("a")
 
         c1 = c._annotate({"foo": "bar"})
-        comp1 = c1.comparator
+        c1.comparator
 
         c2 = c1._annotate({"bat": "hoho"})
-        comp2 = c2.comparator
+        c2.comparator
 
         assert (c2 == 5).left._annotations == {"foo": "bar", "bat": "hoho"}
 
@@ -2491,7 +2490,7 @@ class ResultMapTest(fixtures.TestBase):
 
     def test_select_table_alias_column(self):
         t = self._fixture()
-        x, y = t.c.x, t.c.y
+        x = t.c.x
 
         ta = t.alias()
         s = select([ta.c.x, ta.c.y])
@@ -2500,7 +2499,7 @@ class ResultMapTest(fixtures.TestBase):
 
     def test_select_label_alt_name_table_alias_column(self):
         t = self._fixture()
-        x, y = t.c.x, t.c.y
+        x = t.c.x
 
         ta = t.alias()
         l1, l2 = ta.c.x.label("a"), ta.c.y.label("b")

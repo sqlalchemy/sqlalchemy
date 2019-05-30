@@ -445,7 +445,7 @@ class ForeignPKTest(fixtures.MappedTest):
             self.tables.people,
         )
 
-        m1 = mapper(PersonSite, peoplesites)
+        mapper(PersonSite, peoplesites)
         m2 = mapper(
             Person, people, properties={"sites": relationship(PersonSite)}
         )
@@ -1481,7 +1481,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             User,
             users,
             properties=dict(
@@ -1541,7 +1541,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             User,
             users,
             properties=dict(
@@ -1610,7 +1610,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             User,
             users,
             properties=dict(
@@ -1647,7 +1647,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             User,
             users,
             properties=dict(
@@ -1683,7 +1683,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             User,
             users,
             properties=dict(
@@ -1719,7 +1719,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             User,
             users,
             properties=dict(
@@ -1751,7 +1751,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         )
 
         m1 = mapper(User, users)
-        m2 = mapper(
+        mapper(
             Address,
             addresses,
             properties=dict(
@@ -1760,7 +1760,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         )
 
         u = User(name="test")
-        a = Address(email_address="testaddress", user=u)
+        Address(email_address="testaddress", user=u)
 
         session = create_session()
         session.add(u)
@@ -1777,7 +1777,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         )
 
         m2 = mapper(Address, addresses)
-        m = mapper(
+        mapper(
             User,
             users,
             properties={
@@ -2162,7 +2162,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         sa.orm.clear_mappers()
 
-        m = mapper(User, users)
+        mapper(User, users)
         evt = Events()
         event.listen(User, "before_insert", evt.before_insert)
         event.listen(User, "after_insert", evt.after_insert)
@@ -2184,8 +2184,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        # TODO: put assertion in here !!!
-        m = mapper(
+        mapper(
             Address,
             addresses,
             properties=dict(
@@ -2263,7 +2262,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             Address,
             addresses,
             properties=dict(
@@ -2299,7 +2298,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             Address,
             addresses,
             properties=dict(
@@ -2341,7 +2340,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        mapper(
             Address,
             addresses,
             properties=dict(
@@ -2424,7 +2423,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
 
         mapper(Keyword, keywords)
 
-        m = mapper(
+        mapper(
             Item,
             items,
             properties=dict(
@@ -3227,9 +3226,9 @@ class TransactionTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
+        Table("t1", metadata, Column("id", Integer, primary_key=True))
 
-        t2 = Table(
+        Table(
             "t2",
             metadata,
             Column("id", Integer, primary_key=True),

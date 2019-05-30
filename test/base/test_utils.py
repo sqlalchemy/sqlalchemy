@@ -763,7 +763,7 @@ class LRUTest(fixtures.TestBase):
         for id_ in (25, 24, 23, 14, 12, 19, 18, 17, 16, 15):
             assert id_ in lru
 
-        i1 = lru[25]
+        lru[25]
         i2 = item(25)
         lru[25] = i2
         assert 25 in lru
@@ -1839,7 +1839,7 @@ class SymbolTest(fixtures.TestBase):
 
         # default
         s = util.pickle.dumps(sym1)
-        sym3 = util.pickle.loads(s)
+        util.pickle.loads(s)
 
         for protocol in 0, 1, 2:
             print(protocol)

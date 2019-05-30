@@ -366,7 +366,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         assert str(clause2) == str(t1.join(t2, t1.c.col2 == t2.c.col3))
 
     def test_aliased_column_adapt(self):
-        clause = t1.select()
+        t1.select()
 
         aliased = t1.select().alias()
         aliased2 = t1.alias()
@@ -1218,14 +1218,6 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
-            select([literal_column("*")], t1.c.col1 == t2.c.col2),
-            "SELECT * FROM table1, table2 WHERE table1.col1 = table2.col2",
-        )
-
-    def test_table_to_alias_4(self):
-        t1alias = t1.alias("t1alias")
-        vis = sql_util.ClauseAdapter(t1alias)
-        self.assert_compile(
             vis.traverse(
                 select([literal_column("*")], t1.c.col1 == t2.c.col2)
             ),
@@ -1233,7 +1225,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE t1alias.col1 = table2.col2",
         )
 
-    def test_table_to_alias_5(self):
+    def test_table_to_alias_4(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
@@ -1248,7 +1240,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE t1alias.col1 = table2.col2",
         )
 
-    def test_table_to_alias_6(self):
+    def test_table_to_alias_5(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
@@ -1270,7 +1262,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT * FROM table2 WHERE t1alias.col1 = table2.col2)",
         )
 
-    def test_table_to_alias_7(self):
+    def test_table_to_alias_6(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
@@ -1294,7 +1286,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE t1alias.col1 = table2.col2)",
         )
 
-    def test_table_to_alias_8(self):
+    def test_table_to_alias_7(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
@@ -1303,7 +1295,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "t1alias.col2 ELSE t1alias.col1 END",
         )
 
-    def test_table_to_alias_9(self):
+    def test_table_to_alias_8(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
@@ -1314,13 +1306,13 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "t1alias.col2 ELSE t1alias.col1 END",
         )
 
-    def test_table_to_alias_10(self):
+    def test_table_to_alias_9(self):
         s = select([literal_column("*")], from_obj=[t1]).alias("foo")
         self.assert_compile(
             s.select(), "SELECT foo.* FROM (SELECT * FROM table1) " "AS foo"
         )
 
-    def test_table_to_alias_11(self):
+    def test_table_to_alias_10(self):
         s = select([literal_column("*")], from_obj=[t1]).alias("foo")
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
@@ -1329,13 +1321,13 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT foo.* FROM (SELECT * FROM table1 " "AS t1alias) AS foo",
         )
 
-    def test_table_to_alias_12(self):
+    def test_table_to_alias_11(self):
         s = select([literal_column("*")], from_obj=[t1]).alias("foo")
         self.assert_compile(
             s.select(), "SELECT foo.* FROM (SELECT * FROM table1) " "AS foo"
         )
 
-    def test_table_to_alias_13(self):
+    def test_table_to_alias_12(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         ff = vis.traverse(func.count(t1.c.col1).label("foo"))
@@ -1350,7 +1342,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     # .col1).l abel('foo')]), clone=True), "SELECT
     # count(t1alias.col1) AS foo FROM table1 AS t1alias")
 
-    def test_table_to_alias_14(self):
+    def test_table_to_alias_13(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         t2alias = t2.alias("t2alias")
@@ -1364,7 +1356,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "t2alias.col2",
         )
 
-    def test_table_to_alias_15(self):
+    def test_table_to_alias_14(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         t2alias = t2.alias("t2alias")
@@ -1378,7 +1370,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "t2alias.col2",
         )
 
-    def test_table_to_alias_16(self):
+    def test_table_to_alias_15(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         t2alias = t2.alias("t2alias")
@@ -1400,7 +1392,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE t1alias.col1 = t2alias.col2)",
         )
 
-    def test_table_to_alias_17(self):
+    def test_table_to_alias_16(self):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         t2alias = t2.alias("t2alias")
@@ -1648,9 +1640,6 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM a JOIN d ON a.id = d.aid) AS anon_1 "
             "WHERE c.bid = anon_1.b_aid",
         )
-
-        t1 = table("table1", column("col1"), column("col2"), column("col3"))
-        t2 = table("table2", column("col1"), column("col2"), column("col3"))
 
     def test_label_anonymize_one(self):
         t1a = t1.alias()

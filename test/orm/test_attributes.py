@@ -938,7 +938,7 @@ class AttributesTest(fixtures.ORMTest):
         try:
             Foo().collection
             assert True
-        except sa_exc.ArgumentError as e:
+        except sa_exc.ArgumentError:
             assert False
 
     def test_last_known_tracking(self):
@@ -2574,8 +2574,6 @@ class HistoryTest(fixtures.TestBase):
         )
         hi = Bar(name="hi")
         there = Bar(name="there")
-        old = Bar(name="old")
-        new = Bar(name="new")
         f = Foo()
         eq_(
             attributes.get_state_history(
@@ -3652,7 +3650,7 @@ class EventPropagateTest(fixtures.TestBase):
                 fn()
 
             if useobject:
-                D = make_d()
+                make_d()
                 instrument_d()
 
             yield classes, canary

@@ -319,7 +319,7 @@ class ShardTest(object):
         event.listen(WeatherLocation, "load", load)
         sess = self._fixture_data()
 
-        tokyo = (
+        tokyo = (  # noqa
             sess.query(WeatherLocation)
             .filter_by(city="Tokyo")
             .set_shard("asia")

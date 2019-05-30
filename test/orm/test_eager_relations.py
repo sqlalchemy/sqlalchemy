@@ -3069,7 +3069,6 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_splice_onto_ac(self):
         A = self.classes.A
         B = self.classes.B
-        C1 = self.classes.C1
         b_table = self.tables.b
         c1_table = self.tables.c1
 

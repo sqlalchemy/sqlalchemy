@@ -239,8 +239,6 @@ ElementTree.dump(d.element)
 
 
 def find_document(path, compareto):
-    j = documents
-    prev_elements = None
     query = session.query(Document)
     first = True
     for i, match in enumerate(

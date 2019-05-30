@@ -576,8 +576,8 @@ class TLTransactionTest(fixtures.TestBase):
 
         r1 = tlengine.execute(select([1]))
         r2 = tlengine.execute(select([1]))
-        row1 = r1.fetchone()
-        row2 = r2.fetchone()
+        r1.fetchone()
+        r2.fetchone()
         r1.close()
         assert r2.connection is r1.connection
         assert not r2.connection.closed
@@ -600,7 +600,7 @@ class TLTransactionTest(fixtures.TestBase):
     def test_dispose(self):
         with _tlengine_deprecated():
             eng = testing_engine(options=dict(strategy="threadlocal"))
-        result = eng.execute(select([1]))
+        eng.execute(select([1]))
         eng.dispose()
         eng.execute(select([1]))
 

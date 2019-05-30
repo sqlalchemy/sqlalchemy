@@ -345,7 +345,7 @@ class ServerSideCursorsTest(
     def test_roundtrip(self):
         md = self.metadata
 
-        engine = self._fixture(True)
+        self._fixture(True)
         test_table = Table(
             "test_table",
             md,

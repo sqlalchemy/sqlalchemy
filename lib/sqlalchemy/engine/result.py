@@ -503,7 +503,6 @@ class ResultMetaData(object):
     def _merge_textual_cols_by_position(
         self, context, cursor_description, result_columns
     ):
-        dialect = context.dialect
         num_ctx_cols = len(result_columns) if result_columns else None
 
         if num_ctx_cols > len(cursor_description):
@@ -558,7 +557,6 @@ class ResultMetaData(object):
             yield idx, colname, mapped_type, coltype, obj, untranslated
 
     def _merge_cols_by_none(self, context, cursor_description):
-        dialect = context.dialect
         for (
             idx,
             colname,

@@ -745,7 +745,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             Column("a_id", ForeignKey("a.id")),
         )
         m1 = mapper(A, a, properties={"bs": relationship(B)})
-        m2 = mapper(B, b)
+        mapper(B, b)
 
         @profile_memory()
         def go():

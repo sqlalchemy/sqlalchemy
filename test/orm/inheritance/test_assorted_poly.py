@@ -622,21 +622,19 @@ class RelationshipTest4(fixtures.MappedTest):
             polymorphic_on=employee_join.c.type,
             polymorphic_identity="person",
         )
-        engineer_mapper = mapper(
+        mapper(
             Engineer,
             engineers,
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers,
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        car_mapper = mapper(
-            Car, cars, properties={"employee": relationship(person_mapper)}
-        )
+        mapper(Car, cars, properties={"employee": relationship(person_mapper)})
 
         session = create_session()
 
@@ -789,7 +787,7 @@ class RelationshipTest5(fixtures.MappedTest):
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
-        engineer_mapper = mapper(
+        mapper(
             Engineer,
             engineers,
             inherits=person_mapper,
@@ -801,7 +799,7 @@ class RelationshipTest5(fixtures.MappedTest):
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        car_mapper = mapper(
+        mapper(
             Car,
             cars,
             properties={
@@ -1024,7 +1022,7 @@ class RelationshipTest7(fixtures.MappedTest):
             polymorphic_on=car_join.c.type,
             polymorphic_identity="car",
         )
-        offroad_car_mapper = mapper(
+        mapper(
             Offraod_Car,
             offroad_cars,
             inherits=car_mapper,
@@ -1038,13 +1036,13 @@ class RelationshipTest7(fixtures.MappedTest):
             polymorphic_identity="person",
             properties={"car": relationship(car_mapper)},
         )
-        engineer_mapper = mapper(
+        mapper(
             Engineer,
             engineers,
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers,
             inherits=person_mapper,
@@ -1052,8 +1050,6 @@ class RelationshipTest7(fixtures.MappedTest):
         )
 
         session = create_session()
-        basic_car = Car(name="basic")
-        offroad_car = Offraod_Car(name="offroad")
 
         for i in range(1, 4):
             if i % 2:
@@ -1293,13 +1289,13 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        manager_mapper = mapper(
+        mapper(
             Manager,
             managers,
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        car_mapper = mapper(
+        mapper(
             Car,
             cars,
             properties={
@@ -1347,7 +1343,6 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
 
         # this particular adapt used to cause a recursion overflow;
         # added here for testing
-        e = exists([Car.owner], Car.owner == employee_join.c.person_id)
         Query(Person)._adapt_clause(employee_join, False, False)
 
         r = (
@@ -1484,7 +1479,7 @@ class MultiLevelTest(fixtures.MappedTest):
             with_polymorphic=("*", pu_Engineer),
         )
 
-        mapper_Manager = mapper(
+        mapper(
             Manager,
             table_Manager,
             inherit_condition=table_Manager.c.id == table_Engineer.c.id,
@@ -1801,7 +1796,7 @@ class InheritingEagerTest(fixtures.MappedTest):
 class MissingPolymorphicOnTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        tablea = Table(
+        Table(
             "tablea",
             metadata,
             Column(
@@ -1809,7 +1804,7 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
             ),
             Column("adata", String(50)),
         )
-        tableb = Table(
+        Table(
             "tableb",
             metadata,
             Column(
@@ -1818,13 +1813,13 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
             Column("aid", Integer, ForeignKey("tablea.id")),
             Column("data", String(50)),
         )
-        tablec = Table(
+        Table(
             "tablec",
             metadata,
             Column("id", Integer, ForeignKey("tablea.id"), primary_key=True),
             Column("cdata", String(50)),
         )
-        tabled = Table(
+        Table(
             "tabled",
             metadata,
             Column("id", Integer, ForeignKey("tablec.id"), primary_key=True),
@@ -1922,7 +1917,7 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
             pass
 
     def _roundtrip(self):
-        Person, User = self.classes.Person, self.classes.User
+        User = self.classes.User
         sess = Session()
         u1 = User()
         u2 = User()
@@ -2093,13 +2088,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
         "end though",
     )
     def test_join_w_eager_w_any(self):
-        A, B, C, D, E = (
-            self.classes.A,
-            self.classes.B,
-            self.classes.C,
-            self.classes.D,
-            self.classes.E,
-        )
+        B, C, D = (self.classes.B, self.classes.C, self.classes.D)
         s = Session(testing.db)
 
         b = B(ds=[D()])

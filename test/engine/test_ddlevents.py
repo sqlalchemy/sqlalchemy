@@ -10,6 +10,7 @@ from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.schema import DDL
 from sqlalchemy.schema import DropConstraint
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -494,7 +495,7 @@ class DDLExecutionTest(fixtures.TestBase):
         assert "fnord" in strings
 
     def test_conditional_constraint(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
+        metadata, users = self.metadata, self.users
         nonpg_mock = engines.mock_engine(dialect_name="sqlite")
         pg_mock = engines.mock_engine(dialect_name="postgresql")
         constraint = CheckConstraint(
@@ -531,7 +532,7 @@ class DDLExecutionTest(fixtures.TestBase):
 
     @testing.uses_deprecated(r".*use the DDLEvents")
     def test_conditional_constraint_deprecated(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
+        metadata, users = self.metadata, self.users
         nonpg_mock = engines.mock_engine(dialect_name="sqlite")
         pg_mock = engines.mock_engine(dialect_name="postgresql")
         constraint = CheckConstraint(
@@ -567,31 +568,32 @@ class DDLExecutionTest(fixtures.TestBase):
         table = self.users
         ddl = DDL("SELECT 1")
 
-        for py in (
-            "engine.execute(ddl)",
-            "engine.execute(ddl, table)",
-            "cx.execute(ddl)",
-            "cx.execute(ddl, table)",
-            "ddl.execute(engine)",
-            "ddl.execute(engine, table)",
-            "ddl.execute(cx)",
-            "ddl.execute(cx, table)",
+        for spec in (
+            (engine.execute, ddl),
+            (engine.execute, ddl, table),
+            (cx.execute, ddl),
+            (cx.execute, ddl, table),
+            (ddl.execute, engine),
+            (ddl.execute, engine, table),
+            (ddl.execute, cx),
+            (ddl.execute, cx, table),
         ):
-            r = eval(py)
-            assert list(r) == [(1,)], py
+            fn = spec[0]
+            arg = spec[1:]
+            r = fn(*arg)
+            eq_(list(r), [(1,)])
 
-        for py in ("ddl.execute()", "ddl.execute(target=table)"):
-            try:
-                r = eval(py)
-                assert False
-            except tsa.exc.UnboundExecutionError:
-                pass
+        for fn, kw in ((ddl.execute, {}), (ddl.execute, dict(target=table))):
+            assert_raises(tsa.exc.UnboundExecutionError, fn, **kw)
 
         for bind in engine, cx:
             ddl.bind = bind
-            for py in ("ddl.execute()", "ddl.execute(target=table)"):
-                r = eval(py)
-                assert list(r) == [(1,)], py
+            for fn, kw in (
+                (ddl.execute, {}),
+                (ddl.execute, dict(target=table)),
+            ):
+                r = fn(**kw)
+                eq_(list(r), [(1,)])
 
     def test_platform_escape(self):
         """test the escaping of % characters in the DDL construct."""

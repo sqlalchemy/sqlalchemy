@@ -850,7 +850,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_index_against_text_inline(self):
         metadata = MetaData()
         idx = Index("y", text("some_function(q)"))
-        x = Table("x", metadata, Column("q", String(50)), idx)
+        Table("x", metadata, Column("q", String(50)), idx)
 
         self.assert_compile(
             schema.CreateIndex(idx), "CREATE INDEX y ON x (some_function(q))"

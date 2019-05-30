@@ -300,11 +300,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             "remote_table_2",
         ]
         meta = self.metadata
-        users, addresses, dingalings = (
-            self.tables.users,
-            self.tables.email_addresses,
-            self.tables.dingalings,
-        )
+
         insp = inspect(meta.bind)
 
         if table_type == "view":
@@ -413,11 +409,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     def _test_get_columns(self, schema=None, table_type="table"):
         meta = MetaData(testing.db)
-        users, addresses, dingalings = (
-            self.tables.users,
-            self.tables.email_addresses,
-            self.tables.dingalings,
-        )
+        users, addresses = (self.tables.users, self.tables.email_addresses)
         table_names = ["users", "email_addresses"]
         if table_type == "view":
             table_names = ["users_v", "email_addresses_v"]
@@ -597,11 +589,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _test_get_foreign_keys(self, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = (
-            self.tables.users,
-            self.tables.email_addresses,
-            self.tables.dingalings,
-        )
+        users, addresses = (self.tables.users, self.tables.email_addresses)
         insp = inspect(meta.bind)
         expected_schema = schema
         # users
@@ -739,11 +727,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _test_get_indexes(self, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = (
-            self.tables.users,
-            self.tables.email_addresses,
-            self.tables.dingalings,
-        )
+
         # The database may decide to create indexes for foreign keys, etc.
         # so there may be more indexes than expected.
         insp = inspect(meta.bind)
@@ -995,11 +979,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _test_get_view_definition(self, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = (
-            self.tables.users,
-            self.tables.email_addresses,
-            self.tables.dingalings,
-        )
         view_name1 = "users_v"
         view_name2 = "email_addresses_v"
         insp = inspect(meta.bind)
@@ -1021,11 +1000,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.provide_metadata
     def _test_get_table_oid(self, table_name, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = (
-            self.tables.users,
-            self.tables.email_addresses,
-            self.tables.dingalings,
-        )
         insp = inspect(meta.bind)
         oid = insp.get_table_oid(table_name, schema)
         self.assert_(isinstance(oid, int))

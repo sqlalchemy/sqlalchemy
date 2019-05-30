@@ -334,7 +334,7 @@ class Profiler(object):
             if len(sys.argv) > 1:
                 potential_name = sys.argv[1]
                 try:
-                    suite = __import__(__name__ + "." + potential_name)
+                    __import__(__name__ + "." + potential_name)
                 except ImportError:
                     pass
 
@@ -382,7 +382,7 @@ class Profiler(object):
         args.profile = args.profile or args.dump or args.runsnake
 
         if cls.name is None:
-            suite = __import__(__name__ + "." + args.name)
+            __import__(__name__ + "." + args.name)
 
         Profiler(args).run()
 

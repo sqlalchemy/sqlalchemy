@@ -87,8 +87,7 @@ class CascadeArgTest(fixtures.MappedTest):
         )
 
     def test_delete_orphan_without_delete(self):
-        User, Address = self.classes.User, self.classes.Address
-        users, addresses = self.tables.users, self.tables.addresses
+        Address = self.classes.Address
 
         assert_raises_message(
             sa_exc.SAWarning,
@@ -161,8 +160,7 @@ class CascadeArgTest(fixtures.MappedTest):
         )
 
     def test_cascade_unicode(self):
-        User, Address = self.classes.User, self.classes.Address
-        users, addresses = self.tables.users, self.tables.addresses
+        Address = self.classes.Address
 
         rel = relationship(Address)
         rel.cascade = util.u("save-update, merge, expunge")
@@ -630,7 +628,7 @@ class O2MCascadeTest(fixtures.MappedTest):
         )
 
     def test_none_o2m_collection_assignment(self):
-        User, Address = self.classes.User, self.classes.Address
+        User = self.classes.User
         s = Session()
         u1 = User(name="u", addresses=[None])
         s.add(u1)
@@ -643,7 +641,7 @@ class O2MCascadeTest(fixtures.MappedTest):
         eq_(u1.addresses, [None])
 
     def test_none_o2m_collection_append(self):
-        User, Address = self.classes.User, self.classes.Address
+        User = self.classes.User
         s = Session()
 
         u1 = User(name="u")
@@ -1834,16 +1832,12 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
     def test_single_parent_raise(self):
         T2, T1 = self.classes.T2, self.classes.T1
 
-        sess = create_session()
-
         y = T2(data="T2a")
-        x = T1(data="T1a", t2=y)
+        T1(data="T1a", t2=y)
         assert_raises(sa_exc.InvalidRequestError, T1, data="T1b", t2=y)
 
     def test_single_parent_backref(self):
         T2, T3 = self.classes.T2, self.classes.T3
-
-        sess = create_session()
 
         y = T3(data="T3a")
         x = T2(data="T2a", t3=y)
@@ -2266,9 +2260,8 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(B, b)
 
-        sess = create_session()
         b1 = B(data="b1")
-        a1 = A(data="a1", bs=[b1])
+        A(data="a1", bs=[b1])
 
         assert_raises(sa_exc.InvalidRequestError, A, data="a2", bs=[b1])
 
@@ -2299,7 +2292,6 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(B, b)
 
-        sess = create_session()
         b1 = B(data="b1")
         a1 = A(data="a1", bs=[b1])
 
@@ -3286,13 +3278,13 @@ class OrphanCriterionTest(fixtures.MappedTest):
         )
         c1 = Core()
         if detach_event:
-            r1 = RelatedOne(cores=[c1])
-            r2 = RelatedTwo(cores=[c1])
+            RelatedOne(cores=[c1])
+            RelatedTwo(cores=[c1])
         else:
             if r1_present:
-                r1 = RelatedOne(cores=[c1])
+                RelatedOne(cores=[c1])
             if r2_present:
-                r2 = RelatedTwo(cores=[c1])
+                RelatedTwo(cores=[c1])
 
         if persistent:
             s = Session()

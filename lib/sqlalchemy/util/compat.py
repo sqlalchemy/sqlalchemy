@@ -74,7 +74,6 @@ def inspect_getfullargspec(func):
     nkwargs = co.co_kwonlyargcount if py3k else 0
     args = list(names[:nargs])
     kwonlyargs = list(names[nargs : nargs + nkwargs])
-    step = 0
 
     nargs += nkwargs
     varargs = None

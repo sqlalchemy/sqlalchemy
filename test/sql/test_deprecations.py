@@ -102,14 +102,14 @@ class DeprecationWarningsTest(fixtures.TestBase):
             "The select.autocommit parameter is deprecated and "
             "will be removed in a future release."
         ):
-            stmt = select([column("x")], autocommit=True)
+            select([column("x")], autocommit=True)
 
     def test_select_for_update(self):
         with testing.expect_deprecated(
             "The select.for_update parameter is deprecated and "
             "will be removed in a future release."
         ):
-            stmt = select([column("x")], for_update=True)
+            select([column("x")], for_update=True)
 
     @testing.provide_metadata
     def test_table_useexisting(self):
@@ -153,7 +153,7 @@ class DDLListenerDeprecationsTest(fixtures.TestBase):
         )
 
     def test_append_listener(self):
-        metadata, table, bind = self.metadata, self.table, self.bind
+        metadata, table = self.metadata, self.table
 
         def fn(*a):
             return None
@@ -209,7 +209,7 @@ class DDLListenerDeprecationsTest(fixtures.TestBase):
         assert "fnord" in canary
 
     def test_deprecated_append_ddl_listener_metadata(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
+        metadata, engine = self.metadata, self.engine
         canary = []
         with testing.expect_deprecated(".* is deprecated .*"):
             metadata.append_ddl_listener(
@@ -551,7 +551,7 @@ class TextTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The text.autocommit parameter is deprecated"
         ):
-            t = text("select id, name from user", autocommit=True)
+            text("select id, name from user", autocommit=True)
 
 
 table1 = table(

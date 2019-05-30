@@ -807,7 +807,6 @@ class OptionsTest(PathTest, QueryTest):
     def test_chained(self):
         User = self.classes.User
         Order = self.classes.Order
-        Item = self.classes.Item
         sess = Session()
         q = sess.query(User)
         opt = self._option_fixture(User.orders).joinedload("items")
@@ -1291,8 +1290,6 @@ class OptionsNoPropTestInh(_Polymorphic):
     def test_missing_str_attr_of_type_subclass(self):
         s = Session()
 
-        wp = with_polymorphic(Person, [Manager], flat=True)
-
         assert_raises_message(
             sa.exc.ArgumentError,
             r'Can\'t find property named "manager_name" on '
@@ -1351,9 +1348,6 @@ class PickleTest(PathTest, QueryTest):
 
     def test_modern_opt_getstate(self):
         User = self.classes.User
-
-        sess = Session()
-        q = sess.query(User)
 
         opt = self._option_fixture(User.addresses)
         eq_(

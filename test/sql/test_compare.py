@@ -444,8 +444,6 @@ class CompareAndCopyTest(fixtures.TestBase):
 
         stmt2 = union(select([table_a]), select([table_b]))
 
-        stmt3 = select([table_b])
-
         equivalents = {table_a.c.a: [table_b.c.a]}
 
         is_false(
@@ -577,8 +575,7 @@ class CompareClausesTest(fixtures.TestBase):
     def test_compare_binds(self):
         b1 = bindparam("foo", type_=Integer())
         b2 = bindparam("foo", type_=Integer())
-        b3 = bindparam("bar", type_=Integer())
-        b4 = bindparam("foo", type_=String())
+        b3 = bindparam("foo", type_=String())
 
         def c1():
             return 5
@@ -586,26 +583,26 @@ class CompareClausesTest(fixtures.TestBase):
         def c2():
             return 6
 
-        b5 = bindparam("foo", type_=Integer(), callable_=c1)
-        b6 = bindparam("foo", type_=Integer(), callable_=c2)
-        b7 = bindparam("foo", type_=Integer(), callable_=c1)
+        b4 = bindparam("foo", type_=Integer(), callable_=c1)
+        b5 = bindparam("foo", type_=Integer(), callable_=c2)
+        b6 = bindparam("foo", type_=Integer(), callable_=c1)
 
-        b8 = bindparam("foo", type_=Integer, value=5)
-        b9 = bindparam("foo", type_=Integer, value=6)
+        b7 = bindparam("foo", type_=Integer, value=5)
+        b8 = bindparam("foo", type_=Integer, value=6)
 
-        is_false(b1.compare(b5))
-        is_true(b5.compare(b7))
-        is_false(b5.compare(b6))
+        is_false(b1.compare(b4))
+        is_true(b4.compare(b6))
+        is_false(b4.compare(b5))
         is_true(b1.compare(b2))
 
         # currently not comparing "key", as we often have to compare
         # anonymous names.  however we should really check for that
         # is_true(b1.compare(b3))
 
-        is_false(b1.compare(b4))
-        is_false(b1.compare(b8))
-        is_false(b8.compare(b9))
-        is_true(b8.compare(b8))
+        is_false(b1.compare(b3))
+        is_false(b1.compare(b7))
+        is_false(b7.compare(b8))
+        is_true(b7.compare(b7))
 
     def test_compare_tables(self):
         is_true(table_a.compare(table_a_2))

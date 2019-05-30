@@ -68,7 +68,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
 
     @classmethod
     def define_tables(cls, metadata):
-        data_table = Table(
+        Table(
             "data_table",
             metadata,
             Column("id", Integer, primary_key=True),
@@ -328,9 +328,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         metadata = self.metadata
 
         e1 = Enum("one", "two", "three", name="myenum")
-        t1 = Table("e1", metadata, Column("c1", e1))
+        Table("e1", metadata, Column("c1", e1))
 
-        t2 = Table("e2", metadata, Column("c1", e1))
+        Table("e2", metadata, Column("c1", e1))
 
         metadata.create_all(checkfirst=False)
         metadata.drop_all(checkfirst=False)
@@ -349,7 +349,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         """
         metadata = self.metadata
 
-        e1 = Enum("one", "two", "three", name="myenum", metadata=self.metadata)
+        Enum("one", "two", "three", name="myenum", metadata=self.metadata)
 
         metadata.create_all(checkfirst=False)
         assert "myenum" in [e["name"] for e in inspect(testing.db).get_enums()]
@@ -525,7 +525,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         etype = Enum(
             "four", "five", "six", name="fourfivesixtype", metadata=metadata
         )
-        t1 = Table(
+        Table(
             "table",
             metadata,
             Column("id", Integer, primary_key=True),
@@ -773,7 +773,7 @@ class NumericInterpretationTest(fixtures.TestBase):
             Column("ff", Float(asdecimal=False), default=1),
         )
         metadata.create_all()
-        r = t.insert().execute()
+        t.insert().execute()
 
         row = t.select().execute().first()
         assert isinstance(row[1], decimal.Decimal)
@@ -1890,7 +1890,7 @@ class UUIDTest(fixtures.TestBase):
 
     def setup(self):
         self.conn = testing.db.connect()
-        trans = self.conn.begin()
+        self.conn.begin()
 
     def teardown(self):
         self.conn.close()

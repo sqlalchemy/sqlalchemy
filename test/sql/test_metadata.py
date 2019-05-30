@@ -398,7 +398,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         a = Table("a", meta, Column("a", Integer))
         a.append_constraint(ForeignKeyConstraint(["a"], ["b.x"]))
 
-        b = Table("b", meta, Column("b", Integer))
+        Table("b", meta, Column("b", Integer))
 
         assert_raises_message(
             exc.NoReferencedColumnError,
@@ -477,7 +477,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_sequence_attach_to_table(self):
         m1 = MetaData()
         s1 = Sequence("s")
-        t = Table("a", m1, Column("x", Integer, s1))
+        Table("a", m1, Column("x", Integer, s1))
         assert s1.metadata is m1
 
     def test_sequence_attach_to_existing_table(self):
@@ -2044,7 +2044,7 @@ class SchemaTypeTest(fixtures.TestBase):
         type_ = self.WrapBoolean()
         y = Column("y", type_)
         y_copy = y.copy()
-        t1 = Table("x", m, y_copy)
+        Table("x", m, y_copy)
 
         is_true(y_copy.type._create_events)
 
@@ -3750,7 +3750,7 @@ class ColumnOptionsTest(fixtures.TestBase):
 
     def _no_error(self, col):
         m = MetaData()
-        b = Table("bar", m, Column("id", Integer))
+        Table("bar", m, Column("id", Integer))
         t = Table("t", m, col)
         schema.CreateTable(t).compile()
 

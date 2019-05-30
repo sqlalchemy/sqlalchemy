@@ -269,7 +269,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
                     # without closing it (FreeTDS particularly)
                     row = self.cursor.fetchall()[0]
                     break
-                except self.dialect.dbapi.Error as e:
+                except self.dialect.dbapi.Error:
                     # no way around this - nextset() consumes the previous set
                     # so we need to just keep flipping
                     self.cursor.nextset()

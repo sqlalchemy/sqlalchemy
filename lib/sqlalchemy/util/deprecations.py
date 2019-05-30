@@ -112,8 +112,6 @@ def deprecated_params(**specs):
             check_defaults = ()
             check_kw = set(messages)
 
-        has_kw = spec.varkw is not None
-
         @decorator
         def warned(fn, *args, **kwargs):
             for m in check_defaults:

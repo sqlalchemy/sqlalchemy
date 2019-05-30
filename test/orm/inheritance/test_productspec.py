@@ -143,15 +143,13 @@ class InheritTest(fixtures.MappedTest):
             polymorphic_identity="product",
         )
 
-        detail_mapper = mapper(
-            Detail, inherits=product_mapper, polymorphic_identity="detail"
-        )
+        mapper(Detail, inherits=product_mapper, polymorphic_identity="detail")
 
-        assembly_mapper = mapper(
+        mapper(
             Assembly, inherits=product_mapper, polymorphic_identity="assembly"
         )
 
-        specification_mapper = mapper(
+        mapper(
             SpecLine,
             specification_table,
             properties=dict(
@@ -208,11 +206,9 @@ class InheritTest(fixtures.MappedTest):
             polymorphic_identity="product",
         )
 
-        detail_mapper = mapper(
-            Detail, inherits=product_mapper, polymorphic_identity="detail"
-        )
+        mapper(Detail, inherits=product_mapper, polymorphic_identity="detail")
 
-        specification_mapper = mapper(
+        mapper(
             SpecLine,
             specification_table,
             properties=dict(
@@ -251,14 +247,12 @@ class InheritTest(fixtures.MappedTest):
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity="product",
         )
-        detail_mapper = mapper(
-            Detail, inherits=product_mapper, polymorphic_identity="detail"
-        )
-        assembly_mapper = mapper(
+        mapper(Detail, inherits=product_mapper, polymorphic_identity="detail")
+        mapper(
             Assembly, inherits=product_mapper, polymorphic_identity="assembly"
         )
 
-        specification_mapper = mapper(
+        mapper(
             SpecLine,
             specification_table,
             properties=dict(
@@ -300,7 +294,7 @@ class InheritTest(fixtures.MappedTest):
                 ),
             ),
         )
-        raster_document_mapper = mapper(
+        mapper(
             RasterDocument,
             inherits=document_mapper,
             polymorphic_identity="raster_document",
@@ -339,10 +333,8 @@ class InheritTest(fixtures.MappedTest):
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity="product",
         )
-        detail_mapper = mapper(
-            Detail, inherits=product_mapper, polymorphic_identity="detail"
-        )
-        assembly_mapper = mapper(
+        mapper(Detail, inherits=product_mapper, polymorphic_identity="detail")
+        mapper(
             Assembly, inherits=product_mapper, polymorphic_identity="assembly"
         )
 
@@ -361,7 +353,7 @@ class InheritTest(fixtures.MappedTest):
                 ),
             ),
         )
-        raster_document_mapper = mapper(
+        mapper(
             RasterDocument,
             inherits=document_mapper,
             polymorphic_identity="raster_document",
@@ -395,7 +387,7 @@ class InheritTest(fixtures.MappedTest):
     def test_five(self):
         """tests the late compilation of mappers"""
 
-        specification_mapper = mapper(
+        mapper(
             SpecLine,
             specification_table,
             properties=dict(
@@ -420,7 +412,7 @@ class InheritTest(fixtures.MappedTest):
             ),
         )
 
-        product_mapper = mapper(
+        mapper(
             Product,
             products_table,
             polymorphic_on=products_table.c.product_type,
@@ -435,11 +427,9 @@ class InheritTest(fixtures.MappedTest):
             },
         )
 
-        detail_mapper = mapper(
-            Detail, inherits=Product, polymorphic_identity="detail"
-        )
+        mapper(Detail, inherits=Product, polymorphic_identity="detail")
 
-        document_mapper = mapper(
+        mapper(
             Document,
             documents_table,
             polymorphic_on=documents_table.c.document_type,
@@ -450,15 +440,13 @@ class InheritTest(fixtures.MappedTest):
             ),
         )
 
-        raster_document_mapper = mapper(
+        mapper(
             RasterDocument,
             inherits=Document,
             polymorphic_identity="raster_document",
         )
 
-        assembly_mapper = mapper(
-            Assembly, inherits=Product, polymorphic_identity="assembly"
-        )
+        mapper(Assembly, inherits=Product, polymorphic_identity="assembly")
 
         session = create_session()
 

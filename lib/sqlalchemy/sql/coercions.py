@@ -101,7 +101,6 @@ class RoleImpl(object):
         self._use_inspection = issubclass(role_class, roles.UsesInspection)
 
     def _resolve_for_clause_element(self, element, argname=None, **kw):
-        literal_coercion = self._literal_coercion
         original_element = element
         is_clause_element = False
 

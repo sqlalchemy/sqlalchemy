@@ -71,6 +71,6 @@ class TestInspection(fixtures.TestBase):
         def insp_somesubfoo(subject):
             return 2
 
-        somefoo = SomeFoo()
+        SomeFoo()
         eq_(inspect(SomeFoo()), 1)
         eq_(inspect(SomeSubFoo()), 2)

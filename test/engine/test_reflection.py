@@ -1922,9 +1922,9 @@ class SchemaTest(fixtures.TestBase):
     @testing.requires.implicit_default_schema
     @testing.provide_metadata
     def test_reflect_all_schemas_default_overlap(self):
-        t1 = Table("t", self.metadata, Column("id", Integer, primary_key=True))
+        Table("t", self.metadata, Column("id", Integer, primary_key=True))
 
-        t2 = Table(
+        Table(
             "t",
             self.metadata,
             Column("id1", sa.ForeignKey("t.id")),

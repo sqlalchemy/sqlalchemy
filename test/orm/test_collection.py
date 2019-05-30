@@ -149,7 +149,7 @@ class CollectionsTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        attributes.register_attribute(
             Foo,
             "attr",
             uselist=True,

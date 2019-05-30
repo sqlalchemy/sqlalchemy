@@ -1057,7 +1057,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
 class ExpressionUpdateTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        data = Table(
+        Table(
             "data",
             metadata,
             Column(

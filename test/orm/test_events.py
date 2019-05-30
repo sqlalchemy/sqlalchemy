@@ -254,8 +254,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         event.listen(m, "load", canary.listen5, insert=True)
         event.listen(m, "load", canary.listen6, propagate=True, insert=True)
 
-        u1 = User()
-        state = u1._sa_instance_state
+        User()
         m.dispatch.before_insert(arg, arg, arg)
         m.class_manager.dispatch.load(arg, arg)
         eq_(
@@ -2470,7 +2469,7 @@ class QueryEventsTest(
         s = Session()
 
         with self.sql_execution_asserter() as asserter:
-            q = s.query(User).filter_by(id=7).update({"name": "ed"})
+            s.query(User).filter_by(id=7).update({"name": "ed"})
         asserter.assert_(
             CompiledSQL(
                 "UPDATE users SET name=:name WHERE "
@@ -2495,7 +2494,7 @@ class QueryEventsTest(
 
         # note this deletes no rows
         with self.sql_execution_asserter() as asserter:
-            q = s.query(User).filter_by(id=10).delete()
+            s.query(User).filter_by(id=10).delete()
         asserter.assert_(
             CompiledSQL(
                 "DELETE FROM users WHERE "

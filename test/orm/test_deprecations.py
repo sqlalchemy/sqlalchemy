@@ -202,7 +202,7 @@ class DeprecationWarningsTest(fixtures.DeclarativeMappedTest):
             "the Session._enable_transaction_accounting parameter is "
             "deprecated"
         ):
-            s = Session(_enable_transaction_accounting=False)
+            Session(_enable_transaction_accounting=False)
 
     def test_session_is_modified(self):
         class Foo(self.DeclarativeBasic):
@@ -724,7 +724,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_select(self):
-        addresses, users = self.tables.addresses, self.tables.users
+        users = self.tables.users
 
         sess = create_session()
 
@@ -741,10 +741,9 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             )
 
     def test_join(self):
-        users, Address, addresses, User = (
+        users, Address, User = (
             self.tables.users,
             self.classes.Address,
-            self.tables.addresses,
             self.classes.User,
         )
 
@@ -821,28 +820,10 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_more_joins(self):
-        (
-            users,
-            Keyword,
-            orders,
-            items,
-            order_items,
-            Order,
-            Item,
-            User,
-            keywords,
-            item_keywords,
-        ) = (
+        (users, Keyword, User) = (
             self.tables.users,
             self.classes.Keyword,
-            self.tables.orders,
-            self.tables.items,
-            self.tables.order_items,
-            self.classes.Order,
-            self.classes.Item,
             self.classes.User,
-            self.tables.keywords,
-            self.tables.item_keywords,
         )
 
         sess = create_session()
@@ -881,10 +862,9 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             )
 
     def test_replace_with_eager(self):
-        users, Address, addresses, User = (
+        users, Address, User = (
             self.tables.users,
             self.classes.Address,
-            self.tables.addresses,
             self.classes.User,
         )
 
@@ -1195,9 +1175,6 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_info(self):
-        users = self.tables.users
-        Address = self.classes.Address
-
         class MyComposite(object):
             pass
 
@@ -1278,8 +1255,6 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.sql_count_(1, go)
 
     def test_kwarg_accepted(self):
-        users, Address = self.tables.users, self.classes.Address
-
         class DummyComposite(object):
             def __init__(self, x, y):
                 pass
@@ -2513,7 +2488,7 @@ class InstrumentationTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        d = attributes.register_attribute(
+        attributes.register_attribute(
             Foo, "attr", uselist=True, typecallable=MyDict, useobject=True
         )
 
@@ -2894,7 +2869,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class AddressUser(User):
             pass
 
-        m1 = mapper(User, users, polymorphic_identity="user")
+        mapper(User, users, polymorphic_identity="user")
         m2 = mapper(
             AddressUser,
             addresses,

@@ -93,6 +93,7 @@ class Document(object):
         self.filename = name
         self.element = element
 
+
 # PART IV - Persistence Mapping
 
 # Node class.  a non-public class which will represent the DB-persisted
@@ -230,8 +231,6 @@ ElementTree.dump(d.element)
 
 
 def find_document(path, compareto):
-    j = documents
-    prev_elements = None
     query = session.query(Document)
     attribute = "_root"
     for i, match in enumerate(
