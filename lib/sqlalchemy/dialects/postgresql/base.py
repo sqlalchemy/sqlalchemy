@@ -3470,8 +3470,10 @@ class PGDialect(default.DefaultDialect):
                     "name": enum["name"],
                     "schema": enum["schema"],
                     "visible": enum["visible"],
-                    "labels": [enum["label"]],
+                    "labels": [],
                 }
+                if enum["label"] is not None:
+                    enum_rec["labels"].append(enum["label"])
                 enums.append(enum_rec)
         return enums
 
