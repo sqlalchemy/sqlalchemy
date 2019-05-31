@@ -1291,6 +1291,33 @@ class ReflectionTest(fixtures.TestBase):
         )
 
     @testing.provide_metadata
+    def test_inspect_enum_empty(self):
+        enum_type = postgresql.ENUM(name="empty", metadata=self.metadata)
+        enum_type.create(testing.db)
+        inspector = reflection.Inspector.from_engine(testing.db)
+
+        eq_(
+            inspector.get_enums(),
+            [
+                {
+                    "visible": True,
+                    "labels": [],
+                    "name": "empty",
+                    "schema": "public",
+                }
+            ],
+        )
+
+    @testing.provide_metadata
+    def test_inspect_enum_empty_from_table(self):
+        Table(
+            "t", self.metadata, Column("x", postgresql.ENUM(name="empty"))
+        ).create(testing.db)
+
+        t = Table("t", MetaData(testing.db), autoload_with=testing.db)
+        eq_(t.c.x.type.enums, [])
+
+    @testing.provide_metadata
     @testing.only_on("postgresql >= 8.5")
     def test_reflection_with_unique_constraint(self):
         insp = inspect(testing.db)
