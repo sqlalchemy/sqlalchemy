@@ -3045,6 +3045,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None
+    __dialect__ = "default"
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3120,32 +3121,97 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
         assert ret == [("n12",)]
 
-    def test_join_3(self):
+    def test_join_3_filter_by(self):
         Node = self.classes.Node
         sess = create_session()
-        node = (
+        q = (
             sess.query(Node)
             .join("children", "children", aliased=True)
             .filter_by(data="n122")
-            .first()
         )
-        assert node.data == "n1"
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_1.id = nodes_2.parent_id WHERE nodes_2.data = :data_1",
+            checkparams={"data_1": "n122"},
+        )
+        node = q.first()
+        eq_(node.data, "n1")
 
-    def test_join_4(self):
+    def test_join_3_filter(self):
         Node = self.classes.Node
         sess = create_session()
-        node = (
+        q = (
+            sess.query(Node)
+            .join("children", "children", aliased=True)
+            .filter(Node.data == "n122")
+        )
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_1.id = nodes_2.parent_id WHERE nodes_2.data = :data_1",
+            checkparams={"data_1": "n122"},
+        )
+        node = q.first()
+        eq_(node.data, "n1")
+
+    def test_join_4_filter_by(self):
+        Node = self.classes.Node
+        sess = create_session()
+
+        q = (
             sess.query(Node)
             .filter_by(data="n122")
             .join("parent", aliased=True)
             .filter_by(data="n12")
             .join("parent", aliased=True, from_joinpoint=True)
             .filter_by(data="n1")
-            .first()
         )
-        assert node.data == "n122"
 
-    def test_string_or_prop_aliased(self):
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
+            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
+            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
+        )
+
+        node = q.first()
+        eq_(node.data, "n122")
+
+    def test_join_4_filter(self):
+        Node = self.classes.Node
+        sess = create_session()
+
+        q = (
+            sess.query(Node)
+            .filter(Node.data == "n122")
+            .join("parent", aliased=True)
+            .filter(Node.data == "n12")
+            .join("parent", aliased=True, from_joinpoint=True)
+            .filter(Node.data == "n1")
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
+            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
+            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
+        )
+
+        node = q.first()
+        eq_(node.data, "n122")
+
+    def test_string_or_prop_aliased_one(self):
         """test that join('foo') behaves the same as join(Cls.foo) in a self
         referential scenario.
 
@@ -3162,12 +3228,14 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(nalias)
             .join(nalias.children, aliased=True)
             .join(Node.children, from_joinpoint=True)
+            .filter(Node.data == "n1")
         )
 
         q2 = (
             sess.query(nalias)
             .join(nalias.children, aliased=True)
             .join("children", from_joinpoint=True)
+            .filter(Node.data == "n1")
         )
 
         for q in (q1, q2):
@@ -3178,35 +3246,64 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
                 "(SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
                 "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
                 "AS anon_1 JOIN nodes AS nodes_1 ON anon_1.id = "
-                "nodes_1.parent_id JOIN nodes ON nodes_1.id = nodes.parent_id",
+                "nodes_1.parent_id JOIN nodes "
+                "ON nodes_1.id = nodes.parent_id "
+                "WHERE nodes_1.data = :data_2",
                 use_default_dialect=True,
+                checkparams={"data_1": "n1", "data_2": "n1"},
             )
+
+    def test_string_or_prop_aliased_two(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+        nalias = aliased(
+            Node, sess.query(Node).filter_by(data="n1").subquery()
+        )
 
         q1 = (
             sess.query(Node)
+            .filter(Node.data == "n1")
             .join(nalias.children, aliased=True)
+            .filter(nalias.data == "n2")
             .join(Node.children, aliased=True, from_joinpoint=True)
+            .filter(Node.data == "n3")
             .join(Node.children, from_joinpoint=True)
+            .filter(Node.data == "n4")
         )
 
         q2 = (
             sess.query(Node)
+            .filter(Node.data == "n1")
             .join(nalias.children, aliased=True)
+            .filter(nalias.data == "n2")
             .join("children", aliased=True, from_joinpoint=True)
+            .filter(Node.data == "n3")
             .join("children", from_joinpoint=True)
+            .filter(Node.data == "n4")
         )
 
         for q in (q1, q2):
             self.assert_compile(
                 q,
-                "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                "nodes_parent_id, nodes.data AS nodes_data FROM (SELECT "
-                "nodes.id AS id, nodes.parent_id AS parent_id, nodes.data "
-                "AS data FROM nodes WHERE nodes.data = :data_1) AS anon_1 "
-                "JOIN nodes AS nodes_1 ON anon_1.id = nodes_1.parent_id "
-                "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id "
-                "JOIN nodes ON nodes_2.id = nodes.parent_id",
+                "SELECT nodes.id AS nodes_id, nodes.parent_id "
+                "AS nodes_parent_id, nodes.data AS nodes_data "
+                "FROM (SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
+                "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
+                "AS anon_1 JOIN nodes AS nodes_1 "
+                "ON anon_1.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
+                "ON nodes_1.id = nodes_2.parent_id JOIN nodes "
+                "ON nodes_2.id = nodes.parent_id WHERE nodes.data = :data_2 "
+                "AND anon_1.data = :data_3 AND nodes_2.data = :data_4 "
+                "AND nodes_2.data = :data_5",
                 use_default_dialect=True,
+                checkparams={
+                    "data_1": "n1",
+                    "data_2": "n1",
+                    "data_3": "n2",
+                    "data_4": "n3",
+                    "data_5": "n4",
+                },
             )
 
     def test_from_self_inside_excludes_outside(self):
