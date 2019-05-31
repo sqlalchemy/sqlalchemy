@@ -1,4 +1,4 @@
 # These are supported funding model platforms
 
 patreon: zzzeek
-tidelift: pypi/sqlalchemy
+tidelift: "pypi/SQLAlchemy"
