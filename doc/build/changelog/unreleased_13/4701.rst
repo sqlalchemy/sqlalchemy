@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 4701
+
+    Fixed bug where PostgreSQL dialect could not correctly reflect an ENUM
+    datatype that has no members, returning a list with ``None`` for the
+    ``get_enums()`` call and raising a TypeError when reflecting a column which
+    has such a datatype.   The inspection now returns an empty list.
