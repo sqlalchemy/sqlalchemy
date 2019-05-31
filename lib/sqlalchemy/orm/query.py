@@ -2789,7 +2789,8 @@ class Query(object):
             adapter = ORMAdapter(
                 right, equivalents=right_mapper._equivalent_columns
             )
-            self._filter_aliases += (adapter,)
+            # current adapter takes highest precedence
+            self._filter_aliases = (adapter,) + self._filter_aliases
 
             # if an alias() on the right side was generated,
             # which is intended to wrap a the right side in a subquery,
