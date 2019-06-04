@@ -535,6 +535,63 @@ as::
 
 :ticket:`4753`
 
+.. _change_4710_row:
+
+The "RowProxy" is no longer a "proxy", now called ``Row``
+---------------------------------------------------------
+
+Since the beginning of SQLAlchemy, the Core result objects exposed to the
+user are the :class:`.ResultProxy` and ``RowProxy`` objects.   The name
+"proxy" refers to the `GOF Proxy Pattern <https://en.wikipedia.org/wiki/Proxy_pattern>`_,
+emphasizing that these objects are presenting a facade around the DBAPI
+``cursor`` object and the tuple-like objects returned by methods such
+as ``cursor.fetchone()``; as methods on the result and row proxy objects
+are invoked, the underlying methods or data members of the ``cursor`` and
+the tuple-like objects returned are invoked.
+
+In particular, SQLAlchemy's row-processing functions would be invoked
+as a particular column in a row is accessed.  By row-processing functions,
+we refer to functions such as that of the :class:`.Unicode` datatype, which under
+Python 2 would often convert Python string objects to Python unicode
+objects, as well as numeric functions that produce ``Decimal`` objects,
+SQLite datetime functions that produce ``datetime`` objects from string
+representations, as well as any-number of user-defined functions which can
+be created using :class:`.TypeDecorator`.
+
+The rationale for this pattern was performance, where the anticipated use
+case of fetching a row from a legacy database that contained dozens of
+columns would not need to run, for example, a unicode converter on every
+element of each row, if only a few columns in the row were being fetched.
+SQLAlchemy eventually gained C extensions which allowed for additional
+performance gains within this process.
+
+As part of SQLAlchemy 1.4's goal of migrating towards SQLAlchemy 2.0's updated
+usage patterns, row objects will be made to behave more like tuples.  To
+suit this, the "proxy" behavior of :class:`.Row` has been removed and instead
+the row is populated with its final data values upon construction.  This
+in particular allows an operation such as ``obj in row`` to work as that
+of a tuple where it tests for containment of ``obj`` in the row itself,
+rather than considering it to be a key in a mapping as is the case now.
+For the moment, ``obj in row`` still does a key lookup,
+that is, detects if the row has a particular column name as ``obj``, however
+this behavior is deprecated and in 2.0 the :class:`.Row` will behave fully
+as a tuple-like object; lookup of keys will be via the ``._mapping``
+attribute.
+
+The result of removing the proxy behavior from rows is that the C code has been
+simplified and the performance of many operations is improved both with and
+without the C extensions in use.   Modern Python DBAPIs handle unicode
+conversion natively in most cases, and SQLAlchemy's unicode handlers are
+very fast in any case, so the expense of unicode conversion
+is a non-issue.
+
+This change by itself has no behavioral impact on the row, but is part of
+a larger series of changes in :ticket:`4710` which unifies the Core row/result
+facade with that of the ORM.
+
+:ticket:`4710`
+
+
 .. _change_4449:
 
 Improved column labeling for simple column expressions using CAST or similar

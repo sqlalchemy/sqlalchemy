@@ -657,7 +657,7 @@ Connection / Engine API
     :members:
     :private-members: _soft_close
 
-.. autoclass:: RowProxy
+.. autoclass:: Row
     :members:
 
 .. autoclass:: Transaction

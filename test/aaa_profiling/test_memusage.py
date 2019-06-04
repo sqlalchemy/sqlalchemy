@@ -84,7 +84,18 @@ def profile_memory(
                 if until_maxtimes >= maxtimes // 5:
                     break
                 for x in range(5):
-                    func(*func_args)
+                    try:
+                        func(*func_args)
+                    except Exception as err:
+                        queue.put(
+                            (
+                                "result",
+                                False,
+                                "Test raised an exception: %r" % err,
+                            )
+                        )
+
+                        raise
                     gc_collect()
                     samples.append(
                         get_num_objects()
@@ -910,6 +921,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
+    @testing.expect_deprecated
     @testing.provide_metadata
     def test_key_fallback_result(self):
         e = self.engine

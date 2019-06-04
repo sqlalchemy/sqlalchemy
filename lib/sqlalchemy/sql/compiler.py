@@ -251,6 +251,12 @@ COMPOUND_KEYWORDS = {
 }
 
 
+RM_RENDERED_NAME = 0
+RM_NAME = 1
+RM_OBJECTS = 2
+RM_TYPE = 3
+
+
 class Compiled(object):
 
     """Represent a compiled SQL or DDL expression.
@@ -710,7 +716,9 @@ class SQLCompiler(Compiled):
     @util.dependencies("sqlalchemy.engine.result")
     def _create_result_map(self, result):
         """utility method used for unit tests only."""
-        return result.ResultMetaData._create_result_map(self._result_columns)
+        return result.ResultMetaData._create_description_match_map(
+            self._result_columns
+        )
 
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is

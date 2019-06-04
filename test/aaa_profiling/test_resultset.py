@@ -8,7 +8,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Unicode
-from sqlalchemy.engine.result import RowProxy
+from sqlalchemy.engine.result import Row
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -149,11 +149,11 @@ class ExecutionTest(fixtures.TestBase):
         go()
 
 
-class RowProxyTest(fixtures.TestBase):
+class RowTest(fixtures.TestBase):
     __requires__ = ("cpython",)
     __backend__ = True
 
-    def _rowproxy_fixture(self, keys, processors, row):
+    def _rowproxy_fixture(self, keys, processors, row, row_cls):
         class MockMeta(object):
             def __init__(self):
                 pass
@@ -161,13 +161,11 @@ class RowProxyTest(fixtures.TestBase):
         metadata = MockMeta()
 
         keymap = {}
-        for index, (keyobjs, processor, values) in enumerate(
-            list(zip(keys, processors, row))
-        ):
+        for index, (keyobjs, values) in enumerate(list(zip(keys, row))):
             for key in keyobjs:
-                keymap[key] = (processor, key, index)
-            keymap[index] = (processor, key, index)
-        return RowProxy(metadata, row, processors, keymap)
+                keymap[key] = (index, key)
+            keymap[index] = (index, key)
+        return row_cls(metadata, processors, keymap, row)
 
     def _test_getitem_value_refcounts(self, seq_factory):
         col1, col2 = object(), object()
@@ -180,6 +178,7 @@ class RowProxyTest(fixtures.TestBase):
             [(col1, "a"), (col2, "b")],
             [proc1, None],
             seq_factory([value1, value2]),
+            Row,
         )
 
         v1_refcount = sys.getrefcount(value1)

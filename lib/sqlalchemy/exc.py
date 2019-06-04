@@ -229,7 +229,7 @@ class ResourceClosedError(InvalidRequestError):
 
 
 class NoSuchColumnError(KeyError, InvalidRequestError):
-    """A nonexistent column is requested from a ``RowProxy``."""
+    """A nonexistent column is requested from a ``Row``."""
 
 
 class NoReferenceError(InvalidRequestError):

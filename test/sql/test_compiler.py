@@ -4590,7 +4590,9 @@ class ResultMapTest(fixtures.TestBase):
 
         comp = MyCompiler(default.DefaultDialect(), stmt1)
         eq_(
-            ResultMetaData._create_result_map(contexts[stmt2.element][0]),
+            ResultMetaData._create_description_match_map(
+                contexts[stmt2.element][0]
+            ),
             {
                 "otherid": (
                     "otherid",
