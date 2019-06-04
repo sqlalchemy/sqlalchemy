@@ -2631,7 +2631,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
 
-        :param row: A :class:`.RowProxy` instance.  The columns which are
+        :param row: A :class:`.Row` instance.  The columns which are
          mapped by this :class:`.Mapper` should be locatable in the row,
          preferably via the :class:`.Column` object directly (as is the case
          when a :func:`.select` construct is executed), or via string names of

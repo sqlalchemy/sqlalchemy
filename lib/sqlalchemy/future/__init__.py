@@ -9,7 +9,8 @@
 
 """
 
+from .result import Result  # noqa
 from ..sql.selectable import Select
 from ..util.langhelpers import public_factory
 
-select = public_factory(Select._create_select, ".expression.select")
+select = public_factory(Select._create_select, ".future.select")

@@ -1,6 +1,7 @@
 from sqlalchemy import exc
 from sqlalchemy import select
 from sqlalchemy import testing
+from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import mapper
@@ -10,7 +11,6 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
-from sqlalchemy.util import KeyedTuple
 from . import _fixtures
 
 # class GetFromIdentityTest(_fixtures.FixtureTest):
@@ -146,7 +146,7 @@ class MergeResultTest(_fixtures.FixtureTest):
         it = loading.merge_result(q, collection)
         it = list(it)
         eq_([(x.id, y) for x, y in it], [(1, 1), (2, 2), (7, 7), (8, 8)])
-        eq_(list(it[0].keys()), ["User", "id"])
+        eq_(list(it[0]._mapping.keys()), ["User", "id"])
 
     def test_entity_col_mix_keyed_tuple(self):
         s, (u1, u2, u3, u4) = self._fixture()
@@ -154,14 +154,16 @@ class MergeResultTest(_fixtures.FixtureTest):
 
         q = s.query(User, User.id)
 
+        row = result_tuple(["User", "id"])
+
         def kt(*x):
-            return KeyedTuple(x, ["User", "id"])
+            return row(x)
 
         collection = [kt(u1, 1), kt(u2, 2), kt(u3, 7), kt(u4, 8)]
         it = loading.merge_result(q, collection)
         it = list(it)
         eq_([(x.id, y) for x, y in it], [(1, 1), (2, 2), (7, 7), (8, 8)])
-        eq_(list(it[0].keys()), ["User", "id"])
+        eq_(list(it[0]._mapping.keys()), ["User", "id"])
 
     def test_none_entity(self):
         s, (u1, u2, u3, u4) = self._fixture()
@@ -170,8 +172,10 @@ class MergeResultTest(_fixtures.FixtureTest):
         ua = aliased(User)
         q = s.query(User, ua)
 
+        row = result_tuple(["User", "useralias"])
+
         def kt(*x):
-            return KeyedTuple(x, ["User", "useralias"])
+            return row(x)
 
         collection = [kt(u1, u2), kt(u1, None), kt(u2, u3)]
         it = loading.merge_result(q, collection)

@@ -295,7 +295,7 @@ are fetched.  The method :meth:`.Bundle.create_row_processor` is given
 the :class:`.Query` and a set of "row processor" functions at query execution
 time; these processor functions when given a result row will return the
 individual attribute value, which can then be adapted into any kind of
-return data structure.  Below illustrates replacing the usual :class:`.KeyedTuple`
+return data structure.  Below illustrates replacing the usual :class:`.Row`
 return structure with a straight Python dictionary::
 
     from sqlalchemy.orm import Bundle

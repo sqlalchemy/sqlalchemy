@@ -289,7 +289,6 @@ def count_functions(variance=0.05):
     print(("Pstats calls: %d Expected %s" % (callcount, expected_count)))
     stats.sort_stats(_profile_stats.sort)
     stats.print_stats()
-
     if _profile_stats.force_write:
         _profile_stats.replace(callcount)
     elif expected_count:

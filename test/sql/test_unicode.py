@@ -128,18 +128,18 @@ class UnicodeSchemaTest(fixtures.TestBase):
         )
 
         row = t1.select().execute().first()
-        eq_(row[t1.c[u("méil")]], 1)
-        eq_(row[t1.c[ue("\u6e2c\u8a66")]], 5)
+        eq_(row._mapping[t1.c[u("méil")]], 1)
+        eq_(row._mapping[t1.c[ue("\u6e2c\u8a66")]], 5)
 
         row = t2.select().execute().first()
-        eq_(row[t2.c[u("a")]], 1)
-        eq_(row[t2.c[u("b")]], 1)
+        eq_(row._mapping[t2.c[u("a")]], 1)
+        eq_(row._mapping[t2.c[u("b")]], 1)
 
         row = t3.select().execute().first()
-        eq_(row[t3.c[ue("\u6e2c\u8a66_id")]], 1)
-        eq_(row[t3.c[ue("unitable1_\u6e2c\u8a66")]], 5)
-        eq_(row[t3.c[u("Unitéble2_b")]], 1)
-        eq_(row[t3.c[ue("\u6e2c\u8a66_self")]], 1)
+        eq_(row._mapping[t3.c[ue("\u6e2c\u8a66_id")]], 1)
+        eq_(row._mapping[t3.c[ue("unitable1_\u6e2c\u8a66")]], 5)
+        eq_(row._mapping[t3.c[u("Unitéble2_b")]], 1)
+        eq_(row._mapping[t3.c[ue("\u6e2c\u8a66_self")]], 1)
 
     def test_reflect(self):
         t1.insert().execute({u("méil"): 2, ue("\u6e2c\u8a66"): 7})

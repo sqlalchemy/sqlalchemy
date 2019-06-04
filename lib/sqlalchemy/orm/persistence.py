@@ -1522,7 +1522,7 @@ def _postfetch(
     if returning_cols:
         row = result.context.returned_defaults
         if row is not None:
-            for col in returning_cols:
+            for row_value, col in zip(row, returning_cols):
                 # pk cols returned from insert are handled
                 # distinctly, don't step on the values here
                 if col.primary_key and result.context.isinsert:
@@ -1534,7 +1534,7 @@ def _postfetch(
                 # when using declarative w/ single table inheritance
                 prop = mapper._columntoproperty.get(col)
                 if prop:
-                    dict_[prop.key] = row[col]
+                    dict_[prop.key] = row_value
                     if refresh_flush:
                         load_evt_attrs.append(prop.key)
 

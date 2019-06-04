@@ -1357,8 +1357,8 @@ class ArrayRoundTripTest(object):
         )
         results = arrtable.select().execute().fetchall()
         eq_(len(results), 1)
-        eq_(results[0]["intarr"], [1, 2, 3])
-        eq_(results[0]["strarr"], [util.u("abc"), util.u("def")])
+        eq_(results[0].intarr, [1, 2, 3])
+        eq_(results[0].strarr, [util.u("abc"), util.u("def")])
 
     def test_insert_array_w_null(self):
         arrtable = self.tables.arrtable
@@ -1367,8 +1367,8 @@ class ArrayRoundTripTest(object):
         )
         results = arrtable.select().execute().fetchall()
         eq_(len(results), 1)
-        eq_(results[0]["intarr"], [1, None, 3])
-        eq_(results[0]["strarr"], [util.u("abc"), None])
+        eq_(results[0].intarr, [1, None, 3])
+        eq_(results[0].strarr, [util.u("abc"), None])
 
     def test_array_where(self):
         arrtable = self.tables.arrtable
@@ -1383,7 +1383,7 @@ class ArrayRoundTripTest(object):
             .fetchall()
         )
         eq_(len(results), 1)
-        eq_(results[0]["intarr"], [1, 2, 3])
+        eq_(results[0].intarr, [1, 2, 3])
 
     def test_array_concat(self):
         arrtable = self.tables.arrtable
@@ -1422,9 +1422,9 @@ class ArrayRoundTripTest(object):
             arrtable.select(order_by=[arrtable.c.intarr]).execute().fetchall()
         )
         eq_(len(results), 2)
-        eq_(results[0]["strarr"], [util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")])
+        eq_(results[0].strarr, [util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")])
         eq_(
-            results[1]["strarr"],
+            results[1].strarr,
             [[util.ue("m\xe4\xe4")], [util.ue("m\xf6\xf6")]],
         )
 

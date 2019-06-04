@@ -9,6 +9,7 @@ from sqlalchemy import exc
 from sqlalchemy import sql
 from sqlalchemy import testing
 from sqlalchemy import util
+from sqlalchemy.engine import result
 from sqlalchemy.sql import column
 from sqlalchemy.sql.base import DedupeColumnCollection
 from sqlalchemy.testing import assert_raises
@@ -41,30 +42,30 @@ class _KeyedTupleTest(object):
         eq_(str(keyed_tuple), "()")
         eq_(len(keyed_tuple), 0)
 
-        eq_(list(keyed_tuple.keys()), [])
+        eq_(list(keyed_tuple._mapping.keys()), [])
         eq_(keyed_tuple._fields, ())
         eq_(keyed_tuple._asdict(), {})
 
-    def test_values_but_no_labels(self):
-        keyed_tuple = self._fixture([1, 2], [])
+    def test_values_none_labels(self):
+        keyed_tuple = self._fixture([1, 2], [None, None])
         eq_(str(keyed_tuple), "(1, 2)")
         eq_(len(keyed_tuple), 2)
 
-        eq_(list(keyed_tuple.keys()), [])
+        eq_(list(keyed_tuple._mapping.keys()), [])
         eq_(keyed_tuple._fields, ())
         eq_(keyed_tuple._asdict(), {})
 
         eq_(keyed_tuple[0], 1)
         eq_(keyed_tuple[1], 2)
 
-    def test_basic_creation(self):
+    def test_creation(self):
         keyed_tuple = self._fixture([1, 2], ["a", "b"])
         eq_(str(keyed_tuple), "(1, 2)")
-        eq_(list(keyed_tuple.keys()), ["a", "b"])
+        eq_(list(keyed_tuple._mapping.keys()), ["a", "b"])
         eq_(keyed_tuple._fields, ("a", "b"))
         eq_(keyed_tuple._asdict(), {"a": 1, "b": 2})
 
-    def test_basic_index_access(self):
+    def test_index_access(self):
         keyed_tuple = self._fixture([1, 2], ["a", "b"])
         eq_(keyed_tuple[0], 1)
         eq_(keyed_tuple[1], 2)
@@ -74,7 +75,11 @@ class _KeyedTupleTest(object):
 
         assert_raises(IndexError, should_raise)
 
-    def test_basic_attribute_access(self):
+    def test_slice_access(self):
+        keyed_tuple = self._fixture([1, 2], ["a", "b"])
+        eq_(keyed_tuple[0:2], (1, 2))
+
+    def test_attribute_access(self):
         keyed_tuple = self._fixture([1, 2], ["a", "b"])
         eq_(keyed_tuple.a, 1)
         eq_(keyed_tuple.b, 2)
@@ -84,11 +89,26 @@ class _KeyedTupleTest(object):
 
         assert_raises(AttributeError, should_raise)
 
+    def test_contains(self):
+        keyed_tuple = self._fixture(["x", "y"], ["a", "b"])
+
+        is_true("x" in keyed_tuple)
+        is_false("z" in keyed_tuple)
+
+        is_true("z" not in keyed_tuple)
+        is_false("x" not in keyed_tuple)
+
+        # we don't do keys
+        is_false("a" in keyed_tuple)
+        is_false("z" in keyed_tuple)
+        is_true("a" not in keyed_tuple)
+        is_true("z" not in keyed_tuple)
+
     def test_none_label(self):
         keyed_tuple = self._fixture([1, 2, 3], ["a", None, "b"])
         eq_(str(keyed_tuple), "(1, 2, 3)")
 
-        eq_(list(keyed_tuple.keys()), ["a", "b"])
+        eq_(list(keyed_tuple._mapping.keys()), ["a", "b"])
         eq_(keyed_tuple._fields, ("a", "b"))
         eq_(keyed_tuple._asdict(), {"a": 1, "b": 3})
 
@@ -105,7 +125,7 @@ class _KeyedTupleTest(object):
         keyed_tuple = self._fixture([1, 2, 3], ["a", "b", "b"])
         eq_(str(keyed_tuple), "(1, 2, 3)")
 
-        eq_(list(keyed_tuple.keys()), ["a", "b", "b"])
+        eq_(list(keyed_tuple._mapping.keys()), ["a", "b", "b"])
         eq_(keyed_tuple._fields, ("a", "b", "b"))
         eq_(keyed_tuple._asdict(), {"a": 1, "b": 3})
 
@@ -124,7 +144,8 @@ class _KeyedTupleTest(object):
 
         eq_(keyed_tuple.a, 1)
 
-        assert_raises(AttributeError, setattr, keyed_tuple, "a", 5)
+        # eh
+        # assert_raises(AttributeError, setattr, keyed_tuple, "a", 5)
 
         def should_raise():
             keyed_tuple[0] = 100
@@ -140,19 +161,14 @@ class _KeyedTupleTest(object):
 
             eq_(str(kt), "(1, 2, 3)")
 
-            eq_(list(kt.keys()), ["a", "b"])
+            eq_(list(kt._mapping.keys()), ["a", "b"])
             eq_(kt._fields, ("a", "b"))
             eq_(kt._asdict(), {"a": 1, "b": 3})
 
 
-class KeyedTupleTest(_KeyedTupleTest, fixtures.TestBase):
-    def _fixture(self, values, labels):
-        return util.KeyedTuple(values, labels)
-
-
 class LWKeyedTupleTest(_KeyedTupleTest, fixtures.TestBase):
     def _fixture(self, values, labels):
-        return util.lightweight_named_tuple("n", labels)(values)
+        return result.result_tuple(labels)(values)
 
 
 class WeakSequenceTest(fixtures.TestBase):

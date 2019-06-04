@@ -19,7 +19,7 @@ import re
 import weakref
 
 from . import interfaces
-from . import result
+from . import result as _result
 from .. import event
 from .. import exc
 from .. import pool
@@ -200,6 +200,13 @@ class DefaultDialect(interfaces.Dialect):
             'the "expanding parameter" strategy which renders a set of bound'
             'expressions, or an "empty set" SELECT, at statement execution'
             "time.",
+        ),
+        case_sensitive=(
+            "1.4",
+            "The :paramref:`.create_engine.case_sensitive` parameter "
+            "is deprecated and will be removed in a future release. "
+            "Applications should work with result column names in a case "
+            "sensitive fashion.",
         ),
     )
     def __init__(
@@ -667,6 +674,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     returned_defaults = None
     _is_implicit_returning = False
     _is_explicit_returning = False
+    _is_future_result = False
+    _is_server_side = False
 
     # a hook for SQLite's translation of
     # result column names
@@ -725,6 +734,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # we get here
         assert compiled.can_execute
 
+        self._is_future_result = connection._execution_options.get(
+            "future_result", False
+        )
         self.execution_options = compiled.execution_options.union(
             connection._execution_options
         )
@@ -859,6 +871,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
         self.is_text = True
+
+        self._is_future_result = connection._execution_options.get(
+            "future_result", False
+        )
 
         # plain text statement
         self.execution_options = connection._execution_options
@@ -1035,6 +1051,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def pre_exec(self):
         pass
 
+    def get_out_parameter_values(self, names):
+        raise NotImplementedError(
+            "This dialect does not support OUT parameters"
+        )
+
     def post_exec(self):
         pass
 
@@ -1051,27 +1072,18 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def get_lastrowid(self):
         """return self.cursor.lastrowid, or equivalent, after an INSERT.
 
-        This may involve calling special cursor functions,
-        issuing a new SELECT on the cursor (or a new one),
-        or returning a stored value that was
+        This may involve calling special cursor functions, issuing a new SELECT
+        on the cursor (or a new one), or returning a stored value that was
         calculated within post_exec().
 
-        This function will only be called for dialects
-        which support "implicit" primary key generation,
-        keep preexecute_autoincrement_sequences set to False,
-        and when no explicit id value was bound to the
-        statement.
+        This function will only be called for dialects which support "implicit"
+        primary key generation, keep preexecute_autoincrement_sequences set to
+        False, and when no explicit id value was bound to the statement.
 
-        The function is called once, directly after
-        post_exec() and before the transaction is committed
-        or ResultProxy is generated.   If the post_exec()
-        method assigns a value to `self._lastrowid`, the
-        value is used in place of calling get_lastrowid().
-
-        Note that this method is *not* equivalent to the
-        ``lastrowid`` method on ``ResultProxy``, which is a
-        direct proxy to the DBAPI ``lastrowid`` accessor
-        in all cases.
+        The function is called once for an INSERT statement that would need to
+        return the last inserted primary key for those dialects that make use
+        of the lastrowid concept.  In these cases, it is called directly after
+        :meth:`.ExecutionContext.post_exec`.
 
         """
         return self.cursor.lastrowid
@@ -1079,11 +1091,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def handle_dbapi_exception(self, e):
         pass
 
-    def get_result_proxy(self):
+    def get_result_cursor_strategy(self, result):
         if self._is_server_side:
-            return result.BufferedRowResultProxy(self)
+            strat_cls = _result.BufferedRowCursorFetchStrategy
         else:
-            return result.ResultProxy(self)
+            strat_cls = _result.DefaultCursorFetchStrategy
+
+        return strat_cls.create(result)
 
     @property
     def rowcount(self):
@@ -1094,6 +1108,49 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def supports_sane_multi_rowcount(self):
         return self.dialect.supports_sane_multi_rowcount
+
+    def _setup_result_proxy(self):
+        if self.is_crud or self.is_text:
+            result = self._setup_crud_result_proxy()
+        else:
+            result = _result.ResultProxy._create_for_context(self)
+
+        if (
+            self.compiled
+            and not self.isddl
+            and self.compiled.has_out_parameters
+        ):
+            self._setup_out_parameters(result)
+
+        return result
+
+    def _setup_out_parameters(self, result):
+
+        out_bindparams = [
+            (param, name)
+            for param, name in self.compiled.bind_names.items()
+            if param.isoutparam
+        ]
+        out_parameters = {}
+
+        for bindparam, raw_value in zip(
+            [param for param, name in out_bindparams],
+            self.get_out_parameter_values(
+                [name for param, name in out_bindparams]
+            ),
+        ):
+
+            type_ = bindparam.type
+            impl_type = type_.dialect_impl(self.dialect)
+            dbapi_type = impl_type.get_dbapi_type(self.dialect.dbapi)
+            result_processor = impl_type.result_processor(
+                self.dialect, dbapi_type
+            )
+            if result_processor is not None:
+                raw_value = result_processor(raw_value)
+            out_parameters[bindparam.key] = raw_value
+
+        result.out_parameters = out_parameters
 
     def _setup_crud_result_proxy(self):
         if self.isinsert and not self.executemany:
@@ -1108,11 +1165,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             elif not self._is_implicit_returning:
                 self._setup_ins_pk_from_empty()
 
-        result = self.get_result_proxy()
+        result = _result.ResultProxy._create_for_context(self)
 
         if self.isinsert:
             if self._is_implicit_returning:
-                row = result.fetchone()
+                row = result._onerow()
                 self.returned_defaults = row
                 self._setup_ins_pk_from_implicit_returning(row)
                 result._soft_close()
@@ -1121,7 +1178,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 result._soft_close()
                 result._metadata = None
         elif self.isupdate and self._is_implicit_returning:
-            row = result.fetchone()
+            row = result._onerow()
             self.returned_defaults = row
             result._soft_close()
             result._metadata = None
@@ -1179,8 +1236,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         key_getter = self.compiled._key_getters_for_crud_column[2]
         table = self.compiled.statement.table
         compiled_params = self.compiled_parameters[0]
+
+        # TODO: why are we using keyed index here?  can't we get the ints?
+        # can compiler build up the structure here as far as what was
+        # explicit and what comes back in returning?
+        row_mapping = row._mapping
         self.inserted_primary_key = [
-            row[col] if value is None else value
+            row_mapping[col] if value is None else value
             for col, value in [
                 (col, compiled_params.get(key_getter(col), None))
                 for col in table.primary_key

@@ -47,6 +47,7 @@ from .. import inspection
 from .. import log
 from .. import sql
 from .. import util
+from ..engine import result_tuple
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
@@ -56,6 +57,7 @@ from ..sql.base import _generative
 from ..sql.base import ColumnCollection
 from ..sql.base import Generative
 from ..sql.selectable import ForUpdateArg
+from ..util import collections_abc
 
 
 __all__ = ["Query", "QueryContext", "aliased"]
@@ -3320,7 +3322,7 @@ class Query(Generative):
         """
         try:
             ret = self.one()
-            if not isinstance(ret, tuple):
+            if not isinstance(ret, collections_abc.Sequence):
                 return ret
             return ret[0]
         except orm_exc.NoResultFound:
@@ -4259,7 +4261,7 @@ class _MapperEntity(_QueryEntity):
             polymorphic_discriminator=self._polymorphic_discriminator,
         )
 
-        return _instance, self._label_name
+        return _instance, self._label_name, self.entities
 
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
@@ -4414,7 +4416,7 @@ class Bundle(InspectionAttr):
             :ref:`bundles` - includes an example of subclassing.
 
         """
-        keyed_tuple = util.lightweight_named_tuple("result", labels)
+        keyed_tuple = result_tuple(labels, [() for l in labels])
 
         def proc(row):
             return keyed_tuple([proc(row) for proc in procs])
@@ -4517,7 +4519,7 @@ class _BundleEntity(_QueryEntity):
             ent.setup_context(query, context)
 
     def row_processor(self, query, context, result):
-        procs, labels = zip(
+        procs, labels, extra = zip(
             *[
                 ent.row_processor(query, context, result)
                 for ent in self._entities
@@ -4526,7 +4528,7 @@ class _BundleEntity(_QueryEntity):
 
         proc = self.bundle.create_row_processor(query, procs, labels)
 
-        return proc, self._label_name
+        return proc, self._label_name, ()
 
 
 class _ColumnEntity(_QueryEntity):
@@ -4675,7 +4677,8 @@ class _ColumnEntity(_QueryEntity):
             column = context.adapter.columns[column]
 
         getter = result._getter(column)
-        return getter, self._label_name
+
+        return getter, self._label_name, (self.expr, self.column)
 
     def setup_context(self, query, context):
         column = query._adapt_clause(self.column, False, True)

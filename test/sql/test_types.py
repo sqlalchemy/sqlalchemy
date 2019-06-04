@@ -1970,13 +1970,15 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         ):
             result = stmt.execute().fetchall()
-            eq_(stream1, result[0]["data"])
-            eq_(stream1[0:100], result[0]["data_slice"])
-            eq_(stream2, result[1]["data"])
-            eq_(testobj1, result[0]["pickled"])
-            eq_(testobj2, result[1]["pickled"])
-            eq_(testobj3.moredata, result[0]["mypickle"].moredata)
-            eq_(result[0]["mypickle"].stuff, "this is the right stuff")
+            eq_(stream1, result[0]._mapping["data"])
+            eq_(stream1[0:100], result[0]._mapping["data_slice"])
+            eq_(stream2, result[1]._mapping["data"])
+            eq_(testobj1, result[0]._mapping["pickled"])
+            eq_(testobj2, result[1]._mapping["pickled"])
+            eq_(testobj3.moredata, result[0]._mapping["mypickle"].moredata)
+            eq_(
+                result[0]._mapping["mypickle"].stuff, "this is the right stuff"
+            )
 
     @testing.requires.binary_comparisons
     def test_comparison(self):
@@ -2875,9 +2877,9 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
                 non_native_interval=delta,
             )
             row = conn.execute(interval_table.select()).first()
-        eq_(row["native_interval"], small_delta)
-        eq_(row["native_interval_args"], delta)
-        eq_(row["non_native_interval"], delta)
+        eq_(row.native_interval, small_delta)
+        eq_(row.native_interval_args, delta)
+        eq_(row.non_native_interval, delta)
 
     def test_null(self):
         with testing.db.begin() as conn:
@@ -2888,9 +2890,9 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
                 non_native_interval=None,
             )
             row = conn.execute(interval_table.select()).first()
-        eq_(row["native_interval"], None)
-        eq_(row["native_interval_args"], None)
-        eq_(row["non_native_interval"], None)
+        eq_(row.native_interval, None)
+        eq_(row.native_interval_args, None)
+        eq_(row.non_native_interval, None)
 
 
 class IntegerTest(fixtures.TestBase):

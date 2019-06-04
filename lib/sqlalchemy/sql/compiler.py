@@ -647,6 +647,10 @@ class SQLCompiler(Compiled):
 
     """
 
+    has_out_parameters = False
+    """if True, there are bindparam() objects that have the isoutparam
+    flag set."""
+
     insert_prefetch = update_prefetch = ()
 
     def __init__(
@@ -1006,7 +1010,7 @@ class SQLCompiler(Compiled):
     @util.dependencies("sqlalchemy.engine.result")
     def _create_result_map(self, result):
         """utility method used for unit tests only."""
-        return result.ResultMetaData._create_description_match_map(
+        return result.CursorResultMetaData._create_description_match_map(
             self._result_columns
         )
 
@@ -1901,6 +1905,8 @@ class SQLCompiler(Compiled):
                     )
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
+        if bindparam.isoutparam:
+            self.has_out_parameters = True
 
         if post_compile:
             if render_postcompile:

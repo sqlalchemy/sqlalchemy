@@ -65,7 +65,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
             .execute({"persons": 1, "full": False})
         )
 
-        row = result.first()
+        row = result.first()._mapping
         assert row[table.c.id] == row["id"] == 1
         assert row[table.c.full] == row["full"]
         assert row["full"] is False
@@ -76,7 +76,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
             .returning(table.c.persons, table.c.full, table.c.goofy)
             .execute()
         )
-        row = result.first()
+        row = result.first()._mapping
         assert row[table.c.persons] == row["persons"] == 5
         assert row[table.c.full] == row["full"]
 
@@ -91,7 +91,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
             .returning(table.c.persons.label("lala"))
             .execute()
         )
-        row = result.first()
+        row = result.first()._mapping
         assert row["lala"] == 6
 
     @testing.fails_on(
@@ -181,7 +181,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
             'insert into tables (id, persons, "full") '
             "values (5, 10, %s) returning persons" % literal_true
         )
-        eq_([dict(row) for row in result4], [{"persons": 10}])
+        eq_([dict(row._mapping) for row in result4], [{"persons": 10}])
 
     def test_delete_returning(self):
         table.insert().execute(
@@ -288,10 +288,10 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
         result = (
             table.insert().returning(table.c.foo_id).execute(data="somedata")
         )
-        row = result.first()
+        row = result.first()._mapping
         assert row[table.c.foo_id] == row["id"] == 1
 
-        result = table.select().execute().first()
+        result = table.select().execute().first()._mapping
         assert row[table.c.foo_id] == row["id"] == 1
 
 
@@ -331,7 +331,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             t1.insert().values(upddef=1).return_defaults(t1.c.insdef)
         )
         eq_(
-            [result.returned_defaults[k] for k in (t1.c.id, t1.c.insdef)],
+            [
+                result.returned_defaults._mapping[k]
+                for k in (t1.c.id, t1.c.insdef)
+            ],
             [1, 0],
         )
 
@@ -341,7 +344,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             t1.insert(return_defaults=[t1.c.insdef]).values(upddef=1)
         )
         eq_(
-            [result.returned_defaults[k] for k in (t1.c.id, t1.c.insdef)],
+            [
+                result.returned_defaults._mapping[k]
+                for k in (t1.c.id, t1.c.insdef)
+            ],
             [1, 0],
         )
 
@@ -351,7 +357,9 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(
             t1.update().values(data="d1").return_defaults(t1.c.upddef)
         )
-        eq_([result.returned_defaults[k] for k in (t1.c.upddef,)], [1])
+        eq_(
+            [result.returned_defaults._mapping[k] for k in (t1.c.upddef,)], [1]
+        )
 
     def test_arg_update_pk(self):
         t1 = self.tables.t1
@@ -359,7 +367,9 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(
             t1.update(return_defaults=[t1.c.upddef]).values(data="d1")
         )
-        eq_([result.returned_defaults[k] for k in (t1.c.upddef,)], [1])
+        eq_(
+            [result.returned_defaults._mapping[k] for k in (t1.c.upddef,)], [1]
+        )
 
     def test_insert_non_default(self):
         """test that a column not marked at all as a
@@ -370,7 +380,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             t1.insert().values(upddef=1).return_defaults(t1.c.data)
         )
         eq_(
-            [result.returned_defaults[k] for k in (t1.c.id, t1.c.data)],
+            [
+                result.returned_defaults._mapping[k]
+                for k in (t1.c.id, t1.c.data)
+            ],
             [1, None],
         )
 
@@ -383,7 +396,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(
             t1.update().values(upddef=2).return_defaults(t1.c.data)
         )
-        eq_([result.returned_defaults[k] for k in (t1.c.data,)], [None])
+        eq_(
+            [result.returned_defaults._mapping[k] for k in (t1.c.data,)],
+            [None],
+        )
 
     def test_insert_non_default_plus_default(self):
         t1 = self.tables.t1
@@ -393,7 +409,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             .return_defaults(t1.c.data, t1.c.insdef)
         )
         eq_(
-            dict(result.returned_defaults),
+            dict(result.returned_defaults._mapping),
             {"id": 1, "data": None, "insdef": 0},
         )
 
@@ -405,7 +421,10 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             .values(insdef=2)
             .return_defaults(t1.c.data, t1.c.upddef)
         )
-        eq_(dict(result.returned_defaults), {"data": None, "upddef": 1})
+        eq_(
+            dict(result.returned_defaults._mapping),
+            {"data": None, "upddef": 1},
+        )
 
     def test_insert_all(self):
         t1 = self.tables.t1
@@ -413,7 +432,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             t1.insert().values(upddef=1).return_defaults()
         )
         eq_(
-            dict(result.returned_defaults),
+            dict(result.returned_defaults._mapping),
             {"id": 1, "data": None, "insdef": 0},
         )
 
@@ -423,7 +442,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         result = testing.db.execute(
             t1.update().values(insdef=2).return_defaults()
         )
-        eq_(dict(result.returned_defaults), {"upddef": 1})
+        eq_(dict(result.returned_defaults._mapping), {"upddef": 1})
 
 
 class ImplicitReturningFlag(fixtures.TestBase):

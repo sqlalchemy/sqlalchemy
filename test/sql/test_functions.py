@@ -1015,15 +1015,15 @@ class ExecuteTest(fixtures.TestBase):
         )
         meta.create_all()
         t.insert(values=dict(value=func.length("one"))).execute()
-        assert t.select().execute().first()["value"] == 3
+        assert t.select().execute().first().value == 3
         t.update(values=dict(value=func.length("asfda"))).execute()
-        assert t.select().execute().first()["value"] == 5
+        assert t.select().execute().first().value == 5
 
         r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
         id_ = r.inserted_primary_key[0]
-        assert t.select(t.c.id == id_).execute().first()["value"] == 9
+        assert t.select(t.c.id == id_).execute().first().value == 9
         t.update(values={t.c.value: func.length("asdf")}).execute()
-        assert t.select().execute().first()["value"] == 4
+        assert t.select().execute().first().value == 4
         t2.insert().execute()
         t2.insert(values=dict(value=func.length("one"))).execute()
         t2.insert(values=dict(value=func.length("asfda") + -19)).execute(
@@ -1045,7 +1045,7 @@ class ExecuteTest(fixtures.TestBase):
         t2.delete().execute()
 
         t2.insert(values=dict(value=func.length("one") + 8)).execute()
-        assert t2.select().execute().first()["value"] == 11
+        assert t2.select().execute().first().value == 11
 
         t2.update(values=dict(value=func.length("asfda"))).execute()
         eq_(

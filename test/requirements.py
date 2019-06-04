@@ -792,7 +792,7 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(
             "mssql+pymssql", "crashes on pymssql"
         ) + fails_on_everything_except(
-            "mysql", "sqlite+pysqlite", "sqlite+pysqlcipher"
+            "mysql", "sqlite+pysqlite", "sqlite+pysqlcipher", "mssql"
         )
 
     @property

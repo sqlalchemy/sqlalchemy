@@ -34,6 +34,7 @@ from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -1282,15 +1283,24 @@ class ResultProxyTest(fixtures.TablesTest):
 
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
-            "with only matching names"
+            "with only matching names",
+            "Using non-integer/slice indices on Row is "
+            "deprecated and will be removed in version 2.0",
         ):
             eq_(r[users.c.user_id], 2)
+
+        r._keymap.pop(users.c.user_id)  # reset lookup
+        with testing.expect_deprecated(
+            "Retreiving row values using Column objects "
+            "with only matching names"
+        ):
+            eq_(r._mapping[users.c.user_id], 2)
 
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(r[users.c.user_name], "jack")
+            eq_(r._mapping[users.c.user_name], "jack")
 
     def test_column_accessor_basic_text(self):
         users = self.tables.users
@@ -1300,16 +1310,34 @@ class ResultProxyTest(fixtures.TablesTest):
         ).first()
 
         with testing.expect_deprecated(
+            "Using non-integer/slice indices on Row is deprecated "
+            "and will be removed in version 2.0",
             "Retreiving row values using Column objects "
-            "with only matching names"
+            "with only matching names",
         ):
             eq_(r[users.c.user_id], 2)
 
+        r._keymap.pop(users.c.user_id)
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
+            eq_(r._mapping[users.c.user_id], 2)
+
+        with testing.expect_deprecated(
+            "Using non-integer/slice indices on Row is deprecated "
+            "and will be removed in version 2.0",
+            "Retreiving row values using Column objects "
+            "with only matching names",
+        ):
             eq_(r[users.c.user_name], "jack")
+
+        r._keymap.pop(users.c.user_name)
+        with testing.expect_deprecated(
+            "Retreiving row values using Column objects "
+            "with only matching names"
+        ):
+            eq_(r._mapping[users.c.user_name], "jack")
 
     @testing.provide_metadata
     def test_column_label_overlap_fallback(self):
@@ -1319,7 +1347,7 @@ class ResultProxyTest(fixtures.TablesTest):
         testing.db.execute(content.insert().values(type="t1"))
 
         row = testing.db.execute(content.select(use_labels=True)).first()
-        in_(content.c.type, row)
+        in_(content.c.type, row._mapping)
         not_in_(bar.c.content_type, row)
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
@@ -1387,17 +1415,37 @@ class ResultProxyTest(fixtures.TablesTest):
                         "Retreiving row values using Column objects "
                         "from a row that was unpickled"
                     ):
-                        eq_(result[0][users.c.user_id], 7)
+                        eq_(result[0]._mapping[users.c.user_id], 7)
+
+                    result[0]._keymap.pop(users.c.user_id)
                     with testing.expect_deprecated(
                         "Retreiving row values using Column objects "
                         "from a row that was unpickled"
                     ):
-                        eq_(result[0][users.c.user_name], "jack")
+                        eq_(result[0]._mapping[users.c.user_id], 7)
+
+                    with testing.expect_deprecated(
+                        "Retreiving row values using Column objects "
+                        "from a row that was unpickled"
+                    ):
+                        eq_(result[0]._mapping[users.c.user_name], "jack")
+
+                    result[0]._keymap.pop(users.c.user_name)
+                    with testing.expect_deprecated(
+                        "Retreiving row values using Column objects "
+                        "from a row that was unpickled"
+                    ):
+                        eq_(result[0]._mapping[users.c.user_name], "jack")
 
                 if not pickle or use_labels:
                     assert_raises(
                         exc.NoSuchColumnError,
                         lambda: result[0][addresses.c.user_id],
+                    )
+
+                    assert_raises(
+                        exc.NoSuchColumnError,
+                        lambda: result[0]._mapping[addresses.c.user_id],
                     )
                 else:
                     # test with a different table.  name resolution is
@@ -1406,12 +1454,160 @@ class ResultProxyTest(fixtures.TablesTest):
                         "Retreiving row values using Column objects "
                         "from a row that was unpickled"
                     ):
-                        eq_(result[0][addresses.c.user_id], 7)
+                        eq_(result[0]._mapping[addresses.c.user_id], 7)
+
+                    result[0]._keymap.pop(addresses.c.user_id)
+                    with testing.expect_deprecated(
+                        "Retreiving row values using Column objects "
+                        "from a row that was unpickled"
+                    ):
+                        eq_(result[0]._mapping[addresses.c.user_id], 7)
 
                 assert_raises(
                     exc.NoSuchColumnError,
                     lambda: result[0][addresses.c.address_id],
                 )
+
+                assert_raises(
+                    exc.NoSuchColumnError,
+                    lambda: result[0]._mapping[addresses.c.address_id],
+                )
+
+    @testing.requires.duplicate_names_in_cursor_description
+    def test_ambiguous_column_case_sensitive(self):
+        with testing.expect_deprecated(
+            "The create_engine.case_sensitive parameter is deprecated"
+        ):
+            eng = engines.testing_engine(options=dict(case_sensitive=False))
+
+        row = eng.execute(
+            select(
+                [
+                    literal_column("1").label("SOMECOL"),
+                    literal_column("1").label("SOMECOL"),
+                ]
+            )
+        ).first()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row._mapping["somecol"],
+        )
+
+    def test_row_getitem_string(self):
+        with testing.db.connect() as conn:
+            col = literal_column("1").label("foo")
+            row = conn.execute(select([col])).first()
+
+            with testing.expect_deprecated(
+                "Using non-integer/slice indices on Row is deprecated "
+                "and will be removed in version 2.0;"
+            ):
+                eq_(row["foo"], 1)
+
+            eq_(row._mapping["foo"], 1)
+
+    def test_row_getitem_column(self):
+        with testing.db.connect() as conn:
+            col = literal_column("1").label("foo")
+            row = conn.execute(select([col])).first()
+
+            with testing.expect_deprecated(
+                "Using non-integer/slice indices on Row is deprecated "
+                "and will be removed in version 2.0;"
+            ):
+                eq_(row[col], 1)
+
+            eq_(row._mapping[col], 1)
+
+    def test_row_case_insensitive(self):
+        with testing.expect_deprecated(
+            "The create_engine.case_sensitive parameter is deprecated"
+        ):
+            ins_db = engines.testing_engine(options={"case_sensitive": False})
+        row = ins_db.execute(
+            select(
+                [
+                    literal_column("1").label("case_insensitive"),
+                    literal_column("2").label("CaseSensitive"),
+                ]
+            )
+        ).first()
+
+        eq_(list(row._mapping.keys()), ["case_insensitive", "CaseSensitive"])
+
+        in_("case_insensitive", row._keymap)
+        in_("CaseSensitive", row._keymap)
+        in_("casesensitive", row._keymap)
+
+        eq_(row._mapping["case_insensitive"], 1)
+        eq_(row._mapping["CaseSensitive"], 2)
+        eq_(row._mapping["Case_insensitive"], 1)
+        eq_(row._mapping["casesensitive"], 2)
+
+    def test_row_case_insensitive_unoptimized(self):
+        with testing.expect_deprecated(
+            "The create_engine.case_sensitive parameter is deprecated"
+        ):
+            ins_db = engines.testing_engine(options={"case_sensitive": False})
+        row = ins_db.execute(
+            select(
+                [
+                    literal_column("1").label("case_insensitive"),
+                    literal_column("2").label("CaseSensitive"),
+                    text("3 AS screw_up_the_cols"),
+                ]
+            )
+        ).first()
+
+        eq_(
+            list(row._mapping.keys()),
+            ["case_insensitive", "CaseSensitive", "screw_up_the_cols"],
+        )
+
+        in_("case_insensitive", row._keymap)
+        in_("CaseSensitive", row._keymap)
+        in_("casesensitive", row._keymap)
+
+        eq_(row._mapping["case_insensitive"], 1)
+        eq_(row._mapping["CaseSensitive"], 2)
+        eq_(row._mapping["screw_up_the_cols"], 3)
+        eq_(row._mapping["Case_insensitive"], 1)
+        eq_(row._mapping["casesensitive"], 2)
+        eq_(row._mapping["screw_UP_the_cols"], 3)
+
+    def test_row_keys_deprecated(self):
+        r = testing.db.execute(
+            text("select * from users where user_id=2")
+        ).first()
+
+        with testing.expect_deprecated(
+            r"The Row.keys\(\) method is deprecated and will be "
+            "removed in a future release."
+        ):
+            eq_(r.keys(), ["user_id", "user_name"])
+
+    def test_row_contains_key_deprecated(self):
+        r = testing.db.execute(
+            text("select * from users where user_id=2")
+        ).first()
+
+        with testing.expect_deprecated(
+            "Using the 'in' operator to test for string or column keys, or "
+            "integer indexes, .* is deprecated"
+        ):
+            in_("user_name", r)
+
+        # no warning if the key is not there
+        not_in_("foobar", r)
+
+        # this seems to happen only with Python BaseRow
+        # with testing.expect_deprecated(
+        #    "Using the 'in' operator to test for string or column keys, or "
+        #   "integer indexes, .* is deprecated"
+        # ):
+        #    in_(1, r)
 
 
 class PositionalTextTest(fixtures.TablesTest):
@@ -1452,7 +1648,7 @@ class PositionalTextTest(fixtures.TablesTest):
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(row[text1.c.a], "a1")
+            eq_(row._mapping[text1.c.a], "a1")
 
     def test_anon_aliased_unique(self):
         text1 = self.tables.text1
@@ -1466,10 +1662,10 @@ class PositionalTextTest(fixtures.TablesTest):
         result = testing.db.execute(stmt)
         row = result.first()
 
-        eq_(row[c1], "a1")
-        eq_(row[c2], "b1")
-        eq_(row[c3], "c1")
-        eq_(row[c4], "d1")
+        eq_(row._mapping[c1], "a1")
+        eq_(row._mapping[c2], "b1")
+        eq_(row._mapping[c3], "c1")
+        eq_(row._mapping[c4], "d1")
 
         # key fallback rules still match this to a column
         # unambiguously based on its name
@@ -1477,7 +1673,7 @@ class PositionalTextTest(fixtures.TablesTest):
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(row[text1.c.a], "a1")
+            eq_(row._mapping[text1.c.a], "a1")
 
         # key fallback rules still match this to a column
         # unambiguously based on its name
@@ -1485,7 +1681,7 @@ class PositionalTextTest(fixtures.TablesTest):
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(row[text1.c.d], "d1")
+            eq_(row._mapping[text1.c.d], "d1")
 
         # text1.c.b goes nowhere....because we hit key fallback
         # but the text1.c.b doesn't derive from text1.c.c
@@ -1493,6 +1689,12 @@ class PositionalTextTest(fixtures.TablesTest):
             exc.NoSuchColumnError,
             "Could not locate column in row for column 'text1.b'",
             lambda: row[text1.c.b],
+        )
+
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.b'",
+            lambda: row._mapping[text1.c.b],
         )
 
 

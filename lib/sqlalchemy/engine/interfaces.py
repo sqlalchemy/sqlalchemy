@@ -1044,6 +1044,44 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
+    def get_out_parameter_values(self, out_param_names):
+        """Return a sequence of OUT parameter values from a cursor.
+
+        For dialects that support OUT parameters, this method will be called
+        when there is a :class:`.SQLCompiler` object which has the
+        :attr:`.SQLCompiler.has_out_parameters` flag set.  This flag in turn
+        will be set to True if the statement itself has :class:`.BindParameter`
+        objects that have the ``.isoutparam`` flag set which are consumed by
+        the :meth:`.SQLCompiler.visit_bindparam` method.  If the dialect
+        compiler produces :class:`.BindParameter` objects with ``.isoutparam``
+        set which are not handled by :meth:`.SQLCompiler.visit_bindparam`, it
+        should set this flag explicitly.
+
+        The list of names that were rendered for each bound parameter
+        is passed to the method.  The method should then return a sequence of
+        values corresponding to the list of parameter objects. Unlike in
+        previous SQLAlchemy versions, the values can be the **raw values** from
+        the DBAPI; the execution context will apply the appropriate type
+        handler based on what's present in self.compiled.binds and update the
+        values.  The processed dictionary will then be made available via the
+        ``.out_parameters`` collection on the result object.  Note that
+        SQLAlchemy 1.4 has multiple kinds of result object as part of the 2.0
+        transition.
+
+        .. versionadded:: 1.4 - added
+           :meth:`.ExecutionContext.get_out_parameter_values`, which is invoked
+           automatically by the :class:`.DefaultExecutionContext` when there
+           are :class:`.BindParameter` objects with the ``.isoutparam`` flag
+           set.  This replaces the practice of setting out parameters within
+           the now-removed ``get_result_proxy()`` method.
+
+        .. seealso::
+
+            :meth:`.ExecutionContext.get_result_cursor_strategy`
+
+        """
+        raise NotImplementedError()
+
     def post_exec(self):
         """Called after the execution of a compiled statement.
 
@@ -1054,12 +1092,67 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def result(self):
-        """Return a result object corresponding to this ExecutionContext.
+    def get_result_cursor_strategy(self, result):
+        """Return a result cursor strategy for a given result object.
 
-        Returns a ResultProxy.
+        This method is implemented by the :class:`.DefaultDialect` and is
+        only needed by implementing dialects in the case where some special
+        steps regarding the cursor must be taken, such as manufacturing
+        fake results from some other element of the cursor, or pre-buffering
+        the cursor's results.
+
+        A simplified version of the default implementation is::
+
+            from sqlalchemy.engine.result import DefaultCursorFetchStrategy
+
+            class MyExecutionContext(DefaultExecutionContext):
+                def get_result_cursor_strategy(self, result):
+                    return DefaultCursorFetchStrategy.create(result)
+
+        Above, the :class:`.DefaultCursorFetchStrategy` will be applied
+        to the result object.   For results that are pre-buffered from a
+        cursor that might be closed, an implementation might be::
+
+
+            from sqlalchemy.engine.result import (
+                FullyBufferedCursorFetchStrategy
+            )
+
+            class MyExecutionContext(DefaultExecutionContext):
+                _pre_buffered_result = None
+
+                def pre_exec(self):
+                    if self.special_condition_prebuffer_cursor():
+                        self._pre_buffered_result = (
+                            self.cursor.description,
+                            self.cursor.fetchall()
+                        )
+
+                def get_result_cursor_strategy(self, result):
+                    if self._pre_buffered_result:
+                        description, cursor_buffer = self._pre_buffered_result
+                        return (
+                            FullyBufferedCursorFetchStrategy.
+                                create_from_buffer(
+                                    result, description, cursor_buffer
+                            )
+                        )
+                    else:
+                        return DefaultCursorFetchStrategy.create(result)
+
+        This method replaces the previous not-quite-documented
+        ``get_result_proxy()`` method.
+
+        .. versionadded:: 1.4  - result objects now interpret cursor results
+           based on a pluggable "strategy" object, which is delivered
+           by the :class:`.ExecutionContext` via the
+           :meth:`.ExecutionContext.get_result_cursor_strategy` method.
+
+        .. seealso::
+
+            :meth:`.ExecutionContext.get_out_parameter_values`
+
         """
-
         raise NotImplementedError()
 
     def handle_dbapi_exception(self, e):

@@ -635,6 +635,9 @@ The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 Connection / Engine API
 =======================
 
+.. autoclass:: BaseResult
+    :members:
+
 .. autoclass:: Connection
    :members:
 
@@ -650,13 +653,21 @@ Connection / Engine API
 .. autoclass:: ExceptionContext
    :members:
 
+.. autoclass:: LegacyRow
+    :members:
+
 .. autoclass:: NestedTransaction
     :members:
 
 .. autoclass:: ResultProxy
     :members:
+    :inherited-members:
 
 .. autoclass:: Row
+    :members:
+    :private-members: _fields, _mapping
+
+.. autoclass:: RowMapping
     :members:
 
 .. autoclass:: Transaction

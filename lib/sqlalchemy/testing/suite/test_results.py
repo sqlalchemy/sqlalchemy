@@ -51,13 +51,21 @@ class RowFetchTest(fixtures.TablesTest):
             [{"id": 1, "today": datetime.datetime(2006, 5, 12, 12, 0, 0)}],
         )
 
+    def test_via_attr(self):
+        row = config.db.execute(
+            self.tables.plain_pk.select().order_by(self.tables.plain_pk.c.id)
+        ).first()
+
+        eq_(row.id, 1)
+        eq_(row.data, "d1")
+
     def test_via_string(self):
         row = config.db.execute(
             self.tables.plain_pk.select().order_by(self.tables.plain_pk.c.id)
         ).first()
 
-        eq_(row["id"], 1)
-        eq_(row["data"], "d1")
+        eq_(row._mapping["id"], 1)
+        eq_(row._mapping["data"], "d1")
 
     def test_via_int(self):
         row = config.db.execute(
@@ -72,8 +80,8 @@ class RowFetchTest(fixtures.TablesTest):
             self.tables.plain_pk.select().order_by(self.tables.plain_pk.c.id)
         ).first()
 
-        eq_(row[self.tables.plain_pk.c.id], 1)
-        eq_(row[self.tables.plain_pk.c.data], "d1")
+        eq_(row._mapping[self.tables.plain_pk.c.id], 1)
+        eq_(row._mapping[self.tables.plain_pk.c.data], "d1")
 
     @requirements.duplicate_names_in_cursor_description
     def test_row_with_dupe_names(self):
@@ -102,7 +110,7 @@ class RowFetchTest(fixtures.TablesTest):
         s2 = select([datetable.c.id, s.label("somelabel")])
         row = config.db.execute(s2).first()
 
-        eq_(row["somelabel"], datetime.datetime(2006, 5, 12, 12, 0, 0))
+        eq_(row.somelabel, datetime.datetime(2006, 5, 12, 12, 0, 0))
 
 
 class PercentSchemaNamesTest(fixtures.TablesTest):
@@ -191,11 +199,11 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
             row = config.db.execute(
                 table.select().order_by(table.c["percent%"])
             ).first()
-            eq_(row["percent%"], 5)
-            eq_(row["spaces % more spaces"], 12)
+            eq_(row._mapping["percent%"], 5)
+            eq_(row._mapping["spaces % more spaces"], 12)
 
-            eq_(row[table.c["percent%"]], 5)
-            eq_(row[table.c["spaces % more spaces"]], 12)
+            eq_(row._mapping[table.c["percent%"]], 5)
+            eq_(row._mapping[table.c["spaces % more spaces"]], 12)
 
         config.db.execute(
             percent_table.update().values(

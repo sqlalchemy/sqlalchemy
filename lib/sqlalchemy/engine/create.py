@@ -34,6 +34,13 @@ from ..sql import compiler
         'expressions, or an "empty set" SELECT, at statement execution'
         "time.",
     ),
+    case_sensitive=(
+        "1.4",
+        "The :paramref:`.create_engine.case_sensitive` parameter "
+        "is deprecated and will be removed in a future release. "
+        "Applications should work with result column names in a case "
+        "sensitive fashion.",
+    ),
 )
 def create_engine(url, **kwargs):
     """Create a new :class:`.Engine` instance.

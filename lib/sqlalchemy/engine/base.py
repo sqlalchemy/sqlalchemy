@@ -1297,12 +1297,7 @@ class Connection(Connectable):
         if context.compiled:
             context.post_exec()
 
-        if context.is_crud or context.is_text:
-            result = context._setup_crud_result_proxy()
-        else:
-            result = context.get_result_proxy()
-            if result._metadata is None:
-                result._soft_close()
+        result = context._setup_result_proxy()
 
         if context.should_autocommit and self._root.__transaction is None:
             self._root._commit_impl(autocommit=True)
@@ -1310,6 +1305,8 @@ class Connection(Connectable):
         # for "connectionless" execution, we have to close this
         # Connection after the statement is complete.
         if self.should_close_with_result:
+            assert not context._is_future_result
+
             # ResultProxy already exhausted rows / has no rows.
             # close us now
             if result._soft_closed:

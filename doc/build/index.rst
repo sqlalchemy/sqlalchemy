@@ -91,6 +91,7 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
   :doc:`Core Event Interfaces <core/events>` |
   :doc:`Creating Custom SQL Constructs <core/compiler>` |
 
+* **SQLAlchemy 2.0 Compatibility:** :doc:`SQLAlchemy 2.0 Future (Core) <core/future>`
 
 Dialect Documentation
 ======================

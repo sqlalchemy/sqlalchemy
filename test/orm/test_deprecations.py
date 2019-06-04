@@ -445,6 +445,30 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 [User(id=7), User(id=8), User(id=9), User(id=10)],
             )
 
+    def test_text_as_column(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        # TODO: this works as of "use rowproxy for ORM keyed tuple"
+        # Ieb9085e9bcff564359095b754da9ae0af55679f0
+        # but im not sure how this relates to things here
+        q = s.query(User.id, text("users.name"))
+        self.assert_compile(
+            q, "SELECT users.id AS users_id, users.name FROM users"
+        )
+        eq_(q.all(), [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")])
+
+        # same here, this was "passing string names to Query.columns"
+        # deprecation message, that's gone here?
+        assert_raises_message(
+            exc.ArgumentError,
+            "Textual column expression 'name' should be explicitly",
+            s.query,
+            User.id,
+            "name",
+        )
+
     def test_query_as_scalar(self):
         User = self.classes.User
 

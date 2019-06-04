@@ -38,10 +38,23 @@ from .result import BufferedColumnResultProxy  # noqa
 from .result import BufferedColumnRow  # noqa
 from .result import BufferedRowResultProxy  # noqa
 from .result import FullyBufferedResultProxy  # noqa
+from .result import LegacyRow  # noqa
+from .result import result_tuple  # noqa
 from .result import ResultProxy  # noqa
 from .result import Row  # noqa
+from .result import RowMapping  # noqa
 from .util import connection_memoize  # noqa
 from ..sql import ddl  # noqa
 
 
 __all__ = ("create_engine", "engine_from_config", "create_mock_engine")
+
+
+def __go(lcls):
+    from .. import future
+    from . import result
+
+    result._future_Result = future.Result
+
+
+__go(locals())

@@ -277,14 +277,9 @@ BaseRow_getitem(BaseRow *self, Py_ssize_t i)
 }
 
 static PyObject *
-BaseRow_getitem_by_object(BaseRow *self, PyObject *key)
+BaseRow_getitem_by_object(BaseRow *self, PyObject *key, int asmapping)
 {
     PyObject *record, *indexobject;
-    PyObject *exc_module, *exception, *cstr_obj;
-#if PY_MAJOR_VERSION >= 3
-    PyObject *bytes;
-#endif
-    char *cstr_key;
     long index;
     int key_fallback = 0;
 
@@ -308,49 +303,14 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key)
     }
 
     if (indexobject == Py_None) {
-        exc_module = PyImport_ImportModule("sqlalchemy.exc");
-        if (exc_module == NULL)
-            return NULL;
+        PyObject *tmp;
 
-        exception = PyObject_GetAttrString(exc_module,
-                                           "InvalidRequestError");
-        Py_DECREF(exc_module);
-        if (exception == NULL)
-            return NULL;
-
-        cstr_obj = PyTuple_GetItem(record, 2);
-        if (cstr_obj == NULL)
-            return NULL;
-
-        cstr_obj = PyObject_Str(cstr_obj);
-        if (cstr_obj == NULL)
-            return NULL;
-
-/*
-       FIXME: raise encoding error exception (in both versions below)
-       if the key contains non-ascii chars, instead of an
-       InvalidRequestError without any message like in the
-       python version.
-*/
-
-
-#if PY_MAJOR_VERSION >= 3
-        bytes = PyUnicode_AsASCIIString(cstr_obj);
-        if (bytes == NULL)
-            return NULL;
-        cstr_key = PyBytes_AS_STRING(bytes);
-#else
-        cstr_key = PyString_AsString(cstr_obj);
-#endif
-        if (cstr_key == NULL) {
-            Py_DECREF(cstr_obj);
+        tmp = PyObject_CallMethod(self->parent, "_raise_for_ambiguous_column_name", "(O)", record);
+        if (tmp == NULL) {
             return NULL;
         }
-        Py_DECREF(cstr_obj);
+        Py_DECREF(tmp);
 
-        PyErr_Format(exception,
-                "Ambiguous column name '%.200s' in "
-                "result set column descriptions", cstr_key);
         return NULL;
     }
 
@@ -362,6 +322,16 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key)
     if ((index == -1) && PyErr_Occurred())
         /* -1 can be either the actual value, or an error flag. */
         return NULL;
+
+    if (!asmapping) {
+        PyObject *tmp;
+
+        tmp = PyObject_CallMethod(self->parent, "_warn_for_nonint", "O", key);
+        if (tmp == NULL) {
+            return NULL;
+        }
+        Py_DECREF(tmp);
+    }
 
     return BaseRow_getitem(self, index);
 
@@ -400,17 +370,7 @@ BaseRow_subscript_impl(BaseRow *self, PyObject *key, int asmapping)
         Py_DECREF(values);
         return result;
     } else {
-        /*
-         // if we want to warn for non-integer access by getitem,
-         // that would happen here.
-         if (!asmapping) {
-            tmp = PyObject_CallMethod(self->parent, "_warn_for_nonint", "");
-            if (tmp == NULL) {
-                return NULL;
-            }
-            Py_DECREF(tmp);
-        }*/
-        return BaseRow_getitem_by_object(self, key);
+        return BaseRow_getitem_by_object(self, key, asmapping);
     }
 }
 

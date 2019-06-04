@@ -112,7 +112,7 @@ class InsertExecTest(fixtures.TablesTest):
                 )
                 row = engine.execute(table_.select(criterion)).first()
                 for c in table_.c:
-                    ret[c.key] = row[c]
+                    ret[c.key] = row._mapping[c]
             return ret
 
         if testing.against("firebird", "postgresql", "oracle", "mssql"):

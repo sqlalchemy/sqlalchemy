@@ -684,7 +684,7 @@ class DefaultTest(fixtures.TestBase):
     def test_insert_values(self):
         t.insert(values={"col3": 50}).execute()
         result = t.select().execute()
-        eq_(50, result.first()["col3"])
+        eq_(50, result.first()._mapping["col3"])
 
     @testing.fails_on("firebird", "Data type unknown")
     def test_updatemany(self):
@@ -793,7 +793,7 @@ class DefaultTest(fixtures.TestBase):
         t.update(t.c.col1 == pk, values={"col3": 55}).execute()
         result = t.select(t.c.col1 == pk).execute()
         result = result.first()
-        eq_(55, result["col3"])
+        eq_(55, result._mapping["col3"])
 
 
 class CTEDefaultTest(fixtures.TablesTest):

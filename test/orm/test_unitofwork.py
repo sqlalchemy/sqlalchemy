@@ -1504,7 +1504,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.flush()
 
         user_rows = users.select(users.c.id.in_([u.id])).execute().fetchall()
-        eq_(list(user_rows[0].values()), [u.id, "one2manytester"])
+        eq_(list(user_rows[0]), [u.id, "one2manytester"])
 
         address_rows = (
             addresses.select(
@@ -1514,8 +1514,8 @@ class OneToManyTest(_fixtures.FixtureTest):
             .execute()
             .fetchall()
         )
-        eq_(list(address_rows[0].values()), [a2.id, u.id, "lala@test.org"])
-        eq_(list(address_rows[1].values()), [a.id, u.id, "one2many@test.org"])
+        eq_(list(address_rows[0]), [a2.id, u.id, "lala@test.org"])
+        eq_(list(address_rows[1]), [a.id, u.id, "one2many@test.org"])
 
         userid = u.id
         addressid = a2.id
@@ -1527,10 +1527,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         address_rows = (
             addresses.select(addresses.c.id == addressid).execute().fetchall()
         )
-        eq_(
-            list(address_rows[0].values()),
-            [addressid, userid, "somethingnew@foo.com"],
-        )
+        eq_(list(address_rows[0]), [addressid, userid, "somethingnew@foo.com"])
         self.assert_(u.id == userid and a2.id == addressid)
 
     def test_one_to_many_2(self):
@@ -2065,11 +2062,11 @@ class SaveTest(_fixtures.FixtureTest):
         user_rows = (
             users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
         )
-        eq_(list(user_rows[0].values()), [u.foo_id, "multitester"])
+        eq_(list(user_rows[0]), [u.foo_id, "multitester"])
         address_rows = (
             addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
         )
-        eq_(list(address_rows[0].values()), [u.id, u.foo_id, "multi@test.org"])
+        eq_(list(address_rows[0]), [u.id, u.foo_id, "multi@test.org"])
 
         u.email = "lala@hey.com"
         u.name = "imnew"
@@ -2078,11 +2075,11 @@ class SaveTest(_fixtures.FixtureTest):
         user_rows = (
             users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
         )
-        eq_(list(user_rows[0].values()), [u.foo_id, "imnew"])
+        eq_(list(user_rows[0]), [u.foo_id, "imnew"])
         address_rows = (
             addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
         )
-        eq_(list(address_rows[0].values()), [u.id, u.foo_id, "lala@hey.com"])
+        eq_(list(address_rows[0]), [u.id, u.foo_id, "lala@hey.com"])
 
         session.expunge_all()
         u = session.query(User).get(id_)
@@ -2252,7 +2249,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             sa.and_(users.c.id == addresses.c.user_id, addresses.c.id == a.id),
         ).execute()
         eq_(
-            list(result.first().values()),
+            list(result.first()),
             [a.user.id, "asdf8d", a.id, a.user_id, "theater@foo.com"],
         )
 

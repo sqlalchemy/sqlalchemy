@@ -458,7 +458,6 @@ from ... import exc
 from ... import processors
 from ... import types as sqltypes
 from ... import util
-from ...engine import result as _result
 from ...util import collections_abc
 
 try:
@@ -577,13 +576,12 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
         return self._dbapi_connection.cursor(ident)
 
-    def get_result_proxy(self):
+    def get_result_cursor_strategy(self, result):
         self._log_notices(self.cursor)
 
-        if self._is_server_side:
-            return _result.BufferedRowResultProxy(self)
-        else:
-            return _result.ResultProxy(self)
+        return super(PGExecutionContext, self).get_result_cursor_strategy(
+            result
+        )
 
     def _log_notices(self, cursor):
         # check also that notices is an iterable, after it's already

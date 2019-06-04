@@ -3538,18 +3538,18 @@ class PGDialect(default.DefaultDialect):
         enums = []
         enum_by_name = {}
         for enum in c.fetchall():
-            key = (enum["schema"], enum["name"])
+            key = (enum.schema, enum.name)
             if key in enum_by_name:
-                enum_by_name[key]["labels"].append(enum["label"])
+                enum_by_name[key]["labels"].append(enum.label)
             else:
                 enum_by_name[key] = enum_rec = {
-                    "name": enum["name"],
-                    "schema": enum["schema"],
-                    "visible": enum["visible"],
+                    "name": enum.name,
+                    "schema": enum.schema,
+                    "visible": enum.visible,
                     "labels": [],
                 }
-                if enum["label"] is not None:
-                    enum_rec["labels"].append(enum["label"])
+                if enum.label is not None:
+                    enum_rec["labels"].append(enum.label)
                 enums.append(enum_rec)
         return enums
 
@@ -3568,10 +3568,11 @@ class PGDialect(default.DefaultDialect):
         """
 
         s = sql.text(SQL_DOMAINS).columns(attname=sqltypes.Unicode)
-        c = connection.execute(s)
+        c = connection.execution_options(future_result=True).execute(s)
 
         domains = {}
-        for domain in c.fetchall():
+        for domain in c.mappings():
+            domain = domain
             # strip (30) from character varying(30)
             attype = re.search(r"([^\(]+)", domain["attype"]).group(1)
             # 'visible' just means whether or not the domain is in a

@@ -545,6 +545,41 @@ equally::
         result[0].all()  # same as result.scalars().all()
         result[2:5].all()  # same as result.columns('c', 'd', 'e').all()
 
+Result rows unified between Core and ORM on named-tuple interface
+==================================================================
+
+Already part of 1.4, the previous ``KeyedTuple`` class that was used when
+selecting rows from the :class:`.Query` object has been replaced by the
+:class:`.Row` class, which is the base of the same :class:`.Row` that comes
+back with Core statement results (in 1.4 it is the :class:`.LegacyRow` class).
+
+This :class:`.Row` behaves like a named tuple, in that it acts as a sequence
+but also supports attribute name access, e.g. ``row.some_column``.  However,
+it also provides the previous "mapping" behavior via the special attribute
+``row._mapping``, which produces a Python mapping such that keyed access
+such as ``row["some_column"]`` can be used.
+
+In order to receive results as mappings up front, the ``mappings()`` modifier
+on the result can be used::
+
+    result = session.execute(stmt)
+    for row in result.mappings():
+        print("the user is: %s" % row["User"])
+
+The :class:`.Row` class as used by the ORM also supports access via entity
+or attribute::
+
+    stmt = select(User, Address).join(User.addresses)
+
+    for row in session.execute(stmt).mappings():
+        print("the user is: %s  the address is: %s" % (
+            row[User],
+            row[Address]
+        ))
+
+.. seealso::
+
+    :ref:`change_4710_core`
 
 Declarative becomes a first class API
 =====================================

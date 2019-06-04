@@ -539,10 +539,10 @@ class EagerTest3(fixtures.MappedTest):
         arb_result = arb_data.execute().fetchall()
 
         # order the result list descending based on 'max'
-        arb_result.sort(key=lambda a: a["max"], reverse=True)
+        arb_result.sort(key=lambda a: a._mapping["max"], reverse=True)
 
         # extract just the "data_id" from it
-        arb_result = [row["data_id"] for row in arb_result]
+        arb_result = [row._mapping["data_id"] for row in arb_result]
 
         arb_data = arb_data.alias("arb")
 

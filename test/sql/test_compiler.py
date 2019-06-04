@@ -4841,7 +4841,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_nested_api(self):
-        from sqlalchemy.engine.result import ResultMetaData
+        from sqlalchemy.engine.result import CursorResultMetaData
 
         stmt2 = select([table2]).subquery()
 
@@ -4870,7 +4870,7 @@ class ResultMapTest(fixtures.TestBase):
 
         comp = MyCompiler(default.DefaultDialect(), stmt1)
         eq_(
-            ResultMetaData._create_description_match_map(
+            CursorResultMetaData._create_description_match_map(
                 contexts[stmt2.element][0]
             ),
             {

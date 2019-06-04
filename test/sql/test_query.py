@@ -265,13 +265,13 @@ class QueryTest(fixtures.TestBase):
         users.insert().execute(user_id=7, user_name="jack")
         s = select([users], users.c.user_id == bindparam("id")).compile()
         c = testing.db.connect()
-        assert c.execute(s, id=7).fetchall()[0]["user_id"] == 7
+        eq_(c.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_compiled_insert_execute(self):
         users.insert().compile().execute(user_id=7, user_name="jack")
         s = select([users], users.c.user_id == bindparam("id")).compile()
         c = testing.db.connect()
-        assert c.execute(s, id=7).fetchall()[0]["user_id"] == 7
+        eq_(c.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_repeated_bindparams(self):
         """Tests that a BindParam can be used more than once.

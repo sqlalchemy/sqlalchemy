@@ -23,8 +23,6 @@ from ._collections import IdentitySet  # noqa
 from ._collections import ImmutableContainer  # noqa
 from ._collections import immutabledict  # noqa
 from ._collections import ImmutableProperties  # noqa
-from ._collections import KeyedTuple  # noqa
-from ._collections import lightweight_named_tuple  # noqa
 from ._collections import LRUCache  # noqa
 from ._collections import ordered_column_set  # noqa
 from ._collections import OrderedDict  # noqa

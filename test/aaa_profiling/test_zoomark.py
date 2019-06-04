@@ -440,9 +440,12 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Edit
 
-            SDZ = engine.execute(
-                Zoo.select(Zoo.c.Name == "San Diego Zoo")
-            ).first()
+            SDZ = (
+                engine.execute(Zoo.select(Zoo.c.Name == "San Diego Zoo"))
+                .first()
+                ._mapping
+            )
+
             engine.execute(
                 Zoo.update(Zoo.c.ID == SDZ["ID"]),
                 Name="The San Diego Zoo",
@@ -453,9 +456,12 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Test edits
 
-            SDZ = engine.execute(
-                Zoo.select(Zoo.c.Name == "The San Diego Zoo")
-            ).first()
+            SDZ = (
+                engine.execute(Zoo.select(Zoo.c.Name == "The San Diego Zoo"))
+                .first()
+                ._mapping
+            )
+
             assert SDZ["Founded"] == datetime.date(1900, 1, 1), SDZ["Founded"]
 
             # Change it back
@@ -470,9 +476,12 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
             # Test re-edits
 
-            SDZ = engine.execute(
-                Zoo.select(Zoo.c.Name == "San Diego Zoo")
-            ).first()
+            SDZ = (
+                engine.execute(Zoo.select(Zoo.c.Name == "San Diego Zoo"))
+                .first()
+                ._mapping
+            )
+
             assert SDZ["Founded"] == datetime.date(1935, 9, 13)
 
     def _baseline_7_multiview(self):

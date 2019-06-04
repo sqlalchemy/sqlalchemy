@@ -756,14 +756,14 @@ class TupleLabelTest(_fixtures.FixtureTest):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
 
-                eq_(list(row.keys()), ["User", "Address"])
+                eq_(list(row._fields), ["User", "Address"])
                 eq_(row.User, row[0])
                 eq_(row.Address, row[1])
 
             for row in sess.query(User.name, User.id.label("foobar")):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(list(row.keys()), ["name", "foobar"])
+                eq_(list(row._fields), ["name", "foobar"])
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
@@ -772,7 +772,7 @@ class TupleLabelTest(_fixtures.FixtureTest):
             ):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(list(row.keys()), ["name", "foobar"])
+                eq_(list(row._fields), ["name", "foobar"])
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
@@ -784,7 +784,7 @@ class TupleLabelTest(_fixtures.FixtureTest):
             ):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(list(row.keys()), ["User"])
+                eq_(list(row._fields), ["User"])
                 eq_(row.User, row[0])
 
             oalias = aliased(Order, name="orders")
@@ -793,12 +793,12 @@ class TupleLabelTest(_fixtures.FixtureTest):
             ):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
-                eq_(list(row.keys()), ["User", "orders"])
+                eq_(list(row._fields), ["User", "orders"])
                 eq_(row.User, row[0])
                 eq_(row.orders, row[1])
 
             for row in sess.query(User.name + "hoho", User.name):
-                eq_(list(row.keys()), ["name"])
+                eq_(list(row._fields), ["name"])
                 eq_(row[0], row.name + "hoho")
 
             if pickled is not False:

@@ -3180,6 +3180,36 @@ class Select(
 
     @classmethod
     def _create_select(cls, *entities):
+        r"""Construct a new :class:`.Select` using the 2.x style API.
+
+        .. versionadded:: 2.0 - the :func:`.future.select` construct is
+           the same construct as the one returned by
+           :func:`.sql.expression.select`, except that the function only
+           accepts the "columns clause" entities up front; the rest of the
+           state of the SELECT should be built up using generative methods.
+
+        Similar functionality is also available via the
+        :meth:`.FromClause.select` method on any :class:`.FromClause`.
+
+        .. seealso::
+
+            :ref:`coretutorial_selecting` - Core Tutorial description of
+            :func:`.select`.
+
+        :param \*entities:
+          Entities to SELECT from.  For Core usage, this is typically a series
+          of :class:`.ColumnElement` and / or :class:`.FromClause`
+          objects which will form the columns clause of the resulting
+          statement.   For those objects that are instances of
+          :class:`.FromClause` (typically :class:`.Table` or :class:`.Alias`
+          objects), the :attr:`.FromClause.c` collection is extracted
+          to form a collection of :class:`.ColumnElement` objects.
+
+          This parameter will also accept :class:`.Text` constructs as
+          given, as well as ORM-mapped classes.
+
+        """
+
         self = cls.__new__(cls)
         self._raw_columns = [
             coercions.expect(roles.ColumnsClauseRole, ent)
@@ -3430,7 +3460,8 @@ class Select(
             "The select() function in SQLAlchemy 2.0 will accept a "
             "series of columns / tables and other entities only, "
             "passed positionally. For forwards compatibility, use the "
-            "sqlalchemy.future.select() construct."
+            "sqlalchemy.future.select() construct.",
+            stacklevel=4,
         )
 
         self._auto_correlate = correlate

@@ -25,6 +25,7 @@ from ..orm.session import Session
 from ..sql import func
 from ..sql import literal_column
 from ..sql import util as sql_util
+from ..util import collections_abc
 
 
 log = logging.getLogger(__name__)
@@ -472,7 +473,7 @@ class Result(object):
         """
         try:
             ret = self.one()
-            if not isinstance(ret, tuple):
+            if not isinstance(ret, collections_abc.Sequence):
                 return ret
             return ret[0]
         except orm_exc.NoResultFound:

@@ -924,16 +924,16 @@ class AttachedDBTest(fixtures.TestBase):
 
         self.conn.execute(ct.insert(), {"id": 1, "name": "foo"})
         row = self.conn.execute(ct.select()).first()
-        eq_(row["id"], 1)
-        eq_(row["name"], "foo")
+        eq_(row._mapping["id"], 1)
+        eq_(row._mapping["name"], "foo")
 
     def test_col_targeting_union(self):
         ct = self._fixture()
 
         self.conn.execute(ct.insert(), {"id": 1, "name": "foo"})
         row = self.conn.execute(ct.select().union(ct.select())).first()
-        eq_(row["id"], 1)
-        eq_(row["name"], "foo")
+        eq_(row._mapping["id"], 1)
+        eq_(row._mapping["name"], "foo")
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):

@@ -408,10 +408,40 @@ of :class:`.Row` objects:
     (2, u'wendy', u'Wendy Williams')
 
 Above, we see that printing each :class:`.Row` produces a simple
-tuple-like result.  The :class:`.Row` behaves like a hybrid between
-a Python mapping and tuple, with several methods of retrieving the data
-in each column.  One common way is
-as a Python mapping of strings, using the string names of columns:
+tuple-like result.  The most canonical way in Python to access the values
+of these tuples as rows are fetched is through tuple assignment:
+
+.. sourcecode:: pycon+sql
+
+    {sql}>>> result = conn.execute(s)
+    SELECT users.id, users.name, users.fullname
+    FROM users
+    ()
+
+    {stop}>>> for id, name, fullname in result:
+    ...     print("name:", name, "; fullname: ", fullname)
+    name: jack ; fullname:  Jack Jones
+    name: wendy ; fullname:  Wendy Williams
+
+The :class:`.Row` object actually behaves like a Python named tuple, so
+we may also access these attributes from the row itself using attribute
+access:
+
+.. sourcecode:: pycon+sql
+
+    {sql}>>> result = conn.execute(s)
+    SELECT users.id, users.name, users.fullname
+    FROM users
+    ()
+
+    {stop}>>> for row in result:
+    ...     print("name:", row.name, "; fullname: ", row.fullname)
+    name: jack ; fullname:  Jack Jones
+    name: wendy ; fullname:  Wendy Williams
+
+To access columns via name using strings, either when the column name is
+progammatically generated, or contains non-ascii characters, the
+:attr:`.Row._mapping` view may be used that provides dictionary-like access:
 
 .. sourcecode:: pycon+sql
 
@@ -421,10 +451,28 @@ as a Python mapping of strings, using the string names of columns:
     ()
 
     {stop}>>> row = result.fetchone()
-    >>> print("name:", row['name'], "; fullname:", row['fullname'])
+    >>> print("name:", row._mapping['name'], "; fullname:", row._mapping['fullname'])
     name: jack ; fullname: Jack Jones
 
-Another way is as a Python sequence, using integer indexes:
+.. deprecated:: 1.4
+
+    In versions of SQLAlchemy prior to 1.4, the above access using
+    :attr:`.Row._mapping` would proceed against the row object itself, that
+    is::
+
+        row = result.fetchone()
+        name, fullname = row["name"], row["fullname"]
+
+    This pattern is now deprecated and will be removed in SQLAlchemy 2.0, so
+    that the :class:`.Row` object may now behave fully like a Python named
+    tuple.
+
+.. versionchanged:: 1.4  Added :attr:`.Row._mapping` which provides for
+   dictionary-like access to a :class:`.Row`, superseding the use of string/
+   column keys against the :class:`.Row` object directly.
+
+As the :class:`.Row` is a tuple, sequence (i.e. integer or slice) access
+may be used as well:
 
 .. sourcecode:: pycon+sql
 
@@ -435,17 +483,26 @@ Another way is as a Python sequence, using integer indexes:
 A more specialized method of column access is to use the SQL construct that
 directly corresponds to a particular column as the mapping key; in this
 example, it means we would use the  :class:`.Column` objects selected in our
-SELECT directly as keys:
+SELECT directly as keys in conjunction with the :attr:`.Row._mapping`
+collection:
 
 .. sourcecode:: pycon+sql
 
     {sql}>>> for row in conn.execute(s):
-    ...     print("name:", row[users.c.name], "; fullname:", row[users.c.fullname])
+    ...     print("name:", row._mapping[users.c.name], "; fullname:", row._mapping[users.c.fullname])
     SELECT users.id, users.name, users.fullname
     FROM users
     ()
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
+
+.. sidebar:: Rows are changing
+
+    The :class:`.Row` class was known as :class:`.RowProxy` for all
+    SQLAlchemy versions through 1.3.  In 1.4, the objects returned by
+    :class:`.ResultProxy` are actually a subclass of :class:`.Row` known as
+    :class:`.LegacyRow`.   See :ref:`change_4710_core` for background on this
+    change.
 
 The :class:`.ResultProxy` object features "auto-close" behavior that closes the
 underlying DBAPI ``cursor`` object when all pending result rows have been
@@ -897,14 +954,14 @@ when the result-columns are fetched using the actual column object as a key.
 Fetching the ``email_address`` column would be::
 
     >>> row = result.fetchone()
-    >>> row[addresses.c.email_address]
+    >>> row._mapping[addresses.c.email_address]
     'jack@yahoo.com'
 
 If on the other hand we used a string column key, the usual rules of name-
 based matching still apply, and we'd get an ambiguous column error for
 the ``id`` value::
 
-    >>> row["id"]
+    >>> row._mapping["id"]
     Traceback (most recent call last):
     ...
     InvalidRequestError: Ambiguous column name 'id' in result set column descriptions
