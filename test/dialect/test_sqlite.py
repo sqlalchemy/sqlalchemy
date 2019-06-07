@@ -2132,11 +2132,13 @@ class SavepointTest(fixtures.TablesTest):
         connection = self.bind.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.begin_nested()
+        trans2 = connection.begin_nested()
         connection.execute(users.insert(), user_id=2, user_name="user2")
         trans3 = connection.begin()
         connection.execute(users.insert(), user_id=3, user_name="user3")
         trans3.rollback()
+
+        trans2.rollback()
         connection.execute(users.insert(), user_id=4, user_name="user4")
         transaction.commit()
         eq_(

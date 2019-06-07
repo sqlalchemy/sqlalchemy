@@ -188,6 +188,48 @@ sooner.
  :ref:`connections_toplevel`
 
 
+.. _error_8s2a:
+
+This connection is on an inactive transaction.  Please rollback() fully before proceeding
+------------------------------------------------------------------------------------------
+
+This error condition was added to SQLAlchemy as of version 1.4.    The error
+refers to the state where a :class:`.Connection` is placed into a transaction
+using a method like :meth:`.Connection.begin`, and then a further "sub" transaction
+is created within that scope; the "sub" transaction is then rolled back using
+:meth:`.Transaction.rollback`, however the outer transaction is not rolled back.
+
+The pattern looks like::
+
+    engine = create_engine(...)
+
+    connection = engine.connect()
+    transaction = connection.begin()
+
+    transaction2 = connection.begin()
+    transaction2.rollback()
+
+    connection.execute("select 1")  # we are rolled back; will now raise
+
+    transaction.rollback()
+
+
+Above, ``transaction2`` is a "sub" transaction, which indicates a logical
+nesting of transactions within an outer one.   SQLAlchemy makes great use of
+this pattern more commonly in the ORM :class:`.Session`, where the FAQ entry
+:ref:`faq_session_rollback` describes the rationale within the ORM.
+
+The "subtransaction" pattern in Core comes into play often when using the ORM
+pattern described at :ref:`session_external_transaction`.   As this pattern
+involves a behavior called "connection branching", where a :class:`.Connection`
+serves a "branched" :class:`.Connection` object to the :class:`.Session` via
+its :meth:`.Connection.connect` method, the same transaction behavior comes
+into play; if the :class:`.Session` rolls back the transaction, and savepoints
+have not been used to prevent a rollback of the entire transaction, the
+outermost transaction started on the :class:`.Connection` is now in an inactive
+state.
+
+
 .. _error_dbapi:
 
 DBAPI Errors
