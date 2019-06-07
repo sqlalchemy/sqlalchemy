@@ -291,7 +291,8 @@ class SessionTransaction(object):
                         " To begin a new transaction with this Session, "
                         "first issue Session.rollback()."
                         " Original exception was: %s"
-                        % self._rollback_exception
+                        % self._rollback_exception,
+                        code="7s2a",
                     )
                 elif not deactive_ok:
                     raise sa_exc.InvalidRequestError(
