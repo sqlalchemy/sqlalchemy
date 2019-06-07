@@ -72,12 +72,13 @@ Three ways, from most common to least:
 But remember, **the ORM cannot see changes in rows if our isolation
 level is repeatable read or higher, unless we start a new transaction**.
 
+.. _faq_session_rollback:
 
 "This Session's transaction has been rolled back due to a previous exception during flush." (or similar)
 ---------------------------------------------------------------------------------------------------------
 
 This is an error that occurs when a :meth:`.Session.flush` raises an exception, rolls back
-the transaction, but further commands upon the `Session` are called without an
+the transaction, but further commands upon the :class:`.Session` are called without an
 explicit call to :meth:`.Session.rollback` or :meth:`.Session.close`.
 
 It usually corresponds to an application that catches an exception
@@ -122,14 +123,21 @@ The usage of the :class:`.Session` should fit within a structure similar to this
     finally:
        session.close()  # optional, depends on use case
 
-Many things can cause a failure within the try/except besides flushes. You
-should always have some kind of "framing" of your session operations so that
-connection and transaction resources have a definitive boundary, otherwise
-your application doesn't really have its usage of resources under control.
-This is not to say that you need to put try/except blocks all throughout your
-application - on the contrary, this would be a terrible idea.  You should
-architect your application such that there is one (or few) point(s) of
-"framing" around session operations.
+Many things can cause a failure within the try/except besides flushes.
+Applications should ensure some system of "framing" is applied to ORM-oriented
+processes so that connection and transaction resources have a definitive
+boundary, and so that transactions can be explicitly rolled back if any
+failure conditions occur.
+
+This does not mean there should be try/except blocks throughout an application,
+which would not be a scalable architecture.  Instead, a typical approach is
+that when ORM-oriented methods and functions are first called, the process
+that's calling the functions from the very top would be within a block that
+commits transactions at the successful completion of a series of operations,
+as well as rolls transactions back if operations fail for any reason,
+including failed flushes.  There are also approaches using function decorators or
+context managers to achieve similar results.   The kind of approach taken
+depends very much on the kind of application being written.
 
 For a detailed discussion on how to organize usage of the :class:`.Session`,
 please see :ref:`session_faq_whentocreate`.
@@ -137,13 +145,13 @@ please see :ref:`session_faq_whentocreate`.
 But why does flush() insist on issuing a ROLLBACK?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It would be great if :meth:`.Session.flush` could partially complete and then not roll
-back, however this is beyond its current capabilities since its internal
-bookkeeping would have to be modified such that it can be halted at any time
-and be exactly consistent with what's been flushed to the database. While this
-is theoretically possible, the usefulness of the enhancement is greatly
-decreased by the fact that many database operations require a ROLLBACK in any
-case. Postgres in particular has operations which, once failed, the
+It would be great if :meth:`.Session.flush` could partially complete and then
+not roll back, however this is beyond its current capabilities since its
+internal bookkeeping would have to be modified such that it can be halted at
+any time and be exactly consistent with what's been flushed to the database.
+While this is theoretically possible, the usefulness of the enhancement is
+greatly decreased by the fact that many database operations require a ROLLBACK
+in any case. Postgres in particular has operations which, once failed, the
 transaction is not allowed to continue::
 
     test=> create table foo(id integer primary key);
@@ -170,85 +178,52 @@ before its failure while maintaining the enclosing transaction.
 But why isn't the one automatic call to ROLLBACK enough?  Why must I ROLLBACK again?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is again a matter of the :class:`.Session` providing a consistent interface and
-refusing to guess about what context its being used. For example, the
-:class:`.Session` supports "framing" above within multiple levels. Such as, suppose
-you had a decorator ``@with_session()``, which did this::
+The rollback that's caused by the flush() is not the end of the complete transaction
+block; while it ends the database transaction in play, from the :class:`.Session`
+point of view there is still a transaction that is now in an inactive state.
 
-    def with_session(fn):
-       def go(*args, **kw):
-           session.begin(subtransactions=True)
-           try:
-               ret = fn(*args, **kw)
-               session.commit()
-               return ret
-           except:
-               session.rollback()
-               raise
-       return go
+Given a block such as::
 
-The above decorator begins a transaction if one does not exist already, and
-then commits it, if it were the creator. The "subtransactions" flag means that
-if :meth:`.Session.begin` were already called by an enclosing function, nothing happens
-except a counter is incremented - this counter is decremented when :meth:`.Session.commit`
-is called and only when it goes back to zero does the actual COMMIT happen. It
-allows this usage pattern::
+  sess = Session()   # begins a logical transaction
+  try:
+      sess.flush()
 
-    @with_session
-    def one():
-       # do stuff
-       two()
+      sess.commit()
+  except:
+      sess.rollback()
 
+Above, when a :class:`.Session` is first created, assuming "autocommit mode"
+isn't used, a logical transaction is established within the :class:`.Session`.
+This transaction is "logical" in that it does not actually use any  database
+resources until a SQL statement is invoked, at which point a connection-level
+and DBAPI-level transaction is started.   However, whether or not
+database-level transactions are part of its state, the logical transaction will
+stay in place until it is ended using :meth:`.Session.commit()`,
+:meth:`.Session.rollback`, or :meth:`.Session.close`.
 
-    @with_session
-    def two():
-       # etc.
+When the ``flush()`` above fails, the code is still within the transaction
+framed by the try/commit/except/rollback block.   If ``flush()`` were to fully
+roll back the logical transaction, it would mean that when we then reach the
+``except:`` block the :class:`.Session` would be in a clean state, ready to
+emit new SQL on an all new transaction, and the call to
+:meth:`.Session.rollback` would be out of sequence.  In particular, the
+:class:`.Session` would have begun a new transaction by this point, which the
+:meth:`.Session.rollback` would be acting upon erroneously.  Rather than
+allowing SQL operations to proceed on a new transaction in this place where
+normal usage dictates a rollback is about to take place, the :class:`.Session`
+instead refuses to continue until the explicit rollback actually occurs.
 
-    one()
-
-    two()
-
-``one()`` can call ``two()``, or ``two()`` can be called by itself, and the
-``@with_session`` decorator ensures the appropriate "framing" - the transaction
-boundaries stay on the outermost call level. As you can see, if ``two()`` calls
-``flush()`` which throws an exception and then issues a ``rollback()``, there will
-*always* be a second ``rollback()`` performed by the decorator, and possibly a
-third corresponding to two levels of decorator. If the ``flush()`` pushed the
-``rollback()`` all the way out to the top of the stack, and then we said that
-all remaining ``rollback()`` calls are moot, there is some silent behavior going
-on there. A poorly written enclosing method might suppress the exception, and
-then call ``commit()`` assuming nothing is wrong, and then you have a silent
-failure condition. The main reason people get this error in fact is because
-they didn't write clean "framing" code and they would have had other problems
-down the road.
-
-If you think the above use case is a little exotic, the same kind of thing
-comes into play if you want to SAVEPOINT- you might call ``begin_nested()``
-several times, and the ``commit()``/``rollback()`` calls each resolve the most
-recent ``begin_nested()``. The meaning of ``rollback()`` or ``commit()`` is
-dependent upon which enclosing block it is called, and you might have any
-sequence of ``rollback()``/``commit()`` in any order, and its the level of nesting
-that determines their behavior.
-
-In both of the above cases, if ``flush()`` broke the nesting of transaction
-blocks, the behavior is, depending on scenario, anywhere from "magic" to
-silent failure to blatant interruption of code flow.
-
-``flush()`` makes its own "subtransaction", so that a transaction is started up
-regardless of the external transactional state, and when complete it calls
-``commit()``, or ``rollback()`` upon failure - but that ``rollback()`` corresponds
-to its own subtransaction - it doesn't want to guess how you'd like to handle
-the external "framing" of the transaction, which could be nested many levels
-with any combination of subtransactions and real SAVEPOINTs. The job of
-starting/ending the "frame" is kept consistently with the code external to the
-``flush()``, and we made a decision that this was the most consistent approach.
-
+In other words, it is expected that the calling code will **always** call
+:meth:`.Session.commit`, :meth:`.Session.rollback`, or :meth:`.Session.close`
+to correspond to the current transaction block.  ``flush()`` keeps the
+:class:`.Session` within this transaction block so that the behavior of the
+above code is predictable and consistent.
 
 
 How do I make a Query that always adds a certain filter to every query?
 ------------------------------------------------------------------------------------------------
 
-See the recipe at `PreFilteredQuery <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery>`_.
+See the recipe at `FilteredQuery <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/FilteredQuery>`_.
 
 I've created a mapping against an Outer Join, and while the query returns rows, no objects are returned.  Why not?
 ------------------------------------------------------------------------------------------------------------------

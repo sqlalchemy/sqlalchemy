@@ -562,6 +562,25 @@ Mitigation of this error is via two general techniques:
     relationship-oriented loading techniques
 
 
+.. _error_7s2a:
+
+This Session's transaction has been rolled back due to a previous exception during flush
+----------------------------------------------------------------------------------------
+
+The flush process of the :class:`.Session`, described at
+:ref:`session_flushing`, will roll back the database transaction if an error is
+encountered, in order to maintain internal consistency.  However, once this
+occurs, the session's transaction is now "inactive" and must be explicitly
+rolled back by the calling application, in the same way that it would otherwise
+need to be explicitly committed if a failure had not occurred.
+
+This is a common error when using the ORM and typically applies to an
+application that doesn't yet have correct "framing" around its
+:class:`.Session` operations. Further detail is described in the FAQ at
+:ref:`faq_session_rollback`.
+
+
+
 Core Exception Classes
 ======================
 
