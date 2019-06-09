@@ -39,6 +39,7 @@ from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.testing.mock import Mock
 from ...engine import test_execute
@@ -267,11 +268,9 @@ class MiscBackendTest(
         )
         assert isinstance(exception, exc.OperationalError)
 
-    # currently not passing with pg 9.3 that does not seem to generate
-    # any notices here, would rather find a way to mock this
     @testing.requires.no_coverage
     @testing.requires.psycopg2_compatibility
-    def _test_notice_logging(self):
+    def test_notice_logging(self):
         log = logging.getLogger("sqlalchemy.dialects.postgresql")
         buf = logging.handlers.BufferingHandler(100)
         lev = log.level
@@ -281,15 +280,29 @@ class MiscBackendTest(
             conn = testing.db.connect()
             trans = conn.begin()
             try:
-                conn.execute("create table foo (id serial primary key)")
+                conn.execute(
+                    """
+CREATE OR REPLACE FUNCTION note(message varchar) RETURNS integer AS $$
+BEGIN
+  RAISE NOTICE 'notice: %%', message;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+"""
+                )
+                conn.execute("SELECT note('hi there')")
+                conn.execute("SELECT note('another note')")
             finally:
                 trans.rollback()
         finally:
             log.removeHandler(buf)
             log.setLevel(lev)
         msgs = " ".join(b.msg for b in buf.buffer)
-        assert "will create implicit sequence" in msgs
-        assert "will create implicit index" in msgs
+        eq_regex(
+            msgs,
+            "NOTICE:  notice: hi there(\nCONTEXT: .*?)? "
+            "NOTICE:  notice: another note(\nCONTEXT: .*?)?",
+        )
 
     @testing.requires.psycopg2_or_pg8000_compatibility
     @engines.close_open_connections
