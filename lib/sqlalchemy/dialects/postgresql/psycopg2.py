@@ -322,10 +322,24 @@ NOTICE logging
 ---------------
 
 The psycopg2 dialect will log PostgreSQL NOTICE messages
-via the ``sqlalchemy.dialects.postgresql`` logger::
+via the ``sqlalchemy.dialects.postgresql`` logger.  When this logger
+is set to the ``logging.INFO`` level, notice messages will be logged::
 
     import logging
+
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
+
+Above, it is assumed that logging is configured externally.  If this is not
+the case, configuration such as ``logging.basicConfig()`` must be utilized::
+
+    import logging
+
+    logging.basicConfig()   # log messages to stdout
+    logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
+
+.. seealso::
+
+    `Logging HOWTO <https://docs.python.org/3/howto/logging.html>`_ - on the python.org website
 
 .. _psycopg2_hstore:
 
@@ -392,7 +406,7 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import result as _result
-
+from ...util import collections_abc
 
 try:
     from uuid import UUID as _python_UUID  # noqa
@@ -511,9 +525,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         return self._dbapi_connection.cursor(ident)
 
     def get_result_proxy(self):
-        # TODO: ouch
-        if logger.isEnabledFor(logging.INFO):
-            self._log_notices(self.cursor)
+        self._log_notices(self.cursor)
 
         if self._is_server_side:
             return _result.BufferedRowResultProxy(self)
@@ -521,6 +533,15 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
             return _result.ResultProxy(self)
 
     def _log_notices(self, cursor):
+        # check also that notices is an iterable, after it's already
+        # established that we will be iterating through it.  This is to get
+        # around test suites such as SQLAlchemy's using a Mock object for
+        # cursor
+        if not cursor.connection.notices or not isinstance(
+            cursor.connection.notices, collections_abc.Iterable
+        ):
+            return
+
         for notice in cursor.connection.notices:
             # NOTICE messages have a
             # newline character at the end
