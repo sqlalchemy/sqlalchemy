@@ -1237,10 +1237,12 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         clauses = []
         for column in cols:
-            val = on_duplicate.update.get(column.key)
-            if val is None:
+            try:
+                val = on_duplicate.update[column.key]
+            except KeyError:
                 continue
-            elif coercions._is_literal(val):
+
+            if coercions._is_literal(val):
                 val = elements.BindParameter(None, val, type_=column.type)
                 value_text = self.process(val.self_group(), use_schema=False)
             elif isinstance(val, elements.BindParameter) and val.type._isnull:
