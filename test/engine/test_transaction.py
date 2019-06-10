@@ -75,7 +75,6 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=2, user_name="user2")
         connection.execute(users.insert(), user_id=3, user_name="user3")
         transaction.rollback()
-
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
@@ -167,10 +166,27 @@ class TransactionTest(fixtures.TestBase):
             branched.execute(users.insert(), user_id=2, user_name="user2")
             nested.rollback()
             assert not connection.in_transaction()
-            eq_(connection.scalar("select count(*) from query_users"), 0)
+
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "This connection is on an inactive transaction.  Please",
+                connection.execute,
+                "select 1",
+            )
 
         finally:
             connection.close()
+
+    def test_inactive_due_to_subtransaction_no_commit(self):
+        connection = testing.db.connect()
+        trans = connection.begin()
+        trans2 = connection.begin()
+        trans2.rollback()
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This transaction is inactive",
+            trans.commit,
+        )
 
     def test_branch_autorollback(self):
         connection = testing.db.connect()
@@ -406,9 +422,19 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=1, user_name="user1")
         trans2 = connection.begin_nested()
         connection.execute(users.insert(), user_id=2, user_name="user2")
+
         trans3 = connection.begin()
         connection.execute(users.insert(), user_id=3, user_name="user3")
         trans3.rollback()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "This connection is on an inactive savepoint transaction.",
+            connection.execute,
+            "select 1",
+        )
+        trans2.rollback()
+
         connection.execute(users.insert(), user_id=4, user_name="user4")
         transaction.commit()
         eq_(

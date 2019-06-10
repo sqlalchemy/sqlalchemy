@@ -212,3 +212,32 @@ configured to raise an exception using the Python warnings filter.
 
 
 :ticket:`4662`
+
+
+Behavior Changes - Core
+========================
+
+.. _change_4712:
+
+Connection-level transactions can now be inactive based on subtransaction
+-------------------------------------------------------------------------
+
+A :class:`.Connection` now includes the behavior where a :class:`.Transaction`
+can be made inactive due to a rollback on an inner transaction, however the
+:class:`.Transaction` will not clear until it is itself rolled back.
+
+This is essentially a new error condition which will disallow statement
+executions to proceed on a :class:`.Connection` if an inner "sub" transaction
+has been rolled back.  The behavior works very similarly to that of the
+ORM :class:`.Session`, where if an outer transaction has been begun, it needs
+to be rolled back to clear the invalid transaction; this behavior is described
+in :ref:`faq_session_rollback`
+
+While the :class:`.Connection` has had a less strict behavioral pattern than
+the :class:`.Session`, this change was made as it helps to identify when
+a subtransaction has rolled back the DBAPI transaction, however the external
+code isn't aware of this and attempts to continue proceeding, which in fact
+runs operations on a new transaction.   The "test harness" pattern described
+at :ref:`session_external_transaction` is the common place for this to occur.
+
+The new behavior is described in the errors page at :ref:`error_8s2a`.
