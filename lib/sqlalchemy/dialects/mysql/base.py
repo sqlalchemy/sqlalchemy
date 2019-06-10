@@ -1230,15 +1230,15 @@ class MySQLCompiler(compiler.SQLCompiler):
                 c for c in self.statement.table.c if c.key not in ordered_keys
             ]
         else:
-            # traverse in table column order
             cols = self.statement.table.c
 
         clauses = []
-        for column in cols:
-            val = on_duplicate.update.get(column.key)
-            if val is None:
-                continue
-            elif elements._is_literal(val):
+        # traverses through all table columns to preserve table column order
+        for column in (col for col in cols if col.key in on_duplicate.update):
+
+            val = on_duplicate.update[column.key]
+
+            if elements._is_literal(val):
                 val = elements.BindParameter(None, val, type_=column.type)
                 value_text = self.process(val.self_group(), use_schema=False)
             elif isinstance(val, elements.BindParameter) and val.type._isnull:
