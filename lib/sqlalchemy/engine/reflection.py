@@ -469,6 +469,11 @@ class Inspector(object):
         unique
           boolean
 
+        column_sorting
+          optional dict mapping column names to dict of sorting options.
+          each sorting options dict may set any of the following keywords
+          to True: ``asc``, ``desc``, ``nullsfirst``, ``nullslast``.
+
         dialect_options
           dict of dialect-specific index options.  May not be present
           for all dialects.
@@ -869,6 +874,7 @@ class Inspector(object):
         for index_d in indexes:
             name = index_d["name"]
             columns = index_d["column_names"]
+            column_sorting = index_d.get("column_sorting", {})
             unique = index_d["unique"]
             flavor = index_d.get("type", "index")
             dialect_options = index_d.get("dialect_options", {})
@@ -897,8 +903,11 @@ class Inspector(object):
                         "%s key '%s' was not located in "
                         "columns for table '%s'" % (flavor, c, table_name)
                     )
-                else:
-                    idx_cols.append(idx_col)
+                    continue
+                c_sorting = column_sorting.get(c)
+                if c_sorting:
+                    idx_col = self._create_sorted_expr(idx_col, **c_sorting)
+                idx_cols.append(idx_col)
 
             sa_schema.Index(
                 name,
@@ -906,6 +915,19 @@ class Inspector(object):
                 _table=table,
                 **dict(list(dialect_options.items()) + [("unique", unique)])
             )
+
+    @classmethod
+    def _create_sorted_expr(cls, expr, asc=False, desc=False, nullsfirst=False,
+                            nullslast=False):
+        if asc:
+            expr = expr.asc()
+        if desc:
+            expr = expr.desc()
+        if nullsfirst:
+            expr = expr.nullsfirst()
+        if nullslast:
+            expr = expr.nullslast()
+        return expr
 
     def _reflect_unique_constraints(
         self,

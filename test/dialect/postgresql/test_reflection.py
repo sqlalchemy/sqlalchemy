@@ -907,6 +907,74 @@ class ReflectionTest(fixtures.TestBase):
             ],
         )
 
+    @testing.fails_if("postgresql < 8.3", "index ordering not supported")
+    @testing.provide_metadata
+    def test_index_reflection_with_sorting(self):
+        """reflect indexes with sorting options set"""
+        metadata = self.metadata
+
+        t1 = Table(
+            "party",
+            metadata,
+            Column("id", String(10), nullable=False),
+            Column("name", String(20)),
+            Column("aname", String(20)),
+        )
+        metadata.create_all()
+
+        # check ASC, DESC options alone
+        testing.db.execute("""
+            create index idx1 on party 
+                (id, name ASC, aname DESC)
+        """)
+
+        # check DESC w/ NULLS options
+        testing.db.execute("""
+          create index idx2 on party 
+                (name DESC NULLS FIRST, aname DESC NULLS LAST)  
+        """)
+
+        # check ASC w/ NULLS options
+        testing.db.execute("""
+          create index idx3 on party 
+                (name ASC NULLS FIRST, aname ASC NULLS LAST)  
+        """)
+
+        # reflect data
+        m2 = MetaData(testing.db)
+        t2 = Table("party", m2, autoload=True)
+        assert len(t2.indexes) == 3
+
+        # Make sure indexes are in the order we expect them in
+        r1, r2, r3 = sorted(t2.indexes, key=lambda idx: idx.name)
+
+        assert r1.name == "idx1"
+        assert r2.name == "idx2"
+        assert r3.name == "idx3"
+
+        # "ASC NULLS LAST" is implicit default for indexes,
+        # and "NULLS FIRST" is implicit default for "DESC".
+        # (https://www.postgresql.org/docs/11/indexes-ordering.html)
+
+        def compile_exprs(exprs):
+            return list(map(str, exprs))
+
+        assert compile_exprs([
+            t2.c.id,
+            t2.c.name,
+            t2.c.aname.desc(),
+        ]) == compile_exprs(r1.expressions)
+
+        assert compile_exprs([
+            t2.c.name.desc(),
+            t2.c.aname.desc().nullslast(),
+        ]) == compile_exprs(r2.expressions)
+
+        assert compile_exprs([
+            t2.c.name.nullsfirst(),
+            t2.c.aname,
+        ]) == compile_exprs(r3.expressions)
+
     @testing.provide_metadata
     def test_index_reflection_modified(self):
         """reflect indexes when a column name has changed - PG 9
