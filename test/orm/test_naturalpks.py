@@ -1463,6 +1463,19 @@ class JoinedInheritanceTest(fixtures.MappedTest):
             test_needs_fk=True,
         )
 
+        Table(
+            "owner",
+            metadata,
+            Column(
+                "name",
+                String(50),
+                ForeignKey("manager.name", **fk_args),
+                primary_key=True,
+            ),
+            Column("owner_name", String(50)),
+            test_needs_fk=True,
+        )
+
     @classmethod
     def setup_classes(cls):
         class Person(cls.Comparable):
@@ -1473,6 +1486,48 @@ class JoinedInheritanceTest(fixtures.MappedTest):
 
         class Manager(Person):
             pass
+
+        class Owner(Manager):
+            pass
+
+    def _mapping_fixture(self, threelevel, passive_updates):
+        Person, Manager, Engineer, Owner = self.classes(
+            "Person", "Manager", "Engineer", "Owner"
+        )
+        person, manager, engineer, owner = self.tables(
+            "person", "manager", "engineer", "owner"
+        )
+
+        mapper(
+            Person,
+            person,
+            polymorphic_on=person.c.type,
+            polymorphic_identity="person",
+            passive_updates=passive_updates,
+        )
+
+        mapper(
+            Engineer,
+            engineer,
+            inherits=Person,
+            polymorphic_identity="engineer",
+            properties={
+                "boss": relationship(
+                    Manager,
+                    primaryjoin=manager.c.name == engineer.c.boss_name,
+                    passive_updates=passive_updates,
+                )
+            },
+        )
+
+        mapper(
+            Manager, manager, inherits=Person, polymorphic_identity="manager"
+        )
+
+        if threelevel:
+            mapper(
+                Owner, owner, inherits=Manager, polymorphic_identity="owner"
+            )
 
     @testing.requires.on_update_cascade
     def test_pk_passive(self):
@@ -1491,40 +1546,26 @@ class JoinedInheritanceTest(fixtures.MappedTest):
     def test_fk_nonpassive(self):
         self._test_fk(False)
 
+    @testing.requires.on_update_cascade
+    def test_pk_threelevel_passive(self):
+        self._test_pk_threelevel(True)
+
+    @testing.requires.non_updating_cascade
+    def test_pk_threelevel_nonpassive(self):
+        self._test_pk_threelevel(False)
+
+    @testing.requires.on_update_cascade
+    def test_fk_threelevel_passive(self):
+        self._test_fk_threelevel(True)
+
+    # PG etc. need passive=True to allow PK->PK cascade
+    @testing.requires.non_updating_cascade
+    def test_fk_threelevel_nonpassive(self):
+        self._test_fk_threelevel(False)
+
     def _test_pk(self, passive_updates):
-        Person, Manager, person, manager, Engineer, engineer = (
-            self.classes.Person,
-            self.classes.Manager,
-            self.tables.person,
-            self.tables.manager,
-            self.classes.Engineer,
-            self.tables.engineer,
-        )
-
-        mapper(
-            Person,
-            person,
-            polymorphic_on=person.c.type,
-            polymorphic_identity="person",
-            passive_updates=passive_updates,
-        )
-        mapper(
-            Engineer,
-            engineer,
-            inherits=Person,
-            polymorphic_identity="engineer",
-            properties={
-                "boss": relationship(
-                    Manager,
-                    primaryjoin=manager.c.name == engineer.c.boss_name,
-                    passive_updates=passive_updates,
-                )
-            },
-        )
-        mapper(
-            Manager, manager, inherits=Person, polymorphic_identity="manager"
-        )
-
+        Engineer, = self.classes("Engineer")
+        self._mapping_fixture(False, passive_updates)
         sess = sa.orm.sessionmaker()()
 
         e1 = Engineer(name="dilbert", primary_language="java")
@@ -1532,41 +1573,28 @@ class JoinedInheritanceTest(fixtures.MappedTest):
         sess.commit()
         e1.name = "wally"
         e1.primary_language = "c++"
+
         sess.commit()
+        eq_(
+            sess.execute(self.tables.engineer.select()).fetchall(),
+            [("wally", "c++", None)],
+        )
+
+        eq_(e1.name, "wally")
+
+        e1.name = "dogbert"
+        sess.commit()
+        eq_(e1.name, "dogbert")
+
+        eq_(
+            sess.execute(self.tables.engineer.select()).fetchall(),
+            [("dogbert", "c++", None)],
+        )
 
     def _test_fk(self, passive_updates):
-        Person, Manager, person, manager, Engineer, engineer = (
-            self.classes.Person,
-            self.classes.Manager,
-            self.tables.person,
-            self.tables.manager,
-            self.classes.Engineer,
-            self.tables.engineer,
-        )
+        Manager, Engineer = self.classes("Manager", "Engineer")
 
-        mapper(
-            Person,
-            person,
-            polymorphic_on=person.c.type,
-            polymorphic_identity="person",
-            passive_updates=passive_updates,
-        )
-        mapper(
-            Engineer,
-            engineer,
-            inherits=Person,
-            polymorphic_identity="engineer",
-            properties={
-                "boss": relationship(
-                    Manager,
-                    primaryjoin=manager.c.name == engineer.c.boss_name,
-                    passive_updates=passive_updates,
-                )
-            },
-        )
-        mapper(
-            Manager, manager, inherits=Person, polymorphic_identity="manager"
-        )
+        self._mapping_fixture(False, passive_updates)
 
         sess = sa.orm.sessionmaker()()
 
@@ -1580,6 +1608,14 @@ class JoinedInheritanceTest(fixtures.MappedTest):
 
         eq_(e1.boss_name, "dogbert")
         eq_(e2.boss_name, "dogbert")
+
+        eq_(
+            sess.execute(
+                self.tables.engineer.select().order_by(Engineer.name)
+            ).fetchall(),
+            [("dilbert", "java", "dogbert"), ("wally", "c++", "dogbert")],
+        )
+
         sess.expire_all()
 
         m1.name = "pointy haired"
@@ -1589,6 +1625,91 @@ class JoinedInheritanceTest(fixtures.MappedTest):
 
         eq_(e1.boss_name, "pointy haired")
         eq_(e2.boss_name, "pointy haired")
+
+        eq_(
+            sess.execute(
+                self.tables.engineer.select().order_by(Engineer.name)
+            ).fetchall(),
+            [
+                ("dilbert", "scala", "pointy haired"),
+                ("wally", "cobol", "pointy haired"),
+            ],
+        )
+
+    def _test_pk_threelevel(self, passive_updates):
+        Owner, = self.classes("Owner")
+
+        self._mapping_fixture(True, passive_updates)
+
+        sess = sa.orm.sessionmaker()()
+
+        o1 = Owner(name="dogbert", owner_name="dog")
+        sess.add(o1)
+        sess.commit()
+        o1.name = "pointy haired"
+        o1.owner_name = "pointy"
+        sess.commit()
+
+        eq_(
+            sess.execute(self.tables.manager.select()).fetchall(),
+            [("pointy haired", None)],
+        )
+        eq_(
+            sess.execute(self.tables.owner.select()).fetchall(),
+            [("pointy haired", "pointy")],
+        )
+
+        eq_(o1.name, "pointy haired")
+
+        o1.name = "catbert"
+        sess.commit()
+
+        eq_(o1.name, "catbert")
+
+        eq_(
+            sess.execute(self.tables.manager.select()).fetchall(),
+            [("catbert", None)],
+        )
+        eq_(
+            sess.execute(self.tables.owner.select()).fetchall(),
+            [("catbert", "pointy")],
+        )
+
+    def _test_fk_threelevel(self, passive_updates):
+        Owner, Engineer = self.classes("Owner", "Engineer")
+        self._mapping_fixture(True, passive_updates)
+
+        sess = sa.orm.sessionmaker()()
+
+        m1 = Owner(name="dogbert", paperwork="lots", owner_name="dog")
+        e1, e2 = (
+            Engineer(name="dilbert", primary_language="java", boss=m1),
+            Engineer(name="wally", primary_language="c++", boss=m1),
+        )
+        sess.add_all([e1, e2, m1])
+        sess.commit()
+
+        eq_(e1.boss_name, "dogbert")
+        eq_(e2.boss_name, "dogbert")
+        sess.expire_all()
+
+        m1.name = "pointy haired"
+
+        e1.primary_language = "scala"
+        e2.primary_language = "cobol"
+        sess.commit()
+
+        eq_(e1.boss_name, "pointy haired")
+        eq_(e2.boss_name, "pointy haired")
+
+        eq_(
+            sess.execute(self.tables.manager.select()).fetchall(),
+            [("pointy haired", "lots")],
+        )
+        eq_(
+            sess.execute(self.tables.owner.select()).fetchall(),
+            [("pointy haired", "dog")],
+        )
 
 
 class JoinedInheritancePKOnFKTest(fixtures.MappedTest):
