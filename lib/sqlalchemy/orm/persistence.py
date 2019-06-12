@@ -678,6 +678,7 @@ def _collect_update_commands(
             continue
 
         has_all_pks = True
+        expect_pk_cascaded = False
         if bulk:
             # keys here are mapped attribute keys, so
             # look at mapper attribute keys for pk
@@ -702,6 +703,7 @@ def _collect_update_commands(
                         or ("pk_cascaded", state, col)
                         in uowtransaction.attributes
                     ):
+                        expect_pk_cascaded = True
                         pk_params[col._label] = history.added[0]
                         params.pop(col.key, None)
                     else:
@@ -729,6 +731,22 @@ def _collect_update_commands(
                 has_all_defaults,
                 has_all_pks,
             )
+        elif expect_pk_cascaded:
+            # no UPDATE occurs on this table, but we expect that CASCADE rules
+            # have changed the primary key of the row; propagate this event to
+            # other columns that expect to have been modified. this normally
+            # occurs after the UPDATE is emitted however we invoke it here
+            # explicitly in the absense of our invoking an UPDATE
+            for m, equated_pairs in mapper._table_to_equated[table]:
+                sync.populate(
+                    state,
+                    m,
+                    state,
+                    m,
+                    equated_pairs,
+                    uowtransaction,
+                    mapper.passive_updates,
+                )
 
 
 def _collect_post_update_commands(

@@ -622,7 +622,8 @@ class OneToManyDP(DependencyProcessor):
 class ManyToOneDP(DependencyProcessor):
     def __init__(self, prop):
         DependencyProcessor.__init__(self, prop)
-        self.mapper._dependency_processors.append(DetectKeySwitch(prop))
+        for mapper in self.mapper.self_and_descendants:
+            mapper._dependency_processors.append(DetectKeySwitch(prop))
 
     def per_property_dependencies(
         self,
