@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4723
+
+    Fixed a series of related bugs regarding joined table inheritance more than
+    two levels deep, in conjunction with modification to primary key values,
+    where those primary key columns are also linked together in a foreign key
+    relationship as is typical for joined table inheritance.  The intermediary
+    table in a  three-level inheritance hierachy will now get its UPDATE if
+    only the primary key value has changed and passive_updates=False (e.g.
+    foreign key constraints not being enforced), whereas before it would be
+    skipped; similarly, with passive_updates=True (e.g. ON UPDATE  CASCADE in
+    effect), the third-level table will not receive an UPDATE statement as was
+    the case earlier which would fail since CASCADE already modified it.   In a
+    related issue, a relationship linked to a three-level inheritance hierarchy
+    on the primary key of an intermediary table of a joined-inheritance
+    hierarchy will also correctly have its foreign key column updated when the
+    parent object's primary key is modified, even if that parent object is a
+    subclass of the linked parent class, whereas before these classes would
+    not be counted.
