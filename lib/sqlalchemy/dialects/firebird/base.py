@@ -469,12 +469,12 @@ class FBCompiler(sql.compiler.SQLCompiler):
                 )
 
                 return (
-                    self.process(alias.original, asfrom=asfrom, **kwargs)
+                    self.process(alias.element, asfrom=asfrom, **kwargs)
                     + " "
                     + self.preparer.format_alias(alias, alias_name)
                 )
             else:
-                return self.process(alias.original, **kwargs)
+                return self.process(alias.element, **kwargs)
 
     def visit_substring_func(self, func, **kw):
         s = self.process(func.clauses.clauses[0])

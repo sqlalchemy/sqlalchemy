@@ -176,10 +176,10 @@ class _ColumnCoercions(object):
         elif (
             resolved._is_from_clause
             and isinstance(resolved, selectable.Alias)
-            and resolved.original._is_select_statement
+            and resolved.element._is_select_statement
         ):
             self._warn_for_scalar_subquery_coercion()
-            return resolved.original.scalar_subquery()
+            return resolved.element.scalar_subquery()
         else:
             self._raise_for_expected(original_element, argname)
 
@@ -282,9 +282,9 @@ class InElementImpl(RoleImpl, roles.InElementRole):
         if resolved._is_from_clause:
             if (
                 isinstance(resolved, selectable.Alias)
-                and resolved.original._is_select_statement
+                and resolved.element._is_select_statement
             ):
-                return resolved.original
+                return resolved.element
             else:
                 return resolved.select()
         else:
@@ -579,9 +579,9 @@ class DMLSelectImpl(_NoTextCoercion, RoleImpl, roles.DMLSelectRole):
         if resolved._is_from_clause:
             if (
                 isinstance(resolved, selectable.Alias)
-                and resolved.original._is_select_statement
+                and resolved.element._is_select_statement
             ):
-                return resolved.original
+                return resolved.element
             else:
                 return resolved.select()
         else:
