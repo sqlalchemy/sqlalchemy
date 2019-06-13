@@ -499,13 +499,13 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
-        mach_alias = machines.select()
+        mach_alias = aliased(Machine, machines.select().subquery())
         self.assert_compile(
             sess.query(Company)
             .join(people.join(engineers), Company.employees)
             .join(mach_alias, Engineer.machines, from_joinpoint=True)
             .filter(Engineer.name == "dilbert")
-            .filter(Machine.name == "foo"),
+            .filter(mach_alias.name == "foo"),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name "
             "FROM companies JOIN (people "
@@ -1687,17 +1687,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
-        oalias = orders.select()
+        oalias = aliased(Order, orders.select().subquery())
         self.assert_compile(
             sess.query(User)
             .join(oalias, User.orders)
             .join(
                 Item,
                 and_(
-                    Order.id == order_items.c.order_id,
+                    oalias.id == order_items.c.order_id,
                     order_items.c.item_id == Item.id,
                 ),
-                from_joinpoint=True,
             ),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN "
@@ -4104,6 +4103,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
         subq = (
             select([Book.book_id])
             .where(Person.people_id == Book.book_owner_id)
+            .subquery()
             .lateral()
         )
 
@@ -4137,6 +4137,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             select([Book.book_id])
             .correlate(Person)
             .where(Person.people_id == Book.book_owner_id)
+            .subquery()
             .lateral()
         )
 

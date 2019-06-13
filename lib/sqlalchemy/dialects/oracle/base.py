@@ -886,7 +886,8 @@ class OracleCompiler(compiler.SQLCompiler):
                     [
                         c
                         for c in inner_subquery.c
-                        if orig_select.corresponding_column(c) is not None
+                        if orig_select.selected_columns.corresponding_column(c)
+                        is not None
                     ]
                 )
                 if (
@@ -939,17 +940,22 @@ class OracleCompiler(compiler.SQLCompiler):
                     limitselect._is_wrapper = True
 
                     if for_update is not None and for_update.of:
-
+                        limitselect_cols = limitselect.selected_columns
                         for elem in for_update.of:
-                            if limitselect.corresponding_column(elem) is None:
+                            if (
+                                limitselect_cols.corresponding_column(elem)
+                                is None
+                            ):
                                 limitselect = limitselect.column(elem)
 
                     limit_subquery = limitselect.alias()
+                    origselect_cols = orig_select.selected_columns
                     offsetselect = sql.select(
                         [
                             c
                             for c in limit_subquery.c
-                            if orig_select.corresponding_column(c) is not None
+                            if origselect_cols.corresponding_column(c)
+                            is not None
                         ]
                     )
 

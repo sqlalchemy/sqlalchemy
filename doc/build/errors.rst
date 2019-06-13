@@ -474,7 +474,6 @@ The solution is to access the :class:`.Column` directly using the
             CheckConstraint(cprop.expression > 5),
         )
 
-
 .. _error_2afi:
 
 This Compiled object is not bound to any Engine or Connection
@@ -585,6 +584,62 @@ Since "b" is required, pass it as ``None`` so that the INSERT may proceed::
  :ref:`coretutorial_bind_param`
 
  :ref:`execute_multiple`
+
+.. _error_89ve:
+
+Expected FROM clause, got Select.  To create a FROM clause, use the .subquery() method
+--------------------------------------------------------------------------------------
+
+This refers to a change made as of SQLAlchemy 1.4 where a SELECT statement as generated
+by a function such as :func:`.select`, but also including things like unions and textual
+SELECT expressions are no longer considered to be :class:`.FromClause` objects and
+can't be placed directly in the FROM clause of another SELECT statement without them
+being wrapped in a :class:`.Subquery` first.   This is a major conceptual change in the
+Core and the full rationale is discussed at :ref:`change_4617`.
+
+Given an example as::
+
+    m = MetaData()
+    t = Table(
+       't', m,
+       Column('a', Integer),
+       Column('b', Integer),
+       Column('c', Integer)
+    )
+    stmt = select([t])
+
+Above, ``stmt`` represents a SELECT statement.  The error is produced when we want
+to use ``stmt`` directly as a FROM clause in another SELECT, such as if we
+attempted to select from it::
+
+    new_stmt_1 = select([stmt])
+
+Or if we wanted to use it in a FROM clause such as in a JOIN::
+
+    new_stmt_2 = select([some_table]).select_from(some_table.join(stmt))
+
+In previous versions of SQLAlchemy, using a SELECT inside of another SELECT
+would produce a parenthesized, unnamed subquery.   In most cases, this form of
+SQL is not very useful as databases like MySQL and PostgreSQL require that
+subqueries in FROM clauses have named aliases, which means using the
+:meth:`.SelectBase.alias` method or as of 1.4 using the
+:meth:`.SelectBase.subquery` method to produce this.   On other databases, it
+is still much clearer for the subquery to have a name to resolve any ambiguity
+on future references to column  names inside the subquery.
+
+Beyond the above practical reasons, there are a lot of other SQLAlchemy-oriented
+reasons the change is being made.  The correct form of the above two statements
+therefore requires that :meth:`.SelectBase.subquery` is used::
+
+    subq = stmt.subquery()
+
+    new_stmt_1 = select([subq])
+
+    new_stmt_2 = select([some_table]).select_from(some_table.join(subq))
+
+.. seealso::
+
+  :ref:`change_4617`
 
 Object Relational Mapping
 =========================

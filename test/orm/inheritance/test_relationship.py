@@ -2278,8 +2278,8 @@ class MultipleAdaptUsesEntityOverTableTest(
         is_(c_adapted.element, c)
 
         ctod = q._from_obj[0].right
-        ad_adapted = ctod.left
-        d_adapted = ctod.right
+        ad_adapted = ctod.element.left
+        d_adapted = ctod.element.right
         is_(ad_adapted.element, a)
         is_(d_adapted.element, d)
 

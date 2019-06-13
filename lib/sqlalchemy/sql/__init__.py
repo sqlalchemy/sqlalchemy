@@ -58,6 +58,7 @@ from .expression import quoted_name  # noqa
 from .expression import Select  # noqa
 from .expression import select  # noqa
 from .expression import Selectable  # noqa
+from .expression import Subquery  # noqa
 from .expression import subquery  # noqa
 from .expression import table  # noqa
 from .expression import TableClause  # noqa

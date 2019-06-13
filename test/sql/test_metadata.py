@@ -2634,7 +2634,7 @@ class ConstraintTest(fixtures.TestBase):
 
     def test_column_references_derived(self):
         t1, t2, t3 = self._single_fixture()
-        s1 = tsa.select([tsa.select([t1]).alias()])
+        s1 = tsa.select([tsa.select([t1]).alias()]).subquery()
         assert t2.c.a.references(s1.c.a)
         assert not t2.c.a.references(s1.c.b)
 
@@ -2646,7 +2646,7 @@ class ConstraintTest(fixtures.TestBase):
 
     def test_derived_column_references(self):
         t1, t2, t3 = self._single_fixture()
-        s1 = tsa.select([tsa.select([t2]).alias()])
+        s1 = tsa.select([tsa.select([t2]).alias()]).subquery()
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
 
@@ -2765,7 +2765,7 @@ class ConstraintTest(fixtures.TestBase):
             Column("id", Integer, ForeignKey("t1.id"), primary_key=True),
         )
 
-        s = tsa.select([t2])
+        s = tsa.select([t2]).subquery()
         t2fk = list(t2.c.id.foreign_keys)[0]
         sfk = list(s.c.id.foreign_keys)[0]
 
@@ -3532,7 +3532,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         s = select([t1.select().alias()])
 
         # proxy has goofy thing
-        eq_(s.c.name.my_goofy_thing(), "hi")
+        eq_(s.subquery().c.name.my_goofy_thing(), "hi")
 
         # compile works
         self.assert_compile(
@@ -3561,7 +3561,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             "'test.sql.test_metadata..*MyColumn'> "
             "object.  Ensure the class includes a _constructor()",
             getattr,
-            select([t1.select().alias()]),
+            select([t1.select().alias()]).subquery(),
             "c",
         )
 

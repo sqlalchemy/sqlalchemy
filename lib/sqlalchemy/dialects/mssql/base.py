@@ -1760,7 +1760,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 select, column, asfrom
             )
 
-    def for_update_clause(self, select):
+    def for_update_clause(self, select, **kw):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which
         # SQLAlchemy doesn't use
         return ""

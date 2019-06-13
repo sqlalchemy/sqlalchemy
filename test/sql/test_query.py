@@ -704,7 +704,7 @@ class QueryTest(fixtures.TestBase):
                     )
                 )
                 .where(users.c.user_id == 9)
-            ).order_by(stmt.c.user_id)
+            ).order_by("user_id")
 
             eq_(
                 conn.execute(

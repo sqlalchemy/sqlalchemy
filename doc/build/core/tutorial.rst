@@ -1097,9 +1097,15 @@ FROM clause multiple times. In the case of a SELECT statement, it provides a
 parent name for the columns represented by the statement, allowing them to be
 referenced relative to this name.
 
-In SQLAlchemy, any :class:`.Table`, :func:`.select` construct, or other
-selectable can be turned into an alias or named subquery using the
-:meth:`.FromClause.alias` method, which produces a :class:`.Alias` construct.
+In SQLAlchemy, any :class:`.Table` or other :class:`.FromClause` based
+selectable can be turned into an alias using :meth:`.FromClause.alias` method,
+which produces an :class:`.Alias` construct.   :class:`.Alias` is a
+:class:`.FromClause` object that refers to a mapping of :class:`.Column`
+objects via its :attr:`.FromClause.c` collection, and can be used within the
+FROM clause of any subsequent SELECT statement, by referring to its column
+elements in the columns or WHERE clause of the statement,  or through explicit
+placement in the FROM clause, either directly or within a join.
+
 As an example, suppose we know that our user ``jack`` has two particular email
 addresses. How can we locate jack based on the combination of those two
 addresses?   To accomplish this, we'd use a join to the ``addresses`` table,
@@ -1142,17 +1148,21 @@ to the :meth:`.FromClause.alias` method::
 
     >>> a1 = addresses.alias('a1')
 
-Aliases can of course be used for anything which you can SELECT from,
-including SELECT statements themselves, by converting the SELECT statement
-into a named subquery.  The :meth:`.SelectBase.alias` method performs this
-role.   We can self-join the ``users`` table
-back to the :func:`.select` we've created by making an alias of the entire
-statement:
+SELECT-oriented constructs which extend from :class:`.SelectBase` may be turned
+into aliased subqueries using the :meth:`.SelectBase.subquery` method, which
+produces a :class:`.Subquery` construct; for ease of use, there is also a
+:meth:`.SelectBase.alias` method that is synonymous with
+:class:`.SelectBase.subquery`.   Like  :class:`.Alias`, :class:`.Subquery` is
+also a :class:`.FromClause` object that may be part of any enclosing SELECT
+using the same techniques one would use for a :class:`.Alias`.
+
+We can self-join the ``users`` table back to the :func:`.select` we've created
+by making :class:`.Subquery` of the entire statement:
 
 .. sourcecode:: pycon+sql
 
-    >>> addresses_subq = s.alias()
-    >>> s = select([users.c.name]).where(users.c.id == addresses_subq.c.id)
+    >>> address_subq = s.subquery()
+    >>> s = select([users.c.name]).where(users.c.id == address_subq.c.id)
     {sql}>>> conn.execute(s).fetchall()
     SELECT users.name
     FROM users,
@@ -1164,6 +1174,10 @@ statement:
     WHERE users.id = anon_1.id
     ('jack@msn.com', 'jack@yahoo.com')
     {stop}[(u'jack',)]
+
+.. versionchanged:: 1.4 Added the :class:`.Subquery` object and created more of a
+   separation between an "alias" of a FROM clause and a named subquery of a
+   SELECT.   See :ref:`change_4617`.
 
 Using Joins
 ===========
@@ -1571,7 +1585,7 @@ module level functions :func:`~.expression.union` and
     UNION
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
-    WHERE addresses.email_address LIKE ? ORDER BY addresses.email_address
+    WHERE addresses.email_address LIKE ? ORDER BY email_address
     ('foo@bar.com', '%@yahoo.com')
     {stop}[(1, 1, u'jack@yahoo.com')]
 
@@ -1604,7 +1618,7 @@ Also available, though not supported on all databases, are
 A common issue with so-called "compound" selectables arises due to the fact
 that they nest with parenthesis. SQLite in particular doesn't like a statement
 that starts with parenthesis. So when nesting a "compound" inside a
-"compound", it's often necessary to apply ``.alias().select()`` to the first
+"compound", it's often necessary to apply ``.subquery().select()`` to the first
 element of the outermost compound, if that element is also a compound. For
 example, to nest a "union" and a "select" inside of "except\_", SQLite will
 want the "union" to be stated as a subquery:
@@ -1617,7 +1631,7 @@ want the "union" to be stated as a subquery:
     ...             where(addresses.c.email_address.like('%@yahoo.com')),
     ...         addresses.select().
     ...             where(addresses.c.email_address.like('%@msn.com'))
-    ...     ).alias().select(),   # apply subquery here
+    ...     ).subquery().select(),   # apply subquery here
     ...    addresses.select(addresses.c.email_address.like('%@msn.com'))
     ... )
     {sql}>>> conn.execute(u).fetchall()
@@ -1652,6 +1666,36 @@ want the "union" to be stated as a subquery:
     :func:`.except_`
 
     :func:`.except_all`
+
+Ordering Unions
+^^^^^^^^^^^^^^^
+
+UNION and other set constructs have a special case when it comes to ordering
+the results.  As the UNION consists of several SELECT statements, to ORDER the
+whole result usually requires that an ORDER BY clause refer to column names but
+not specific tables.  As in the previous examples, we used
+``.order_by(addresses.c.email_address)`` but SQLAlchemy rendered the ORDER BY
+without using the table name.    A generalized way to apply ORDER BY to a union
+is also to refer to the :attr:`.CompoundSelect.selected_columns` collection in
+order to access the column expressions which are synonymous with the columns
+selected from the first SELECT; the SQLAlchemy compiler will ensure these will
+be rendered without table names::
+
+    >>> u = union(
+    ...     addresses.select().
+    ...             where(addresses.c.email_address == 'foo@bar.com'),
+    ...    addresses.select().
+    ...             where(addresses.c.email_address.like('%@yahoo.com')),
+    ... )
+    >>> u = u.order_by(u.selected_columns.email_address)
+    >>> print(u)
+    SELECT addresses.id, addresses.user_id, addresses.email_address
+    FROM addresses
+    WHERE addresses.email_address = :email_address_1
+    UNION SELECT addresses.id, addresses.user_id, addresses.email_address
+    FROM addresses
+    WHERE addresses.email_address LIKE :email_address_2 ORDER BY email_address
+
 
 .. _scalar_selects:
 

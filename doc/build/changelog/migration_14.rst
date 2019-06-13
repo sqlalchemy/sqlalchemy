@@ -7,6 +7,183 @@ What's New in SQLAlchemy 1.4?
     This document describes changes between SQLAlchemy version 1.3
     and SQLAlchemy version 1.4.
 
+    Version 1.4 is taking on a different focus than other SQLAlchemy releases
+    in that it is in many ways attempting to serve as a potential migration
+    point for a more dramatic series of API changes currently planned for
+    release  2.0 of SQLAlchemy.   The focus of SQLAlchemy 2.0 is a modernized
+    and slimmed down API that removes lots of usage patterns that have long
+    been discouraged, as well as mainstreams the best ideas in SQLAlchemy as
+    first class API features, with the goal being that there is much less
+    ambiguity in how the API is to be used, as well as that a series of
+    implicit behaviors and rarely-used API flags that complicate the internals
+    and hinder performance will be removed.
+
+API Changes - Core
+==================
+
+.. _change_4617:
+
+A SELECT statement is no longer implicitly considered to be a FROM clause
+--------------------------------------------------------------------------
+
+This change is one of the larger conceptual changes in SQLAlchemy in many years,
+however it is hoped that the end user impact is relatively small, as the change
+more closely matches what databases like MySQL and PostgreSQL require in any case.
+
+The most immediate noticeable impact is that a :func:`.select` can no longer
+be embedded inside of another :func:`.select` directly, without explicitly
+turning the inner :func:`.select` into a subquery first.  This is historically
+performed by using the :meth:`.SelectBase.alias` method, which remains, however
+is more explicitly suited by using a new method :meth:`.SelectBase.subquery`;
+both methods do the same thing.   The object returned is now :class:`.Subquery`,
+which is very similar to the :class:`.Alias` object and shares a common
+base :class:`.AliasedReturnsRows`.
+
+That is, this will now raise::
+
+    stmt1 = select([user.c.id, user.c.name])
+    stmt2 = select([addresses, stmt1]).select_from(addresses.join(stmt1))
+
+Raising::
+
+    sqlalchemy.exc.ArgumentError: Column expression or FROM clause expected,
+    got <...Select object ...>. To create a FROM clause from a <class
+    'sqlalchemy.sql.selectable.Select'> object, use the .subquery() method.
+
+The correct calling form is instead::
+
+    sq1 = select([user.c.id, user.c.name]).subquery()
+    stmt2 = select([addresses, sq1]).select_from(addresses.join(sq1))
+
+Noting above that the :meth:`.SelectBase.subquery` method is essentially
+equivalent to using the :meth:`.SelectBase.alias` method.
+
+The above calling form is typically required in any case as the call to
+:meth:`.SelectBase.subquery` or :meth:`.SelectBase.alias` is needed to
+ensure the subquery has a name.  The MySQL and PostgreSQL databases do not
+accept unnamed subqueries in the FROM clause and they are of limited use
+on other platforms; this is described further below.
+
+Along with the above change, the general capability of :func:`.select` and
+related constructs to create unnamed subqueries, which means a FROM subquery
+that renders without any name i.e. "AS somename", has been removed, and the
+ability of the :func:`.select` construct to implicitly create subqueries
+without explicit calling code to do so is mostly deprecated.   In the above
+example, as has always been the case, using the :meth:`.SelectBase.alias`
+method as well as the new :meth:`.SelectBase.subquery` method without passing a
+name will generate a so-called "anonymous" name, which is the familiar
+``anon_1`` name we see in SQLAlchemy queries::
+
+    SELECT
+        addresses.id, addresses.email, addresses.user_id,
+        anon_1.id, anon_1.name
+    FROM
+    addresses JOIN
+    (SELECT users.id AS id, users.name AS name FROM users) AS anon_1
+    ON addresses.user_id = anon_1.id
+
+Unnamed subqueries in the FROM clause (which note are different from
+so-called "scalar subqueries" which take the place of a column expression
+in the columns clause or WHERE clause) are of extremely limited use in SQL,
+and their production in SQLAlchemy has mostly presented itself as an
+undesirable behavior that needs to be worked around.    For example,
+both the MySQL and PostgreSQL outright reject the usage of unnamed subqueries::
+
+    # MySQL / MariaDB:
+
+    MariaDB [(none)]> select * from (select 1);
+    ERROR 1248 (42000): Every derived table must have its own alias
+
+
+    # PostgreSQL:
+
+    test=> select * from (select 1);
+    ERROR:  subquery in FROM must have an alias
+    LINE 1: select * from (select 1);
+                          ^
+    HINT:  For example, FROM (SELECT ...) [AS] foo.
+
+A database like SQLite accepts them, however it is still often the case that
+the names produced from such a subquery are too ambiguous to be useful::
+
+    sqlite> CREATE TABLE a(id integer);
+    sqlite> CREATE TABLE b(id integer);
+    sqlite> SELECT * FROM a JOIN (SELECT * FROM b) ON a.id=id;
+    Error: ambiguous column name: id
+    sqlite> SELECT * FROM a JOIN (SELECT * FROM b) ON a.id=b.id;
+    Error: no such column: b.id
+
+    # use a name
+    sqlite> SELECT * FROM a JOIN (SELECT * FROM b) AS anon_1 ON a.id=anon_1.id;
+
+Due to the above limitations, there are very few places in SQLAlchemy where
+such a query form was valid; the one exception was within the Oracle dialect
+where they were used to create OFFSET / LIMIT subqueries as Oracle does not
+support these keywords directly; this implementation has been replaced by
+one which uses anonymous subqueries.   Throughout the ORM, exception cases
+that detect where a SELECT statement would be SELECTed from either encourage
+the user to, or implicitly create, an anonymously named subquery; it is hoped
+by moving to an all-explicit subquery much of the complexity incurred by
+these areas can be removed.
+
+As :class:`.SelectBase` objects are no longer :class:`.FromClause` objects,
+attributes like the ``.c`` attribute as well as methods like ``.select()``,
+``.join()``, and ``.outerjoin()`` upon :class:`.SelectBase` are now
+deprecated, as these methods all imply implicit production of a subquery.
+Instead, as is already what the vast majority of applications have to do
+in any case, invoking :meth:`.SelectBase.alias` or :meth:`.SelectBase.subquery`
+will provide for a :class:`.Subquery` object that provides all these attributes,
+as it is part of the :class:`.FromClause` hierarchy.   In the interim, these
+methods are still available, however they now produce an anonymously named
+subquery rather than an unnamed one, and this subquery is distinct from the
+:class:`.SelectBase` construct itself.
+
+In place of the ``.c`` attribute, a new attribute :attr:`.SelectBase.selected_columns`
+is added.  This attribute resolves to a column collection that is what most
+people hope that ``.c`` does (but does not), which is to reference the columns
+that are in the columns clause of the SELECT statement.   A common beginner mistake
+is code such as the following::
+
+    stmt = select([users])
+    stmt = stmt.where(stmt.c.name == 'foo')
+
+The above code appears intuitive and that it would generate
+"SELECT * FROM users WHERE name='foo'", however veteran SQLAlchemy users will
+recognize that it in fact generates a useless subquery resembling
+"SELECT * FROM (SELECT * FROM users) WHERE name='foo'".
+
+The new :attr:`.SelectBase.selected_columns` attribute however **does** suit
+the use case above, as in a case like the above it links directly to the columns
+present in the ``users.c`` collection::
+
+    stmt = select([users])
+    stmt = stmt.where(stmt.selected_columns.name == 'foo')
+
+There is of course the notion that perhaps ``.c`` on :class:`.SelectBase` could
+simply act the way :attr:`.SelectBase.selected_columns` does above, however in
+light of the fact that ``.c`` is strongly associated with the :class:`.FromClause`
+hierarchy, meaning that it is a set of columns that can be directly in the
+FROM clause of another SELECT, it's better that a column collection that
+serves an entirely different purpose have a new name.
+
+In the bigger picture, the reason this change is being made now is towards the
+goal of unifying the ORM :class:`.Query` object into the :class:`.SelectBase`
+hierarchy in SQLAlchemy 2.0, so that the ORM will have a "``select()``"
+construct that extends directly from the existing :func:`.select` object,
+having the same methods and behaviors except that it will have additional ORM
+functionality.   All statement objects in Core will also be fully cacheable
+using a new system that resembles "baked queries" except that it will work
+transparently for all statements across Core and ORM.   In order to achieve
+this, the Core class hierarchy needs to be refined to behave in such a way that
+is more easily compatible with the ORM, and the ORM class hierarchy needs to be
+refined so that it is more compatible with Core.
+
+
+:ticket:`4617`
+
+
+
+
 
 Behavioral Changes - ORM
 ========================

@@ -251,20 +251,22 @@ class TypesTest(fixtures.TestBase):
     def test_rowid(self):
         metadata = self.metadata
         t = Table("t1", metadata, Column("x", Integer))
-        t.create()
-        t.insert().execute(x=5)
-        s1 = select([t])
-        s2 = select([column("rowid")]).select_from(s1)
-        rowid = s2.scalar()
 
-        # the ROWID type is not really needed here,
-        # as cx_oracle just treats it as a string,
-        # but we want to make sure the ROWID works...
-        rowid_col = column("rowid", oracle.ROWID)
-        s3 = select([t.c.x, rowid_col]).where(
-            rowid_col == cast(rowid, oracle.ROWID)
-        )
-        eq_(s3.select().execute().fetchall(), [(5, rowid)])
+        with testing.db.begin() as conn:
+            t.create(conn)
+            conn.execute(t.insert(), {"x": 5})
+            s1 = select([t]).subquery()
+            s2 = select([column("rowid")]).select_from(s1)
+            rowid = conn.scalar(s2)
+
+            # the ROWID type is not really needed here,
+            # as cx_oracle just treats it as a string,
+            # but we want to make sure the ROWID works...
+            rowid_col = column("rowid", oracle.ROWID)
+            s3 = select([t.c.x, rowid_col]).where(
+                rowid_col == cast(rowid, oracle.ROWID)
+            )
+            eq_(conn.execute(s3).fetchall(), [(5, rowid)])
 
     @testing.fails_on(
         "+zxjdbc", "Not yet known how to pass values of the " "INTERVAL type"

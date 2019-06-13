@@ -287,7 +287,7 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
             "CAST(NULL AS VARCHAR(50)) AS primary_language, "
             "managers.manager_name AS manager_name FROM people "
             "JOIN managers ON people.person_id = managers.person_id) "
-            "AS anon_1 ON companies.company_id = anon_1.company_id"
+            "AS pjoin_1 ON companies.company_id = pjoin_1.company_id"
         )
 
 
@@ -309,8 +309,8 @@ class PolymorphicAliasedJoinsTest(
             "FROM people LEFT OUTER JOIN engineers "
             "ON people.person_id = engineers.person_id "
             "LEFT OUTER JOIN managers "
-            "ON people.person_id = managers.person_id) AS anon_1 "
-            "ON companies.company_id = anon_1.people_company_id"
+            "ON people.person_id = managers.person_id) AS pjoin_1 "
+            "ON companies.company_id = pjoin_1.people_company_id"
         )
 
 

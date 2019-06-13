@@ -300,7 +300,7 @@ class ResultMetaData(object):
                 # if we did a pure positional match, then reset the
                 # original "expression element" back to the "unambiguous"
                 # entry.  This is a new behavior in 1.1 which impacts
-                # TextAsFrom but also straight compiled SQL constructs.
+                # TextualSelect but also straight compiled SQL constructs.
                 if not self.matched_on_name:
                     self._keymap.update(
                         [
@@ -363,7 +363,7 @@ class ResultMetaData(object):
 
         The remaining fairly common case is that of the textual SQL
         that includes at least partial column information; this is when
-        we use a :class:`.TextAsFrom` construct.   This construct may have
+        we use a :class:`.TextualSelect` construct.   This construct may have
         unordered or ordered column information.  In the ordered case, we
         merge the cursor.description and the compiled construct's information
         positionally, and warn if there are additional description names
@@ -386,7 +386,7 @@ class ResultMetaData(object):
         SQLAlchemy for all cases up through te 0.9 series.   Positional
         matching for compiled SQL expressions was introduced in 1.0 as a
         major performance feature, and positional matching for textual
-        :class:`.TextAsFrom` objects in 1.1.  As name matching is no longer
+        :class:`.TextualSelect` objects in 1.1.  As name matching is no longer
         a common case, it was acceptable to factor it into smaller generator-
         oriented methods that are easier to understand, but incur slightly
         more performance overhead.

@@ -66,14 +66,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_subquery(self):
         t = table("sometable", column("col1"), column("col2"))
-        s = select([t])
+        s = select([t]).subquery()
         s = select([s.c.col1, s.c.col2])
 
         self.assert_compile(
             s,
-            "SELECT col1, col2 FROM (SELECT "
+            "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 "
-            "AS col2 FROM sometable)",
+            "AS col2 FROM sometable) anon_1",
         )
 
     def test_bindparam_quote(self):
@@ -176,33 +176,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_limit_two(self):
         t = table("sometable", column("col1"), column("col2"))
-        s = select([t]).limit(10).offset(20)
+        s = select([t]).limit(10).offset(20).subquery()
 
-        # TODO: this will require a subquery
         s2 = select([s.c.col1, s.c.col2])
         self.assert_compile(
             s2,
-            "SELECT col1, col2 FROM (SELECT anon_1.col1 AS col1, "
-            "anon_1.col2 AS col2 "
-            "FROM (SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, "
+            "anon_2.col2 AS col2 "
+            "FROM (SELECT anon_3.col1 AS col1, anon_3.col2 AS col2, "
             "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2)",
+            "sometable.col2 AS col2 FROM sometable) anon_3 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_2 "
+            "WHERE ora_rn > :param_2) anon_1",
             checkparams={"param_1": 10, "param_2": 20},
         )
 
         self.assert_compile(
             s2,
-            "SELECT col1, col2 FROM (SELECT anon_1.col1 AS col1, "
-            "anon_1.col2 AS col2 "
-            "FROM (SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, "
+            "anon_2.col2 AS col2 "
+            "FROM (SELECT anon_3.col1 AS col1, anon_3.col2 AS col2, "
             "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2)",
+            "sometable.col2 AS col2 FROM sometable) anon_3 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_2 "
+            "WHERE ora_rn > :param_2) anon_1",
         )
         c = s2.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)

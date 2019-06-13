@@ -9,6 +9,7 @@ from sqlalchemy import sql
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.sql import column
+from sqlalchemy.sql.base import SeparateKeyColumnCollection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -439,6 +440,29 @@ class ToListTest(fixtures.TestBase):
             util.to_list([compat.b("abc"), compat.b("def")]),
             [compat.b("abc"), compat.b("def")],
         )
+
+
+class SeparateKeysColumnCollectionTest(
+    testing.AssertsCompiledSQL, fixtures.TestBase
+):
+    def test_in(self):
+        cc = SeparateKeyColumnCollection()
+        cc["kcol1"] = sql.column("col1")
+        cc["kcol2"] = sql.column("col2")
+        cc["kcol3"] = sql.column("col3")
+        assert "col1" not in cc
+        assert "kcol2" in cc
+
+    def test_get(self):
+        c1, c2 = sql.column("col1"), sql.column("col2")
+        cc = SeparateKeyColumnCollection([("kcol1", c1), ("kcol2", c2)])
+        is_(cc.kcol1, c1)
+        is_(cc.kcol2, c2)
+
+    def test_all_cols(self):
+        c1, c2 = sql.column("col1"), sql.column("col2")
+        cc = SeparateKeyColumnCollection([("kcol1", c1), ("kcol2", c2)])
+        eq_(cc._all_columns, [c1, c2])
 
 
 class ColumnCollectionTest(testing.AssertsCompiledSQL, fixtures.TestBase):

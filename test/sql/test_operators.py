@@ -402,7 +402,17 @@ class _CustomComparatorTests(object):
 
     def test_column_proxy(self):
         t = Table("t", MetaData(), Column("foo", self._add_override_factory()))
-        proxied = t.select().c.foo
+        with testing.expect_deprecated(
+            "The SelectBase.c and SelectBase.columns attributes "
+            "are deprecated"
+        ):
+            proxied = t.select().c.foo
+        self._assert_add_override(proxied)
+        self._assert_and_override(proxied)
+
+    def test_subquery_proxy(self):
+        t = Table("t", MetaData(), Column("foo", self._add_override_factory()))
+        proxied = t.select().subquery().c.foo
         self._assert_add_override(proxied)
         self._assert_and_override(proxied)
 

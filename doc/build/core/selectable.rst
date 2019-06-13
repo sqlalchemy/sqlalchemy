@@ -29,8 +29,6 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autofunction:: select
 
-.. autofunction:: subquery
-
 .. autofunction:: sqlalchemy.sql.expression.table
 
 .. autofunction:: tablesample
@@ -40,6 +38,10 @@ elements are themselves :class:`.ColumnElement` subclasses).
 .. autofunction:: union_all
 
 .. autoclass:: Alias
+   :members:
+   :inherited-members:
+
+.. autoclass:: AliasedReturnsRows
    :members:
    :inherited-members:
 
@@ -89,6 +91,10 @@ elements are themselves :class:`.ColumnElement` subclasses).
    :members:
 
 .. autoclass:: SelectBase
+   :members:
+   :inherited-members:
+
+.. autoclass:: Subquery
    :members:
    :inherited-members:
 

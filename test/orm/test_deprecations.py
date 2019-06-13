@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy import and_
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
@@ -938,6 +939,42 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_onclause_conditional_adaption(self):
+        Item, Order, orders, order_items, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.order_items,
+            self.classes.User,
+        )
+
+        sess = Session()
+
+        oalias = orders.select()
+
+        with self._expect_implicit_subquery():
+            self.assert_compile(
+                sess.query(User)
+                .join(oalias, User.orders)
+                .join(
+                    Item,
+                    and_(
+                        Order.id == order_items.c.order_id,
+                        order_items.c.item_id == Item.id,
+                    ),
+                    from_joinpoint=True,
+                ),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN "
+                "(SELECT orders.id AS id, orders.user_id AS user_id, "
+                "orders.address_id AS address_id, orders.description "
+                "AS description, orders.isopen AS isopen FROM orders) "
+                "AS anon_1 ON users.id = anon_1.user_id JOIN items "
+                "ON anon_1.id = order_items.order_id "
+                "AND order_items.item_id = items.id",
+                use_default_dialect=True,
+            )
+
 
 class DeprecatedInhTest(_poly_fixtures._Polymorphic):
     def test_with_polymorphic(self):
@@ -950,6 +987,43 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
         is_true(
             sa.inspect(p_poly).selectable.compare(select([Person]).subquery())
         )
+
+    def test_multiple_adaption(self):
+        """test that multiple filter() adapters get chained together "
+        and work correctly within a multiple-entry join()."""
+
+        Company = _poly_fixtures.Company
+        Machine = _poly_fixtures.Machine
+        Engineer = _poly_fixtures.Engineer
+
+        people = self.tables.people
+        engineers = self.tables.engineers
+        machines = self.tables.machines
+
+        sess = create_session()
+
+        mach_alias = machines.select()
+        with DeprecatedQueryTest._expect_implicit_subquery():
+            self.assert_compile(
+                sess.query(Company)
+                .join(people.join(engineers), Company.employees)
+                .join(mach_alias, Engineer.machines, from_joinpoint=True)
+                .filter(Engineer.name == "dilbert")
+                .filter(Machine.name == "foo"),
+                "SELECT companies.company_id AS companies_company_id, "
+                "companies.name AS companies_name "
+                "FROM companies JOIN (people "
+                "JOIN engineers ON people.person_id = "
+                "engineers.person_id) ON companies.company_id = "
+                "people.company_id JOIN "
+                "(SELECT machines.machine_id AS machine_id, "
+                "machines.name AS name, "
+                "machines.engineer_id AS engineer_id "
+                "FROM machines) AS anon_1 "
+                "ON engineers.person_id = anon_1.engineer_id "
+                "WHERE people.name = :name_1 AND anon_1.name = :name_2",
+                use_default_dialect=True,
+            )
 
 
 class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):

@@ -695,17 +695,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             ') AS "Alias1"',
         )
 
-    def test_literal_column_label_embedded_select_samename(self):
-        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
-
-        # embedded SELECT use case, going away in 1.4 however use a
-        # SelectStatementGrouping here when that merges
-        self.assert_compile(
-            select([col]).select(),
-            'SELECT "NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
-            '"NEEDS QUOTES")',
-        )
-
     def test_literal_column_label_alias_samename(self):
         col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
 
@@ -713,17 +702,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             select([col]).alias().select(),
             'SELECT anon_1."NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
             '"NEEDS QUOTES") AS anon_1',
-        )
-
-    def test_literal_column_label_embedded_select_diffname(self):
-        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES_")
-
-        # embedded SELECT use case, going away in 1.4 however use a
-        # SelectStatementGrouping here when that merges
-        self.assert_compile(
-            select([col]).select(),
-            'SELECT "NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
-            '"NEEDS QUOTES_")',
         )
 
     def test_literal_column_label_alias_diffname(self):
@@ -735,19 +713,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             '"NEEDS QUOTES_") AS anon_1',
         )
 
-    def test_literal_column_label_embedded_select_samename_explcit_quote(self):
-        col = sql.literal_column("NEEDS QUOTES").label(
-            quoted_name("NEEDS QUOTES", True)
-        )
-
-        # embedded SELECT use case, going away in 1.4 however use a
-        # SelectStatementGrouping here when that merges
-        self.assert_compile(
-            select([col]).select(),
-            'SELECT "NEEDS QUOTES" FROM '
-            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES")',
-        )
-
     def test_literal_column_label_alias_samename_explcit_quote(self):
         col = sql.literal_column("NEEDS QUOTES").label(
             quoted_name("NEEDS QUOTES", True)
@@ -757,19 +722,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             select([col]).alias().select(),
             'SELECT anon_1."NEEDS QUOTES" FROM '
             '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
-        )
-
-    def test_literal_column_label_embedded_select_diffname_explcit_quote(self):
-        col = sql.literal_column("NEEDS QUOTES").label(
-            quoted_name("NEEDS QUOTES_", True)
-        )
-
-        # embedded SELECT use case, going away in 1.4 however use a
-        # SelectStatementGrouping here when that merges
-        self.assert_compile(
-            select([col]).select(),
-            'SELECT "NEEDS QUOTES_" FROM '
-            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_")',
         )
 
     def test_literal_column_label_alias_diffname_explcit_quote(self):
