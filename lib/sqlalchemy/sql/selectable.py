@@ -1261,26 +1261,30 @@ class Alias(roles.AnonymizedFromClauseRole, FromClause):
         )
 
     def _init(self, selectable, name=None):
-        baseselectable = selectable
-        while isinstance(baseselectable, Alias):
-            baseselectable = baseselectable.element
-        self.original = baseselectable
-        self.supports_execution = baseselectable.supports_execution
+        self.wrapped = selectable
+        if isinstance(selectable, Alias):
+            selectable = selectable.element
+            assert not isinstance(selectable, Alias)
+
+        self.supports_execution = selectable.supports_execution
         if self.supports_execution:
-            self._execution_options = baseselectable._execution_options
+            self._execution_options = selectable._execution_options
         self.element = selectable
         self._orig_name = name
         if name is None:
-            if self.original.named_with_column:
-                name = getattr(self.original, "name", None)
+            if (
+                isinstance(selectable, FromClause)
+                and selectable.named_with_column
+            ):
+                name = getattr(selectable, "name", None)
             name = _anonymous_label("%%(%d %s)s" % (id(self), name or "anon"))
         self.name = name
 
     def self_group(self, against=None):
         if (
             isinstance(against, CompoundSelect)
-            and isinstance(self.original, Select)
-            and self.original._needs_parens_for_grouping()
+            and isinstance(self.element, Select)
+            and self.element._needs_parens_for_grouping()
         ):
             return FromGrouping(self)
 
@@ -1293,17 +1297,22 @@ class Alias(roles.AnonymizedFromClauseRole, FromClause):
         else:
             return self.name.encode("ascii", "backslashreplace")
 
+    @property
+    def original(self):
+        """legacy for dialects that are referring to Alias.original"""
+        return self.element
+
     def is_derived_from(self, fromclause):
         if fromclause in self._cloned_set:
             return True
         return self.element.is_derived_from(fromclause)
 
     def _populate_column_collection(self):
-        for col in self.element.columns._all_columns:
+        for col in self.wrapped.columns._all_columns:
             col._make_proxy(self)
 
     def _refresh_for_new_column(self, column):
-        col = self.element._refresh_for_new_column(column)
+        col = self.wrapped._refresh_for_new_column(column)
         if col is not None:
             if not self._cols_populated:
                 return None
@@ -1319,17 +1328,17 @@ class Alias(roles.AnonymizedFromClauseRole, FromClause):
         if isinstance(self.element, TableClause):
             return
         self._reset_exported()
-        self.element = clone(self.element, **kw)
-        baseselectable = self.element
-        while isinstance(baseselectable, Alias):
-            baseselectable = baseselectable.element
-        self.original = baseselectable
+        self.wrapped = clone(self.wrapped, **kw)
+        if isinstance(self.wrapped, Alias):
+            self.element = self.wrapped.element
+        else:
+            self.element = self.wrapped
 
     def get_children(self, column_collections=True, **kw):
         if column_collections:
             for c in self.c:
                 yield c
-        yield self.element
+        yield self.wrapped
 
     def _cache_key(self, **kw):
         return (self.__class__, self.element._cache_key(**kw), self._orig_name)
@@ -1522,7 +1531,7 @@ class CTE(Generative, HasSuffixes, Alias):
 
     def alias(self, name=None, flat=False):
         return CTE._construct(
-            self.original,
+            self.element,
             name=name,
             recursive=self.recursive,
             _cte_alias=self,
@@ -1531,7 +1540,7 @@ class CTE(Generative, HasSuffixes, Alias):
 
     def union(self, other):
         return CTE._construct(
-            self.original.union(other),
+            self.element.union(other),
             name=self.name,
             recursive=self.recursive,
             _restates=self._restates.union([self]),
@@ -1540,7 +1549,7 @@ class CTE(Generative, HasSuffixes, Alias):
 
     def union_all(self, other):
         return CTE._construct(
-            self.original.union_all(other),
+            self.element.union_all(other),
             name=self.name,
             recursive=self.recursive,
             _restates=self._restates.union([self]),

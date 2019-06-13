@@ -1680,7 +1680,7 @@ class SQLCompiler(Compiled):
                 if self.positional:
                     kwargs["positional_names"] = self.cte_positional[cte] = []
 
-                text += " AS \n" + cte.original._compiler_dispatch(
+                text += " AS \n" + cte.element._compiler_dispatch(
                     self, asfrom=True, **kwargs
                 )
 
@@ -1722,7 +1722,7 @@ class SQLCompiler(Compiled):
         if ashint:
             return self.preparer.format_alias(alias, alias_name)
         elif asfrom:
-            ret = alias.original._compiler_dispatch(
+            ret = alias.element._compiler_dispatch(
                 self, asfrom=True, **kwargs
             ) + self.get_render_as_alias_suffix(
                 self.preparer.format_alias(alias, alias_name)
@@ -1735,7 +1735,7 @@ class SQLCompiler(Compiled):
 
             return ret
         else:
-            return alias.original._compiler_dispatch(self, **kwargs)
+            return alias.element._compiler_dispatch(self, **kwargs)
 
     def visit_lateral(self, lateral, **kw):
         kw["lateral"] = True

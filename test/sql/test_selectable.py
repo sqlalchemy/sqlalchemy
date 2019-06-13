@@ -931,6 +931,22 @@ class RefreshForNewColTest(fixtures.TestBase):
         s._refresh_for_new_column(q)
         assert q in s.c.b_x.proxy_set
 
+    def test_alias_alias_samename_init(self):
+        a = table("a", column("x"))
+        b = table("b", column("y"))
+        s1 = select([a, b]).apply_labels().alias()
+        s2 = s1.alias()
+
+        s1.c
+        s2.c
+
+        q = column("x")
+        b.append_column(q)
+
+        s2._refresh_for_new_column(q)
+
+        is_(s1.corresponding_column(s2.c.b_x), s1.c.b_x)
+
     def test_aliased_select_samename_uninit(self):
         a = table("a", column("x"))
         b = table("b", column("y"))
@@ -2584,3 +2600,59 @@ class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT t_1.c FROM t AS t_1 FOR SHARE OF t_1",
             dialect="postgresql",
         )
+
+
+class AliasTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_legacy_original_accessor(self):
+        t = table("t", column("c"))
+        a1 = t.alias()
+        a2 = a1.alias()
+        a3 = a2.alias()
+
+        is_(a1.original, t)
+        is_(a2.original, t)
+        is_(a3.original, t)
+
+    def test_wrapped(self):
+        t = table("t", column("c"))
+        a1 = t.alias()
+        a2 = a1.alias()
+        a3 = a2.alias()
+
+        is_(a1.element, t)
+        is_(a2.element, t)
+        is_(a3.element, t)
+
+        is_(a3.wrapped, a2)
+        is_(a2.wrapped, a1)
+        is_(a1.wrapped, t)
+
+    def test_get_children_preserves_wrapped(self):
+        t = table("t", column("c"))
+        stmt = select([t])
+        a1 = stmt.alias()
+        a2 = a1.alias()
+        eq_(set(a2.get_children(column_collections=False)), {a1})
+
+    def test_wrapped_correspondence(self):
+        t = table("t", column("c"))
+        stmt = select([t])
+        a1 = stmt.alias()
+        a2 = a1.alias()
+
+        is_(a1.corresponding_column(a2.c.c), a1.c.c)
+
+    def test_copy_internals_preserves_wrapped(self):
+        t = table("t", column("c"))
+        stmt = select([t])
+        a1 = stmt.alias()
+        a2 = a1.alias()
+
+        is_(a2.element, a2.wrapped.element)
+
+        a3 = a2._clone()
+        a3._copy_internals()
+        is_(a1.corresponding_column(a3.c.c), a1.c.c)
+        is_(a3.element, a3.wrapped.element)

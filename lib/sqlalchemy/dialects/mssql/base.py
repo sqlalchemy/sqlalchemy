@@ -1659,7 +1659,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
     @_with_legacy_schema_aliasing
     def visit_alias(self, alias, **kw):
         # translate for schema-qualified table aliases
-        kw["mssql_aliased"] = alias.original
+        kw["mssql_aliased"] = alias.element
         return super(MSSQLCompiler, self).visit_alias(alias, **kw)
 
     @_with_legacy_schema_aliasing
