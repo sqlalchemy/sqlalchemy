@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 4717
+
+    Added support for column sorting flags when reflecting indexes for
+    PostgreSQL, including ASC, DESC, NULLSFIRST, NULLSLAST.  Also adds this
+    facility to the reflection system in general which can be applied to other
+    dialects in future releases.  Pull request courtesy Eli Collins.

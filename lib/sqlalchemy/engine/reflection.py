@@ -30,6 +30,7 @@ from .. import exc
 from .. import inspection
 from .. import sql
 from .. import util
+from ..sql import operators
 from ..sql import schema as sa_schema
 from ..sql.type_api import TypeEngine
 from ..util import deprecated
@@ -469,6 +470,12 @@ class Inspector(object):
         unique
           boolean
 
+        column_sorting
+          optional dict mapping column names to tuple of sort keywords,
+          which may include ``asc``, ``desc``, ``nullsfirst``, ``nullslast``.
+
+          .. versionadded:: 1.3.5
+
         dialect_options
           dict of dialect-specific index options.  May not be present
           for all dialects.
@@ -854,6 +861,13 @@ class Inspector(object):
                 )
             )
 
+    _index_sort_exprs = [
+        ("asc", operators.asc_op),
+        ("desc", operators.desc_op),
+        ("nullsfirst", operators.nullsfirst_op),
+        ("nullslast", operators.nullslast_op),
+    ]
+
     def _reflect_indexes(
         self,
         table_name,
@@ -869,6 +883,7 @@ class Inspector(object):
         for index_d in indexes:
             name = index_d["name"]
             columns = index_d["column_names"]
+            column_sorting = index_d.get("column_sorting", {})
             unique = index_d["unique"]
             flavor = index_d.get("type", "index")
             dialect_options = index_d.get("dialect_options", {})
@@ -897,8 +912,12 @@ class Inspector(object):
                         "%s key '%s' was not located in "
                         "columns for table '%s'" % (flavor, c, table_name)
                     )
-                else:
-                    idx_cols.append(idx_col)
+                    continue
+                c_sorting = column_sorting.get(c, ())
+                for k, op in self._index_sort_exprs:
+                    if k in c_sorting:
+                        idx_col = op(idx_col)
+                idx_cols.append(idx_col)
 
             sa_schema.Index(
                 name,
