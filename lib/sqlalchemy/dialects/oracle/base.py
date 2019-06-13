@@ -867,12 +867,28 @@ class OracleCompiler(compiler.SQLCompiler):
                 # Outer select and "ROWNUM as ora_rn" can be dropped if
                 # limit=0
 
-                kwargs["select_wraps_for"] = select
+                kwargs["select_wraps_for"] = orig_select = select
                 select = select._generate()
                 select._oracle_visit = True
 
+                # add expressions to accommodate FOR UPDATE OF
+                for_update = select._for_update_arg
+                if for_update is not None and for_update.of:
+                    for_update = for_update._clone()
+                    for_update._copy_internals()
+
+                    for elem in for_update.of:
+                        select = select.column(elem)
+
                 # Wrap the middle select and add the hint
-                limitselect = sql.select([c for c in select.c])
+                inner_subquery = select.alias()
+                limitselect = sql.select(
+                    [
+                        c
+                        for c in inner_subquery.c
+                        if orig_select.corresponding_column(c) is not None
+                    ]
+                )
                 if (
                     limit_clause is not None
                     and self.dialect.optimize_limits
@@ -886,15 +902,9 @@ class OracleCompiler(compiler.SQLCompiler):
                 limitselect._is_wrapper = True
 
                 # add expressions to accommodate FOR UPDATE OF
-                for_update = select._for_update_arg
                 if for_update is not None and for_update.of:
-                    for_update = for_update._clone()
-                    for_update._copy_internals()
 
-                    for elem in for_update.of:
-                        select.append_column(elem)
-
-                    adapter = sql_util.ClauseAdapter(select)
+                    adapter = sql_util.ClauseAdapter(inner_subquery)
                     for_update.of = [
                         adapter.traverse(elem) for elem in for_update.of
                     ]
@@ -913,7 +923,7 @@ class OracleCompiler(compiler.SQLCompiler):
                         max_row = limit_clause
                         if offset_clause is not None:
                             max_row = max_row + offset_clause
-                    limitselect.append_whereclause(
+                    limitselect = limitselect.where(
                         sql.literal_column("ROWNUM") <= max_row
                     )
 
@@ -928,22 +938,35 @@ class OracleCompiler(compiler.SQLCompiler):
                     limitselect._oracle_visit = True
                     limitselect._is_wrapper = True
 
+                    if for_update is not None and for_update.of:
+
+                        for elem in for_update.of:
+                            if limitselect.corresponding_column(elem) is None:
+                                limitselect = limitselect.column(elem)
+
+                    limit_subquery = limitselect.alias()
                     offsetselect = sql.select(
-                        [c for c in limitselect.c if c.key != "ora_rn"]
+                        [
+                            c
+                            for c in limit_subquery.c
+                            if orig_select.corresponding_column(c) is not None
+                        ]
                     )
+
                     offsetselect._oracle_visit = True
                     offsetselect._is_wrapper = True
 
                     if for_update is not None and for_update.of:
-                        for elem in for_update.of:
-                            if limitselect.corresponding_column(elem) is None:
-                                limitselect.append_column(elem)
+                        adapter = sql_util.ClauseAdapter(limit_subquery)
+                        for_update.of = [
+                            adapter.traverse(elem) for elem in for_update.of
+                        ]
 
                     if not self.dialect.use_binds_for_limits:
                         offset_clause = sql.literal_column(
                             "%d" % select._offset
                         )
-                    offsetselect.append_whereclause(
+                    offsetselect = offsetselect.where(
                         sql.literal_column("ora_rn") > offset_clause
                     )
 

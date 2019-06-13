@@ -151,7 +151,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "GROUP BY included_parts.sub_part",
         )
 
-    def test_limit(self):
+    def test_limit_one(self):
         t = table("sometable", column("col1"), column("col2"))
         s = select([t])
         c = s.compile(dialect=oracle.OracleDialect())
@@ -159,11 +159,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([t]).limit(10).offset(20)
         self.assert_compile(
             s,
-            "SELECT col1, col2 FROM (SELECT col1, "
-            "col2, ROWNUM AS ora_rn FROM (SELECT "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, "
+            "anon_2.col2 AS col2, ROWNUM AS ora_rn FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
-            "col2 FROM sometable) WHERE ROWNUM <= "
-            ":param_1 + :param_2) WHERE ora_rn > :param_2",
+            "col2 FROM sometable) anon_2 WHERE ROWNUM <= "
+            ":param_1 + :param_2) anon_1 WHERE ora_rn > :param_2",
             checkparams={"param_1": 10, "param_2": 20},
         )
 
@@ -171,55 +172,74 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(len(c._result_columns), 2)
         assert t.c.col1 in set(c._create_result_map()["col1"][1])
 
+    def test_limit_two(self):
+        t = table("sometable", column("col1"), column("col2"))
+        s = select([t]).limit(10).offset(20)
+
+        # TODO: this will require a subquery
         s2 = select([s.c.col1, s.c.col2])
         self.assert_compile(
             s2,
-            "SELECT col1, col2 FROM (SELECT col1, col2 "
-            "FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "SELECT col1, col2 FROM (SELECT anon_1.col1 AS col1, "
+            "anon_1.col2 AS col2 "
+            "FROM (SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) "
-            "WHERE ROWNUM <= :param_1 + :param_2) "
+            "sometable.col2 AS col2 FROM sometable) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
             "WHERE ora_rn > :param_2)",
             checkparams={"param_1": 10, "param_2": 20},
         )
 
         self.assert_compile(
             s2,
-            "SELECT col1, col2 FROM (SELECT col1, col2 "
-            "FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "SELECT col1, col2 FROM (SELECT anon_1.col1 AS col1, "
+            "anon_1.col2 AS col2 "
+            "FROM (SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) "
-            "WHERE ROWNUM <= :param_1 + :param_2) "
+            "sometable.col2 AS col2 FROM sometable) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
             "WHERE ora_rn > :param_2)",
         )
         c = s2.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
         assert s.c.col1 in set(c._create_result_map()["col1"][1])
 
+    def test_limit_three(self):
+        t = table("sometable", column("col1"), column("col2"))
+
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
         self.assert_compile(
             s,
-            "SELECT col1, col2 FROM (SELECT col1, "
-            "col2, ROWNUM AS ora_rn FROM (SELECT "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, "
+            "anon_2.col2 AS col2, ROWNUM AS ora_rn FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
-            "sometable.col2) WHERE ROWNUM <= "
-            ":param_1 + :param_2) WHERE ora_rn > :param_2",
+            "sometable.col2) anon_2 WHERE ROWNUM <= "
+            ":param_1 + :param_2) anon_1 WHERE ora_rn > :param_2",
             checkparams={"param_1": 10, "param_2": 20},
         )
         c = s.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
         assert t.c.col1 in set(c._create_result_map()["col1"][1])
 
+    def test_limit_four(self):
+        t = table("sometable", column("col1"), column("col2"))
+
         s = select([t]).with_for_update().limit(10).order_by(t.c.col2)
         self.assert_compile(
             s,
-            "SELECT col1, col2 FROM (SELECT "
+            "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
-            "sometable.col2) WHERE ROWNUM <= :param_1 "
+            "sometable.col2) anon_1 WHERE ROWNUM <= :param_1 "
             "FOR UPDATE",
         )
+
+    def test_limit_five(self):
+        t = table("sometable", column("col1"), column("col2"))
 
         s = (
             select([t])
@@ -230,12 +250,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             s,
-            "SELECT col1, col2 FROM (SELECT col1, "
-            "col2, ROWNUM AS ora_rn FROM (SELECT "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, "
+            "anon_2.col2 AS col2, ROWNUM AS ora_rn FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
-            "sometable.col2) WHERE ROWNUM <= "
-            ":param_1 + :param_2) WHERE ora_rn > :param_2 FOR "
+            "sometable.col2) anon_2 WHERE ROWNUM <= "
+            ":param_1 + :param_2) anon_1 WHERE ora_rn > :param_2 FOR "
             "UPDATE",
         )
 
@@ -327,10 +348,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .where(table1.c.myid == 7)
             .with_for_update(nowait=True, of=table1.c.name)
             .limit(10),
-            "SELECT myid, name FROM "
+            "SELECT anon_1.myid, anon_1.name FROM "
             "(SELECT mytable.myid AS myid, mytable.name AS name "
-            "FROM mytable WHERE mytable.myid = :myid_1) "
-            "WHERE ROWNUM <= :param_1 FOR UPDATE OF name NOWAIT",
+            "FROM mytable WHERE mytable.myid = :myid_1) anon_1 "
+            "WHERE ROWNUM <= :param_1 FOR UPDATE OF anon_1.name NOWAIT",
         )
 
     def test_for_update_of_w_limit_adaption_col_unpresent(self):
@@ -341,10 +362,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .where(table1.c.myid == 7)
             .with_for_update(nowait=True, of=table1.c.name)
             .limit(10),
-            "SELECT myid FROM "
+            "SELECT anon_1.myid FROM "
             "(SELECT mytable.myid AS myid, mytable.name AS name "
-            "FROM mytable WHERE mytable.myid = :myid_1) "
-            "WHERE ROWNUM <= :param_1 FOR UPDATE OF name NOWAIT",
+            "FROM mytable WHERE mytable.myid = :myid_1) anon_1 "
+            "WHERE ROWNUM <= :param_1 FOR UPDATE OF anon_1.name NOWAIT",
         )
 
     def test_for_update_of_w_limit_offset_adaption_col_present(self):
@@ -356,11 +377,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(nowait=True, of=table1.c.name)
             .limit(10)
             .offset(50),
-            "SELECT myid, name FROM (SELECT myid, name, ROWNUM AS ora_rn "
+            "SELECT anon_1.myid, anon_1.name FROM "
+            "(SELECT anon_2.myid AS myid, anon_2.name AS name, "
+            "ROWNUM AS ora_rn "
             "FROM (SELECT mytable.myid AS myid, mytable.name AS name "
-            "FROM mytable WHERE mytable.myid = :myid_1) "
-            "WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > :param_2 "
-            "FOR UPDATE OF name NOWAIT",
+            "FROM mytable WHERE mytable.myid = :myid_1) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
+            "WHERE ora_rn > :param_2 "
+            "FOR UPDATE OF anon_1.name NOWAIT",
         )
 
     def test_for_update_of_w_limit_offset_adaption_col_unpresent(self):
@@ -372,11 +396,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(nowait=True, of=table1.c.name)
             .limit(10)
             .offset(50),
-            "SELECT myid FROM (SELECT myid, ROWNUM AS ora_rn, name "
+            "SELECT anon_1.myid FROM (SELECT anon_2.myid AS myid, "
+            "ROWNUM AS ora_rn, anon_2.name AS name "
             "FROM (SELECT mytable.myid AS myid, mytable.name AS name "
-            "FROM mytable WHERE mytable.myid = :myid_1) "
-            "WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > :param_2 "
-            "FOR UPDATE OF name NOWAIT",
+            "FROM mytable WHERE mytable.myid = :myid_1) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
+            "WHERE ora_rn > :param_2 "
+            "FOR UPDATE OF anon_1.name NOWAIT",
         )
 
     def test_for_update_of_w_limit_offset_adaption_partial_col_unpresent(self):
@@ -388,11 +414,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(nowait=True, of=[table1.c.foo, table1.c.bar])
             .limit(10)
             .offset(50),
-            "SELECT myid, bar FROM (SELECT myid, bar, ROWNUM AS ora_rn, "
-            "foo FROM (SELECT mytable.myid AS myid, mytable.bar AS bar, "
-            "mytable.foo AS foo FROM mytable WHERE mytable.myid = :myid_1) "
-            "WHERE ROWNUM <= :param_1 + :param_2) WHERE ora_rn > :param_2 "
-            "FOR UPDATE OF foo, bar NOWAIT",
+            "SELECT anon_1.myid, anon_1.bar FROM (SELECT anon_2.myid AS myid, "
+            "anon_2.bar AS bar, ROWNUM AS ora_rn, "
+            "anon_2.foo AS foo FROM (SELECT mytable.myid AS myid, "
+            "mytable.bar AS bar, "
+            "mytable.foo AS foo FROM mytable "
+            "WHERE mytable.myid = :myid_1) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
+            "WHERE ora_rn > :param_2 "
+            "FOR UPDATE OF anon_1.foo, anon_1.bar NOWAIT",
         )
 
     def test_limit_preserves_typing_information(self):
@@ -404,58 +434,84 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         compiled = stmt.compile(dialect=dialect)
         assert isinstance(compiled._create_result_map()["foo"][-1], MyType)
 
-    def test_use_binds_for_limits_disabled(self):
+    def test_use_binds_for_limits_disabled_one(self):
         t = table("sometable", column("col1"), column("col2"))
         dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(
             select([t]).limit(10),
-            "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= 10",
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT sometable.col1 AS col1, "
+            "sometable.col2 AS col2 FROM sometable) anon_1 WHERE ROWNUM <= 10",
             dialect=dialect,
         )
+
+    def test_use_binds_for_limits_disabled_two(self):
+        t = table("sometable", column("col1"), column("col2"))
+        dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(
             select([t]).offset(10),
-            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
+            "anon_2.col1 AS col1, anon_2.col2 AS col2, ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable)) WHERE ora_rn > 10",
+            "FROM sometable) anon_2) anon_1 WHERE ora_rn > 10",
             dialect=dialect,
         )
+
+    def test_use_binds_for_limits_disabled_three(self):
+        t = table("sometable", column("col1"), column("col2"))
+        dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(
             select([t]).limit(10).offset(10),
-            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
+            "anon_2.col1 AS col1, anon_2.col2 AS col2, ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable) WHERE ROWNUM <= 20) WHERE ora_rn > 10",
+            "FROM sometable) anon_2 WHERE ROWNUM <= 20) anon_1 "
+            "WHERE ora_rn > 10",
             dialect=dialect,
         )
 
-    def test_use_binds_for_limits_enabled(self):
+    def test_use_binds_for_limits_enabled_one(self):
         t = table("sometable", column("col1"), column("col2"))
         dialect = oracle.OracleDialect(use_binds_for_limits=True)
 
         self.assert_compile(
             select([t]).limit(10),
-            "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT sometable.col1 AS col1, "
+            "sometable.col2 AS col2 FROM sometable) anon_1 WHERE ROWNUM "
             "<= :param_1",
             dialect=dialect,
         )
 
+    def test_use_binds_for_limits_enabled_two(self):
+        t = table("sometable", column("col1"), column("col2"))
+        dialect = oracle.OracleDialect(use_binds_for_limits=True)
+
         self.assert_compile(
             select([t]).offset(10),
-            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable)) WHERE ora_rn > :param_1",
+            "FROM sometable) anon_2) anon_1 WHERE ora_rn > :param_1",
             dialect=dialect,
         )
 
+    def test_use_binds_for_limits_enabled_three(self):
+        t = table("sometable", column("col1"), column("col2"))
+        dialect = oracle.OracleDialect(use_binds_for_limits=True)
+
         self.assert_compile(
             select([t]).limit(10).offset(10),
-            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable) WHERE ROWNUM <= :param_1 + :param_2) "
+            "FROM sometable) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
             "WHERE ora_rn > :param_2",
             dialect=dialect,
             checkparams={"param_1": 10, "param_2": 10},
@@ -524,7 +580,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=ora_dialect,
         )
 
-    def test_outer_join(self):
+    def _test_outer_join_fixture(self):
         table1 = table(
             "mytable",
             column("myid", Integer),
@@ -543,6 +599,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("userid", Integer),
             column("otherstuff", String),
         )
+        return table1, table2, table3
+
+    def test_outer_join_one(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
 
         query = select(
             [table1, table2],
@@ -569,6 +629,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable.otherid(+)",
             dialect=oracle.OracleDialect(use_ansi=False),
         )
+
+    def test_outer_join_two(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
+
         query = table1.outerjoin(
             table2, table1.c.myid == table2.c.otherid
         ).outerjoin(table3, table3.c.userid == table2.c.otherid)
@@ -584,6 +648,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "thirdtable.userid = myothertable.otherid",
         )
 
+    def test_outer_join_three(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
+
+        query = table1.outerjoin(
+            table2, table1.c.myid == table2.c.otherid
+        ).outerjoin(table3, table3.c.userid == table2.c.otherid)
+
         self.assert_compile(
             query.select(),
             "SELECT mytable.myid, mytable.name, "
@@ -596,6 +667,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable.otherid(+)",
             dialect=oracle.dialect(use_ansi=False),
         )
+
+    def test_outer_join_four(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
+
         query = table1.join(table2, table1.c.myid == table2.c.otherid).join(
             table3, table3.c.userid == table2.c.otherid
         )
@@ -611,15 +686,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable.otherid",
             dialect=oracle.dialect(use_ansi=False),
         )
+
+    def test_outer_join_five(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
+
         query = table1.join(
             table2, table1.c.myid == table2.c.otherid
         ).outerjoin(table3, table3.c.userid == table2.c.otherid)
         self.assert_compile(
             query.select().order_by(table1.c.name).limit(10).offset(5),
-            "SELECT myid, name, description, otherid, "
-            "othername, userid, otherstuff FROM "
-            "(SELECT myid, name, description, otherid, "
-            "othername, userid, otherstuff, ROWNUM AS "
+            "SELECT anon_1.myid, anon_1.name, anon_1.description, "
+            "anon_1.otherid, "
+            "anon_1.othername, anon_1.userid, anon_1.otherstuff FROM "
+            "(SELECT anon_2.myid AS myid, anon_2.name AS name, "
+            "anon_2.description AS description, anon_2.otherid AS otherid, "
+            "anon_2.othername AS othername, anon_2.userid AS userid, "
+            "anon_2.otherstuff AS otherstuff, ROWNUM AS "
             "ora_rn FROM (SELECT mytable.myid AS myid, "
             "mytable.name AS name, mytable.description "
             "AS description, myothertable.otherid AS "
@@ -629,12 +711,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable, myothertable, thirdtable WHERE "
             "thirdtable.userid(+) = "
             "myothertable.otherid AND mytable.myid = "
-            "myothertable.otherid ORDER BY mytable.name) "
-            "WHERE ROWNUM <= :param_1 + :param_2) "
+            "myothertable.otherid ORDER BY mytable.name) anon_2 "
+            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
             "WHERE ora_rn > :param_2",
             checkparams={"param_1": 10, "param_2": 5},
             dialect=oracle.dialect(use_ansi=False),
         )
+
+    def test_outer_join_six(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
 
         subq = (
             select([table1])
@@ -673,12 +758,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=oracle.dialect(use_ansi=False),
         )
 
+    def test_outer_join_seven(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
+
         q = select([table1.c.name]).where(table1.c.name == "foo")
         self.assert_compile(
             q,
             "SELECT mytable.name FROM mytable WHERE " "mytable.name = :name_1",
             dialect=oracle.dialect(use_ansi=False),
         )
+
+    def test_outer_join_eight(self):
+        table1, table2, table3 = self._test_outer_join_fixture()
         subq = (
             select([table3.c.otherstuff])
             .where(table3.c.otherstuff == table1.c.name)
