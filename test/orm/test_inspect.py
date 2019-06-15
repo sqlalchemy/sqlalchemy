@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.orm.attributes import NO_VALUE
+from sqlalchemy.orm.base import InspectionAttr
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -400,8 +401,12 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert "name" in u1.__dict__
 
     def test_attrs_props_prop_added_after_configure(self):
-        class AnonClass(object):
+        class Thing(InspectionAttr):
             pass
+
+        class AnonClass(object):
+            __foo__ = "bar"
+            __bat__ = Thing()
 
         from sqlalchemy.orm import mapper, column_property
         from sqlalchemy.ext.hybrid import hybrid_property
