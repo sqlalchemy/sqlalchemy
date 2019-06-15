@@ -143,7 +143,10 @@ class ClassManager(dict):
             for key in set(supercls.__dict__).difference(exclude):
                 exclude.add(key)
                 val = supercls.__dict__[key]
-                if isinstance(val, interfaces.InspectionAttr):
+                if (
+                    isinstance(val, interfaces.InspectionAttr)
+                    and val.is_attribute
+                ):
                     yield key, val
 
     def _get_class_attr_mro(self, key, default=None):

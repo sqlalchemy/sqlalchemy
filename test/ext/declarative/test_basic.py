@@ -1337,6 +1337,15 @@ class DeclarativeTest(DeclarativeTestBase):
 
         eq_(Foo.__mapper__.CHECK, True)
 
+    def test_no_change_to_all_descriptors(self):
+        base = decl.declarative_base()
+
+        class Foo(base):
+            __tablename__ = "foo"
+            id = Column(Integer, primary_key=True)
+
+        eq_(Foo.__mapper__.all_orm_descriptors.keys(), ["id"])
+
     def test_oops(self):
 
         with testing.expect_warnings(
