@@ -848,6 +848,8 @@ class SQLCompiler(Compiled):
             )
 
         if is_literal:
+            # note we are not currently accommodating for
+            # literal_column(quoted_name('ident', True)) here
             name = self.escape_literal_column(name)
         else:
             name = self.preparer.quote(name)
