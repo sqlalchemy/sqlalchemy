@@ -695,6 +695,108 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             ') AS "Alias1"',
         )
 
+    def test_literal_column_label_embedded_select_samename(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
+
+        # embedded SELECT use case, going away in 1.4 however use a
+        # SelectStatementGrouping here when that merges
+        self.assert_compile(
+            select([col]).select(),
+            'SELECT "NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES")',
+        )
+
+    def test_literal_column_label_alias_samename(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
+
+        self.assert_compile(
+            select([col]).alias().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_diffname(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES_")
+
+        # embedded SELECT use case, going away in 1.4 however use a
+        # SelectStatementGrouping here when that merges
+        self.assert_compile(
+            select([col]).select(),
+            'SELECT "NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES_")',
+        )
+
+    def test_literal_column_label_alias_diffname(self):
+        col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES_")
+
+        self.assert_compile(
+            select([col]).alias().select(),
+            'SELECT anon_1."NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
+            '"NEEDS QUOTES_") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_samename_explcit_quote(self):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES", True)
+        )
+
+        # embedded SELECT use case, going away in 1.4 however use a
+        # SelectStatementGrouping here when that merges
+        self.assert_compile(
+            select([col]).select(),
+            'SELECT "NEEDS QUOTES" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES")',
+        )
+
+    def test_literal_column_label_alias_samename_explcit_quote(self):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES", True)
+        )
+
+        self.assert_compile(
+            select([col]).alias().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
+        )
+
+    def test_literal_column_label_embedded_select_diffname_explcit_quote(self):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES_", True)
+        )
+
+        # embedded SELECT use case, going away in 1.4 however use a
+        # SelectStatementGrouping here when that merges
+        self.assert_compile(
+            select([col]).select(),
+            'SELECT "NEEDS QUOTES_" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_")',
+        )
+
+    def test_literal_column_label_alias_diffname_explcit_quote(self):
+        col = sql.literal_column("NEEDS QUOTES").label(
+            quoted_name("NEEDS QUOTES_", True)
+        )
+
+        self.assert_compile(
+            select([col]).alias().select(),
+            'SELECT anon_1."NEEDS QUOTES_" FROM '
+            '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_") AS anon_1',
+        )
+
+    def test_literal_column_wo_label_currently_maintained(self):
+        # test related to [ticket:4730] where we are maintaining that
+        # literal_column() proxied outwards *without* a label is maintained
+        # as is; in most cases literal_column would need proxying however
+        # at least if the column is being used to generate quoting in some
+        # way, it's maintined as given
+        col = sql.literal_column('"NEEDS QUOTES"')
+
+        self.assert_compile(
+            select([col]).alias().select(),
+            'SELECT anon_1."NEEDS QUOTES" FROM '
+            '(SELECT "NEEDS QUOTES") AS anon_1',
+        )
+
     def test_apply_labels_should_quote(self):
         # Not lower case names, should quote
         metadata = MetaData()

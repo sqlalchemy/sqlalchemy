@@ -19,6 +19,7 @@ from sqlalchemy import text
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.sql import column
+from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises_message
@@ -26,7 +27,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.types import NullType
-
 
 table1 = table(
     "mytable",
@@ -136,7 +136,9 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_composition_six(self):
         # test that "auto-labeling of subquery columns"
         # doesn't interfere with literal columns,
-        # exported columns don't get quoted
+        # exported columns don't get quoted.
+        # [ticket:4730] refines this but for the moment the behavior with
+        # no columns is being maintained.
         self.assert_compile(
             select(
                 [
@@ -706,6 +708,44 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT mytable.myid AS myid, mytable.name AS name, "
             "mytable.description AS description FROM mytable) AS anon_1 "
             "GROUP BY anon_1.myid",
+        )
+
+    def test_order_by_literal_col_quoting_one(self):
+        col = literal_column("SUM(ABC)").label("SUM(ABC)")
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col)
+        self.assert_compile(
+            query,
+            'SELECT SUM(ABC) AS "SUM(ABC)" FROM my_table ORDER BY "SUM(ABC)"',
+        )
+
+    def test_order_by_literal_col_quoting_two(self):
+        col = literal_column("SUM(ABC)").label("SUM(ABC)_")
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col)
+        self.assert_compile(
+            query,
+            'SELECT SUM(ABC) AS "SUM(ABC)_" FROM my_table ORDER BY '
+            '"SUM(ABC)_"',
+        )
+
+    def test_order_by_literal_col_quoting_one_explict_quote(self):
+        col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)", True))
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col)
+        self.assert_compile(
+            query,
+            'SELECT SUM(ABC) AS "SUM(ABC)" FROM my_table ORDER BY "SUM(ABC)"',
+        )
+
+    def test_order_by_literal_col_quoting_two_explicit_quote(self):
+        col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)_", True))
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col)
+        self.assert_compile(
+            query,
+            'SELECT SUM(ABC) AS "SUM(ABC)_" FROM my_table ORDER BY '
+            '"SUM(ABC)_"',
         )
 
     def test_order_by_func_label_desc(self):

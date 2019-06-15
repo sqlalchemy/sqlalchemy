@@ -3842,7 +3842,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                     key = c.anon_label
             else:
                 key = None
-
             c._make_proxy(self, key=key, name=name, name_is_truncatable=True)
 
     def _refresh_for_new_column(self, column):
