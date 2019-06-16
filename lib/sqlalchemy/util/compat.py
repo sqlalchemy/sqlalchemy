@@ -350,7 +350,10 @@ else:
 
 
 if win32 or jython:
-    time_func = time.clock
+    try:
+        time_func = time.clock
+    except: #Python-3.8.0b1
+        time_func = time.perf_counter
 else:
     time_func = time.time
 
