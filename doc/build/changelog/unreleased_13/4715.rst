@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 4715
-
-    Fixed bug where MySQL ON DUPLICATE KEY UPDATE would not accommodate setting
-    a column to the value NULL.  Pull request courtesy Lukáš Banič.

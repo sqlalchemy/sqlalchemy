@@ -12,7 +12,118 @@
 
 .. changelog::
     :version: 1.3.5
-    :include_notes_from: unreleased_13
+    :released: June 17, 2019
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4715
+
+        Fixed bug where MySQL ON DUPLICATE KEY UPDATE would not accommodate setting
+        a column to the value NULL.  Pull request courtesy Lukáš Banič.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4723
+
+        Fixed a series of related bugs regarding joined table inheritance more than
+        two levels deep, in conjunction with modification to primary key values,
+        where those primary key columns are also linked together in a foreign key
+        relationship as is typical for joined table inheritance.  The intermediary
+        table in a  three-level inheritance hierachy will now get its UPDATE if
+        only the primary key value has changed and passive_updates=False (e.g.
+        foreign key constraints not being enforced), whereas before it would be
+        skipped; similarly, with passive_updates=True (e.g. ON UPDATE  CASCADE in
+        effect), the third-level table will not receive an UPDATE statement as was
+        the case earlier which would fail since CASCADE already modified it.   In a
+        related issue, a relationship linked to a three-level inheritance hierarchy
+        on the primary key of an intermediary table of a joined-inheritance
+        hierarchy will also correctly have its foreign key column updated when the
+        parent object's primary key is modified, even if that parent object is a
+        subclass of the linked parent class, whereas before these classes would
+        not be counted.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4729
+
+        Fixed bug where the :attr:`.Mapper.all_orm_descriptors` accessor would
+        return an entry for the :class:`.Mapper` itself under the declarative
+        ``__mapper___`` key, when this is not a descriptor.  The ``.is_attribute``
+        flag that's present on all :class:`.InspectionAttr` objects is now
+        consulted, which has also been modified to be ``True`` for an association
+        proxy, as it was erroneously set to False for this object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4704
+
+        Fixed regression in :meth:`.Query.join` where the ``aliased=True`` flag
+        would not properly apply clause adaptation to filter criteria, if a
+        previous join were made to the same entity.  This is because the adapters
+        were placed in the wrong order.   The order has been reversed so that the
+        adapter for the most recent ``aliased=True`` call takes precedence as was
+        the case in 1.2 and earlier.  This broke the "elementtree" examples among
+        other things.
+
+    .. change::
+        :tags: bug, orm, py3k
+        :tickets: 4674
+
+        Replaced the Python compatbility routines for ``getfullargspec()`` with a
+        fully vendored version from Python 3.3.  Originally, Python was emitting
+        deprecation warnings for this function in Python 3.8 alphas.  While this
+        change was reverted, it was observed that Python 3 implementations for
+        ``getfullargspec()`` are an order of magnitude slower as of the 3.4 series
+        where it was rewritten against ``Signature``.  While Python plans to
+        improve upon this situation, SQLAlchemy projects for now are using a simple
+        replacement to avoid any future issues.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4694
+
+        Reworked the attribute mechanics used by :class:`.AliasedClass` to no
+        longer rely upon calling ``__getattribute__`` on the MRO of the wrapped
+        class, and to instead resolve the attribute normally on the wrapped class
+        using getattr(), and then unwrap/adapt that.  This allows a greater range
+        of attribute styles on the mapped class including special ``__getattr__()``
+        schemes; but it also makes the code simpler and more resilient in general.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 4717
+
+        Added support for column sorting flags when reflecting indexes for
+        PostgreSQL, including ASC, DESC, NULLSFIRST, NULLSLAST.  Also adds this
+        facility to the reflection system in general which can be applied to other
+        dialects in future releases.  Pull request courtesy Eli Collins.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4701
+
+        Fixed bug where PostgreSQL dialect could not correctly reflect an ENUM
+        datatype that has no members, returning a list with ``None`` for the
+        ``get_enums()`` call and raising a TypeError when reflecting a column which
+        has such a datatype.   The inspection now returns an empty list.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4730
+
+        Fixed a series of quoting issues which all stemmed from the concept of the
+        :func:`.literal_column` construct, which when being "proxied" through a
+        subquery to be referred towards by a label that matches its text, the label
+        would not have quoting rules applied to it, even if the string in the
+        :class:`.Label` were set up as a :class:`.quoted_name` construct.  Not
+        applying quoting to the text of the :class:`.Label` is a bug because this
+        text is strictly a SQL identifier name and not a SQL expression, and the
+        string should not have quotes embedded into it already unlike the
+        :func:`.literal_column` which it may be applied towards.   The existing
+        behavior of a non-labeled :func:`.literal_column` being propagated as is on
+        the outside of a subquery is maintained in order to help with manual
+        quoting schemes, although it's not clear if valid SQL can be generated for
+        such a construct in any case.
 
 .. changelog::
     :version: 1.3.4
