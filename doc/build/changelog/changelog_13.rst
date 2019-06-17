@@ -11,6 +11,10 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.3.6
+    :include_notes_from: unreleased_13
+
+.. changelog::
     :version: 1.3.5
     :released: June 17, 2019
 
