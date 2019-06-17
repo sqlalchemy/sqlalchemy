@@ -9,6 +9,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import outerjoin
@@ -25,6 +26,7 @@ from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.engine import default
 from sqlalchemy.sql import column
+from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -237,6 +239,62 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "sometable.col2) WHERE ROWNUM <= "
             ":param_1 + :param_2) WHERE ora_rn > :param_2 FOR "
             "UPDATE",
+        )
+
+    def test_limit_special_quoting(self):
+        """Oracle-specific test for #4730.
+
+        Even though this issue is generic, test the originally reported Oracle
+        use case.
+
+        """
+
+        col = literal_column("SUM(ABC)").label("SUM(ABC)")
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col).limit(100)
+
+        self.assert_compile(
+            query,
+            'SELECT "SUM(ABC)" FROM '
+            '(SELECT SUM(ABC) AS "SUM(ABC)" '
+            "FROM my_table ORDER BY SUM(ABC)) "
+            "WHERE ROWNUM <= :param_1",
+        )
+
+        col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)", True))
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col).limit(100)
+
+        self.assert_compile(
+            query,
+            'SELECT "SUM(ABC)" FROM '
+            '(SELECT SUM(ABC) AS "SUM(ABC)" '
+            "FROM my_table ORDER BY SUM(ABC)) "
+            "WHERE ROWNUM <= :param_1",
+        )
+
+        col = literal_column("SUM(ABC)").label("SUM(ABC)_")
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col).limit(100)
+
+        self.assert_compile(
+            query,
+            'SELECT "SUM(ABC)_" FROM '
+            '(SELECT SUM(ABC) AS "SUM(ABC)_" '
+            "FROM my_table ORDER BY SUM(ABC)) "
+            "WHERE ROWNUM <= :param_1",
+        )
+
+        col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)_", True))
+        tbl = table("my_table")
+        query = select([col]).select_from(tbl).order_by(col).limit(100)
+
+        self.assert_compile(
+            query,
+            'SELECT "SUM(ABC)_" FROM '
+            '(SELECT SUM(ABC) AS "SUM(ABC)_" '
+            "FROM my_table ORDER BY SUM(ABC)) "
+            "WHERE ROWNUM <= :param_1",
         )
 
     def test_for_update(self):

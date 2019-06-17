@@ -3774,7 +3774,9 @@ class Label(ColumnElement):
 
     def _make_proxy(self, selectable, name=None, **kw):
         e = self.element._make_proxy(
-            selectable, name=name if name else self.name
+            selectable,
+            name=name if name else self.name,
+            disallow_is_literal=True,
         )
         e._proxies.append(self)
         if self._type is not None:
@@ -3908,7 +3910,6 @@ class ColumnClause(Immutable, ColumnElement):
             :ref:`sqlexpression_literal_column`
 
         """
-
         self.key = self.name = text
         self.table = _selectable
         self.type = type_api.to_instance(type_)
@@ -4029,11 +4030,25 @@ class ColumnClause(Immutable, ColumnElement):
         name=None,
         attach=True,
         name_is_truncatable=False,
+        disallow_is_literal=False,
         **kw
     ):
-        # propagate the "is_literal" flag only if we are keeping our name,
-        # otherwise its considered to be a label
-        is_literal = self.is_literal and (name is None or name == self.name)
+        # the "is_literal" flag normally should never be propagated; a proxied
+        # column is always a SQL identifier and never the actual expression
+        # being evaluated. however, there is a case where the "is_literal" flag
+        # might be used to allow the given identifier to have a fixed quoting
+        # pattern already, so maintain the flag for the proxy unless a
+        # :class:`.Label` object is creating the proxy.  See [ticket:4730].
+        is_literal = (
+            not disallow_is_literal
+            and self.is_literal
+            and (
+                # note this does not accommodate for quoted_name differences
+                # right now
+                name is None
+                or name == self.name
+            )
+        )
         c = self._constructor(
             _as_truncated(name or self.name)
             if name_is_truncatable
