@@ -3196,7 +3196,7 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, NULL, ix.indkey%s,
-                  %s, am.amname
+                  %s, %s, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -3219,6 +3219,9 @@ class PGDialect(default.DefaultDialect):
                 # cast does not work in PG 8.2.4, does work in 8.3.0.
                 # nothing in PG changelogs regarding this.
                 "::varchar" if self.server_version_info >= (8, 3) else "",
+                "ix.indoption::varchar"
+                if self.server_version_info >= (8, 3)
+                else "NULL",
                 "i.reloptions"
                 if self.server_version_info >= (8, 2)
                 else "NULL",
@@ -3230,7 +3233,7 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
-                  i.reloptions, am.amname
+                  ix.indoption::varchar, i.reloptions, am.amname
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -3273,6 +3276,7 @@ class PGDialect(default.DefaultDialect):
                 col_num,
                 conrelid,
                 idx_key,
+                idx_option,
                 options,
                 amname,
             ) = row
@@ -3299,6 +3303,29 @@ class PGDialect(default.DefaultDialect):
                 index["cols"][col_num] = col
             if not has_idx:
                 index["key"] = [int(k.strip()) for k in idx_key.split()]
+
+                # (new in pg 8.3)
+                # "pg_index.indoption" is list of ints, one per column/expr.
+                # int acts as bitmask: 0x01=DESC, 0x02=NULLSFIRST
+                sorting = {}
+                for col_idx, col_flags in enumerate(
+                    (idx_option or "").split()
+                ):
+                    col_flags = int(col_flags.strip())
+                    col_sorting = ()
+                    # try to set flags only if they differ from PG defaults...
+                    if col_flags & 0x01:
+                        col_sorting += ("desc",)
+                        if not (col_flags & 0x02):
+                            col_sorting += ("nullslast",)
+                    else:
+                        if col_flags & 0x02:
+                            col_sorting += ("nullsfirst",)
+                    if col_sorting:
+                        sorting[col_idx] = col_sorting
+                if sorting:
+                    index["sorting"] = sorting
+
                 index["unique"] = unique
                 if conrelid is not None:
                     index["duplicates_constraint"] = idx_name
@@ -3323,6 +3350,11 @@ class PGDialect(default.DefaultDialect):
             }
             if "duplicates_constraint" in idx:
                 entry["duplicates_constraint"] = idx["duplicates_constraint"]
+            if "sorting" in idx:
+                entry["column_sorting"] = dict(
+                    (idx["cols"][idx["key"][i]], value)
+                    for i, value in idx["sorting"].items()
+                )
             if "options" in idx:
                 entry.setdefault("dialect_options", {})[
                     "postgresql_with"
