@@ -12,7 +12,6 @@ import contextlib
 import inspect
 import operator
 import sys
-import time
 
 
 py36 = sys.version_info >= (3, 6)
@@ -348,11 +347,6 @@ elif py2k:
 else:
     from inspect import formatargspec as inspect_formatargspec  # noqa
 
-
-if win32 or jython:
-    time_func = time.clock
-else:
-    time_func = time.time
 
 # Fix deprecation of accessing ABCs straight from collections module
 # (which will stop working in 3.8).
