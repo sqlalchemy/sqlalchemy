@@ -356,7 +356,7 @@ Track objects as they move from persistent to detached using the
 :meth:`.SessionEvents.persistent_to_detached` event::
 
     @event.listens_for(sessionmaker, "persistent_to_detached")
-    def intecept_persistent_to_detached(session, object_):
+    def intercept_persistent_to_detached(session, object_):
         print("object became detached: %s" % object_)
 
 Detached to Persistent
@@ -368,7 +368,7 @@ objects moving back to persistent from detached using the
 :meth:`.SessionEvents.detached_to_persistent` event::
 
     @event.listens_for(sessionmaker, "detached_to_persistent")
-    def intecept_detached_to_persistent(session, object_):
+    def intercept_detached_to_persistent(session, object_):
         print("object became persistent again: %s" % object_)
 
 
