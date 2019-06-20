@@ -93,7 +93,7 @@ def setup_options(make_option):
         "--backend-only",
         action="store_true",
         dest="backend_only",
-        help="Run only tests marked with __backend__",
+        help="Run only tests marked with __backend__ or __sparse_backend__",
     )
     make_option(
         "--nomemory",
@@ -483,8 +483,10 @@ def want_class(cls):
         return False
     elif cls.__name__.startswith("_"):
         return False
-    elif config.options.backend_only and not getattr(
-        cls, "__backend__", False
+    elif (
+        config.options.backend_only
+        and not getattr(cls, "__backend__", False)
+        and not getattr(cls, "__sparse_backend__", False)
     ):
         return False
     else:
@@ -519,8 +521,11 @@ def want_method(cls, fn):
 
 
 def generate_sub_tests(cls, module):
-    if getattr(cls, "__backend__", False):
-        for cfg in _possible_configs_for_cls(cls):
+    if getattr(cls, "__backend__", False) or getattr(
+        cls, "__sparse_backend__", False
+    ):
+        sparse = getattr(cls, "__sparse_backend__", False)
+        for cfg in _possible_configs_for_cls(cls, sparse=sparse):
             orig_name = cls.__name__
 
             # we can have special chars in these names except for the
@@ -589,7 +594,7 @@ def after_test(test):
     engines.testing_reaper._after_test_ctx()
 
 
-def _possible_configs_for_cls(cls, reasons=None):
+def _possible_configs_for_cls(cls, reasons=None, sparse=False):
     all_configs = set(config.Config.all_configs())
 
     if cls.__unsupported_on__:
@@ -631,6 +636,25 @@ def _possible_configs_for_cls(cls, reasons=None):
                     non_preferred.add(config_obj)
         if all_configs.difference(non_preferred):
             all_configs.difference_update(non_preferred)
+
+    if sparse:
+        # pick only one config from each base dialect
+        # sorted so we get the same backend each time selecting the highest
+        # server version info.
+        per_dialect = {}
+        for cfg in reversed(
+            sorted(
+                all_configs,
+                key=lambda cfg: (
+                    cfg.db.name,
+                    cfg.db.dialect.server_version_info,
+                ),
+            )
+        ):
+            db = cfg.db.name
+            if db not in per_dialect:
+                per_dialect[db] = cfg
+        return per_dialect.values()
 
     return all_configs
 
