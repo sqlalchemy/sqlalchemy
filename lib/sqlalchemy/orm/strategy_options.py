@@ -62,7 +62,11 @@ class Load(Generative, MapperOption):
 
     .. seealso::
 
-        :ref:`loading_toplevel`
+        :ref:`deferred_options`
+
+        :ref:`deferred_loading_w_multiple`
+
+        :ref:`relationship_loader_options`
 
     """
 
@@ -320,12 +324,59 @@ class Load(Generative, MapperOption):
             strategy = tuple(sorted(strategy.items()))
         return strategy
 
+    def _apply_to_parent(self, parent, applied, bound):
+        raise NotImplementedError(
+            "Only 'unbound' loader options may be used with the "
+            "Load.options() method"
+        )
+
+    @_generative
+    def options(self, *opts):
+        r"""Apply a series of options as sub-options to this :class:`.Load`
+        object.
+
+        E.g.::
+
+            query = session.query(Author)
+            query = query.options(
+                        joinedload(Author.book).options(
+                            load_only("summary", "excerpt"),
+                            joinedload(Book.citations).options(
+                                joinedload(Citation.author)
+                            )
+                        )
+                    )
+
+        :param \*opts: A series of loader option objects (ultimately
+         :class:`.Load` objects) which should be applied to the path
+         specified by this :class:`.Load` object.
+
+        .. versionadded:: 1.3.6
+
+        .. seealso::
+
+            :func:`.defaultload`
+
+            :ref:`relationship_loader_options`
+
+            :ref:`deferred_loading_w_multiple`
+
+        """
+        apply_cache = {}
+        bound = not isinstance(self, _UnboundLoad)
+        if bound:
+            raise NotImplementedError(
+                "The options() method is currently only supported "
+                "for 'unbound' loader options"
+            )
+        for opt in opts:
+            opt._apply_to_parent(self, apply_cache, bound)
+
     @_generative
     def set_relationship_strategy(
         self, attr, strategy, propagate_to_loaders=True
     ):
         strategy = self._coerce_strat(strategy)
-
         self.is_class_strategy = False
         self.propagate_to_loaders = propagate_to_loaders
         # if the path is a wildcard, this will set propagate_to_loaders=False
@@ -490,6 +541,41 @@ class _UnboundLoad(Load):
 
     def _set_path_strategy(self):
         self._to_bind.append(self)
+
+    def _apply_to_parent(self, parent, applied, bound):
+        if self in applied:
+            return applied[self]
+
+        cloned = self._generate()
+
+        applied[self] = cloned
+
+        cloned.strategy = self.strategy
+        if self.path:
+            attr = self.path[-1]
+            if isinstance(attr, util.string_types) and attr.endswith(
+                _DEFAULT_TOKEN
+            ):
+                attr = attr.split(":")[0] + ":" + _WILDCARD_TOKEN
+            cloned._generate_path(
+                parent.path + self.path[0:-1], attr, self.strategy, None
+            )
+
+        # these assertions can go away once the "sub options" API is
+        # mature
+        assert cloned.propagate_to_loaders == self.propagate_to_loaders
+        assert cloned.is_class_strategy == self.is_class_strategy
+        assert cloned.is_opts_only == self.is_opts_only
+
+        new_to_bind = {
+            elem._apply_to_parent(parent, applied, bound)
+            for elem in self._to_bind
+        }
+        cloned._to_bind = parent._to_bind
+        cloned._to_bind.extend(new_to_bind)
+        cloned.local_opts.update(self.local_opts)
+
+        return cloned
 
     def _generate_path(self, path, attr, for_strategy, wildcard_key):
         if (
@@ -1324,6 +1410,10 @@ def defaultload(loadopt, attr):
         )
 
     .. seealso::
+
+        :meth:`.Load.options` - allows for complex hierarchical
+        loader option structures with less verbosity than with individual
+        :func:`.defaultload` directives.
 
         :ref:`relationship_loader_options`
 

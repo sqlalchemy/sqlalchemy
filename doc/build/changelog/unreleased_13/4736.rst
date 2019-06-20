@@ -1,0 +1,9 @@
+.. change::
+    :tags: orm, feature
+    :tickets: 4736
+
+    Added new loader option method :meth:`.Load.options` which allows loader
+    options to be constructed hierarchically, so that many sub-options can be
+    applied to a particular path without needing to call :func:`.defaultload`
+    many times.  Thanks to Alessio Bogon for the idea.
+
