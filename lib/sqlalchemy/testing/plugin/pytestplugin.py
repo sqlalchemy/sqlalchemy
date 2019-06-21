@@ -72,6 +72,8 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
+
     if hasattr(config, "slaveinput"):
         plugin_base.restore_important_follower_config(config.slaveinput)
         plugin_base.configure_follower(config.slaveinput["follower_ident"])
