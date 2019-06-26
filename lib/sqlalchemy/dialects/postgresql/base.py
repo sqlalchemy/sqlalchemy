@@ -3150,19 +3150,24 @@ class PGDialect(default.DefaultDialect):
                 preparer._unquote_identifier(x)
                 for x in re.split(r"\s*,\s", referred_columns)
             ]
+            options = {
+                k: v
+                for k, v in [
+                    ("onupdate", onupdate),
+                    ("ondelete", ondelete),
+                    ("initially", initially),
+                    ("deferrable", deferrable),
+                    ("match", match),
+                ]
+                if v is not None and v != "NO ACTION"
+            }
             fkey_d = {
                 "name": conname,
                 "constrained_columns": constrained_columns,
                 "referred_schema": referred_schema,
                 "referred_table": referred_table,
                 "referred_columns": referred_columns,
-                "options": {
-                    "onupdate": onupdate,
-                    "ondelete": ondelete,
-                    "deferrable": deferrable,
-                    "initially": initially,
-                    "match": match,
-                },
+                "options": options,
             }
             fkeys.append(fkey_d)
         return fkeys

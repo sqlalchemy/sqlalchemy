@@ -111,8 +111,20 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "mysql", "sqlite", "oracle"])
 
     @property
+    def fk_constraint_option_reflection_ondelete_restrict(self):
+        return only_on(["postgresql", "sqlite", self._mysql_80])
+
+    @property
+    def fk_constraint_option_reflection_ondelete_noaction(self):
+        return only_on(["postgresql", "mysql", "sqlite"])
+
+    @property
     def foreign_key_constraint_option_reflection_onupdate(self):
         return only_on(["postgresql", "mysql", "sqlite"])
+
+    @property
+    def fk_constraint_option_reflection_onupdate_restrict(self):
+        return only_on(["postgresql", "sqlite", self._mysql_80])
 
     @property
     def comment_reflection(self):
@@ -1306,6 +1318,13 @@ class DefaultRequirements(SuiteRequirements):
             )
 
         return only_if(check)
+
+    def _mysql_80(self, config):
+        return (
+            against(config, "mysql")
+            and config.db.dialect._is_mysql
+            and config.db.dialect.server_version_info >= (8,)
+        )
 
     def _mariadb_102(self, config):
         return (

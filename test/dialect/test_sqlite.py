@@ -1914,7 +1914,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "referred_schema": None,
                     "name": "fk4",
                     "constrained_columns": ["c4"],
-                    "options": {"onupdate": "NO ACTION"},
+                    "options": {},
                 },
             ],
         )

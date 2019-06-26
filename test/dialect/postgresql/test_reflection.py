@@ -1147,13 +1147,7 @@ class ReflectionTest(fixtures.TestBase):
                 "referred_columns": ["id"],
                 "referred_table": "industry",
                 "referred_schema": None,
-                "options": {
-                    "onupdate": "CASCADE",
-                    "deferrable": None,
-                    "ondelete": "CASCADE",
-                    "initially": None,
-                    "match": None,
-                },
+                "options": {"onupdate": "CASCADE", "ondelete": "CASCADE"},
             },
         }
         metadata.create_all()

@@ -2541,7 +2541,7 @@ class MySQLDialect(default.DefaultDialect):
 
             con_kw = {}
             for opt in ("onupdate", "ondelete"):
-                if spec.get(opt, False):
+                if spec.get(opt, False) not in ("NO ACTION", None):
                     con_kw[opt] = spec[opt]
 
             fkey_d = {

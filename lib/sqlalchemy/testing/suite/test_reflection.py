@@ -671,9 +671,28 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_foreign_key_options_onupdate(self):
         self._test_get_foreign_key_options(onupdate="SET NULL")
 
+    @testing.requires.foreign_key_constraint_option_reflection_onupdate
+    def test_get_foreign_key_options_onupdate_noaction(self):
+        self._test_get_foreign_key_options(onupdate="NO ACTION", expected={})
+
+    @testing.requires.fk_constraint_option_reflection_ondelete_noaction
+    def test_get_foreign_key_options_ondelete_noaction(self):
+        self._test_get_foreign_key_options(ondelete="NO ACTION", expected={})
+
+    @testing.requires.fk_constraint_option_reflection_onupdate_restrict
+    def test_get_foreign_key_options_onupdate_restrict(self):
+        self._test_get_foreign_key_options(onupdate="RESTRICT")
+
+    @testing.requires.fk_constraint_option_reflection_ondelete_restrict
+    def test_get_foreign_key_options_ondelete_restrict(self):
+        self._test_get_foreign_key_options(ondelete="RESTRICT")
+
     @testing.provide_metadata
-    def _test_get_foreign_key_options(self, **options):
+    def _test_get_foreign_key_options(self, expected=None, **options):
         meta = self.metadata
+
+        if expected is None:
+            expected = options
 
         Table(
             "x",
@@ -714,7 +733,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
         eq_(dict((k, opts[k]) for k in opts if opts[k]), {})
 
         opts = insp.get_foreign_keys("user")[0]["options"]
-        eq_(dict((k, opts[k]) for k in opts if opts[k]), options)
+        eq_(opts, expected)
+        # eq_(dict((k, opts[k]) for k in opts if opts[k]), expected)
 
     def _assert_insp_indexes(self, indexes, expected_indexes):
         index_names = [d["name"] for d in indexes]

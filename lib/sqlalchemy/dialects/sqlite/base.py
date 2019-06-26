@@ -1810,9 +1810,13 @@ class SQLiteDialect(default.DefaultDialect):
 
                 for token in re.split(r" *\bON\b *", onupdatedelete.upper()):
                     if token.startswith("DELETE"):
-                        options["ondelete"] = token[6:].strip()
+                        ondelete = token[6:].strip()
+                        if ondelete and ondelete != "NO ACTION":
+                            options["ondelete"] = ondelete
                     elif token.startswith("UPDATE"):
-                        options["onupdate"] = token[6:].strip()
+                        onupdate = token[6:].strip()
+                        if onupdate and onupdate != "NO ACTION":
+                            options["onupdate"] = onupdate
                 yield (
                     constraint_name,
                     constrained_columns,

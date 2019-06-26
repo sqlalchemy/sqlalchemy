@@ -427,7 +427,19 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def fk_constraint_option_reflection_ondelete_restrict(self):
+        return exclusions.closed()
+
+    @property
+    def fk_constraint_option_reflection_ondelete_noaction(self):
+        return exclusions.closed()
+
+    @property
     def foreign_key_constraint_option_reflection_onupdate(self):
+        return exclusions.closed()
+
+    @property
+    def fk_constraint_option_reflection_onupdate_restrict(self):
         return exclusions.closed()
 
     @property
