@@ -1,5 +1,4 @@
 # coding: utf-8
-
 from collections import OrderedDict
 import datetime
 import decimal
@@ -19,6 +18,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import TIMESTAMP
+from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UnicodeText
 from sqlalchemy import util
@@ -667,14 +667,27 @@ class TypesTest(
             Table("t", MetaData(), c)
             self.assert_compile(schema.CreateColumn(c), "t %s" % expected)
 
+    def test_timestamp_nullable_plain(self):
+        self._test_timestamp_nullable(TIMESTAMP)
+
+    def test_timestamp_nullable_typedecorator(self):
+        class MyTime(TypeDecorator):
+            impl = TIMESTAMP
+
+        self._test_timestamp_nullable(MyTime())
+
+    def test_timestamp_nullable_variant(self):
+        t = String().with_variant(TIMESTAMP, "mysql")
+        self._test_timestamp_nullable(t)
+
     @testing.requires.mysql_zero_date
     @testing.provide_metadata
-    def test_timestamp_nullable(self):
+    def _test_timestamp_nullable(self, type_):
         ts_table = Table(
             "mysql_timestamp",
             self.metadata,
-            Column("t1", TIMESTAMP),
-            Column("t2", TIMESTAMP, nullable=False),
+            Column("t1", type_),
+            Column("t2", type_, nullable=False),
             mysql_engine="InnoDB",
         )
         self.metadata.create_all()
