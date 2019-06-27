@@ -1499,7 +1499,10 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             ),
         ]
 
-        is_timestamp = isinstance(column.type, sqltypes.TIMESTAMP)
+        is_timestamp = isinstance(
+            column.type._unwrapped_dialect_impl(self.dialect),
+            sqltypes.TIMESTAMP,
+        )
 
         if not column.nullable:
             colspec.append("NOT NULL")
