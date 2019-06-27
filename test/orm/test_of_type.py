@@ -273,9 +273,9 @@ class PolymorphicPolymorphicTest(
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
     def _polymorphic_join_target(self, cls):
         return (
-            "(SELECT engineers.person_id AS person_id, "
-            "people.company_id AS company_id, people.name AS name, "
-            "people.type AS type, engineers.status AS status, "
+            "(SELECT engineers.person_id AS person_id, people.company_id "
+            "AS company_id, people.name AS name, people.type AS type, "
+            "engineers.status AS status, "
             "engineers.engineer_name AS engineer_name, "
             "engineers.primary_language AS primary_language, "
             "CAST(NULL AS VARCHAR(50)) AS manager_name FROM people "
