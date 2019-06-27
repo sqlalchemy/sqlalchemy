@@ -5,7 +5,7 @@ repos:
     rev: 19.3b0
     hooks:
     -   id: black
-        args: [-l 79, --target-version=py27]
+        args: [-l 79]
 
 -   repo: https://github.com/sqlalchemyorg/zimports/
     rev: master
