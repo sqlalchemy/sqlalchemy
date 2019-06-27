@@ -4,7 +4,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
@@ -262,30 +261,33 @@ class PolymorphicPolymorphicTest(
     _PolymorphicTestBase, _PolymorphicPolymorphic
 ):
     def _polymorphic_join_target(self, cls):
-        from sqlalchemy.orm import class_mapper
-
-        from sqlalchemy.sql.expression import FromGrouping
-
-        m, sel = class_mapper(Person)._with_polymorphic_args(cls)
-        sel = FromGrouping(sel.alias(flat=True))
-        comp_sel = sel.compile(dialect=default.DefaultDialect())
-
         return (
-            comp_sel.process(sel, asfrom=True).replace("\n", "")
-            + " ON companies.company_id = people_1.company_id"
+            "(people AS people_1 LEFT OUTER JOIN engineers AS engineers_1 "
+            "ON people_1.person_id = engineers_1.person_id "
+            "LEFT OUTER JOIN managers AS managers_1 "
+            "ON people_1.person_id = managers_1.person_id) "
+            "ON companies.company_id = people_1.company_id"
         )
 
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
     def _polymorphic_join_target(self, cls):
-        from sqlalchemy.orm import class_mapper
-
-        sel = class_mapper(Person)._with_polymorphic_selectable.element
-        comp_sel = sel.compile(dialect=default.DefaultDialect())
-
         return (
-            comp_sel.process(sel, asfrom=True).replace("\n", "")
-            + " AS anon_1 ON companies.company_id = anon_1.company_id"
+            "(SELECT engineers.person_id AS person_id, "
+            "people.company_id AS company_id, people.name AS name, "
+            "people.type AS type, engineers.status AS status, "
+            "engineers.engineer_name AS engineer_name, "
+            "engineers.primary_language AS primary_language, "
+            "CAST(NULL AS VARCHAR(50)) AS manager_name FROM people "
+            "JOIN engineers ON people.person_id = engineers.person_id "
+            "UNION ALL SELECT managers.person_id AS person_id, "
+            "people.company_id AS company_id, people.name AS name, "
+            "people.type AS type, managers.status AS status, "
+            "CAST(NULL AS VARCHAR(50)) AS engineer_name, "
+            "CAST(NULL AS VARCHAR(50)) AS primary_language, "
+            "managers.manager_name AS manager_name FROM people "
+            "JOIN managers ON people.person_id = managers.person_id) "
+            "AS anon_1 ON companies.company_id = anon_1.company_id"
         )
 
 
@@ -293,30 +295,33 @@ class PolymorphicAliasedJoinsTest(
     _PolymorphicTestBase, _PolymorphicAliasedJoins
 ):
     def _polymorphic_join_target(self, cls):
-        from sqlalchemy.orm import class_mapper
-
-        sel = class_mapper(Person)._with_polymorphic_selectable.element
-        comp_sel = sel.compile(dialect=default.DefaultDialect())
-
         return (
-            comp_sel.process(sel, asfrom=True).replace("\n", "")
-            + " AS anon_1 ON companies.company_id = anon_1.people_company_id"
+            "(SELECT people.person_id AS people_person_id, "
+            "people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, "
+            "engineers.person_id AS engineers_person_id, "
+            "engineers.status AS engineers_status, "
+            "engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language, "
+            "managers.person_id AS managers_person_id, "
+            "managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name "
+            "FROM people LEFT OUTER JOIN engineers "
+            "ON people.person_id = engineers.person_id "
+            "LEFT OUTER JOIN managers "
+            "ON people.person_id = managers.person_id) AS anon_1 "
+            "ON companies.company_id = anon_1.people_company_id"
         )
 
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
     def _polymorphic_join_target(self, cls):
-        from sqlalchemy.orm import class_mapper
-        from sqlalchemy.sql.expression import FromGrouping
-
-        sel = FromGrouping(
-            class_mapper(Person)._with_polymorphic_selectable.alias(flat=True)
-        )
-        comp_sel = sel.compile(dialect=default.DefaultDialect())
-
         return (
-            comp_sel.process(sel, asfrom=True).replace("\n", "")
-            + " ON companies.company_id = people_1.company_id"
+            "(people AS people_1 LEFT OUTER JOIN engineers "
+            "AS engineers_1 ON people_1.person_id = engineers_1.person_id "
+            "LEFT OUTER JOIN managers AS managers_1 "
+            "ON people_1.person_id = managers_1.person_id) "
+            "ON companies.company_id = people_1.company_id"
         )
 
     def test_joinedload_explicit_with_unaliased_poly_compile(self):
