@@ -1090,10 +1090,10 @@ class _ORMJoin(expression.Join):
         full=False,
         join_to_left=None,
     ):
-        return _ORMJoin(self, right, onclause, full, isouter)
+        return _ORMJoin(self, right, onclause, full=full, isouter=isouter)
 
     def outerjoin(self, right, onclause=None, full=False, join_to_left=None):
-        return _ORMJoin(self, right, onclause, True, full=full)
+        return _ORMJoin(self, right, onclause, isouter=True, full=full)
 
 
 def join(
