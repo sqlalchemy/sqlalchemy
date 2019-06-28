@@ -209,6 +209,23 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
 
     @testing.provide_metadata
+    def test_table_name_that_is_greater_than_16_chars(self):
+        metadata = self.metadata
+        Table(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Index("foo_idx", "foo"),
+        )
+        metadata.create_all()
+
+        t = Table(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ", MetaData(), autoload_with=testing.db
+        )
+        eq_(t.name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    @testing.provide_metadata
     def test_db_qualified_items(self):
         metadata = self.metadata
         Table("foo", metadata, Column("id", Integer, primary_key=True))
