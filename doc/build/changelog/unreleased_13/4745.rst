@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4745
+
+    Ensured that the queries used to reflect indexes and view definitions will
+    explicitly CAST string parameters into NVARCHAR, as many SQL Server drivers
+    frequently treat string values, particularly those with non-ascii
+    characters or larger string values, as TEXT which often don't compare
+    correctly against VARCHAR characters in SQL Server's information schema
+    tables for some reason.    These CAST operations already take place for
+    reflection queries against SQL Server ``information_schema.`` tables but
+    were missing from three additional queries that are against ``sys.``
+    tables.
