@@ -97,11 +97,12 @@ further background.
 
 .. _relationship_loader_options:
 
-Controlling Loading via Options
--------------------------------
+Relationship Loading with Loader Options
+----------------------------------------
 
 The other, and possibly more common way to configure loading strategies
-is to set them up on a per-query basis against specific attributes.  Very detailed
+is to set them up on a per-query basis against specific attributes using the
+:meth:`.Query.options` method.  Very detailed
 control over relationship loading is available using loader options;
 the most common are
 :func:`~sqlalchemy.orm.joinedload`,
@@ -145,8 +146,26 @@ stated.  To navigate along a path without changing the existing loader style
 of a particular attribute, the :func:`.defaultload` method/function may be used::
 
     session.query(A).options(
-        defaultload("atob").
-        joinedload("btoc")).all()
+        defaultload(A.atob).
+        joinedload(B.btoc)).all()
+
+A similar approach can be used to specify multiple sub-options at once, using
+the :meth:`.Load.options` method::
+
+    session.query(A).options(
+        defaultload(A.atob).options(
+          joinedload(B.btoc),
+          joinedload(B.btod)
+        )).all()
+
+.. versionadded:: 1.3.6 added :meth:`.Load.options`
+
+
+.. seealso::
+
+    :ref:`deferred_loading_w_multiple` - illustrates examples of combining
+    relationship and column-oriented loader options.
+
 
 .. note::  The loader options applied to an object's lazy-loaded collections
    are **"sticky"** to specific object instances, meaning they will persist

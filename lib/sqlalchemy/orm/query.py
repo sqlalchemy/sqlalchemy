@@ -1522,13 +1522,17 @@ class Query(object):
         return self.add_columns(column)
 
     def options(self, *args):
-        """Return a new Query object, applying the given list of
+        """Return a new :class:`.Query` object, applying the given list of
         mapper options.
 
         Most supplied options regard changing how column- and
-        relationship-mapped attributes are loaded. See the sections
-        :ref:`deferred` and :doc:`/orm/loading_relationships` for reference
-        documentation.
+        relationship-mapped attributes are loaded.
+
+        .. seealso::
+
+            :ref:`deferred_options`
+
+            :ref:`relationship_loader_options`
 
         """
         return self._options(False, *args)

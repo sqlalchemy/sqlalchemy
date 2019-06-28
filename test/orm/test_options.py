@@ -10,6 +10,7 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
@@ -1541,6 +1542,252 @@ class LocalOptsTest(PathTest, QueryTest):
             .some_col_opt_only("name", {"foo": "bar"})
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
+
+
+class SubOptionsTest(PathTest, QueryTest):
+    run_create_tables = False
+    run_inserts = None
+    run_deletes = None
+
+    def _assert_opts(self, q, sub_opt, non_sub_opts):
+        existing_attributes = q._attributes
+        q._attributes = q._attributes.copy()
+        attr_a = {}
+
+        for val in sub_opt._to_bind:
+            val._bind_loader(
+                [ent.entity_zero for ent in q._mapper_entities],
+                q._current_path,
+                attr_a,
+                False,
+            )
+
+        q._attributes = existing_attributes.copy()
+
+        attr_b = {}
+
+        for opt in non_sub_opts:
+            for val in opt._to_bind:
+                val._bind_loader(
+                    [ent.entity_zero for ent in q._mapper_entities],
+                    q._current_path,
+                    attr_b,
+                    False,
+                )
+
+        for k, l in attr_b.items():
+            if not l.strategy:
+                del attr_b[k]
+
+        def strat_as_tuple(strat):
+            return (
+                strat.strategy,
+                strat.local_opts,
+                strat.propagate_to_loaders,
+                strat._of_type,
+                strat.is_class_strategy,
+                strat.is_opts_only,
+            )
+
+        eq_(
+            {path: strat_as_tuple(load) for path, load in attr_a.items()},
+            {path: strat_as_tuple(load) for path, load in attr_b.items()},
+        )
+
+    def test_one(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+        sub_opt = joinedload(User.orders).options(
+            joinedload(Order.items).options(defer(Item.description)),
+            defer(Order.description),
+        )
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders)
+            .joinedload(Order.items)
+            .defer(Item.description),
+            defaultload(User.orders).defer(Order.description),
+        ]
+
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_two(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+        sub_opt = defaultload(User.orders).options(
+            joinedload(Order.items),
+            defaultload(Order.items).options(subqueryload(Item.keywords)),
+            defer(Order.description),
+        )
+        non_sub_opts = [
+            defaultload(User.orders)
+            .joinedload(Order.items)
+            .subqueryload(Item.keywords),
+            defaultload(User.orders).defer(Order.description),
+        ]
+
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_three(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+        sub_opt = defaultload(User.orders).options(defer("*"))
+        non_sub_opts = [defaultload(User.orders).defer("*")]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_four(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            "User", "Address", "Order", "Item", "SubItem", "Keyword"
+        )
+        sub_opt = joinedload(User.orders).options(
+            defer(Order.description),
+            joinedload(Order.items).options(
+                joinedload(Item.keywords).options(defer(Keyword.name)),
+                defer(Item.description),
+            ),
+        )
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders).defer(Order.description),
+            defaultload(User.orders).joinedload(Order.items),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .joinedload(Item.keywords),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defer(Item.description),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defaultload(Item.keywords)
+            .defer(Keyword.name),
+        ]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_four_strings(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            "User", "Address", "Order", "Item", "SubItem", "Keyword"
+        )
+        sub_opt = joinedload("orders").options(
+            defer("description"),
+            joinedload("items").options(
+                joinedload("keywords").options(defer("name")),
+                defer("description"),
+            ),
+        )
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders).defer(Order.description),
+            defaultload(User.orders).joinedload(Order.items),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .joinedload(Item.keywords),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defer(Item.description),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defaultload(Item.keywords)
+            .defer(Keyword.name),
+        ]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_five(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            "User", "Address", "Order", "Item", "SubItem", "Keyword"
+        )
+        sub_opt = joinedload(User.orders).options(load_only(Order.description))
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders).load_only(Order.description),
+        ]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_five_strings(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            "User", "Address", "Order", "Item", "SubItem", "Keyword"
+        )
+        sub_opt = joinedload("orders").options(load_only("description"))
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders).load_only(Order.description),
+        ]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_invalid_one(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+
+        # these options are "invalid", in that User.orders -> Item.keywords
+        # is not a path.  However, the "normal" option is not generating
+        # an error for now, which is bad, but we're testing here only that
+        # it works the same way, so there you go.   If and when we make this
+        # case raise, then both cases should raise in the same way.
+        sub_opt = joinedload(User.orders).options(
+            joinedload(Item.keywords), joinedload(Order.items)
+        )
+        non_sub_opts = [
+            joinedload(User.orders).joinedload(Item.keywords),
+            defaultload(User.orders).joinedload(Order.items),
+        ]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_invalid_two(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+
+        # these options are "invalid", in that User.orders -> Item.keywords
+        # is not a path.  However, the "normal" option is not generating
+        # an error for now, which is bad, but we're testing here only that
+        # it works the same way, so there you go.   If and when we make this
+        # case raise, then both cases should raise in the same way.
+        sub_opt = joinedload("orders").options(
+            joinedload("keywords"), joinedload("items")
+        )
+        non_sub_opts = [
+            joinedload(User.orders).joinedload(Item.keywords),
+            defaultload(User.orders).joinedload(Order.items),
+        ]
+        sess = Session()
+        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_not_implemented_fromload(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+
+        assert_raises_message(
+            NotImplementedError,
+            r"The options\(\) method is currently only supported "
+            "for 'unbound' loader options",
+            Load(User).joinedload(User.orders).options,
+            joinedload(Order.items),
+        )
+
+    def test_not_implemented_toload(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+
+        assert_raises_message(
+            NotImplementedError,
+            r"Only 'unbound' loader options may be used with the "
+            r"Load.options\(\) method",
+            joinedload(User.orders).options,
+            Load(Order).joinedload(Order.items),
+        )
 
 
 class CacheKeyTest(PathTest, QueryTest):
