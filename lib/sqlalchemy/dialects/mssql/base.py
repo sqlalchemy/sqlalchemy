@@ -2426,8 +2426,8 @@ class MSDialect(default.DefaultDialect):
                 "and ind.is_primary_key=0 and ind.type != 0"
             )
             .bindparams(
-                sql.bindparam("tabname", tablename, sqltypes.String()),
-                sql.bindparam("schname", owner, sqltypes.String()),
+                sql.bindparam("tabname", tablename, ischema.CoerceUnicode()),
+                sql.bindparam("schname", owner, ischema.CoerceUnicode()),
             )
             .columns(name=sqltypes.Unicode())
         )
@@ -2451,8 +2451,8 @@ class MSDialect(default.DefaultDialect):
                 "and sch.name=:schname"
             )
             .bindparams(
-                sql.bindparam("tabname", tablename, sqltypes.String()),
-                sql.bindparam("schname", owner, sqltypes.String()),
+                sql.bindparam("tabname", tablename, ischema.CoerceUnicode()),
+                sql.bindparam("schname", owner, ischema.CoerceUnicode()),
             )
             .columns(name=sqltypes.Unicode())
         )
@@ -2477,8 +2477,8 @@ class MSDialect(default.DefaultDialect):
                 "views.schema_id=sch.schema_id and "
                 "views.name=:viewname and sch.name=:schname"
             ).bindparams(
-                sql.bindparam("viewname", viewname, sqltypes.String()),
-                sql.bindparam("schname", owner, sqltypes.String()),
+                sql.bindparam("viewname", viewname, ischema.CoerceUnicode()),
+                sql.bindparam("schname", owner, ischema.CoerceUnicode()),
             )
         )
 
