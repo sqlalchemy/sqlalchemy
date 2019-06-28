@@ -1161,6 +1161,59 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            join(User, oalias2, User.id == oalias2.user_id, full=True),
+            "users FULL OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            join(User, oalias2, User.id == oalias2.user_id, isouter=True),
+            "users LEFT OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            join(User, oalias2, User.id == oalias2.user_id,
+                 isouter=True, full=True),
+            "users FULL OUTER JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            join(User, oalias1).join(oalias2),
+            "users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+            "JOIN orders AS orders_2 ON users.id = orders_2.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            join(User, oalias1).join(oalias2, isouter=True),
+            "users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+            "LEFT OUTER JOIN orders AS orders_2 "
+            "ON users.id = orders_2.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            join(User, oalias1).join(oalias2, full=True),
+            "users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+            "FULL OUTER JOIN orders AS orders_2 "
+            "ON users.id = orders_2.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            join(User, oalias1).join(oalias2, full=True, isouter=True),
+            "users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+            "FULL OUTER JOIN orders AS orders_2 "
+            "ON users.id = orders_2.user_id",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
             join(ualias, oalias1, ualias.orders),
             "users AS users_1 JOIN orders AS orders_1 "
             "ON users_1.id = orders_1.user_id",
