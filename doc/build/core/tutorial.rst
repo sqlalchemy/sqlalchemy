@@ -1083,6 +1083,7 @@ by a column name that appears more than once:
 
 
 
+.. _core_tutorial_aliases:
 
 Using Aliases
 =============
@@ -1799,6 +1800,8 @@ specified to :meth:`.Select.correlate_except`.
 
     :meth:`.Select.lateral`
 
+
+.. _core_tutorial_ordering:
 
 Ordering, Grouping, Limiting, Offset...ing...
 ---------------------------------------------
