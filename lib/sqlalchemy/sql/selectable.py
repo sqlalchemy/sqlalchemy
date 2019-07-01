@@ -419,12 +419,18 @@ class FromClause(Selectable):
     def alias(self, name=None, flat=False):
         """return an alias of this :class:`.FromClause`.
 
-        This is shorthand for calling::
+        E.g.::
 
-            from sqlalchemy import alias
-            a = alias(self, name=name)
+            a2 = some_table.alias('a2')
 
-        See :func:`~.expression.alias` for details.
+        The above code creates an :class:`.Alias` object which can be used
+        as a FROM clause in any SELECT statement.
+
+        .. seealso::
+
+            :ref:`core_tutorial_aliases`
+
+            :func:`~.expression.alias`
 
         """
 
@@ -1166,6 +1172,8 @@ class Join(FromClause):
 
         .. seealso::
 
+            :ref:`core_tutorial_aliases`
+
             :func:`~.expression.alias`
 
         """
@@ -1251,7 +1259,10 @@ class Alias(FromClause):
 
         Similar functionality is available via the
         :meth:`~.FromClause.alias` method
-        available on all :class:`.FromClause` subclasses.
+        available on all :class:`.FromClause` subclasses.   In terms of a
+        SELECT object as generated from the :func:`.select` function, the
+        :meth:`.SelectBase.alias` method returns an :class:`.Alias` or
+        similar object which represents a named, parenthesized subquery.
 
         When an :class:`.Alias` is created from a :class:`.Table` object,
         this has the effect of the table being rendered
@@ -1547,6 +1558,18 @@ class CTE(Generative, HasSuffixes, Alias):
                 col._make_proxy(self)
 
     def alias(self, name=None, flat=False):
+        """Return an :class:`.Alias` of this :class:`.CTE`.
+
+        This method is a CTE-specific specialization of the
+        :class:`.FromClause.alias` method.
+
+        .. seealso::
+
+            :ref:`core_tutorial_aliases`
+
+            :func:`~.expression.alias`
+
+        """
         return CTE._construct(
             self.original,
             name=name,
@@ -2331,11 +2354,19 @@ class GenerativeSelect(SelectBase):
 
     @_generative
     def order_by(self, *clauses):
-        """return a new selectable with the given list of ORDER BY
+        r"""return a new selectable with the given list of ORDER BY
         criterion applied.
 
-        The criterion will be appended to any pre-existing ORDER BY
-        criterion.
+        e.g.::
+
+            stmt = select([table]).order_by(table.c.id, table.c.name)
+
+        :param \*order_by: a series of :class:`.ColumnElement` constructs
+         which will be used to generate an ORDER BY clause.
+
+        .. seealso::
+
+            :ref:`core_tutorial_ordering`
 
         """
 
@@ -2343,11 +2374,20 @@ class GenerativeSelect(SelectBase):
 
     @_generative
     def group_by(self, *clauses):
-        """return a new selectable with the given list of GROUP BY
+        r"""return a new selectable with the given list of GROUP BY
         criterion applied.
 
-        The criterion will be appended to any pre-existing GROUP BY
-        criterion.
+        e.g.::
+
+            stmt = select([table.c.name, func.max(table.c.stat)]).\
+            group_by(table.c.name)
+
+        :param \*group_by: a series of :class:`.ColumnElement` constructs
+         which will be used to generate an GROUP BY clause.
+
+        .. seealso::
+
+            :ref:`core_tutorial_ordering`
 
         """
 
@@ -2361,6 +2401,10 @@ class GenerativeSelect(SelectBase):
         This is an **in-place** mutation method; the
         :meth:`~.GenerativeSelect.order_by` method is preferred, as it
         provides standard :term:`method chaining`.
+
+        .. seealso::
+
+            :meth:`.GenerativeSelect.order_by`
 
         """
         if len(clauses) == 1 and clauses[0] is None:
@@ -2381,6 +2425,10 @@ class GenerativeSelect(SelectBase):
         This is an **in-place** mutation method; the
         :meth:`~.GenerativeSelect.group_by` method is preferred, as it
         provides standard :term:`method chaining`.
+
+        .. seealso::
+
+            :meth:`.GenerativeSelect.group_by`
 
         """
         if len(clauses) == 1 and clauses[0] is None:
