@@ -542,7 +542,7 @@ class FromClause(roles.FromClauseRole, Selectable):
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
-                            for sc in col.proxy_set
+                            for sc in col._uncached_proxy_set()
                             if sc.shares_lineage(column)
                         ],
                     )
@@ -550,7 +550,7 @@ class FromClause(roles.FromClauseRole, Selectable):
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
-                            for sc in c.proxy_set
+                            for sc in c._uncached_proxy_set()
                             if sc.shares_lineage(column)
                         ],
                     )

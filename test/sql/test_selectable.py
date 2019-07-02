@@ -1965,7 +1965,23 @@ class AnnotationsTest(fixtures.TestBase):
         # proxy_set, as corresponding_column iterates through proxy_set
         # in this way
         d = {}
-        for col in p2.proxy_set:
+        for col in p2._uncached_proxy_set():
+            d.update(col._annotations)
+        eq_(d, {"weight": 10})
+
+    def test_proxy_set_iteration_includes_annotated_two(self):
+        from sqlalchemy.schema import Column
+
+        c1 = Column("foo", Integer)
+
+        stmt = select([c1]).alias()
+        proxy = stmt.c.foo
+        c1.proxy_set
+
+        proxy._proxies = [c1._annotate({"weight": 10})]
+
+        d = {}
+        for col in proxy._uncached_proxy_set():
             d.update(col._annotations)
         eq_(d, {"weight": 10})
 
