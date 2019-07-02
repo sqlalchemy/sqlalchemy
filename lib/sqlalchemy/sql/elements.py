@@ -761,6 +761,18 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
             s.update(c.proxy_set)
         return s
 
+    def _uncached_proxy_set(self):
+        """An 'uncached' version of proxy set.
+
+        This is so that we can read annotations from the list of columns
+        without breaking the caching of the above proxy_set.
+
+        """
+        s = util.column_set([self])
+        for c in self._proxies:
+            s.update(c._uncached_proxy_set())
+        return s
+
     def shares_lineage(self, othercolumn):
         """Return True if the given :class:`.ColumnElement`
         has a common ancestor to this :class:`.ColumnElement`."""
@@ -4628,8 +4640,6 @@ class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
         ColumnElement.comparator._reset(self)
-        if self._proxies:
-            ColumnElement.proxy_set._reset(self)
         for attr in ("name", "key", "table"):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
