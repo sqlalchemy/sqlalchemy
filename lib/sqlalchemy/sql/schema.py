@@ -1927,7 +1927,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         parenttable = self.parent.table
 
-        # assertion, can be commented out.
+        # assertion
         # basically Column._make_proxy() sends the actual
         # target Column to the ForeignKey object, so the
         # string resolution here is never called.
