@@ -428,6 +428,18 @@ class SelectableTest(
         assert u1.corresponding_column(table1.c.colx) is u1.c.col2
         assert u1.corresponding_column(table1.c.col3) is u1.c.col1
 
+    def test_proxy_set_pollution(self):
+        s1 = select([table1.c.col1, table1.c.col2])
+        s2 = select([table1.c.col2, table1.c.col1])
+
+        for c in s1.c:
+            c.proxy_set
+        for c in s2.c:
+            c.proxy_set
+
+        u1 = union(s1, s2)
+        assert u1.corresponding_column(table1.c.col2) is u1.c.col2
+
     def test_singular_union(self):
         u = union(
             select([table1.c.col1, table1.c.col2, table1.c.col3]),
@@ -1914,6 +1926,27 @@ class AnnotationsTest(fixtures.TestBase):
         assert x_p_a.compare(x_p)
         assert x_p.compare(x_p_a)
         assert not x_p_a.compare(x_a)
+
+    def test_proxy_set_iteration_includes_annotated(self):
+        from sqlalchemy.schema import Column
+
+        c1 = Column("foo", Integer)
+
+        stmt = select([c1]).alias()
+        proxy = stmt.c.foo
+
+        proxy.proxy_set
+
+        # create an annotated of the column
+        p2 = proxy._annotate({"weight": 10})
+
+        # now see if our annotated version is in that column's
+        # proxy_set, as corresponding_column iterates through proxy_set
+        # in this way
+        d = {}
+        for col in p2.proxy_set:
+            d.update(col._annotations)
+        eq_(d, {"weight": 10})
 
     def test_late_name_add(self):
         from sqlalchemy.schema import Column

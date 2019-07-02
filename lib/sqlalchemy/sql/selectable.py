@@ -2663,7 +2663,6 @@ class CompoundSelect(GenerativeSelect):
             # to how low in the list of select()s the column occurs, so
             # that the corresponding_column() operation can resolve
             # conflicts
-
             proxy._proxies = [
                 c._annotate({"weight": i + 1}) for (i, c) in enumerate(cols)
             ]

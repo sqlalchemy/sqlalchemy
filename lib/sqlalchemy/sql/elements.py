@@ -607,6 +607,7 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     __visit_name__ = "column_element"
     primary_key = False
     foreign_keys = []
+    _proxies = ()
 
     _label = None
     """The named label that can be used to target
@@ -751,16 +752,13 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
     @util.memoized_property
     def base_columns(self):
-        return util.column_set(
-            c for c in self.proxy_set if not hasattr(c, "_proxies")
-        )
+        return util.column_set(c for c in self.proxy_set if not c._proxies)
 
     @util.memoized_property
     def proxy_set(self):
         s = util.column_set([self])
-        if hasattr(self, "_proxies"):
-            for c in self._proxies:
-                s.update(c.proxy_set)
+        for c in self._proxies:
+            s.update(c.proxy_set)
         return s
 
     def shares_lineage(self, othercolumn):
@@ -4630,6 +4628,8 @@ class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
         ColumnElement.comparator._reset(self)
+        if self._proxies:
+            ColumnElement.proxy_set._reset(self)
         for attr in ("name", "key", "table"):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
