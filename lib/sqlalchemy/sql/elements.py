@@ -853,6 +853,14 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
 
         This is a shortcut to the :func:`~.expression.cast` function.
 
+        .. seealso::
+
+            :ref:`coretutorial_casts`
+
+            :func:`~.expression.cast`
+
+            :func:`~.expression.type_coerce`
+
         .. versionadded:: 1.0.7
 
         """
@@ -2393,7 +2401,13 @@ class Cast(ColumnElement):
 
     .. seealso::
 
+        :ref:`coretutorial_casts`
+
         :func:`.cast`
+
+        :func:`.type_coerce` - an alternative to CAST that coerces the type
+        on the Python side only, which is often sufficient to generate the
+        correct SQL and data coercion.
 
     """
 
@@ -2444,8 +2458,12 @@ class Cast(ColumnElement):
 
         .. seealso::
 
-            :func:`.type_coerce` - Python-side type coercion without emitting
-            CAST.
+            :ref:`coretutorial_casts`
+
+            :func:`.type_coerce` - an alternative to CAST that coerces the type
+            on the Python side only, which is often sufficient to generate the
+            correct SQL and data coercion.
+
 
         """
         self.type = type_api.to_instance(type_)
@@ -2477,6 +2495,8 @@ class TypeCoerce(ColumnElement):
     .. seealso::
 
         :func:`.expression.type_coerce`
+
+        :func:`.cast`
 
     """
 
@@ -2539,6 +2559,8 @@ class TypeCoerce(ColumnElement):
          the type to which the expression is coerced.
 
         .. seealso::
+
+            :ref:`coretutorial_casts`
 
             :func:`.cast`
 
