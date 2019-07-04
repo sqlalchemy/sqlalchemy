@@ -1325,6 +1325,8 @@ single named value is needed in the execute parameters:
 
     :func:`.bindparam`
 
+.. _coretutorial_functions:
+
 Functions
 ---------
 
@@ -1472,6 +1474,73 @@ indicate "UNBOUNDED".  See the examples at :func:`.over` for more detail.
     :func:`.over`
 
     :meth:`.FunctionElement.over`
+
+.. _coretutorial_casts:
+
+Data Casts and Type Coercion
+-----------------------------
+
+In SQL, we often need to indicate the datatype of an element explicitly, or
+we need to convert between one datatype and another within a SQL statement.
+The CAST SQL function performs this.  In SQLAlchemy, the :func:`.cast` function
+renders the SQL CAST keyword.  It accepts a column expression and a data type
+object as arguments:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import cast
+    >>> s = select([cast(users.c.id, String)])
+    >>> conn.execute(s).fetchall()
+    {opensql}SELECT CAST(users.id AS VARCHAR) AS anon_1
+    FROM users
+    ()
+    {stop}[('1',), ('2',)]
+
+The :func:`.cast` function is used not just when converting between datatypes,
+but also in cases where the database needs to
+know that some particular value should be considered to be of a particular
+datatype within an expression.
+
+The :func:`.cast` function also tells SQLAlchemy itself that an expression
+should be treated as a particular type as well.   The datatype of an expression
+directly impacts the behavior of Python operators upon that object, such as how
+the ``+`` operator may indicate integer addition or string concatenation, and
+it also impacts how a literal Python value is transformed or handled before
+being passed to the database as well as how result values of that expression
+should be transformed or handled.
+
+Sometimes there is the need to have SQLAlchemy know the datatype of an
+expression, for all the reasons mentioned above, but to not render the CAST
+expression itself on the SQL side, where it may interfere with a SQL operation
+that already works without it.  For this fairly common use case there is
+another function :func:`.type_coerce` which is closely related to
+:func:`.cast`, in that it sets up a Python expression as having a specific SQL
+database type, but does not render the ``CAST`` keyword or datatype on the
+database side.    :func:`.type_coerce` is particularly important when dealing
+with the :class:`.types.JSON` datatype, which on a database like SQLite is
+an "implied" datatype. Below, we use :func:`.type_coerce` to deliver a Python
+structure as a JSON string into one of SQLite's JSON functions:
+
+.. sourcecode:: pycon+sql
+
+    >>> import json
+    >>> from sqlalchemy import JSON
+    >>> from sqlalchemy import type_coerce
+    >>> s = select([
+    ... type_coerce(
+    ...        {'some_key': {'foo': 'bar'}}, JSON
+    ...    )['some_key']
+    ... ])
+    >>> conn.execute(s).fetchall()
+    {opensql}SELECT JSON_QUOTE(JSON_EXTRACT(?, ?)) AS anon_1
+    ('{"some_key": {"foo": "bar"}}', '$."some_key"')
+    {stop}[({'foo': 'bar'},)]
+
+Above, SQLite's ``JSON_QUOTE`` and ``JSON_EXTRACT`` SQL functions were invoked
+because we used :func:`.type_coerce` to indicate that our Python dictionary
+should be treated as :class:`.types.JSON`.  The Python ``__getitem__``
+operator, ``['some_key']`` in this case, became available as a result and
+allowed a ``JSON_EXTRACT`` path expression to be rendered.
 
 Unions and Other Set Operations
 -------------------------------
