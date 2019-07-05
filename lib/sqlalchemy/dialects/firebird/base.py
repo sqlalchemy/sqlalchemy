@@ -10,6 +10,12 @@ r"""
 .. dialect:: firebird
     :name: Firebird
 
+.. note::
+
+    The Firebird dialect within SQLAlchemy **is not currently supported**. The
+    dialect is not tested within continuous integration and is likely to have
+    many issues and caveats not currently handled.
+
 Firebird Dialects
 -----------------
 

@@ -21,6 +21,18 @@ Included Dialects
     sqlite
     oracle
     mssql
+
+Included, but not currently supported dialects
+----------------------------------------------
+
+The following dialects have implementations wtihin SQLAlchemy however are not
+part of continuous integration testing nor are they actively developed.
+These dialects may be removed in future major releases.
+
+.. toctree::
+    :maxdepth: 1
+    :glob:
+
     firebird
     sybase
 
