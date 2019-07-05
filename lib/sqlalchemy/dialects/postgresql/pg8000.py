@@ -11,6 +11,11 @@ r"""
     :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://pythonhosted.org/pg8000/
 
+.. note::
+
+    The pg8000 dialect is **not tested as part of SQLAlchemy's continuous
+    integration** and may have unresolved issues.  The recommended PostgreSQL
+    dialect is psycopg2.
 
 .. _pg8000_unicode:
 

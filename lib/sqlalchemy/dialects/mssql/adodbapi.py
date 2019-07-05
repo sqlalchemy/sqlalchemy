@@ -14,7 +14,7 @@
 
 .. note::
 
-    The adodbapi dialect is not implemented SQLAlchemy versions 0.6 and
+    The adodbapi dialect is not implemented in SQLAlchemy versions 0.6 and
     above at this time.
 
 """

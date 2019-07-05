@@ -10,6 +10,13 @@
     :dbapi: pgdb
     :connectstring: postgresql+pygresql://user:password@host:port/dbname[?key=value&key=value...]
     :url: http://www.pygresql.org/
+
+.. note::
+
+    The pygresql dialect is **not tested as part of SQLAlchemy's continuous
+    integration** and may have unresolved issues.  The recommended PostgreSQL
+    dialect is psycopg2.
+
 """  # noqa
 
 import decimal

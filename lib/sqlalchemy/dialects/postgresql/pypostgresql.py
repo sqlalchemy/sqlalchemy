@@ -11,6 +11,12 @@
     :connectstring: postgresql+pypostgresql://user:password@host:port/dbname[?key=value&key=value...]
     :url: http://python.projects.pgfoundry.org/
 
+.. note::
+
+    The pypostgresql dialect is **not tested as part of SQLAlchemy's continuous
+    integration** and may have unresolved issues.  The recommended PostgreSQL
+    driver is psycopg2.
+
 
 """  # noqa
 
