@@ -1076,8 +1076,8 @@ by a column name that appears more than once:
 
 
 
-Using Aliases
-=============
+Using Aliases and Subqueries
+============================
 
 The alias in SQL corresponds to a "renamed" version of a table or SELECT
 statement, which occurs anytime you say "SELECT .. FROM sometable AS
@@ -1088,10 +1088,11 @@ FROM clause multiple times. In the case of a SELECT statement, it provides a
 parent name for the columns represented by the statement, allowing them to be
 referenced relative to this name.
 
-In SQLAlchemy, any :class:`.Table`, :func:`.select` construct, or
-other selectable can be turned into an alias using the :meth:`.FromClause.alias`
-method, which produces a :class:`.Alias` construct.  As an example, suppose we know that our user ``jack`` has two
-particular email addresses. How can we locate jack based on the combination of those two
+In SQLAlchemy, any :class:`.Table`, :func:`.select` construct, or other
+selectable can be turned into an alias or named subquery using the
+:meth:`.FromClause.alias` method, which produces a :class:`.Alias` construct.
+As an example, suppose we know that our user ``jack`` has two particular email
+addresses. How can we locate jack based on the combination of those two
 addresses?   To accomplish this, we'd use a join to the ``addresses`` table,
 once for each address.   We create two :class:`.Alias` constructs against
 ``addresses``, and then use them both within a :func:`.select` construct:
@@ -1133,15 +1134,16 @@ to the :meth:`.FromClause.alias` method::
     >>> a1 = addresses.alias('a1')
 
 Aliases can of course be used for anything which you can SELECT from,
-including SELECT statements themselves. We can self-join the ``users`` table
+including SELECT statements themselves, by converting the SELECT statement
+into a named subquery.  The :meth:`.SelectBase.alias` method performs this
+role.   We can self-join the ``users`` table
 back to the :func:`.select` we've created by making an alias of the entire
-statement. The ``correlate(None)`` directive is to avoid SQLAlchemy's attempt
-to "correlate" the inner ``users`` table with the outer one:
+statement:
 
 .. sourcecode:: pycon+sql
 
-    >>> a1 = s.correlate(None).alias()
-    >>> s = select([users.c.name]).where(users.c.id == a1.c.id)
+    >>> addresses_subq = s.alias()
+    >>> s = select([users.c.name]).where(users.c.id == addresses_subq.c.id)
     {sql}>>> conn.execute(s).fetchall()
     SELECT users.name
     FROM users,
