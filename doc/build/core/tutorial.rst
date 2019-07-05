@@ -1520,8 +1520,10 @@ another function :func:`.type_coerce` which is closely related to
 :func:`.cast`, in that it sets up a Python expression as having a specific SQL
 database type, but does not render the ``CAST`` keyword or datatype on the
 database side.    :func:`.type_coerce` is particularly important when dealing
-with the :class:`.types.JSON` datatype, which on a database like SQLite is
-an "implied" datatype. Below, we use :func:`.type_coerce` to deliver a Python
+with the :class:`.types.JSON` datatype, which typicaly has an intricate
+relationship with string-oriented datatypes on different platforms and
+may not even be an explicit datatype, such as on SQLite and MariaDB.
+Below, we use :func:`.type_coerce` to deliver a Python
 structure as a JSON string into one of SQLite's JSON functions:
 
 .. sourcecode:: pycon+sql
