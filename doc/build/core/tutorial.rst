@@ -1523,29 +1523,29 @@ database side.    :func:`.type_coerce` is particularly important when dealing
 with the :class:`.types.JSON` datatype, which typicaly has an intricate
 relationship with string-oriented datatypes on different platforms and
 may not even be an explicit datatype, such as on SQLite and MariaDB.
-Below, we use :func:`.type_coerce` to deliver a Python
-structure as a JSON string into one of SQLite's JSON functions:
+Below, we use :func:`.type_coerce` to deliver a Python structure as a JSON
+string into one of MySQL's JSON functions:
 
 .. sourcecode:: pycon+sql
 
     >>> import json
     >>> from sqlalchemy import JSON
     >>> from sqlalchemy import type_coerce
+    >>> from sqlalchemy.dialects import mysql
     >>> s = select([
     ... type_coerce(
     ...        {'some_key': {'foo': 'bar'}}, JSON
     ...    )['some_key']
     ... ])
-    >>> conn.execute(s).fetchall()
-    {opensql}SELECT JSON_QUOTE(JSON_EXTRACT(?, ?)) AS anon_1
-    ('{"some_key": {"foo": "bar"}}', '$."some_key"')
-    {stop}[({'foo': 'bar'},)]
+    >>> print(s.compile(dialect=mysql.dialect()))
+    SELECT JSON_EXTRACT(%s, %s) AS anon_1
 
-Above, SQLite's ``JSON_QUOTE`` and ``JSON_EXTRACT`` SQL functions were invoked
+Above, MySQL's ``JSON_EXTRACT`` SQL function was invoked
 because we used :func:`.type_coerce` to indicate that our Python dictionary
 should be treated as :class:`.types.JSON`.  The Python ``__getitem__``
 operator, ``['some_key']`` in this case, became available as a result and
-allowed a ``JSON_EXTRACT`` path expression to be rendered.
+allowed a ``JSON_EXTRACT`` path expression (not shown, however in this
+case it would ultimately be ``'$."some_key"'``) to be rendered.
 
 Unions and Other Set Operations
 -------------------------------
