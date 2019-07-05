@@ -443,7 +443,7 @@ class _UnboundLoad(Load):
     """Represent a loader option that isn't tied to a root entity.
 
     The loader option will produce an entity-linked :class:`.Load`
-    object when it is passed :metfh:`.Query.options`.
+    object when it is passed :meth:`.Query.options`.
 
     This provides compatibility with the traditional system
     of freestanding options, e.g. ``joinedload('x.y.z')``.
