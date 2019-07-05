@@ -12,6 +12,12 @@ r"""
     :connectstring: mysql+cymysql://<username>:<password>@<host>/<dbname>[?<options>]
     :url: https://github.com/nakagami/CyMySQL
 
+.. note::
+
+    The CyMySQL dialect is **not tested as part of SQLAlchemy's continuous
+    integration** and may have unresolved issues.  The recommended MySQL
+    dialects are mysqlclient and PyMySQL.
+
 """  # noqa
 
 from .base import BIT

@@ -12,6 +12,12 @@ r"""
     :connectstring: mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
     :url: https://pypi.org/project/mysql-connector-python/
 
+.. note::
+
+    The MySQL Connector/Python DBAPI has had many issues since its release,
+    some of which may remain unresolved, and the mysqlconnector dialect is
+    **not tested as part of SQLAlchemy's continuous integration**.
+    The recommended MySQL dialects are mysqlclient and PyMySQL.
 
 """  # noqa
 

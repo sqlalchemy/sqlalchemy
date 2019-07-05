@@ -13,6 +13,12 @@
     :connectstring: mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
     :url: http://packages.python.org/oursql/
 
+.. note::
+
+    The OurSQL MySQL dialect is legacy and is no longer supported upstream,
+    and is **not tested as part of SQLAlchemy's continuous integration**.
+    The recommended MySQL dialects are mysqlclient and PyMySQL.
+
 Unicode
 -------
 
