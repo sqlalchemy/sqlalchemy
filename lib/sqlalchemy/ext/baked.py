@@ -628,7 +628,7 @@ def bake_lazy_loaders():
 def unbake_lazy_loaders():
     """Disable the use of baked queries for all lazyloaders systemwide.
 
-    This method now raises NotImplmentedError() as the "baked" implementation
+    This method now raises NotImplementedError() as the "baked" implementation
     is the only lazy load implementation.  The
     :paramref:`.relationship.bake_queries` flag may be used to disable
     the caching of queries on a per-relationship basis.
