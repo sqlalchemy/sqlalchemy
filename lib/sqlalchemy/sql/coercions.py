@@ -124,18 +124,24 @@ class RoleImpl(object):
             return element
 
     def _implicit_coercions(self, element, resolved, argname=None, **kw):
-        self._raise_for_expected(element, argname)
+        self._raise_for_expected(element, argname, resolved)
 
-    def _raise_for_expected(self, element, argname=None):
+    def _raise_for_expected(
+        self, element, argname=None, resolved=None, advice=None, code=None
+    ):
         if argname:
-            raise exc.ArgumentError(
-                "%s expected for argument %r; got %r."
-                % (self.name, argname, element)
+            msg = "%s expected for argument %r; got %r." % (
+                self.name,
+                argname,
+                element,
             )
         else:
-            raise exc.ArgumentError(
-                "%s expected, got %r." % (self.name, element)
-            )
+            msg = "%s expected, got %r." % (self.name, element)
+
+        if advice:
+            msg += " " + advice
+
+        raise exc.ArgumentError(msg, code=code)
 
 
 class _StringOnly(object):
@@ -150,7 +156,7 @@ class _ReturnsStringKey(object):
         if isinstance(original_element, util.string_types):
             return original_element
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
     def _literal_coercion(self, element, **kw):
         return element
@@ -172,15 +178,13 @@ class _ColumnCoercions(object):
         if resolved._is_select_statement:
             self._warn_for_scalar_subquery_coercion()
             return resolved.scalar_subquery()
-        elif (
-            resolved._is_from_clause
-            and isinstance(resolved, selectable.Alias)
-            and resolved.element._is_select_statement
+        elif resolved._is_from_clause and isinstance(
+            resolved, selectable.Subquery
         ):
             self._warn_for_scalar_subquery_coercion()
             return resolved.element.scalar_subquery()
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
 
 def _no_text_coercion(
@@ -236,6 +240,30 @@ class _CoerceLiterals(object):
         self._raise_for_expected(element, argname)
 
 
+class _SelectIsNotFrom(object):
+    def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
+        if isinstance(element, roles.SelectStatementRole) or isinstance(
+            resolved, roles.SelectStatementRole
+        ):
+            advice = (
+                "To create a "
+                "FROM clause from a %s object, use the .subquery() method."
+                % (element.__class__)
+            )
+            code = "89ve"
+        else:
+            advice = code = None
+
+        return super(_SelectIsNotFrom, self)._raise_for_expected(
+            element,
+            argname=argname,
+            resolved=resolved,
+            advice=advice,
+            code=code,
+            **kw
+        )
+
+
 class ExpressionElementImpl(
     _ColumnCoercions, RoleImpl, roles.ExpressionElementRole
 ):
@@ -287,7 +315,7 @@ class InElementImpl(RoleImpl, roles.InElementRole):
             else:
                 return resolved.select()
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
     def _literal_coercion(self, element, expr, operator, **kw):
         if isinstance(element, collections_abc.Iterable) and not isinstance(
@@ -412,7 +440,7 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl, roles.TruncatedLabelRole):
         if isinstance(original_element, util.string_types):
             return resolved
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
     def _literal_coercion(self, element, argname=None, **kw):
         """coerce the given value to :class:`._truncated_label`.
@@ -447,7 +475,7 @@ class LimitOffsetImpl(RoleImpl, roles.LimitOffsetRole):
         if resolved is None:
             return None
         else:
-            self._raise_for_expected(element, argname)
+            self._raise_for_expected(element, argname, resolved)
 
     def _literal_coercion(self, element, name, type_, **kw):
         if element is None:
@@ -474,10 +502,12 @@ class LabeledColumnExprImpl(
             if isinstance(new, roles.ExpressionElementRole):
                 return new.label(None)
             else:
-                self._raise_for_expected(original_element, argname)
+                self._raise_for_expected(original_element, argname, resolved)
 
 
-class ColumnsClauseImpl(_CoerceLiterals, RoleImpl, roles.ColumnsClauseRole):
+class ColumnsClauseImpl(
+    _SelectIsNotFrom, _CoerceLiterals, RoleImpl, roles.ColumnsClauseRole
+):
 
     _coerce_consts = True
     _coerce_numerics = True
@@ -526,21 +556,40 @@ class SelectStatementImpl(
         if resolved._is_text_clause:
             return resolved.columns()
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
 
 class HasCTEImpl(ReturnsRowsImpl, roles.HasCTERole):
     pass
 
 
-class FromClauseImpl(_NoTextCoercion, RoleImpl, roles.FromClauseRole):
+class FromClauseImpl(
+    _SelectIsNotFrom, _NoTextCoercion, RoleImpl, roles.FromClauseRole
+):
     def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
+        self,
+        original_element,
+        resolved,
+        argname=None,
+        explicit_subquery=False,
+        allow_select=True,
+        **kw
     ):
-        if resolved._is_text_clause:
+        if resolved._is_select_statement:
+            if explicit_subquery:
+                return resolved.subquery()
+            elif allow_select:
+                util.warn_deprecated(
+                    "Implicit coercion of SELECT and textual SELECT "
+                    "constructs into FROM clauses is deprecated; please call "
+                    ".subquery() on any Core select or ORM Query object in "
+                    "order to produce a subquery object."
+                )
+                return resolved._implicit_subquery
+        elif resolved._is_text_clause:
             return resolved
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
 
 class StrictFromClauseImpl(FromClauseImpl, roles.StrictFromClauseRole):
@@ -559,16 +608,16 @@ class StrictFromClauseImpl(FromClauseImpl, roles.StrictFromClauseRole):
                 "on any Core select or ORM Query object in order to produce a "
                 "subquery object."
             )
-            return resolved.subquery()
+            return resolved._implicit_subquery
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
 
 class AnonymizedFromClauseImpl(
     StrictFromClauseImpl, roles.AnonymizedFromClauseRole
 ):
-    def _post_coercion(self, element, flat=False, **kw):
-        return element.alias(flat=flat)
+    def _post_coercion(self, element, flat=False, name=None, **kw):
+        return element.alias(name=name, flat=flat)
 
 
 class DMLSelectImpl(_NoTextCoercion, RoleImpl, roles.DMLSelectRole):
@@ -584,17 +633,28 @@ class DMLSelectImpl(_NoTextCoercion, RoleImpl, roles.DMLSelectRole):
             else:
                 return resolved.select()
         else:
-            self._raise_for_expected(original_element, argname)
+            self._raise_for_expected(original_element, argname, resolved)
 
 
 class CompoundElementImpl(
     _NoTextCoercion, RoleImpl, roles.CompoundElementRole
 ):
-    def _implicit_coercions(self, original_element, resolved, argname=None):
-        if resolved._is_from_clause:
-            return resolved
+    def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
+        if isinstance(element, roles.FromClauseRole):
+            if element._is_subquery:
+                advice = (
+                    "Use the plain select() object without "
+                    "calling .subquery() or .alias()."
+                )
+            else:
+                advice = (
+                    "To SELECT from any FROM clause, use the .select() method."
+                )
         else:
-            self._raise_for_expected(original_element, argname)
+            advice = None
+        return super(CompoundElementImpl, self)._raise_for_expected(
+            element, argname=argname, resolved=resolved, advice=advice, **kw
+        )
 
 
 _impl_lookup = {}

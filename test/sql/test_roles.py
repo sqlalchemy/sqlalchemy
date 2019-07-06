@@ -4,6 +4,7 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.schema import DDL
 from sqlalchemy.schema import Sequence
@@ -19,6 +20,8 @@ from sqlalchemy.sql import True_
 from sqlalchemy.sql.coercions import expect
 from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import Null
+from sqlalchemy.sql.selectable import FromGrouping
+from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -182,6 +185,37 @@ class RoleTest(fixtures.TestBase):
             expect,
             roles.SelectStatementRole,
             "select * from table",
+        )
+
+    def test_select_is_coerced_into_fromclause_w_deprecation(self):
+        with testing.expect_deprecated(
+            "Implicit coercion of SELECT and textual SELECT "
+            "constructs into FROM clauses is deprecated;"
+        ):
+            element = expect(
+                roles.FromClauseRole, SelectStatementGrouping(select([t]))
+            )
+            is_true(
+                element.compare(
+                    SelectStatementGrouping(select([t])).subquery()
+                )
+            )
+
+    def test_from_clause_is_not_a_select(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"SELECT construct or equivalent text\(\) construct expected,",
+            expect,
+            roles.SelectStatementRole,
+            FromGrouping(t),
+        )
+
+    def test_text_as_from_select_statement(self):
+        is_true(
+            expect(
+                roles.SelectStatementRole,
+                text("select * from table").columns(t.c.q),
+            ).compare(text("select * from table").columns(t.c.q))
         )
 
     def test_statement_coercion_select(self):

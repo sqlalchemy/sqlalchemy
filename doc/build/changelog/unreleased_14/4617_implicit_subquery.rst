@@ -2,13 +2,37 @@
     :tags: change, sql
     :tickets: 4617
 
-    Added new method :meth:`.SelectBase.subquery`, which creates a subquery
-    that is essentially the same thing as what calling
-    :meth:`.FromClause.alias` has always done, e.g. creates a named subquery.
-    This method is intended to roughly mirror the same role as that of
-    :meth:`.Query.subquery`.   The :meth:`.SelectBase.alias` method is
-    being kept for the time being as essentially the same function as that
-    of :meth:`.SelectBase.subquery`.
+    As part of the SQLAlchemy 2.0 migration project, a conceptual change has
+    been made to the role of the :class:`.SelectBase` class hierarchy,
+    which is the root of all "SELECT" statement constructs, in that they no
+    longer serve directly as FROM clauses, that is, they no longer subclass
+    :class:`.FromClause`.  For end users, the change mostly means that any
+    placement of a :func:`.select` construct in the FROM clause of another
+    :func:`.select` requires first that it be wrapped in a subquery first,
+    which historically is through the use of the :meth:`.SelectBase.alias`
+    method, and is now also available through the use of
+    :meth:`.SelectBase.subquery`.    This was usually a requirement in any
+    case since several databases don't accept unnamed SELECT subqueries
+    in their FROM clause in any case.
+
+    .. seealso::
+
+        :ref:`change_4617`
+
+.. change::
+    :tags: change, sql
+    :tickets: 4617
+
+    Added a new Core class :class:`.Subquery`, which takes the place of
+    :class:`.Alias` when creating named subqueries against a :class:`.SelectBase`
+    object.   :class:`.Subquery` acts in the same way as :class:`.Alias`
+    and is produced from the :meth:`.SelectBase.subquery` method; for
+    ease of use and backwards compatibility, the :meth:`.SelectBase.alias`
+    method is synonymous with this new method.
+
+    .. seealso::
+
+        :ref:`change_4617`
 
 .. change::
     :tags: change, orm
@@ -22,12 +46,26 @@
     :class:`.Query` object is passed directly to these functions and others,
     the ORM is typically coercing them to be a subquery by calling the
     :meth:`.SelectBase.alias` method automatically (which is now superceded by
-    the :meth:`.SelectBase.subquery method).  The historical reason is that
-    most databases other than SQLite don't allow a SELECT of a SELECT without
-    the inner SELECT being a named subuqery in any case; going forward,
-    SQLAlchemy Core is moving towards no longer considering a SELECT statement
-    that isn't inside a subquery to be a "FROM" clause, that is, an object that
-    can be selected from, in the first place, as part of a larger change to
-    unify the interfaces for :func:`.select` and :meth:`.Query`.  The change is
-    intended to encourage code to make explicit those places where these
-    subqueries have normally been implicitly created.
+    the :meth:`.SelectBase.subquery` method).   See the migration notes linked
+    below for further details.
+
+    .. seealso::
+
+        :ref:`change_4617`
+
+.. change::
+    :tags: bug, sql
+    :tickets: 4617
+
+    The ORDER BY clause of a :class:`.CompoundSelect`, e.g. UNION, EXCEPT, etc.
+    will not render the table name associated with a given column when applying
+    :meth:`.CompoundSelect.order_by` in terms of a :class:`.Table` - bound
+    column.   Most databases require that the names in the ORDER BY clause be
+    expressed as label names only which are matched to names in the first
+    SELECT statement.    The change is related to :ticket:`4617` in that a
+    previous workaround was to refer to the ``.c`` attribute of the
+    :class:`.CompoundSelect` in order to get at a column that has no table
+    name.  As the subquery is now named, this change allows both the workaround
+    to continue to work, as well as allows table-bound columns as well as the
+    :attr:`.CompoundSelect.selected_columns` collections to be usable in the
+    :meth:`.CompoundSelect.order_by` method.

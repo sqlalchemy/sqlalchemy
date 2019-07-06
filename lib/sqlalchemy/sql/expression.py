@@ -16,6 +16,7 @@ class.
 
 __all__ = [
     "Alias",
+    "AliasedReturnsRows",
     "any_",
     "all_",
     "ClauseElement",
@@ -76,6 +77,7 @@ __all__ = [
     "union_all",
     "update",
     "within_group",
+    "Subquery",
     "TableSample",
     "tablesample",
 ]
@@ -132,6 +134,7 @@ from .functions import Function  # noqa
 from .functions import FunctionElement  # noqa
 from .functions import modifier  # noqa
 from .selectable import Alias  # noqa
+from .selectable import AliasedReturnsRows  # noqa
 from .selectable import CompoundSelect  # noqa
 from .selectable import CTE  # noqa
 from .selectable import Exists  # noqa
@@ -148,10 +151,12 @@ from .selectable import ScalarSelect  # noqa
 from .selectable import Select  # noqa
 from .selectable import Selectable  # noqa
 from .selectable import SelectBase  # noqa
+from .selectable import Subquery  # noqa
 from .selectable import subquery  # noqa
 from .selectable import TableClause  # noqa
 from .selectable import TableSample  # noqa
 from .selectable import TextAsFrom  # noqa
+from .selectable import TextualSelect  # noqa
 from .visitors import Visitable  # noqa
 from ..util.langhelpers import public_factory  # noqa
 

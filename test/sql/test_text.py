@@ -147,10 +147,13 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
                     table1.c.myid,
                 ],
                 from_obj=[table1],
-            ).select(),
-            "SELECT column1 AS foobar, column2 AS hoho, myid FROM "
+            )
+            .subquery()
+            .select(),
+            "SELECT anon_1.column1 AS foobar, anon_1.column2 AS hoho, "
+            "anon_1.myid FROM "
             "(SELECT column1 AS foobar, column2 AS hoho, "
-            "mytable.myid AS myid FROM mytable)",
+            "mytable.myid AS myid FROM mytable) AS anon_1",
         )
 
     def test_select_composition_seven(self):
@@ -409,11 +412,15 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             compiled._create_result_map(),
             {
-                "id": ("id", (t.c.id._proxies[0], "id", "id"), t.c.id.type),
+                "id": (
+                    "id",
+                    (t.selected_columns.id, "id", "id"),
+                    t.selected_columns.id.type,
+                ),
                 "name": (
                     "name",
-                    (t.c.name._proxies[0], "name", "name"),
-                    t.c.name.type,
+                    (t.selected_columns.name, "name", "name"),
+                    t.selected_columns.name.type,
                 ),
             },
         )
@@ -425,17 +432,25 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             compiled._create_result_map(),
             {
-                "id": ("id", (t.c.id._proxies[0], "id", "id"), t.c.id.type),
+                "id": (
+                    "id",
+                    (t.selected_columns.id, "id", "id"),
+                    t.selected_columns.id.type,
+                ),
                 "name": (
                     "name",
-                    (t.c.name._proxies[0], "name", "name"),
-                    t.c.name.type,
+                    (t.selected_columns.name, "name", "name"),
+                    t.selected_columns.name.type,
                 ),
             },
         )
 
     def test_basic_subquery_resultmap(self):
-        t = text("select id, name from user").columns(id=Integer, name=String)
+        t = (
+            text("select id, name from user")
+            .columns(id=Integer, name=String)
+            .subquery()
+        )
 
         stmt = select([table1.c.myid]).select_from(
             table1.join(t, table1.c.myid == t.c.id)
@@ -456,16 +471,16 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         t = text("select a, b, c from foo").columns(
             column("a"), column("b"), column("c")
         )
-        eq_(t.c.keys(), ["a", "b", "c"])
+        eq_(t.selected_columns.keys(), ["a", "b", "c"])
 
     def test_column_collection_pos_plus_bykey(self):
         # overlapping positional names + type names
         t = text("select a, b, c from foo").columns(
             column("a"), column("b"), b=Integer, c=String
         )
-        eq_(t.c.keys(), ["a", "b", "c"])
-        eq_(t.c.b.type._type_affinity, Integer)
-        eq_(t.c.c.type._type_affinity, String)
+        eq_(t.selected_columns.keys(), ["a", "b", "c"])
+        eq_(t.selected_columns.b.type._type_affinity, Integer)
+        eq_(t.selected_columns.c.type._type_affinity, String)
 
     def _xy_table_fixture(self):
         m = MetaData()
@@ -547,6 +562,26 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH t AS (select id, name from user) "
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable, t WHERE mytable.myid = t.id",
+        )
+
+    def test_subquery(self):
+        t = (
+            text("select id, name from user")
+            .columns(id=Integer, name=String)
+            .subquery()
+        )
+
+        stmt = (
+            select([table1.c.myid])
+            .select_from(table1.join(t, table1.c.myid == t.c.id))
+            .order_by(t.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable JOIN "
+            "(select id, name from user) AS anon_1 "
+            "ON mytable.myid = anon_1.id ORDER BY anon_1.name",
         )
 
     def test_alias(self):
@@ -769,15 +804,16 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_over(self):
-        stmt = select([column("foo"), column("bar")])
+        stmt = select([column("foo"), column("bar")]).subquery()
         stmt = select(
             [func.row_number().over(order_by="foo", partition_by="bar")]
         ).select_from(stmt)
 
         self.assert_compile(
             stmt,
-            "SELECT row_number() OVER (PARTITION BY bar ORDER BY foo) "
-            "AS anon_1 FROM (SELECT foo, bar)",
+            "SELECT row_number() OVER "
+            "(PARTITION BY anon_2.bar ORDER BY anon_2.foo) "
+            "AS anon_1 FROM (SELECT foo, bar) AS anon_2",
         )
 
     def test_union_column(self):

@@ -2532,7 +2532,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             User(name="jack", addresses=[Address(id=1)]),
         )
 
-    def test_select_from_aliased(self):
+    def test_select_from_aliased_one(self):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
@@ -2547,6 +2547,40 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             q,
             "SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id, "
             "users.name AS name FROM users) AS anon_1 ORDER BY anon_1.name",
+        )
+        eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
+
+    def test_select_from_aliased_two(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        sess = create_session()
+
+        ua = aliased(User)
+
+        q = sess.query(User.name).select_entity_from(ua).order_by(User.name)
+        self.assert_compile(
+            q,
+            "SELECT users_1.name AS users_1_name FROM users AS users_1 "
+            "ORDER BY users_1.name",
+        )
+        eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
+
+    def test_select_from_core_alias_one(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        sess = create_session()
+
+        ua = users.alias()
+
+        q = sess.query(User.name).select_entity_from(ua).order_by(User.name)
+        self.assert_compile(
+            q,
+            "SELECT users_1.name AS users_1_name FROM users AS users_1 "
+            "ORDER BY users_1.name",
         )
         eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
 

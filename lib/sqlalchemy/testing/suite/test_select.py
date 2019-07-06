@@ -268,7 +268,9 @@ class CompoundSelectTest(fixtures.TablesTest):
         s2 = select([table]).where(table.c.id == 3)
 
         u1 = union(s1, s2)
-        self._assert_result(u1.order_by(u1.c.id), [(2, 2, 3), (3, 3, 4)])
+        self._assert_result(
+            u1.order_by(u1.selected_columns.id), [(2, 2, 3), (3, 3, 4)]
+        )
 
     def test_select_from_plain_union(self):
         table = self.tables.some_table
@@ -276,7 +278,9 @@ class CompoundSelectTest(fixtures.TablesTest):
         s2 = select([table]).where(table.c.id == 3)
 
         u1 = union(s1, s2).alias().select()
-        self._assert_result(u1.order_by(u1.c.id), [(2, 2, 3), (3, 3, 4)])
+        self._assert_result(
+            u1.order_by(u1.selected_columns.id), [(2, 2, 3), (3, 3, 4)]
+        )
 
     @testing.requires.order_by_col_from_union
     @testing.requires.parens_in_union_contained_select_w_limit_offset
@@ -296,7 +300,9 @@ class CompoundSelectTest(fixtures.TablesTest):
         )
 
         u1 = union(s1, s2).limit(2)
-        self._assert_result(u1.order_by(u1.c.id), [(2, 2, 3), (3, 3, 4)])
+        self._assert_result(
+            u1.order_by(u1.selected_columns.id), [(2, 2, 3), (3, 3, 4)]
+        )
 
     @testing.requires.parens_in_union_contained_select_wo_limit_offset
     def test_order_by_selectable_in_unions(self):
@@ -305,7 +311,9 @@ class CompoundSelectTest(fixtures.TablesTest):
         s2 = select([table]).where(table.c.id == 3).order_by(table.c.id)
 
         u1 = union(s1, s2).limit(2)
-        self._assert_result(u1.order_by(u1.c.id), [(2, 2, 3), (3, 3, 4)])
+        self._assert_result(
+            u1.order_by(u1.selected_columns.id), [(2, 2, 3), (3, 3, 4)]
+        )
 
     def test_distinct_selectable_in_unions(self):
         table = self.tables.some_table
@@ -313,7 +321,9 @@ class CompoundSelectTest(fixtures.TablesTest):
         s2 = select([table]).where(table.c.id == 3).distinct()
 
         u1 = union(s1, s2).limit(2)
-        self._assert_result(u1.order_by(u1.c.id), [(2, 2, 3), (3, 3, 4)])
+        self._assert_result(
+            u1.order_by(u1.selected_columns.id), [(2, 2, 3), (3, 3, 4)]
+        )
 
     @testing.requires.parens_in_union_contained_select_w_limit_offset
     def test_limit_offset_in_unions_from_alias(self):
@@ -357,7 +367,9 @@ class CompoundSelectTest(fixtures.TablesTest):
         )
 
         u1 = union(s1, s2).limit(2)
-        self._assert_result(u1.order_by(u1.c.id), [(2, 2, 3), (3, 3, 4)])
+        self._assert_result(
+            u1.order_by(u1.selected_columns.id), [(2, 2, 3), (3, 3, 4)]
+        )
 
 
 class ExpandingBoundInTest(fixtures.TablesTest):

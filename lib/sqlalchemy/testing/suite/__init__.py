@@ -1,5 +1,6 @@
 from .test_cte import *  # noqa
 from .test_ddl import *  # noqa
+from .test_deprecations import *  # noqa
 from .test_dialect import *  # noqa
 from .test_insert import *  # noqa
 from .test_reflection import *  # noqa

@@ -279,18 +279,10 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
     def test_select_from_select(self):
         table = self._fixture()
         self.assert_compile(
-            table.select().select(),
-            "SELECT x, lower(y) AS y FROM (SELECT test_table.x "
-            "AS x, test_table.y AS y FROM test_table)",
-        )
-
-    def test_select_from_alias(self):
-        table = self._fixture()
-        self.assert_compile(
-            table.select().alias().select(),
-            "SELECT anon_1.x, lower(anon_1.y) AS y FROM (SELECT "
-            "test_table.x AS x, test_table.y AS y "
-            "FROM test_table) AS anon_1",
+            table.select().subquery().select(),
+            "SELECT anon_1.x, lower(anon_1.y) AS y FROM "
+            "(SELECT test_table.x "
+            "AS x, test_table.y AS y FROM test_table) AS anon_1",
         )
 
     def test_select_from_aliased_join(self):

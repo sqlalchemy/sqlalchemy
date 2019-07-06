@@ -22,6 +22,7 @@ from . import operators
 from . import roles
 from . import type_api
 from .annotation import Annotated
+from .base import _clone
 from .base import _generative
 from .base import Executable
 from .base import Immutable
@@ -34,10 +35,6 @@ from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
-
-
-def _clone(element, **kw):
-    return element._clone()
 
 
 def collate(expression, collation):
@@ -413,6 +410,11 @@ class ClauseElement(roles.SQLRole, Visitable):
         The base :meth:`self_group` method of :class:`.ClauseElement`
         just returns self.
         """
+        return self
+
+    def _ungroup(self):
+        """Return this :class:`.ClauseElement` without any groupings."""
+
         return self
 
     @util.dependencies("sqlalchemy.engine.default")
@@ -821,6 +823,16 @@ class ColumnElement(
             and other.name == self.name
         )
 
+    @util.memoized_property
+    def _proxy_key(self):
+        if self.key:
+            return self.key
+        else:
+            try:
+                return str(self)
+            except exc.UnsupportedCompilationError:
+                return self.anon_label
+
     def _make_proxy(
         self, selectable, name=None, name_is_truncatable=False, **kw
     ):
@@ -831,14 +843,7 @@ class ColumnElement(
         """
         if name is None:
             name = self.anon_label
-            if self.key:
-                key = self.key
-            else:
-                try:
-                    key = str(self)
-                except exc.UnsupportedCompilationError:
-                    key = self.anon_label
-
+            key = self._proxy_key
         else:
             key = name
         co = ColumnClause(
@@ -1619,8 +1624,14 @@ class TextClause(
 
     @util.dependencies("sqlalchemy.sql.selectable")
     def columns(self, selectable, *cols, **types):
-        """Turn this :class:`.TextClause` object into a :class:`.TextAsFrom`
-        object that can be embedded into another statement.
+        r"""Turn this :class:`.TextClause` object into a
+        :class:`.TextualSelect` object that serves the same role as a SELECT
+        statement.
+
+        The :class:`.TextualSelect` is part of the :class:`.SelectBase`
+        hierarchy and can be embedded into another statement by using the
+        :meth:`.TextualSelect.subquery` method to produce a :class:`.Subquery`
+        object, which can then be SELECTed from.
 
         This function essentially bridges the gap between an entirely
         textual SELECT statement and the SQL expression language concept
@@ -1629,7 +1640,7 @@ class TextClause(
             from sqlalchemy.sql import column, text
 
             stmt = text("SELECT id, name FROM some_table")
-            stmt = stmt.columns(column('id'), column('name')).alias('st')
+            stmt = stmt.columns(column('id'), column('name')).subquery('st')
 
             stmt = select([mytable]).\
                     select_from(
@@ -1638,8 +1649,10 @@ class TextClause(
 
         Above, we pass a series of :func:`.column` elements to the
         :meth:`.TextClause.columns` method positionally.  These :func:`.column`
-        elements now become first class elements upon the :attr:`.TextAsFrom.c`
-        column collection, just like any other selectable.
+        elements now become first class elements upon the
+        :attr:`.TextualSelect.selected_columns` column collection, which then
+        become part of the :attr:`.Subquery.c` collection after
+        :meth:`.TextualSelect.subquery` is invoked.
 
         The column expressions we pass to :meth:`.TextClause.columns` may
         also be typed; when we do so, these :class:`.TypeEngine` objects become
@@ -1697,17 +1710,22 @@ class TextClause(
            the column expressions are passed purely positionally.
 
         The :meth:`.TextClause.columns` method provides a direct
-        route to calling :meth:`.FromClause.alias` as well as
+        route to calling :meth:`.FromClause.subquery` as well as
         :meth:`.SelectBase.cte` against a textual SELECT statement::
 
             stmt = stmt.columns(id=Integer, name=String).cte('st')
 
             stmt = select([sometable]).where(sometable.c.id == stmt.c.id)
 
-        .. versionadded:: 0.9.0 :func:`.text` can now be converted into a
-           fully featured "selectable" construct using the
-           :meth:`.TextClause.columns` method.
+        :param \*cols: A series of :class:`.ColumnElement` objects, typically
+         :class:`.Column` objects from a :class:`.Table` or ORM level
+         column-mapped attributes, representing a set of columns that this
+         textual string will SELECT from.
 
+        :param \**types: A mapping of string names to :class:`.TypeEngine`
+         type objects indicating the datatypes to use for names that are
+         SELECTed from the textual string.  Prefer to use the ``\*cols``
+         argument as it also indicates positional ordering.
 
         """
         positional_input_cols = [
@@ -1720,7 +1738,7 @@ class TextClause(
             ColumnClause(key, type_) for key, type_ in types.items()
         ]
 
-        return selectable.TextAsFrom(
+        return selectable.TextualSelect(
             self,
             positional_input_cols + keyed_input_cols,
             positional=bool(positional_input_cols) and not keyed_input_cols,
@@ -3291,18 +3309,25 @@ class IndexExpression(BinaryExpression):
     pass
 
 
-class Grouping(ColumnElement):
-    """Represent a grouping within a column expression"""
+class GroupedElement(ClauseElement):
+    """Represent any parenthesized expression"""
 
     __visit_name__ = "grouping"
-
-    def __init__(self, element):
-        self.element = element
-        self.type = getattr(element, "type", type_api.NULLTYPE)
 
     def self_group(self, against=None):
         # type: (Optional[Any]) -> ClauseElement
         return self
+
+    def _ungroup(self):
+        return self.element._ungroup()
+
+
+class Grouping(GroupedElement, ColumnElement):
+    """Represent a grouping within a column expression"""
+
+    def __init__(self, element):
+        self.element = element
+        self.type = getattr(element, "type", type_api.NULLTYPE)
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
@@ -4351,40 +4376,12 @@ class quoted_name(util.MemoizedSlots, util.text_type):
         return "'%s'" % backslashed
 
 
-def _expand_cloned(elements):
-    """expand the given set of ClauseElements to be the set of all 'cloned'
-    predecessors.
-
-    """
-    return itertools.chain(*[x._cloned_set for x in elements])
-
-
 def _select_iterables(elements):
     """expand tables into individual columns in the
     given list of column expressions.
 
     """
     return itertools.chain(*[c._select_iterable for c in elements])
-
-
-def _cloned_intersection(a, b):
-    """return the intersection of sets a and b, counting
-    any overlap between 'cloned' predecessors.
-
-    The returned set is in terms of the entities present within 'a'.
-
-    """
-    all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
-    return set(
-        elem for elem in a if all_overlap.intersection(elem._cloned_set)
-    )
-
-
-def _cloned_difference(a, b):
-    all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
-    return set(
-        elem for elem in a if not all_overlap.intersection(elem._cloned_set)
-    )
 
 
 def _find_columns(clause):

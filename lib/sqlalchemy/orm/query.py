@@ -253,11 +253,6 @@ class Query(object):
                         "expected when the base alias is being set."
                     )
                 fa.append(info.selectable)
-            elif not info.is_clause_element or not info._is_from_clause:
-                raise sa_exc.ArgumentError(
-                    "argument is not a mapped class, mapper, "
-                    "aliased(), or FromClause instance."
-                )
             else:
                 from_obj = coercions.expect(
                     roles.StrictFromClauseRole, from_obj, allow_select=True
@@ -271,7 +266,9 @@ class Query(object):
         if (
             set_base_alias
             and len(self._from_obj) == 1
-            and isinstance(select_from_alias, expression.Alias)
+            and isinstance(
+                select_from_alias, sql.selectable.AliasedReturnsRows
+            )
         ):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(
@@ -2302,7 +2299,14 @@ class Query(object):
         if (
             len(keys) == 2
             and isinstance(
-                keys[0], (expression.FromClause, type, AliasedClass)
+                keys[0],
+                (
+                    # note this would be FromClause once
+                    # coercion of SELECT is removed
+                    expression.Selectable,
+                    type,
+                    AliasedClass,
+                ),
             )
             and isinstance(
                 keys[1],
@@ -2761,7 +2765,9 @@ class Query(object):
                 # if the destination selectable is a plain select(),
                 # turn it into an alias().
                 if isinstance(right_selectable, expression.SelectBase):
-                    right_selectable = right_selectable.alias()
+                    right_selectable = coercions.expect(
+                        roles.FromClauseRole, right_selectable
+                    )
                     need_adapter = True
 
                 # make the right hand side target into an ORM entity
@@ -2781,7 +2787,8 @@ class Query(object):
             and (
                 right_mapper.with_polymorphic
                 and isinstance(
-                    right_mapper._with_polymorphic_selectable, expression.Alias
+                    right_mapper._with_polymorphic_selectable,
+                    expression.AliasedReturnsRows,
                 )
                 or overlap
                 # test for overlap:
@@ -3201,13 +3208,10 @@ class Query(object):
         """
         statement = coercions.expect(roles.SelectStatementRole, statement)
 
-        if not isinstance(
+        # TODO: coercions above should have this handled
+        assert isinstance(
             statement, (expression.TextClause, expression.SelectBase)
-        ):
-            raise sa_exc.ArgumentError(
-                "from_statement accepts text(), select(), "
-                "and union() objects only."
-            )
+        )
 
         self._statement = statement
 

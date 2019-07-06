@@ -7,6 +7,7 @@ from sqlalchemy import lateral
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
+from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.sql import func
@@ -56,6 +57,22 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_standalone(self):
         table1 = self.tables.people
+        subq = select([table1.c.people_id]).subquery()
+
+        # alias name is not rendered because subquery is not
+        # in the context of a FROM clause
+        self.assert_compile(
+            lateral(subq, name="alias"),
+            "LATERAL (SELECT people.people_id FROM people)",
+        )
+
+        self.assert_compile(
+            subq.lateral(name="alias"),
+            "LATERAL (SELECT people.people_id FROM people)",
+        )
+
+    def test_standalone_implicit_subquery(self):
+        table1 = self.tables.people
         subq = select([table1.c.people_id])
 
         # alias name is not rendered because subquery is not
@@ -72,6 +89,17 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_select_from(self):
         table1 = self.tables.people
+        subq = select([table1.c.people_id]).subquery()
+
+        # in a FROM context, now you get "AS alias" and column labeling
+        self.assert_compile(
+            select([subq.lateral(name="alias")]),
+            "SELECT alias.people_id FROM LATERAL "
+            "(SELECT people.people_id AS people_id FROM people) AS alias",
+        )
+
+    def test_select_from_implicit_subquery(self):
+        table1 = self.tables.people
         subq = select([table1.c.people_id])
 
         # in a FROM context, now you get "AS alias" and column labeling
@@ -81,7 +109,57 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             "(SELECT people.people_id AS people_id FROM people) AS alias",
         )
 
+    def test_select_from_text_implicit_subquery(self):
+        table1 = self.tables.people
+        subq = text("SELECT people_id FROM people").columns(table1.c.people_id)
+
+        # in a FROM context, now you get "AS alias" and column labeling
+        self.assert_compile(
+            select([subq.lateral(name="alias")]),
+            "SELECT alias.people_id FROM LATERAL "
+            "(SELECT people_id FROM people) AS alias",
+        )
+
     def test_plain_join(self):
+        table1 = self.tables.people
+        table2 = self.tables.books
+        subq = select([table2.c.book_id]).where(
+            table2.c.book_owner_id == table1.c.people_id
+        )
+
+        # FROM books, people?  isn't this wrong?  No!  Because
+        # this is only a fragment, books isn't in any other FROM clause
+        self.assert_compile(
+            join(table1, lateral(subq.subquery(), name="alias"), true()),
+            "people JOIN LATERAL (SELECT books.book_id AS book_id "
+            "FROM books, people WHERE books.book_owner_id = people.people_id) "
+            "AS alias ON true",
+        )
+
+        # put it in correct context, implicit correlation works fine
+        self.assert_compile(
+            select([table1]).select_from(
+                join(table1, lateral(subq.subquery(), name="alias"), true())
+            ),
+            "SELECT people.people_id, people.age, people.name "
+            "FROM people JOIN LATERAL (SELECT books.book_id AS book_id "
+            "FROM books WHERE books.book_owner_id = people.people_id) "
+            "AS alias ON true",
+        )
+
+        # explicit correlation
+        subq = subq.correlate(table1)
+        self.assert_compile(
+            select([table1]).select_from(
+                join(table1, lateral(subq.subquery(), name="alias"), true())
+            ),
+            "SELECT people.people_id, people.age, people.name "
+            "FROM people JOIN LATERAL (SELECT books.book_id AS book_id "
+            "FROM books WHERE books.book_owner_id = people.people_id) "
+            "AS alias ON true",
+        )
+
+    def test_plain_join_implicit_subquery(self):
         table1 = self.tables.people
         table2 = self.tables.books
         subq = select([table2.c.book_id]).where(
@@ -128,6 +206,7 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             select([table2.c.book_id])
             .correlate(table1)
             .where(table1.c.people_id == table2.c.book_owner_id)
+            .subquery()
             .lateral()
         )
         stmt = select([table1, subq.c.book_id]).select_from(
@@ -140,6 +219,30 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             "FROM people JOIN LATERAL (SELECT books.book_id AS book_id "
             "FROM books "
             "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true",
+        )
+
+    def test_join_lateral_w_select_implicit_subquery(self):
+        table1 = self.tables.people
+        table2 = self.tables.books
+
+        subq = (
+            select([table2.c.book_id])
+            .correlate(table1)
+            .where(table1.c.people_id == table2.c.book_owner_id)
+            .lateral()
+        )
+        stmt = select([table1, subq.c.book_id]).select_from(
+            table1.join(subq, true())
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT people.people_id, people.age, people.name, "
+            "anon_1.book_id "
+            "FROM people JOIN LATERAL (SELECT books.book_id AS book_id "
+            "FROM books "
+            "WHERE people.people_id = books.book_owner_id) "
+            "AS anon_1 ON true",
         )
 
     def test_from_function(self):

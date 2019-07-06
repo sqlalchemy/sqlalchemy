@@ -46,8 +46,8 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import sql
 from sqlalchemy import String
-from sqlalchemy import subquery
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import TIMESTAMP
@@ -148,43 +148,39 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_attribute_sanity(self):
         assert hasattr(table1, "c")
-        assert hasattr(table1.select(), "c")
+        assert hasattr(table1.select().subquery(), "c")
         assert not hasattr(table1.c.myid.self_group(), "columns")
-        assert hasattr(table1.select().self_group(), "columns")
         assert not hasattr(table1.c.myid, "columns")
         assert not hasattr(table1.c.myid, "c")
-        assert not hasattr(table1.select().c.myid, "c")
-        assert not hasattr(table1.select().c.myid, "columns")
+        assert not hasattr(table1.select().subquery().c.myid, "c")
+        assert not hasattr(table1.select().subquery().c.myid, "columns")
         assert not hasattr(table1.alias().c.myid, "columns")
         assert not hasattr(table1.alias().c.myid, "c")
-        if util.compat.py32:
-            assert_raises_message(
-                exc.InvalidRequestError,
-                "Scalar Select expression has no "
-                "columns; use this object directly within a "
-                "column-level expression.",
-                lambda: hasattr(
-                    select([table1.c.myid]).scalar_subquery().self_group(),
-                    "columns",
-                ),
-            )
-            assert_raises_message(
-                exc.InvalidRequestError,
-                "Scalar Select expression has no "
-                "columns; use this object directly within a "
-                "column-level expression.",
-                lambda: hasattr(
-                    select([table1.c.myid]).scalar_subquery(), "columns"
-                ),
-            )
-        else:
-            assert not hasattr(
-                select([table1.c.myid]).scalar_subquery().self_group(),
-                "columns",
-            )
-            assert not hasattr(
-                select([table1.c.myid]).scalar_subquery(), "columns"
-            )
+        with testing.expect_deprecated(
+            "The SelectBase.c and SelectBase.columns attributes are "
+            "deprecated"
+        ):
+            assert hasattr(table1.select(), "c")
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Scalar Select expression has no "
+            "columns; use this object directly within a "
+            "column-level expression.",
+            getattr,
+            select([table1.c.myid]).scalar_subquery().self_group(),
+            "columns",
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Scalar Select expression has no "
+            "columns; use this object directly within a "
+            "column-level expression.",
+            getattr,
+            select([table1.c.myid]).scalar_subquery(),
+            "columns",
+        )
 
     def test_prefix_constructor(self):
         class Pref(HasPrefixes):
@@ -370,23 +366,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         another select, for the
         purposes of selecting from the exported columns of that select."""
 
-        s = select([table1], table1.c.name == "jack")
+        s = select([table1], table1.c.name == "jack").subquery()
         self.assert_compile(
             select([s], s.c.myid == 7),
-            "SELECT myid, name, description FROM "
+            "SELECT anon_1.myid, anon_1.name, anon_1.description FROM "
             "(SELECT mytable.myid AS myid, "
             "mytable.name AS name, mytable.description AS description "
             "FROM mytable "
-            "WHERE mytable.name = :name_1) WHERE myid = :myid_1",
+            "WHERE mytable.name = :name_1) AS anon_1 WHERE "
+            "anon_1.myid = :myid_1",
         )
 
         sq = select([table1])
         self.assert_compile(
-            sq.select(),
-            "SELECT myid, name, description FROM "
+            sq.subquery().select(),
+            "SELECT anon_1.myid, anon_1.name, anon_1.description FROM "
             "(SELECT mytable.myid AS myid, "
             "mytable.name AS name, mytable.description "
-            "AS description FROM mytable)",
+            "AS description FROM mytable) AS anon_1",
         )
 
         sq = select([table1]).alias("sq")
@@ -480,6 +477,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select([keyed]).apply_labels(),
             "SELECT keyed.x AS keyed_x, keyed.y AS "
             "keyed_y, keyed.z AS keyed_z FROM keyed",
+        )
+
+        self.assert_compile(
+            select([select([keyed]).apply_labels().subquery()]).apply_labels(),
+            "SELECT anon_1.keyed_x AS anon_1_keyed_x, "
+            "anon_1.keyed_y AS anon_1_keyed_y, "
+            "anon_1.keyed_z AS anon_1_keyed_z "
+            "FROM (SELECT keyed.x AS keyed_x, keyed.y AS keyed_y, "
+            "keyed.z AS keyed_z FROM keyed) AS anon_1",
         )
 
     def test_paramstyles(self):
@@ -687,36 +693,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "EXISTS (SELECT * FROM myothertable WHERE "
             "myothertable.otherid = mytable.myid)",
         )
-        self.assert_compile(
-            table1.select(
-                exists()
-                .where(table2.c.otherid == table1.c.myid)
-                .correlate(table1)
-            ).replace_selectable(table2, table2.alias()),
-            "SELECT mytable.myid, mytable.name, "
-            "mytable.description FROM mytable WHERE "
-            "EXISTS (SELECT * FROM myothertable AS "
-            "myothertable_1 WHERE myothertable_1.otheri"
-            "d = mytable.myid)",
-        )
-        self.assert_compile(
-            table1.select(
-                exists()
-                .where(table2.c.otherid == table1.c.myid)
-                .correlate(table1)
-            )
-            .select_from(
-                table1.join(table2, table1.c.myid == table2.c.otherid)
-            )
-            .replace_selectable(table2, table2.alias()),
-            "SELECT mytable.myid, mytable.name, "
-            "mytable.description FROM mytable JOIN "
-            "myothertable AS myothertable_1 ON "
-            "mytable.myid = myothertable_1.otherid "
-            "WHERE EXISTS (SELECT * FROM myothertable "
-            "AS myothertable_1 WHERE "
-            "myothertable_1.otherid = mytable.myid)",
-        )
 
         self.assert_compile(
             select(
@@ -766,6 +742,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             table1.select(
                 table1.c.myid
                 == select(
+                    [table1.c.myid], table1.c.name == "jack"
+                ).scalar_subquery()
+            ),
+            "SELECT mytable.myid, mytable.name, "
+            "mytable.description FROM mytable WHERE "
+            "mytable.myid = (SELECT mytable.myid FROM "
+            "mytable WHERE mytable.name = :name_1)",
+        )
+        self.assert_compile(
+            table1.select(
+                table1.c.myid
+                == select(
                     [table2.c.otherid], table1.c.name == table2.c.othername
                 ).scalar_subquery()
             ),
@@ -784,9 +772,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable.otherid = mytable.myid)",
         )
         talias = table1.alias("ta")
-        s = subquery(
-            "sq2", [talias], exists([1], table2.c.otherid == talias.c.myid)
-        )
+        s = select(
+            [talias], exists([1], table2.c.otherid == talias.c.myid)
+        ).subquery("sq2")
         self.assert_compile(
             select([s, table1]),
             "SELECT sq2.myid, sq2.name, "
@@ -816,12 +804,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_orderby_subquery(self):
         self.assert_compile(
-            table1.select(
-                order_by=[
-                    select(
-                        [table2.c.otherid], table1.c.myid == table2.c.otherid
-                    ).scalar_subquery()
-                ]
+            table1.select().order_by(
+                select(
+                    [table2.c.otherid], table1.c.myid == table2.c.otherid
+                ).scalar_subquery()
             ),
             "SELECT mytable.myid, mytable.name, "
             "mytable.description FROM mytable ORDER BY "
@@ -829,14 +815,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "myothertable WHERE mytable.myid = "
             "myothertable.otherid)",
         )
-
-    def test_scalar_select(self):
-
         self.assert_compile(
-            func.coalesce(select([table1.c.myid]).scalar_subquery()),
-            "coalesce((SELECT mytable.myid FROM mytable))",
+            table1.select().order_by(
+                desc(
+                    select(
+                        [table2.c.otherid], table1.c.myid == table2.c.otherid
+                    ).scalar_subquery()
+                )
+            ),
+            "SELECT mytable.myid, mytable.name, "
+            "mytable.description FROM mytable ORDER BY "
+            "(SELECT myothertable.otherid FROM "
+            "myothertable WHERE mytable.myid = "
+            "myothertable.otherid) DESC",
         )
 
+    def test_scalar_select(self):
         s = select([table1.c.myid], correlate=False).scalar_subquery()
         self.assert_compile(
             select([table1, s]),
@@ -878,9 +872,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable)",
         )
         self.assert_compile(
-            select([table1.c.myid]).where(s > table1.c.myid),
+            select([table1.c.myid]).where(table1.c.myid < s),
             "SELECT mytable.myid FROM mytable WHERE "
-            "(SELECT mytable.myid FROM mytable) > mytable.myid",
+            "mytable.myid < (SELECT mytable.myid FROM "
+            "mytable)",
         )
         s = select([table1.c.myid]).scalar_subquery()
         self.assert_compile(
@@ -917,22 +912,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # 'columns' attribute
 
         s = select([table1.c.myid]).scalar_subquery()
-        try:
-            s.c.foo
-        except exc.InvalidRequestError as err:
-            assert (
-                str(err)
-                == "Scalar Select expression has no columns; use this "
-                "object directly within a column-level expression."
-            )
-        try:
-            s.columns.foo
-        except exc.InvalidRequestError as err:
-            assert (
-                str(err)
-                == "Scalar Select expression has no columns; use this "
-                "object directly within a column-level expression."
-            )
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Scalar Select expression has no columns; use this "
+            "object directly within a column-level expression.",
+            lambda: s.c.foo,
+        )
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Scalar Select expression has no columns; use this "
+            "object directly within a column-level expression.",
+            lambda: s.columns.foo,
+        )
 
         zips = table(
             "zips", column("zipcode"), column("latitude"), column("longitude")
@@ -1542,7 +1533,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # make an alias of the "selectable".  column names
         # stay the same (i.e. the labels), table name "changes" to "t2view".
-        a = alias(q, "t2view")
+        a = q.alias("t2view")
 
         # select from that alias, also using labels.  two levels of labels
         # should produce two underscores.
@@ -1562,6 +1553,50 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mytable.myid = "
             "myothertable.otherid) AS t2view "
             "WHERE t2view.mytable_myid = :mytable_myid_1",
+        )
+
+    def test_alias_nesting_table(self):
+        self.assert_compile(
+            select([table1.alias("foo").alias("bar").alias("bat")]),
+            "SELECT bat.myid, bat.name, bat.description FROM mytable AS bat",
+        )
+
+        self.assert_compile(
+            select([table1.alias(None).alias("bar").alias("bat")]),
+            "SELECT bat.myid, bat.name, bat.description FROM mytable AS bat",
+        )
+
+        self.assert_compile(
+            select([table1.alias("foo").alias(None).alias("bat")]),
+            "SELECT bat.myid, bat.name, bat.description FROM mytable AS bat",
+        )
+
+        self.assert_compile(
+            select([table1.alias("foo").alias("bar").alias(None)]),
+            "SELECT bar_1.myid, bar_1.name, bar_1.description "
+            "FROM mytable AS bar_1",
+        )
+
+        self.assert_compile(
+            select([table1.alias("foo").alias(None).alias(None)]),
+            "SELECT anon_1.myid, anon_1.name, anon_1.description "
+            "FROM mytable AS anon_1",
+        )
+
+    def test_alias_nesting_subquery(self):
+        stmt = select([table1]).subquery()
+        self.assert_compile(
+            select([stmt.alias("foo").alias("bar").alias("bat")]),
+            "SELECT bat.myid, bat.name, bat.description FROM "
+            "(SELECT mytable.myid AS myid, mytable.name AS name, "
+            "mytable.description AS description FROM mytable) AS bat",
+        )
+
+        self.assert_compile(
+            select([stmt.alias("foo").alias(None).alias(None)]),
+            "SELECT anon_1.myid, anon_1.name, anon_1.description FROM "
+            "(SELECT mytable.myid AS myid, mytable.name AS name, "
+            "mytable.description AS description FROM mytable) AS anon_1",
         )
 
     def test_prefix(self):
@@ -1894,7 +1929,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.myid = :myid_1 UNION "
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_2 "
-            "ORDER BY mytable.myid",
+            "ORDER BY myid",
         )
 
         x = union(select([table1]), select([table1]))
@@ -1911,17 +1946,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select([table1.c.myid, table1.c.name]),
             select([table2]),
             select([table3]),
-        )
+        ).order_by("name")
         self.assert_compile(
             u1,
             "SELECT mytable.myid, mytable.name "
             "FROM mytable UNION SELECT myothertable.otherid, "
             "myothertable.othername FROM myothertable "
             "UNION SELECT thirdtable.userid, thirdtable.otherstuff "
-            "FROM thirdtable",
+            "FROM thirdtable ORDER BY name",
         )
 
-        assert u1.corresponding_column(table2.c.otherid) is u1.c.myid
+        u1s = u1.subquery()
+        assert u1s.corresponding_column(table2.c.otherid) is u1s.c.myid
 
         self.assert_compile(
             union(
@@ -1931,12 +1967,30 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 offset=10,
                 limit=5,
             ),
+            # note table name is omitted here.  The CompoundSelect, inside of
+            # _label_resolve_dict(),  creates a subquery of itself and then
+            # turns "named_with_column" off,  so that we can order by the
+            # "myid" name as relative to the CompoundSelect itself without it
+            # having a name.
             "SELECT mytable.myid, mytable.name "
             "FROM mytable UNION SELECT myothertable.otherid, "
             "myothertable.othername "
-            "FROM myothertable ORDER BY myid "  # note table name is omitted
+            "FROM myothertable ORDER BY myid "
             "LIMIT :param_1 OFFSET :param_2",
             {"param_1": 5, "param_2": 10},
+        )
+
+        # these tests are mostly in test_text, however adding one here
+        # to check the special thing CompoundSelect does with labels
+        assert_raises_message(
+            exc.CompileError,
+            "Can't resolve label reference for ORDER BY / GROUP BY. Textual "
+            "SQL expression 'noname'",
+            union(
+                select([table1.c.myid, table1.c.name]),
+                select([table2]),
+                order_by=["noname"],
+            ).compile,
         )
 
         self.assert_compile(
@@ -2098,7 +2152,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            union(s.limit(1).alias("a"), s.limit(2).alias("b")),
+            union(
+                s.limit(1).alias("a").element, s.limit(2).alias("b").element
+            ),
             "(SELECT foo, bar FROM bat LIMIT :param_1) "
             "UNION (SELECT foo, bar FROM bat LIMIT :param_2)",
         )
@@ -2382,7 +2438,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([t, literal("lala").label("hoho")])
         self.assert_compile(s, "SELECT foo.id, :param_1 AS hoho FROM foo")
 
-        assert [str(c) for c in s.c] == ["id", "hoho"]
+        assert [str(c) for c in s.subquery().c] == ["anon_1.id", "anon_1.hoho"]
 
     def test_bind_callable(self):
         expr = column("x") == bindparam("key", callable_=lambda: 12)
@@ -2864,7 +2920,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.InvalidRequestError,
             "Cannot initialize a sub-selectable with this Column",
-            lambda: sel1.c,
+            lambda: sel1.subquery().c,
         )
 
         # calling label or scalar_subquery doesn't compile
@@ -2910,7 +2966,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ]
         )
 
-        eq_(list(s1.c.keys()), ["myid", "foobar", str(f1), "gg"])
+        eq_(list(s1.subquery().c.keys()), ["myid", "foobar", str(f1), "gg"])
 
         meta = MetaData()
         t1 = Table("mytable", meta, Column("col1", Integer))
@@ -2946,7 +3002,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 t = table1
 
             s1 = select([col], from_obj=t)
-            assert list(s1.c.keys()) == [key], list(s1.c.keys())
+            assert list(s1.subquery().c.keys()) == [key], list(s1.c.keys())
 
             if lbl:
                 self.assert_compile(
@@ -2955,24 +3011,26 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             else:
                 self.assert_compile(s1, "SELECT %s FROM mytable" % (expr,))
 
-            s1 = select([s1])
+            s1 = select([s1.subquery()])
             if lbl:
+                alias_ = "anon_2" if lbl == "anon_1" else "anon_1"
                 self.assert_compile(
                     s1,
-                    "SELECT %s FROM (SELECT %s AS %s FROM mytable)"
-                    % (lbl, expr, lbl),
+                    "SELECT %s.%s FROM (SELECT %s AS %s FROM mytable) AS %s"
+                    % (alias_, lbl, expr, lbl, alias_),
                 )
             elif col.table is not None:
                 # sqlite rule labels subquery columns
                 self.assert_compile(
                     s1,
-                    "SELECT %s FROM (SELECT %s AS %s FROM mytable)"
-                    % (key, expr, key),
+                    "SELECT anon_1.%s FROM (SELECT %s AS %s FROM mytable) "
+                    "AS anon_1" % (key, expr, key),
                 )
             else:
                 self.assert_compile(
                     s1,
-                    "SELECT %s FROM (SELECT %s FROM mytable)" % (expr, expr),
+                    "SELECT anon_1.%s FROM (SELECT %s FROM mytable) AS anon_1"
+                    % (expr, expr),
                 )
 
     def test_hints(self):
@@ -2993,7 +3051,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.join(table2, table1.c.myid == table2.c.otherid)
             )
             .with_hint(table1, "hint1")
-        )
+        ).subquery()
 
         s4 = (
             select([table3])
@@ -3068,42 +3126,42 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql_d,
                 "SELECT thirdtable.userid, thirdtable.otherstuff "
                 "FROM thirdtable "
-                "hint3 INNER JOIN (SELECT mytable.myid, mytable.name, "
-                "mytable.description, myothertable.otherid, "
-                "myothertable.othername FROM mytable hint1 INNER "
-                "JOIN myothertable ON mytable.myid = myothertable.otherid) "
-                "ON othername = thirdtable.otherstuff",
+                "hint3 INNER JOIN (SELECT mytable.myid AS myid, "
+                "mytable.name AS name, "
+                "mytable.description AS description, "
+                "myothertable.otherid AS otherid, "
+                "myothertable.othername AS othername FROM mytable hint1 INNER "
+                "JOIN myothertable ON "
+                "mytable.myid = myothertable.otherid) AS anon_1 "
+                "ON anon_1.othername = thirdtable.otherstuff",
             ),
             (
                 s4,
                 sybase_d,
                 "SELECT thirdtable.userid, thirdtable.otherstuff "
                 "FROM thirdtable "
-                "hint3 JOIN (SELECT mytable.myid, mytable.name, "
-                "mytable.description, myothertable.otherid, "
-                "myothertable.othername FROM mytable hint1 "
-                "JOIN myothertable ON mytable.myid = myothertable.otherid) "
-                "ON othername = thirdtable.otherstuff",
+                "hint3 JOIN (SELECT mytable.myid AS myid, "
+                "mytable.name AS name, "
+                "mytable.description AS description, "
+                "myothertable.otherid AS otherid, "
+                "myothertable.othername AS othername FROM mytable hint1 "
+                "JOIN myothertable ON "
+                "mytable.myid = myothertable.otherid) AS anon_1 "
+                "ON anon_1.othername = thirdtable.otherstuff",
             ),
             (
                 s4,
                 oracle_d,
                 "SELECT /*+ hint3 */ thirdtable.userid, thirdtable.otherstuff "
-                "FROM thirdtable JOIN (SELECT /*+ hint1 */ mytable.myid,"
-                " mytable.name, mytable.description, myothertable.otherid,"
-                " myothertable.othername FROM mytable JOIN myothertable ON"
-                " mytable.myid = myothertable.otherid) ON othername ="
-                " thirdtable.otherstuff",
+                "FROM thirdtable JOIN (SELECT /*+ hint1 */ "
+                "mytable.myid AS myid,"
+                " mytable.name AS name, mytable.description AS description, "
+                "myothertable.otherid AS otherid,"
+                " myothertable.othername AS othername "
+                "FROM mytable JOIN myothertable ON "
+                "mytable.myid = myothertable.otherid) anon_1 ON "
+                "anon_1.othername = thirdtable.otherstuff",
             ),
-            # TODO: figure out dictionary ordering solution here
-            #  (s5, oracle_d,
-            #  "SELECT /*+ hint3 */ /*+ hint1 */ thirdtable.userid, "
-            #  "thirdtable.otherstuff "
-            #  "FROM thirdtable JOIN (SELECT mytable.myid,"
-            #  " mytable.name, mytable.description, myothertable.otherid,"
-            #  " myothertable.othername FROM mytable JOIN myothertable ON"
-            #  " mytable.myid = myothertable.otherid) ON othername ="
-            #  " thirdtable.otherstuff"),
             (
                 s6,
                 oracle_d,
@@ -3798,12 +3856,14 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_dont_overcorrelate(self):
         self.assert_compile(
-            select([table1], from_obj=[table1, table1.select()]),
+            select([table1])
+            .select_from(table1)
+            .select_from(table1.select().subquery()),
             "SELECT mytable.myid, mytable.name, "
             "mytable.description FROM mytable, (SELECT "
             "mytable.myid AS myid, mytable.name AS "
             "name, mytable.description AS description "
-            "FROM mytable)",
+            "FROM mytable) AS anon_1",
         )
 
     def _fixture(self):
@@ -4052,9 +4112,9 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_correlate_from_all_ok(self):
         t1, t2, s1 = self._fixture()
         self.assert_compile(
-            select([t1, t2, s1]),
-            "SELECT t1.a, t2.a, a FROM t1, t2, "
-            "(SELECT t1.a AS a FROM t1, t2 WHERE t1.a = t2.a)",
+            select([t1, t2, s1.subquery()]),
+            "SELECT t1.a, t2.a, anon_1.a FROM t1, t2, "
+            "(SELECT t1.a AS a FROM t1, t2 WHERE t1.a = t2.a) AS anon_1",
         )
 
     def test_correlate_auto_where_singlefrom(self):
@@ -4118,7 +4178,8 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
             .order_by(c.c.pos)
             .limit(1)
         )
-        s = s.correlate(p)
+        s = s.correlate(p).subquery()
+
         s = exists().select_from(s).where(s.c.id == 1)
         s = select([p]).where(s)
         self.assert_compile(
@@ -4126,7 +4187,8 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT parent.id FROM parent WHERE EXISTS (SELECT * "
             "FROM (SELECT child.id AS id, child.parent_id AS parent_id, "
             "child.pos AS pos FROM child WHERE child.parent_id = parent.id "
-            "ORDER BY child.pos LIMIT :param_1) WHERE id = :id_1)",
+            "ORDER BY child.pos LIMIT :param_1) AS anon_1 "
+            "WHERE anon_1.id = :id_1)",
         )
 
     def test_no_contextless_correlate_except(self):
@@ -4174,14 +4236,15 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         t2 = table("t2", column("y"))
 
         s = select([t1.c.x]).where(t1.c.x == t2.c.y)
-        s2 = select([t2, s])
-        s3 = select([t1, s2])
+        s2 = select([t2, s.subquery()])
+        s3 = select([t1, s2.subquery()])
 
         self.assert_compile(
             s3,
-            "SELECT t1.x, y, x FROM t1, "
-            "(SELECT t2.y AS y, x FROM t2, "
-            "(SELECT t1.x AS x FROM t1, t2 WHERE t1.x = t2.y))",
+            "SELECT t1.x, anon_1.y, anon_1.x FROM t1, "
+            "(SELECT t2.y AS y, anon_2.x AS x FROM t2, "
+            "(SELECT t1.x AS x FROM t1, t2 WHERE t1.x = t2.y) "
+            "AS anon_2) AS anon_1",
         )
 
 
@@ -4267,7 +4330,7 @@ class ResultMapTest(fixtures.TestBase):
 
     def test_compound_not_toplevel_doesnt_populate(self):
         t = Table("t", MetaData(), Column("a", Integer), Column("b", Integer))
-        subq = select([t]).union(select([t]))
+        subq = select([t]).union(select([t])).subquery()
         stmt = select([t.c.a]).select_from(t.join(subq, t.c.a == subq.c.a))
         comp = stmt.compile()
         eq_(
@@ -4357,7 +4420,7 @@ class ResultMapTest(fixtures.TestBase):
     def test_nested_api(self):
         from sqlalchemy.engine.result import ResultMetaData
 
-        stmt2 = select([table2])
+        stmt2 = select([table2]).subquery()
 
         stmt1 = select([table1]).select_from(stmt2)
 
@@ -4368,10 +4431,12 @@ class ResultMapTest(fixtures.TestBase):
         class MyCompiler(compiler.SQLCompiler):
             def visit_select(self, stmt, *arg, **kw):
 
-                if stmt is stmt2:
+                if stmt is stmt2.element:
                     with self._nested_result() as nested:
-                        contexts[stmt2] = nested
-                        text = super(MyCompiler, self).visit_select(stmt2)
+                        contexts[stmt2.element] = nested
+                        text = super(MyCompiler, self).visit_select(
+                            stmt2.element
+                        )
                         self._add_to_result_map("k1", "k1", (1, 2, 3), int_)
                 else:
                     text = super(MyCompiler, self).visit_select(
@@ -4381,9 +4446,8 @@ class ResultMapTest(fixtures.TestBase):
                 return text
 
         comp = MyCompiler(default.DefaultDialect(), stmt1)
-
         eq_(
-            ResultMetaData._create_result_map(contexts[stmt2][0]),
+            ResultMetaData._create_result_map(contexts[stmt2.element][0]),
             {
                 "otherid": (
                     "otherid",
@@ -4457,7 +4521,7 @@ class ResultMapTest(fixtures.TestBase):
         eq_(len(list(stmt.inner_columns)), 7)
 
         # but only exposes 5 of them, the other two are dupes of x and y
-        eq_(len(stmt.c), 5)
+        eq_(len(stmt.subquery().c), 5)
 
         # and when it generates a SELECT it will also render only 5
         eq_(len(stmt._columns_plus_names), 5)

@@ -1418,8 +1418,8 @@ class KeyTargetingTest(fixtures.TablesTest):
         in_(keyed2.c.b, row)
         in_(a, row)
         in_(b, row)
-        in_(stmt.c.a, row)
-        in_(stmt.c.b, row)
+        in_(stmt.selected_columns.a, row)
+        in_(stmt.selected_columns.b, row)
 
     def test_columnclause_schema_column_four(self):
         keyed2 = self.tables.keyed2
@@ -1436,8 +1436,8 @@ class KeyTargetingTest(fixtures.TablesTest):
         in_(keyed2.c.b, row)
         in_(a, row)
         in_(b, row)
-        in_(stmt.c.keyed2_a, row)
-        in_(stmt.c.keyed2_b, row)
+        in_(stmt.selected_columns.keyed2_a, row)
+        in_(stmt.selected_columns.keyed2_b, row)
 
     def test_columnclause_schema_column_five(self):
         keyed2 = self.tables.keyed2
@@ -1451,8 +1451,8 @@ class KeyTargetingTest(fixtures.TablesTest):
 
         in_(keyed2.c.a, row)
         in_(keyed2.c.b, row)
-        in_(stmt.c.keyed2_a, row)
-        in_(stmt.c.keyed2_b, row)
+        in_(stmt.selected_columns.keyed2_a, row)
+        in_(stmt.selected_columns.keyed2_b, row)
 
 
 class PositionalTextTest(fixtures.TablesTest):

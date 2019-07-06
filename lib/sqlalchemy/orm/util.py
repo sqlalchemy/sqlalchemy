@@ -825,7 +825,9 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
             raise sa_exc.ArgumentError(
                 "adapt_on_names only applies to ORM elements"
             )
-        return element._anonymous_fromclause(name=name, flat=flat)
+        return coercions.expect(
+            roles.AnonymizedFromClauseRole, element, name=name, flat=flat
+        )
     else:
         return AliasedClass(
             element,

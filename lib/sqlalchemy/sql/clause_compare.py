@@ -291,7 +291,7 @@ class StructureComparatorStrategy(object):
 
         return True
 
-    def compare_text_as_from(self, left, right, **kw):
+    def compare_textual_select(self, left, right, **kw):
         self.compare_stack.extendleft(
             util.zip_longest(left.column_args, right.column_args)
         )

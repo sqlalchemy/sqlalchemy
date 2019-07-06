@@ -94,7 +94,7 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
         # column name should be in result map, as we never render
         # .key in SQL
-        for key, col in zip([c.name for c in s.c], s.inner_columns):
+        for key, col in zip([c.name for c in s.subquery().c], s.inner_columns):
             key = key % compiled.anon_map
             assert col in compiled._create_result_map()[key][1]
 
@@ -226,9 +226,14 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         b_j1 = b.join(j1)
         b_j2 = b.join(j2)
 
-        s = union(
-            select([b_j1], use_labels=True), select([b_j2], use_labels=True)
-        ).select(use_labels=True)
+        s = (
+            union(
+                select([b_j1], use_labels=True),
+                select([b_j2], use_labels=True),
+            )
+            .subquery()
+            .select(use_labels=True)
+        )
 
         self._test(s, self._b_ab1_union_c_ab2)
 
@@ -378,17 +383,19 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     )
 
     _b_ab1_union_c_ab2 = (
-        "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
-        "b1_a_id AS b1_a_id FROM "
-        "(SELECT b.id AS b_id, b.a_id AS b_a_id, anon_1.a_id AS a_id, "
-        "anon_1.b1_id AS b1_id, anon_1.b1_a_id AS b1_a_id "
+        "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
+        "anon_1.a_id AS anon_1_a_id, anon_1.b1_id AS anon_1_b1_id, "
+        "anon_1.b1_a_id AS anon_1_b1_a_id FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, anon_2.a_id AS a_id, "
+        "anon_2.b1_id AS b1_id, anon_2.b1_a_id AS b1_a_id "
         "FROM b JOIN (SELECT a.id AS a_id, b1.id AS b1_id, b1.a_id AS b1_a_id "
-        "FROM a JOIN b1 ON a.id = b1.a_id) AS anon_1 ON anon_1.a_id = b.a_id "
+        "FROM a JOIN b1 ON a.id = b1.a_id) AS anon_2 ON anon_2.a_id = b.a_id "
         "UNION "
-        "SELECT b.id AS b_id, b.a_id AS b_a_id, anon_2.a_id AS a_id, "
-        "anon_2.b2_id AS b2_id, anon_2.b2_a_id AS b2_a_id "
+        "SELECT b.id AS b_id, b.a_id AS b_a_id, anon_3.a_id AS a_id, "
+        "anon_3.b2_id AS b2_id, anon_3.b2_a_id AS b2_a_id "
         "FROM b JOIN (SELECT a.id AS a_id, b2.id AS b2_id, b2.a_id AS b2_a_id "
-        "FROM a JOIN b2 ON a.id = b2.a_id) AS anon_2 ON anon_2.a_id = b.a_id)"
+        "FROM a JOIN b2 ON a.id = b2.a_id) AS anon_3 ON anon_3.a_id = b.a_id) "
+        "AS anon_1"
     )
 
     _b_a_id_double_overlap_annotated = (
@@ -495,8 +502,9 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
     )
 
     _b_ab1_union_c_ab2 = (
-        "SELECT b_id AS b_id, b_a_id AS b_a_id, a_id AS a_id, b1_id AS b1_id, "
-        "b1_a_id AS b1_a_id FROM "
+        "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
+        "anon_1.a_id AS anon_1_a_id, anon_1.b1_id AS anon_1_b1_id, "
+        "anon_1.b1_a_id AS anon_1_b1_a_id FROM "
         "(SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, "
         "b1.id AS b1_id, "
         "b1.a_id AS b1_a_id FROM b "
@@ -504,7 +512,7 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "UNION "
         "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
         "b2.a_id AS b2_a_id FROM b "
-        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
+        "JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id) AS anon_1"
     )
 
     _b_a_id_double_overlap_annotated = (
@@ -606,14 +614,15 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
     )
 
     _b_ab1_union_c_ab2 = (
-        "SELECT b_id, b_a_id, a_id, b1_id, b1_a_id "
+        "SELECT anon_1.b_id, anon_1.b_a_id, anon_1.a_id, anon_1.b1_id, "
+        "anon_1.b1_a_id "
         "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, "
         "b1.id AS b1_id, b1.a_id AS b1_a_id "
         "FROM b JOIN (a JOIN b1 ON a.id = b1.a_id) ON a.id = b.a_id "
         "UNION "
         "SELECT b.id AS b_id, b.a_id AS b_a_id, a.id AS a_id, b2.id AS b2_id, "
         "b2.a_id AS b2_a_id "
-        "FROM b JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id)"
+        "FROM b JOIN (a JOIN b2 ON a.id = b2.a_id) ON a.id = b.a_id) AS anon_1"
     )
 
     _b_a_id_double_overlap_annotated = (

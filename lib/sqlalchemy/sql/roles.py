@@ -95,6 +95,8 @@ class InElementRole(SQLRole):
 class FromClauseRole(ColumnsClauseRole):
     _role_name = "FROM expression, such as a Table or alias() object"
 
+    _is_subquery = False
+
     @property
     def _hide_froms(self):
         raise NotImplementedError()
@@ -134,13 +136,19 @@ class StatementRole(CoerceTextStatementRole):
 
 class ReturnsRowsRole(StatementRole):
     _role_name = (
-        "Row returning expression such as a SELECT, or an "
+        "Row returning expression such as a SELECT, a FROM clause, or an "
         "INSERT/UPDATE/DELETE with RETURNING"
     )
 
 
 class SelectStatementRole(ReturnsRowsRole):
     _role_name = "SELECT construct or equivalent text() construct"
+
+    def subquery(self):
+        raise NotImplementedError(
+            "All SelectStatementRole objects should implement a "
+            ".subquery() method."
+        )
 
 
 class HasCTERole(ReturnsRowsRole):

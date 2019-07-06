@@ -48,6 +48,7 @@ from sqlalchemy.sql.functions import ReturnTypeFromArgs
 from sqlalchemy.sql.selectable import _OffsetLimitParam
 from sqlalchemy.sql.selectable import FromGrouping
 from sqlalchemy.sql.selectable import Selectable
+from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -241,6 +242,10 @@ class CompareAndCopyTest(fixtures.TestBase):
         lambda: (
             FromGrouping(table_a.alias("a")),
             FromGrouping(table_a.alias("b")),
+        ),
+        lambda: (
+            SelectStatementGrouping(select([table_a])),
+            SelectStatementGrouping(select([table_b])),
         ),
         lambda: (
             select([table_a.c.a]).scalar_subquery(),

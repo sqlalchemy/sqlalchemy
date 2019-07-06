@@ -963,7 +963,7 @@ class MemUsageWBackendTest(EnsureZeroed):
     # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
 
     @testing.crashes("mysql+cymysql", "blocking")
-    def test_join_cache(self):
+    def test_join_cache_deprecated_coercion(self):
         metadata = MetaData(self.engine)
         table1 = Table(
             "table1",
@@ -999,7 +999,55 @@ class MemUsageWBackendTest(EnsureZeroed):
         def go():
             s = table2.select()
             sess = session()
-            sess.query(Foo).join((s, Foo.bars)).all()
+            with testing.expect_deprecated(
+                "Implicit coercion of SELECT and " "textual SELECT constructs"
+            ):
+                sess.query(Foo).join(s, Foo.bars).all()
+            sess.rollback()
+
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+
+    @testing.crashes("mysql+cymysql", "blocking")
+    def test_join_cache(self):
+        metadata = MetaData(self.engine)
+        table1 = Table(
+            "table1",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+        )
+        table2 = Table(
+            "table2",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+            Column("t1id", Integer, ForeignKey("table1.id")),
+        )
+
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        mapper(
+            Foo, table1, properties={"bars": relationship(mapper(Bar, table2))}
+        )
+        metadata.create_all()
+        session = sessionmaker()
+
+        @profile_memory()
+        def go():
+            s = table2.select().subquery()
+            sess = session()
+            sess.query(Foo).join(s, Foo.bars).all()
             sess.rollback()
 
         try:

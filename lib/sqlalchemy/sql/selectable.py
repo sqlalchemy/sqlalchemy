@@ -12,7 +12,6 @@ SQL tables and derived rowsets.
 
 import collections
 import itertools
-import operator
 from operator import attrgetter
 
 from . import coercions
@@ -20,6 +19,10 @@ from . import operators
 from . import roles
 from . import type_api
 from .annotation import Annotated
+from .base import _clone
+from .base import _cloned_difference
+from .base import _cloned_intersection
+from .base import _expand_cloned
 from .base import _from_objects
 from .base import _generative
 from .base import ColumnCollection
@@ -27,17 +30,15 @@ from .base import ColumnSet
 from .base import Executable
 from .base import Generative
 from .base import Immutable
+from .base import SeparateKeyColumnCollection
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
-from .elements import _clone
-from .elements import _cloned_difference
-from .elements import _cloned_intersection
-from .elements import _expand_cloned
 from .elements import _select_iterables
 from .elements import and_
 from .elements import BindParameter
 from .elements import ClauseElement
 from .elements import ClauseList
+from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
 from .elements import True_
@@ -52,20 +53,22 @@ class _OffsetLimitParam(BindParameter):
         return self.effective_value
 
 
+@util.deprecated(
+    "1.4",
+    "The standalone :func:`.subquery` function is deprecated "
+    "and will be removed in a future release.  Use select().subquery().",
+)
 def subquery(alias, *args, **kwargs):
-    r"""Return an :class:`.Alias` object derived
+    r"""Return an :class:`.Subquery` object derived
     from a :class:`.Select`.
 
-    name
-      alias name
+    :param name: the alias name for the subquery
 
-    \*args, \**kwargs
-
-      all other arguments are delivered to the
-      :func:`select` function.
+    :param \*args, \**kwargs:  all other arguments are passed through to the
+     :func:`.select` function.
 
     """
-    return Select(*args, **kwargs).alias(alias)
+    return Select(*args, **kwargs).subquery(alias)
 
 
 class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
@@ -90,18 +93,11 @@ class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
 
     @property
     def selectable(self):
-        raise NotImplementedError(
-            "This object is a base ReturnsRows object, but is not a "
-            "FromClause so has no .c. collection."
-        )
+        raise NotImplementedError()
 
 
 class Selectable(ReturnsRows):
     """mark a class as being selectable.
-
-    This class is legacy as of 1.4 as the concept of a SQL construct which
-    "returns rows" is more generalized than one which can be the subject
-    of a SELECT.
 
     """
 
@@ -112,6 +108,93 @@ class Selectable(ReturnsRows):
     @property
     def selectable(self):
         return self
+
+    @property
+    def exported_columns(self):
+        """A :class:`.ColumnCollection` that represents the "exported"
+        columns of this :class:`.Selectable`.
+
+        The "exported" columns represent the collection of
+        :class:`.ColumnElement` expressions that are rendered by this SQL
+        construct.   There are two primary varieties which are the
+        "FROM clause columns" of a FROM clause, such as a table, join,
+        or subquery, and the "SELECTed columns", which are the columns in
+        the "columns clause" of a SELECT statement.
+
+        .. versionadded:: 1.4
+
+        .. seealso:
+
+            :attr:`.FromClause.exported_columns`
+
+            :attr:`.SelectBase.exported_columns`
+        """
+
+        raise NotImplementedError()
+
+    def _refresh_for_new_column(self, column):
+        raise NotImplementedError()
+
+    def lateral(self, name=None):
+        """Return a LATERAL alias of this :class:`.Selectable`.
+
+        The return value is the :class:`.Lateral` construct also
+        provided by the top-level :func:`~.expression.lateral` function.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`lateral_selects` -  overview of usage.
+
+        """
+        return Lateral._construct(self, name)
+
+    @util.deprecated(
+        "1.4",
+        message="The :meth:`.Selectable.replace_selectable` method is "
+        "deprecated, and will be removed in a future release.  Similar "
+        "functionality is available via the sqlalchemy.sql.visitors module.",
+    )
+    @util.dependencies("sqlalchemy.sql.util")
+    def replace_selectable(self, sqlutil, old, alias):
+        """replace all occurrences of FromClause 'old' with the given Alias
+        object, returning a copy of this :class:`.FromClause`.
+
+        """
+
+        return sqlutil.ClauseAdapter(alias).traverse(self)
+
+    def corresponding_column(self, column, require_embedded=False):
+        """Given a :class:`.ColumnElement`, return the exported
+        :class:`.ColumnElement` object from the
+        :attr:`.Selectable.exported_columns`
+        collection of this :class:`.Selectable` which corresponds to that
+        original :class:`.ColumnElement` via a common ancestor
+        column.
+
+        :param column: the target :class:`.ColumnElement` to be matched
+
+        :param require_embedded: only return corresponding columns for
+         the given :class:`.ColumnElement`, if the given
+         :class:`.ColumnElement` is actually present within a sub-element
+         of this :class:`.Selectable`.  Normally the column will match if
+         it merely shares a common ancestor with one of the exported
+         columns of this :class:`.Selectable`.
+
+        .. seealso::
+
+            :attr:`.Selectable.exported_columns` - the
+            :class:`.ColumnCollection` that is used for the operation
+
+            :meth:`.ColumnCollection.corresponding_column` - implementation
+            method.
+
+        """
+
+        return self.exported_columns.corresponding_column(
+            column, require_embedded
+        )
 
 
 class HasPrefixes(object):
@@ -211,7 +294,7 @@ class HasSuffixes(object):
         )
 
 
-class FromClause(roles.FromClauseRole, Selectable):
+class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
@@ -243,9 +326,8 @@ class FromClause(roles.FromClauseRole, Selectable):
 
     """
 
-    is_selectable = has_selectable = True
+    is_selectable = True
     _is_from_clause = True
-    _is_text_as_from = False
     _is_join = False
 
     def _translate_schema(self, effective_schema, map_):
@@ -400,21 +482,6 @@ class FromClause(roles.FromClauseRole, Selectable):
 
         return Alias._construct(self, name)
 
-    def lateral(self, name=None):
-        """Return a LATERAL alias of this :class:`.FromClause`.
-
-        The return value is the :class:`.Lateral` construct also
-        provided by the top-level :func:`~.expression.lateral` function.
-
-        .. versionadded:: 1.1
-
-        .. seealso::
-
-            :ref:`lateral_selects` -  overview of usage.
-
-        """
-        return Lateral._construct(self, name)
-
     def tablesample(self, sampling, name=None, seed=None):
         """Return a TABLESAMPLE alias of this :class:`.FromClause`.
 
@@ -452,112 +519,6 @@ class FromClause(roles.FromClauseRole, Selectable):
         """
         return self._cloned_set.intersection(other._cloned_set)
 
-    @util.dependencies("sqlalchemy.sql.util")
-    def replace_selectable(self, sqlutil, old, alias):
-        """replace all occurrences of FromClause 'old' with the given Alias
-        object, returning a copy of this :class:`.FromClause`.
-
-        """
-
-        return sqlutil.ClauseAdapter(alias).traverse(self)
-
-    def correspond_on_equivalents(self, column, equivalents):
-        """Return corresponding_column for the given column, or if None
-        search for a match in the given dictionary.
-
-        """
-        col = self.corresponding_column(column, require_embedded=True)
-        if col is None and col in equivalents:
-            for equiv in equivalents[col]:
-                nc = self.corresponding_column(equiv, require_embedded=True)
-                if nc:
-                    return nc
-        return col
-
-    def corresponding_column(self, column, require_embedded=False):
-        """Given a :class:`.ColumnElement`, return the exported
-        :class:`.ColumnElement` object from this :class:`.Selectable`
-        which corresponds to that original
-        :class:`~sqlalchemy.schema.Column` via a common ancestor
-        column.
-
-        :param column: the target :class:`.ColumnElement` to be matched
-
-        :param require_embedded: only return corresponding columns for
-         the given :class:`.ColumnElement`, if the given
-         :class:`.ColumnElement` is actually present within a sub-element
-         of this :class:`.FromClause`.  Normally the column will match if
-         it merely shares a common ancestor with one of the exported
-         columns of this :class:`.FromClause`.
-
-        """
-
-        def embedded(expanded_proxy_set, target_set):
-            for t in target_set.difference(expanded_proxy_set):
-                if not set(_expand_cloned([t])).intersection(
-                    expanded_proxy_set
-                ):
-                    return False
-            return True
-
-        # don't dig around if the column is locally present
-        if self.c.contains_column(column):
-            return column
-        col, intersect = None, None
-        target_set = column.proxy_set
-        cols = self.c._all_columns
-        for c in cols:
-            expanded_proxy_set = set(_expand_cloned(c.proxy_set))
-            i = target_set.intersection(expanded_proxy_set)
-            if i and (
-                not require_embedded
-                or embedded(expanded_proxy_set, target_set)
-            ):
-                if col is None:
-
-                    # no corresponding column yet, pick this one.
-
-                    col, intersect = c, i
-                elif len(i) > len(intersect):
-
-                    # 'c' has a larger field of correspondence than
-                    # 'col'. i.e. selectable.c.a1_x->a1.c.x->table.c.x
-                    # matches a1.c.x->table.c.x better than
-                    # selectable.c.x->table.c.x does.
-
-                    col, intersect = c, i
-                elif i == intersect:
-
-                    # they have the same field of correspondence. see
-                    # which proxy_set has fewer columns in it, which
-                    # indicates a closer relationship with the root
-                    # column. Also take into account the "weight"
-                    # attribute which CompoundSelect() uses to give
-                    # higher precedence to columns based on vertical
-                    # position in the compound statement, and discard
-                    # columns that have no reference to the target
-                    # column (also occurs with CompoundSelect)
-
-                    col_distance = util.reduce(
-                        operator.add,
-                        [
-                            sc._annotations.get("weight", 1)
-                            for sc in col._uncached_proxy_set()
-                            if sc.shares_lineage(column)
-                        ],
-                    )
-                    c_distance = util.reduce(
-                        operator.add,
-                        [
-                            sc._annotations.get("weight", 1)
-                            for sc in c._uncached_proxy_set()
-                            if sc.shares_lineage(column)
-                        ],
-                    )
-                    if c_distance < col_distance:
-                        col, intersect = c, i
-        return col
-
     @property
     def description(self):
         """a brief description of this FromClause.
@@ -571,6 +532,30 @@ class FromClause(roles.FromClauseRole, Selectable):
         """delete memoized collections when a FromClause is cloned."""
 
         self._memoized_property.expire_instance(self)
+
+    def _generate_fromclause_column_proxies(self, fromclause):
+        for col in self.c:
+            col._make_proxy(fromclause)
+
+    @property
+    def exported_columns(self):
+        """A :class:`.ColumnCollection` that represents the "exported"
+        columns of this :class:`.Selectable`.
+
+        The "exported" columns for a :class:`.FromClause` object are synonymous
+        with the :attr:`.FromClause.columns` collection.
+
+        .. versionadded:: 1.4
+
+        .. seealso:
+
+            :attr:`.Selectable.exported_columns`
+
+            :attr:`.SelectBase.exported_columns`
+
+
+        """
+        return self.columns
 
     @_memoized_property
     def columns(self):
@@ -660,15 +645,10 @@ class FromClause(roles.FromClauseRole, Selectable):
         derivations.
 
         """
-        if not self._cols_populated:
-            return None
-        elif column.key in self.columns and self.columns[column.key] is column:
-            return column
-        else:
-            return None
+        self._reset_exported()
 
 
-class Join(roles.AnonymizedFromClauseRole, FromClause):
+class Join(FromClause):
     """represent a ``JOIN`` construct between two :class:`.FromClause`
     elements.
 
@@ -811,23 +791,15 @@ class Join(roles.AnonymizedFromClauseRole, FromClause):
                 (c for c in columns if c.primary_key), self.onclause
             )
         )
-        self._columns.update((col._label, col) for col in columns)
+        self._columns.update((col._key_label, col) for col in columns)
         self.foreign_keys.update(
             itertools.chain(*[col.foreign_keys for col in columns])
         )
 
     def _refresh_for_new_column(self, column):
-        col = self.left._refresh_for_new_column(column)
-        if col is None:
-            col = self.right._refresh_for_new_column(column)
-        if col is not None:
-            if self._cols_populated:
-                self._columns[col._label] = col
-                self.foreign_keys.update(col.foreign_keys)
-                if col.primary_key:
-                    self.primary_key.add(col)
-                return col
-        return None
+        super(Join, self)._refresh_for_new_column(column)
+        self.left._refresh_for_new_column(column)
+        self.right._refresh_for_new_column(column)
 
     def _copy_internals(self, clone=_clone, **kw):
         self._reset_exported()
@@ -947,6 +919,9 @@ class Join(roles.AnonymizedFromClauseRole, FromClause):
     def _joincond_scan_left_right(
         cls, a, a_subset, b, consider_as_foreign_keys
     ):
+        a = coercions.expect(roles.FromClauseRole, a)
+        b = coercions.expect(roles.FromClauseRole, b)
+
         constraints = collections.defaultdict(list)
 
         for left in (a_subset, a):
@@ -1186,23 +1161,20 @@ class Join(roles.AnonymizedFromClauseRole, FromClause):
         )
 
 
-class Alias(roles.AnonymizedFromClauseRole, FromClause):
-    """Represents an table or selectable alias (AS).
-
-    Represents an alias, as typically applied to any table or
-    sub-select within a SQL statement using the ``AS`` keyword (or
-    without the keyword on certain databases such as Oracle).
-
-    This object is constructed from the :func:`~.expression.alias` module
-    level function as well as the :meth:`.FromClause.alias` method available
-    on all :class:`.FromClause` subclasses.
-
-    """
-
-    __visit_name__ = "alias"
-    named_with_column = True
+# FromClause ->
+#   AliasedReturnsRows
+#        -> Alias   only for FromClause
+#        -> Subquery  only for SelectBase
+#        -> CTE only for HasCTE -> SelectBase, DML
+#        -> Lateral -> FromClause, but we accept SelectBase
+#           w/ non-deprecated coercion
+#        -> TableSample -> only for FromClause
+class AliasedReturnsRows(FromClause):
+    """Base class of aliases against tables, subqueries, and other
+    selectables."""
 
     _is_from_container = True
+    named_with_column = True
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
@@ -1222,6 +1194,95 @@ class Alias(roles.AnonymizedFromClauseRole, FromClause):
         obj = cls.__new__(cls)
         obj._init(*arg, **kw)
         return obj
+
+    @classmethod
+    def _factory(cls, returnsrows, name=None):
+        """Base factory method.  Subclasses need to provide this."""
+        raise NotImplementedError()
+
+    def _init(self, selectable, name=None):
+        self.element = selectable
+        self.supports_execution = selectable.supports_execution
+        if self.supports_execution:
+            self._execution_options = selectable._execution_options
+        self.element = selectable
+        self._orig_name = name
+        if name is None:
+            if (
+                isinstance(selectable, FromClause)
+                and selectable.named_with_column
+            ):
+                name = getattr(selectable, "name", None)
+                if isinstance(name, _anonymous_label):
+                    name = None
+            name = _anonymous_label("%%(%d %s)s" % (id(self), name or "anon"))
+        self.name = name
+
+    def _refresh_for_new_column(self, column):
+        super(AliasedReturnsRows, self)._refresh_for_new_column(column)
+        self.element._refresh_for_new_column(column)
+
+    @property
+    def description(self):
+        if util.py3k:
+            return self.name
+        else:
+            return self.name.encode("ascii", "backslashreplace")
+
+    @property
+    def original(self):
+        """legacy for dialects that are referring to Alias.original"""
+        return self.element
+
+    def is_derived_from(self, fromclause):
+        if fromclause in self._cloned_set:
+            return True
+        return self.element.is_derived_from(fromclause)
+
+    def _populate_column_collection(self):
+        self.element._generate_fromclause_column_proxies(self)
+
+    def _copy_internals(self, clone=_clone, **kw):
+        # don't apply anything to an aliased Table
+        # for now.   May want to drive this from
+        # the given **kw.
+        if isinstance(self.element, TableClause):
+            return
+        self._reset_exported()
+        self.element = clone(self.element, **kw)
+
+    def get_children(self, column_collections=True, **kw):
+        if column_collections:
+            for c in self.c:
+                yield c
+        yield self.element
+
+    def _cache_key(self, **kw):
+        return (self.__class__, self.element._cache_key(**kw), self._orig_name)
+
+    @property
+    def _from_objects(self):
+        return [self]
+
+    @property
+    def bind(self):
+        return self.element.bind
+
+
+class Alias(AliasedReturnsRows):
+    """Represents an table or selectable alias (AS).
+
+    Represents an alias, as typically applied to any table or
+    sub-select within a SQL statement using the ``AS`` keyword (or
+    without the keyword on certain databases such as Oracle).
+
+    This object is constructed from the :func:`~.expression.alias` module
+    level function as well as the :meth:`.FromClause.alias` method available
+    on all :class:`.FromClause` subclasses.
+
+    """
+
+    __visit_name__ = "alias"
 
     @classmethod
     def _factory(cls, selectable, name=None, flat=False):
@@ -1267,103 +1328,12 @@ class Alias(roles.AnonymizedFromClauseRole, FromClause):
          .. versionadded:: 0.9.0
 
         """
-        return coercions.expect(roles.FromClauseRole, selectable).alias(
-            name=name, flat=flat
-        )
-
-    def _init(self, selectable, name=None):
-        self.wrapped = selectable
-        if isinstance(selectable, Alias):
-            selectable = selectable.element
-            assert not isinstance(selectable, Alias)
-
-        self.supports_execution = selectable.supports_execution
-        if self.supports_execution:
-            self._execution_options = selectable._execution_options
-        self.element = selectable
-        self._orig_name = name
-        if name is None:
-            if (
-                isinstance(selectable, FromClause)
-                and selectable.named_with_column
-            ):
-                name = getattr(selectable, "name", None)
-            name = _anonymous_label("%%(%d %s)s" % (id(self), name or "anon"))
-        self.name = name
-
-    def self_group(self, against=None):
-        if (
-            isinstance(against, CompoundSelect)
-            and isinstance(self.element, Select)
-            and self.element._needs_parens_for_grouping()
-        ):
-            return FromGrouping(self)
-
-        return super(Alias, self).self_group(against=against)
-
-    @property
-    def description(self):
-        if util.py3k:
-            return self.name
-        else:
-            return self.name.encode("ascii", "backslashreplace")
-
-    @property
-    def original(self):
-        """legacy for dialects that are referring to Alias.original"""
-        return self.element
-
-    def is_derived_from(self, fromclause):
-        if fromclause in self._cloned_set:
-            return True
-        return self.element.is_derived_from(fromclause)
-
-    def _populate_column_collection(self):
-        for col in self.wrapped.columns._all_columns:
-            col._make_proxy(self)
-
-    def _refresh_for_new_column(self, column):
-        col = self.wrapped._refresh_for_new_column(column)
-        if col is not None:
-            if not self._cols_populated:
-                return None
-            else:
-                return col._make_proxy(self)
-        else:
-            return None
-
-    def _copy_internals(self, clone=_clone, **kw):
-        # don't apply anything to an aliased Table
-        # for now.   May want to drive this from
-        # the given **kw.
-        if isinstance(self.element, TableClause):
-            return
-        self._reset_exported()
-        self.wrapped = clone(self.wrapped, **kw)
-        if isinstance(self.wrapped, Alias):
-            self.element = self.wrapped.element
-        else:
-            self.element = self.wrapped
-
-    def get_children(self, column_collections=True, **kw):
-        if column_collections:
-            for c in self.c:
-                yield c
-        yield self.wrapped
-
-    def _cache_key(self, **kw):
-        return (self.__class__, self.element._cache_key(**kw), self._orig_name)
-
-    @property
-    def _from_objects(self):
-        return [self]
-
-    @property
-    def bind(self):
-        return self.element.bind
+        return coercions.expect(
+            roles.FromClauseRole, selectable, allow_select=True
+        ).alias(name=name, flat=flat)
 
 
-class Lateral(Alias):
+class Lateral(AliasedReturnsRows):
     """Represent a LATERAL subquery.
 
     This object is constructed from the :func:`~.expression.lateral` module
@@ -1404,12 +1374,12 @@ class Lateral(Alias):
             :ref:`lateral_selects` -  overview of usage.
 
         """
-        return coercions.expect(roles.FromClauseRole, selectable).lateral(
-            name=name
-        )
+        return coercions.expect(
+            roles.FromClauseRole, selectable, explicit_subquery=True
+        ).lateral(name=name)
 
 
-class TableSample(Alias):
+class TableSample(AliasedReturnsRows):
     """Represent a TABLESAMPLE clause.
 
     This object is constructed from the :func:`~.expression.tablesample` module
@@ -1485,7 +1455,7 @@ class TableSample(Alias):
             return functions.func.system(self.sampling)
 
 
-class CTE(Generative, HasSuffixes, Alias):
+class CTE(Generative, HasSuffixes, AliasedReturnsRows):
     """Represent a Common Table Expression.
 
     The :class:`.CTE` object is obtained using the
@@ -1530,15 +1500,6 @@ class CTE(Generative, HasSuffixes, Alias):
         self._restates = frozenset(
             [clone(elem, **kw) for elem in self._restates]
         )
-
-    @util.dependencies("sqlalchemy.sql.dml")
-    def _populate_column_collection(self, dml):
-        if isinstance(self.element, dml.UpdateBase):
-            for col in self.element._returning:
-                col._make_proxy(self)
-        else:
-            for col in self.element.columns._all_columns:
-                col._make_proxy(self)
 
     def alias(self, name=None, flat=False):
         """Return an :class:`.Alias` of this :class:`.CTE`.
@@ -1748,13 +1709,26 @@ class HasCTE(roles.HasCTERole):
         return CTE._construct(self, name=name, recursive=recursive)
 
 
-class FromGrouping(FromClause):
+class Subquery(AliasedReturnsRows):
+    __visit_name__ = "subquery"
+
+    _is_subquery = True
+
+    @classmethod
+    def _factory(cls, selectable, name=None):
+        """Return a :class:`.Subquery` object.
+
+        """
+        return coercions.expect(
+            roles.SelectStatementRole, selectable
+        ).subquery(name=name)
+
+
+class FromGrouping(GroupedElement, FromClause):
     """Represent a grouping of a FROM clause"""
 
-    __visit_name__ = "grouping"
-
     def __init__(self, element):
-        self.element = element
+        self.element = coercions.expect(roles.FromClauseRole, element)
 
     def _init_collections(self):
         pass
@@ -1794,9 +1768,6 @@ class FromGrouping(FromClause):
     def _from_objects(self):
         return self.element._from_objects
 
-    def __getattr__(self, attr):
-        return getattr(self.element, attr)
-
     def __getstate__(self):
         return {"element": self.element}
 
@@ -1804,7 +1775,7 @@ class FromGrouping(FromClause):
         self.element = state["element"]
 
 
-class TableClause(roles.AnonymizedFromClauseRole, Immutable, FromClause):
+class TableClause(Immutable, FromClause):
     """Represents a minimal "table" construct.
 
     This is a lightweight table object that has only a name and a
@@ -1869,6 +1840,9 @@ class TableClause(roles.AnonymizedFromClauseRole, Immutable, FromClause):
         self.foreign_keys = set()
         for c in columns:
             self.append_column(c)
+
+    def _refresh_for_new_column(self, column):
+        pass
 
     def _init_collections(self):
         pass
@@ -2065,18 +2039,121 @@ class SelectBase(
     roles.InElementRole,
     HasCTE,
     Executable,
-    FromClause,
+    Selectable,
 ):
     """Base class for SELECT statements.
 
 
     This includes :class:`.Select`, :class:`.CompoundSelect` and
-    :class:`.TextAsFrom`.
+    :class:`.TextualSelect`.
 
 
     """
 
     _is_select_statement = True
+
+    _memoized_property = util.group_expirable_memoized_property()
+
+    def _reset_memoizations(self):
+        self._memoized_property.expire_instance(self)
+
+    def _generate_fromclause_column_proxies(self, fromclause):
+        # type: (FromClause)
+        raise NotImplementedError()
+
+    def _refresh_for_new_column(self, column):
+        self._reset_memoizations()
+
+    @property
+    def selected_columns(self):
+        """A :class:`.ColumnCollection` representing the columns that
+        this SELECT statement or similar construct returns in its result set.
+
+        This collection differs from the :attr:`.FromClause.columns` collection
+        of a :class:`.FromClause` in that the columns within this collection
+        cannot be directly nested inside another SELECT statement; a subquery
+        must be applied first which provides for the necessary parenthesization
+        required by SQL.
+
+        .. versionadded:: 1.4
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def exported_columns(self):
+        """A :class:`.ColumnCollection` that represents the "exported"
+        columns of this :class:`.Selectable`.
+
+        The "exported" columns for a :class:`.SelectBase` object are synonymous
+        with the :attr:`.SelectBase.selected_columns` collection.
+
+        .. versionadded:: 1.4
+
+        .. seealso:
+
+            :attr:`.Selectable.exported_columns`
+
+            :attr:`.FromClause.exported_columns`
+
+
+        """
+        return self.selected_columns
+
+    @property
+    @util.deprecated(
+        "1.4",
+        "The :attr:`.SelectBase.c` and :attr:`.SelectBase.columns` attributes "
+        "are deprecated and will be removed in a future release; these "
+        "attributes implicitly create a subquery that should be explicit.  "
+        "Please call :meth:`.SelectBase.subquery` first in order to create "
+        "a subquery, which then contains this attribute.  To access the "
+        "columns that this SELECT object SELECTs "
+        "from, use the :attr:`.SelectBase.selected_columns` attribute.",
+    )
+    def c(self):
+        return self._implicit_subquery.columns
+
+    @property
+    def columns(self):
+        return self.c
+
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.SelectBase.select` method is deprecated "
+        "and will be removed in a future release; this method implicitly "
+        "creates a subquery that should be explicit.  "
+        "Please call :meth:`.SelectBase.subquery` first in order to create "
+        "a subquery, which then can be seleted.",
+    )
+    def select(self, *arg, **kw):
+        return self._implicit_subquery.select(*arg, **kw)
+
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.SelectBase.join` method is deprecated "
+        "and will be removed in a future release; this method implicitly "
+        "creates a subquery that should be explicit.  "
+        "Please call :meth:`.SelectBase.subquery` first in order to create "
+        "a subquery, which then can be seleted.",
+    )
+    def join(self, *arg, **kw):
+        return self._implicit_subquery.join(*arg, **kw)
+
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.SelectBase.outerjoin` method is deprecated "
+        "and will be removed in a future release; this method implicitly "
+        "creates a subquery that should be explicit.  "
+        "Please call :meth:`.SelectBase.subquery` first in order to create "
+        "a subquery, which then can be seleted.",
+    )
+    def outerjoin(self, *arg, **kw):
+        return self._implicit_subquery.outerjoin(*arg, **kw)
+
+    @_memoized_property
+    def _implicit_subquery(self):
+        return self.subquery()
 
     @util.deprecated(
         "1.4",
@@ -2117,6 +2194,21 @@ class SelectBase(
         """
         return self.scalar_subquery().label(name)
 
+    def lateral(self, name=None):
+        """Return a LATERAL alias of this :class:`.Selectable`.
+
+        The return value is the :class:`.Lateral` construct also
+        provided by the top-level :func:`~.expression.lateral` function.
+
+        .. versionadded:: 1.1
+
+        .. seealso::
+
+            :ref:`lateral_selects` -  overview of usage.
+
+        """
+        return Lateral._factory(self, name)
+
     @_generative
     @util.deprecated(
         "0.6",
@@ -2141,7 +2233,7 @@ class SelectBase(
 
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
-        s._reset_exported()
+        s._reset_memoizations()
         return s
 
     @property
@@ -2182,7 +2274,78 @@ class SelectBase(
         .. versionadded:: 1.4
 
         """
-        return self.alias()
+        return Subquery._construct(self, name)
+
+    def alias(self, name=None, flat=False):
+        """Return a named subquery against this :class:`.SelectBase`.
+
+        For a :class:`.SelectBase` (as opposed to a :class:`.FromClause`),
+        this returns a :class:`.Subquery` object which behaves mostly the
+        same as the :class:`.Alias` object that is used with a
+        :class:`.FromClause`.
+
+        .. versionchanged:: 1.4 The :meth:`.SelectBase.alias` method is now
+           a synonym for the :meth:`.SelectBase.subquery` method.
+
+        """
+        return self.subquery(name=name)
+
+
+class SelectStatementGrouping(GroupedElement, SelectBase):
+    """Represent a grouping of a :class:`.SelectBase`.
+
+    This differs from :class:`.Subquery` in that we are still
+    an "inner" SELECT statement, this is strictly for grouping inside of
+    compound selects.
+
+    """
+
+    __visit_name__ = "grouping"
+
+    def __init__(self, element):
+        # type: (SelectBase)
+        self.element = coercions.expect(roles.SelectStatementRole, element)
+
+    @property
+    def select_statement(self):
+        return self.element
+
+    def get_children(self, **kwargs):
+        return (self.element,)
+
+    def self_group(self, against=None):
+        # type: (Optional[Any]) -> FromClause
+        return self
+
+    def _generate_fromclause_column_proxies(self, subquery):
+        self.element._generate_fromclause_column_proxies(subquery)
+
+    def _generate_proxy_for_new_column(self, column, subquery):
+        return self.element._generate_proxy_for_new_column(subquery)
+
+    @property
+    def selected_columns(self):
+        """A :class:`.ColumnCollection` representing the columns that
+        the embedded SELECT statement returns in its result set.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :ref:`.SelectBase.selected_columns`
+
+        """
+        return self.element.selected_columns
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.element = clone(self.element, **kw)
+
+    def _cache_key(self, **kw):
+        return (SelectStatementGrouping, self.element._cache_key(**kw))
+
+    @property
+    def _from_objects(self):
+        return self.element._from_objects
 
 
 class GenerativeSelect(SelectBase):
@@ -2191,7 +2354,7 @@ class GenerativeSelect(SelectBase):
 
     This serves as the base for :class:`.Select` and :class:`.CompoundSelect`
     where elements such as ORDER BY, GROUP BY can be added and column
-    rendering can be controlled.  Compare to :class:`.TextAsFrom`, which,
+    rendering can be controlled.  Compare to :class:`.TextualSelect`, which,
     while it subclasses :class:`.SelectBase` and is also a SELECT construct,
     represents a fixed textual string which cannot be altered at this level,
     only wrapped as a subquery.
@@ -2199,7 +2362,7 @@ class GenerativeSelect(SelectBase):
     .. versionadded:: 0.9.0 :class:`.GenerativeSelect` was added to
        provide functionality specific to :class:`.Select` and
        :class:`.CompoundSelect` while allowing :class:`.SelectBase` to be
-       used for other SELECT-like objects, e.g. :class:`.TextAsFrom`.
+       used for other SELECT-like objects, e.g. :class:`.TextualSelect`.
 
     """
 
@@ -2591,8 +2754,8 @@ class CompoundSelect(GenerativeSelect):
             s = coercions.expect(roles.CompoundElementRole, s)
 
             if not numcols:
-                numcols = len(s.c._all_columns)
-            elif len(s.c._all_columns) != numcols:
+                numcols = len(s.selected_columns)
+            elif len(s.selected_columns) != numcols:
                 raise exc.ArgumentError(
                     "All selectables passed to "
                     "CompoundSelect must have identical numbers of "
@@ -2600,9 +2763,9 @@ class CompoundSelect(GenerativeSelect):
                     "#%d has %d"
                     % (
                         1,
-                        len(self.selects[0].c._all_columns),
+                        len(self.selects[0].selected_columns),
                         n + 1,
-                        len(s.c._all_columns),
+                        len(s.selected_columns),
                     )
                 )
 
@@ -2610,9 +2773,12 @@ class CompoundSelect(GenerativeSelect):
 
         GenerativeSelect.__init__(self, **kwargs)
 
-    @property
+    @SelectBase._memoized_property
     def _label_resolve_dict(self):
-        d = dict((c.key, c) for c in self.c)
+        # TODO: this is hacky and slow
+        hacky_subquery = self.subquery()
+        hacky_subquery.named_with_column = False
+        d = dict((c.key, c) for c in hacky_subquery.c)
         return d, d, d
 
     @classmethod
@@ -2727,7 +2893,8 @@ class CompoundSelect(GenerativeSelect):
         return self.selects[0]._scalar_type()
 
     def self_group(self, against=None):
-        return FromGrouping(self)
+        # type: (Optional[Any]) -> FromClause
+        return SelectStatementGrouping(self)
 
     def is_derived_from(self, fromclause):
         for s in self.selects:
@@ -2735,50 +2902,59 @@ class CompoundSelect(GenerativeSelect):
                 return True
         return False
 
-    def _populate_column_collection(self):
-        for cols in zip(*[s.c._all_columns for s in self.selects]):
+    def _generate_fromclause_column_proxies(self, subquery):
 
-            # this is a slightly hacky thing - the union exports a
-            # column that resembles just that of the *first* selectable.
-            # to get at a "composite" column, particularly foreign keys,
-            # you have to dig through the proxies collection which we
-            # generate below.  We may want to improve upon this, such as
-            # perhaps _make_proxy can accept a list of other columns
-            # that are "shared" - schema.column can then copy all the
-            # ForeignKeys in. this would allow the union() to have all
-            # those fks too.
+        # this is a slightly hacky thing - the union exports a
+        # column that resembles just that of the *first* selectable.
+        # to get at a "composite" column, particularly foreign keys,
+        # you have to dig through the proxies collection which we
+        # generate below.  We may want to improve upon this, such as
+        # perhaps _make_proxy can accept a list of other columns
+        # that are "shared" - schema.column can then copy all the
+        # ForeignKeys in. this would allow the union() to have all
+        # those fks too.
+        select_0 = self.selects[0]
+        if self.use_labels:
+            select_0 = select_0.apply_labels()
+        select_0._generate_fromclause_column_proxies(subquery)
 
-            proxy = cols[0]._make_proxy(
-                self,
-                name=cols[0]._label if self.use_labels else None,
-                key=cols[0]._key_label if self.use_labels else None,
-            )
-
-            # hand-construct the "_proxies" collection to include all
-            # derived columns place a 'weight' annotation corresponding
-            # to how low in the list of select()s the column occurs, so
-            # that the corresponding_column() operation can resolve
-            # conflicts
-            proxy._proxies = [
-                c._annotate({"weight": i + 1}) for (i, c) in enumerate(cols)
+        # hand-construct the "_proxies" collection to include all
+        # derived columns place a 'weight' annotation corresponding
+        # to how low in the list of select()s the column occurs, so
+        # that the corresponding_column() operation can resolve
+        # conflicts
+        for subq_col, select_cols in zip(
+            subquery.c._all_columns,
+            zip(*[s.selected_columns for s in self.selects]),
+        ):
+            subq_col._proxies = [
+                c._annotate({"weight": i + 1})
+                for (i, c) in enumerate(select_cols)
             ]
 
     def _refresh_for_new_column(self, column):
-        for s in self.selects:
-            s._refresh_for_new_column(column)
+        super(CompoundSelect, self)._refresh_for_new_column(column)
+        for select in self.selects:
+            select._refresh_for_new_column(column)
 
-        if not self._cols_populated:
-            return None
+    @property
+    def selected_columns(self):
+        """A :class:`.ColumnCollection` representing the columns that
+        this SELECT statement or similar construct returns in its result set.
 
-        raise NotImplementedError(
-            "CompoundSelect constructs don't support "
-            "addition of columns to underlying "
-            "selectables"
-        )
+        For a :class:`.CompoundSelect`, the
+        :attr:`.CompoundSelect.selected_columns` attribute returns the selected
+        columns of the first SELECT statement contined within the series of
+        statements within the set operation.
+
+        .. versionadded:: 1.4
+
+        """
+        return self.selects[0].selected_columns
 
     def _copy_internals(self, clone=_clone, **kw):
         super(CompoundSelect, self)._copy_internals(clone, **kw)
-        self._reset_exported()
+        self._reset_memoizations()
         self.selects = [clone(s, **kw) for s in self.selects]
         if hasattr(self, "_col_map"):
             del self._col_map
@@ -2790,11 +2966,9 @@ class CompoundSelect(GenerativeSelect):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 
-    def get_children(self, column_collections=True, **kwargs):
-        return (
-            (column_collections and list(self.c) or [])
-            + [self._order_by_clause, self._group_by_clause]
-            + list(self.selects)
+    def get_children(self, **kwargs):
+        return [self._order_by_clause, self._group_by_clause] + list(
+            self.selects
         )
 
     def _cache_key(self, **kw):
@@ -3142,7 +3316,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             else (),
             self._from_obj,
         ):
-            if item is self:
+            if item._is_subquery and item.element is self:
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
                 )
@@ -3415,16 +3589,15 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 
-        # erase exported column list, _froms collection,
+        # erase _froms collection,
         # etc.
-        self._reset_exported()
+        self._reset_memoizations()
 
-    def get_children(self, column_collections=True, **kwargs):
+    def get_children(self, **kwargs):
         """return child elements as per the ClauseElement specification."""
 
         return (
-            (column_collections and list(self.columns) or [])
-            + self._raw_columns
+            self._raw_columns
             + list(self._froms)
             + [
                 x
@@ -3594,7 +3767,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         asked to select both from ``table1`` as well as itself.
 
         """
-        self._reset_exported()
+        self._reset_memoizations()
         rc = []
         for c in columns:
             c = coercions.expect(roles.ColumnsClauseRole, c)
@@ -3789,7 +3962,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         :class:`.Select` object.
 
         """
-        self._reset_exported()
+        self._reset_memoizations()
         column = coercions.expect(roles.ColumnsClauseRole, column)
 
         if isinstance(column, ScalarSelect):
@@ -3821,7 +3994,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         """
 
-        self._reset_exported()
+        self._reset_memoizations()
         self._whereclause = and_(True_._ifnone(self._whereclause), whereclause)
 
     def append_having(self, having):
@@ -3835,7 +4008,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         :term:`method chaining`.
 
         """
-        self._reset_exported()
+        self._reset_memoizations()
         self._having = and_(True_._ifnone(self._having), having)
 
     def append_from(self, fromclause):
@@ -3847,9 +4020,59 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         standard :term:`method chaining`.
 
         """
-        self._reset_exported()
+        self._reset_memoizations()
         fromclause = coercions.expect(roles.FromClauseRole, fromclause)
         self._from_obj = self._from_obj.union([fromclause])
+
+    @_memoized_property
+    def selected_columns(self):
+        """A :class:`.ColumnCollection` representing the columns that
+        this SELECT statement or similar construct returns in its result set.
+
+        This collection differs from the :attr:`.FromClause.columns` collection
+        of a :class:`.FromClause` in that the columns within this collection
+        cannot be directly nested inside another SELECT statement; a subquery
+        must be applied first which provides for the necessary parenthesization
+        required by SQL.
+
+        For a :func:`.select` construct, the collection here is exactly what
+        would be rendered inside the  "SELECT" statement, and the
+        :class:`.ColumnElement` objects are  directly present as they were
+        given, e.g.::
+
+            col1 = column('q', Integer)
+            col2 = column('p', Integer)
+            stmt = select([col1, col2])
+
+        Above, ``stmt.selected_columns`` would be a collection that contains
+        the ``col1`` and ``col2`` objects directly.    For a statement that is
+        against a :class:`.Table` or other :class:`.FromClause`, the collection
+        will use the :class:`.ColumnElement` objects that are in the
+        :attr:`.FromClause.c` collection of the from element.
+
+        .. versionadded:: 1.4
+
+        """
+        names = set()
+
+        def name_for_col(c):
+            # we use key_label since this name is intended for targeting
+            # within the ColumnCollection only, it's not related to SQL
+            # rendering which always uses column name for SQL label names
+            if self.use_labels:
+                name = c._key_label
+            else:
+                name = c._proxy_key
+            if name in names:
+                name = c.anon_label
+            else:
+                names.add(name)
+            return name
+
+        return SeparateKeyColumnCollection(
+            (name_for_col(c), c)
+            for c in util.unique_list(_select_iterables(self._raw_columns))
+        ).as_immutable()
 
     @_memoized_property
     def _columns_plus_names(self):
@@ -3877,7 +4100,9 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 for c in util.unique_list(_select_iterables(self._raw_columns))
             ]
 
-    def _populate_column_collection(self):
+    def _generate_fromclause_column_proxies(self, subquery):
+        keys_seen = set()
+
         for name, c in self._columns_plus_names:
             if not hasattr(c, "_make_proxy"):
                 continue
@@ -3885,27 +4110,15 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 key = None
             elif self.use_labels:
                 key = c._key_label
-                if key is not None and key in self.c:
+                if key is not None and key in keys_seen:
                     key = c.anon_label
+                keys_seen.add(key)
             else:
                 key = None
-            c._make_proxy(self, key=key, name=name, name_is_truncatable=True)
 
-    def _refresh_for_new_column(self, column):
-        for fromclause in self._froms:
-            col = fromclause._refresh_for_new_column(column)
-            if col is not None:
-                if col in self.inner_columns and self._cols_populated:
-                    our_label = col._key_label if self.use_labels else col.key
-                    if our_label not in self.c:
-                        return col._make_proxy(
-                            self,
-                            name=col._label if self.use_labels else None,
-                            key=col._key_label if self.use_labels else None,
-                            name_is_truncatable=True,
-                        )
-                return None
-        return None
+            c._make_proxy(
+                subquery, key=key, name=name, name_is_truncatable=True
+            )
 
     def _needs_parens_for_grouping(self):
         return (
@@ -3928,7 +4141,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             and not self._needs_parens_for_grouping()
         ):
             return self
-        return FromGrouping(self)
+        else:
+            return SelectStatementGrouping(self)
 
     def union(self, other, **kwargs):
         """return a SQL UNION of this select() construct against the given
@@ -4030,7 +4244,6 @@ class Exists(UnaryExpression):
 
     """
 
-    __visit_name__ = UnaryExpression.__visit_name__
     _from_objects = []
 
     def __init__(self, *args, **kwargs):
@@ -4056,7 +4269,7 @@ class Exists(UnaryExpression):
         else:
             if not args:
                 args = ([literal_column("*")],)
-            s = Select(*args, **kwargs).scalar_subquery().self_group()
+            s = Select(*args, **kwargs).scalar_subquery()
 
         UnaryExpression.__init__(
             self,
@@ -4066,17 +4279,26 @@ class Exists(UnaryExpression):
             wraps_column_expression=True,
         )
 
+    def _regroup(self, fn):
+        element = self.element._ungroup()
+        element = fn(element)
+        return element.self_group(against=operators.exists)
+
     def select(self, whereclause=None, **params):
         return Select([self], whereclause, **params)
 
     def correlate(self, *fromclause):
         e = self._clone()
-        e.element = self.element.correlate(*fromclause).self_group()
+        e.element = self._regroup(
+            lambda element: element.correlate(*fromclause)
+        )
         return e
 
     def correlate_except(self, *fromclause):
         e = self._clone()
-        e.element = self.element.correlate_except(*fromclause).self_group()
+        e.element = self._regroup(
+            lambda element: element.correlate_except(*fromclause)
+        )
         return e
 
     def select_from(self, clause):
@@ -4086,7 +4308,7 @@ class Exists(UnaryExpression):
 
         """
         e = self._clone()
-        e.element = self.element.select_from(clause).self_group()
+        e.element = self._regroup(lambda element: element.select_from(clause))
         return e
 
     def where(self, clause):
@@ -4095,12 +4317,11 @@ class Exists(UnaryExpression):
 
         """
         e = self._clone()
-        e.element = self.element.where(clause).self_group()
+        e.element = self._regroup(lambda element: element.where(clause))
         return e
 
 
-# TODO: rename to TextualSelect, this is not a FROM clause
-class TextAsFrom(SelectBase):
+class TextualSelect(SelectBase):
     """Wrap a :class:`.TextClause` construct within a :class:`.SelectBase`
     interface.
 
@@ -4108,20 +4329,22 @@ class TextAsFrom(SelectBase):
     and other FROM-like capabilities such as :meth:`.FromClause.alias`,
     :meth:`.SelectBase.cte`, etc.
 
-    The :class:`.TextAsFrom` construct is produced via the
+    The :class:`.TextualSelect` construct is produced via the
     :meth:`.TextClause.columns` method - see that method for details.
 
-    .. versionadded:: 0.9.0
+    .. versionchanged:: 1.4 the :class:`.TextualSelect` class was renamed
+       from ``TextAsFrom``, to more correctly suit its role as a
+       SELECT-oriented object and not a FROM clause.
 
     .. seealso::
 
         :func:`.text`
 
-        :meth:`.TextClause.columns`
+        :meth:`.TextClause.columns` - primary creation interface.
 
     """
 
-    __visit_name__ = "text_as_from"
+    __visit_name__ = "textual_select"
 
     _is_textual = True
 
@@ -4129,6 +4352,26 @@ class TextAsFrom(SelectBase):
         self.element = text
         self.column_args = columns
         self.positional = positional
+
+    @SelectBase._memoized_property
+    def selected_columns(self):
+        """A :class:`.ColumnCollection` representing the columns that
+        this SELECT statement or similar construct returns in its result set.
+
+        This collection differs from the :attr:`.FromClause.columns` collection
+        of a :class:`.FromClause` in that the columns within this collection
+        cannot be directly nested inside another SELECT statement; a subquery
+        must be applied first which provides for the necessary parenthesization
+        required by SQL.
+
+        For a :class:`.TextualSelect` construct, the collection contains the
+        :class:`.ColumnElement` objects that were passed to the constructor,
+        typically via the :meth:`.TextClause.columns` method.
+
+        .. versionadded:: 1.4
+
+        """
+        return ColumnCollection(*self.column_args).as_immutable()
 
     @property
     def _bind(self):
@@ -4138,27 +4381,28 @@ class TextAsFrom(SelectBase):
     def bindparams(self, *binds, **bind_as_values):
         self.element = self.element.bindparams(*binds, **bind_as_values)
 
-    def _populate_column_collection(self):
+    def _generate_fromclause_column_proxies(self, fromclause):
         for c in self.column_args:
-            c._make_proxy(self)
+            c._make_proxy(fromclause)
 
     def _copy_internals(self, clone=_clone, **kw):
-        self._reset_exported()
+        self._reset_memoizations()
         self.element = clone(self.element, **kw)
 
-    def get_children(self, column_collections=True, **kw):
-        if column_collections:
-            for c in self.column_args:
-                yield c
-        yield self.element
+    def get_children(self, **kw):
+        return [self.element]
 
     def _cache_key(self, **kw):
-        return (TextAsFrom, self.element._cache_key(**kw)) + tuple(
+        return (TextualSelect, self.element._cache_key(**kw)) + tuple(
             col._cache_key(**kw) for col in self.column_args
         )
 
     def _scalar_type(self):
         return self.column_args[0].type
+
+
+TextAsFrom = TextualSelect
+"""Backwards compatibility with the previous name"""
 
 
 class AnnotatedFromClause(Annotated):

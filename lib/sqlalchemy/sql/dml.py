@@ -47,6 +47,10 @@ class UpdateBase(
     _prefixes = ()
     named_with_column = False
 
+    def _generate_fromclause_column_proxies(self, fromclause):
+        for col in self._returning:
+            col._make_proxy(fromclause)
+
     def _process_colparams(self, parameters):
         def process_single(p):
             if isinstance(p, (list, tuple)):

@@ -390,10 +390,10 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_aliased_cloned_column_adapt_inner(self):
         clause = select([t1.c.col1, func.foo(t1.c.col2).label("foo")])
-
-        aliased1 = select([clause.c.col1, clause.c.foo])
+        c_sub = clause.subquery()
+        aliased1 = select([c_sub.c.col1, c_sub.c.foo]).subquery()
         aliased2 = clause
-        aliased2.c.col1, aliased2.c.foo
+        aliased2.selected_columns.col1, aliased2.selected_columns.foo
         aliased3 = cloned_traverse(aliased2, {}, {})
 
         # fixed by [ticket:2419].   the inside columns
@@ -406,9 +406,11 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(str(f1), str(f2))
 
     def test_aliased_cloned_column_adapt_exported(self):
-        clause = select([t1.c.col1, func.foo(t1.c.col2).label("foo")])
+        clause = select(
+            [t1.c.col1, func.foo(t1.c.col2).label("foo")]
+        ).subquery()
 
-        aliased1 = select([clause.c.col1, clause.c.foo])
+        aliased1 = select([clause.c.col1, clause.c.foo]).subquery()
         aliased2 = clause
         aliased2.c.col1, aliased2.c.foo
         aliased3 = cloned_traverse(aliased2, {}, {})
@@ -424,10 +426,11 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_aliased_cloned_schema_column_adapt_exported(self):
         clause = select([t3.c.col1, func.foo(t3.c.col2).label("foo")])
+        c_sub = clause.subquery()
 
-        aliased1 = select([clause.c.col1, clause.c.foo])
+        aliased1 = select([c_sub.c.col1, c_sub.c.foo]).subquery()
         aliased2 = clause
-        aliased2.c.col1, aliased2.c.foo
+        aliased2.selected_columns.col1, aliased2.selected_columns.foo
         aliased3 = cloned_traverse(aliased2, {}, {})
 
         # also fixed by [ticket:2419].  When we look at the
@@ -435,8 +438,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         # have an _is_clone_of pointer.   But we now modified _make_proxy
         # to assign this.
         adapter = sql_util.ColumnAdapter(aliased1)
-        f1 = select([adapter.columns[c] for c in aliased2.c])
-        f2 = select([adapter.columns[c] for c in aliased3.c])
+        f1 = select([adapter.columns[c] for c in aliased2.selected_columns])
+        f2 = select([adapter.columns[c] for c in aliased3.selected_columns])
         eq_(str(f1), str(f2))
 
     def test_labeled_expression_adapt(self):
@@ -567,14 +570,18 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_union(self):
         u = union(t1.select(), t2.select())
         u2 = CloningVisitor().traverse(u)
-        assert str(u) == str(u2)
-        assert [str(c) for c in u2.c] == [str(c) for c in u.c]
+        eq_(str(u), str(u2))
+
+        eq_(
+            [str(c) for c in u2.selected_columns],
+            [str(c) for c in u.selected_columns],
+        )
 
         u = union(t1.select(), t2.select())
-        cols = [str(c) for c in u.c]
+        cols = [str(c) for c in u.selected_columns]
         u2 = CloningVisitor().traverse(u)
-        assert str(u) == str(u2)
-        assert [str(c) for c in u2.c] == cols
+        eq_(str(u), str(u2))
+        eq_([str(c) for c in u2.selected_columns], cols)
 
         s1 = select([t1], t1.c.col1 == bindparam("id_param"))
         s2 = select([t2])
@@ -582,9 +589,11 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         u2 = u.params(id_param=7)
         u3 = u.params(id_param=10)
-        assert str(u) == str(u2) == str(u3)
-        assert u2.compile().params == {"id_param": 7}
-        assert u3.compile().params == {"id_param": 10}
+
+        eq_(str(u), str(u2))
+        eq_(str(u2), str(u3))
+        eq_(u2.compile().params, {"id_param": 7})
+        eq_(u3.compile().params, {"id_param": 10})
 
     def test_in(self):
         expr = t1.c.col1.in_(["foo", "bar"])
@@ -677,16 +686,22 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         orig = str(s)
         s2 = CloningVisitor().traverse(s)
-        assert orig == str(s) == str(s2)
+        eq_(orig, str(s))
+        eq_(str(s), str(s2))
 
         s4 = CloningVisitor().traverse(s2)
-        assert orig == str(s) == str(s2) == str(s4)
+        eq_(orig, str(s))
+        eq_(str(s), str(s2))
+        eq_(str(s), str(s4))
 
         s3 = sql_util.ClauseAdapter(table("foo")).traverse(s)
-        assert orig == str(s) == str(s3)
+        eq_(orig, str(s))
+        eq_(str(s), str(s3))
 
         s4 = sql_util.ClauseAdapter(table("foo")).traverse(s3)
-        assert orig == str(s) == str(s3) == str(s4)
+        eq_(orig, str(s))
+        eq_(str(s), str(s3))
+        eq_(str(s), str(s4))
 
         subq = subq.alias("subq")
         s = select(
@@ -694,7 +709,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             from_obj=[t1, subq, t1.join(subq, t1.c.col1 == subq.c.col2)],
         )
         s5 = CloningVisitor().traverse(s)
-        assert orig == str(s) == str(s5)
+        eq_(str(s), str(s5))
 
     def test_correlated_select(self):
         s = select(
@@ -882,10 +897,10 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         """
 
-        stmt = select([t1.c.col1, t2.c.col1]).apply_labels()
+        stmt = select([t1.c.col1, t2.c.col1]).apply_labels().subquery()
 
         sa = stmt.alias()
-        stmt2 = select([t2, sa])
+        stmt2 = select([t2, sa]).subquery()
 
         a1 = sql_util.ColumnAdapter(stmt)
         a2 = sql_util.ColumnAdapter(stmt2)
@@ -901,6 +916,9 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         # t2.c.col1 via a1 is stmt.c.table2_col1; a2 then
         # sends this to stmt2.c.table2_col1
         is_(a1_to_a2.columns[t2.c.col1], stmt2.c.table2_col1)
+
+        # check that these aren't the same column
+        is_not_(stmt2.c.col1, stmt2.c.table2_col1)
 
         # for mutually exclusive columns, order doesn't matter
         is_(a2_to_a1.columns[t1.c.col1], stmt2.c.table1_col1)
@@ -1491,7 +1509,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         j1 = a.outerjoin(b)
-        j2 = select([j1], use_labels=True)
+        j2 = select([j1], use_labels=True).subquery()
 
         j3 = c.join(j2, j2.c.b_id == c.c.bid)
 
@@ -1500,8 +1518,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             j4,
             "c JOIN (SELECT a.id AS a_id, b.id AS "
             "b_id, b.aid AS b_aid FROM a LEFT OUTER "
-            "JOIN b ON a.id = b.aid) ON b_id = c.bid "
-            "LEFT OUTER JOIN d ON a_id = d.aid",
+            "JOIN b ON a.id = b.aid) AS anon_1 ON anon_1.b_id = c.bid "
+            "LEFT OUTER JOIN d ON anon_1.a_id = d.aid",
         )
         j5 = j3.alias("foo")
         j6 = sql_util.ClauseAdapter(j5).copy_and_process([j4])[0]
@@ -1514,12 +1532,13 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             j6,
             "(SELECT c.id AS c_id, c.bid AS c_bid, "
-            "a_id AS a_id, b_id AS b_id, b_aid AS "
-            "b_aid FROM c JOIN (SELECT a.id AS a_id, "
+            "anon_1.a_id AS anon_1_a_id, anon_1.b_id AS anon_1_b_id, "
+            "anon_1.b_aid AS "
+            "anon_1_b_aid FROM c JOIN (SELECT a.id AS a_id, "
             "b.id AS b_id, b.aid AS b_aid FROM a LEFT "
-            "OUTER JOIN b ON a.id = b.aid) ON b_id = "
+            "OUTER JOIN b ON a.id = b.aid) AS anon_1 ON anon_1.b_id = "
             "c.bid) AS foo LEFT OUTER JOIN d ON "
-            "foo.a_id = d.aid",
+            "foo.anon_1_a_id = d.aid",
         )
 
     def test_derived_from(self):
@@ -1805,9 +1824,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select_copy,
             "SELECT table1.col1, table1.col2, " "table1.col3, yyy FROM table1",
         )
-        assert s.columns is not select_copy.columns
-        assert s._columns is not select_copy._columns
-        assert s._raw_columns is not select_copy._raw_columns
+        is_not_(s.selected_columns, select_copy.selected_columns)
+        is_not_(s._raw_columns, select_copy._raw_columns)
         self.assert_compile(
             s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
         )

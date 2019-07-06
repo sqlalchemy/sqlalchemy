@@ -1629,7 +1629,6 @@ class JoinedLoader(AbstractRelationshipLoader):
             # the object becomes shared among threads.  this prevents
             # races for column identities.
             inspect(to_adapt).selectable.c
-
             self._aliased_class_pool.append(to_adapt)
 
         return self._aliased_class_pool[idx]
