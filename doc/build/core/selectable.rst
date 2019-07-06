@@ -39,19 +39,15 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: Alias
    :members:
-   :inherited-members:
 
 .. autoclass:: AliasedReturnsRows
    :members:
-   :inherited-members:
 
 .. autoclass:: CompoundSelect
    :members:
-   :inherited-members:
 
 .. autoclass:: CTE
    :members:
-   :inherited-members:
 
 .. autoclass:: Executable
    :members:
@@ -61,7 +57,6 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: GenerativeSelect
    :members:
-   :inherited-members:
 
 .. autoclass:: HasCTE
    :members:
@@ -74,11 +69,9 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: Join
    :members:
-   :inherited-members:
 
 .. autoclass:: Lateral
    :members:
-   :inherited-members:
 
 .. autoclass:: ScalarSelect
    :members:
@@ -92,11 +85,9 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: SelectBase
    :members:
-   :inherited-members:
 
 .. autoclass:: Subquery
    :members:
-   :inherited-members:
 
 .. autoclass:: TableClause
    :members:
@@ -104,8 +95,6 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: TableSample
    :members:
-   :inherited-members:
 
-.. autoclass:: TextAsFrom
+.. autoclass:: TextualSelect
    :members:
-   :inherited-members:

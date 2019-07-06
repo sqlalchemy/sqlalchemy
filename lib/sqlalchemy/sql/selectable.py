@@ -1280,6 +1280,10 @@ class Alias(AliasedReturnsRows):
     level function as well as the :meth:`.FromClause.alias` method available
     on all :class:`.FromClause` subclasses.
 
+    .. seealso::
+
+        :meth:`.FromClause.alias`
+
     """
 
     __visit_name__ = "alias"
@@ -1710,6 +1714,28 @@ class HasCTE(roles.HasCTERole):
 
 
 class Subquery(AliasedReturnsRows):
+    """Represent a subquery of a SELECT.
+
+    A :class:`.Subquery` is created by invoking the
+    :meth:`.SelectBase.subquery` method, or for convenience the
+    :class:`.SelectBase.alias` method, on any :class:`.SelectBase` subclass
+    which includes :class:`.Select`, :class:`.CompoundSelect`, and
+    :class:`.TextualSelect`.  As rendered in a FROM clause, it represents the
+    body of the SELECT statement inside of parenthesis, followed by the usual
+    "AS <somename>" that defines all "alias" objects.
+
+    The :class:`.Subquery` object is very similar to the :class:`.Alias`
+    object and can be used in an equivalent way.    The difference between
+    :class:`.Alias` and :class:`.Subquery` is that :class:`.Alias` always
+    contains a :class:`.FromClause` object whereas :class:`.Subquery`
+    always contains a :class:`.SelectBase` object.
+
+    .. versionadded:: 1.4 The :class:`.Subquery` class was added which now
+       serves the purpose of providing an aliased version of a SELECT
+       statement.
+
+    """
+
     __visit_name__ = "subquery"
 
     _is_subquery = True
