@@ -184,6 +184,7 @@ class ClauseElement(roles.SQLRole, Visitable):
     _is_returns_rows = False
     _is_text_clause = False
     _is_from_container = False
+    _is_select_container = False
     _is_select_statement = False
 
     _order_by_label_element = None
@@ -856,8 +857,7 @@ class ColumnElement(
         co._proxies = [self]
         if selectable._is_clone_of is not None:
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
-        selectable._columns[key] = co
-        return co
+        return key, co
 
     def cast(self, type_):
         """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
@@ -887,6 +887,12 @@ class ColumnElement(
         """
         return Label(name, self, self.type)
 
+    def _anon_label(self, seed):
+        while self._is_clone_of is not None:
+            self = self._is_clone_of
+
+        return _anonymous_label("%%(%d %s)s" % (id(self), seed or "anon"))
+
     @util.memoized_property
     def anon_label(self):
         """provides a constant 'anonymous label' for this ColumnElement.
@@ -901,12 +907,11 @@ class ColumnElement(
         expressions and function calls.
 
         """
-        while self._is_clone_of is not None:
-            self = self._is_clone_of
+        return self._anon_label(getattr(self, "name", None))
 
-        return _anonymous_label(
-            "%%(%d %s)s" % (id(self), getattr(self, "name", "anon"))
-        )
+    @util.memoized_property
+    def _label_anon_label(self):
+        return self._anon_label(getattr(self, "_label", None))
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
@@ -3951,7 +3956,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self.element._from_objects
 
     def _make_proxy(self, selectable, name=None, **kw):
-        e = self.element._make_proxy(
+        key, e = self.element._make_proxy(
             selectable,
             name=name if name else self.name,
             disallow_is_literal=True,
@@ -3959,7 +3964,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         e._proxies.append(self)
         if self._type is not None:
             e.type = self._type
-        return e
+        return key, e
 
 
 class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
@@ -4214,7 +4219,6 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
         self,
         selectable,
         name=None,
-        attach=True,
         name_is_truncatable=False,
         disallow_is_literal=False,
         **kw
@@ -4249,9 +4253,7 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
 
-        if attach:
-            selectable._columns[c.key] = c
-        return c
+        return c.key, c
 
 
 class CollationClause(ColumnElement):

@@ -656,27 +656,23 @@ class SelectableTest(
         s2 = select([table2.c.col1, table2.c.col2, table2.c.col3])
         u1 = union(s1, s2).subquery()
 
-        with testing.expect_warnings("Column 'col1'"):
-            u1.c
-
         assert (
             u1.corresponding_column(s1.selected_columns._all_columns[0])
             is u1.c._all_columns[0]
         )
 
-        # due to the duplicate key, "col1" is now the column at the end
-        # of the list and the first column is not accessible by key
-        assert u1.c.col1 is u1.c._all_columns[2]
+        # col1 is taken by the first "col1" in the list
+        assert u1.c.col1 is u1.c._all_columns[0]
 
         # table2.c.col1 is in two positions in this union, so...currently
         # it is the replaced one at position 2.
         assert u1.corresponding_column(table2.c.col1) is u1.c._all_columns[2]
 
-        # this is table2.c.col1 in both cases, so this is "right"
-        assert u1.corresponding_column(s2.selected_columns.col1) is u1.c.col1
+        # this is table2.c.col1, which in the first selectable is in position 2
+        assert u1.corresponding_column(s2.selected_columns.col1) is u1.c[2]
 
         # same
-        assert u1.corresponding_column(s2.subquery().c.col1) is u1.c.col1
+        assert u1.corresponding_column(s2.subquery().c.col1) is u1.c[2]
 
         # col2 is working OK
         assert u1.corresponding_column(s1.selected_columns.col2) is u1.c.col2
@@ -691,8 +687,8 @@ class SelectableTest(
         )
         assert u1.corresponding_column(s2.subquery().c.col2) is u1.c.col2
 
-        # col3 is also "correct" , though confusing
-        assert u1.corresponding_column(s2.selected_columns.col3) is u1.c.col1
+        # col3 is also "correct"
+        assert u1.corresponding_column(s2.selected_columns.col3) is u1.c[2]
 
         assert u1.corresponding_column(table1.c.col1) is u1.c._all_columns[0]
         assert u1.corresponding_column(table1.c.col2) is u1.c._all_columns[1]
@@ -705,22 +701,23 @@ class SelectableTest(
         s2 = select([table2.c.col1, table2.c.col2, table2.c.col3]).limit(1)
         u1 = union(s1, s2).subquery()
 
-        with testing.expect_warnings("Column 'col1'"):
-            u1.c
+        assert (
+            u1.corresponding_column(s1.selected_columns._all_columns[0])
+            is u1.c._all_columns[0]
+        )
 
-        # due to the duplicate key, "col1" is now the column at the end
-        # of the list and the first column is not accessible by key
-        assert u1.c.col1 is u1.c._all_columns[2]
+        # col1 is taken by the first "col1" in the list
+        assert u1.c.col1 is u1.c._all_columns[0]
 
         # table2.c.col1 is in two positions in this union, so...currently
         # it is the replaced one at position 2.
         assert u1.corresponding_column(table2.c.col1) is u1.c._all_columns[2]
 
-        # this is table2.c.col1 in both cases, so this is "right"
-        assert u1.corresponding_column(s2.selected_columns.col1) is u1.c.col1
+        # this is table2.c.col1, which in the first selectable is in position 2
+        assert u1.corresponding_column(s2.selected_columns.col1) is u1.c[2]
 
         # same
-        assert u1.corresponding_column(s2.subquery().c.col1) is u1.c.col1
+        assert u1.corresponding_column(s2.subquery().c.col1) is u1.c[2]
 
         # col2 is working OK
         assert u1.corresponding_column(s1.selected_columns.col2) is u1.c.col2
@@ -735,8 +732,8 @@ class SelectableTest(
         )
         assert u1.corresponding_column(s2.subquery().c.col2) is u1.c.col2
 
-        # col3 is also "correct" , though confusing
-        assert u1.corresponding_column(s2.selected_columns.col3) is u1.c.col1
+        # col3 is also "correct"
+        assert u1.corresponding_column(s2.selected_columns.col3) is u1.c[2]
 
         assert u1.corresponding_column(table1.c.col1) is u1.c._all_columns[0]
         assert u1.corresponding_column(table1.c.col2) is u1.c._all_columns[1]
@@ -2610,13 +2607,6 @@ class ReprTest(fixtures.TestBase):
 
 
 class WithLabelsTest(fixtures.TestBase):
-    def _assert_labels_warning(self, s):
-        assert_raises_message(
-            exc.SAWarning,
-            r"replaced by Column.*, which has the same key",
-            lambda: s.subquery().c,
-        )
-
     def _assert_result_keys(self, s, keys):
         compiled = s.compile()
         eq_(set(compiled._create_result_map()), set(keys))
@@ -2633,7 +2623,6 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_names_overlap_nolabel(self):
         sel = self._names_overlap()
-        self._assert_labels_warning(sel)
         self._assert_result_keys(sel, ["x"])
 
     def test_names_overlap_label(self):
@@ -2675,10 +2664,16 @@ class WithLabelsTest(fixtures.TestBase):
     def test_labels_overlap_label(self):
         sel = self._labels_overlap().apply_labels()
         t2 = sel.froms[1]
-        eq_(list(sel.selected_columns.keys()), ["t_x_id", t2.c.id.anon_label])
-        eq_(list(sel.subquery().c.keys()), ["t_x_id", t2.c.id.anon_label])
-        self._assert_result_keys(sel, ["t_x_id", "id_1"])
-        self._assert_subq_result_keys(sel, ["t_x_id", "id_1"])
+        eq_(
+            list(sel.selected_columns.keys()),
+            ["t_x_id", t2.c.id._label_anon_label],
+        )
+        eq_(
+            list(sel.subquery().c.keys()),
+            ["t_x_id", t2.c.id._label_anon_label],
+        )
+        self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
+        self._assert_subq_result_keys(sel, ["t_x_id", "t_x_id_1"])
 
     def _labels_overlap_keylabels_dont(self):
         m = MetaData()
@@ -2696,7 +2691,7 @@ class WithLabelsTest(fixtures.TestBase):
         sel = self._labels_overlap_keylabels_dont().apply_labels()
         eq_(list(sel.selected_columns.keys()), ["t_a", "t_x_b"])
         eq_(list(sel.subquery().c.keys()), ["t_a", "t_x_b"])
-        self._assert_result_keys(sel, ["t_x_id", "id_1"])
+        self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
 
     def _keylabels_overlap_labels_dont(self):
         m = MetaData()
@@ -2713,8 +2708,14 @@ class WithLabelsTest(fixtures.TestBase):
     def test_keylabels_overlap_labels_dont_label(self):
         sel = self._keylabels_overlap_labels_dont().apply_labels()
         t2 = sel.froms[1]
-        eq_(list(sel.selected_columns.keys()), ["t_x_id", t2.c.id.anon_label])
-        eq_(list(sel.subquery().c.keys()), ["t_x_id", t2.c.id.anon_label])
+        eq_(
+            list(sel.selected_columns.keys()),
+            ["t_x_id", t2.c.id._label_anon_label],
+        )
+        eq_(
+            list(sel.subquery().c.keys()),
+            ["t_x_id", t2.c.id._label_anon_label],
+        )
         self._assert_result_keys(sel, ["t_a", "t_x_b"])
         self._assert_subq_result_keys(sel, ["t_a", "t_x_b"])
 
@@ -2734,10 +2735,13 @@ class WithLabelsTest(fixtures.TestBase):
     def test_keylabels_overlap_labels_overlap_label(self):
         sel = self._keylabels_overlap_labels_overlap().apply_labels()
         t2 = sel.froms[1]
-        eq_(list(sel.selected_columns.keys()), ["t_x_a", t2.c.a.anon_label])
-        eq_(list(sel.subquery().c.keys()), ["t_x_a", t2.c.a.anon_label])
-        self._assert_result_keys(sel, ["t_x_id", "id_1"])
-        self._assert_subq_result_keys(sel, ["t_x_id", "id_1"])
+        eq_(
+            list(sel.selected_columns.keys()),
+            ["t_x_a", t2.c.a._label_anon_label],
+        )
+        eq_(list(sel.subquery().c.keys()), ["t_x_a", t2.c.a._label_anon_label])
+        self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
+        self._assert_subq_result_keys(sel, ["t_x_id", "t_x_id_1"])
 
     def _keys_overlap_names_dont(self):
         m = MetaData()
@@ -2747,7 +2751,6 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_keys_overlap_names_dont_nolabel(self):
         sel = self._keys_overlap_names_dont()
-        self._assert_labels_warning(sel)
         self._assert_result_keys(sel, ["a", "b"])
 
     def test_keys_overlap_names_dont_label(self):

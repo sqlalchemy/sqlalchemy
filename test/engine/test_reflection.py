@@ -280,6 +280,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         # test against a table which is already reflected
         meta3 = MetaData(testing.db)
         foo = Table("foo", meta3, autoload=True)
+
         foo = Table(
             "foo", meta3, include_columns=["b", "f", "e"], extend_existing=True
         )
@@ -308,7 +309,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         old_y = Column("y", String)
         old_q = Column("q", Integer)
         t2 = Table("t", m2, old_z, old_q)
-        eq_(t2.primary_key.columns, (t2.c.z,))
+        eq_(list(t2.primary_key.columns), [t2.c.z])
         t2 = Table(
             "t",
             m2,
@@ -318,7 +319,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_with=testing.db,
         )
         eq_(set(t2.columns.keys()), set(["x", "y", "z", "q", "id"]))
-        eq_(t2.primary_key.columns, (t2.c.id,))
+
+        # this has been the actual behavior, the cols are added together,
+        # however the test wasn't checking this correctly
+        eq_(list(t2.primary_key.columns), [t2.c.z, t2.c.id])
+
         assert t2.c.z is not old_z
         assert t2.c.y is old_y
         assert t2.c.z.type._type_affinity is Integer
@@ -340,7 +345,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         old_y = Column("y", String)
         old_q = Column("q", Integer)
         t4 = Table("t", m4, old_z, old_q)
-        eq_(t4.primary_key.columns, (t4.c.z,))
+        eq_(list(t4.primary_key.columns), [t4.c.z])
         t4 = Table(
             "t",
             m4,
@@ -351,7 +356,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_with=testing.db,
         )
         eq_(set(t4.columns.keys()), set(["x", "y", "z", "q", "id"]))
-        eq_(t4.primary_key.columns, (t4.c.id,))
+        eq_(list(t4.primary_key.columns), [t4.c.z, t4.c.id])
         assert t4.c.z is old_z
         assert t4.c.y is old_y
         assert t4.c.z.type._type_affinity is String
@@ -770,6 +775,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             ),
             autoload=True,
         )
+
+        # for the thing happening here with the column collection,
+        # see test/base/test_utils.py-> test_replace_switch_key_name.
         assert u4.join(a4).onclause.compare(u4.c.u_id == a4.c.id)
         assert list(u4.primary_key) == [u4.c.u_id]
         assert len(u4.columns) == 2

@@ -531,8 +531,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_dupe_columns(self):
-        """test that deduping is performed against clause
-        element identity, not rendered result."""
+        """as of 1.4, there's no deduping."""
 
         self.assert_compile(
             select([column("a"), column("a"), column("a")]),
@@ -542,13 +541,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         c = column("a")
         self.assert_compile(
-            select([c, c, c]), "SELECT a", dialect=default.DefaultDialect()
+            select([c, c, c]),
+            "SELECT a, a, a",
+            dialect=default.DefaultDialect(),
         )
 
         a, b = column("a"), column("b")
         self.assert_compile(
             select([a, b, b, b, a, a]),
-            "SELECT a, b",
+            "SELECT a, b, b, b, a, a",
             dialect=default.DefaultDialect(),
         )
 
@@ -560,7 +561,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select([a, b, c, a, b, c]),
-            "SELECT a, b, c",
+            "SELECT a, b, c, a, b, c",
             dialect=default.DefaultDialect(),
         )
 
@@ -583,6 +584,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([bindparam("a"), bindparam("b"), bindparam("c")])
         s = s.compile(dialect=default.DefaultDialect(paramstyle="qmark"))
         eq_(s.positiontup, ["a", "b", "c"])
+
+    def test_dupe_columns_use_labels(self):
+        """as of 1.4, there's no deduping.
+
+        however the labels will still uniqify themselves...
+        """
+
+        t = table("t", column("a"), column("b"))
+        self.assert_compile(
+            select([t.c.a, t.c.a, t.c.b]).apply_labels(),
+            "SELECT t.a AS t_a, t.a AS t_a_1, t.b AS t_b FROM t",
+        )
 
     def test_nested_label_targeting(self):
         """test nested anonymous label generation.
@@ -2048,6 +2061,22 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT foo, bar ORDER BY foo) UNION (SELECT foo, "
             "bar ORDER BY bar LIMIT :param_1)",
             {"param_1": 10},
+        )
+
+    def test_dupe_cols_hey_we_can_union(self):
+        """test the original inspiration for [ticket:4753]."""
+
+        s1 = select([table1, table1.c.myid]).where(table1.c.myid == 5)
+        s2 = select([table1, table2.c.otherid]).where(
+            table1.c.myid == table2.c.otherid
+        )
+        self.assert_compile(
+            union(s1, s2).order_by(s1.selected_columns.myid),
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "
+            "UNION SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid ORDER BY myid",
         )
 
     def test_compound_grouping(self):
@@ -4511,7 +4540,8 @@ class ResultMapTest(fixtures.TestBase):
         t = table("a", column("x"), column("y"), column("z"))
 
         l1, l2, l3 = t.c.z.label("a"), t.c.x.label("b"), t.c.x.label("c")
-        orig = [t.c.x, t.c.y, l1, l2, l3]
+
+        orig = [t.c.x, t.c.y, l1, t.c.y, l2, t.c.x, l3]
 
         # create the statement with some duplicate columns.  right now
         # the behavior is that these redundant columns are deduped.
@@ -4520,11 +4550,11 @@ class ResultMapTest(fixtures.TestBase):
         # so the statement has 7 inner columns...
         eq_(len(list(stmt.inner_columns)), 7)
 
-        # but only exposes 5 of them, the other two are dupes of x and y
-        eq_(len(stmt.subquery().c), 5)
+        # 7 are exposed as of 1.4, no more deduping
+        eq_(len(stmt.subquery().c), 7)
 
-        # and when it generates a SELECT it will also render only 5
-        eq_(len(stmt._columns_plus_names), 5)
+        # will render 7 as well
+        eq_(len(stmt._columns_plus_names), 7)
 
         wrapped = stmt._generate()
         wrapped = wrapped.column(
@@ -4543,4 +4573,5 @@ class ResultMapTest(fixtures.TestBase):
 
         proxied = [obj[0] for (k, n, obj, type_) in compiled._result_columns]
         for orig_obj, proxied_obj in zip(orig, proxied):
+
             is_(orig_obj, proxied_obj)

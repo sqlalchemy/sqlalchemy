@@ -48,8 +48,9 @@ class UpdateBase(
     named_with_column = False
 
     def _generate_fromclause_column_proxies(self, fromclause):
-        for col in self._returning:
-            col._make_proxy(fromclause)
+        fromclause._columns._populate_separate_keys(
+            col._make_proxy(fromclause) for col in self._returning
+        )
 
     def _process_colparams(self, parameters):
         def process_single(p):

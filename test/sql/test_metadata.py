@@ -1518,6 +1518,7 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         y = Column("y", Integer)
         t1 = Table("t", m, Column("x", Integer), y)
 
+        # note we are testing immutable column collection here
         t2 = pickle.loads(pickle.dumps(t1))
         z = Column("z", Integer)
         g = Column("g", Integer)
@@ -2530,7 +2531,7 @@ class ConstraintTest(fixtures.TestBase):
         i = Index("i", t.c.x, _table=t)
         is_(i.table, t)
 
-        eq_(i.columns, [t.c.x])
+        eq_(list(i.columns), [t.c.x])
 
     def test_inline_decl_columns(self):
         m = MetaData()

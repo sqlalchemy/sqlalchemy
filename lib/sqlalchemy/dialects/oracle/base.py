@@ -878,7 +878,8 @@ class OracleCompiler(compiler.SQLCompiler):
                     for_update._copy_internals()
 
                     for elem in for_update.of:
-                        select = select.column(elem)
+                        if not select.selected_columns.contains_column(elem):
+                            select = select.column(elem)
 
                 # Wrap the middle select and add the hint
                 inner_subquery = select.alias()

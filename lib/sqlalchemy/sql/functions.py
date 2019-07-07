@@ -118,7 +118,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
 
         """
-        return ColumnCollection(self.label(None))
+        col = self.label(None)
+        return ColumnCollection(columns=[(col.key, col)])
 
     @util.memoized_property
     def clauses(self):

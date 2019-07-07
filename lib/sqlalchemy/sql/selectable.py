@@ -27,10 +27,10 @@ from .base import _from_objects
 from .base import _generative
 from .base import ColumnCollection
 from .base import ColumnSet
+from .base import DedupeColumnCollection
 from .base import Executable
 from .base import Generative
 from .base import Immutable
-from .base import SeparateKeyColumnCollection
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
 from .elements import _select_iterables
@@ -534,8 +534,9 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         self._memoized_property.expire_instance(self)
 
     def _generate_fromclause_column_proxies(self, fromclause):
-        for col in self.c:
-            col._make_proxy(fromclause)
+        fromclause._columns._populate_separate_keys(
+            col._make_proxy(fromclause) for col in self.c
+        )
 
     @property
     def exported_columns(self):
@@ -791,7 +792,9 @@ class Join(FromClause):
                 (c for c in columns if c.primary_key), self.onclause
             )
         )
-        self._columns.update((col._key_label, col) for col in columns)
+        self._columns._populate_separate_keys(
+            (col._key_label, col) for col in columns
+        )
         self.foreign_keys.update(
             itertools.chain(*[col.foreign_keys for col in columns])
         )
@@ -1861,7 +1864,7 @@ class TableClause(Immutable, FromClause):
 
         super(TableClause, self).__init__()
         self.name = self.fullname = name
-        self._columns = ColumnCollection()
+        self._columns = DedupeColumnCollection()
         self.primary_key = ColumnSet()
         self.foreign_keys = set()
         for c in columns:
@@ -1881,7 +1884,7 @@ class TableClause(Immutable, FromClause):
             return self.name.encode("ascii", "backslashreplace")
 
     def append_column(self, c):
-        self._columns[c.key] = c
+        self._columns.add(c)
         c.table = self
 
     def get_children(self, column_collections=True, **kwargs):
@@ -2328,6 +2331,8 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
     __visit_name__ = "grouping"
 
+    _is_select_container = True
+
     def __init__(self, element):
         # type: (SelectBase)
         self.element = coercions.expect(roles.SelectStatementRole, element)
@@ -2525,6 +2530,7 @@ class GenerativeSelect(SelectBase):
         tablename_somecolumn". This allows selectables which contain multiple
         FROM clauses to produce a unique set of column names regardless of
         name conflicts among the individual FROM clauses.
+
 
         """
         self.use_labels = True
@@ -4081,6 +4087,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         """
         names = set()
 
+        cols = _select_iterables(self._raw_columns)
+
         def name_for_col(c):
             # we use key_label since this name is intended for targeting
             # within the ColumnCollection only, it's not related to SQL
@@ -4090,18 +4098,22 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             else:
                 name = c._proxy_key
             if name in names:
-                name = c.anon_label
+                if self.use_labels:
+                    name = c._label_anon_label
+                else:
+                    name = c.anon_label
             else:
                 names.add(name)
             return name
 
-        return SeparateKeyColumnCollection(
-            (name_for_col(c), c)
-            for c in util.unique_list(_select_iterables(self._raw_columns))
+        return ColumnCollection(
+            (name_for_col(c), c) for c in cols
         ).as_immutable()
 
     @_memoized_property
     def _columns_plus_names(self):
+        cols = _select_iterables(self._raw_columns)
+
         if self.use_labels:
             names = set()
 
@@ -4111,23 +4123,18 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
                 name = c._label
                 if name in names:
-                    name = c.anon_label
+                    name = c._label_anon_label
                 else:
                     names.add(name)
                 return name, c
 
-            return [
-                name_for_col(c)
-                for c in util.unique_list(_select_iterables(self._raw_columns))
-            ]
+            return [name_for_col(c) for c in cols]
         else:
-            return [
-                (None, c)
-                for c in util.unique_list(_select_iterables(self._raw_columns))
-            ]
+            return [(None, c) for c in cols]
 
     def _generate_fromclause_column_proxies(self, subquery):
         keys_seen = set()
+        prox = []
 
         for name, c in self._columns_plus_names:
             if not hasattr(c, "_make_proxy"):
@@ -4137,14 +4144,16 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             elif self.use_labels:
                 key = c._key_label
                 if key is not None and key in keys_seen:
-                    key = c.anon_label
+                    key = c._label_anon_label
                 keys_seen.add(key)
             else:
                 key = None
-
-            c._make_proxy(
-                subquery, key=key, name=name, name_is_truncatable=True
+            prox.append(
+                c._make_proxy(
+                    subquery, key=key, name=name, name_is_truncatable=True
+                )
             )
+        subquery._columns._populate_separate_keys(prox)
 
     def _needs_parens_for_grouping(self):
         return (
@@ -4397,7 +4406,9 @@ class TextualSelect(SelectBase):
         .. versionadded:: 1.4
 
         """
-        return ColumnCollection(*self.column_args).as_immutable()
+        return ColumnCollection(
+            (c.key, c) for c in self.column_args
+        ).as_immutable()
 
     @property
     def _bind(self):
@@ -4408,8 +4419,9 @@ class TextualSelect(SelectBase):
         self.element = self.element.bindparams(*binds, **bind_as_values)
 
     def _generate_fromclause_column_proxies(self, fromclause):
-        for c in self.column_args:
-            c._make_proxy(fromclause)
+        fromclause._columns._populate_separate_keys(
+            c._make_proxy(fromclause) for c in self.column_args
+        )
 
     def _copy_internals(self, clone=_clone, **kw):
         self._reset_memoizations()

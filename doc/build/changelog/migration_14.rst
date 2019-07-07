@@ -394,6 +394,86 @@ configured to raise an exception using the Python warnings filter.
 Behavior Changes - Core
 ========================
 
+.. _change_4753:
+
+SELECT objects and derived FROM clauses allow for duplicate columns and column labels
+-------------------------------------------------------------------------------------
+
+This change allows that the :func:`.select` construct now allows for duplicate
+column labels as well as duplicate column objects themselves, so that result
+tuples are organized and ordered in the identical way in that the columns were
+selected.  The ORM :class:`.Query` already works this way, so this change
+allows for greater cross-compatibility between the two, which is a key goal of
+the 2.0 transition::
+
+    >>> from sqlalchemy import column, select
+    >>> c1, c2, c3, c4 = column('c1'), column('c2'), column('c3'), column('c4')
+    >>> stmt = select([c1, c2, c3.label('c2'), c2, c4])
+    >>> print(stmt)
+    SELECT c1, c2, c3 AS c2, c2, c4
+
+To support this change, the :class:`.ColumnCollection` used by
+:class:`.SelectBase` as well as for derived FROM clauses such as subqueries
+also support duplicate columns; this includes the new
+:attr:`.SelectBase.selected_columns` attribute, the deprecated ``SelectBase.c``
+attribute, as well as the :attr:`.FromClause.c` attribute seen on constructs
+such as :class:`.Subquery` and :class:`.Alias`::
+
+    >>> list(stmt.selected_columns)
+    [
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcca20; c1>,
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcc9e8; c2>,
+        <sqlalchemy.sql.elements.Label object at 0x7fa540b3e2e8>,
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcc9e8; c2>,
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540897048; c4>
+    ]
+
+    >>> print(stmt.subquery().select())
+    SELECT anon_1.c1, anon_1.c2, anon_1.c2, anon_1.c2, anon_1.c4
+    FROM (SELECT c1, c2, c3 AS c2, c2, c4) AS anon_1
+
+:class:`.ColumnCollection` also allows access by integer index to support
+when the string "key" is ambiguous::
+
+    >>> stmt.selected_columns[2]
+    <sqlalchemy.sql.elements.Label object at 0x7fa540b3e2e8>
+
+To suit the use of :class:`.ColumnCollection` in objects such as
+:class:`.Table` and :class:`.PrimaryKeyConstraint`, the old "deduplicating"
+behavior which is more critical for these objects is preserved in a new class
+:class:`.DedupeColumnCollection`.
+
+The change includes that the familiar warning ``"Column %r on table %r being
+replaced by %r, which has the same key.  Consider use_labels for select()
+statements."`` is **removed**; the :meth:`.Select.apply_labels` is still
+available and is still used by the ORM for all SELECT operations, however it
+does not imply deduplication of column objects, although it does imply
+deduplication of implicitly generated labels::
+
+    >>> from sqlalchemy import table
+    >>> user = table('user', column('id'), column('name'))
+    >>> stmt = select([user.c.id, user.c.name, user.c.id]).apply_labels()
+    >>> print(stmt)
+    SELECT "user".id AS user_id, "user".name AS user_name, "user".id AS id_1
+    FROM "user"
+
+Finally, the change makes it easier to create UNION and other
+:class:`.CompoundSelect` objects, by ensuring that the number and position
+of columns in a SELECT statement mirrors what was given, in a use case such
+as::
+
+    >>> s1 = select([user, user.c.id])
+    >>> s2 = select([c1, c2, c3])
+    >>> from sqlalchemy import union
+    >>> u = union(s1, s2)
+    >>> print(u)
+    SELECT "user".id, "user".name, "user".id
+    FROM "user" UNION SELECT c1, c2, c3
+
+
+
+:ticket:`4753`
+
 .. _change_4712:
 
 Connection-level transactions can now be inactive based on subtransaction

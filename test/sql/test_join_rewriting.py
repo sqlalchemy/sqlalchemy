@@ -7,6 +7,7 @@ from sqlalchemy import Column
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
@@ -14,9 +15,10 @@ from sqlalchemy import testing
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
+from sqlalchemy.sql import elements
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-
 
 m = MetaData()
 
@@ -92,11 +94,15 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
 
         compiled = s.compile(dialect=self.__dialect__)
 
-        # column name should be in result map, as we never render
-        # .key in SQL
-        for key, col in zip([c.name for c in s.subquery().c], s.inner_columns):
-            key = key % compiled.anon_map
-            assert col in compiled._create_result_map()[key][1]
+        for rec, (name, col) in zip(
+            compiled._result_columns, s._columns_plus_names
+        ):
+            assert col in set(rec[2])
+            if (
+                not isinstance(name, elements._anonymous_label)
+                and name is not None
+            ):
+                eq_(rec[1], name)
 
     _a_bkeyselect_bkey = ""
 
@@ -127,6 +133,48 @@ class _JoinRewriteTestBase(AssertsCompiledSQL):
         )
 
         self._test(s, self._a_bc)
+
+    def test_a_bc_preserve_dupes(self):
+        j1 = b.join(c)
+        j2 = a.join(j1)
+
+        s = (
+            select(
+                [a.c.id, b.c.id, b.c.a_id, c, b.c.a_id, c.c.b_id],
+                use_labels=True,
+            )
+            .select_from(j2)
+            .where(b.c.id == 2)
+            .where(c.c.id == 3)
+            .order_by(a.c.id, b.c.id, c.c.id)
+        )
+
+        self._test(s, self._a_bc_wdupes)
+
+    def test_a_bc_preserve_dupes_anon_map(self):
+        j1 = b.join(c)
+        j2 = a.join(j1)
+
+        s = (
+            select(
+                [a.c.id, b.c.id, b.c.a_id, c, b.c.a_id, c.c.b_id],
+                use_labels=True,
+            )
+            .select_from(j2)
+            .where(b.c.id == 2)
+            .where(c.c.id == 3)
+        )
+
+        # the anon_map needs to be preserved after the transform
+        # as the labels are going to be referred to outside of the query
+        subq = s.subquery()
+        s2 = (
+            select([literal_column("1")])
+            .select_from(subq)
+            .where(subq.c[5] == subq.c[6])
+        )
+
+        self._test(s2, self._a_bc_wdupes_anon_map)
 
     def test_a_bkeyassoc(self):
         j1 = b_key.join(a_to_b_key)
@@ -311,6 +359,35 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
         "ORDER BY a.id, anon_1.b_id, anon_1.c_id"
     )
 
+    _a_bc_wdupes = (
+        "SELECT a.id AS a_id, anon_1.b_id AS b_id, anon_1.b_a_id AS b_a_id, "
+        "anon_1.c_id AS c_id, anon_1.c_b_id AS c_b_id, "
+        "anon_1.b_a_id AS b_a_id_1, anon_1.c_b_id AS c_b_id_1 "
+        "FROM a JOIN "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+        "c.b_id AS c_b_id "
+        "FROM b JOIN c ON b.id = c.b_id) AS anon_1 ON a.id = anon_1.b_a_id "
+        "WHERE anon_1.b_id = :id_1 AND anon_1.c_id = :id_2 "
+        "ORDER BY a.id, anon_1.b_id, anon_1.c_id"
+    )
+
+    _a_bc_wdupes_anon_map = (
+        "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
+        "c.b_id AS c_b_id_1 "
+        "FROM a JOIN (b JOIN c ON b.id = c.b_id) ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
+        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
+    )
+
+    _a_bc_wdupes_anon_map = (
+        "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
+        "c.b_id AS c_b_id_1 FROM a JOIN (b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
+        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
+    )
+
     _a_bc_comma_a1_selbc = (
         "SELECT a.id AS a_id, a_1.id AS a_1_id, anon_1.b_id AS b_id, "
         "anon_1.b_a_id AS b_a_id, anon_1.c_id AS c_id, "
@@ -346,15 +423,14 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     )
 
     _a_bkeyselect_bkey = (
-        "SELECT a.id AS a_id, anon_2.anon_1_aid AS anon_1_aid, "
-        "anon_2.anon_1_bid AS anon_1_bid, anon_2.b_key_id AS b_key_id "
-        "FROM a JOIN (SELECT anon_1.aid AS anon_1_aid, "
-        "anon_1.bid AS anon_1_bid, "
+        "SELECT a.id AS a_id, anon_1.b_key_id AS b_key_id "
+        "FROM a JOIN (SELECT anon_2.aid AS anon_2_aid, "
+        "anon_2.bid AS anon_2_bid, "
         "b_key.id AS b_key_id "
         "FROM (SELECT a_to_b_key.aid AS aid, a_to_b_key.bid AS bid "
-        "FROM a_to_b_key) AS anon_1 "
-        "JOIN b_key ON b_key.id = anon_1.bid) AS anon_2 "
-        "ON a.id = anon_2.anon_1_aid"
+        "FROM a_to_b_key) AS anon_2 "
+        "JOIN b_key ON b_key.id = anon_2.bid) AS anon_1 "
+        "ON a.id = anon_1.anon_2_aid"
     )
 
     _a_atobalias_balias_c_w_exists = (
@@ -400,8 +476,8 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _b_a_id_double_overlap_annotated = (
         "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
-        "anon_1.id_1 AS anon_1_id_1 "
-        "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
+        "anon_1.b_a_id_1 AS anon_1_b_a_id_1 "
+        "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS b_a_id_2 "
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
@@ -433,6 +509,7 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "FROM a_to_b_key) AS anon_1 JOIN b_key ON b_key.id = anon_1.bid) "
         "ON a.id = anon_1.aid"
     )
+
     _a__b_dc = (
         "SELECT a.id AS a_id, b.id AS b_id, "
         "b.a_id AS b_a_id, c.id AS c_id, "
@@ -453,6 +530,25 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
         "ON a.id = b.a_id "
         "WHERE b.id = :id_1 AND c.id = :id_2 "
         "ORDER BY a.id, b.id, c.id"
+    )
+
+    _a_bc_wdupes = (
+        "SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
+        "c.b_id AS c_b_id, b.a_id AS b_a_id_1, c.b_id AS c_b_id_1 "
+        "FROM a JOIN "
+        "(b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2 "
+        "ORDER BY a.id, b.id, c.id"
+    )
+
+    _a_bc_wdupes_anon_map = (
+        "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
+        "c.b_id AS c_b_id_1 "
+        "FROM a JOIN (b JOIN c ON b.id = c.b_id) ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
+        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
     )
 
     _a_bc_comma_a1_selbc = (
@@ -517,8 +613,8 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _b_a_id_double_overlap_annotated = (
         "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
-        "anon_1.id_1 AS anon_1_id_1 FROM "
-        "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
+        "anon_1.b_a_id_1 AS anon_1_b_a_id_1 FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS b_a_id_1 "
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
@@ -571,6 +667,24 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
         "ON a.id = b.a_id "
         "WHERE b.id = :id_1 AND c.id = :id_2 "
         "ORDER BY a.id, b.id, c.id"
+    )
+
+    _a_bc_wdupes = (
+        "SELECT a.id, b.id, b.a_id, c.id, c.b_id, b.a_id, c.b_id "
+        "FROM a JOIN "
+        "(b JOIN c ON b.id = c.b_id) "
+        "ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2 "
+        "ORDER BY a.id, b.id, c.id"
+    )
+
+    _a_bc_wdupes_anon_map = (
+        "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
+        "c.b_id AS c_b_id_1 "
+        "FROM a JOIN (b JOIN c ON b.id = c.b_id) ON a.id = b.a_id "
+        "WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
+        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
     )
 
     _a_bc_comma_a1_selbc = (
@@ -626,8 +740,8 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
     )
 
     _b_a_id_double_overlap_annotated = (
-        "SELECT anon_1.b_id, anon_1.b_a_id, anon_1.id_1 FROM "
-        "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS id_1 "
+        "SELECT anon_1.b_id, anon_1.b_a_id, anon_1.b_a_id_1 FROM "
+        "(SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS b_a_id_1 "
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
@@ -650,6 +764,10 @@ class JoinExecTest(_JoinRewriteTestBase, fixtures.TestBase):
     __backend__ = True
 
     _a_bc = (
+        _a_bc_wdupes
+    ) = (
+        _a_bc_wdupes_anon_map
+    ) = (
         _a_bc_comma_a1_selbc
     ) = (
         _a__b_dc

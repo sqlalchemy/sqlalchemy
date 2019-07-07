@@ -815,6 +815,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "regional_sales_1 "
             "AS anon_2, regional_sales_1 "
             'WHERE orders."order" = :3) SELECT regional_sales_2.anon_1, '
+            'regional_sales_2."order", regional_sales_2."order", '
             'regional_sales_2."order" FROM regional_sales_2',
             checkpositional=("x", "y", "z"),
             dialect=dialect,
@@ -862,8 +863,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'regional_sales_1."order" AS "order" '
             "FROM orders, regional_sales_1 AS anon_2, regional_sales_1 "
             "WHERE orders.\"order\" = 'z') "
-            'SELECT regional_sales_2.anon_1, regional_sales_2."order" '
-            "FROM regional_sales_2",
+            "SELECT regional_sales_2.anon_1, "
+            'regional_sales_2."order", regional_sales_2."order", '
+            'regional_sales_2."order" FROM regional_sales_2',
             checkpositional=(),
             dialect=dialect,
             literal_binds=True,

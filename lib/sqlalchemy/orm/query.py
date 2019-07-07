@@ -528,7 +528,7 @@ class Query(object):
 
         """
 
-        stmt = self._compile_context(labels=self._with_labels).statement
+        stmt = self._compile_context(for_statement=True).statement
         if self._params:
             stmt = stmt.params(self._params)
 
@@ -3843,7 +3843,7 @@ class Query(object):
         update_op.exec_()
         return update_op.rowcount
 
-    def _compile_context(self, labels=True):
+    def _compile_context(self, for_statement=False):
         if self.dispatch.before_compile:
             for fn in self.dispatch.before_compile:
                 new_query = fn(self)
@@ -3855,7 +3855,8 @@ class Query(object):
         if context.statement is not None:
             return context
 
-        context.labels = labels
+        context.labels = not for_statement or self._with_labels
+        context.dedupe_cols = True
 
         context._for_update_arg = self._for_update_arg
 
@@ -3909,7 +3910,9 @@ class Query(object):
             order_by_col_expr = []
 
         inner = sql.select(
-            context.primary_columns + order_by_col_expr,
+            util.unique_list(context.primary_columns + order_by_col_expr)
+            if context.dedupe_cols
+            else (context.primary_columns + order_by_col_expr),
             context.whereclause,
             from_obj=context.froms,
             use_labels=context.labels,
@@ -3979,7 +3982,11 @@ class Query(object):
         context.froms += tuple(context.eager_joins.values())
 
         statement = sql.select(
-            context.primary_columns + context.secondary_columns,
+            util.unique_list(
+                context.primary_columns + context.secondary_columns
+            )
+            if context.dedupe_cols
+            else (context.primary_columns + context.secondary_columns),
             context.whereclause,
             from_obj=context.froms,
             use_labels=context.labels,
@@ -4290,8 +4297,7 @@ class Bundle(InspectionAttr):
         """
         self.name = self._label = name
         self.exprs = exprs
-        self.c = self.columns = ColumnCollection()
-        self.columns.update(
+        self.c = self.columns = ColumnCollection(
             (getattr(col, "key", col._label), col) for col in exprs
         )
         self.single_entity = kw.pop("single_entity", self.single_entity)
@@ -4658,6 +4664,7 @@ class QueryContext(object):
         "whereclause",
         "order_by",
         "labels",
+        "dedupe_cols",
         "_for_update_arg",
         "runid",
         "partials",

@@ -40,7 +40,7 @@ from . import roles
 from . import type_api
 from . import visitors
 from .base import _bind_or_error
-from .base import ColumnCollection
+from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import SchemaEventTarget
 from .coercions import _document_text_coercion
@@ -538,7 +538,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         self.indexes = set()
         self.constraints = set()
-        self._columns = ColumnCollection()
+        self._columns = DedupeColumnCollection()
         PrimaryKeyConstraint(
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
@@ -1607,13 +1607,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             )
 
         c.table = selectable
-        selectable._columns.add(c)
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns[c.key]
         if self.primary_key:
             selectable.primary_key.add(c)
-        c.dispatch.after_parent_attach(c, selectable)
-        return c
+        if fk:
+            selectable.foreign_keys.update(fk)
+        return c.key, c
 
     def get_children(self, schema_visitor=False, **kwargs):
         if schema_visitor:
@@ -1983,19 +1983,20 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         self._set_target_column(_column)
 
     def _set_target_column(self, column):
+        assert isinstance(self.parent.table, Table)
+
         # propagate TypeEngine to parent if it didn't have one
         if self.parent.type._isnull:
             self.parent.type = column.type
 
         # super-edgy case, if other FKs point to our column,
         # they'd get the type propagated out also.
-        if isinstance(self.parent.table, Table):
 
-            def set_type(fk):
-                if fk.parent.type._isnull:
-                    fk.parent.type = column.type
+        def set_type(fk):
+            if fk.parent.type._isnull:
+                fk.parent.type = column.type
 
-            self.parent._setup_on_memoized_fks(set_type)
+        self.parent._setup_on_memoized_fks(set_type)
 
         self.column = column
 
@@ -2072,7 +2073,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _set_table(self, column, table):
         # standalone ForeignKey - create ForeignKeyConstraint
         # on the hosting Table when attached to the Table.
-        if self.constraint is None and isinstance(table, Table):
+        assert isinstance(table, Table)
+        if self.constraint is None:
             self.constraint = ForeignKeyConstraint(
                 [],
                 [],
@@ -2088,7 +2090,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             self.constraint._append_element(column, self)
             self.constraint._set_parent_with_dispatch(table)
         table.foreign_keys.add(self)
-
         # set up remote ".column" attribute, or a note to pick it
         # up when the other Table/Column shows up
         if isinstance(self._colspec, util.string_types):
@@ -2760,7 +2761,7 @@ class ColumnCollectionMixin(object):
     def __init__(self, *columns, **kw):
         _autoattach = kw.pop("_autoattach", True)
         self._column_flag = kw.pop("_column_flag", False)
-        self.columns = ColumnCollection()
+        self.columns = DedupeColumnCollection()
         self._pending_colargs = [
             _to_schema_column_or_string(c) for c in columns
         ]
@@ -2885,14 +2886,10 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return self.columns.contains_column(col)
 
     def __iter__(self):
-        # inlining of
-        # return iter(self.columns)
-        # ColumnCollection->OrderedProperties->OrderedDict
-        ordered_dict = self.columns._data
-        return (ordered_dict[key] for key in ordered_dict._list)
+        return iter(self.columns)
 
     def __len__(self):
-        return len(self.columns._data)
+        return len(self.columns)
 
 
 class CheckConstraint(ColumnCollectionConstraint):
@@ -3368,11 +3365,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             table.constraints.add(self)
 
         table_pks = [c for c in table.c if c.primary_key]
-        if (
-            self.columns
-            and table_pks
-            and set(table_pks) != set(self.columns.values())
-        ):
+        if self.columns and table_pks and set(table_pks) != set(self.columns):
             util.warn(
                 "Table '%s' specifies columns %s as primary_key=True, "
                 "not matching locally specified columns %s; setting the "
@@ -3390,7 +3383,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         for c in self.columns:
             c.primary_key = True
             c.nullable = False
-        self.columns.extend(table_pks)
+        if table_pks:
+            self.columns.extend(table_pks)
 
     def _reload(self, columns):
         """repopulate this :class:`.PrimaryKeyConstraint` given

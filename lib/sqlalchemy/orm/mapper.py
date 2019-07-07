@@ -45,6 +45,7 @@ from .. import log
 from .. import schema
 from .. import sql
 from .. import util
+from ..sql import base as sql_base
 from ..sql import coercions
 from ..sql import expression
 from ..sql import operators
@@ -1455,7 +1456,11 @@ class Mapper(InspectionAttr):
 
     def _configure_properties(self):
         # Column and other ClauseElement objects which are mapped
-        self.columns = self.c = util.OrderedProperties()
+
+        # TODO: technically this should be a DedupeColumnCollection
+        # however DCC needs changes and more tests to fully cover
+        # storing columns under a separate key name
+        self.columns = self.c = sql_base.ColumnCollection()
 
         # object attribute names mapped to MapperProperty objects
         self._props = util.OrderedDict()
@@ -1781,7 +1786,7 @@ class Mapper(InspectionAttr):
                     or prop.columns[0] is self.polymorphic_on
                 )
 
-            self.columns[key] = col
+            self.columns.add(col, key)
             for col in prop.columns + prop._orig_columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop

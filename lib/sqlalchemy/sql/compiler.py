@@ -1828,7 +1828,6 @@ class SQLCompiler(Compiled):
             result_expr = _CompileLabel(
                 col_expr, name, alt_names=(column._key_label,)
             )
-
         elif (
             asfrom
             and isinstance(column, elements.ColumnClause)
@@ -1897,6 +1896,7 @@ class SQLCompiler(Compiled):
         """
         cloned = {}
         column_translate = [{}]
+        created = set()
 
         def visit(element, **kw):
             if element in column_translate[-1]:
@@ -1906,7 +1906,6 @@ class SQLCompiler(Compiled):
                 return cloned[element]
 
             newelem = cloned[element] = element._clone()
-
             if (
                 newelem._is_from_clause
                 and newelem._is_join
@@ -1921,6 +1920,8 @@ class SQLCompiler(Compiled):
                 selectable_ = selectable.Select(
                     [right.element], use_labels=True
                 ).alias()
+                created.add(selectable_)
+                created.update(selectable_.c)
 
                 for c in selectable_.c:
                     c._key_label = c.key
@@ -1971,6 +1972,11 @@ class SQLCompiler(Compiled):
                 if barrier_select:
                     column_translate.append({})
                 kw["transform_clue"] = "inside_select"
+                if not newelem._is_select_container:
+                    froms = newelem.froms
+                    newelem._raw_columns = list(newelem.selected_columns)
+                    newelem._from_obj.update(froms)
+                    newelem._reset_memoizations()
                 newelem._copy_internals(clone=visit, **kw)
                 if barrier_select:
                     del column_translate[-1]
@@ -1984,16 +1990,32 @@ class SQLCompiler(Compiled):
     def _transform_result_map_for_nested_joins(
         self, select, transformed_select
     ):
-        inner_col = dict(
-            (c._key_label, c) for c in transformed_select.inner_columns
-        )
-
-        d = dict((inner_col[c._key_label], c) for c in select.inner_columns)
-
-        self._result_columns = [
-            (key, name, tuple([d.get(col, col) for col in objs]), typ)
-            for key, name, objs, typ in self._result_columns
+        self._result_columns[:] = [
+            result_rec
+            if col is tcol
+            else (
+                result_rec[0],
+                name,
+                tuple([col if obj is tcol else obj for obj in result_rec[2]]),
+                result_rec[3],
+            )
+            for result_rec, (name, col), (tname, tcol) in zip(
+                self._result_columns,
+                select._columns_plus_names,
+                transformed_select._columns_plus_names,
+            )
         ]
+
+        # TODO: it's not anticipated that we need to correct anon_map
+        # however if we do, this is what it looks like:
+        # for (name, col), (tname, tcol) in zip(
+        #    select._columns_plus_names,
+        #    transformed_select._columns_plus_names,
+        # ):
+        #    if isinstance(name, elements._anonymous_label) and name != tname:
+        #        m1 = re.match(r"^%\((\d+ .+?)\)s$", name)
+        #        m2 = re.match(r"^%\((\d+ .+?)\)s$", tname)
+        #        self.anon_map[m1.group(1)] = self.anon_map[m2.group(1)]
 
     _default_stack_entry = util.immutabledict(
         [("correlate_froms", frozenset()), ("asfrom_froms", frozenset())]
