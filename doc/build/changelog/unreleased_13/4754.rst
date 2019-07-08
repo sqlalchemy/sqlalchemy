@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 4754
+
+    Fixed bug where using reflection function such as :meth:`.MetaData.reflect`
+    with an :class:`.Engine` object that had execution options applied to it
+    would fail, as the resulting :class:`.OptionEngine` proxy object failed to
+    include a ``.engine`` attribute used within the reflection routines.

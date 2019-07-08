@@ -1862,12 +1862,15 @@ class Engine(Connectable, log.Identified):
         if logging_name:
             self.logging_name = logging_name
         self.echo = echo
-        self.engine = self
         log.instance_logger(self, echoflag=echo)
         if proxy:
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
+
+    @property
+    def engine(self):
+        return self
 
     def update_execution_options(self, **opt):
         r"""Update the default execution_options dictionary

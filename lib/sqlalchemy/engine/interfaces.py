@@ -1117,6 +1117,13 @@ class Connectable(object):
 
         """
 
+    engine = None
+    """The :class:`.Engine` instance referred to by this :class:`.Connectable`.
+
+    May be ``self`` if this is already an :class:`.Engine`.
+
+    """
+
     @util.deprecated(
         "1.3",
         "The :meth:`.Engine.contextual_connect` and "
