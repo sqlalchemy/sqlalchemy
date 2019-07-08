@@ -1938,7 +1938,7 @@ class JSON(Indexable, TypeEngine):
                 data = {"key1": "value1", "key2": "value2"}
             )
 
-    The base :class:`.types.JSON` provides these two operations:
+    The base :class:`.types.JSON` provides these operations:
 
     * Keyed index operations::
 
