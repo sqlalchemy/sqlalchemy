@@ -1198,6 +1198,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_reflect_uses_bind_engine_reflect(self):
         self._test_reflect_uses_bind(lambda e: MetaData().reflect(e))
 
+    def test_reflect_uses_bind_option_engine_reflect(self):
+        self._test_reflect_uses_bind(
+            lambda e: MetaData().reflect(e.execution_options(foo="bar"))
+        )
+
     @testing.provide_metadata
     def test_reflect_all(self):
         existing = testing.db.table_names()

@@ -635,10 +635,14 @@ class ExecuteTest(fixtures.TestBase):
             options={"execution_options": {"base": "x1"}}
         )
 
+        is_(eng.engine, eng)
+
         eng1 = eng.execution_options(foo="b1")
+        is_(eng1.engine, eng1)
         eng2 = eng.execution_options(foo="b2")
         eng1a = eng1.execution_options(bar="a1")
         eng2a = eng2.execution_options(foo="b3", bar="a2")
+        is_(eng2a.engine, eng2a)
 
         eq_(eng._execution_options, {"base": "x1"})
         eq_(eng1._execution_options, {"base": "x1", "foo": "b1"})
