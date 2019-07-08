@@ -60,7 +60,7 @@ class array(expression.Tuple):
                         array([1,2]) + array([3,4,5])
                     ])
 
-        print stmt.compile(dialect=postgresql.dialect())
+        print(stmt.compile(dialect=postgresql.dialect()))
 
     Produces the SQL::
 
@@ -73,6 +73,24 @@ class array(expression.Tuple):
 
         array(['foo', 'bar'], type_=CHAR)
 
+    Multidimensional arrays are produced by nesting :class:`.array` constructs.
+    The dimensionality of the final :class:`.ARRAY` type is calculated by
+    recursively adding the dimensions of the inner :class:`.ARRAY` type::
+
+        stmt = select([
+            array([
+                array([1, 2]), array([3, 4]), array([column('q'), column('x')])
+            ])
+        ])
+        print(stmt.compile(dialect=postgresql.dialect()))
+
+    Produces::
+
+        SELECT ARRAY[ARRAY[%(param_1)s, %(param_2)s],
+        ARRAY[%(param_3)s, %(param_4)s], ARRAY[q, x]] AS anon_1
+
+    .. versionadded:: 1.3.6 added support for multidimensional array literals
+
     .. seealso::
 
         :class:`.postgresql.ARRAY`
@@ -83,7 +101,15 @@ class array(expression.Tuple):
 
     def __init__(self, clauses, **kw):
         super(array, self).__init__(*clauses, **kw)
-        self.type = ARRAY(self.type)
+        if isinstance(self.type, ARRAY):
+            self.type = ARRAY(
+                self.type.item_type,
+                dimensions=self.type.dimensions + 1
+                if self.type.dimensions is not None
+                else 2,
+            )
+        else:
+            self.type = ARRAY(self.type)
 
     def _bind_param(self, operator, obj, _assume_scalar=False, type_=None):
         if _assume_scalar or operator is operators.getitem:
