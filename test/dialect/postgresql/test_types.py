@@ -950,6 +950,55 @@ class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
 class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = "postgresql"
 
+    def test_array_literal(self):
+        obj = postgresql.array([1, 2]) + postgresql.array([3, 4, 5])
+
+        self.assert_compile(
+            obj,
+            "ARRAY[%(param_1)s, %(param_2)s] || "
+            "ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]",
+            params={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+                "param_5": 5,
+            },
+        )
+        self.assert_compile(
+            obj[1],
+            "(ARRAY[%(param_1)s, %(param_2)s] || ARRAY[%(param_3)s, "
+            "%(param_4)s, %(param_5)s])[%(param_6)s]",
+            params={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+                "param_5": 5,
+            },
+        )
+
+    def test_array_literal_getitem_multidim(self):
+        obj = postgresql.array(
+            [postgresql.array([1, 2]), postgresql.array([3, 4])]
+        )
+
+        self.assert_compile(
+            obj,
+            "ARRAY[ARRAY[%(param_1)s, %(param_2)s], "
+            "ARRAY[%(param_3)s, %(param_4)s]]",
+        )
+        self.assert_compile(
+            obj[1],
+            "(ARRAY[ARRAY[%(param_1)s, %(param_2)s], "
+            "ARRAY[%(param_3)s, %(param_4)s]])[%(param_5)s]",
+        )
+        self.assert_compile(
+            obj[1][0],
+            "(ARRAY[ARRAY[%(param_1)s, %(param_2)s], "
+            "ARRAY[%(param_3)s, %(param_4)s]])[%(param_5)s][%(param_6)s]",
+        )
+
     def test_array_type_render_str(self):
         self.assert_compile(postgresql.ARRAY(Unicode(30)), "VARCHAR(30)[]")
 
@@ -1350,7 +1399,7 @@ class ArrayRoundTripTest(object):
             [[util.ue("m\xe4\xe4")], [util.ue("m\xf6\xf6")]],
         )
 
-    def test_array_literal(self):
+    def test_array_literal_roundtrip(self):
         eq_(
             testing.db.scalar(
                 select(
@@ -1358,6 +1407,67 @@ class ArrayRoundTripTest(object):
                 )
             ),
             [1, 2, 3, 4, 5],
+        )
+
+        eq_(
+            testing.db.scalar(
+                select(
+                    [
+                        (
+                            postgresql.array([1, 2])
+                            + postgresql.array([3, 4, 5])
+                        )[3]
+                    ]
+                )
+            ),
+            3,
+        )
+
+        eq_(
+            testing.db.scalar(
+                select(
+                    [
+                        (
+                            postgresql.array([1, 2])
+                            + postgresql.array([3, 4, 5])
+                        )[2:4]
+                    ]
+                )
+            ),
+            [2, 3, 4],
+        )
+
+    def test_array_literal_multidimensional_roundtrip(self):
+        eq_(
+            testing.db.scalar(
+                select(
+                    [
+                        postgresql.array(
+                            [
+                                postgresql.array([1, 2]),
+                                postgresql.array([3, 4]),
+                            ]
+                        )
+                    ]
+                )
+            ),
+            [[1, 2], [3, 4]],
+        )
+
+        eq_(
+            testing.db.scalar(
+                select(
+                    [
+                        postgresql.array(
+                            [
+                                postgresql.array([1, 2]),
+                                postgresql.array([3, 4]),
+                            ]
+                        )[2][1]
+                    ]
+                )
+            ),
+            3,
         )
 
     def test_array_literal_compare(self):
