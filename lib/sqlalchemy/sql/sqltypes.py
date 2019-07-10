@@ -1426,12 +1426,14 @@ class Enum(Emulated, String, SchemaType):
             self.enum_class = enums[0]
             if self.values_callable:
                 values = self.values_callable(self.enum_class)
+                objects = [
+                    self.enum_class.__members__[k]
+                    for k in self.enum_class.__members__
+                ]
             else:
-                values = list(self.enum_class.__members__)
-            objects = [
-                self.enum_class.__members__[k]
-                for k in self.enum_class.__members__
-            ]
+                enum_members = self.enum_class.__members__.copy()
+                values = enum_members.keys()
+                objects = enum_members.values()
             return values, objects
         else:
             self.enum_class = None
