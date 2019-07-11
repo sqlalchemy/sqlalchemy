@@ -587,7 +587,7 @@ def before_test(test, test_module_name, test_class, test_name):
 
     id_ = "%s.%s.%s" % (test_module_name, name, test_name)
 
-    profiling._current_test = id_
+    profiling._start_current_test(id_)
 
 
 def after_test(test):

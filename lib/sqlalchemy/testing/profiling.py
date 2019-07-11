@@ -31,17 +31,37 @@ try:
 except ImportError:
     cProfile = None
 
-_current_test = None
-
-# ProfileStatsFile instance, set up in plugin_base
 _profile_stats = None
+"""global ProfileStatsFileInstance.
+
+plugin_base assigns this at the start of all tests.
+
+"""
+
+
+_current_test = None
+"""String id of current test.
+
+plugin_base assigns this at the start of each test using
+_start_current_test.
+
+"""
+
+
+def _start_current_test(id_):
+    global _current_test
+    _current_test = id_
+
+    if _profile_stats.force_write:
+        _profile_stats.reset_count()
 
 
 class ProfileStatsFile(object):
     """"Store per-platform/fn profiling results in a file.
 
-    We're still targeting Py2.5, 2.4 on 0.7 with no dependencies,
-    so no json lib :(  need to roll something silly
+    There was no json module available when this was written, but now
+    the file format which is very deterministically line oriented is kind of
+    handy in any case for diffs and merges.
 
     """
 
@@ -120,6 +140,19 @@ class ProfileStatsFile(object):
             result = per_platform["lineno"], counts[current_count]
         per_platform["current_count"] += 1
         return result
+
+    def reset_count(self):
+        test_key = _current_test
+        # since self.data is a defaultdict, don't access a key
+        # if we don't know it's there first.
+        if test_key not in self.data:
+            return
+        per_fn = self.data[test_key]
+        if self.platform_key not in per_fn:
+            return
+        per_platform = per_fn[self.platform_key]
+        if "counts" in per_platform:
+            per_platform["counts"][:] = []
 
     def replace(self, callcount):
         test_key = _current_test
@@ -247,11 +280,13 @@ def count_functions(variance=0.05):
     stats.sort_stats("cumulative")
     stats.print_stats()
 
-    if expected_count:
+    if _profile_stats.force_write:
+        _profile_stats.replace(callcount)
+    elif expected_count:
         deviance = int(callcount * variance)
         failed = abs(callcount - expected_count) > deviance
 
-        if failed or _profile_stats.force_write:
+        if failed:
             if _profile_stats.write:
                 _profile_stats.replace(callcount)
             else:
