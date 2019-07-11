@@ -1424,14 +1424,12 @@ class Enum(Emulated, String, SchemaType):
 
         if len(enums) == 1 and hasattr(enums[0], "__members__"):
             self.enum_class = enums[0]
+            members = self.enum_class.__members__
             if self.values_callable:
                 values = self.values_callable(self.enum_class)
             else:
-                values = list(self.enum_class.__members__)
-            objects = [
-                self.enum_class.__members__[k]
-                for k in self.enum_class.__members__
-            ]
+                values = list(members)
+            objects = [members[k] for k in members]
             return values, objects
         else:
             self.enum_class = None
