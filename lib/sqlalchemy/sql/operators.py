@@ -1345,6 +1345,10 @@ def empty_notin_op(a, b):
     raise NotImplementedError()
 
 
+def filter_op(a, b):
+    raise NotImplementedError()
+
+
 def concat_op(a, b):
     return a.concat(b)
 
@@ -1443,6 +1447,7 @@ _PRECEDENCE = {
     add: 7,
     sub: 7,
     concat_op: 6,
+    filter_op: 6,
     match_op: 5,
     notmatch_op: 5,
     ilike_op: 5,

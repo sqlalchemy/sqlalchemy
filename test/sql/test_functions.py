@@ -537,6 +537,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.myid > :myid_1)",
         )
 
+    def test_funcfilter_arrayagg_subscript(self):
+        num = column("q")
+        self.assert_compile(
+            func.array_agg(num).filter(num % 2 == 0)[1],
+            "(array_agg(q) FILTER (WHERE q %% %(q_1)s = "
+            "%(param_1)s))[%(param_2)s]",
+            dialect="postgresql",
+        )
+
     def test_funcfilter_label(self):
         self.assert_compile(
             select(
