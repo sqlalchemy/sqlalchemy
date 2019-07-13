@@ -3808,6 +3808,12 @@ class FunctionFilter(ColumnElement):
             rows=rows,
         )
 
+    def self_group(self, against=None):
+        if operators.is_precedent(operators.filter_op, against):
+            return Grouping(self)
+        else:
+            return self
+
     @util.memoized_property
     def type(self):
         return self.func.type

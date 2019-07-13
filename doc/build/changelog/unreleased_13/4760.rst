@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql, postgresql
+    :tickets: 4760
+
+    Fixed issue where the :class:`.array_agg` construct in combination with
+    :meth:`.FunctionElement.filter` would not produce the correct operator
+    precedence in combination with the array index operator.
+

@@ -1435,6 +1435,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM table1 AS foo",
         )
 
+    def test_array_agg_w_filter_subscript(self):
+        series = func.generate_series(1, 100).alias("series")
+        series_col = column("series")
+        query = select(
+            [func.array_agg(series_col).filter(series_col % 2 == 0)[3]]
+        ).select_from(series)
+        self.assert_compile(
+            query,
+            "SELECT (array_agg(series) FILTER "
+            "(WHERE series %% %(series_1)s = %(param_1)s))[%(param_2)s] "
+            "AS anon_1 FROM "
+            "generate_series(%(generate_series_1)s, %(generate_series_2)s) "
+            "AS series",
+        )
+
     def test_delete_extra_froms(self):
         t1 = table("t1", column("c1"))
         t2 = table("t2", column("c1"))
