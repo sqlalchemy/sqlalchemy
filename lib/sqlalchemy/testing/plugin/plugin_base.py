@@ -102,6 +102,13 @@ def setup_options(make_option):
         help="Don't run memory profiling tests",
     )
     make_option(
+        "--profile-sort",
+        type="string",
+        default="cumulative",
+        dest="profilesort",
+        help="Type of sort for profiling standard output",
+    )
+    make_option(
         "--postgresql-templatedb",
         type="string",
         help="name of template database to use for PostgreSQL "
@@ -474,7 +481,8 @@ def _setup_profiling(options, file_config):
     from sqlalchemy.testing import profiling
 
     profiling._profile_stats = profiling.ProfileStatsFile(
-        file_config.get("sqla_testing", "profile_file")
+        file_config.get("sqla_testing", "profile_file"),
+        sort=options.profilesort,
     )
 
 

@@ -65,7 +65,7 @@ class ProfileStatsFile(object):
 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, sort="cumulative"):
         self.force_write = (
             config.options is not None and config.options.force_write_profiles
         )
@@ -77,6 +77,7 @@ class ProfileStatsFile(object):
         self.data = collections.defaultdict(
             lambda: collections.defaultdict(dict)
         )
+        self.sort = sort
         self._read()
         if self.write:
             # rewrite for the case where features changed,
@@ -277,7 +278,7 @@ def count_functions(variance=0.05):
         line_no, expected_count = expected
 
     print(("Pstats calls: %d Expected %s" % (callcount, expected_count)))
-    stats.sort_stats("cumulative")
+    stats.sort_stats(_profile_stats.sort)
     stats.print_stats()
 
     if _profile_stats.force_write:
