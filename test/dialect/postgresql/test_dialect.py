@@ -41,7 +41,7 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
-from sqlalchemy.testing.mock import Mock
+from sqlalchemy.testing.mock import Mock, patch
 from ...engine import test_execute
 
 
@@ -153,7 +153,7 @@ class DialectTest(fixtures.TestBase):
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
 
-class BatchInsertsTest(fixtures.TablesTest):
+class ExecuteBatchInsertsTest(fixtures.TablesTest):
     __only_on__ = "postgresql+psycopg2"
     __backend__ = True
 
@@ -171,12 +171,12 @@ class BatchInsertsTest(fixtures.TablesTest):
         )
 
     def setup(self):
-        super(BatchInsertsTest, self).setup()
+        super(ExecuteBatchInsertsTest, self).setup()
         self.engine = engines.testing_engine(options={"use_batch_mode": True})
 
     def teardown(self):
         self.engine.dispose()
-        super(BatchInsertsTest, self).teardown()
+        super(ExecuteBatchInsertsTest, self).teardown()
 
     def test_insert(self):
         with self.engine.connect() as conn:
@@ -221,6 +221,94 @@ class BatchInsertsTest(fixtures.TablesTest):
                 ).fetchall(),
                 [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
             )
+
+
+class ExecuteValuesInsertsTest(fixtures.TablesTest):
+    __only_on__ = "postgresql+psycopg2"
+    __backend__ = True
+
+    run_create_tables = "each"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "data",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", String),
+            Column("y", String),
+            Column("z", Integer, server_default="5"),
+        )
+
+    def setup(self):
+        super(ExecuteValuesInsertsTest, self).setup()
+        self.engine = engines.testing_engine(options={"use_batch_mode": "execute_values"})
+
+    def teardown(self):
+        self.engine.dispose()
+        super(ExecuteValuesInsertsTest, self).teardown()
+
+    def test_insert(self):
+        with self.engine.connect() as conn:
+            conn.execute(
+                self.tables.data.insert(),
+                [
+                    {"x": "x1", "y": "y1"},
+                    {"x": "x2", "y": "y2"},
+                    {"x": "x3", "y": "y3"},
+                ],
+            )
+
+            eq_(
+                conn.execute(select([self.tables.data])).fetchall(),
+                [(1, "x1", "y1", 5), (2, "x2", "y2", 5), (3, "x3", "y3", 5)],
+            )
+
+    def test_not_sane_rowcount(self):
+        self.engine.connect().close()
+        assert not self.engine.dialect.supports_sane_multi_rowcount
+
+    def test_update(self):
+        with self.engine.connect() as conn:
+            conn.execute(
+                self.tables.data.insert(),
+                [
+                    {"x": "x1", "y": "y1"},
+                    {"x": "x2", "y": "y2"},
+                    {"x": "x3", "y": "y3"},
+                ],
+            )
+
+            conn.execute(
+                self.tables.data.update()
+                .where(self.tables.data.c.x == bindparam("xval"))
+                .values(y=bindparam("yval")),
+                [{"xval": "x1", "yval": "y5"}, {"xval": "x3", "yval": "y6"}],
+            )
+            eq_(
+                conn.execute(
+                    select([self.tables.data]).order_by(self.tables.data.c.id)
+                ).fetchall(),
+                [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
+            )
+
+    def test_correct_arguments(self):
+        def execute_values(cur, sql, argslist, template=None, page_size=100):
+            assert sql == "INSERT INTO data (x, y) VALUES %s"
+            assert argslist == ({'x': 'x1', 'y': 'y1'}, {'x': 'x2', 'y': 'y2'}, {'x': 'x3', 'y': 'y3'})
+            assert template == "(%(x)s, %(y)s)"
+            assert page_size == 2000
+
+        with patch("psycopg2.extras.execute_values", execute_values):
+            with self.engine.connect() as conn:
+                conn.execute(
+                    self.tables.data.insert(),
+                    [
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ],
+                )
 
 
 class MiscBackendTest(

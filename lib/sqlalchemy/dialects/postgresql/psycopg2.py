@@ -52,11 +52,12 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_unicode`
 
-* ``use_batch_mode``: This flag allows ``psycopg2.extras.execute_batch``
-  for ``cursor.executemany()`` calls performed by the :class:`.Engine`.
-  It is currently experimental but
-  may well become True by default as it is critical for executemany
-  performance.
+* ``use_batch_mode``: This flag allows using psycopg2 faster methods for
+  executing queries with multiple parameters (usually INSERT queries).
+  If equals True or 'execute_batch', ``psycopg2.extras.execute_batch`` is used.
+  If equals 'execute_values', ``psycopg2.extras.execute_values`` is used.
+  It is currently experimental but may well become 'execute_values' by default as
+  it is critical for executemany performance.
 
   .. seealso::
 
@@ -154,6 +155,9 @@ by adding the ``use_batch_mode`` flag to :func:`.create_engine`::
         "postgresql+psycopg2://scott:tiger@host/dbname",
         use_batch_mode=True)
 
+use_batch_mode can be set to:
+True or 'execute_batch' - use psycopg2.extras.execute_batch method (faster).
+'execute_values'        - use psycopg2.extras.execute_values method (fastest).
 Batch mode is considered to be **experimental** at this time, however may
 be enabled by default in a future release.
 
@@ -551,7 +555,24 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    pass
+    def __init__(
+        self, dialect, statement, column_keys=None, inline=False, **kwargs
+    ):
+        self.dialect = dialect
+        self.multi_params = inline
+        self.execute_values_insert_template = None
+        self.execute_values_page_size = 2000
+        super(PGCompiler_psycopg2, PGCompiler_psycopg2).__init__(self, dialect, statement, column_keys, inline, **kwargs)
+
+    # Override SQLCompiler.generate_values_placeholders_str- enable use of psycopg2 execute_values()
+    def generate_values_placeholders_str(self, crud_params, returning_clause_exists):
+        # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
+        # for receiving multiple return values from insert query
+        if self.multi_params and not returning_clause_exists and self.dialect.psycopg2_batch_mode == 'execute_values':
+            self.execute_values_insert_template = "(" + ", ".join([c[1] for c in crud_params]) + ")"
+            return " VALUES %s"
+        else:
+            return super(PGCompiler_psycopg2, PGCompiler_psycopg2).generate_values_placeholders_str(self, crud_params, returning_clause_exists)
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
@@ -766,9 +787,12 @@ class PGDialect_psycopg2(PGDialect):
             return None
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        if self.psycopg2_batch_mode:
-            extras = self._psycopg2_extras()
-            extras.execute_batch(cursor, statement, parameters)
+        if self.psycopg2_batch_mode == 'execute_values' and context and context.compiled.execute_values_insert_template:
+            self._psycopg2_extras().execute_values(
+                cursor, statement, parameters, template=context.compiled.execute_values_insert_template, page_size=context.compiled.execute_values_page_size)
+        # Support True for backward compatibility
+        elif self.psycopg2_batch_mode in ('execute_batch', True):
+            self._psycopg2_extras().execute_batch(cursor, statement, parameters)
         else:
             cursor.executemany(statement, parameters)
 
