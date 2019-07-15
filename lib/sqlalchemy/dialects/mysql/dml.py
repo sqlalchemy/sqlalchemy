@@ -72,7 +72,7 @@ class Insert(StandardInsert):
          in :ref:`updates_order_parameters`::
 
             insert().on_duplicate_key_update(
-                [("name": "some name"), ("value", "some value")])
+                [("name", "some name"), ("value", "some value")])
 
          .. versionchanged:: 1.3 parameters can be specified as a dictionary
             or list of 2-tuples; the latter form provides for parameter
