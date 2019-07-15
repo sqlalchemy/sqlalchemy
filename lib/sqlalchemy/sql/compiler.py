@@ -2499,7 +2499,7 @@ class SQLCompiler(Compiled):
                 )
             )
         else:
-            text += " VALUES (%s)" % ", ".join([c[1] for c in crud_params])
+            text += self.generate_values_placeholders_str(crud_params, returning_clause is not None)
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(
@@ -2517,6 +2517,13 @@ class SQLCompiler(Compiled):
         self.stack.pop(-1)
 
         return text
+
+    def generate_values_placeholders_str(self, crud_params, returning_clause_exists):
+        """
+        Generate the VALUES place holder string
+        Should be overridden in classes that need a different implementation than the default
+        """
+        return " VALUES (%s)" % ", ".join([c[1] for c in crud_params])
 
     def update_limit_clause(self, update_stmt):
         """Provide a hook for MySQL to add LIMIT to the UPDATE"""
