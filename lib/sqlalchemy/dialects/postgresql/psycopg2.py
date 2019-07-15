@@ -559,7 +559,7 @@ class PGCompiler_psycopg2(PGCompiler):
         self, dialect, statement, column_keys=None, inline=False, **kwargs
     ):
         self.dialect = dialect
-        self.multi_params = inline
+        self.multiple_rows = inline
         self.execute_values_insert_template = None
         self.execute_values_page_size = 2000
         super(PGCompiler_psycopg2, PGCompiler_psycopg2).__init__(self, dialect, statement, column_keys, inline, **kwargs)
@@ -568,7 +568,7 @@ class PGCompiler_psycopg2(PGCompiler):
     def generate_values_placeholders_str(self, crud_params, returning_clause_exists):
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
-        if self.multi_params and not returning_clause_exists and self.dialect.psycopg2_batch_mode == 'execute_values':
+        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_batch_mode == 'execute_values':
             self.execute_values_insert_template = "(" + ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
         else:
