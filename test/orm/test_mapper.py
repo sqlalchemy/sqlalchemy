@@ -1535,6 +1535,32 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(attributes.instance_state(u1).attrs.x.history, ([5], (), ()))
         eq_(attributes.instance_state(u1).attrs.y.history, ([5], (), ()))
 
+    def test_synonym_nonexistent_attr(self):
+        # test [ticket:4767].
+        # synonym points to non-existent attrbute that hasn't been mapped yet.
+        users = self.tables.users
+
+        class User(object):
+            def _x(self):
+                return self.id
+
+            x = property(_x)
+
+        m = mapper(
+            User,
+            users,
+            properties={"x": synonym("some_attr", descriptor=User.x)},
+        )
+
+        # object gracefully handles this condition
+        assert not hasattr(User.x, "__name__")
+        assert not hasattr(User.x, "comparator")
+
+        m.add_property("some_attr", column_property(users.c.name))
+
+        assert not hasattr(User.x, "__name__")
+        assert hasattr(User.x, "comparator")
+
     def test_synonym_of_non_property_raises(self):
         from sqlalchemy.ext.associationproxy import association_proxy
 
