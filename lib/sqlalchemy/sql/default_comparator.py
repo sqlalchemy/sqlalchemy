@@ -220,7 +220,12 @@ def _in_impl(expr, op, seq_or_selectable, negate_op, **kw):
         )
 
     return _boolean_compare(
-        expr, op, ClauseList(*args).self_group(against=op), negate=negate_op
+        expr,
+        op,
+        ClauseList(_tuple_values=isinstance(expr, Tuple), *args).self_group(
+            against=op
+        ),
+        negate=negate_op,
     )
 
 

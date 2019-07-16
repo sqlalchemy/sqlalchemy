@@ -2465,6 +2465,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "((:param_1, :param_2), (:param_3, :param_4))",
         )
 
+        dialect = default.DefaultDialect()
+        dialect.tuple_in_values = True
+        self.assert_compile(
+            tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
+            "(mytable.myid, mytable.name) IN "
+            "(VALUES (:param_1, :param_2), (:param_3, :param_4))",
+            dialect=dialect,
+        )
+
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_(
                 [tuple_(table2.c.otherid, table2.c.othername)]
@@ -2487,6 +2496,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 bindparam("foo", expanding=True)
             ),
             "(mytable.myid, mytable.name) IN ([EXPANDING_foo])",
+        )
+
+        dialect = default.DefaultDialect()
+        dialect.tuple_in_values = True
+        self.assert_compile(
+            tuple_(table1.c.myid, table1.c.name).in_(
+                bindparam("foo", expanding=True)
+            ),
+            "(mytable.myid, mytable.name) IN ([EXPANDING_foo])",
+            dialect=dialect,
         )
 
         self.assert_compile(

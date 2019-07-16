@@ -835,17 +835,17 @@ as of the 1.2 series.   Things to know about this kind of loading include:
   SQL Server.
 
 * As "selectin" loading relies upon IN, for a mapping with composite primary
-  keys, it must use the "tuple" form of IN, which looks like
-  ``WHERE (table.column_a, table.column_b) IN ((?, ?), (?, ?), (?, ?))``.
-  This syntax is not supported on every database; currently it is known
-  to be only supported by modern PostgreSQL and MySQL versions.  Therefore
-  **selectin loading is not platform-agnostic for composite primary keys**.
-  There is no special logic in SQLAlchemy to check ahead of time which platforms
-  support this syntax or not; if run against a non-supporting platform (such
-  as SQLite), the database will return an error immediately.   An advantage to SQLAlchemy
-  just running the SQL out for it to fail is that if a database like
-  SQLite does start supporting this syntax, it will work without any changes
-  to SQLAlchemy.
+  keys, it must use the "tuple" form of IN, which looks like ``WHERE
+  (table.column_a, table.column_b) IN ((?, ?), (?, ?), (?, ?))``. This syntax
+  is not supported on every database; within the dialects that are included
+  with SQLAlchemy, it is known to be supported by modern PostgreSQL, MySQL and
+  SQLite versions.  Therefore **selectin loading is not platform-agnostic for
+  composite primary keys**. There is no special logic in SQLAlchemy to check
+  ahead of time which platforms support this syntax or not; if run against a
+  non-supporting platform, the database will return an error immediately.   An
+  advantage to SQLAlchemy just running the SQL out for it to fail is that if a
+  particular database does start supporting this syntax, it will work without
+  any changes to SQLAlchemy.
 
 In general, "selectin" loading is probably superior to "subquery" eager loading
 in most ways, save for the syntax requirement with composite primary keys

@@ -1880,6 +1880,7 @@ class ClauseList(ClauseElement):
         self.operator = kwargs.pop("operator", operators.comma_op)
         self.group = kwargs.pop("group", True)
         self.group_contents = kwargs.pop("group_contents", True)
+        self._tuple_values = kwargs.pop("_tuple_values", False)
         text_converter = kwargs.pop(
             "_literal_as_text", _expression_literal_as_text
         )
@@ -1961,6 +1962,8 @@ class ClauseList(ClauseElement):
 
 class BooleanClauseList(ClauseList, ColumnElement):
     __visit_name__ = "clauselist"
+
+    _tuple_values = False
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
@@ -2107,13 +2110,15 @@ class Tuple(ClauseList, ColumnElement):
                 [(1, 2), (5, 12), (10, 19)]
             )
 
+        .. versionchanged:: 1.3.6 Added support for SQLite IN tuples.
+
         .. warning::
 
-            The composite IN construct is not supported by all backends,
-            and is currently known to work on PostgreSQL and MySQL,
-            but not SQLite.   Unsupported backends will raise
-            a subclass of :class:`~sqlalchemy.exc.DBAPIError` when such
-            an expression is invoked.
+            The composite IN construct is not supported by all backends, and is
+            currently known to work on PostgreSQL, MySQL, and SQLite.
+            Unsupported backends will raise a subclass of
+            :class:`~sqlalchemy.exc.DBAPIError` when such an expression is
+            invoked.
 
         """
 
