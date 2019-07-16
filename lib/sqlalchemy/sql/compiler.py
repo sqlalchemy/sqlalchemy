@@ -2499,7 +2499,8 @@ class SQLCompiler(Compiled):
                 )
             )
         else:
-            text += self.generate_values_placeholders_str(crud_params, returning_clause is not None)
+            text += self.generate_values_placeholders_str(
+                crud_params, returning_clause is not None)
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(
@@ -2518,7 +2519,8 @@ class SQLCompiler(Compiled):
 
         return text
 
-    def generate_values_placeholders_str(self, crud_params, returning_clause_exists):
+    def generate_values_placeholders_str(
+            self, crud_params, returning_clause_exists):
         """
         Generate the VALUES place holder string
         Should be overridden in classes that need a different implementation than the default

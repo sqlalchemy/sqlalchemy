@@ -562,17 +562,33 @@ class PGCompiler_psycopg2(PGCompiler):
         self.multiple_rows = inline
         self.execute_values_insert_template = None
         self.execute_values_page_size = 2000
-        super(PGCompiler_psycopg2, PGCompiler_psycopg2).__init__(self, dialect, statement, column_keys, inline, **kwargs)
+        super(
+            PGCompiler_psycopg2,
+            PGCompiler_psycopg2).__init__(
+            self,
+            dialect,
+            statement,
+            column_keys,
+            inline,
+            **kwargs)
 
-    # Override SQLCompiler.generate_values_placeholders_str- enable use of psycopg2 execute_values()
-    def generate_values_placeholders_str(self, crud_params, returning_clause_exists):
+    # Override SQLCompiler.generate_values_placeholders_str - enable use of
+    # psycopg2 execute_values()
+    def generate_values_placeholders_str(
+            self, crud_params, returning_clause_exists):
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
         if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_batch_mode == 'execute_values':
-            self.execute_values_insert_template = "(" + ", ".join([c[1] for c in crud_params]) + ")"
+            self.execute_values_insert_template = "(" + \
+                ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
         else:
-            return super(PGCompiler_psycopg2, PGCompiler_psycopg2).generate_values_placeholders_str(self, crud_params, returning_clause_exists)
+            return super(
+                PGCompiler_psycopg2,
+                PGCompiler_psycopg2).generate_values_placeholders_str(
+                self,
+                crud_params,
+                returning_clause_exists)
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
@@ -789,7 +805,11 @@ class PGDialect_psycopg2(PGDialect):
     def do_executemany(self, cursor, statement, parameters, context=None):
         if self.psycopg2_batch_mode == 'execute_values' and context and context.compiled.execute_values_insert_template:
             self._psycopg2_extras().execute_values(
-                cursor, statement, parameters, template=context.compiled.execute_values_insert_template, page_size=context.compiled.execute_values_page_size)
+                cursor,
+                statement,
+                parameters,
+                template=context.compiled.execute_values_insert_template,
+                page_size=context.compiled.execute_values_page_size)
         # Support True for backward compatibility
         elif self.psycopg2_batch_mode in ('execute_batch', True):
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)

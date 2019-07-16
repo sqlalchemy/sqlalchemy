@@ -242,7 +242,8 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
 
     def setup(self):
         super(ExecuteValuesInsertsTest, self).setup()
-        self.engine = engines.testing_engine(options={"use_batch_mode": "execute_values"})
+        self.engine = engines.testing_engine(
+            options={"use_batch_mode": "execute_values"})
 
     def teardown(self):
         self.engine.dispose()
@@ -295,7 +296,8 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
     def test_correct_arguments(self):
         def execute_values(cur, sql, argslist, template=None, page_size=100):
             assert sql == "INSERT INTO data (x, y) VALUES %s"
-            assert argslist == ({'x': 'x1', 'y': 'y1'}, {'x': 'x2', 'y': 'y2'}, {'x': 'x3', 'y': 'y3'})
+            assert argslist == ({'x': 'x1', 'y': 'y1'}, {
+                                'x': 'x2', 'y': 'y2'}, {'x': 'x3', 'y': 'y3'})
             assert template == "(%(x)s, %(y)s)"
             assert page_size == 2000
 
