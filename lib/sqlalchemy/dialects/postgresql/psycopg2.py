@@ -52,6 +52,21 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_unicode`
 
+* ``execution_mode``: This flag determines the psycopg2 methods used for executing queries,
+  enabling faster execution for queries with multiple parameters. It replaces use_batch_mode
+  (which is still supported for backward compatibility).
+  Possible values are: 
+  None - Flag not used, ``use_batch_mode`` determines behavior
+  'single_statement'  - Every parameters set is a single query that is sent to the database.
+                        Uses ``psycopg2.extras.execute`` or ``psycopg2.extras.executemany``.
+                        Equivalent to use_batch_mode=False
+  'statements_batch' - Multiple queries are sent together to the database.
+                       Uses ``psycopg2.extras.execute_batch``.
+                       Equivalent to use_batch_mode=True.
+  'values_batch' - Multiple parameters sets are packed together into a single query that is sent to the database.
+                   This flag currently supports only insert queries, and uses ``psycopg2.extras.execute_values``.
+                   For other queries it behaves the same as 'statements_batch'.
+
 * ``use_batch_mode``: This flag allows using psycopg2 faster methods for
   executing queries with multiple parameters (usually INSERT queries).
   If equals True or 'execute_batch', ``psycopg2.extras.execute_batch`` is used.
@@ -647,6 +662,7 @@ class PGDialect_psycopg2(PGDialect):
         client_encoding=None,
         use_native_hstore=True,
         use_native_uuid=True,
+        execution_mode=None,
         use_batch_mode=False,
         **kwargs
     ):
@@ -657,7 +673,14 @@ class PGDialect_psycopg2(PGDialect):
         self.use_native_uuid = use_native_uuid
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
+        self.psycopg2_execution_mode = execution_mode
         self.psycopg2_batch_mode = use_batch_mode
+
+        # use_batch_mode supported for backward compatibility. To avoid having to check two flags,
+        # set execution_mode flag here and use it only
+        if not self.psycopg2_execution_mode:
+            self.psycopg2_execution_mode = 'statements_batch' if self.psycopg2_batch_mode else 'single_statement'
+
         if self.dbapi and hasattr(self.dbapi, "__version__"):
             m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
             if m:
@@ -682,7 +705,7 @@ class PGDialect_psycopg2(PGDialect):
         self.supports_sane_multi_rowcount = (
             self.psycopg2_version
             >= self.FEATURE_VERSION_MAP["sane_multi_rowcount"]
-            and not self.psycopg2_batch_mode
+            and self.psycopg2_execution_mode == 'single_statement'
         )
 
     @classmethod
@@ -803,18 +826,21 @@ class PGDialect_psycopg2(PGDialect):
             return None
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        if self.psycopg2_batch_mode == 'execute_values' and context and context.compiled.execute_values_insert_template:
+        if self.psycopg2_execution_mode == 'single_insert':
+            cursor.executemany(statement, parameters)
+        elif self.psycopg2_execution_mode == 'values_batch' and \
+                context and \
+                context.compiled.execute_values_insert_template:
+
             self._psycopg2_extras().execute_values(
                 cursor,
                 statement,
                 parameters,
                 template=context.compiled.execute_values_insert_template,
                 page_size=context.compiled.execute_values_page_size)
-        # Support True for backward compatibility
-        elif self.psycopg2_batch_mode in ('execute_batch', True):
+
+        else:  # 'values_batch' of non-insert query, or 'statements_batch'
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)
-        else:
-            cursor.executemany(statement, parameters)
 
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
