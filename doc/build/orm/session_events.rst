@@ -381,9 +381,9 @@ using the :meth:`.Session.rollback` method.   Track deleted objects
 moving back to the persistent state using the
 :meth:`.SessionEvents.deleted_to_persistent` event::
 
-    @event.listens_for(sessionmaker, "transient_to_pending")
-    def intercept_transient_to_pending(session, object_):
-        print("transient to pending: %s" % object_)
+    @event.listens_for(sessionmaker, "deleted_to_persistent")
+    def intercept_deleted_to_persistent(session, object_):
+        print("deleted to persistent: %s" % object_)
 
 .. _session_transaction_events:
 
