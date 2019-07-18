@@ -938,7 +938,13 @@ class DetectKeySwitch(DependencyProcessor):
                     related is not attributes.PASSIVE_NO_RESULT
                     and related is not None
                 ):
-                    related_state = attributes.instance_state(dict_[self.key])
+                    if self.prop.uselist:
+                        if not related:
+                            continue
+                        related_obj = related[0]
+                    else:
+                        related_obj = related
+                    related_state = attributes.instance_state(related_obj)
                     if related_state in switchers:
                         uowcommit.register_object(
                             state, False, self.passive_updates

@@ -145,6 +145,29 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             configure_mappers,
         )
 
+    def test_no_m2o_w_uselist(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(User, uselist=True, lazy="dynamic")
+            },
+        )
+        mapper(User, users)
+        assert_raises_message(
+            exc.SAWarning,
+            "On relationship Address.user, 'dynamic' loaders cannot be "
+            "used with many-to-one/one-to-one relationships and/or "
+            "uselist=False.",
+            configure_mappers,
+        )
+
     def test_order_by(self):
         User, Address = self._user_address_fixture()
         sess = create_session()
