@@ -421,6 +421,7 @@ from __future__ import absolute_import
 import decimal
 import logging
 import re
+from enum import Enum
 
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
@@ -607,7 +608,7 @@ class PGCompiler_psycopg2(PGCompiler):
             self, crud_params, returning_clause_exists):
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
-        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_execution_mode == 'values_batch':
+        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.VALUES_BATCH:
             self.execute_values_insert_template = "(" + \
                 ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
@@ -622,6 +623,15 @@ class PGCompiler_psycopg2(PGCompiler):
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     pass
+
+
+class EnumPsycopg2ExecutionMode(Enum):
+    """
+    Enum type to describe psycopg2 execution mode of multiple parameters queries
+    """
+    SINGLE_STATEMENT = 'single_statement'
+    STATEMENTS_BATCH = 'statements_batch'
+    VALUES_BATCH = 'values_batch'
 
 
 class PGDialect_psycopg2(PGDialect):
@@ -687,13 +697,17 @@ class PGDialect_psycopg2(PGDialect):
         self.use_native_uuid = use_native_uuid
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
-        self.psycopg2_execution_mode = execution_mode
+        self.psycopg2_execution_mode = \
+            EnumPsycopg2ExecutionMode(execution_mode) if execution_mode else \
+            None
         self.psycopg2_batch_mode = use_batch_mode
 
         # use_batch_mode supported for backward compatibility. To avoid having to check two flags,
         # set execution_mode flag here and use it only
         if not self.psycopg2_execution_mode:
-            self.psycopg2_execution_mode = 'statements_batch' if self.psycopg2_batch_mode else 'single_statement'
+            self.psycopg2_execution_mode = \
+                EnumPsycopg2ExecutionMode.STATEMENTS_BATCH if self.psycopg2_batch_mode else \
+                EnumPsycopg2ExecutionMode.SINGLE_STATEMENT
 
         if self.dbapi and hasattr(self.dbapi, "__version__"):
             m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
@@ -719,7 +733,7 @@ class PGDialect_psycopg2(PGDialect):
         self.supports_sane_multi_rowcount = (
             self.psycopg2_version
             >= self.FEATURE_VERSION_MAP["sane_multi_rowcount"]
-            and self.psycopg2_execution_mode == 'single_statement'
+            and self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.SINGLE_STATEMENT
         )
 
     @classmethod
@@ -840,12 +854,14 @@ class PGDialect_psycopg2(PGDialect):
             return None
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        if self.psycopg2_execution_mode == 'single_statement':
+        if self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.SINGLE_STATEMENT:
+            print('calling executemany()')
             cursor.executemany(statement, parameters)
-        elif self.psycopg2_execution_mode == 'values_batch' and \
+        elif self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.VALUES_BATCH and \
                 context and \
                 context.compiled.execute_values_insert_template:
 
+            print('calling execute_values()')
             self._psycopg2_extras().execute_values(
                 cursor,
                 statement,
@@ -853,7 +869,8 @@ class PGDialect_psycopg2(PGDialect):
                 template=context.compiled.execute_values_insert_template,
                 page_size=context.compiled.execute_values_page_size)
 
-        else:  # 'values_batch' of non-insert query, or 'statements_batch'
+        else:  # VALUES_BATCH of non-insert query, or STATEMENTS_BATCH
+            print('calling execute_batch()')
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)
 
     @util.memoized_instancemethod
