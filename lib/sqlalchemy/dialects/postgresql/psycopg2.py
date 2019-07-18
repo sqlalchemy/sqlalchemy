@@ -607,7 +607,7 @@ class PGCompiler_psycopg2(PGCompiler):
             self, crud_params, returning_clause_exists):
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
-        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_batch_mode == 'execute_values':
+        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_execution_mode == 'values_batch':
             self.execute_values_insert_template = "(" + \
                 ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
@@ -840,7 +840,7 @@ class PGDialect_psycopg2(PGDialect):
             return None
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        if self.psycopg2_execution_mode == 'single_insert':
+        if self.psycopg2_execution_mode == 'single_statement':
             cursor.executemany(statement, parameters)
         elif self.psycopg2_execution_mode == 'values_batch' and \
                 context and \

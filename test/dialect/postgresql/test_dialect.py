@@ -172,7 +172,7 @@ class ExecuteBatchInsertsTest(fixtures.TablesTest):
 
     def setup(self):
         super(ExecuteBatchInsertsTest, self).setup()
-        self.engine = engines.testing_engine(options={"use_batch_mode": True})
+        self.engine = engines.testing_engine(options={"execution_mode": "statements_batch"})
 
     def teardown(self):
         self.engine.dispose()
@@ -243,7 +243,7 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
     def setup(self):
         super(ExecuteValuesInsertsTest, self).setup()
         self.engine = engines.testing_engine(
-            options={"use_batch_mode": "execute_values"})
+            options={"execution_mode": "values_batch"})
 
     def teardown(self):
         self.engine.dispose()
@@ -299,7 +299,7 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
             assert argslist == ({'x': 'x1', 'y': 'y1'}, {
                                 'x': 'x2', 'y': 'y2'}, {'x': 'x3', 'y': 'y3'})
             assert template == "(%(x)s, %(y)s)"
-            assert page_size == 2000
+            assert page_size == 10000
 
         with patch("psycopg2.extras.execute_values", execute_values):
             with self.engine.connect() as conn:
