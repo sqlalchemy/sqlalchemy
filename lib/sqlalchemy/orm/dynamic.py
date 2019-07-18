@@ -14,6 +14,7 @@ basic add/delete mutation.
 
 from . import attributes
 from . import exc as orm_exc
+from . import interfaces
 from . import object_mapper
 from . import object_session
 from . import properties
@@ -36,6 +37,17 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
                 "many-to-one/one-to-one relationships and/or "
                 "uselist=False." % self.parent_property
             )
+        elif self.parent_property.direction not in (
+            interfaces.ONETOMANY,
+            interfaces.MANYTOMANY,
+        ):
+            util.warn(
+                "On relationship %s, 'dynamic' loaders cannot be used with "
+                "many-to-one/one-to-one relationships and/or "
+                "uselist=False.  This warning will be an exception in a "
+                "future release." % self.parent_property
+            )
+
         strategies._register_attribute(
             self.parent_property,
             mapper,

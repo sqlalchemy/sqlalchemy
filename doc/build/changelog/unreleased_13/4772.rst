@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4772
+
+    Fixed bug where a many-to-one relationship that specified ``uselist=True``
+    would fail to update correctly during a primary key change where a related
+    column needs to change.
+
+
+.. change::
+    :tags: bug, orm
+    :tickets: 4772
+
+    Fixed bug where the detection for many-to-one or one-to-one use with a
+    "dynamic" relationship, which is an invalid configuration, would fail to
+    raise if the relationship were configured with ``uselist=True``.  The
+    current fix is that it warns, instead of raises, as this would otherwise be
+    backwards incompatible, however in a future release it will be a raise.
+
