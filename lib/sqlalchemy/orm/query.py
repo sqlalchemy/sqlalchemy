@@ -2453,9 +2453,11 @@ class Query(object):
                 use_entity_index,
             ) = self._join_place_explicit_left_side(left)
 
-        # this should never happen because we would not have found a place
-        # to join on
-        assert left is not right or create_aliases
+        if left is right and not create_aliases:
+            raise sa_exc.InvalidRequestError(
+                "Can't construct a join from %s to %s, they "
+                "are the same entity" % (left, right)
+            )
 
         # the right side as given often needs to be adapted.  additionally
         # a lot of things can be wrong with it.  handle all that and

@@ -1175,8 +1175,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            join(User, oalias2, User.id == oalias2.user_id,
-                 isouter=True, full=True),
+            join(
+                User,
+                oalias2,
+                User.id == oalias2.user_id,
+                isouter=True,
+                full=True,
+            ),
             "users FULL OUTER JOIN orders AS orders_1 "
             "ON users.id = orders_1.user_id",
             use_default_dialect=True,
@@ -3369,6 +3374,18 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             "nodes_2.data = :data_3) AS anon_1 LIMIT :param_1",
             {"param_1": 1},
             use_default_dialect=True,
+        )
+
+    def test_join_to_self_no_aliases_raises(self):
+        Node = self.classes.Node
+
+        s = Session()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Can't construct a join from mapped class Node->nodes to mapped "
+            "class Node->nodes, they are the same entity",
+            s.query(Node).join,
+            Node.children,
         )
 
     def test_explicit_join_1(self):
