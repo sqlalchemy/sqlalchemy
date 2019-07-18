@@ -52,20 +52,32 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_unicode`
 
-* ``execution_mode``: This flag determines the psycopg2 methods used for executing queries,
-  enabling faster execution for queries with multiple parameters. It replaces use_batch_mode
-  (which is still supported for backward compatibility).
-  Possible values are: 
-  None - Flag not used, ``use_batch_mode`` determines behavior
-  'single_statement'  - Every parameters set is a single query that is sent to the database.
-                        Uses ``psycopg2.extras.execute`` or ``psycopg2.extras.executemany``.
-                        Equivalent to use_batch_mode=False
-  'statements_batch' - Multiple queries are sent together to the database.
-                       Uses ``psycopg2.extras.execute_batch``.
-                       Equivalent to use_batch_mode=True.
-  'values_batch' - Multiple parameters sets are packed together into a single query that is sent to the database.
-                   This flag currently supports only insert queries, and uses ``psycopg2.extras.execute_values``.
-                   For other queries it behaves the same as 'statements_batch'.
+.. _psycopg2_execution_mode:
+
+* ``execution_mode``: This flag determines the psycopg2 methods used for executing
+  queries with multiple parameters, enabling faster execution by using different
+  modes of batching. It replaces flag ``use_batch_mode`` (which is still supported
+  for backward compatibility). Possible values are:
+
+  * ``None``:
+    Flag not used, ``use_batch_mode`` determines behavior.
+  * ``'single_statement'``:
+    Every parameters set is a single query that is sent to the database.
+    Uses ``psycopg2.extras.execute`` or ``psycopg2.extras.executemany``.
+    Equivalent to ``use_batch_mode=False``.
+  * ``'statements_batch'``:
+    Multiple queries are sent together to the database. Uses
+    ``psycopg2.extras.execute_batch``. Equivalent to ``use_batch_mode=True``.
+  * ``'values_batch'``:
+    Multiple parameters sets are packed together into a single query
+    that is sent to the database. This flag currently supports only insert queries,
+    and uses ``psycopg2.extras.execute_values``. For other queries it behaves the
+    same as ``'statements_batch'``.
+
+
+  .. seealso::
+
+    :ref:`psycopg2_batch_mode`
 
 * ``use_batch_mode``: This flag allows using psycopg2 faster methods for
   executing queries with multiple parameters (usually INSERT queries).
@@ -164,15 +176,19 @@ which have been shown in benchmarking to improve psycopg2's executemany()
 performance with INSERTS by multiple orders of magnitude.   SQLAlchemy
 allows this extension to be used for all ``executemany()`` style calls
 invoked by an :class:`.Engine` when used with :ref:`multiple parameter sets <execute_multiple>`,
-by adding the ``use_batch_mode`` flag to :func:`.create_engine`::
+by adding the ``execution_mode`` flag to :func:`.create_engine`::
+
+    engine = create_engine(
+        "postgresql+psycopg2://scott:tiger@host/dbname",
+        execution_mode='values_batch')
+
+See :ref:`execution_mode <psycopg2_execution_mode>` documentation for possible values of this flag.
+This flag replaces ``use_batch_mode``. However, you can still use ``use_batch_mode``::
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",
         use_batch_mode=True)
 
-use_batch_mode can be set to:
-True or 'execute_batch' - use psycopg2.extras.execute_batch method (faster).
-'execute_values'        - use psycopg2.extras.execute_values method (fastest).
 Batch mode is considered to be **experimental** at this time, however may
 be enabled by default in a future release.
 
@@ -576,7 +592,7 @@ class PGCompiler_psycopg2(PGCompiler):
         self.dialect = dialect
         self.multiple_rows = inline
         self.execute_values_insert_template = None
-        self.execute_values_page_size = 2000
+        self.execute_values_page_size = 10000
         super(
             PGCompiler_psycopg2,
             PGCompiler_psycopg2).__init__(
