@@ -62,18 +62,16 @@ psycopg2-specific keyword arguments which are accepted by
   * ``None``:
     Flag not used, ``use_batch_mode`` determines behavior.
   * ``'single_statement'``:
-    Every parameters set is a single query that is sent to the database.
-    Uses ``psycopg2.extras.execute`` or ``psycopg2.extras.executemany``.
-    Equivalent to ``use_batch_mode=False``.
+    A single query is created for every parameters set and sent to the database.
+    Uses ``psycopg2.extras.executemany``. Equivalent to ``use_batch_mode=False``.
   * ``'statements_batch'``:
     Multiple queries are sent together to the database. Uses
     ``psycopg2.extras.execute_batch``. Equivalent to ``use_batch_mode=True``.
   * ``'values_batch'``:
     Multiple parameters sets are packed together into a single query
-    that is sent to the database. This flag currently supports only insert queries,
+    that is sent to the database. This flag currently supports only INSERT queries,
     and uses ``psycopg2.extras.execute_values``. For other queries it behaves the
     same as ``'statements_batch'``.
-
 
   .. seealso::
 
