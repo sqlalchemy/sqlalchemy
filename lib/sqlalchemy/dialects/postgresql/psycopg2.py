@@ -855,13 +855,11 @@ class PGDialect_psycopg2(PGDialect):
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         if self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.SINGLE_STATEMENT:
-            print('calling executemany()')
             cursor.executemany(statement, parameters)
         elif self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.VALUES_BATCH and \
                 context and \
                 context.compiled.execute_values_insert_template:
 
-            print('calling execute_values()')
             self._psycopg2_extras().execute_values(
                 cursor,
                 statement,
@@ -870,7 +868,6 @@ class PGDialect_psycopg2(PGDialect):
                 page_size=context.compiled.execute_values_page_size)
 
         else:  # VALUES_BATCH of non-insert query, or STATEMENTS_BATCH
-            print('calling execute_batch()')
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)
 
     @util.memoized_instancemethod
