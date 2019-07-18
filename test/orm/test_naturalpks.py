@@ -37,7 +37,7 @@ def _backend_specific_fk_args():
 class NaturalPKTest(fixtures.MappedTest):
     # MySQL 5.5 on Windows crashes (the entire server, not the client)
     # if you screw around with ON UPDATE CASCADE type of stuff.
-    __requires__ = "skip_mysql_on_windows", "on_update_or_deferrable_fks"
+    __requires__ = ("skip_mysql_on_windows",)
     __backend__ = True
 
     @classmethod
@@ -283,6 +283,13 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_manytoone_nonpassive(self):
         self._test_manytoone(False)
 
+    @testing.requires.on_update_cascade
+    def test_manytoone_passive_uselist(self):
+        self._test_manytoone(True, True)
+
+    def test_manytoone_nonpassive_uselist(self):
+        self._test_manytoone(False, True)
+
     def test_manytoone_nonpassive_cold_mapping(self):
         """test that the mapper-level m2o dependency processor
         is set up even if the opposite side relationship
@@ -318,7 +325,7 @@ class NaturalPKTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 2)
 
-    def _test_manytoone(self, passive_updates):
+    def _test_manytoone(self, passive_updates, uselist=False, dynamic=False):
         users, Address, addresses, User = (
             self.tables.users,
             self.classes.Address,
@@ -331,19 +338,27 @@ class NaturalPKTest(fixtures.MappedTest):
             Address,
             addresses,
             properties={
-                "user": relationship(User, passive_updates=passive_updates)
+                "user": relationship(
+                    User, uselist=uselist, passive_updates=passive_updates
+                )
             },
         )
 
         sess = create_session()
         a1 = Address(email="jack1")
         a2 = Address(email="jack2")
+        a3 = Address(email="fred")
 
         u1 = User(username="jack", fullname="jack")
-        a1.user = u1
-        a2.user = u1
+        if uselist:
+            a1.user = [u1]
+            a2.user = [u1]
+        else:
+            a1.user = u1
+            a2.user = u1
         sess.add(a1)
         sess.add(a2)
+        sess.add(a3)
         sess.flush()
 
         u1.username = "ed"
@@ -363,10 +378,24 @@ class NaturalPKTest(fixtures.MappedTest):
 
         assert a1.username == a2.username == "ed"
         sess.expunge_all()
-        eq_(
-            [Address(username="ed"), Address(username="ed")],
-            sess.query(Address).all(),
-        )
+        if uselist:
+            eq_(
+                [
+                    Address(email="fred", user=[]),
+                    Address(username="ed"),
+                    Address(username="ed"),
+                ],
+                sess.query(Address).order_by(Address.email).all(),
+            )
+        else:
+            eq_(
+                [
+                    Address(email="fred", user=None),
+                    Address(username="ed"),
+                    Address(username="ed"),
+                ],
+                sess.query(Address).order_by(Address.email).all(),
+            )
 
     @testing.requires.on_update_cascade
     def test_onetoone_passive(self):
@@ -1245,7 +1274,15 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_change_m2o_nonpassive(self):
         self._test_change_m2o(False)
 
-    def _test_change_m2o(self, passive_updates):
+    @testing.requires.on_update_cascade
+    def test_change_m2o_passive_uselist(self):
+        self._test_change_m2o(True, True)
+
+    @testing.requires.non_updating_cascade
+    def test_change_m2o_nonpassive_uselist(self):
+        self._test_change_m2o(False, True)
+
+    def _test_change_m2o(self, passive_updates, uselist=False):
         User, Address, users, addresses = (
             self.classes.User,
             self.classes.Address,
@@ -1258,13 +1295,18 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             Address,
             addresses,
             properties={
-                "user": relationship(User, passive_updates=passive_updates)
+                "user": relationship(
+                    User, uselist=uselist, passive_updates=passive_updates
+                )
             },
         )
 
         sess = create_session()
         u1 = User(username="jack")
-        a1 = Address(user=u1, email="foo@bar")
+        if uselist:
+            a1 = Address(user=[u1], email="foo@bar")
+        else:
+            a1 = Address(user=u1, email="foo@bar")
         sess.add_all([u1, a1])
         sess.flush()
 
