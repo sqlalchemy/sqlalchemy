@@ -332,7 +332,9 @@ class InElementImpl(RoleImpl, roles.InElementRole):
                     o = expr._bind_param(operator, o)
                 args.append(o)
 
-            return elements.ClauseList(*args)
+            return elements.ClauseList(
+                _tuple_values=isinstance(expr, elements.Tuple), *args
+            )
 
         else:
             self._raise_for_expected(element, **kw)
@@ -354,7 +356,6 @@ class InElementImpl(RoleImpl, roles.InElementRole):
                 return element.self_group(against=operator)
 
         elif isinstance(element, elements.BindParameter) and element.expanding:
-
             if isinstance(expr, elements.Tuple):
                 element = element._with_expanding_in_types(
                     [elem.type for elem in expr]

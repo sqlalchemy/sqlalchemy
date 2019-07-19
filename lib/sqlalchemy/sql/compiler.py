@@ -966,13 +966,17 @@ class SQLCompiler(Compiled):
             sep = " "
         else:
             sep = OPERATORS[clauselist.operator]
-        return sep.join(
+
+        text = sep.join(
             s
             for s in (
                 c._compiler_dispatch(self, **kw) for c in clauselist.clauses
             )
             if s
         )
+        if clauselist._tuple_values and self.dialect.tuple_in_values:
+            text = "VALUES " + text
+        return text
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "

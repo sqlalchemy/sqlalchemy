@@ -75,6 +75,8 @@ class DefaultDialect(interfaces.Dialect):
 
     supports_simple_order_by_label = True
 
+    tuple_in_values = False
+
     engine_config_types = util.immutabledict(
         [
             ("convert_unicode", util.bool_or_str("force")),
@@ -812,7 +814,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                             for i, tuple_element in enumerate(values, 1)
                             for j, value in enumerate(tuple_element, 1)
                         ]
-                        replacement_expressions[name] = ", ".join(
+                        replacement_expressions[name] = (
+                            "VALUES " if self.dialect.tuple_in_values else ""
+                        ) + ", ".join(
                             "(%s)"
                             % ", ".join(
                                 self.compiled.bindtemplate

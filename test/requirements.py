@@ -263,7 +263,12 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def tuple_in(self):
-        return only_on(["mysql", "postgresql"])
+        def _sqlite_tuple_in(config):
+            return against(
+                config, "sqlite"
+            ) and config.db.dialect.dbapi.sqlite_version_info >= (3, 15, 0)
+
+        return only_on(["mysql", "postgresql", _sqlite_tuple_in])
 
     @property
     def independent_cursors(self):

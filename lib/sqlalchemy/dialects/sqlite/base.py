@@ -1023,8 +1023,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    def visit_empty_set_expr(self, type_):
-        return "SELECT 1 FROM (SELECT 1) WHERE 1!=1"
+    def visit_empty_set_expr(self, element_types):
+        return "SELECT %s FROM (SELECT %s) WHERE 1!=1" % (
+            ", ".join("1" for type_ in element_types or [INTEGER()]),
+            ", ".join("1" for type_ in element_types or [INTEGER()]),
+        )
 
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
@@ -1391,6 +1394,7 @@ class SQLiteDialect(default.DefaultDialect):
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
+    tuple_in_values = True
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext

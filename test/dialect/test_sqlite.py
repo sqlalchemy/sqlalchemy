@@ -8,6 +8,7 @@ from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import create_engine
 from sqlalchemy import DefaultClause
 from sqlalchemy import event
@@ -26,6 +27,7 @@ from sqlalchemy import sql
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import tuple_
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
@@ -960,6 +962,12 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "SQLite does not support autoincrement for composite",
             CreateTable(t).compile,
             dialect=sqlite.dialect(),
+        )
+
+    def test_in_tuple(self):
+        self.assert_compile(
+            tuple_(column("q"), column("p")).in_([(1, 2), (3, 4)]),
+            "(q, p) IN (VALUES (?, ?), (?, ?))",
         )
 
 
