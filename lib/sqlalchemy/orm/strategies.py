@@ -7,7 +7,9 @@
 
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
+from __future__ import absolute_import
 
+import collections
 import itertools
 
 from . import attributes
@@ -2067,10 +2069,21 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "join_depth",
         "omit_join",
         "_parent_alias",
-        "_in_expr",
-        "_pk_cols",
-        "_zero_idx",
+        "_query_info",
+        "_fallback_query_info",
         "_bakery",
+    )
+
+    query_info = collections.namedtuple(
+        "queryinfo",
+        [
+            "load_only_child",
+            "load_with_join",
+            "in_expr",
+            "pk_cols",
+            "zero_idx",
+            "child_lookup_cols",
+        ],
     )
 
     _chunksize = 500
@@ -2078,6 +2091,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     def __init__(self, parent, strategy_key):
         super(SelectInLoader, self).__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
+        is_m2o = self.parent_property.direction is interfaces.MANYTOONE
 
         if self.parent_property.omit_join is not None:
             self.omit_join = self.parent_property.omit_join
@@ -2085,15 +2099,22 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             lazyloader = self.parent_property._get_strategy(
                 (("lazy", "select"),)
             )
-            self.omit_join = self.parent._get_clause[0].compare(
-                lazyloader._rev_lazywhere,
-                use_proxies=True,
-                equivalents=self.parent._equivalent_columns,
-            )
+            if is_m2o:
+                self.omit_join = lazyloader.use_get
+            else:
+                self.omit_join = self.parent._get_clause[0].compare(
+                    lazyloader._rev_lazywhere,
+                    use_proxies=True,
+                    equivalents=self.parent._equivalent_columns,
+                )
         if self.omit_join:
-            self._init_for_omit_join()
+            if is_m2o:
+                self._query_info = self._init_for_omit_join_m2o()
+                self._fallback_query_info = self._init_for_join()
+            else:
+                self._query_info = self._init_for_omit_join()
         else:
-            self._init_for_join()
+            self._query_info = self._init_for_join()
 
     def _init_for_omit_join(self):
         pk_to_fk = dict(
@@ -2105,28 +2126,47 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             for equiv in self.parent._equivalent_columns.get(k, ())
         )
 
-        self._pk_cols = fk_cols = [
+        pk_cols = fk_cols = [
             pk_to_fk[col] for col in self.parent.primary_key if col in pk_to_fk
         ]
         if len(fk_cols) > 1:
-            self._in_expr = sql.tuple_(*fk_cols)
-            self._zero_idx = False
+            in_expr = sql.tuple_(*fk_cols)
+            zero_idx = False
         else:
-            self._in_expr = fk_cols[0]
-            self._zero_idx = True
+            in_expr = fk_cols[0]
+            zero_idx = True
+
+        return self.query_info(False, False, in_expr, pk_cols, zero_idx, None)
+
+    def _init_for_omit_join_m2o(self):
+        pk_cols = self.mapper.primary_key
+        if len(pk_cols) > 1:
+            in_expr = sql.tuple_(*pk_cols)
+            zero_idx = False
+        else:
+            in_expr = pk_cols[0]
+            zero_idx = True
+
+        lazyloader = self.parent_property._get_strategy((("lazy", "select"),))
+        lookup_cols = [lazyloader._equated_columns[pk] for pk in pk_cols]
+
+        return self.query_info(
+            True, False, in_expr, pk_cols, zero_idx, lookup_cols
+        )
 
     def _init_for_join(self):
         self._parent_alias = aliased(self.parent.class_)
         pa_insp = inspect(self._parent_alias)
-        self._pk_cols = pk_cols = [
+        pk_cols = [
             pa_insp._adapt_element(col) for col in self.parent.primary_key
         ]
         if len(pk_cols) > 1:
-            self._in_expr = sql.tuple_(*pk_cols)
-            self._zero_idx = False
+            in_expr = sql.tuple_(*pk_cols)
+            zero_idx = False
         else:
-            self._in_expr = pk_cols[0]
-            self._zero_idx = True
+            in_expr = pk_cols[0]
+            zero_idx = True
+        return self.query_info(False, True, in_expr, pk_cols, zero_idx, None)
 
     def init_class_attribute(self, mapper):
         self.parent_property._get_strategy(
@@ -2194,18 +2234,49 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if load_only and self.key not in load_only:
             return
 
-        our_states = [
-            (state.key[1], state, overwrite) for state, overwrite in states
-        ]
+        query_info = self._query_info
 
-        pk_cols = self._pk_cols
-        in_expr = self._in_expr
+        if query_info.load_only_child:
+            our_states = collections.defaultdict(list)
 
-        if self.omit_join:
+            mapper = self.parent
+
+            for state, overwrite in states:
+                state_dict = state.dict
+                related_ident = tuple(
+                    mapper._get_state_attr_by_column(
+                        state,
+                        state_dict,
+                        lk,
+                        passive=attributes.PASSIVE_NO_FETCH,
+                    )
+                    for lk in query_info.child_lookup_cols
+                )
+                # if the loaded parent objects do not have the foreign key
+                # to the related item loaded, then degrade into the joined
+                # version of selectinload
+                if attributes.PASSIVE_NO_RESULT in related_ident:
+                    query_info = self._fallback_query_info
+                    break
+                if None not in related_ident:
+                    our_states[related_ident].append(
+                        (state, state_dict, overwrite)
+                    )
+
+        if not query_info.load_only_child:
+            our_states = [
+                (state.key[1], state, state.dict, overwrite)
+                for state, overwrite in states
+            ]
+
+        pk_cols = query_info.pk_cols
+        in_expr = query_info.in_expr
+
+        if not query_info.load_with_join:
             # in "omit join" mode, the primary key column and the
             # "in" expression are in terms of the related entity.  So
             # if the related entity is polymorphic or otherwise aliased,
-            # we need to adapt our "_pk_cols" and "_in_expr" to that
+            # we need to adapt our "pk_cols" and "in_expr" to that
             # entity.   in non-"omit join" mode, these are against the
             # parent entity and do not need adaption.
             insp = inspect(effective_entity)
@@ -2221,7 +2292,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             self,
         )
 
-        if self.omit_join:
+        if not query_info.load_with_join:
             # the Bundle we have in the "omit_join" case is against raw, non
             # annotated columns, so to ensure the Query knows its primary
             # entity, we add it explictly.  If we made the Bundle against
@@ -2241,11 +2312,18 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 )
             )
 
-        q.add_criteria(
-            lambda q: q.filter(
-                in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-            ).order_by(*pk_cols)
-        )
+        if query_info.load_only_child:
+            q.add_criteria(
+                lambda q: q.filter(
+                    in_expr.in_(sql.bindparam("primary_keys", expanding=True))
+                )
+            )
+        else:
+            q.add_criteria(
+                lambda q: q.filter(
+                    in_expr.in_(sql.bindparam("primary_keys", expanding=True))
+                ).order_by(*pk_cols)
+            )
 
         orig_query = context.query
 
@@ -2257,7 +2335,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             q.add_criteria(lambda q: q.populate_existing())
 
         if self.parent_property.order_by:
-            if self.omit_join:
+            if not query_info.load_with_join:
                 eager_order_by = self.parent_property.order_by
                 if insp.is_aliased_class:
                     eager_order_by = [
@@ -2279,6 +2357,42 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
                 q.add_criteria(_setup_outermost_orderby)
 
+        if query_info.load_only_child:
+            self._load_via_child(our_states, query_info, q, context)
+        else:
+            self._load_via_parent(our_states, query_info, q, context)
+
+    def _load_via_child(self, our_states, query_info, q, context):
+        uselist = self.uselist
+
+        # this sort is really for the benefit of the unit tests
+        our_keys = sorted(our_states)
+        while our_keys:
+            chunk = our_keys[0 : self._chunksize]
+            our_keys = our_keys[self._chunksize :]
+
+            data = {
+                k: v
+                for k, v in q(context.session).params(
+                    primary_keys=[
+                        key[0] if query_info.zero_idx else key for key in chunk
+                    ]
+                )
+            }
+
+            for key in chunk:
+                related_obj = data[key]
+                for state, dict_, overwrite in our_states[key]:
+                    if not overwrite and self.key in dict_:
+                        continue
+
+                    state.get_impl(self.key).set_committed_value(
+                        state,
+                        dict_,
+                        related_obj if not uselist else [related_obj],
+                    )
+
+    def _load_via_parent(self, our_states, query_info, q, context):
         uselist = self.uselist
         _empty_result = () if uselist else None
 
@@ -2286,22 +2400,22 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             chunk = our_states[0 : self._chunksize]
             our_states = our_states[self._chunksize :]
 
+            primary_keys = [
+                key[0] if query_info.zero_idx else key
+                for key, state, state_dict, overwrite in chunk
+            ]
+
             data = {
                 k: [vv[1] for vv in v]
                 for k, v in itertools.groupby(
-                    q(context.session).params(
-                        primary_keys=[
-                            key[0] if self._zero_idx else key
-                            for key, state, overwrite in chunk
-                        ]
-                    ),
+                    q(context.session).params(primary_keys=primary_keys),
                     lambda x: x[0],
                 )
             }
 
-            for key, state, overwrite in chunk:
+            for key, state, state_dict, overwrite in chunk:
 
-                if not overwrite and self.key in state.dict:
+                if not overwrite and self.key in state_dict:
                     continue
 
                 collection = data.get(key, _empty_result)
@@ -2314,11 +2428,11 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                             "attribute '%s' " % self
                         )
                     state.get_impl(self.key).set_committed_value(
-                        state, state.dict, collection[0]
+                        state, state_dict, collection[0]
                     )
                 else:
                     state.get_impl(self.key).set_committed_value(
-                        state, state.dict, collection
+                        state, state_dict, collection
                     )
 
 

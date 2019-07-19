@@ -720,11 +720,12 @@ SQL Server.
 
 .. versionadded:: 1.2
 
-"Select IN" eager loading is provided using the ``"selectin"`` argument
-to :paramref:`.relationship.lazy` or by using the :func:`.selectinload` loader
-option.   This style of loading emits a SELECT that refers to
-the primary key values of the parent object inside of an IN clause,
-in order to load related associations:
+"Select IN" eager loading is provided using the ``"selectin"`` argument to
+:paramref:`.relationship.lazy` or by using the :func:`.selectinload` loader
+option.   This style of loading emits a SELECT that refers to the primary key
+values of the parent object, or in the case of a simple many-to-one
+relationship to the those of the child objects, inside of an IN clause, in
+order to load related associations:
 
 .. sourcecode:: python+sql
 
@@ -759,9 +760,14 @@ statement has no joins or subqueries at all.
 .. versionchanged:: 1.3 selectin loading can omit the JOIN for a simple
    one-to-many collection.
 
-In the case where the primary key of the parent object isn't present in
-the related row, "selectin" loading will also JOIN to the parent table so that
-the parent primary key values are present:
+.. versionchanged:: 1.3.6 selectin loading can also omit the JOIN for a simple
+   many-to-one relationship.
+
+For collections, in the case where the primary key of the parent object isn't
+present in the related row, "selectin" loading will also JOIN to the parent
+table so that the parent primary key values are present.  This also takes place
+for a non-collection, many-to-one load where the related column values are not
+loaded on the parent objects and would otherwise need to be loaded:
 
 .. sourcecode:: python+sql
 
@@ -799,12 +805,11 @@ as of the 1.2 series.   Things to know about this kind of loading include:
   return the wrong result.
 
 * "selectin" loading, unlike joined or subquery eager loading, always emits
-  its SELECT in terms of the immediate parent objects just loaded, and
-  not the original type of object at the top of the chain.  So if eager loading
-  many levels deep, "selectin" loading still uses no more than one JOIN,
-  and usually no JOINs, in the statement.   In comparison,
-  joined and subquery eager loading always refer to multiple JOINs up to
-  the original parent.
+  its SELECT in terms of the immediate parent objects just loaded, and not the
+  original type of object at the top of the chain.  So if eager loading many
+  levels deep, "selectin" loading still uses no more than one JOIN, and usually
+  no JOINs, in the statement.   In comparison, joined and subquery eager
+  loading always refer to multiple JOINs up to the original parent.
 
 * "selectin" loading produces a SELECT statement of a predictable structure,
   independent of that of the original query.  As such, taking advantage of
