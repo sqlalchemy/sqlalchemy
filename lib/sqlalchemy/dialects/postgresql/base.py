@@ -3247,7 +3247,7 @@ class PGDialect(default.DefaultDialect):
                             pg_am am
                             on i.relam = am.oid
               WHERE
-                  t.relkind IN ('r', 'v', 'f', 'm')
+                  t.relkind IN ('r', 'v', 'f', 'm', 'p')
                   and t.oid = :table_oid
                   and ix.indisprimary = 'f'
               ORDER BY
