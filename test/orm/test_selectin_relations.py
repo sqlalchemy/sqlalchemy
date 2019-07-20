@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -9,6 +10,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
@@ -1971,6 +1973,116 @@ class HeterogeneousSubtypesTest(fixtures.DeclarativeMappedTest):
         self.assert_sql_count(testing.db, go, 0)
 
 
+class TupleTest(fixtures.DeclarativeMappedTest):
+    __requires__ = ("tuple_in",)
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = "a"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+
+            bs = relationship("B", order_by="B.id", back_populates="a")
+
+        class B(fixtures.ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id1 = Column()
+            a_id2 = Column()
+
+            a = relationship("A", back_populates="bs")
+
+            __table_args__ = (
+                ForeignKeyConstraint(["a_id1", "a_id2"], ["a.id1", "a.id2"]),
+            )
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+
+        session = Session()
+        session.add_all(
+            [
+                A(id1=i, id2=i + 2, bs=[B(id=(i * 6) + j) for j in range(6)])
+                for i in range(1, 20)
+            ]
+        )
+        session.commit()
+
+    def test_load_o2m(self):
+        A, B = self.classes("A", "B")
+
+        session = Session()
+
+        def go():
+            q = (
+                session.query(A)
+                .options(selectinload(A.bs))
+                .order_by(A.id1, A.id2)
+            )
+            return q.all()
+
+        result = self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id1 AS a_id1, a.id2 AS a_id2 "
+                "FROM a ORDER BY a.id1, a.id2",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT b.a_id1 AS b_a_id1, b.a_id2 AS b_a_id2, b.id AS b_id "
+                "FROM b WHERE (b.a_id1, b.a_id2) IN "
+                "([EXPANDING_primary_keys]) ORDER BY b.a_id1, b.a_id2, b.id",
+                [{"primary_keys": [(i, i + 2) for i in range(1, 20)]}],
+            ),
+        )
+        eq_(
+            result,
+            [
+                A(id1=i, id2=i + 2, bs=[B(id=(i * 6) + j) for j in range(6)])
+                for i in range(1, 20)
+            ],
+        )
+
+    def test_load_m2o(self):
+        A, B = self.classes("A", "B")
+
+        session = Session()
+
+        def go():
+            q = session.query(B).options(selectinload(B.a)).order_by(B.id)
+            return q.all()
+
+        result = self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT b.id AS b_id, b.a_id1 AS b_a_id1, b.a_id2 AS b_a_id2 "
+                "FROM b ORDER BY b.id",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a.id1 AS a_id1, a.id2 AS a_id2 FROM a "
+                "WHERE (a.id1, a.id2) IN ([EXPANDING_primary_keys])",
+                [{"primary_keys": [(i, i + 2) for i in range(1, 20)]}],
+            ),
+        )
+        as_ = [A(id1=i, id2=i + 2) for i in range(1, 20)]
+
+        eq_(
+            result,
+            [
+                B(id=(i * 6) + j, a=as_[i - 1])
+                for i in range(1, 20)
+                for j in range(6)
+            ],
+        )
+
+
 class ChunkingTest(fixtures.DeclarativeMappedTest):
     """test IN chunking.
 
@@ -1987,12 +2099,13 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
         class A(fixtures.ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
-            bs = relationship("B", order_by="B.id")
+            bs = relationship("B", order_by="B.id", back_populates="a")
 
         class B(fixtures.ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
+            a = relationship("A", back_populates="bs")
 
     @classmethod
     def insert_data(cls):
@@ -2079,6 +2192,47 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
         # this part fails with subquery eager loading
         # (if you enable subquery eager w/ yield_per)
         self.assert_sql_count(testing.db, go, total_expected_statements)
+
+    def test_dont_emit_for_redundant_m2o(self):
+        A, B = self.classes("A", "B")
+
+        session = Session()
+
+        def go():
+            with mock.patch(
+                "sqlalchemy.orm.strategies.SelectInLoader._chunksize", 47
+            ):
+                q = session.query(B).options(selectinload(B.a)).order_by(B.id)
+
+                for b in q:
+                    b.a
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT b.id AS b_id, b.a_id AS b_a_id FROM b ORDER BY b.id",
+                {},
+            ),
+            # chunk size is 47.  so first chunk are a 1->47...
+            CompiledSQL(
+                "SELECT a.id AS a_id FROM a WHERE a.id IN "
+                "([EXPANDING_primary_keys])",
+                {"primary_keys": list(range(1, 48))},
+            ),
+            # second chunk is a 48-94
+            CompiledSQL(
+                "SELECT a.id AS a_id FROM a WHERE a.id IN "
+                "([EXPANDING_primary_keys])",
+                {"primary_keys": list(range(48, 95))},
+            ),
+            # third and final chunk 95-100.
+            CompiledSQL(
+                "SELECT a.id AS a_id FROM a WHERE a.id IN "
+                "([EXPANDING_primary_keys])",
+                {"primary_keys": list(range(95, 101))},
+            ),
+        )
 
 
 class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
@@ -2547,7 +2701,7 @@ class SelfRefInheritanceAliasedTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Foo(Base):
+        class Foo(fixtures.ComparableEntity, Base):
             __tablename__ = "foo"
             id = Column(Integer, primary_key=True)
             type = Column(String(50))
@@ -2588,7 +2742,7 @@ class SelfRefInheritanceAliasedTest(
             .filter(Foo.id == 2)
             .options(selectinload(attr1).selectinload(attr2))
         )
-        self.assert_sql_execution(
+        results = self.assert_sql_execution(
             testing.db,
             q.all,
             CompiledSQL(
@@ -2597,24 +2751,21 @@ class SelfRefInheritanceAliasedTest(
                 [{"id_1": 2}],
             ),
             CompiledSQL(
-                "SELECT foo_1.id AS foo_1_id, foo_2.id AS foo_2_id, "
-                "foo_2.type AS foo_2_type, foo_2.foo_id AS foo_2_foo_id "
-                "FROM foo AS foo_1 JOIN foo AS foo_2 "
-                "ON foo_2.id = foo_1.foo_id "
-                "WHERE foo_1.id "
-                "IN ([EXPANDING_primary_keys]) ORDER BY foo_1.id",
-                {"primary_keys": [2]},
-            ),
-            CompiledSQL(
-                "SELECT foo_1.id AS foo_1_id, foo_2.id AS foo_2_id, "
-                "foo_2.type AS foo_2_type, foo_2.foo_id AS foo_2_foo_id "
-                "FROM foo AS foo_1 JOIN foo AS foo_2 "
-                "ON foo_2.id = foo_1.foo_id "
-                "WHERE foo_1.id IN ([EXPANDING_primary_keys]) "
-                "ORDER BY foo_1.id",
+                "SELECT foo_1.id AS foo_1_id, "
+                "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
+                "FROM foo AS foo_1 "
+                "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
                 {"primary_keys": [3]},
             ),
+            CompiledSQL(
+                "SELECT foo_1.id AS foo_1_id, "
+                "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
+                "FROM foo AS foo_1 "
+                "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
+                {"primary_keys": [1]},
+            ),
         )
+        eq_(results, [Bar(id=2, foo=Foo(id=3, foo=Bar(id=1)))])
 
 
 class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
@@ -2783,4 +2934,172 @@ class SingleInhSubclassTest(
                 "IN ([EXPANDING_primary_keys]) ORDER BY role.user_id",
                 {"primary_keys": [1]},
             ),
+        )
+
+
+class M2OWDegradeTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+            b = relationship("B")
+            q = Column(Integer)
+
+        class B(fixtures.ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+
+        s = Session()
+        b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
+        s.add_all(
+            [
+                A(id=1, b=b1),
+                A(id=2, b=b2),
+                A(id=3, b=b2),
+                A(id=4, b=None),
+                A(id=5, b=b1),
+            ]
+        )
+        s.commit()
+
+    def test_use_join_parent_criteria(self):
+        A, B = self.classes("A", "B")
+        s = Session()
+        q = (
+            s.query(A)
+            .filter(A.id.in_([1, 3]))
+            .options(selectinload(A.b))
+            .order_by(A.id)
+        )
+        results = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.b_id AS a_b_id, a.q AS a_q "
+                "FROM a WHERE a.id IN (:id_1, :id_2) ORDER BY a.id",
+                [{"id_1": 1, "id_2": 3}],
+            ),
+            CompiledSQL(
+                "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
+                "FROM b WHERE b.id IN ([EXPANDING_primary_keys])",
+                [{"primary_keys": [1, 2]}],
+            ),
+        )
+
+        eq_(
+            results,
+            [A(id=1, b=B(id=1, x=5, y=9)), A(id=3, b=B(id=2, x=10, y=8))],
+        )
+
+    def test_use_join_parent_criteria_degrade_on_defer(self):
+        A, B = self.classes("A", "B")
+        s = Session()
+        q = (
+            s.query(A)
+            .filter(A.id.in_([1, 3]))
+            .options(defer(A.b_id), selectinload(A.b))
+            .order_by(A.id)
+        )
+        results = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.q AS a_q "
+                "FROM a WHERE a.id IN (:id_1, :id_2) ORDER BY a.id",
+                [{"id_1": 1, "id_2": 3}],
+            ),
+            # in the very unlikely case that the the FK col on parent is
+            # deferred, we degrade to the JOIN version so that we don't need to
+            # emit either for each parent object individually, or as a second
+            # query for them.
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
+                "b.y AS b_y "
+                "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                [{"primary_keys": [1, 3]}],
+            ),
+        )
+
+        eq_(
+            results,
+            [A(id=1, b=B(id=1, x=5, y=9)), A(id=3, b=B(id=2, x=10, y=8))],
+        )
+
+    def test_use_join(self):
+        A, B = self.classes("A", "B")
+        s = Session()
+        q = s.query(A).options(selectinload(A.b)).order_by(A.id)
+        results = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.b_id AS a_b_id, a.q AS a_q "
+                "FROM a ORDER BY a.id",
+                [{}],
+            ),
+            CompiledSQL(
+                "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
+                "FROM b WHERE b.id IN ([EXPANDING_primary_keys])",
+                [{"primary_keys": [1, 2]}],
+            ),
+        )
+
+        b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
+        eq_(
+            results,
+            [
+                A(id=1, b=b1),
+                A(id=2, b=b2),
+                A(id=3, b=b2),
+                A(id=4, b=None),
+                A(id=5, b=b1),
+            ],
+        )
+
+    def test_use_join_parent_degrade_on_defer(self):
+        A, B = self.classes("A", "B")
+        s = Session()
+        q = s.query(A).options(defer(A.b_id), selectinload(A.b)).order_by(A.id)
+        results = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.q AS a_q " "FROM a ORDER BY a.id", [{}]
+            ),
+            # in the very unlikely case that the the FK col on parent is
+            # deferred, we degrade to the JOIN version so that we don't need to
+            # emit either for each parent object individually, or as a second
+            # query for them.
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
+                "b.y AS b_y "
+                "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                [{"primary_keys": [1, 2, 3, 4, 5]}],
+            ),
+        )
+
+        b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
+        eq_(
+            results,
+            [
+                A(id=1, b=b1),
+                A(id=2, b=b2),
+                A(id=3, b=b2),
+                A(id=4, b=None),
+                A(id=5, b=b1),
+            ],
         )
