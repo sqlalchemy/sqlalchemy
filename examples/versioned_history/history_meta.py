@@ -182,7 +182,7 @@ class Versioned(object):
 
     __table_args__ = {"sqlite_autoincrement": True}
     """Use sqlite_autoincrement, to ensure unique integer values
-    are used for new rows even for rows taht have been deleted."""
+    are used for new rows even for rows that have been deleted."""
 
 
 def versioned_objects(iter_):

@@ -640,7 +640,7 @@ feature can be disabled by specifying
 Type System Changes
 ===================
 
-New Archicture
+New Architecture
 --------------
 
 The type system has been completely reworked behind the

@@ -265,7 +265,7 @@ class SelectableTest(
 
         s = select([t, expr])
 
-        # anon_label, e.g. a truncated_label, is used here becuase
+        # anon_label, e.g. a truncated_label, is used here because
         # the expr has no name, no key, and myop() can't create a
         # string, so this is the last resort
         eq_(s.selected_columns.keys(), ["x", "y", expr.anon_label])
@@ -456,7 +456,7 @@ class SelectableTest(
 
         # TODO: this case is crazy, sending SELECT or FROMCLAUSE has to
         # be figured out - is it a scalar row query?  what kinds of
-        # statements go into functions in PG. seems likely select statment,
+        # statements go into functions in PG. seems likely select statement,
         # but not alias, subquery or other FROM object
         self.assert_compile(
             select([func.foo(a)]),

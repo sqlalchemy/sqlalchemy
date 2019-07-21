@@ -243,7 +243,7 @@ class Load(Generative, MapperOption):
         elif _is_mapped_class(attr):
             # TODO: this does not appear to be a valid codepath.  "attr"
             # would never be a mapper.  This block is present in 1.2
-            # as well howver does not seem to be accessed in any tests.
+            # as well however does not seem to be accessed in any tests.
             if not orm_util._entity_corresponds_to_use_path_impl(
                 attr.parent, path[-1]
             ):

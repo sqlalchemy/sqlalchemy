@@ -656,7 +656,7 @@ class CollectionAdapter(object):
     def _set_empty(self, user_data):
         assert (
             not self.empty
-        ), "This collection adapter is alreay in the 'empty' state"
+        ), "This collection adapter is already in the 'empty' state"
         self.empty = True
         self.owner_state._empty_collections[self._key] = user_data
 

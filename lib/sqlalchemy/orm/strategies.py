@@ -2294,7 +2294,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if not query_info.load_with_join:
             # the Bundle we have in the "omit_join" case is against raw, non
             # annotated columns, so to ensure the Query knows its primary
-            # entity, we add it explictly.  If we made the Bundle against
+            # entity, we add it explicitly.  If we made the Bundle against
             # annotated columns, we hit a performance issue in this specific
             # case, which is detailed in issue #4347.
             q.add_criteria(lambda q: q.select_from(effective_entity))

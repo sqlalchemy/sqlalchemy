@@ -730,7 +730,7 @@ the :paramref:`.mapper.with_polymorphic` parameter::
             'polymorphic_identity': 'manager',
             'concrete': True}
 
-Alternatvely, the same :class:`.Table` objects can be used in
+Alternatively, the same :class:`.Table` objects can be used in
 fully "classical" style, without using Declarative at all.
 A constructor similar to that supplied by Declarative is illustrated::
 

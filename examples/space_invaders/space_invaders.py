@@ -656,14 +656,14 @@ def move_missile(session, window, state):
     )
     missile.blank(window)
     if glyph or missile.top_bound:
-        # missle is done
+        # missile is done
         session.delete(missile)
         state["missile"] = None
         if glyph:
             # score!
             score(session, window, state, glyph)
     else:
-        # move missle up one character.
+        # move missile up one character.
         missile.y -= 1
 
 

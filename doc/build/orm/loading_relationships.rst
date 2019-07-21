@@ -72,7 +72,7 @@ Configuring Loader Strategies at Mapping Time
 
 The loader strategy for a particular relationship can be configured
 at mapping time to take place in all cases where an object of the mapped
-type is loaded, in the absense of any query-level options that modify it.
+type is loaded, in the absence of any query-level options that modify it.
 This is configured using the :paramref:`.relationship.lazy` parameter to
 :func:`.relationship`; common values for this parameter
 include ``select``, ``joined``, ``subquery`` and ``selectin``.

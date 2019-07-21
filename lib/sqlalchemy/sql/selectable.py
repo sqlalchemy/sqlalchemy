@@ -2976,7 +2976,7 @@ class CompoundSelect(GenerativeSelect):
 
         For a :class:`.CompoundSelect`, the
         :attr:`.CompoundSelect.selected_columns` attribute returns the selected
-        columns of the first SELECT statement contined within the series of
+        columns of the first SELECT statement contained within the series of
         statements within the set operation.
 
         .. versionadded:: 1.4

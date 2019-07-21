@@ -560,7 +560,7 @@ class TypeRoundTripTest(
                 "1234.58965E-2",
                 "1.521E+15",
                 # previously, these were at -1E-25, which were inserted
-                # cleanly howver we only got back 20 digits of accuracy.
+                # cleanly however we only got back 20 digits of accuracy.
                 # pyodbc as of 4.0.22 now disallows the silent truncation.
                 "-1E-20",
                 "1E-20",
