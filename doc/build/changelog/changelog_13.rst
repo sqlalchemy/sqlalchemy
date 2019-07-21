@@ -12,7 +12,188 @@
 
 .. changelog::
     :version: 1.3.6
-    :include_notes_from: unreleased_13
+    :released: July 21, 2019
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4754
+
+        Fixed bug where using reflection function such as :meth:`.MetaData.reflect`
+        with an :class:`.Engine` object that had execution options applied to it
+        would fail, as the resulting :class:`.OptionEngine` proxy object failed to
+        include a ``.engine`` attribute used within the reflection routines.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4743
+
+        Fixed bug where the special logic to render "NULL" for the
+        :class:`.TIMESTAMP` datatype when ``nullable=True`` would not work if the
+        column's datatype were a :class:`.TypeDecorator` or a :class:`.Variant`.
+        The logic now ensures that it unwraps down to the original
+        :class:`.TIMESTAMP` so that this special case NULL keyword is correctly
+        rendered when requested.
+
+    .. change::
+        :tags: performance, orm
+        :tickets: 4775
+
+        The optimzation applied to selectin loading in :ticket:`4340` where a JOIN
+        is not needed to eagerly load related items is now applied to many-to-one
+        relationships as well, so that only the related table is queried for a
+        simple join condition.   In this case, the related items are queried
+        based on the value of a foreign key column on the parent; if these columns
+        are deferred or otherwise not loaded on any of the parent objects in
+        the collection, the loader falls back to the JOIN method.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4773
+
+        Fixed regression caused by :ticket:`4365` where a join from an entity to
+        itself without using aliases no longer raises an informative error message,
+        instead failing on an assertion.  The informative error condition has been
+        restored.
+
+
+    .. change::
+        :tags: orm, feature
+        :tickets: 4736
+
+        Added new loader option method :meth:`.Load.options` which allows loader
+        options to be constructed hierarchically, so that many sub-options can be
+        applied to a particular path without needing to call :func:`.defaultload`
+        many times.  Thanks to Alessio Bogon for the idea.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 4771
+
+        Added support for reflection of indexes on PostgreSQL partitioned tables,
+        which was added to PostgreSQL as of version 11.
+
+    .. change::
+       :tags: bug, mysql
+       :tickets: 4624
+
+       Enhanced MySQL/MariaDB version string parsing to accommodate for exotic
+       MariaDB version strings where the "MariaDB" word is embedded among other
+       alphanumeric characters such as "MariaDBV1".   This detection is critical in
+       order to correctly accommodate for API features that have split between MySQL
+       and MariaDB such as the "transaction_isolation" system variable.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4745
+
+        Ensured that the queries used to reflect indexes and view definitions will
+        explicitly CAST string parameters into NVARCHAR, as many SQL Server drivers
+        frequently treat string values, particularly those with non-ascii
+        characters or larger string values, as TEXT which often don't compare
+        correctly against VARCHAR characters in SQL Server's information schema
+        tables for some reason.    These CAST operations already take place for
+        reflection queries against SQL Server ``information_schema.`` tables but
+        were missing from three additional queries that are against ``sys.``
+        tables.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4713
+
+        Fixed an issue where the :meth:`.orm._ORMJoin.join` method, which is a
+        not-internally-used ORM-level method that exposes what is normally an
+        internal process of :meth:`.Query.join`, did not propagate the ``full`` and
+        ``outerjoin`` keyword arguments correctly.  Pull request courtesy Denis
+        Kataev.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4758
+
+        Adjusted the initialization for :class:`.Enum` to minimize how often it
+        invokes the ``.__members__`` attribute of a given PEP-435 enumeration
+        object, to suit the case where this attribute is expensive to invoke, as is
+        the case for some popular third party enumeration libraries.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4772
+
+        Fixed bug where a many-to-one relationship that specified ``uselist=True``
+        would fail to update correctly during a primary key change where a related
+        column needs to change.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4772
+
+        Fixed bug where the detection for many-to-one or one-to-one use with a
+        "dynamic" relationship, which is an invalid configuration, would fail to
+        raise if the relationship were configured with ``uselist=True``.  The
+        current fix is that it warns, instead of raises, as this would otherwise be
+        backwards incompatible, however in a future release it will be a raise.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4767
+
+        Fixed bug where a synonym created against a mapped attribute that does not
+        exist yet, as is the case when it refers to backref before mappers are
+        configured, would raise recursion errors when trying to test for attributes
+        on it which ultimately don't exist (as occurs when the classes are run
+        through Sphinx autodoc), as the unconfigured state of the synonym would put
+        it into an attribute not found loop.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 4756
+
+        Added support for multidimensional Postgresql array literals via nesting
+        the :class:`.postgresql.array` object within another one.  The
+        multidimensional array type is detected automatically.
+
+        .. seealso::
+
+            :class:`.postgresql.array`
+
+    .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 4760
+
+        Fixed issue where the :class:`.array_agg` construct in combination with
+        :meth:`.FunctionElement.filter` would not produce the correct operator
+        precedence in combination with the array index operator.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4747
+
+        Fixed an unlikely issue where the "corresponding column" routine for unions
+        and other :class:`.CompoundSelect` objects could return the wrong column in
+        some overlapping column situtations, thus potentially impacting some ORM
+        operations when set operations are in use, if the underlying
+        :func:`.select` constructs were used previously in other similar kinds of
+        routines, due to a cached value not being cleared.
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 4766
+
+        Added support for composite (tuple) IN operators with SQLite, by rendering
+        the VALUES keyword for this backend.  As other backends such as DB2 are
+        known to use the same syntax, the syntax is enabled in the base compiler
+        using a dialect-level flag ``tuple_in_values``.   The change also includes
+        support for "empty IN tuple" expressions for SQLite when using "in_()"
+        between a tuple value and an empty set.
+
 
 .. changelog::
     :version: 1.3.5

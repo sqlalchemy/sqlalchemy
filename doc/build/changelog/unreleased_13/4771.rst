@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 4771
-
-    Added support for reflection of indexes on PostgreSQL partitioned tables,
-    which was added to PostgreSQL as of version 11.
