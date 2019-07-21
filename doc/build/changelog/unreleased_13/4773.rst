@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4773
-
-    Fixed regression caused by :ticket:`4365` where a join from an entity to
-    itself without using aliases no longer raises an informative error message,
-    instead failing on an assertion.  The informative error condition has been
-    restored.
-

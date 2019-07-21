@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4713
-
-    Fixed an issue where the :meth:`.orm._ORMJoin.join` method, which is a
-    not-internally-used ORM-level method that exposes what is normally an
-    internal process of :meth:`.Query.join`, did not propagate the ``full`` and
-    ``outerjoin`` keyword arguments correctly.  Pull request courtesy Denis
-    Kataev.

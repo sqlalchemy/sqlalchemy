@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 4758
-
-    Adjusted the initialization for :class:`.Enum` to minimize how often it
-    invokes the ``.__members__`` attribute of a given PEP-435 enumeration
-    object, to suit the case where this attribute is expensive to invoke, as is
-    the case for some popular third party enumeration libraries.
-
