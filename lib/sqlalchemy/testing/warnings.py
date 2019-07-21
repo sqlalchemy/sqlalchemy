@@ -26,6 +26,8 @@ def setup_filters():
         "ignore", category=DeprecationWarning, message=".*StopIteration")
     warnings.filterwarnings(
         "ignore", category=DeprecationWarning, message=".*inspect.getargspec")
+    warnings.filterwarnings(
+        "ignore", category=DeprecationWarning, message=".*formatargspec")
 
 
 def assert_warnings(fn, warning_msgs, regex=False):
