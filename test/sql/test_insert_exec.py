@@ -263,7 +263,7 @@ class InsertExecTest(fixtures.TablesTest):
         eq_(r.inserted_primary_key, [0])
 
     @testing.fails_on(
-        "sqlite", "sqlite autoincremnt doesn't work with composite pks"
+        "sqlite", "sqlite autoincrement doesn't work with composite pks"
     )
     @testing.provide_metadata
     def test_misordered_lastrow(self):

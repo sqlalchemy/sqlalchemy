@@ -33,7 +33,7 @@
         two levels deep, in conjunction with modification to primary key values,
         where those primary key columns are also linked together in a foreign key
         relationship as is typical for joined table inheritance.  The intermediary
-        table in a  three-level inheritance hierachy will now get its UPDATE if
+        table in a  three-level inheritance hierarchy will now get its UPDATE if
         only the primary key value has changed and passive_updates=False (e.g.
         foreign key constraints not being enforced), whereas before it would be
         skipped; similarly, with passive_updates=True (e.g. ON UPDATE  CASCADE in
@@ -190,7 +190,7 @@
         hybrid attributes when they made use of the ``@hybrid_property.expression``
         decorator to return an alternate SQL expression, or when the hybrid
         returned an arbitrary :class:`.PropComparator`, at the expression level.
-        This involved futher generalization of the heuristics used to detect the
+        This involved further generalization of the heuristics used to detect the
         type of object being proxied at the level of :class:`.QueryableAttribute`,
         to better detect if the descriptor ultimately serves mapped classes or
         column expressions.
@@ -765,10 +765,10 @@
        :tickets: 4446
 
        Fixed issue in association proxy due to :ticket:`3423` which caused the use
-       of custom :class:`.PropComparator` objects with hybrid attribites, such as
+       of custom :class:`.PropComparator` objects with hybrid attributes, such as
        the one demonstrated in  the ``dictlike-polymorphic`` example to not
        function within an association proxy.  The strictness that was added in
-       :ticket:`3423` has been relaxed, and additional logic to accomodate for
+       :ticket:`3423` has been relaxed, and additional logic to accommodate for
        an association proxy that links to a custom hybrid have been added.
 
     .. change::
@@ -870,7 +870,7 @@
 
        Reworked :class:`.AssociationProxy` to store state that's specific to a
        parent class in a separate object, so that a single
-       :class:`.AssocationProxy` can serve for multiple parent classes, as is
+       :class:`.AssociationProxy` can serve for multiple parent classes, as is
        intrinsic to inheritance, without any ambiguity in the state returned by it.
        A new method :meth:`.AssociationProxy.for_class` is added to allow
        inspection of class-specific state.
@@ -1173,7 +1173,7 @@
         Fixed bug where declarative would not update the state of the
         :class:`.Mapper` as far as what attributes were present, when additional
         attributes were added or removed after the mapper attribute collections had
-        already been called and memoized.  Addtionally, a ``NotImplementedError``
+        already been called and memoized.  Additionally, a ``NotImplementedError``
         is now raised if a fully mapped attribute (e.g. column, relationship, etc.)
         is deleted from a class that is currently mapped, since the mapper will not
         function correctly if the attribute has been removed.

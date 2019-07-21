@@ -524,7 +524,7 @@ Given a mapping as::
         a_id = Column(Integer, ForeignKey(A.id), primary_key=True)
         b_id = Column(Integer, ForeignKey(B.id), primary_key=True)
 
-An assigment to ``A.b`` will generate an ``AB`` object::
+An assignment to ``A.b`` will generate an ``AB`` object::
 
     a.b = B()
 

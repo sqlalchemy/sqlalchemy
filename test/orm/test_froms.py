@@ -2461,7 +2461,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             "WHERE addresses.email_address > :email_address_1",
         )
 
-        # second, 'email_address' matches up to the aggreagte, and we get a
+        # second, 'email_address' matches up to the aggregate, and we get a
         # smooth JOIN from users->subquery and that's it
         self.assert_compile(
             sess.query(User, ag2.email_address)

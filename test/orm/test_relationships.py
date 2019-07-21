@@ -744,7 +744,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         bsub2.a = a2
 
         session.commit()
-        assert bsub1.a is a2  # beacuse bsub1.a_member is not a relationship
+        assert bsub1.a is a2  # because bsub1.a_member is not a relationship
         assert bsub2.a is a1  # because bsub2.a is viewonly=True
 
         # everyone has a B.a relationship

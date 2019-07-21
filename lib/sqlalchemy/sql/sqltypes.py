@@ -47,7 +47,7 @@ class _LookupExpressionAdapter(object):
 
     """Mixin expression adaptations based on lookup tables.
 
-    These rules are currenly used by the numeric, integer and date types
+    These rules are currently used by the numeric, integer and date types
     which have detailed cross-expression coercion rules.
 
     """

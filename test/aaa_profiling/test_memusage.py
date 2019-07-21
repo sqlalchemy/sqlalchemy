@@ -958,7 +958,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         go()
 
-    # fails on newer versions of pysqlite due to unusual memory behvior
+    # fails on newer versions of pysqlite due to unusual memory behavior
     # in pysqlite itself. background at:
     # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
 

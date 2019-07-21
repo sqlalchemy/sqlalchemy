@@ -736,7 +736,7 @@ def _collect_update_commands(
             # have changed the primary key of the row; propagate this event to
             # other columns that expect to have been modified. this normally
             # occurs after the UPDATE is emitted however we invoke it here
-            # explicitly in the absense of our invoking an UPDATE
+            # explicitly in the absence of our invoking an UPDATE
             for m, equated_pairs in mapper._table_to_equated[table]:
                 sync.populate(
                     state,

@@ -3792,7 +3792,7 @@ class MetaData(SchemaItem):
 
            .. note::
 
-                As refered above, the :paramref:`.MetaData.schema` parameter
+                As referred above, the :paramref:`.MetaData.schema` parameter
                 only refers to the **default value** that will be applied to
                 the :paramref:`.Table.schema` parameter of an incoming
                 :class:`.Table` object.   It does not refer to how the

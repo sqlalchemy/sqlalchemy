@@ -1132,7 +1132,7 @@ class DefaultTest(fixtures.MappedTest):
         eq_(h3.hoho, althohoval)
 
         def go():
-            # test deferred load of attribues, one select per instance
+            # test deferred load of attributes, one select per instance
             self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
 
         self.sql_count_(3, go)

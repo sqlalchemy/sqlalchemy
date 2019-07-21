@@ -3463,7 +3463,7 @@ class IdentifierPreparer(object):
         """keyword sequence filter.
 
         a filter for elements that are intended to represent keyword sequences,
-        such as "INITIALLY", "INTIALLY DEFERRED", etc.   no special characters
+        such as "INITIALLY", "INITIALLY DEFERRED", etc.   no special characters
         should be present.
 
         .. versionadded:: 1.3

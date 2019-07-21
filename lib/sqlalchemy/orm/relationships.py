@@ -1662,7 +1662,7 @@ class RelationshipProperty(StrategizedProperty):
                 # for a full merge, pre-load the destination collection,
                 # so that individual _merge of each item pulls from identity
                 # map for those already present.
-                # also assumes CollectionAttrbiuteImpl behavior of loading
+                # also assumes CollectionAttributeImpl behavior of loading
                 # "old" list in any case
                 dest_state.get_impl(self.key).get(dest_state, dest_dict)
 
