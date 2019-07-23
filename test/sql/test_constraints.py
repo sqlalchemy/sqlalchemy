@@ -823,20 +823,44 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-    def test_functional_index(self):
+    def test_functional_index_w_string_cols_combo(self):
         metadata = MetaData()
-        x = Table("x", metadata, Column("q", String(50)))
-        idx = Index("y", func.lower(x.c.q))
-
-        self.assert_compile(
-            schema.CreateIndex(idx), "CREATE INDEX y ON x (lower(q))"
+        x = Table(
+            "x",
+            metadata,
+            Column("q", String(50)),
+            Column("p", Integer),
+            Column("z", Integer),
         )
 
-        self.assert_compile(
-            schema.CreateIndex(idx),
-            "CREATE INDEX y ON x (lower(q))",
-            dialect=testing.db.dialect,
-        )
+        for idx, ddl in [
+            (
+                Index("y", func.lower(x.c.q), "p", x.c.z),
+                "CREATE INDEX y ON x (lower(q), p, z)",
+            ),
+            (
+                Index("y", "p", func.lower(x.c.q), "z"),
+                "CREATE INDEX y ON x (p, lower(q), z)",
+            ),
+            (
+                Index("y", "p", "z", func.lower(x.c.q)),
+                "CREATE INDEX y ON x (p, z, lower(q))",
+            ),
+            (
+                Index("y", func.foo("foob"), x.c.p, "z"),
+                "CREATE INDEX y ON x (foo('foob'), p, z)",
+            ),
+            (
+                Index("y", x.c.p, func.foo("foob"), "z"),
+                "CREATE INDEX y ON x (p, foo('foob'), z)",
+            ),
+            (
+                Index("y", func.foo("foob"), "p", "z"),
+                "CREATE INDEX y ON x (foo('foob'), p, z)",
+            ),
+        ]:
+            x.append_constraint(idx)
+            self.assert_compile(schema.CreateIndex(idx), ddl)
 
     def test_index_against_text_separate(self):
         metadata = MetaData()

@@ -2729,7 +2729,9 @@ def _to_schema_column(element):
 
 
 def _to_schema_column_or_string(element):
-    if hasattr(element, "__clause_element__"):
+    if element is None:
+        return element
+    elif hasattr(element, "__clause_element__"):
         element = element.__clause_element__()
     if not isinstance(element, util.string_types + (ColumnElement,)):
         msg = "Element %r is not a string name or column element"
@@ -2826,11 +2828,16 @@ class ColumnCollectionMixin(object):
                     )
                 )
 
+    def _col_expressions(self, table):
+        return [
+            table.c[col] if isinstance(col, util.string_types) else col
+            for col in self._pending_colargs
+        ]
+
     def _set_parent(self, table):
-        for col in self._pending_colargs:
-            if isinstance(col, util.string_types):
-                col = table.c[col]
-            self.columns.add(col)
+        for col in self._col_expressions(table):
+            if col is not None:
+                self.columns.add(col)
 
 
 class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
@@ -3631,8 +3638,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             strname,
             add_element,
         ) in self._extract_col_expression_collection(expressions):
-            if add_element is not None:
-                columns.append(add_element)
+            columns.append(add_element)
             processed_expressions.append(expr)
 
         self.expressions = processed_expressions
@@ -3670,11 +3676,12 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         self.table = table
         table.indexes.add(self)
 
+        expressions = self.expressions
+        col_expressions = self._col_expressions(table)
+        assert len(expressions) == len(col_expressions)
         self.expressions = [
             expr if isinstance(expr, ClauseElement) else colexpr
-            for expr, colexpr in util.zip_longest(
-                self.expressions, self.columns
-            )
+            for expr, colexpr in zip(expressions, col_expressions)
         ]
 
     @property
