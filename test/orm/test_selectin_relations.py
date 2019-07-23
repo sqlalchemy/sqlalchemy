@@ -1120,6 +1120,31 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
+    def test_one_to_many_scalar_none(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                address=relationship(
+                    mapper(Address, addresses), lazy="selectin", uselist=False
+                )
+            ),
+        )
+        q = create_session().query(User)
+
+        def go():
+            result = q.filter(users.c.id == 10).all()
+            eq_([User(id=10, address=None)], result)
+
+        self.assert_sql_count(testing.db, go, 2)
+
     def test_many_to_one(self):
         users, Address, addresses, User = (
             self.tables.users,
@@ -2934,6 +2959,59 @@ class SingleInhSubclassTest(
                 "IN ([EXPANDING_primary_keys]) ORDER BY role.user_id",
                 {"primary_keys": [1]},
             ),
+        )
+
+
+class MissingForeignTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(Integer)
+            b = relationship("B", primaryjoin="foreign(A.b_id) == B.id")
+            q = Column(Integer)
+
+        class B(fixtures.ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+
+        s = Session()
+        b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
+        s.add_all(
+            [
+                A(id=1, b_id=1),
+                A(id=2, b_id=5),
+                A(id=3, b_id=2),
+                A(id=4, b=None),
+                b1,
+                b2,
+            ]
+        )
+        s.commit()
+
+    def test_missing_rec(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+        eq_(
+            s.query(A).options(selectinload(A.b)).order_by(A.id).all(),
+            [
+                A(id=1, b=B(id=1)),
+                A(id=2, b=None, b_id=5),
+                A(id=3, b=B(id=2)),
+                A(id=4, b=None, b_id=None),
+            ],
         )
 
 

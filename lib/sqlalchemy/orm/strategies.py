@@ -2381,7 +2381,12 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             }
 
             for key in chunk:
-                related_obj = data[key]
+                # for a real foreign key and no concurrent changes to the
+                # DB while running this method, "key" is always present in
+                # data.  However, for primaryjoins without real foreign keys
+                # a non-None primaryjoin condition may still refer to no
+                # related object.
+                related_obj = data.get(key, None)
                 for state, dict_, overwrite in our_states[key]:
                     if not overwrite and self.key in dict_:
                         continue
@@ -2431,6 +2436,8 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                         state, state_dict, collection[0]
                     )
                 else:
+                    # note that empty tuple set on uselist=False sets the
+                    # value to None
                     state.get_impl(self.key).set_committed_value(
                         state, state_dict, collection
                     )
