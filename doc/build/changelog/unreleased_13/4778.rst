@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4778
+
+    Fixed issue where :class:`.Index` object which contained a mixture of
+    functional expressions which were not resolvable to a particular column,
+    in combination with string-based column names, would fail to initialize
+    its internal state correctly leading to failures during DDL compilation.
