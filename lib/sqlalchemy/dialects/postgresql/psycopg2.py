@@ -77,6 +77,11 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_batch_mode`
 
+* ``page_size``: When ``execution_mode`` is ``'values_batch'``, this flag
+  determines the maximum number of rows to insert in a single request to the database.
+  If there are more rows than that, they will be sent in several requests (each
+  containing a single query). Default value is 10000.
+
 * ``use_batch_mode``: This flag allows using psycopg2 faster methods for
   executing queries with multiple parameters (usually INSERT queries).
   If equals True or 'execute_batch', ``psycopg2.extras.execute_batch`` is used.
@@ -591,7 +596,7 @@ class PGCompiler_psycopg2(PGCompiler):
         self.dialect = dialect
         self.multiple_rows = inline
         self.execute_values_insert_template = None
-        self.execute_values_page_size = 10000
+
         super(
             PGCompiler_psycopg2,
             PGCompiler_psycopg2).__init__(
@@ -687,6 +692,7 @@ class PGDialect_psycopg2(PGDialect):
         use_native_hstore=True,
         use_native_uuid=True,
         execution_mode=None,
+        page_size=10000,
         use_batch_mode=False,
         **kwargs
     ):
@@ -700,6 +706,7 @@ class PGDialect_psycopg2(PGDialect):
         self.psycopg2_execution_mode = \
             EnumPsycopg2ExecutionMode(execution_mode) if execution_mode else \
             None
+        self.psycopg2_page_size = page_size
         self.psycopg2_batch_mode = use_batch_mode
 
         # use_batch_mode supported for backward compatibility. To avoid having to check two flags,
@@ -865,7 +872,7 @@ class PGDialect_psycopg2(PGDialect):
                 statement,
                 parameters,
                 template=context.compiled.execute_values_insert_template,
-                page_size=context.compiled.execute_values_page_size)
+                page_size=self.psycopg2_page_size)
 
         else:  # VALUES_BATCH of non-insert query, or STATEMENTS_BATCH
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)
