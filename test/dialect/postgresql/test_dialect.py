@@ -293,13 +293,13 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
                 [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
             )
 
-    def test_correct_arguments(self):
+    def test_execute_values_arguments(self):
         def execute_values(cur, sql, argslist, template=None, page_size=100):
             assert sql == "INSERT INTO data (x, y) VALUES %s"
             assert argslist == ({'x': 'x1', 'y': 'y1'}, {
                                 'x': 'x2', 'y': 'y2'}, {'x': 'x3', 'y': 'y3'})
             assert template == "(%(x)s, %(y)s)"
-            assert page_size == 10000
+            assert page_size == 10000  # Flag's default value
 
         with patch("psycopg2.extras.execute_values", execute_values):
             with self.engine.connect() as conn:
@@ -311,6 +311,29 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
                         {"x": "x3", "y": "y3"},
                     ],
                 )
+
+    def test_execute_values_arguments_page_size(self):
+        self.engine = engines.testing_engine(
+            options={"execution_mode": "values_batch", "page_size": 5000})
+
+        def execute_values(cur, sql, argslist, template=None, page_size=100):
+            assert sql == "INSERT INTO data (x, y) VALUES %s"
+            assert argslist == ({'x': 'x1', 'y': 'y1'}, {
+                                'x': 'x2', 'y': 'y2'}, {'x': 'x3', 'y': 'y3'})
+            assert template == "(%(x)s, %(y)s)"
+            assert page_size == 5000
+
+        with patch("psycopg2.extras.execute_values", execute_values):
+            with self.engine.connect() as conn:
+                conn.execute(
+                    self.tables.data.insert(),
+                    [
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ],
+                )
+
 
 
 class MiscBackendTest(
