@@ -172,7 +172,7 @@ class ExecuteBatchInsertsTest(fixtures.TablesTest):
 
     def setup(self):
         super(ExecuteBatchInsertsTest, self).setup()
-        self.engine = engines.testing_engine(options={"execution_mode": "statements_batch"})
+        self.engine = engines.testing_engine(options={"executemany_mode": "executemany_batch"})
 
     def teardown(self):
         self.engine.dispose()
@@ -243,7 +243,7 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
     def setup(self):
         super(ExecuteValuesInsertsTest, self).setup()
         self.engine = engines.testing_engine(
-            options={"execution_mode": "values_batch"})
+            options={"executemany_mode": "executemany_values"})
 
     def teardown(self):
         self.engine.dispose()
@@ -314,7 +314,7 @@ class ExecuteValuesInsertsTest(fixtures.TablesTest):
 
     def test_execute_values_arguments_page_size(self):
         self.engine = engines.testing_engine(
-            options={"execution_mode": "values_batch", "page_size": 5000})
+            options={"executemany_mode": "executemany_values", "execute_values_page_size": 5000})
 
         def execute_values(cur, sql, argslist, template=None, page_size=100):
             assert sql == "INSERT INTO data (x, y) VALUES %s"

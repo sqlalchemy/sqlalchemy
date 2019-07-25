@@ -52,32 +52,32 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_unicode`
 
-.. _psycopg2_execution_mode:
+.. _psycopg2_executemany_mode:
 
-* ``execution_mode``: This flag determines the psycopg2 methods used for executing
+* ``executemany_mode``: This flag determines the psycopg2 methods used for executing
   queries with multiple parameters, enabling faster execution by using different
   modes of batching. It replaces flag ``use_batch_mode`` (which is still supported
   for backward compatibility). Possible values are:
 
   * ``None``:
     Flag not used, ``use_batch_mode`` determines behavior.
-  * ``'single_statement'``:
+  * ``'executemany_default'``:
     A single query is created for every parameters set and sent to the database.
     Uses ``psycopg2.extras.executemany``. Equivalent to ``use_batch_mode=False``.
-  * ``'statements_batch'``:
+  * ``'executemany_batch'``:
     Multiple queries are sent together to the database. Uses
     ``psycopg2.extras.execute_batch``. Equivalent to ``use_batch_mode=True``.
-  * ``'values_batch'``:
+  * ``'executemany_values'``:
     Multiple parameters sets are packed together into a single query
     that is sent to the database. This flag currently supports only INSERT queries,
     and uses ``psycopg2.extras.execute_values``. For other queries it behaves the
-    same as ``'statements_batch'``.
+    same as ``'executemany_batch'``.
 
   .. seealso::
 
     :ref:`psycopg2_batch_mode`
 
-* ``page_size``: When ``execution_mode`` is ``'values_batch'``, this flag
+* ``execute_values_page_size``: When ``executemany_mode`` is ``'executemany_values'``, this flag
   determines the maximum number of rows to insert in a single request to the database.
   If there are more rows than that, they will be sent in several requests (each
   containing a single query). Default value is 10000.
@@ -179,13 +179,13 @@ which have been shown in benchmarking to improve psycopg2's executemany()
 performance with INSERTS by multiple orders of magnitude.   SQLAlchemy
 allows this extension to be used for all ``executemany()`` style calls
 invoked by an :class:`.Engine` when used with :ref:`multiple parameter sets <execute_multiple>`,
-by adding the ``execution_mode`` flag to :func:`.create_engine`::
+by adding the ``executemany_mode`` flag to :func:`.create_engine`::
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",
-        execution_mode='values_batch')
+        executemany_mode='executemany_values')
 
-See :ref:`execution_mode <psycopg2_execution_mode>` documentation for possible values of this flag.
+See :ref:`executemany_mode <psycopg2_executemany_mode>` documentation for possible values of this flag.
 This flag replaces ``use_batch_mode``. However, you can still use ``use_batch_mode``::
 
     engine = create_engine(
@@ -426,7 +426,6 @@ from __future__ import absolute_import
 import decimal
 import logging
 import re
-from enum import Enum
 
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
@@ -613,7 +612,7 @@ class PGCompiler_psycopg2(PGCompiler):
             self, crud_params, returning_clause_exists):
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
-        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.VALUES_BATCH:
+        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_executemany_mode is EXECUTEMANY_VALUES:
             self.execute_values_insert_template = "(" + \
                 ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
@@ -621,22 +620,19 @@ class PGCompiler_psycopg2(PGCompiler):
             return super(
                 PGCompiler_psycopg2,
                 PGCompiler_psycopg2).generate_values_placeholders_str(
-                self,
-                crud_params,
-                returning_clause_exists)
+                    self,
+                    crud_params,
+                    returning_clause_exists)
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     pass
 
 
-class EnumPsycopg2ExecutionMode(Enum):
-    """
-    Enum type to describe psycopg2 execution mode of multiple parameters queries
-    """
-    SINGLE_STATEMENT = 'single_statement'
-    STATEMENTS_BATCH = 'statements_batch'
-    VALUES_BATCH = 'values_batch'
+EXECUTEMANY_DEFAULT = util.symbol("executemany_default")
+EXECUTEMANY_BATCH = util.symbol("executemany_batch")
+EXECUTEMANY_VALUES = util.symbol("executemany_values")
+
 
 
 class PGDialect_psycopg2(PGDialect):
@@ -691,8 +687,8 @@ class PGDialect_psycopg2(PGDialect):
         client_encoding=None,
         use_native_hstore=True,
         use_native_uuid=True,
-        execution_mode=None,
-        page_size=10000,
+        executemany_mode=None,
+        execute_values_page_size=10000,
         use_batch_mode=False,
         **kwargs
     ):
@@ -703,18 +699,23 @@ class PGDialect_psycopg2(PGDialect):
         self.use_native_uuid = use_native_uuid
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
-        self.psycopg2_execution_mode = \
-            EnumPsycopg2ExecutionMode(execution_mode) if execution_mode else \
-            None
-        self.psycopg2_page_size = page_size
+
+        if executemany_mode:
+            if executemany_mode not in (EXECUTEMANY_DEFAULT.name, EXECUTEMANY_BATCH.name, EXECUTEMANY_VALUES.name):
+                raise exc.ArgumentError("Unsupported value for 'executemany_mode': %s" % executemany_mode)
+            self.psycopg2_executemany_mode = util.symbol(executemany_mode)
+        else:
+            self.psycopg2_executemany_mode = None
+
+        self.psycopg2_execute_values_page_size = execute_values_page_size
         self.psycopg2_batch_mode = use_batch_mode
 
         # use_batch_mode supported for backward compatibility. To avoid having to check two flags,
-        # set execution_mode flag here and use it only
-        if not self.psycopg2_execution_mode:
-            self.psycopg2_execution_mode = \
-                EnumPsycopg2ExecutionMode.STATEMENTS_BATCH if self.psycopg2_batch_mode else \
-                EnumPsycopg2ExecutionMode.SINGLE_STATEMENT
+        # set executemany_mode flag here and use it only
+        if not self.psycopg2_executemany_mode:
+            self.psycopg2_executemany_mode = \
+                EXECUTEMANY_BATCH if self.psycopg2_batch_mode else \
+                EXECUTEMANY_DEFAULT
 
         if self.dbapi and hasattr(self.dbapi, "__version__"):
             m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
@@ -740,7 +741,7 @@ class PGDialect_psycopg2(PGDialect):
         self.supports_sane_multi_rowcount = (
             self.psycopg2_version
             >= self.FEATURE_VERSION_MAP["sane_multi_rowcount"]
-            and self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.SINGLE_STATEMENT
+            and self.psycopg2_executemany_mode is EXECUTEMANY_DEFAULT
         )
 
     @classmethod
@@ -861,9 +862,9 @@ class PGDialect_psycopg2(PGDialect):
             return None
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        if self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.SINGLE_STATEMENT:
+        if self.psycopg2_executemany_mode is EXECUTEMANY_DEFAULT:
             cursor.executemany(statement, parameters)
-        elif self.psycopg2_execution_mode == EnumPsycopg2ExecutionMode.VALUES_BATCH and \
+        elif self.psycopg2_executemany_mode is EXECUTEMANY_VALUES and \
                 context and \
                 context.compiled.execute_values_insert_template:
 
@@ -872,9 +873,9 @@ class PGDialect_psycopg2(PGDialect):
                 statement,
                 parameters,
                 template=context.compiled.execute_values_insert_template,
-                page_size=self.psycopg2_page_size)
+                page_size=self.psycopg2_execute_values_page_size)
 
-        else:  # VALUES_BATCH of non-insert query, or STATEMENTS_BATCH
+        else:  # EXECUTEMANY_VALUES of non-insert query, or EXECUTEMANY_BATCH
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)
 
     @util.memoized_instancemethod
