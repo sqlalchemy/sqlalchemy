@@ -1173,6 +1173,10 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = "SQL_VARIANT"
 
 
+class TRY_CAST(elements.Cast):
+    pass
+
+
 # old names.
 MSDateTime = _MSDateTime
 MSDate = _MSDate
@@ -1585,6 +1589,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def limit_clause(self, select, **kw):
         # Limit in mssql is after the select keyword
         return ""
+
+    def _try_cast(self, element, **kw):
+        return "TRY CAST (%s AS %s)" % (
+            compiler.SQLCompiler.process(element.clause, **kw),
+            compiler.SQLCompiler.process(element.typeclause, **kw),
+        )
 
     def visit_select(self, select, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
