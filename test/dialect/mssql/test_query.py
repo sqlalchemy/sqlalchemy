@@ -17,6 +17,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.databases import mssql
+from sqlalchemy.dialects.mssql.base import Try_Cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -411,6 +412,25 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 "INSERT INTO t1 (data) VALUES (?); select scope_identity()",
                 ("somedata",),
             )
+        )
+
+    @testing.provide_metadata
+    def test_try_cast(self):
+        engine = engines.testing_engine()
+        metadata = self.metadata
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            implicit_returning=False,
+        )
+        metadata.create_all(engine)
+
+        with self.sql_execution_asserter(engine) as asserter:
+            engine.execute(t1.select([Try_Cast(t1.id, Integer)]))
+
+        asserter.assert_(
+            CursorSQL("SELECT TRY_CAST(id AS Integer) FROM t1"),
         )
 
     @testing.provide_metadata
