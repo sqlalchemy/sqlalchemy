@@ -42,7 +42,7 @@
         :tags: performance, orm
         :tickets: 4775
 
-        The optimzation applied to selectin loading in :ticket:`4340` where a JOIN
+        The optimization applied to selectin loading in :ticket:`4340` where a JOIN
         is not needed to eagerly load related items is now applied to many-to-one
         relationships as well, so that only the related table is queried for a
         simple join condition.   In this case, the related items are queried
