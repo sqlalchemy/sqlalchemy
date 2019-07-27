@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, mysql
+    :tickets: 4783
+
+    Added reserved words ARRAY and MEMBER to the MySQL reserved words list, as
+    MySQL 8.0 has now made these reserved.
+
