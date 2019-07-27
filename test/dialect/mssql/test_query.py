@@ -17,7 +17,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql.base import Try_Cast
+from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -27,6 +27,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CursorSQL
 from sqlalchemy.testing.assertsql import DialectSQL
 from sqlalchemy.util import ue
+
 
 
 metadata = None
@@ -427,7 +428,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         metadata.create_all(engine)
 
         with self.sql_execution_asserter(engine) as asserter:
-            engine.execute(t1.select([Try_Cast(t1.id, Integer)]))
+            engine.execute(t1.select([try_cast(t1.id, Integer)]))
 
         asserter.assert_(
             CursorSQL("SELECT TRY_CAST(id AS Integer) FROM t1"),

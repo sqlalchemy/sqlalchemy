@@ -1173,7 +1173,7 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = "SQL_VARIANT"
 
 
-class TRY_CAST(elements.Cast):
+class try_cast(elements.Cast):
     pass
 
 
@@ -1591,7 +1591,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return ""
 
     def _try_cast(self, element, **kw):
-        return "TRY CAST (%s AS %s)" % (
+        return "TRY_CAST (%s AS %s)" % (
             compiler.SQLCompiler.process(element.clause, **kw),
             compiler.SQLCompiler.process(element.typeclause, **kw),
         )
