@@ -77,7 +77,7 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_batch_mode`
 
-* ``execute_values_page_size``: When ``executemany_mode`` is ``'executemany_values'``, this flag
+* ``executemany_page_size``: When ``executemany_mode`` is ``'executemany_values'``, this flag
   determines the maximum number of rows to insert in a single request to the database.
   If there are more rows than that, they will be sent in several requests (each
   containing a single query). Default value is 10000.
@@ -589,30 +589,17 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    def __init__(
-        self, dialect, statement, column_keys=None, inline=False, **kwargs
-    ):
-        self.dialect = dialect
-        self.multiple_rows = inline
-        self.execute_values_insert_template = None
-
-        super(
-            PGCompiler_psycopg2,
-            PGCompiler_psycopg2).__init__(
-            self,
-            dialect,
-            statement,
-            column_keys,
-            inline,
-            **kwargs)
+    execute_values_insert_template = None
 
     # Override SQLCompiler.generate_values_placeholders_str - enable use of
     # psycopg2 execute_values()
     def generate_values_placeholders_str(
             self, crud_params, returning_clause_exists):
+
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
-        if self.multiple_rows and not returning_clause_exists and self.dialect.psycopg2_executemany_mode is EXECUTEMANY_VALUES:
+        # Note: self.inline is true iff there are multiple parameters sets to the query
+        if self.inline and not returning_clause_exists and self.dialect.psycopg2_executemany_mode is EXECUTEMANY_VALUES:
             self.execute_values_insert_template = "(" + \
                 ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
@@ -688,7 +675,7 @@ class PGDialect_psycopg2(PGDialect):
         use_native_hstore=True,
         use_native_uuid=True,
         executemany_mode=None,
-        execute_values_page_size=10000,
+        executemany_page_size=10000,
         use_batch_mode=False,
         **kwargs
     ):
@@ -707,7 +694,7 @@ class PGDialect_psycopg2(PGDialect):
         else:
             self.psycopg2_executemany_mode = None
 
-        self.psycopg2_execute_values_page_size = execute_values_page_size
+        self.psycopg2_executemany_page_size = executemany_page_size
         self.psycopg2_batch_mode = use_batch_mode
 
         # use_batch_mode supported for backward compatibility. To avoid having to check two flags,
@@ -873,7 +860,7 @@ class PGDialect_psycopg2(PGDialect):
                 statement,
                 parameters,
                 template=context.compiled.execute_values_insert_template,
-                page_size=self.psycopg2_execute_values_page_size)
+                page_size=self.psycopg2_executemany_page_size)
 
         else:  # EXECUTEMANY_VALUES of non-insert query, or EXECUTEMANY_BATCH
             self._psycopg2_extras().execute_batch(cursor, statement, parameters)
