@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4751
+
+    Added another fix for an upstream MySQL 8 issue where a case sensitive
+    table name is reported incorrectly in foreign key constraint reflection,
+    this is an extension of the fix first added for :ticket:`4344` which
+    affects a case sensitive column name.  The new issue occurs through MySQL
+    8.0.17, so the general logic of the 88718 fix remains in place.
+
+    .. seealso::
+
+        https://bugs.mysql.com/bug.php?id=96365 - upstream bug
+
