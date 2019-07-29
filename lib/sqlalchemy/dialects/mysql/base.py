@@ -2384,7 +2384,7 @@ class MySQLDialect(default.DefaultDialect):
 
         default.DefaultDialect.initialize(self, connection)
 
-        self._needs_correct_for_88718 = (
+        self._needs_correct_for_88718_96365 = (
             not self._is_mariadb and self.server_version_info >= (8,)
         )
 
@@ -2557,15 +2557,19 @@ class MySQLDialect(default.DefaultDialect):
             }
             fkeys.append(fkey_d)
 
-        if self._needs_correct_for_88718:
-            self._correct_for_mysql_bug_88718(fkeys, connection)
+        if self._needs_correct_for_88718_96365:
+            self._correct_for_mysql_bugs_88718_96365(fkeys, connection)
 
         return fkeys
 
-    def _correct_for_mysql_bug_88718(self, fkeys, connection):
+    def _correct_for_mysql_bugs_88718_96365(self, fkeys, connection):
         # Foreign key is always in lower case (MySQL 8.0)
         # https://bugs.mysql.com/bug.php?id=88718
         # issue #4344 for SQLAlchemy
+
+        # table name also for MySQL 8.0
+        # https://bugs.mysql.com/bug.php?id=96365
+        # issue #4751 for SQLAlchemy
 
         # for lower_case_table_names=2, information_schema.columns
         # preserves the original table/schema casing, but SHOW CREATE
@@ -2621,19 +2625,24 @@ class MySQLDialect(default.DefaultDialect):
             # is necessary
             d = defaultdict(dict)
             for schema, tname, cname in correct_for_wrong_fk_case:
+                d[(lower(schema), lower(tname))]["SCHEMANAME"] = schema
+                d[(lower(schema), lower(tname))]["TABLENAME"] = tname
                 d[(lower(schema), lower(tname))][cname.lower()] = cname
 
             for fkey in fkeys:
+                rec = d[
+                    (
+                        lower(fkey["referred_schema"] or default_schema_name),
+                        lower(fkey["referred_table"]),
+                    )
+                ]
+
+                fkey["referred_table"] = rec["TABLENAME"]
+                if fkey["referred_schema"] is not None:
+                    fkey["referred_schema"] = rec["SCHEMANAME"]
+
                 fkey["referred_columns"] = [
-                    d[
-                        (
-                            lower(
-                                fkey["referred_schema"] or default_schema_name
-                            ),
-                            lower(fkey["referred_table"]),
-                        )
-                    ][col.lower()]
-                    for col in fkey["referred_columns"]
+                    rec[col.lower()] for col in fkey["referred_columns"]
                 ]
 
     @reflection.cache

@@ -759,12 +759,12 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             [{"name": "foo_idx", "column_names": ["x"], "unique": False}],
         )
 
-    def _bug_88718_casing_0(self):
+    def _bug_88718_96365_casing_0(self):
         fkeys_casing_0 = [
             {
                 "name": "FK_PlaylistTTrackId",
                 "constrained_columns": ["TTrackID"],
-                "referred_schema": "test_schema",
+                "referred_schema": "Test_Schema",
                 "referred_table": "Track",
                 "referred_columns": ["trackid"],
                 "options": {},
@@ -779,17 +779,17 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         ]
         ischema_casing_0 = [
-            ("test", "Track", "TrackID"),
-            ("test_schema", "Track", "TrackID"),
+            ("Test", "Track", "TrackID"),
+            ("Test_Schema", "Track", "TrackID"),
         ]
         return fkeys_casing_0, ischema_casing_0
 
-    def _bug_88718_casing_1(self):
+    def _bug_88718_96365_casing_1(self):
         fkeys_casing_1 = [
             {
                 "name": "FK_PlaylistTTrackId",
                 "constrained_columns": ["TTrackID"],
-                "referred_schema": "test_schema",
+                "referred_schema": "Test_Schema",
                 "referred_table": "Track",
                 "referred_columns": ["trackid"],
                 "options": {},
@@ -804,18 +804,20 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         ]
         ischema_casing_1 = [
-            (util.u("test"), util.u("Track"), "TrackID"),
-            (util.u("test_schema"), util.u("Track"), "TrackID"),
+            (util.u("Test"), util.u("Track"), "TrackID"),
+            (util.u("Test_Schema"), util.u("Track"), "TrackID"),
         ]
         return fkeys_casing_1, ischema_casing_1
 
-    def _bug_88718_casing_2(self):
+    def _bug_88718_96365_casing_2(self):
         fkeys_casing_2 = [
             {
                 "name": "FK_PlaylistTTrackId",
                 "constrained_columns": ["TTrackID"],
+                # I haven't tested schema name but since col/table both
+                # do it, assume schema name also comes back wrong
                 "referred_schema": "test_schema",
-                "referred_table": "Track",
+                "referred_table": "track",
                 "referred_columns": ["trackid"],
                 "options": {},
             },
@@ -823,38 +825,40 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 "name": "FK_PlaylistTrackId",
                 "constrained_columns": ["TrackID"],
                 "referred_schema": None,
-                "referred_table": "Track",
+                # table name also comes back wrong (probably schema also)
+                # with casing=2, see https://bugs.mysql.com/bug.php?id=96365
+                "referred_table": "track",
                 "referred_columns": ["trackid"],
                 "options": {},
             },
         ]
         ischema_casing_2 = [
-            ("test", "Track", "TrackID"),
-            ("test_schema", "Track", "TrackID"),
+            ("Test", "Track", "TrackID"),
+            ("Test_Schema", "Track", "TrackID"),
         ]
         return fkeys_casing_2, ischema_casing_2
 
-    def test_correct_for_mysql_bug_88718(self):
+    def test_correct_for_mysql_bugs_88718_96365(self):
         dialect = mysql.dialect()
 
         for casing, (fkeys, ischema) in [
-            (0, self._bug_88718_casing_0()),
-            (1, self._bug_88718_casing_1()),
-            (2, self._bug_88718_casing_2()),
+            (0, self._bug_88718_96365_casing_0()),
+            (1, self._bug_88718_96365_casing_1()),
+            (2, self._bug_88718_96365_casing_2()),
         ]:
             dialect._casing = casing
-            dialect.default_schema_name = "test"
+            dialect.default_schema_name = "Test"
             connection = mock.Mock(
                 dialect=dialect, execute=lambda stmt, **params: ischema
             )
-            dialect._correct_for_mysql_bug_88718(fkeys, connection)
+            dialect._correct_for_mysql_bugs_88718_96365(fkeys, connection)
             eq_(
                 fkeys,
                 [
                     {
                         "name": "FK_PlaylistTTrackId",
                         "constrained_columns": ["TTrackID"],
-                        "referred_schema": "test_schema",
+                        "referred_schema": "Test_Schema",
                         "referred_table": "Track",
                         "referred_columns": ["TrackID"],
                         "options": {},
@@ -910,6 +914,14 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         m1.create_all()
 
         if testing.db.dialect._casing in (1, 2):
+            # the original test for the 88718 fix here in [ticket:4344]
+            # actually set  referred_table='track', with the wrong casing!
+            # this test was never run. with [ticket:4751], I've gone through
+            # the trouble to create docker containers with true
+            # lower_case_table_names=2 and per
+            # https://bugs.mysql.com/bug.php?id=96365 the table name being
+            # lower case is also an 8.0 regression.
+
             eq_(
                 inspect(testing.db).get_foreign_keys("PlaylistTrack"),
                 [
@@ -917,7 +929,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                         "name": "FK_PlaylistTTrackId",
                         "constrained_columns": ["TTrackID"],
                         "referred_schema": testing.config.test_schema,
-                        "referred_table": "track",
+                        "referred_table": "Track",
                         "referred_columns": ["TrackID"],
                         "options": {},
                     },
@@ -925,7 +937,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                         "name": "FK_PlaylistTrackId",
                         "constrained_columns": ["TrackID"],
                         "referred_schema": None,
-                        "referred_table": "track",
+                        "referred_table": "Track",
                         "referred_columns": ["TrackID"],
                         "options": {},
                     },
