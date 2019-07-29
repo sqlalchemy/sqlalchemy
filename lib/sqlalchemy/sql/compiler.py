@@ -1773,18 +1773,26 @@ class SQLCompiler(Compiled):
         column_clause_args,
         name=None,
         within_columns_clause=True,
+        need_column_expressions=False,
     ):
         """produce labeled columns present in a select()."""
 
         impl = column.type.dialect_impl(self.dialect)
-        if impl._has_column_expression and populate_result_map:
+
+        if impl._has_column_expression and (
+            need_column_expressions or populate_result_map
+        ):
             col_expr = impl.column_expression(column)
 
-            def add_to_result_map(keyname, name, objects, type_):
-                self._add_to_result_map(
-                    keyname, name, (column,) + objects, type_
-                )
+            if populate_result_map:
 
+                def add_to_result_map(keyname, name, objects, type_):
+                    self._add_to_result_map(
+                        keyname, name, (column,) + objects, type_
+                    )
+
+            else:
+                add_to_result_map = None
         else:
             col_expr = column
             if populate_result_map:
@@ -2039,14 +2047,14 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        populate_result_map = (
+        populate_result_map = need_column_expressions = (
             toplevel
-            or (
-                compound_index == 0
-                and entry.get("need_result_map_for_compound", False)
-            )
+            or entry.get("need_result_map_for_compound", False)
             or entry.get("need_result_map_for_nested", False)
         )
+
+        if compound_index > 0:
+            populate_result_map = False
 
         # this was first proposed as part of #3372; however, it is not
         # reached in current tests and could possibly be an assertion
@@ -2092,6 +2100,7 @@ class SQLCompiler(Compiled):
                     asfrom,
                     column_clause_args,
                     name=name,
+                    need_column_expressions=need_column_expressions,
                 )
                 for name, column in select._columns_plus_names
             ]
