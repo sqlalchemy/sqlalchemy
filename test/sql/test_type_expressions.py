@@ -7,6 +7,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
+from sqlalchemy import union
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -270,6 +271,35 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
             "outside_colexpr(inside_colexpr(test_table.y)) AS y "
             "FROM test_table WHERE "
             "test_table.y = outside_bind(inside_bind(:y_1))",
+        )
+
+    def test_compound_select(self):
+        table = self._fixture()
+
+        s1 = select([table]).where(table.c.y == "hi")
+        s2 = select([table]).where(table.c.y == "there")
+
+        self.assert_compile(
+            union(s1, s2),
+            "SELECT test_table.x, lower(test_table.y) AS y "
+            "FROM test_table WHERE test_table.y = lower(:y_1) "
+            "UNION SELECT test_table.x, lower(test_table.y) AS y "
+            "FROM test_table WHERE test_table.y = lower(:y_2)",
+        )
+
+    def test_select_of_compound_select(self):
+        table = self._fixture()
+
+        s1 = select([table]).where(table.c.y == "hi")
+        s2 = select([table]).where(table.c.y == "there")
+
+        self.assert_compile(
+            union(s1, s2).alias().select(),
+            "SELECT anon_1.x, lower(anon_1.y) AS y FROM "
+            "(SELECT test_table.x AS x, test_table.y AS y "
+            "FROM test_table WHERE test_table.y = lower(:y_1) "
+            "UNION SELECT test_table.x AS x, test_table.y AS y "
+            "FROM test_table WHERE test_table.y = lower(:y_2)) AS anon_1",
         )
 
 
