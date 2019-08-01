@@ -346,6 +346,28 @@ class SelectableTest(
         cloned.append_column(func.foo())
         eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo()"])
 
+    def test_clone_col_list_changes_then_proxy(self):
+        t = table("t", column("q"), column("p"))
+        stmt = select([t.c.q]).subquery()
+
+        def add_column(stmt):
+            stmt.append_column(t.c.p)
+
+        stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
+        eq_(list(stmt.c.keys()), ["q"])
+        eq_(list(stmt2.c.keys()), ["q", "p"])
+
+    def test_clone_col_list_changes_then_schema_proxy(self):
+        t = Table("t", MetaData(), Column("q", Integer), Column("p", Integer))
+        stmt = select([t.c.q]).subquery()
+
+        def add_column(stmt):
+            stmt.append_column(t.c.p)
+
+        stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
+        eq_(list(stmt.c.keys()), ["q"])
+        eq_(list(stmt2.c.keys()), ["q", "p"])
+
     def test_append_column_after_visitor_replace(self):
         # test for a supported idiom that matches the deprecated / removed
         # replace_selectable method
