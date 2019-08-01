@@ -274,6 +274,28 @@ class SelectableTest(
         cloned.append_column(func.foo())
         eq_(list(cloned.c.keys()), ["a", "b", "foo()"])
 
+    def test_clone_col_list_changes_then_proxy(self):
+        t = table("t", column("q"), column("p"))
+        stmt = select([t.c.q]).alias()
+
+        def add_column(stmt):
+            stmt.append_column(t.c.p)
+
+        stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
+        eq_(list(stmt.c.keys()), ["q"])
+        eq_(list(stmt2.c.keys()), ["q", "p"])
+
+    def test_clone_col_list_changes_then_schema_proxy(self):
+        t = Table("t", MetaData(), Column("q", Integer), Column("p", Integer))
+        stmt = select([t.c.q]).alias()
+
+        def add_column(stmt):
+            stmt.append_column(t.c.p)
+
+        stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
+        eq_(list(stmt.c.keys()), ["q"])
+        eq_(list(stmt2.c.keys()), ["q", "p"])
+
     def test_append_column_after_replace_selectable(self):
         basesel = select([literal_column("1").label("a")])
         tojoin = select(
