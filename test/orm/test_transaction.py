@@ -713,19 +713,19 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(
             bind.mock_calls,
             [
-                mock.call._contextual_connect(),
-                mock.call._contextual_connect().execution_options(
+                mock.call.connect(),
+                mock.call.connect().execution_options(
                     isolation_level="FOO"
                 ),
-                mock.call._contextual_connect().execution_options().begin(),
+                mock.call.connect().execution_options().begin(),
             ],
         )
-        eq_(c1, bind._contextual_connect().execution_options())
+        eq_(c1, bind.connect().execution_options())
 
     def test_execution_options_ignored_mid_transaction(self):
         bind = mock.Mock()
         conn = mock.Mock(engine=bind)
-        bind._contextual_connect = mock.Mock(return_value=conn)
+        bind.connect = mock.Mock(return_value=conn)
         sess = Session(bind=bind)
         sess.execute("select 1")
         with expect_warnings(

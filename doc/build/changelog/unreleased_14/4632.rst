@@ -1,0 +1,14 @@
+.. change::
+    :tags: change, sql
+    :tickets: 4632
+
+    The "threadlocal" execution strategy, deprecated in 1.3, has been
+    removed for 1.4, as well as the concept of "engine strategies" and the
+    ``Engine.contextual_connect`` method.  The "strategy='mock'" keyword
+    argument is still accepted for now with a deprecation warning; use
+    :func:`.create_mock_engine` instead for this use case.
+
+    .. seealso::
+
+        :ref:`change_4393_threadlocal` - from the 1.3 migration notes which
+        discusses the rationale for deprecation.

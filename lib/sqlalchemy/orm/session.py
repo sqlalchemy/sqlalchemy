@@ -429,7 +429,7 @@ class SessionTransaction(object):
                         "given Connection's Engine"
                     )
             else:
-                conn = bind._contextual_connect()
+                conn = bind.connect()
 
         if execution_options:
             conn = conn.execution_options(**execution_options)
@@ -1131,7 +1131,7 @@ class Session(_SessionClassMethods):
                 engine, execution_options
             )
         else:
-            conn = engine._contextual_connect(**kw)
+            conn = engine.connect(**kw)
             if execution_options:
                 conn = conn.execution_options(**execution_options)
             return conn
