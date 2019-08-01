@@ -29,12 +29,31 @@ from .. import exc
 
 
 class ConventionDict(object):
-    def __init__(self, const, table, convention):
+    def __init__(self, const, table, naming_convention, active_convention):
+        """
+        `naming_convention`:
+            a dict of naming conventions, used as an arg to Metadata
+
+        `active_convention`:
+            the active convention/key being populated by this instance.
+            this is only needed for detailed debug information in exceptions
+        """
         self.const = const
         self._is_fk = isinstance(const, ForeignKeyConstraint)
         self.table = table
-        self.convention = convention
+        self.naming_convention = naming_convention
         self._const_name = const.name
+        self.active_convention = active_convention
+
+    def _debug_dict(self):
+        # used to generate a better exception message for debugging
+        _debug_dict = {"table": "", "columns": []}
+        try:
+            _debug_dict["table"] = self.const.table.name
+            _debug_dict["columns"] = [i.name for i in self.const.columns]
+        except:
+            pass
+        return _debug_dict
 
     def _key_table_name(self):
         return self.table.name
@@ -44,14 +63,48 @@ class ConventionDict(object):
             fk = self.const.elements[idx]
             return fk.parent
         else:
+            if not self.const.columns:
+                _debug_dict = self._debug_dict()
+                raise exc.InvalidRequestError(
+                    'Naming convention "%s" requires column %s for a constraint, '
+                    "however the constraint does not have that number of "
+                    'columns. Check table "%s" and column(s) "%s".'
+                    % (
+                        self.active_convention,
+                        idx,
+                        _debug_dict.get("table", ""),
+                        _debug_dict.get("columns", ""),
+                    )
+                )
             return list(self.const.columns)[idx]
 
     def _key_constraint_name(self):
         if isinstance(self._const_name, (type(None), _defer_none_name)):
+            _debug_dict = self._debug_dict()
+            if self.const._type_bound:
+                raise exc.InvalidRequestError(
+                    'Naming convention "%s" failed to apply to CHECK constraint '
+                    'on table "%s" with column "%s" since the constraint has no name, '
+                    'and the convention uses the "%%(constraint_name)s" token. '
+                    'Consider using the "type_ck" naming convention for type-bound '
+                    "CHECK constraints so that no name is necessary."
+                    % (
+                        self.active_convention,
+                        _debug_dict.get("table", ""),
+                        _debug_dict.get("columns", ""),
+                    ),
+                    code="f0f1",
+                )
             raise exc.InvalidRequestError(
-                "Naming convention including "
-                "%(constraint_name)s token requires that "
-                "constraint is explicitly named."
+                'Naming convention including "%%(constraint_name)s" token '
+                "requires that constraint is explicitly named. "
+                'Check naming convention "%s", table "%s", '
+                'and column(s) "%s".'
+                % (
+                    self.active_convention,
+                    _debug_dict.get("table", ""),
+                    _debug_dict.get("columns", ""),
+                )
             )
         if not isinstance(self._const_name, conv):
             self.const.name = None
@@ -86,8 +139,8 @@ class ConventionDict(object):
         return fk.column.name
 
     def __getitem__(self, key):
-        if key in self.convention:
-            return self.convention[key](self.const, self.table)
+        if key in self.naming_convention:
+            return self.naming_convention[key](self.const, self.table)
         elif hasattr(self, "_key_%s" % key):
             return getattr(self, "_key_%s" % key)()
         else:
@@ -118,7 +171,8 @@ class ConventionDict(object):
         raise KeyError(key)
 
 
-_prefix_dict = {
+# NOTE: "base" prefixes might be augmented by `_get_prefixes()`
+_base_prefix_dict = {
     Index: "ix",
     PrimaryKeyConstraint: "pk",
     CheckConstraint: "ck",
@@ -127,11 +181,28 @@ _prefix_dict = {
 }
 
 
-def _get_convention(dict_, key):
+def _get_prefixes(const):
+    """
+    `_get_prefixes(const)` allows for a `_base_prefix` dict item to be augmented
+    in certain use-cases.
 
-    for super_ in key.__mro__:
-        if super_ in _prefix_dict and _prefix_dict[super_] in dict_:
-            return dict_[_prefix_dict[super_]]
+    * `_type_bound` constraints, which are automatically created for Bool/Enum
+      validation on certain backends will prefer a `type_ck` prefix
+    """
+    for super_ in type(const).__mro__:
+        if super_ in _base_prefix_dict:
+            prefix = _base_prefix_dict[super_]
+            if isinstance(const, Constraint) and const._type_bound:
+                if isinstance(const.name, _defer_none_name):
+                    # only use the `type_` prefix if no name was presented
+                    yield "type_%s" % prefix, super_
+            yield prefix, super_
+
+
+def _get_convention(dict_, const):
+    for prefix, super_ in _get_prefixes(const):
+        if prefix in dict_:
+            return dict_[prefix]
         elif super_ in dict_:
             return dict_[super_]
     else:
@@ -140,7 +211,7 @@ def _get_convention(dict_, key):
 
 def _constraint_name_for_table(const, table):
     metadata = table.metadata
-    convention = _get_convention(metadata.naming_convention, type(const))
+    convention = _get_convention(metadata.naming_convention, const)
 
     if isinstance(const.name, conv):
         return const.name
@@ -155,7 +226,7 @@ def _constraint_name_for_table(const, table):
     ):
         return conv(
             convention
-            % ConventionDict(const, table, metadata.naming_convention)
+            % ConventionDict(const, table, metadata.naming_convention, convention)
         )
     elif isinstance(convention, _defer_none_name):
         return None

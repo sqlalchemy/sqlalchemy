@@ -3995,8 +3995,9 @@ class MetaData(SchemaItem):
             class
 
           * a string mnemonic for one of the known constraint classes;
-            ``"fk"``, ``"pk"``, ``"ix"``, ``"ck"``, ``"uq"`` for foreign key,
-            primary key, index, check, and unique constraint, respectively.
+            ``"fk"``, ``"pk"``, ``"ix"``, ``"ck"``, ``"type_ck"``, ``"uq"`` for
+            foreign key, primary key, index, check, type_check, and unique
+            constraint, respectively.
 
           * the string name of a user-defined "token" that can be used
             to define new naming tokens.

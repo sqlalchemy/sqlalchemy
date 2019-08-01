@@ -741,6 +741,58 @@ Since "b" is required, pass it as ``None`` so that the INSERT may proceed::
 
  :ref:`execute_multiple`
 
+
+.. _error_f0f1:
+
+Naming convention "ck_%(table_name)s_%(constraint_name)s" failed to apply to CHECK constraint...
+------------------------------------------------------------------------------------------------
+
+This error typically occurs when SqlAlchemy must automatically generate a check
+constraint for a "type bound" column such as :class:`.Boolean` or :class:`.Enum`,
+and the naming convention references a `constraint_name`, but a constraint
+name was not explicitly provided.  SqlAlchemy only generates type-bound constraints
+on certain database backends which do not have native enforcement of data types.
+
+The simplest way to address this issue is to update your MetaData's naming convention
+to include a ``type_ck`` prefix and corresponding template which uses the
+``column_0_name`` token. This naming convention will only be used when automatically
+generating contraints for "type bound" columns. The "type_ck"``" prefix was added
+in SqlAlchemy 1.4 .
+
+This following example adds a "type_ck" prefix and template which use the
+``column_0_name`` token instead of ``constraint_name`` ::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                           "type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                           }
+    )
+    Table('foo', metadata,
+        Column('flag', Boolean())
+    )
+    
+If you prefer more control over your constraint naming, SqlAlchemy allows you
+to supply the contraint name in the column definition itself, using the `name`
+argument ::
+
+    metadata = MetaData(
+        naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                           }
+    )
+    Table('foo', metadata,
+        Column('flag', Boolean(name='flag_bool'))
+    )
+
+In the example above, because there is a contraint name explicitly supplied to the
+:class:`.Boolean` column, the "ck_" prefix can utilize the "%(constraint_name)s"
+token and a "type_ck" template is not needed.
+
+
+.. seealso::
+
+ :ref:`_naming_schematypes`
+
+
 .. _error_89ve:
 
 Expected FROM clause, got Select.  To create a FROM clause, use the .subquery() method

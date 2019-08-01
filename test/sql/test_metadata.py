@@ -4911,8 +4911,10 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            r"Naming convention including %\(constraint_name\)s token "
-            "requires that constraint is explicitly named.",
+            r'Naming convention including "%\(constraint_name\)s" token '
+            r"requires that constraint is explicitly named. "
+            r'Check naming convention "ck_%\(table_name\)s_%\(constraint_name\)s", '
+            r'table "user", and column\(s\) "\[\'data\'\]".',
             CheckConstraint,
             u1.c.data == "x",
         )
@@ -4925,8 +4927,10 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            r"Naming convention including %\(constraint_name\)s token "
-            "requires that constraint is explicitly named.",
+            r'Naming convention including "%\(constraint_name\)s" token '
+            r"requires that constraint is explicitly named. "
+            r'Check naming convention "ck_%\(table_name\)s_%\(constraint_name\)s", '
+            r'table "user", and column\(s\) "\[\'data\'\]".',
             schema.AddConstraint(ck).compile,
         )
 
@@ -5027,14 +5031,24 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(fk.name, "fk_address_HASH_address")
 
     def test_schematype_ck_name_boolean(self):
+        """If a CheckConstraint is EXPLICITLY declared for a Boolean column, it
+        should use the `ck_` prefix and not the `type_ck`."""
         m1 = MetaData(
-            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
+<<<<<<< HEAD
+            naming_convention={
+                "ck": "ck_%(table_name)s_%(constraint_name)s",
+                "type_ck": "type_ck_%(table_name)s_%(column_0_name)s",
+            }
         )
-
         u1 = Table(
             "user",
             m1,
             Column("x", Boolean(name="foo", create_constraint=True)),
+=======
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                               "type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
         )
         # constraint is not hit
         eq_(
@@ -5052,11 +5066,58 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
-    def test_schematype_ck_name_boolean_not_on_name(self):
+    def test_schematype_ck_name_boolean__no_ck(self):
+        """If a CheckConstraint is EXPLICITLY declared for a Boolean column, it
+        should use the `ck_` prefix and not the `type_ck`.
+
+        If the `ck_` is missing in the naming_convention, then only the raw
+        constraint name is expected to be used."""
         m1 = MetaData(
-            naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+<<<<<<< HEAD
+            naming_convention={
+                "type_ck": "type_ck_%(table_name)s_%(column_0_name)s",
+            }
+=======
+            naming_convention={"type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
+        )
+        u1 = Table("user", m1, Column("x", Boolean(name="foo")))
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "foo",
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x BOOLEAN, "
+            "CONSTRAINT foo CHECK (x IN (0, 1))"
+            ")",
         )
 
+    def test_schematype_ck_name_boolean_not_on_name(self):
+        """If a CheckConstraint is IMPLICITLY created for a Boolean column, it
+        should use the `type_ck_` prefix.
+ 
+        Ensure the correct naming_convention is chosen when `ck` and `type_ck`
+        are both present.
+        """
+        m1 = MetaData(
+<<<<<<< HEAD
+            naming_convention={
+                "ck": "ck_%(table_name)s_%(constraint_name)s",
+                "type_ck": "type_ck_%(table_name)s_%(column_0_name)s",
+            }
+=======
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                               "type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
+        )
         u1 = Table("user", m1, Column("x", Boolean(create_constraint=True)))
         # constraint is not hit
         is_(
@@ -5074,15 +5135,54 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
-    def test_schematype_ck_name_enum(self):
+    def test_schematype_ck_name_boolean_not_on_name__no_type_ck(self):
+        """If a CheckConstraint is IMPLICITLY created for a Boolean column, it
+        should use the `type_ck_` prefix.
+
+        Ensure the correct naming_convention is chosen when `ck` is present but
+        `type_ck` is not.
+
+        This should default back to `ck`, but `ck` contains a `constraint_name`
+        token, which should raise an exception.
+        """
         m1 = MetaData(
-            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",}
+        )
+        u1 = Table("user", m1, Column("x", Boolean()))
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "_unnamed_",
+        )
+        # but is hit at compile time
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r'Naming convention "ck_\%\(table_name\)s_\%\(constraint_name\)s" failed to apply to CHECK constraint on table "user" with column "\[\'x\'\]" since the constraint has no name, and the convention uses the "\%\(constraint_name\)s" token\. Consider using the "type_ck" naming convention for type-bound CHECK constraints so that no name is necessary\.',
+            schema.CreateTable(u1).compile,
+            dialect=default.DefaultDialect(),
         )
 
+    def test_schematype_ck_name_enum(self):
+        """If a CheckConstraint is EXPLICITLY declared for a Enum column, it
+        should use the `ck_` prefix and not the `type_ck`."""
+        m1 = MetaData(
+<<<<<<< HEAD
+            naming_convention={
+                "ck": "ck_%(table_name)s_%(constraint_name)s",
+                "type_ck": "type_ck_%(table_name)s_%(constraint_name)s",
+            }
+        )
         u1 = Table(
             "user",
             m1,
             Column("x", Enum("a", "b", name="foo", create_constraint=True)),
+=======
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                               "type_ck": "ck_%(table_name)s_%(constraint_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
         )
         eq_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
@@ -5099,11 +5199,216 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
+    def test_schematype_ck_name_enum__no_ck(self):
+        """If a CheckConstraint is EXPLICITLY declared for a Enum column, it
+        should use the `ck_` prefix and not the `type_ck`.
+
+        If the `ck_` is missing in the naming_convention, then only the raw
+        constraint name is expected to be used."""
+        m1 = MetaData(
+<<<<<<< HEAD
+            naming_convention={
+                "type_ck": "type_ck_%(table_name)s_%(constraint_name)s",
+            }
+=======
+            naming_convention={"type_ck": "ck_%(table_name)s_%(constraint_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
+        )
+        u1 = Table("user", m1, Column("x", Enum("a", "b", name="foo")))
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "foo",
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x VARCHAR(1), "
+            "CONSTRAINT foo CHECK (x IN ('a', 'b'))"
+            ")",
+        )
+
+    def test_schematype_ck_name_enum_not_on_name(self):
+        """If a CheckConstraint is IMPLICITLY created for a Enum column, it
+        should use the `type_ck_` prefix.
+
+        Ensure the correct naming_convention is chosen when `ck` and `type_ck`
+        are both present.
+        """
+        m1 = MetaData(
+<<<<<<< HEAD
+            naming_convention={
+                "ck": "ck_%(table_name)s_%(constraint_name)s",
+                "type_ck": "type_ck_%(table_name)s_%(column_0_name)s",
+            }
+=======
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                               "type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
+        )
+        u1 = Table("user", m1, Column("x", Enum("a", "b")))
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "_unnamed_",
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x VARCHAR(1), "
+            "CONSTRAINT ck_user_x CHECK (x IN ('a', 'b'))"
+            ")",
+        )
+
+    def test_schematype_ck_name_enum_not_on_name__no_type_ck(self):
+        """If a CheckConstraint is IMPLICITLY created for a Enum column, it
+        should use the `type_ck_` prefix.
+
+        Ensure the correct naming_convention is chosen when `ck` is present but
+        `type_ck` is not.
+
+        This should default back to `ck`, but `ck` contains a `constraint_name`
+        token, which should raise an exception.
+        """
+        m1 = MetaData(
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",}
+        )
+        u1 = Table("user", m1, Column("x", Enum("a", "b")))
+        # constraint is not hit
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "_unnamed_",
+        )
+        # but is hit at compile time
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r'Naming convention "ck_\%\(table_name\)s_\%\(constraint_name\)s" failed to apply to CHECK constraint on table "user" with column "\[\'x\'\]" since the constraint has no name, and the convention uses the "\%\(constraint_name\)s" token\. Consider using the "type_ck" naming convention for type-bound CHECK constraints so that no name is necessary\.',
+            schema.CreateTable(u1).compile,
+            dialect=default.DefaultDialect(),
+        )
+
+    def test_schematype_ck_enum_pep435_no_name(self):
+        """If a PEP-435 compliant enum is the column's source, it's class name
+        should be cast to lowercase and used as the check constraint name.
+
+        reference: https://docs.sqlalchemy.org/en/13/core/type_basics.html#sqlalchemy.types.Enum.__init__
+        """
+        m1 = MetaData(
+<<<<<<< HEAD
+            naming_convention={
+                "ck": "ck_%(table_name)s_%(constraint_name)s",
+                "type_ck": "type_ck_%(table_name)s_%(constraint_name)s",
+            }
+=======
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                               "type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
+        )
+        import enum
+
+        class MyEnum(enum.Enum):
+            a = 1
+            b = 2
+
+        u1 = Table("user", m1, Column("x", Enum(MyEnum)))
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "myenum",
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x VARCHAR(1), "
+            "CONSTRAINT ck_user_myenum CHECK (x IN ('a', 'b'))"
+            ")",
+        )
+
+    def test_schematype_ck_enum_pep435_name(self):
+        """If a PEP-435 compliant enum is the column's source, it's class name
+        should be cast to lowercase and used as the check constraint name.
+
+        reference: https://docs.sqlalchemy.org/en/13/core/type_basics.html#sqlalchemy.types.Enum.__init__
+        """
+        m1 = MetaData(
+<<<<<<< HEAD
+            naming_convention={
+                "ck": "ck_%(table_name)s_%(constraint_name)s",
+                "type_ck": "type_ck_%(table_name)s_%(constraint_name)s",
+            }
+=======
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s",
+                               "type_ck": "ck_%(table_name)s_%(column_0_name)s",
+                               }
+>>>>>>> first round of responses to @zzzeek's feedback:
+        )
+        import enum
+
+        class MyEnum(enum.Enum):
+            a = 1
+            b = 2
+
+        u1 = Table("user", m1, Column("x", Enum(MyEnum, name="enum_my")))
+        eq_(
+            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
+                0
+            ].name,
+            "enum_my",
+        )
+        # but is hit at compile time
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x VARCHAR(1), "
+            "CONSTRAINT ck_user_enum_my CHECK (x IN ('a', 'b'))"
+            ")",
+        )
+
+    def test_schematype_ck_no_columns_on_constraint(self):
+        """
+        see https://github.com/sqlalchemy/sqlalchemy/issues/4784#issuecomment-516581616
+
+        this will raise an error because there are no columns to name the constraint with
+
+            u1 = Table(
+                "user", m1,
+                Column("x", Integer),
+                CheckConstraint('z > 10')
+            )
+
+        unlike other tests, this will trigger immediately on the `Table()` call,
+        because the constraint's name is not "deferred" no name.
+        """
+        m1 = MetaData(
+            naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
+        )
+
+        assert_raises_message( 
+            exc.InvalidRequestError,
+            r'Naming convention "ck_\%\(table_name\)s_\%\(column_0_name\)s" requires column 0 for a constraint, however the constraint does not have that number of columns. Check table "user" and column\(s\) "\[\]"',
+            Table,
+            "user", m1,
+            Column("x", Integer),
+            CheckConstraint('z > 10')
+        )
+
     def test_schematype_ck_name_propagate_conv(self):
         m1 = MetaData(
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
-
         u1 = Table(
             "user",
             m1,
@@ -5151,8 +5456,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            r"Naming convention including \%\(constraint_name\)s token "
-            r"requires that constraint is explicitly named.",
+            r'Naming convention "ck_\%\(table_name\)s_\%\(constraint_name\)s" failed to apply to CHECK constraint on table "user" with column "\[\'x\'\]" since the constraint has no name, and the convention uses the "\%\(constraint_name\)s" token. Consider using the "type_ck" naming convention for type-bound CHECK constraints so that no name is necessary. \(Background on this error at: http://sqlalche.me/e/f0f1\)',
             schema.CreateTable(u1).compile,
             dialect=default.DefaultDialect(),
         )
