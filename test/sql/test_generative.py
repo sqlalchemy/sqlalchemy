@@ -425,12 +425,13 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(str(f1), str(f2))
 
     def test_aliased_cloned_schema_column_adapt_exported(self):
-        clause = select([t3.c.col1, func.foo(t3.c.col2).label("foo")])
-        c_sub = clause.subquery()
+        clause = select(
+            [t3.c.col1, func.foo(t3.c.col2).label("foo")]
+        ).subquery()
 
-        aliased1 = select([c_sub.c.col1, c_sub.c.foo]).subquery()
+        aliased1 = select([clause.c.col1, clause.c.foo]).subquery()
         aliased2 = clause
-        aliased2.selected_columns.col1, aliased2.selected_columns.foo
+        aliased2.c.col1, aliased2.c.foo
         aliased3 = cloned_traverse(aliased2, {}, {})
 
         # also fixed by [ticket:2419].  When we look at the
@@ -438,8 +439,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         # have an _is_clone_of pointer.   But we now modified _make_proxy
         # to assign this.
         adapter = sql_util.ColumnAdapter(aliased1)
-        f1 = select([adapter.columns[c] for c in aliased2.selected_columns])
-        f2 = select([adapter.columns[c] for c in aliased3.selected_columns])
+        f1 = select([adapter.columns[c] for c in aliased2.c])
+        f2 = select([adapter.columns[c] for c in aliased3.c])
         eq_(str(f1), str(f2))
 
     def test_labeled_expression_adapt(self):
