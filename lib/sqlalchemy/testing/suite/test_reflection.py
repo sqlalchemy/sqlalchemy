@@ -24,6 +24,8 @@ from ...engine.reflection import Inspector
 from ...schema import DDL
 from ...schema import Index
 from ...sql.elements import quoted_name
+from ...testing import is_false
+from ...testing import is_true
 
 
 metadata, users = None, None
@@ -40,11 +42,39 @@ class HasTableTest(fixtures.TablesTest):
             Column("id", Integer, primary_key=True),
             Column("data", String(50)),
         )
+        if testing.requires.schemas.enabled:
+            Table(
+                "test_table_s",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("data", String(50)),
+                schema=config.test_schema,
+            )
 
     def test_has_table(self):
         with config.db.begin() as conn:
-            assert config.db.dialect.has_table(conn, "test_table")
-            assert not config.db.dialect.has_table(conn, "nonexistent_table")
+            is_true(config.db.dialect.has_table(conn, "test_table"))
+            is_false(config.db.dialect.has_table(conn, "test_table_s"))
+            is_false(config.db.dialect.has_table(conn, "nonexistent_table"))
+
+    @testing.requires.schemas
+    def test_has_table_schema(self):
+        with config.db.begin() as conn:
+            is_false(
+                config.db.dialect.has_table(
+                    conn, "test_table", schema=config.test_schema
+                )
+            )
+            is_true(
+                config.db.dialect.has_table(
+                    conn, "test_table_s", schema=config.test_schema
+                )
+            )
+            is_false(
+                config.db.dialect.has_table(
+                    conn, "nonexistent_table", schema=config.test_schema
+                )
+            )
 
 
 class ComponentReflectionTest(fixtures.TablesTest):

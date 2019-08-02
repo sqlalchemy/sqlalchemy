@@ -210,7 +210,9 @@ the actual ``CREATE TABLE`` statement:
 
     >>> Base.metadata.create_all(engine)
     SELECT ...
-    PRAGMA table_info("users")
+    PRAGMA main.table_info("users")
+    ()
+    PRAGMA temp.table_info("users")
     ()
     CREATE TABLE users (
         id INTEGER NOT NULL, name VARCHAR,

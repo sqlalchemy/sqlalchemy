@@ -1999,17 +1999,26 @@ class SQLiteDialect(default.DefaultDialect):
     def _get_table_pragma(self, connection, pragma, table_name, schema=None):
         quote = self.identifier_preparer.quote_identifier
         if schema is not None:
-            statement = "PRAGMA %s." % quote(schema)
+            statements = ["PRAGMA %s." % quote(schema)]
         else:
-            statement = "PRAGMA "
+            # because PRAGMA looks in all attached databases if no schema
+            # given, need to specify "main" schema, however since we want
+            # 'temp' tables in the same namespace as 'main', need to run
+            # the PRAGMA twice
+            statements = ["PRAGMA main.", "PRAGMA temp."]
+
         qtable = quote(table_name)
-        statement = "%s%s(%s)" % (statement, pragma, qtable)
-        cursor = connection.execute(statement)
-        if not cursor._soft_closed:
-            # work around SQLite issue whereby cursor.description
-            # is blank when PRAGMA returns no rows:
-            # http://www.sqlite.org/cvstrac/tktview?tn=1884
-            result = cursor.fetchall()
+        for statement in statements:
+            statement = "%s%s(%s)" % (statement, pragma, qtable)
+            cursor = connection.execute(statement)
+            if not cursor._soft_closed:
+                # work around SQLite issue whereby cursor.description
+                # is blank when PRAGMA returns no rows:
+                # http://www.sqlite.org/cvstrac/tktview?tn=1884
+                result = cursor.fetchall()
+            else:
+                result = []
+            if result:
+                return result
         else:
-            result = []
-        return result
+            return []

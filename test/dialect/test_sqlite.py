@@ -694,11 +694,22 @@ class AttachedDBTest(fixtures.TestBase):
     def _fixture(self):
         meta = self.metadata
         self.conn = testing.db.connect()
+        Table("created", meta, Column("foo", Integer), Column("bar", String))
+        Table("local_only", meta, Column("q", Integer), Column("p", Integer))
+
         ct = Table(
             "created",
             meta,
             Column("id", Integer),
             Column("name", String),
+            schema="test_schema",
+        )
+
+        Table(
+            "another_created",
+            meta,
+            Column("bat", Integer),
+            Column("hoho", String),
             schema="test_schema",
         )
 
@@ -717,15 +728,59 @@ class AttachedDBTest(fixtures.TestBase):
         insp = inspect(self.conn)
         eq_(insp.get_table_names("test_schema"), [])
 
+    def test_column_names(self):
+        self._fixture()
+        insp = inspect(self.conn)
+        eq_(
+            [
+                d["name"]
+                for d in insp.get_columns("created", schema="test_schema")
+            ],
+            ["id", "name"],
+        )
+        eq_(
+            [d["name"] for d in insp.get_columns("created", schema=None)],
+            ["foo", "bar"],
+        )
+
+        eq_(
+            [
+                d["name"]
+                for d in insp.get_columns("nonexistent", schema="test_schema")
+            ],
+            [],
+        )
+        eq_(
+            [
+                d["name"]
+                for d in insp.get_columns("another_created", schema=None)
+            ],
+            [],
+        )
+        eq_(
+            [
+                d["name"]
+                for d in insp.get_columns("local_only", schema="test_schema")
+            ],
+            [],
+        )
+        eq_([d["name"] for d in insp.get_columns("local_only")], ["q", "p"])
+
     def test_table_names_present(self):
         self._fixture()
         insp = inspect(self.conn)
-        eq_(insp.get_table_names("test_schema"), ["created"])
+        eq_(
+            set(insp.get_table_names("test_schema")),
+            {"created", "another_created"},
+        )
 
     def test_table_names_system(self):
         self._fixture()
         insp = inspect(self.conn)
-        eq_(insp.get_table_names("test_schema"), ["created"])
+        eq_(
+            set(insp.get_table_names("test_schema")),
+            {"created", "another_created"},
+        )
 
     def test_schema_names(self):
         self._fixture()
