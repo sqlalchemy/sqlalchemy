@@ -1,0 +1,13 @@
+.. change:
+    :tags: bug, sqlite
+    :tickets: 4793
+
+    Fixed bug where usage of "PRAGMA table_info" in SQLite dialect meant that
+    reflection features to detect for table existence, list of table columns,
+    and list of foreign keys, would default to any table in any attached
+    database, when no schema name was given and the table did not exist in the
+    base schema.  The fix explicitly runs PRAGMA for the 'main' schema and then
+    the 'temp' schema if the 'main' returned no rows, to maintain the behavior
+    of tables + temp tables in the "no schema" namespace, attached tables only
+    in the "schema" namespace.
+
