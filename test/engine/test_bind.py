@@ -4,6 +4,7 @@ including the deprecated versions of these arguments"""
 import sqlalchemy as sa
 from sqlalchemy import engine
 from sqlalchemy import exc
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import testing
@@ -12,6 +13,8 @@ from sqlalchemy import ThreadLocalMetaData
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -37,11 +40,11 @@ class BindTest(fixtures.TestBase):
         for bind in (testing.db, testing.db.connect()):
             for args in [([], {"bind": bind}), ([bind], {})]:
                 metadata.create_all(*args[0], **args[1])
-                assert table.exists(*args[0], **args[1])
+                is_true(inspect(bind).has_table(table.name))
                 metadata.drop_all(*args[0], **args[1])
                 table.create(*args[0], **args[1])
                 table.drop(*args[0], **args[1])
-                assert not table.exists(*args[0], **args[1])
+                is_false(inspect(bind).has_table(table.name))
 
     def test_create_drop_err_metadata(self):
         metadata = MetaData()
@@ -57,7 +60,7 @@ class BindTest(fixtures.TestBase):
         metadata = MetaData()
         table = Table("test_table", metadata, Column("foo", Integer))
 
-        for meth in [table.exists, table.create, table.drop]:
+        for meth in [table.create, table.drop]:
             assert_raises_message(
                 exc.UnboundExecutionError,
                 (
@@ -108,11 +111,11 @@ class BindTest(fixtures.TestBase):
                     )
                     assert metadata.bind is table.bind is bind
                     metadata.create_all()
-                    assert table.exists()
+                    is_true(inspect(bind).has_table(table.name))
                     metadata.drop_all()
                     table.create()
                     table.drop()
-                    assert not table.exists()
+                    is_false(inspect(bind).has_table(table.name))
             finally:
                 if isinstance(bind, engine.Connection):
                     bind.close()

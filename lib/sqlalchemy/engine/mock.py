@@ -48,7 +48,7 @@ class MockConnection(base.Connectable):
 
         ddl.SchemaDropper(self.dialect, self, **kwargs).traverse_single(entity)
 
-    def _run_visitor(
+    def _run_ddl_visitor(
         self, visitorcallable, element, connection=None, **kwargs
     ):
         kwargs["checkfirst"] = False

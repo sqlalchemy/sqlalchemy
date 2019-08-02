@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
@@ -19,10 +18,13 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.interfaces import ConnectionProxy
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -62,38 +64,6 @@ class CreateEngineTest(fixtures.TestBase):
             )
 
 
-class TableNamesOrderByTest(fixtures.TestBase):
-    @testing.provide_metadata
-    def test_order_by_foreign_key(self):
-        Table(
-            "t1",
-            self.metadata,
-            Column("id", Integer, primary_key=True),
-            test_needs_acid=True,
-        )
-        Table(
-            "t2",
-            self.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("t1id", Integer, ForeignKey("t1.id")),
-            test_needs_acid=True,
-        )
-        Table(
-            "t3",
-            self.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("t2id", Integer, ForeignKey("t2.id")),
-            test_needs_acid=True,
-        )
-        self.metadata.create_all()
-        insp = inspect(testing.db)
-        with testing.expect_deprecated(
-            "The get_table_names.order_by parameter is deprecated "
-        ):
-            tnames = insp.get_table_names(order_by="foreign_key")
-        eq_(tnames, ["t1", "t2", "t3"])
-
-
 def _proxy_execute_deprecated():
     return (
         testing.expect_deprecated("ConnectionProxy.execute is deprecated."),
@@ -101,6 +71,61 @@ def _proxy_execute_deprecated():
             "ConnectionProxy.cursor_execute is deprecated."
         ),
     )
+
+
+class TransactionTest(fixtures.TestBase):
+    __backend__ = True
+
+    @classmethod
+    def setup_class(cls):
+        metadata = MetaData()
+        cls.users = Table(
+            "query_users",
+            metadata,
+            Column("user_id", Integer, primary_key=True),
+            Column("user_name", String(20)),
+            test_needs_acid=True,
+        )
+        cls.users.create(testing.db)
+
+    def teardown(self):
+        testing.db.execute(self.users.delete()).close()
+
+    @classmethod
+    def teardown_class(cls):
+        cls.users.drop(testing.db)
+
+    def test_transaction_container(self):
+        users = self.users
+
+        def go(conn, table, data):
+            for d in data:
+                conn.execute(table.insert(), d)
+
+        with testing.expect_deprecated(
+            r"The Engine.transaction\(\) method is deprecated"
+        ):
+            testing.db.transaction(
+                go, users, [dict(user_id=1, user_name="user1")]
+            )
+
+        with testing.db.connect() as conn:
+            eq_(conn.execute(users.select()).fetchall(), [(1, "user1")])
+        with testing.expect_deprecated(
+            r"The Engine.transaction\(\) method is deprecated"
+        ):
+            assert_raises(
+                tsa.exc.DBAPIError,
+                testing.db.transaction,
+                go,
+                users,
+                [
+                    {"user_id": 2, "user_name": "user2"},
+                    {"user_id": 1, "user_name": "user3"},
+                ],
+            )
+        with testing.db.connect() as conn:
+            eq_(conn.execute(users.select()).fetchall(), [(1, "user1")])
 
 
 class ProxyConnectionTest(fixtures.TestBase):
@@ -927,3 +952,162 @@ class ExplicitAutoCommitDeprecatedTest(fixtures.TestBase):
         ]
         conn1.close()
         conn2.close()
+
+
+class DeprecatedEngineFeatureTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        cls.table = Table(
+            "exec_test",
+            metadata,
+            Column("a", Integer),
+            Column("b", Integer),
+            test_needs_acid=True,
+        )
+
+    def _trans_fn(self, is_transaction=False):
+        def go(conn, x, value=None):
+            if is_transaction:
+                conn = conn.connection
+            conn.execute(self.table.insert().values(a=x, b=value))
+
+        return go
+
+    def _trans_rollback_fn(self, is_transaction=False):
+        def go(conn, x, value=None):
+            if is_transaction:
+                conn = conn.connection
+            conn.execute(self.table.insert().values(a=x, b=value))
+            raise SomeException("breakage")
+
+        return go
+
+    def _assert_no_data(self):
+        eq_(
+            testing.db.scalar(
+                select([func.count("*")]).select_from(self.table)
+            ),
+            0,
+        )
+
+    def _assert_fn(self, x, value=None):
+        eq_(testing.db.execute(self.table.select()).fetchall(), [(x, value)])
+
+    def test_transaction_engine_fn_commit(self):
+        fn = self._trans_fn()
+        with testing.expect_deprecated(r"The Engine.transaction\(\) method"):
+            testing.db.transaction(fn, 5, value=8)
+        self._assert_fn(5, value=8)
+
+    def test_transaction_engine_fn_rollback(self):
+        fn = self._trans_rollback_fn()
+        with testing.expect_deprecated(
+            r"The Engine.transaction\(\) method is deprecated"
+        ):
+            assert_raises_message(
+                Exception, "breakage", testing.db.transaction, fn, 5, value=8
+            )
+        self._assert_no_data()
+
+    def test_transaction_connection_fn_commit(self):
+        fn = self._trans_fn()
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated(
+                r"The Connection.transaction\(\) method is deprecated"
+            ):
+                conn.transaction(fn, 5, value=8)
+            self._assert_fn(5, value=8)
+
+    def test_transaction_connection_fn_rollback(self):
+        fn = self._trans_rollback_fn()
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated(r""):
+                assert_raises(Exception, conn.transaction, fn, 5, value=8)
+        self._assert_no_data()
+
+
+class DeprecatedReflectionTest(fixtures.TablesTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "user",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+        Table(
+            "address",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("user_id", ForeignKey("user.id")),
+            Column("email", String(50)),
+        )
+
+    def test_exists(self):
+        dont_exist = Table("dont_exist", MetaData())
+        with testing.expect_deprecated(
+            r"The Table.exists\(\) method is deprecated"
+        ):
+            is_false(dont_exist.exists(testing.db))
+
+        user = self.tables.user
+        with testing.expect_deprecated(
+            r"The Table.exists\(\) method is deprecated"
+        ):
+            is_true(user.exists(testing.db))
+
+    def test_create_drop_explicit(self):
+        metadata = MetaData()
+        table = Table("test_table", metadata, Column("foo", Integer))
+        for bind in (testing.db, testing.db.connect()):
+            for args in [([], {"bind": bind}), ([bind], {})]:
+                metadata.create_all(*args[0], **args[1])
+                with testing.expect_deprecated(
+                    r"The Table.exists\(\) method is deprecated"
+                ):
+                    assert table.exists(*args[0], **args[1])
+                metadata.drop_all(*args[0], **args[1])
+                table.create(*args[0], **args[1])
+                table.drop(*args[0], **args[1])
+                with testing.expect_deprecated(
+                    r"The Table.exists\(\) method is deprecated"
+                ):
+                    assert not table.exists(*args[0], **args[1])
+
+    def test_create_drop_err_table(self):
+        metadata = MetaData()
+        table = Table("test_table", metadata, Column("foo", Integer))
+
+        with testing.expect_deprecated(
+            r"The Table.exists\(\) method is deprecated"
+        ):
+            assert_raises_message(
+                tsa.exc.UnboundExecutionError,
+                (
+                    "Table object 'test_table' is not bound to an Engine or "
+                    "Connection."
+                ),
+                table.exists,
+            )
+
+    def test_engine_has_table(self):
+        with testing.expect_deprecated(
+            r"The Engine.has_table\(\) method is deprecated"
+        ):
+            is_false(testing.db.has_table("dont_exist"))
+
+        with testing.expect_deprecated(
+            r"The Engine.has_table\(\) method is deprecated"
+        ):
+            is_true(testing.db.has_table("user"))
+
+    def test_engine_table_names(self):
+        metadata = self.metadata
+
+        with testing.expect_deprecated(
+            r"The Engine.table_names\(\) method is deprecated"
+        ):
+            table_names = testing.db.table_names()
+        is_true(set(table_names).issuperset(metadata.tables))

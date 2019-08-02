@@ -10,6 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy import create_mock_engine
 from sqlalchemy import event
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
@@ -33,7 +34,9 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.engines import testing_engine
@@ -839,30 +842,6 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
             # autocommit is off
             self._assert_no_data()
 
-    def test_transaction_engine_fn_commit(self):
-        fn = self._trans_fn()
-        testing.db.transaction(fn, 5, value=8)
-        self._assert_fn(5, value=8)
-
-    def test_transaction_engine_fn_rollback(self):
-        fn = self._trans_rollback_fn()
-        assert_raises_message(
-            Exception, "breakage", testing.db.transaction, fn, 5, value=8
-        )
-        self._assert_no_data()
-
-    def test_transaction_connection_fn_commit(self):
-        fn = self._trans_fn()
-        with testing.db.connect() as conn:
-            conn.transaction(fn, 5, value=8)
-            self._assert_fn(5, value=8)
-
-    def test_transaction_connection_fn_rollback(self):
-        fn = self._trans_rollback_fn()
-        with testing.db.connect() as conn:
-            assert_raises(Exception, conn.transaction, fn, 5, value=8)
-        self._assert_no_data()
-
 
 class CompiledCacheTest(fixtures.TestBase):
     __backend__ = True
@@ -1126,18 +1105,20 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         ) as conn:
             metadata.create_all(conn)
 
-        assert config.db.has_table("t1", schema=config.test_schema)
-        assert config.db.has_table("t2", schema=config.test_schema)
-        assert config.db.has_table("t3", schema=None)
+        insp = inspect(config.db)
+        is_true(insp.has_table("t1", schema=config.test_schema))
+        is_true(insp.has_table("t2", schema=config.test_schema))
+        is_true(insp.has_table("t3", schema=None))
 
         with config.db.connect().execution_options(
             schema_translate_map=map_
         ) as conn:
             metadata.drop_all(conn)
 
-        assert not config.db.has_table("t1", schema=config.test_schema)
-        assert not config.db.has_table("t2", schema=config.test_schema)
-        assert not config.db.has_table("t3", schema=None)
+        insp = inspect(config.db)
+        is_false(insp.has_table("t1", schema=config.test_schema))
+        is_false(insp.has_table("t2", schema=config.test_schema))
+        is_false(insp.has_table("t3", schema=None))
 
     @testing.provide_metadata
     def test_crud(self):

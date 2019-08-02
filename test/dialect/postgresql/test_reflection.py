@@ -519,7 +519,7 @@ class ReflectionTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_has_temporary_table(self):
-        assert not testing.db.has_table("some_temp_table")
+        assert not inspect(testing.db).has_table("some_temp_table")
         user_tmp = Table(
             "some_temp_table",
             self.metadata,
@@ -528,7 +528,7 @@ class ReflectionTest(fixtures.TestBase):
             prefixes=["TEMPORARY"],
         )
         user_tmp.create(testing.db)
-        assert testing.db.has_table("some_temp_table")
+        assert inspect(testing.db).has_table("some_temp_table")
 
     @testing.provide_metadata
     def test_cross_schema_reflection_one(self):
@@ -845,10 +845,10 @@ class ReflectionTest(fixtures.TestBase):
         A_table = Table("A", metadata, Column("x", Integer))
 
         a_table.create()
-        assert testing.db.has_table("a")
-        assert not testing.db.has_table("A")
+        assert inspect(testing.db).has_table("a")
+        assert not inspect(testing.db).has_table("A")
         A_table.create(checkfirst=True)
-        assert testing.db.has_table("A")
+        assert inspect(testing.db).has_table("A")
 
     def test_uppercase_lowercase_sequence(self):
 

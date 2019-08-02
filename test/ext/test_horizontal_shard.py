@@ -437,6 +437,49 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
 
 
 class AttachedFileShardTest(ShardTest, fixtures.TestBase):
+    """Use modern schema conventions along with SQLite ATTACH."""
+
+    schema = "changeme"
+
+    def _init_dbs(self):
+        e = testing_engine("sqlite://")
+        with e.connect() as conn:
+            for i in range(1, 5):
+                conn.execute(
+                    'ATTACH DATABASE "shard%s_%s.db" AS shard%s'
+                    % (i, provision.FOLLOWER_IDENT, i)
+                )
+
+        db1 = e.execution_options(schema_translate_map={"changeme": "shard1"})
+        db2 = e.execution_options(schema_translate_map={"changeme": "shard2"})
+        db3 = e.execution_options(schema_translate_map={"changeme": "shard3"})
+        db4 = e.execution_options(schema_translate_map={"changeme": "shard4"})
+
+        self.engine = e
+        return db1, db2, db3, db4
+
+    def teardown(self):
+        clear_mappers()
+
+        self.engine.connect().invalidate()
+        for i in range(1, 5):
+            os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
+
+
+class TableNameConventionShardTest(ShardTest, fixtures.TestBase):
+    """This fixture uses a single SQLite database along with a table naming
+    convention to achieve sharding.   Event hooks are used to rewrite SQL
+    statements.
+
+    This used to be called "AttachedFileShardTest" but I didn't see any
+    ATTACH going on.
+
+    The approach taken by this test is awkward and I wouldn't recommend  using
+    this pattern in a real situation.  I'm not sure of the history of this test
+    but it likely predates when we knew how to use real ATTACH in SQLite.
+
+    """
+
     schema = "changeme"
 
     def _init_dbs(self):

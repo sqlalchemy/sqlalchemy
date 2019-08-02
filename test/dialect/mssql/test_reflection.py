@@ -259,7 +259,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ],
         )
 
-        assert testing.db.has_table("bar", schema=referred_schema)
+        assert inspect(testing.db).has_table("bar", schema=referred_schema)
 
         m2 = MetaData()
         Table(
