@@ -1146,6 +1146,33 @@ class RemovalTest(fixtures.TestBase):
         eq_(m3.mock_calls, [call("x")])
         eq_(m4.mock_calls, [call("z")])
 
+    def test_once_doesnt_dereference_listener(self):
+        # test for [ticket:4794]
+
+        Target = self._fixture()
+
+        canary = Mock()
+
+        def go(target, given_id):
+            def anonymous(run_id):
+                canary(run_id, given_id)
+
+            event.listen(target, "event_one", anonymous, once=True)
+
+        t1 = Target()
+
+        assert_calls = []
+        given_ids = []
+        for given_id in range(100):
+            given_ids.append(given_id)
+            go(t1, given_id)
+            if given_id % 10 == 0:
+                t1.dispatch.event_one(given_id)
+                assert_calls.extend(call(given_id, i) for i in given_ids)
+                given_ids[:] = []
+
+        eq_(canary.mock_calls, assert_calls)
+
     def test_propagate(self):
         Target = self._fixture()
 
