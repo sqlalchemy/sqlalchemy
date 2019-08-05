@@ -517,13 +517,14 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
         s.add(A(data="d1", deferred_data="d2"))
         s.commit()
 
-    def _session_fixture(self):
+    def _session_fixture(self, **kw):
 
         return ShardedSession(
             shards={"main": testing.db},
             shard_chooser=lambda *args: "main",
             id_chooser=lambda *args: ["fake", "main"],
             query_chooser=lambda *args: ["fake", "main"],
+            **kw
         )
 
     def test_refresh(self):
@@ -546,6 +547,13 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
         a1 = session.query(A).set_shard("main").first()
 
         session.expire(a1)
+        eq_(a1.data, "d1")
+
+    def test_autocommit_session(self):
+        A = self.classes.A
+        session = self._session_fixture(autocommit=True)
+        a1 = session.query(A).set_shard("main").first()
+
         eq_(a1.data, "d1")
 
 
