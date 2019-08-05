@@ -23,7 +23,7 @@ with an ongoing transactional state maintained by the :class:`.Session`.
 When the first :class:`.Engine` is operated upon, the :class:`.Session` can be said
 to have left the "begin" state and entered "transactional" state.   For each
 :class:`.Engine` encountered, a :class:`.Connection` is associated with it,
-which is acquired via the :meth:`.Engine.contextual_connect` method.  If a
+which is acquired via the :meth:`.Engine.connect` method.  If a
 :class:`.Connection` was directly associated with the :class:`.Session` (see :ref:`session_external_transaction`
 for an example of this), it is
 added to the transactional state directly.
