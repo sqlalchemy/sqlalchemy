@@ -77,6 +77,65 @@ class HasTableTest(fixtures.TablesTest):
             )
 
 
+class HasIndexTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        tt = Table(
+            "test_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        Index("my_idx", tt.c.data)
+
+        if testing.requires.schemas.enabled:
+            tt = Table(
+                "test_table",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("data", String(50)),
+                schema=config.test_schema,
+            )
+            Index("my_idx_s", tt.c.data)
+
+    def test_has_index(self):
+        with config.db.begin() as conn:
+            assert config.db.dialect.has_index(conn, "test_table", "my_idx")
+            assert not config.db.dialect.has_index(
+                conn, "test_table", "my_idx_s"
+            )
+            assert not config.db.dialect.has_index(
+                conn, "nonexistent_table", "my_idx"
+            )
+            assert not config.db.dialect.has_index(
+                conn, "test_table", "nonexistent_idx"
+            )
+
+    @testing.requires.schemas
+    def test_has_index_schema(self):
+        with config.db.begin() as conn:
+            assert config.db.dialect.has_index(
+                conn, "test_table", "my_idx_s", schema=config.test_schema
+            )
+            assert not config.db.dialect.has_index(
+                conn, "test_table", "my_idx", schema=config.test_schema
+            )
+            assert not config.db.dialect.has_index(
+                conn,
+                "nonexistent_table",
+                "my_idx_s",
+                schema=config.test_schema,
+            )
+            assert not config.db.dialect.has_index(
+                conn,
+                "test_table",
+                "nonexistent_idx_s",
+                schema=config.test_schema,
+            )
+
+
 class ComponentReflectionTest(fixtures.TablesTest):
     run_inserts = run_deletes = None
 
@@ -1129,4 +1188,9 @@ class NormalizedNameTest(fixtures.TablesTest):
         eq_(tablenames[1].upper(), tablenames[1].lower())
 
 
-__all__ = ("ComponentReflectionTest", "HasTableTest", "NormalizedNameTest")
+__all__ = (
+    "ComponentReflectionTest",
+    "HasTableTest",
+    "HasIndexTest",
+    "NormalizedNameTest",
+)

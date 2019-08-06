@@ -732,6 +732,17 @@ class SchemaGenerator(DDLBase):
             self.connection, table.name, schema=effective_schema
         )
 
+    def _can_create_index(self, index):
+        effective_schema = self.connection.schema_for_object(index.table)
+        if effective_schema:
+            self.dialect.validate_identifier(effective_schema)
+        return not self.checkfirst or not self.dialect.has_index(
+            self.connection,
+            index.table.name,
+            index.name,
+            schema=effective_schema,
+        )
+
     def _can_create_sequence(self, sequence):
         effective_schema = self.connection.schema_for_object(sequence)
 
@@ -831,7 +842,7 @@ class SchemaGenerator(DDLBase):
 
         if hasattr(table, "indexes"):
             for index in table.indexes:
-                self.traverse_single(index)
+                self.traverse_single(index, create_ok=True)
 
         if self.dialect.supports_comments and not self.dialect.inline_comments:
             if table.comment is not None:
@@ -859,7 +870,9 @@ class SchemaGenerator(DDLBase):
             return
         self.connection.execute(CreateSequence(sequence))
 
-    def visit_index(self, index):
+    def visit_index(self, index, create_ok=False):
+        if not create_ok and not self._can_create_index(index):
+            return
         self.connection.execute(CreateIndex(index))
 
 
@@ -973,6 +986,17 @@ class SchemaDropper(DDLBase):
             self.connection, table.name, schema=effective_schema
         )
 
+    def _can_drop_index(self, index):
+        effective_schema = self.connection.schema_for_object(index.table)
+        if effective_schema:
+            self.dialect.validate_identifier(effective_schema)
+        return not self.checkfirst or self.dialect.has_index(
+            self.connection,
+            index.table.name,
+            index.name,
+            schema=effective_schema,
+        )
+
     def _can_drop_sequence(self, sequence):
         effective_schema = self.connection.schema_for_object(sequence)
         return self.dialect.supports_sequences and (
@@ -985,7 +1009,10 @@ class SchemaDropper(DDLBase):
             )
         )
 
-    def visit_index(self, index):
+    def visit_index(self, index, drop_ok=False):
+        if not drop_ok and not self._can_drop_index(index):
+            return
+
         self.connection.execute(DropIndex(index))
 
     def visit_table(self, table, drop_ok=False, _is_metadata_operation=False):

@@ -426,6 +426,15 @@ class DefaultDialect(interfaces.Dialect):
             )
         }
 
+    def has_index(self, connection, table_name, index_name, schema=None):
+        if not self.has_table(connection, table_name, schema=schema):
+            return False
+        for idx in self.get_indexes(connection, table_name, schema=schema):
+            if idx["name"] == index_name:
+                return True
+        else:
+            return False
+
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError(

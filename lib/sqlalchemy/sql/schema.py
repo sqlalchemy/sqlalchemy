@@ -3670,7 +3670,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         return self.table.bind
 
-    def create(self, bind=None):
+    def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
@@ -3682,10 +3682,10 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_ddl_visitor(ddl.SchemaGenerator, self)
+        bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
         return self
 
-    def drop(self, bind=None):
+    def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
@@ -3697,7 +3697,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_ddl_visitor(ddl.SchemaDropper, self)
+        bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     def __repr__(self):
         return "Index(%s)" % (

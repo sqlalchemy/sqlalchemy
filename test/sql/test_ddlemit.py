@@ -1,5 +1,6 @@
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import schema
@@ -16,11 +17,15 @@ class EmitDDLTest(fixtures.TestBase):
         def has_item(connection, name, schema):
             return item_exists(name)
 
+        def has_index(connection, tablename, idxname, schema):
+            return item_exists(idxname)
+
         return Mock(
             dialect=Mock(
                 supports_sequences=True,
                 has_table=Mock(side_effect=has_item),
                 has_sequence=Mock(side_effect=has_item),
+                has_index=Mock(side_effect=has_index),
                 supports_comments=True,
                 inline_comments=False,
             )
@@ -86,6 +91,12 @@ class EmitDDLTest(fixtures.TestBase):
         t2 = Table("t2", m, Column("id", Integer, primary_key=True))
         return m, t1, t2
 
+    def _table_index_fixture(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer), Column("y", Integer))
+        i1 = Index("my_idx", t1.c.x, t1.c.y)
+        return m, t1, i1
+
     def _table_seq_fixture(self):
         m = MetaData()
 
@@ -129,6 +140,105 @@ class EmitDDLTest(fixtures.TestBase):
         )
 
         self._assert_drop([t1, s1], generator, m)
+
+    def test_create_table_index_checkfirst(self):
+        """create table that doesn't exist should not require a check
+        on the index"""
+
+        m, t1, i1 = self._table_index_fixture()
+
+        def exists(name):
+            if name == "my_idx":
+                raise NotImplementedError()
+            else:
+                return False
+
+        generator = self._mock_create_fixture(True, [t1], item_exists=exists)
+        self._assert_create([t1, i1], generator, t1)
+
+    def test_create_table_exists_index_checkfirst(self):
+        """for the moment, if the table *does* exist, we are not checking
+        for the index.  this can possibly be changed."""
+
+        m, t1, i1 = self._table_index_fixture()
+
+        def exists(name):
+            if name == "my_idx":
+                raise NotImplementedError()
+            else:
+                return True
+
+        generator = self._mock_create_fixture(True, [t1], item_exists=exists)
+        # nothing is created
+        self._assert_create([], generator, t1)
+
+    def test_drop_table_index_checkfirst(self):
+        m, t1, i1 = self._table_index_fixture()
+
+        def exists(name):
+            if name == "my_idx":
+                raise NotImplementedError()
+            else:
+                return True
+
+        generator = self._mock_drop_fixture(True, [t1], item_exists=exists)
+        self._assert_drop_tables([t1], generator, t1)
+
+    def test_create_index_checkfirst_exists(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_create_fixture(
+            True, [i1], item_exists=lambda idx: True
+        )
+        self._assert_create_index([], generator, i1)
+
+    def test_create_index_checkfirst_doesnt_exist(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_create_fixture(
+            True, [i1], item_exists=lambda idx: False
+        )
+        self._assert_create_index([i1], generator, i1)
+
+    def test_create_index_nocheck_exists(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_create_fixture(
+            False, [i1], item_exists=lambda idx: True
+        )
+        self._assert_create_index([i1], generator, i1)
+
+    def test_create_index_nocheck_doesnt_exist(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_create_fixture(
+            False, [i1], item_exists=lambda idx: False
+        )
+        self._assert_create_index([i1], generator, i1)
+
+    def test_drop_index_checkfirst_exists(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_drop_fixture(
+            True, [i1], item_exists=lambda idx: True
+        )
+        self._assert_drop_index([i1], generator, i1)
+
+    def test_drop_index_checkfirst_doesnt_exist(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_drop_fixture(
+            True, [i1], item_exists=lambda idx: False
+        )
+        self._assert_drop_index([], generator, i1)
+
+    def test_drop_index_nocheck_exists(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_drop_fixture(
+            False, [i1], item_exists=lambda idx: True
+        )
+        self._assert_drop_index([i1], generator, i1)
+
+    def test_drop_index_nocheck_doesnt_exist(self):
+        m, t1, i1 = self._table_index_fixture()
+        generator = self._mock_drop_fixture(
+            False, [i1], item_exists=lambda idx: False
+        )
+        self._assert_drop_index([i1], generator, i1)
 
     def test_create_collection_checkfirst(self):
         m, t1, t2, t3, t4, t5 = self._table_fixture()
@@ -240,7 +350,7 @@ class EmitDDLTest(fixtures.TestBase):
 
     def _assert_create(self, elements, generator, argument):
         self._assert_ddl(
-            (schema.CreateTable, schema.CreateSequence),
+            (schema.CreateTable, schema.CreateSequence, schema.CreateIndex),
             elements,
             generator,
             argument,
@@ -281,6 +391,12 @@ class EmitDDLTest(fixtures.TestBase):
             generator,
             argument,
         )
+
+    def _assert_create_index(self, elements, generator, argument):
+        self._assert_ddl((schema.CreateIndex,), elements, generator, argument)
+
+    def _assert_drop_index(self, elements, generator, argument):
+        self._assert_ddl((schema.DropIndex,), elements, generator, argument)
 
     def _assert_ddl(self, ddl_cls, elements, generator, argument):
         generator.traverse_single(argument)

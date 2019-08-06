@@ -439,6 +439,24 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def has_index(self, connection, table_name, index_name, schema=None):
+        """Check the existence of a particular index name in the database.
+
+        Given a :class:`.Connection` object, a string
+        `table_name` and stiring index name, return True if an index of the
+        given name on the given table exists, false otherwise.
+
+        The :class:`.DefaultDialect` implements this in terms of the
+        :meth:`.Dialect.has_table` and :meth:`.Dialect.get_indexes` methods,
+        however dialects can implement a more performant version.
+
+
+        .. versionadded:: 1.4
+
+        """
+
+        raise NotImplementedError()
+
     def has_sequence(self, connection, sequence_name, schema=None, **kw):
         """Check the existence of a particular sequence in the database.
 
