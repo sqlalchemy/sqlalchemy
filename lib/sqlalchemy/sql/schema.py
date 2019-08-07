@@ -240,13 +240,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
             :paramref:`.Table.extend_existing`
 
-    :param autoload_with: An :class:`.Engine` or :class:`.Connection` object
-        with which this :class:`.Table` object will be reflected; when
-        set to a non-None value, it implies that :paramref:`.Table.autoload`
-        is ``True``.   If left unset, but :paramref:`.Table.autoload` is
-        explicitly set to ``True``, an autoload operation will attempt to
-        proceed by locating an :class:`.Engine` or :class:`.Connection` bound
-        to the underlying :class:`.MetaData` object.
+    :param autoload_with: An :class:`.Engine` or :class:`.Connection` object,
+        or a :class:`.Inspector` object as returned by :func:`.inspect`
+        against one, with which this :class:`.Table` object will be reflected.
+        When set to a non-None value, it implies that
+        :paramref:`.Table.autoload` is ``True``.   If left unset, but
+        :paramref:`.Table.autoload` is explicitly set to ``True``, an autoload
+        operation will attempt to proceed by locating an :class:`.Engine` or
+        :class:`.Connection` bound to the underlying :class:`.MetaData` object.
 
         .. seealso::
 
@@ -598,33 +599,22 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         resolve_fks=True,
         _extend_on=None,
     ):
-
-        if autoload_with:
-            autoload_with.run_callable(
-                autoload_with.dialect.reflecttable,
-                self,
-                include_columns,
-                exclude_columns,
-                resolve_fks,
-                _extend_on=_extend_on,
-            )
-        else:
-            bind = _bind_or_error(
+        if autoload_with is None:
+            autoload_with = _bind_or_error(
                 metadata,
                 msg="No engine is bound to this Table's MetaData. "
                 "Pass an engine to the Table via "
-                "autoload_with=<someengine>, "
-                "or associate the MetaData with an engine via "
-                "metadata.bind=<someengine>",
+                "autoload_with=<someengine_or_connection>",
             )
-            bind.run_callable(
-                bind.dialect.reflecttable,
-                self,
-                include_columns,
-                exclude_columns,
-                resolve_fks,
-                _extend_on=_extend_on,
-            )
+
+        insp = inspection.inspect(autoload_with)
+        insp.reflecttable(
+            self,
+            include_columns,
+            exclude_columns,
+            resolve_fks,
+            _extend_on=_extend_on,
+        )
 
     @property
     def _sorted_constraints(self):
@@ -834,15 +824,20 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             else:
                 return []
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Table.exists` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":meth:`.Inspector.has_table`.",
+    )
     def exists(self, bind=None):
         """Return True if this table exists."""
 
         if bind is None:
             bind = _bind_or_error(self)
 
-        return bind.run_callable(
-            bind.dialect.has_table, self.name, schema=self.schema
-        )
+        insp = inspection.inspect(bind)
+        return insp.has_table(self.name, schema=self.schema)
 
     def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this
@@ -857,7 +852,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this
@@ -871,7 +866,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     def tometadata(
         self,
@@ -2523,14 +2518,14 @@ class Sequence(roles.StatementRole, DefaultGenerator):
 
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
         """Drops this sequence from the database."""
 
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     def _not_a_column_expr(self):
         raise exc.InvalidRequestError(
@@ -3687,7 +3682,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(ddl.SchemaGenerator, self)
+        bind._run_ddl_visitor(ddl.SchemaGenerator, self)
         return self
 
     def drop(self, bind=None):
@@ -3702,7 +3697,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(ddl.SchemaDropper, self)
+        bind._run_ddl_visitor(ddl.SchemaDropper, self)
 
     def __repr__(self):
         return "Index(%s)" % (
@@ -4169,10 +4164,10 @@ class MetaData(SchemaItem):
             bind = _bind_or_error(self)
 
         with bind.connect() as conn:
+            insp = inspection.inspect(conn)
 
             reflect_opts = {
-                "autoload": True,
-                "autoload_with": conn,
+                "autoload_with": insp,
                 "extend_existing": extend_existing,
                 "autoload_replace": autoload_replace,
                 "resolve_fks": resolve_fks,
@@ -4187,11 +4182,9 @@ class MetaData(SchemaItem):
             if schema is not None:
                 reflect_opts["schema"] = schema
 
-            available = util.OrderedSet(
-                bind.engine.table_names(schema, connection=conn)
-            )
+            available = util.OrderedSet(insp.get_table_names(schema))
             if views:
-                available.update(bind.dialect.get_view_names(conn, schema))
+                available.update(insp.get_view_names(schema))
 
             if schema is not None:
                 available_w_schema = util.OrderedSet(
@@ -4275,7 +4268,7 @@ class MetaData(SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(
+        bind._run_ddl_visitor(
             ddl.SchemaGenerator, self, checkfirst=checkfirst, tables=tables
         )
 
@@ -4301,11 +4294,17 @@ class MetaData(SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind._run_visitor(
+        bind._run_ddl_visitor(
             ddl.SchemaDropper, self, checkfirst=checkfirst, tables=tables
         )
 
 
+@util.deprecated_cls(
+    "1.4",
+    ":class:`.ThreadLocalMetaData` is deprecated and will be removed "
+    "in a future release.",
+    constructor="__init__",
+)
 class ThreadLocalMetaData(MetaData):
     """A MetaData variant that presents a different ``bind`` in every thread.
 

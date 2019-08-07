@@ -13,6 +13,7 @@ from .interfaces import Connectable
 from .interfaces import ExceptionContext
 from .util import _distill_params
 from .. import exc
+from .. import inspection
 from .. import interfaces
 from .. import log
 from .. import util
@@ -1551,6 +1552,21 @@ class Connection(Connectable):
         else:
             util.reraise(*exc_info)
 
+    def _run_ddl_visitor(self, visitorcallable, element, **kwargs):
+        """run a DDL visitor.
+
+        This method is only here so that the MockConnection can change the
+        options given to the visitor so that "checkfirst" is skipped.
+
+        """
+        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Connection.transaction` method is deprecated and will be "
+        "removed in a future release.  Use the :meth:`.Engine.begin` "
+        "context manager instead.",
+    )
     def transaction(self, callable_, *args, **kwargs):
         r"""Execute the given function within a transaction boundary.
 
@@ -1593,6 +1609,7 @@ class Connection(Connectable):
 
         """
 
+        kwargs["_sa_skip_warning"] = True
         trans = self.begin()
         try:
             ret = self.run_callable(callable_, *args, **kwargs)
@@ -1602,6 +1619,11 @@ class Connection(Connectable):
             with util.safe_reraise():
                 trans.rollback()
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Connection.run_callable` method is deprecated and will "
+        "be removed in a future release.  Use a context manager instead.",
+    )
     def run_callable(self, callable_, *args, **kwargs):
         r"""Given a callable object or function, execute it, passing
         a :class:`.Connection` as the first argument.
@@ -1616,9 +1638,6 @@ class Connection(Connectable):
 
         """
         return callable_(self, *args, **kwargs)
-
-    def _run_visitor(self, visitorcallable, element, **kwargs):
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
 
 
 class ExceptionContextImpl(ExceptionContext):
@@ -2059,12 +2078,6 @@ class Engine(Connectable, log.Identified):
         else:
             yield connection
 
-    def _run_visitor(
-        self, visitorcallable, element, connection=None, **kwargs
-    ):
-        with self._optional_conn_ctx_manager(connection) as conn:
-            conn._run_visitor(visitorcallable, element, **kwargs)
-
     class _trans_ctx(object):
         def __init__(self, conn, transaction, close_with_result):
             self.conn = conn
@@ -2121,6 +2134,12 @@ class Engine(Connectable, log.Identified):
                 conn.close()
         return Engine._trans_ctx(conn, trans, close_with_result)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Engine.transaction` method is deprecated and will be "
+        "removed in a future release.  Use the :meth:`.Engine.begin` context "
+        "manager instead.",
+    )
     def transaction(self, callable_, *args, **kwargs):
         r"""Execute the given function within a transaction boundary.
 
@@ -2159,10 +2178,16 @@ class Engine(Connectable, log.Identified):
             :meth:`.Engine.transaction`
 
         """
-
+        kwargs["_sa_skip_warning"] = True
         with self.connect() as conn:
             return conn.transaction(callable_, *args, **kwargs)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Engine.run_callable` method is deprecated and will be "
+        "removed in a future release.  Use the :meth:`.Engine.connect` "
+        "context manager instead.",
+    )
     def run_callable(self, callable_, *args, **kwargs):
         r"""Given a callable object or function, execute it, passing
         a :class:`.Connection` as the first argument.
@@ -2176,8 +2201,13 @@ class Engine(Connectable, log.Identified):
         which one is being dealt with.
 
         """
+        kwargs["_sa_skip_warning"] = True
         with self.connect() as conn:
             return conn.run_callable(callable_, *args, **kwargs)
+
+    def _run_ddl_visitor(self, visitorcallable, element, **kwargs):
+        with self.connect() as conn:
+            conn._run_ddl_visitor(visitorcallable, element, **kwargs)
 
     def execute(self, statement, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`.
@@ -2225,6 +2255,12 @@ class Engine(Connectable, log.Identified):
 
         return self._connection_cls(self, close_with_result=close_with_result)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Engine.table_names` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":meth:`.Inspector.get_table_names`.",
+    )
     def table_names(self, schema=None, connection=None):
         """Return a list of all table names available in the database.
 
@@ -2232,12 +2268,16 @@ class Engine(Connectable, log.Identified):
 
         :param connection: Optional, use a specified connection.
         """
-
         with self._optional_conn_ctx_manager(connection) as conn:
-            if not schema:
-                schema = self.dialect.default_schema_name
-            return self.dialect.get_table_names(conn, schema)
+            insp = inspection.inspect(conn)
+            return insp.get_table_names(schema)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Engine.has_table` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":meth:`.Inspector.has_table`.",
+    )
     def has_table(self, table_name, schema=None):
         """Return True if the given backend has a table of the given name.
 
@@ -2250,7 +2290,9 @@ class Engine(Connectable, log.Identified):
             with a schema identifier.
 
         """
-        return self.run_callable(self.dialect.has_table, table_name, schema)
+        with self._optional_conn_ctx_manager(None) as conn:
+            insp = inspection.inspect(conn)
+            return insp.has_table(table_name, schema=schema)
 
     def _wrap_pool_connect(self, fn, connection):
         dialect = self.dialect

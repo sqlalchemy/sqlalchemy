@@ -24,6 +24,7 @@ from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in_
@@ -1213,7 +1214,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_reflect_all(self):
-        existing = testing.db.table_names()
+        existing = inspect(testing.db).get_table_names()
 
         names = ["rt_%s" % name for name in ("a", "b", "c", "d", "e")]
         nameset = set(names)
@@ -1298,15 +1299,16 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         m = MetaData()
 
-        reflecttable = testing.db.dialect.reflecttable
+        inspector = sa.engine.reflection.Inspector
+        reflecttable = inspector.reflecttable
 
-        def patched(conn, table, *arg, **kw):
+        def patched(self, table, *arg, **kw):
             if table.name == "rt_c":
                 raise sa.exc.UnreflectableTableError("Can't reflect rt_c")
             else:
-                return reflecttable(conn, table, *arg, **kw)
+                return reflecttable(self, table, *arg, **kw)
 
-        with mock.patch.object(testing.db.dialect, "reflecttable", patched):
+        with mock.patch.object(inspector, "reflecttable", patched):
             with expect_warnings("Skipping table rt_c: Can't reflect rt_c"):
                 m.reflect(bind=testing.db)
 
@@ -1481,14 +1483,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             _drop_views(metadata.bind)
 
 
-class CreateDropTest(fixtures.TestBase):
+class CreateDropTest(fixtures.TablesTest):
     __backend__ = True
 
+    run_create_tables = None
+
     @classmethod
-    def setup_class(cls):
-        global metadata, users
-        metadata = MetaData()
-        users = Table(
+    def define_tables(cls, metadata):
+        Table(
             "users",
             metadata,
             Column(
@@ -1509,7 +1511,7 @@ class CreateDropTest(fixtures.TestBase):
                 sa.Sequence("address_id_seq", optional=True),
                 primary_key=True,
             ),
-            Column("user_id", sa.Integer, sa.ForeignKey(users.c.user_id)),
+            Column("user_id", sa.Integer, sa.ForeignKey("users.user_id")),
             Column("email_address", sa.String(40)),
         )
 
@@ -1522,7 +1524,7 @@ class CreateDropTest(fixtures.TestBase):
                 sa.Sequence("order_id_seq", optional=True),
                 primary_key=True,
             ),
-            Column("user_id", sa.Integer, sa.ForeignKey(users.c.user_id)),
+            Column("user_id", sa.Integer, sa.ForeignKey("users.user_id")),
             Column("description", sa.String(50)),
             Column("isopen", sa.Integer),
         )
@@ -1539,8 +1541,11 @@ class CreateDropTest(fixtures.TestBase):
             Column("item_name", sa.VARCHAR(50)),
         )
 
+    def teardown(self):
+        self.metadata.drop_all(testing.db)
+
     def test_sorter(self):
-        tables = metadata.sorted_tables
+        tables = self.metadata.sorted_tables
         table_names = [t.name for t in tables]
         ua = [n for n in table_names if n in ("users", "email_addresses")]
         oi = [n for n in table_names if n in ("orders", "items")]
@@ -1549,42 +1554,41 @@ class CreateDropTest(fixtures.TestBase):
         eq_(oi, ["orders", "items"])
 
     def test_checkfirst(self):
-        try:
-            assert not users.exists(testing.db)
-            users.create(bind=testing.db)
-            assert users.exists(testing.db)
-            users.create(bind=testing.db, checkfirst=True)
-            users.drop(bind=testing.db)
-            users.drop(bind=testing.db, checkfirst=True)
-            assert not users.exists(bind=testing.db)
-            users.create(bind=testing.db, checkfirst=True)
-            users.drop(bind=testing.db)
-        finally:
-            metadata.drop_all(bind=testing.db)
+        insp = inspect(testing.db)
+        users = self.tables.users
+
+        is_false(insp.has_table("users"))
+        users.create(bind=testing.db)
+        is_true(insp.has_table("users"))
+        users.create(bind=testing.db, checkfirst=True)
+        users.drop(bind=testing.db)
+        users.drop(bind=testing.db, checkfirst=True)
+        is_false(insp.has_table("users"))
+        users.create(bind=testing.db, checkfirst=True)
+        users.drop(bind=testing.db)
 
     def test_createdrop(self):
+        insp = inspect(testing.db)
+        metadata = self.metadata
         metadata.create_all(bind=testing.db)
-        eq_(testing.db.has_table("items"), True)
-        eq_(testing.db.has_table("email_addresses"), True)
+        is_true(insp.has_table("items"))
+        is_true(insp.has_table("email_addresses"))
         metadata.create_all(bind=testing.db)
-        eq_(testing.db.has_table("items"), True)
+        is_true(insp.has_table("items"))
 
         metadata.drop_all(bind=testing.db)
-        eq_(testing.db.has_table("items"), False)
-        eq_(testing.db.has_table("email_addresses"), False)
+        is_false(insp.has_table("items"))
+        is_false(insp.has_table("email_addresses"))
         metadata.drop_all(bind=testing.db)
-        eq_(testing.db.has_table("items"), False)
+        is_false(insp.has_table("items"))
 
     def test_tablenames(self):
+        metadata = self.metadata
         metadata.create_all(bind=testing.db)
+        insp = inspect(testing.db)
 
-        # we only check to see if all the explicitly created tables are
-        # there, rather than assertEqual -- the test db could have
-        # "extra" tables if there is a misconfigured template.  (*cough*
-        # tsearch2 w/ the pg windows installer.)
-
-        self.assert_(not set(metadata.tables) - set(testing.db.table_names()))
-        metadata.drop_all(bind=testing.db)
+        # ensure all tables we created are in the list.
+        is_true(set(insp.get_table_names()).issuperset(metadata.tables))
 
 
 class SchemaManipulationTest(fixtures.TestBase):
@@ -1692,8 +1696,9 @@ class UnicodeReflectionTest(fixtures.TestBase):
 
     @testing.requires.unicode_connections
     def test_has_table(self):
+        insp = inspect(testing.db)
         for tname, cname, ixname in self.names:
-            assert testing.db.has_table(tname), "Can't detect name %s" % tname
+            assert insp.has_table(tname), "Can't detect name %s" % tname
 
     @testing.requires.unicode_connections
     def test_basic(self):
@@ -1705,7 +1710,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
         bind = testing.db
         names = set([rec[0] for rec in self.names])
 
-        reflected = set(bind.table_names())
+        reflected = set(inspect(bind).get_table_names())
 
         # Jython 2.5 on Java 5 lacks unicodedata.normalize
 
@@ -2103,7 +2108,7 @@ class CaseSensitiveTest(fixtures.TablesTest):
 
     @testing.fails_if(testing.requires._has_mysql_on_windows)
     def test_table_names(self):
-        x = testing.db.run_callable(testing.db.dialect.get_table_names)
+        x = inspect(testing.db).get_table_names()
         assert set(["SomeTable", "SomeOtherTable"]).issubset(x)
 
     def test_reflect_exact_name(self):

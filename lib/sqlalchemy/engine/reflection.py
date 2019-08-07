@@ -58,6 +58,7 @@ def cache(fn, self, con, *args, **kw):
     return ret
 
 
+@inspection._self_inspects
 class Inspector(object):
     """Performs database schema inspection.
 
@@ -161,17 +162,7 @@ class Inspector(object):
             )
         return []
 
-    @util.deprecated_params(
-        order_by=(
-            "1.0",
-            "The :paramref:`get_table_names.order_by` parameter is deprecated "
-            "and will be removed in a future release.  Please refer to "
-            ":meth:`.Inspector.get_sorted_table_and_fkc_names` for a "
-            "more comprehensive solution to resolving foreign key cycles "
-            "between tables.",
-        )
-    )
-    def get_table_names(self, schema=None, order_by=None):
+    def get_table_names(self, schema=None):
         """Return all table names in referred to within a particular schema.
 
         The names are expected to be real tables only, not views.
@@ -198,20 +189,18 @@ class Inspector(object):
 
         """
 
-        if hasattr(self.dialect, "get_table_names"):
-            tnames = self.dialect.get_table_names(
-                self.bind, schema, info_cache=self.info_cache
-            )
-        else:
-            tnames = self.engine.table_names(schema)
-        if order_by == "foreign_key":
-            tuples = []
-            for tname in tnames:
-                for fkey in self.get_foreign_keys(tname, schema):
-                    if tname != fkey["referred_table"]:
-                        tuples.append((fkey["referred_table"], tname))
-            tnames = list(topological.sort(tuples, tnames))
-        return tnames
+        return self.dialect.get_table_names(
+            self.bind, schema, info_cache=self.info_cache
+        )
+
+    def has_table(self, table_name, schema=None):
+        """Return True if the backend has a table of the given name.
+
+        .. versionadded:: 1.4
+
+        """
+        # TODO: info_cache?
+        return self.dialect.has_table(self.bind, table_name, schema)
 
     def get_sorted_table_and_fkc_names(self, schema=None):
         """Return dependency-sorted table and foreign key constraint names in

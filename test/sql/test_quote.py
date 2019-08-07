@@ -120,16 +120,16 @@ class QuoteExecTest(fixtures.TestBase):
         )
 
         insp = inspect(testing.db)
-        assert testing.db.has_table(t1.name)
+        assert insp.has_table(t1.name)
         eq_([c["name"] for c in insp.get_columns(t1.name)], ["id"])
 
-        assert testing.db.has_table(t2.name)
+        assert insp.has_table(t2.name)
         eq_([c["name"] for c in insp.get_columns(t2.name)], ["id"])
 
-        assert testing.db.has_table(t3.name)
+        assert insp.has_table(t3.name)
         eq_([c["name"] for c in insp.get_columns(t3.name)], ["id"])
 
-        assert testing.db.has_table(t4.name)
+        assert insp.has_table(t4.name)
         eq_([c["name"] for c in insp.get_columns(t4.name)], ["id"])
 
     def test_basic(self):

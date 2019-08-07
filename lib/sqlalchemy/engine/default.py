@@ -19,7 +19,6 @@ import re
 import weakref
 
 from . import interfaces
-from . import reflection
 from . import result
 from .. import event
 from .. import exc
@@ -415,20 +414,6 @@ class DefaultDialect(interfaces.Dialect):
 
         """
         return sqltypes.adapt_type(typeobj, self.colspecs)
-
-    def reflecttable(
-        self,
-        connection,
-        table,
-        include_columns,
-        exclude_columns,
-        resolve_fks,
-        **opts
-    ):
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(
-            table, include_columns, exclude_columns, resolve_fks, **opts
-        )
 
     def get_pk_constraint(self, conn, table_name, schema=None, **kw):
         """Compatibility method, adapts the result of get_primary_keys()

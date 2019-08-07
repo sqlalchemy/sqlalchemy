@@ -196,28 +196,6 @@ class Dialect(object):
 
         pass
 
-    def reflecttable(
-        self, connection, table, include_columns, exclude_columns, resolve_fks
-    ):
-        """Load table description from the database.
-
-        Given a :class:`.Connection` and a
-        :class:`~sqlalchemy.schema.Table` object, reflect its columns and
-        properties from the database.
-
-        The implementation of this method is provided by
-        :meth:`.DefaultDialect.reflecttable`, which makes use of
-        :class:`.Inspector` to retrieve column information.
-
-        Dialects should **not** seek to implement this method, and should
-        instead implement individual schema inspection operations such as
-        :meth:`.Dialect.get_columns`, :meth:`.Dialect.get_pk_constraint`,
-        etc.
-
-        """
-
-        raise NotImplementedError()
-
     def get_columns(self, connection, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
 
@@ -450,7 +428,7 @@ class Dialect(object):
         """
         raise NotImplementedError()
 
-    def has_table(self, connection, table_name, schema=None):
+    def has_table(self, connection, table_name, schema=None, **kw):
         """Check the existence of a particular table in the database.
 
         Given a :class:`.Connection` object and a string
@@ -461,7 +439,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def has_sequence(self, connection, sequence_name, schema=None):
+    def has_sequence(self, connection, sequence_name, schema=None, **kw):
         """Check the existence of a particular sequence in the database.
 
         Given a :class:`.Connection` object and a string

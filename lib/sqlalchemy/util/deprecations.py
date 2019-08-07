@@ -233,7 +233,9 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     @decorator
     def warned(fn, *args, **kwargs):
-        warnings.warn(message, wtype, stacklevel=3)
+        skip_warning = kwargs.pop("_sa_skip_warning", False)
+        if not skip_warning:
+            warnings.warn(message, wtype, stacklevel=3)
         return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ""
