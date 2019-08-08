@@ -598,7 +598,8 @@ class PGCompiler_psycopg2(PGCompiler):
 
         # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
         # for receiving multiple return values from insert query
-        # Note: self.inline is true iff there are multiple parameters sets to the query
+        # Note: self.inline is true iff there are multiple parameters sets to
+        # the query
         if self.inline and not returning_clause_exists and self.dialect.psycopg2_executemany_mode is EXECUTEMANY_VALUES:
             self.execute_values_insert_template = "(" + \
                 ", ".join([c[1] for c in crud_params]) + ")"
@@ -619,7 +620,6 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
 EXECUTEMANY_DEFAULT = util.symbol("executemany_default")
 EXECUTEMANY_BATCH = util.symbol("executemany_batch")
 EXECUTEMANY_VALUES = util.symbol("executemany_values")
-
 
 
 class PGDialect_psycopg2(PGDialect):
@@ -688,11 +688,23 @@ class PGDialect_psycopg2(PGDialect):
         self.client_encoding = client_encoding
 
         if executemany_mode:
-            if executemany_mode not in (EXECUTEMANY_DEFAULT.name, EXECUTEMANY_BATCH.name, EXECUTEMANY_VALUES.name):
-                raise exc.ArgumentError("Unsupported value for 'executemany_mode': %s" % executemany_mode)
+            if executemany_mode not in (
+                    EXECUTEMANY_DEFAULT.name,
+                    EXECUTEMANY_BATCH.name,
+                    EXECUTEMANY_VALUES.name):
+                raise exc.ArgumentError(
+                    "Unsupported value for 'executemany_mode': %s" % executemany_mode)
             self.psycopg2_executemany_mode = util.symbol(executemany_mode)
         else:
             self.psycopg2_executemany_mode = None
+
+        if not isinstance(executemany_page_size, int):
+            raise exc.ArgumentError("Wrong type for 'executemany_page_size': %s" % type(
+                executemany_page_size).__name__)
+
+        if executemany_page_size <= 0:
+            raise exc.ArgumentError(
+                "Wrong value for 'executemany_page_size': %s" % executemany_page_size)
 
         self.psycopg2_executemany_page_size = executemany_page_size
         self.psycopg2_batch_mode = use_batch_mode
