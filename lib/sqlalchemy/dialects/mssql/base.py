@@ -1590,7 +1590,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         # Limit in mssql is after the select keyword
         return ""
 
-    def _try_cast(self, element, **kw):
+    def visit_try_cast(self, element, **kw):
         return "TRY_CAST (%s AS %s)" % (
             compiler.SQLCompiler.process(element.clause, **kw),
             compiler.SQLCompiler.process(element.typeclause, **kw),

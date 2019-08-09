@@ -42,7 +42,7 @@ from .base import UNIQUEIDENTIFIER
 from .base import VARBINARY
 from .base import VARCHAR
 from .base import XML
-from .base import TRY_CAST
+from .base import try_cast
 
 
 base.dialect = dialect = pyodbc.dialect
@@ -80,6 +80,6 @@ __all__ = (
     "UNIQUEIDENTIFIER",
     "SQL_VARIANT",
     "XML",
-    "TRY_CAST",
+    "try_cast",
     "dialect",
 )
