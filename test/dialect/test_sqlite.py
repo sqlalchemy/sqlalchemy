@@ -2,6 +2,7 @@
 
 """SQLite-specific tests."""
 import datetime
+import json
 import os
 
 from sqlalchemy import and_
@@ -317,6 +318,35 @@ class JSONTest(fixtures.TestBase):
             eq_(
                 conn.scalar(select([sqlite_json.c.foo["json"]])), value["json"]
             )
+
+    @testing.provide_metadata
+    def test_deprecated_serializer_args(self):
+        sqlite_json = Table(
+            "json_test", self.metadata, Column("foo", sqlite.JSON)
+        )
+        data_element = {"foo": "bar"}
+
+        js = mock.Mock(side_effect=json.dumps)
+        jd = mock.Mock(side_effect=json.loads)
+
+        with testing.expect_deprecated(
+            "The _json_deserializer argument to the SQLite "
+            "dialect has been renamed",
+            "The _json_serializer argument to the SQLite "
+            "dialect has been renamed",
+        ):
+            engine = engines.testing_engine(
+                options=dict(_json_serializer=js, _json_deserializer=jd)
+            )
+        self.metadata.create_all(engine)
+
+        engine.execute(sqlite_json.insert(), {"foo": data_element})
+
+        row = engine.execute(select([sqlite_json.c.foo])).first()
+
+        eq_(row, (data_element,))
+        eq_(js.mock_calls, [mock.call(data_element)])
+        eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
 
 class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):

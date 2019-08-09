@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 4798
+
+    The dialects that support json are supposed to take arguments
+    ``json_serializer`` and ``json_deserializer`` at the create_engine() level,
+    however the SQLite dialect calls them ``_json_serilizer`` and
+    ``_json_deserilalizer``.  The names have been corrected, the old names are
+    accepted with a change warning, and these parameters are now documented as
+    :paramref:`.create_engine.json_serializer` and
+    :paramref:`.create_engine.json_deserializer`.
+

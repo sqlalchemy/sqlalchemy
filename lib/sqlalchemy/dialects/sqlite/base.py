@@ -1426,18 +1426,39 @@ class SQLiteDialect(default.DefaultDialect):
     _broken_fk_pragma_quotes = False
     _broken_dotted_colnames = False
 
+    @util.deprecated_params(
+        _json_serializer=(
+            "1.3.7",
+            "The _json_serializer argument to the SQLite dialect has "
+            "been renamed to the correct name of json_serializer.  The old "
+            "argument name will be removed in a future release.",
+        ),
+        _json_deserializer=(
+            "1.3.7",
+            "The _json_deserializer argument to the SQLite dialect has "
+            "been renamed to the correct name of json_deserializer.  The old "
+            "argument name will be removed in a future release.",
+        ),
+    )
     def __init__(
         self,
         isolation_level=None,
         native_datetime=False,
+        json_serializer=None,
+        json_deserializer=None,
         _json_serializer=None,
         _json_deserializer=None,
         **kwargs
     ):
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
-        self._json_serializer = _json_serializer
-        self._json_deserializer = _json_deserializer
+
+        if _json_serializer:
+            json_serializer = _json_serializer
+        if _json_deserializer:
+            json_deserializer = _json_deserializer
+        self._json_serializer = json_serializer
+        self._json_deserializer = json_deserializer
 
         # this flag used by pysqlite dialect, and perhaps others in the
         # future, to indicate the driver is handling date/timestamp
