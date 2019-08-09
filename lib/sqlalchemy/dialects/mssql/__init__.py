@@ -38,6 +38,7 @@ from .base import TEXT
 from .base import TIME
 from .base import TIMESTAMP
 from .base import TINYINT
+from .base import try_cast
 from .base import UNIQUEIDENTIFIER
 from .base import VARBINARY
 from .base import VARCHAR
@@ -80,4 +81,5 @@ __all__ = (
     "SQL_VARIANT",
     "XML",
     "dialect",
+    "try_cast",
 )

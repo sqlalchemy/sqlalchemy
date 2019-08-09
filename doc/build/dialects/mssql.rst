@@ -5,6 +5,13 @@ Microsoft SQL Server
 
 .. automodule:: sqlalchemy.dialects.mssql.base
 
+SQL Server SQL Constructs
+-------------------------
+
+.. currentmodule:: sqlalchemy.dialects.mssql
+
+.. autofunction:: try_cast
+
 SQL Server Data Types
 ---------------------
 
