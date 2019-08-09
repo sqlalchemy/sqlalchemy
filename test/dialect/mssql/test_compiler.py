@@ -22,6 +22,7 @@ from sqlalchemy import update
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql import mxodbc
+from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
@@ -1194,6 +1195,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y])
         self.assert_compile(
             schema.CreateIndex(idx), "CREATE INDEX foo ON test (x) INCLUDE (y)"
+        )
+
+    def test_try_cast(self):
+        metadata = MetaData()
+        t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
+
+        self.assert_compile(
+            select([try_cast(t1.c.id, Integer)]),
+            "SELECT TRY_CAST (t1.id AS INTEGER) AS anon_1 FROM t1",
         )
 
 

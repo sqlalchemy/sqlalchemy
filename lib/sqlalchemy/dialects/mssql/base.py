@@ -690,6 +690,7 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 from ...util import update_wrapper
+from ...util.langhelpers import public_factory
 
 
 # http://sqlserverbuilds.blogspot.com/
@@ -1172,6 +1173,41 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = "SQL_VARIANT"
 
 
+class TryCast(sql.elements.Cast):
+    """Represent a SQL Server TRY_CAST expression.
+
+    """
+
+    __visit_name__ = "try_cast"
+
+    def __init__(self, *arg, **kw):
+        """Create a TRY_CAST expression.
+
+        :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
+        construct, and works in the same way, except that the SQL expression
+        rendered is "TRY_CAST" rather than "CAST"::
+
+            from sqlalchemy import select
+            from sqlalchemy import Numeric
+            from sqlalchemy.dialects.mssql import try_cast
+
+            stmt = select([
+                try_cast(product_table.c.unit_price, Numeric(10, 4))
+            ])
+
+        The above would render::
+
+            SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
+            FROM product_table
+
+        .. versionadded:: 1.3.7
+
+        """
+        super(TryCast, self).__init__(*arg, **kw)
+
+
+try_cast = public_factory(TryCast, ".mssql.try_cast")
+
 # old names.
 MSDateTime = _MSDateTime
 MSDate = _MSDate
@@ -1584,6 +1620,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def limit_clause(self, select, **kw):
         # Limit in mssql is after the select keyword
         return ""
+
+    def visit_try_cast(self, element, **kw):
+        return "TRY_CAST (%s AS %s)" % (
+            self.process(element.clause, **kw),
+            self.process(element.typeclause, **kw),
+        )
 
     def visit_select(self, select, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
