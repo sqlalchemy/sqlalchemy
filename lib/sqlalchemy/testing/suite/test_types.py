@@ -2,8 +2,12 @@
 
 import datetime
 import decimal
+import json
+
+import mock
 
 from .. import config
+from .. import engines
 from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
@@ -726,6 +730,28 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         row = config.db.execute(select([data_table.c.data])).first()
 
         eq_(row, (data_element,))
+
+    def test_round_trip_custom_json(self):
+        data_table = self.tables.data_table
+        data_element = self.data1
+
+        js = mock.Mock(side_effect=json.dumps)
+        jd = mock.Mock(side_effect=json.loads)
+        engine = engines.testing_engine(
+            options=dict(json_serializer=js, json_deserializer=jd)
+        )
+
+        # support sqlite :memory: database...
+        data_table.create(engine, checkfirst=True)
+        engine.execute(
+            data_table.insert(), {"name": "row1", "data": data_element}
+        )
+
+        row = engine.execute(select([data_table.c.data])).first()
+
+        eq_(row, (data_element,))
+        eq_(js.mock_calls, [mock.call(data_element)])
+        eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
     def test_round_trip_none_as_sql_null(self):
         col = self.tables.data_table.c["nulldata"]

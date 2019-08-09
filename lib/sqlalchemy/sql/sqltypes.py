@@ -2041,6 +2041,26 @@ class JSON(Indexable, TypeEngine):
     values, but care must be taken as to the value of the
     :paramref:`.JSON.none_as_null` in these cases.
 
+    The JSON serializer and deserializer used by :class:`.JSON` defaults to
+    Python's ``json.dumps`` and ``json.loads`` functions; in the case of the
+    psycopg2 dialect, psycopg2 may be using its own custom loader function.
+
+    In order to affect the serializer / deserializer, they are currently
+    configurable at the :func:`.create_engine` level via the
+    :paramref:`.create_engine.json_serializer` and
+    :paramref:`.create_engine.json_deserializer` parameters.  For example,
+    to turn off ``ensure_ascii``::
+
+        engine = create_engine(
+            "sqlite://",
+            json_serializer=lambda obj: json.dumps(obj, ensure_ascii=False))
+
+    .. versionchanged:: 1.3.7
+
+        SQLite dialect's ``json_serializer`` and ``json_deserializer``
+        parameters renamed from ``_json_serializer`` and
+        ``_json_deserializer``.
+
     .. seealso::
 
         :class:`.postgresql.JSON`

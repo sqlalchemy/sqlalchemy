@@ -291,6 +291,21 @@ def create_engine(*args, **kwargs):
 
             :ref:`session_transaction_isolation` - for the ORM
 
+    :param json_deserializer: for dialects that support the :class:`.JSON`
+        datatype, this is a Python callable that will convert a JSON string
+        to a Python object.  By default, the Python ``json.loads`` function is
+        used.
+
+        .. versionchanged:: 1.3.7  The SQLite dialect renamed this from
+           ``_json_deserializer``.
+
+    :param json_serializer: for dialects that support the :class:`.JSON`
+        datatype, this is a Python callable that will render a given object
+        as JSON.   By default, the Python ``json.dumps`` function is used.
+
+        .. versionchanged:: 1.3.7  The SQLite dialect renamed this from
+           ``_json_serializer``.
+
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
         characters. If less than 6, labels are generated as
