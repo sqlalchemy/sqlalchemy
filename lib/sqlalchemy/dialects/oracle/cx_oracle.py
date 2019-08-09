@@ -78,6 +78,11 @@ The parameters accepted by the cx_oracle dialect are as follows:
 
 * ``coerce_to_decimal`` - see :ref:`cx_oracle_numeric` for detail.
 
+* ``text_encoding_errors`` - set the text encoding to use in case of a
+  text encoding error, see
+  https://docs.python.org/3/library/codecs.html#error-handlers, defaults
+  to None. This option is only available above cx_Oracle version 6.4.
+
 .. _cx_oracle_unicode:
 
 Unicode
@@ -754,6 +759,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         coerce_to_decimal=True,
         arraysize=50,
         threaded=None,
+        text_encoding_errors=None,
         **kwargs
     ):
 
@@ -764,6 +770,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         self.auto_convert_lobs = auto_convert_lobs
         self.coerce_to_unicode = coerce_to_unicode
         self.coerce_to_decimal = coerce_to_decimal
+        self.text_encoding_errors = text_encoding_errors
         if self._use_nchar_for_unicode:
             self.colspecs = self.colspecs.copy()
             self.colspecs[sqltypes.Unicode] = _OracleUnicodeStringNCHAR
@@ -814,6 +821,12 @@ class OracleDialect_cx_oracle(OracleDialect):
                 self._returningval = self._paramval
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6,)
+        
+        if self.text_encoding_errors and self.cx_oracle_ver < (6, 4):
+            raise exc.InvalidRequestError(
+                "only cx_Oracle version 6.4 and above supports "
+                "the 'text_encoding_errors' parameter"
+            )
 
     def _parse_cx_oracle_ver(self, version):
         m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)
@@ -919,9 +932,11 @@ class OracleDialect_cx_oracle(OracleDialect):
                         size,
                         cursor.arraysize,
                         outconverter=outconverter,
+                        encodingErrors=dialect.text_encoding_errors
                     )
                 else:
-                    return cursor.var(util.text_type, size, cursor.arraysize)
+                    return cursor.var(util.text_type, size, cursor.arraysize,
+                                      encodingErrors=dialect.text_encoding_errors)
 
             elif dialect.auto_convert_lobs and default_type in (
                 cx_Oracle.CLOB,
@@ -936,6 +951,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                         size,
                         cursor.arraysize,
                         outconverter=lambda value: outconverter(value.read()),
+                        encodingErrors=dialect.text_encoding_errors
                     )
                 else:
                     return cursor.var(
@@ -943,6 +959,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                         size,
                         cursor.arraysize,
                         outconverter=lambda value: value.read(),
+                        encodingErrors=dialect.text_encoding_errors
                     )
 
             elif dialect.auto_convert_lobs and default_type in (

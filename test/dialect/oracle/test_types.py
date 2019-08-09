@@ -731,6 +731,13 @@ class TypesTest(fixtures.TestBase):
         value = testing.db.scalar("SELECT 'hello' FROM DUAL")
         assert isinstance(value, util.text_type)
 
+    @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
+    @testing.provide_metadata
+    def test_text_encoding_errors(self):
+        engine = testing_engine(options=dict(text_encoding_errors="replace"))
+        value = engine.scalar("SELECT 'Hello' FROM DUAL")
+        assert value == 'Hello'
+
     @testing.provide_metadata
     def test_reflect_dates(self):
         metadata = self.metadata
