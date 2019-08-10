@@ -10,6 +10,8 @@ For an introduction to the most commonly used ORM events, see the section
 at :ref:`event_toplevel`.  Non-ORM events such as those regarding connections
 and low-level statement execution are described in :ref:`core_event_toplevel`.
 
+.. _orm_attribute_events:
+
 Attribute Events
 ----------------
 
