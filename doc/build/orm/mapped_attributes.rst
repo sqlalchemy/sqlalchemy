@@ -101,6 +101,18 @@ described at :class:`~.AttributeEvents`.
 
 .. autofunction:: validates
 
+Using Custom Datatypes at the Core Level
+-----------------------------------------
+
+A non-ORM means of affecting the value of a column in a way that suits
+converting data between how it is represented in Python, vs. how it is
+represented in the database, can be achieved by using a custom datatype that is
+applied to the mapped :class:`.Table` metadata.     This is more common in the
+case of some style of encoding / decoding that occurs both as data goes to the
+database and as it is returned; read more about this in the Core documentation
+at :ref:`types_typedecorator`.
+
+
 .. _mapper_hybrids:
 
 Using Descriptors and Hybrids

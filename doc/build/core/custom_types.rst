@@ -42,8 +42,8 @@ Augmenting Existing Types
 
 The :class:`.TypeDecorator` allows the creation of custom types which
 add bind-parameter and result-processing behavior to an existing
-type object.  It is used when additional in-Python marshaling of data
-to and from the database is required.
+type object.  It is used when additional in-Python :term:`marshalling` of data
+to and/or from the database is required.
 
 .. note::
 
@@ -53,6 +53,16 @@ to and from the database is required.
   processing specific to that DBAPI.  While it is possible to replace this
   handling for a given type through direct subclassing, it is never needed in
   practice and SQLAlchemy no longer supports this as a public use case.
+
+.. topic:: ORM Tip
+
+   The :class:`.TypeDecorator` can be used to provide a consistent means of
+   converting some type of value as it is passed into and out of the database.
+   When using the ORM, a similar technique exists for converting user data
+   from arbitrary formats which is to use the :func:`.validates` decorator.
+   This technique may be more appropriate when data coming into an ORM model
+   needs to be normalized in some way that is specific to the business case
+   and isn't as generic as a datatype.
 
 .. autoclass:: TypeDecorator
    :members:
