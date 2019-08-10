@@ -4,11 +4,44 @@
 
 .. _metadata_defaults:
 
-Column Insert/Update Defaults
+Column INSERT/UPDATE Defaults
 =============================
 
-SQLAlchemy provides a very rich featureset regarding column level events which
-take place during INSERT and UPDATE statements. Options include:
+Column INSERT and UPDATE defaults refer to functions that create a **default
+value** for a particular column in a row as an INSERT or UPDATE statement is
+proceeding against that row, in the case where **no value was provided to the
+INSERT or UPDATE statement for that column**.  That is, if a table has a column
+called "timestamp", and an INSERT statement proceeds which does not include a
+value for this column, an INSERT default would create a new value, such as
+the current time, that is used as the value to be INSERTed into the "timestamp"
+column.  If the statement *does* include a value  for this column, then the
+default does *not* take place.
+
+Column defaults can be server-side functions or constant values which are
+defined in the database along with the schema in :term:`DDL`, or as SQL
+expressions which are rendered directly within an INSERT or UPDATE statement
+emitted by SQLAlchemy; they may also be client-side Python functions or
+constant values which are invoked by SQLAlchemy before data is passed to the
+database.
+
+.. note::
+
+    A column default handler should not be confused with a construct that
+    intercepts and modifies incoming values for INSERT and UPDATE statements
+    which *are* provided to the statement as it is invoked.  This is known
+    as :term:`data marshalling`, where a column value is modified in some way
+    by the application before being sent to the database.  SQLAlchemy provides
+    a few means of achieving this which include using :ref:`custom datatypes
+    <types_typedecorator>`, :ref:`SQL execution events <core_sql_events>` and
+    in the ORM :ref:`custom  validators <simple_validators>` as well as
+    :ref:`attribute events <orm_attribute_events>`.    Column defaults are only
+    invoked when there is **no value present** for a column in a SQL
+    :term:`DML` statement.
+
+
+SQLAlchemy provides an array of features regarding default generation
+functions which take place for non-present values during INSERT and UPDATE
+statements. Options include:
 
 * Scalar values used as defaults during INSERT and UPDATE operations
 * Python functions which execute upon INSERT and UPDATE operations
