@@ -36,6 +36,24 @@ Glossary
         also known as :term:`DML`, and typically refers to the ``INSERT``,
         ``UPDATE``, and ``DELETE`` statements.
 
+    marshalling
+    data marshalling
+         The process of transforming the memory representation of an object to
+         a data format suitable for storage or transmission to another part of
+         a system, when data must be moved between different parts of a
+         computer program or from one program to another.   In terms of
+         SQLAlchemy, we often need to "marshal" data into a format appropriate
+         for passing into the relational database.
+
+         .. seealso::
+
+            `Marshalling (via Wikipedia) <https://en.wikipedia.org/wiki/Marshalling_(computer_science)>`_
+
+            :ref:`types_typedecorator` - SQLAlchemy's :class:`.TypeDecorator`
+            is commonly used for data marshalling as data is sent into the
+            database for INSERT and UPDATE statements, and "unmarshalling"
+            data as it is retrieved using SELECT statements.
+
     descriptor
     descriptors
         In Python, a descriptor is an object attribute with “binding behavior”, one whose attribute access has been overridden by methods in the `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
@@ -76,7 +94,7 @@ Glossary
             "some data"
 
     DDL
-        An acronym for *Data Definition Language*.  DDL is the subset
+        An acronym for **Data Definition Language**.  DDL is the subset
         of SQL that relational databases use to configure tables, constraints,
         and other permanent objects within a database schema.  SQLAlchemy
         provides a rich API for constructing and emitting DDL expressions.
@@ -86,6 +104,22 @@ Glossary
             :ref:`metadata_toplevel`
 
             `DDL (via Wikipedia) <http://en.wikipedia.org/wiki/Data_definition_language>`_
+
+            :term:`DML`
+
+
+    DML
+       An acronym for **Data Manipulation Language**.  DML is the subset of
+       SQL that relational databases use to *modify* the data in tables. DML
+       typically refers to the three widely familiar statements of INSERT,
+       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronoym for "CReate,
+       Update, Delete").
+
+        .. seealso::
+
+            `DML (via Wikipedia) <http://en.wikipedia.org/wiki/Data_manipulation_language>`_
+
+            :term:`DDL`
 
     discriminator
         A result-set column which is used during :term:`polymorphic` loading
