@@ -204,16 +204,16 @@ class Pool(log.Identified):
         self._invalidate_time = 0
         self._use_threadlocal = use_threadlocal
         self._pre_ping = pre_ping
-        if reset_on_return in ("rollback", True, reset_rollback):
-            self._reset_on_return = reset_rollback
-        elif reset_on_return in ("none", None, False, reset_none):
-            self._reset_on_return = reset_none
-        elif reset_on_return in ("commit", reset_commit):
-            self._reset_on_return = reset_commit
-        else:
-            raise exc.ArgumentError(
-                "Invalid value for 'reset_on_return': %r" % reset_on_return
-            )
+        self._reset_on_return = util.symbol.parse_user_argument(
+            reset_on_return,
+            {
+                reset_rollback: ["rollback", True],
+                reset_none: ["none", None, False],
+                reset_commit: ["commit"],
+            },
+            "reset_on_return",
+            resolve_symbol_names=False,
+        )
 
         self.echo = echo
 
