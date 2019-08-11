@@ -2227,6 +2227,69 @@ class SymbolTest(fixtures.TestBase):
         assert not (sym1 | sym2) & (sym3 | sym4)
         assert (sym1 | sym2) & (sym2 | sym4)
 
+    def test_parser(self):
+        sym1 = util.symbol("sym1", canonical=1)
+        sym2 = util.symbol("sym2", canonical=2)
+        sym3 = util.symbol("sym3", canonical=4)
+        sym4 = util.symbol("sym4", canonical=8)
+
+        lookup_one = {sym1: [], sym2: [True], sym3: [False], sym4: [None]}
+        lookup_two = {sym1: [], sym2: [True], sym3: [False]}
+        lookup_three = {sym1: [], sym2: ["symbol2"], sym3: []}
+
+        is_(
+            util.symbol.parse_user_argument(
+                "sym2", lookup_one, "some_name", resolve_symbol_names=True
+            ),
+            sym2,
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Invalid value for 'some_name': 'sym2'",
+            util.symbol.parse_user_argument,
+            "sym2",
+            lookup_one,
+            "some_name",
+        )
+        is_(
+            util.symbol.parse_user_argument(
+                True, lookup_one, "some_name", resolve_symbol_names=False
+            ),
+            sym2,
+        )
+
+        is_(
+            util.symbol.parse_user_argument(sym2, lookup_one, "some_name"),
+            sym2,
+        )
+
+        is_(
+            util.symbol.parse_user_argument(None, lookup_one, "some_name"),
+            sym4,
+        )
+
+        is_(
+            util.symbol.parse_user_argument(None, lookup_two, "some_name"),
+            None,
+        )
+
+        is_(
+            util.symbol.parse_user_argument(
+                "symbol2", lookup_three, "some_name"
+            ),
+            sym2,
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "Invalid value for 'some_name': 'foo'",
+            util.symbol.parse_user_argument,
+            "foo",
+            lookup_three,
+            "some_name",
+        )
+
 
 class _Py3KFixtures(object):
     pass
