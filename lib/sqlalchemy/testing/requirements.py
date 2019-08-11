@@ -112,6 +112,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def sql_expression_limit_offset(self):
+        """target database can render LIMIT and/or OFFSET with a complete
+        SQL expression, such as one that uses the addition operator.
+        parameter
+        """
+
+        return exclusions.open()
+
+    @property
     def parens_in_union_contained_select_w_limit_offset(self):
         """Target database must support parenthesized SELECT in UNION
         when LIMIT/OFFSET is specifically present.

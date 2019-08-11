@@ -618,6 +618,16 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if(["sybase"], "no support for OFFSET or equivalent")
 
     @property
+    def sql_expression_limit_offset(self):
+        return (
+            fails_if(
+                ["mysql"],
+                "MySQL can't accommodate full expressions in OFFSET or LIMIT",
+            )
+            + self.offset
+        )
+
+    @property
     def window_functions(self):
         return only_if(
             ["postgresql>=8.4", "mssql", "oracle", "sqlite>=3.25.0"],
