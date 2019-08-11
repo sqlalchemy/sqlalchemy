@@ -2523,7 +2523,8 @@ class SQLCompiler(Compiled):
             self, crud_params, returning_clause_exists):
         """
         Generate the VALUES place holder string
-        Should be overridden in classes that need a different implementation than the default
+        Should be overridden in classes that need a different implementation
+        than the default
         """
         return " VALUES (%s)" % ", ".join([c[1] for c in crud_params])
 

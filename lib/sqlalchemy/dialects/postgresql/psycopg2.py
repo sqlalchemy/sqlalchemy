@@ -596,11 +596,13 @@ class PGCompiler_psycopg2(PGCompiler):
     def generate_values_placeholders_str(
             self, crud_params, returning_clause_exists):
 
-        # Currently not using psycopg2.execute_values() when there's a returning clause; need to add support
+        # Currently not using psycopg2.execute_values() when there's a
+        # returning clause; need to add support
         # for receiving multiple return values from insert query
         # Note: self.inline is true iff there are multiple parameters sets to
         # the query
-        if self.inline and not returning_clause_exists and self.dialect.psycopg2_executemany_mode is EXECUTEMANY_VALUES:
+        if self.inline and not returning_clause_exists and \
+                self.dialect.psycopg2_executemany_mode is EXECUTEMANY_VALUES:
             self.execute_values_insert_template = "(" + \
                 ", ".join([c[1] for c in crud_params]) + ")"
             return " VALUES %s"
@@ -693,24 +695,27 @@ class PGDialect_psycopg2(PGDialect):
                     EXECUTEMANY_BATCH.name,
                     EXECUTEMANY_VALUES.name):
                 raise exc.ArgumentError(
-                    "Unsupported value for 'executemany_mode': %s" % executemany_mode)
+                    "Unsupported value for 'executemany_mode': %s" %
+                    executemany_mode)
             self.psycopg2_executemany_mode = util.symbol(executemany_mode)
         else:
             self.psycopg2_executemany_mode = None
 
         if not isinstance(executemany_page_size, int):
-            raise exc.ArgumentError("Wrong type for 'executemany_page_size': %s" % type(
-                executemany_page_size).__name__)
+            raise exc.ArgumentError(
+                "Wrong type for 'executemany_page_size': %s" %
+                type(executemany_page_size).__name__)
 
         if executemany_page_size <= 0:
             raise exc.ArgumentError(
-                "Wrong value for 'executemany_page_size': %s" % executemany_page_size)
+                "Wrong value for 'executemany_page_size': %s" %
+                executemany_page_size)
 
         self.psycopg2_executemany_page_size = executemany_page_size
         self.psycopg2_batch_mode = use_batch_mode
 
-        # use_batch_mode supported for backward compatibility. To avoid having to check two flags,
-        # set executemany_mode flag here and use it only
+        # use_batch_mode supported for backward compatibility. To avoid having
+        # to check two flags, set executemany_mode flag here and use it only
         if not self.psycopg2_executemany_mode:
             self.psycopg2_executemany_mode = \
                 EXECUTEMANY_BATCH if self.psycopg2_batch_mode else \
@@ -875,7 +880,8 @@ class PGDialect_psycopg2(PGDialect):
                 page_size=self.psycopg2_executemany_page_size)
 
         else:  # EXECUTEMANY_VALUES of non-insert query, or EXECUTEMANY_BATCH
-            self._psycopg2_extras().execute_batch(cursor, statement, parameters)
+            self._psycopg2_extras().execute_batch(cursor, statement,
+                                                  parameters)
 
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
