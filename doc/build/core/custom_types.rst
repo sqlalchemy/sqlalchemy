@@ -65,7 +65,6 @@ to and/or from the database is required.
 
 .. autoclass:: TypeDecorator
    :members:
-   :inherited-members:
 
 
 TypeDecorator Recipes
