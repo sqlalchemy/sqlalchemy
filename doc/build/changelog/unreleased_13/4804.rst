@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 4804
+
+    The MySQL dialects will emit "SET NAMES" at the start of a connection when
+    charset is given to the MySQL driver, to appease an apparent behavior
+    observed in MySQL 8.0 that raises a collation error when a UNION includes
+    string columns unioned against columns of the form CAST(NULL AS CHAR(..)),
+    which is what SQLAlchemy's polymorphic_union function does.   The issue
+    seems to have affected PyMySQL for at least a year, however has recently
+    appeared as of mysqlclient 1.4.4 based on changes in how this DBAPI creates
+    a connection.  As the presence of this directive impacts three separate
+    MySQL charset settings which each have intricate effects based on their
+    presense,  SQLAlchemy will now emit the directive on new connections to
+    ensure correct behavior.

@@ -117,6 +117,22 @@ class MySQLDialect_mysqldb(MySQLDialect):
     def dbapi(cls):
         return __import__("MySQLdb")
 
+    def on_connect(self):
+        super_ = super(MySQLDialect_mysqldb, self).on_connect()
+
+        def on_connect(conn):
+            if super_ is not None:
+                super_(conn)
+
+            charset_name = conn.character_set_name()
+
+            if charset_name is not None:
+                cursor = conn.cursor()
+                cursor.execute("SET NAMES %s" % charset_name)
+                cursor.close()
+
+        return on_connect
+
     def do_ping(self, dbapi_connection):
         try:
             dbapi_connection.ping(False)

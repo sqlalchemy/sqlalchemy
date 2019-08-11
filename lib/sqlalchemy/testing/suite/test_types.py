@@ -733,7 +733,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
     def test_round_trip_custom_json(self):
         data_table = self.tables.data_table
-        data_element = self.data1
+        data_element = {"key1": "data1"}
 
         js = mock.Mock(side_effect=json.dumps)
         jd = mock.Mock(side_effect=json.loads)
