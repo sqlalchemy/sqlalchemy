@@ -903,6 +903,15 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     """
 
     class Comparator(TypeEngine.Comparator):
+        """A :class:`.TypeEngine.Comparator` that is specific to
+        :class:`.TypeDecorator`.
+
+        User-defined :class:`.TypeDecorator` classes should not typically
+        need to modify this.
+
+
+        """
+
         __slots__ = ()
 
         def operate(self, op, *other, **kwargs):
