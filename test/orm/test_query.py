@@ -2394,6 +2394,8 @@ class ComparatorTest(QueryTest):
 
 # more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
+    __dialect__ = "default"
+
     def test_first(self):
         User = self.classes.User
 
@@ -2492,6 +2494,84 @@ class SliceTest(QueryTest):
                     "SELECT users.id AS users_id, users.name AS users_name "
                     "FROM users ORDER BY users.id",
                     {},
+                )
+            ],
+        )
+
+    def test_first_against_expression_offset(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).order_by(User.id).offset(literal_column("2"))
+
+        self.assert_sql(
+            testing.db,
+            q.first,
+            [
+                (
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users ORDER BY users.id "
+                    "LIMIT :param_1 OFFSET 2",
+                    [{"param_1": 1}],
+                )
+            ],
+        )
+
+    @testing.requires.sql_expression_limit_offset
+    def test_full_slice_against_expression_offset(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).order_by(User.id).offset(literal_column("2"))
+
+        self.assert_sql(
+            testing.db,
+            lambda: q[2:5],
+            [
+                (
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users ORDER BY users.id "
+                    "LIMIT :param_1 OFFSET 2 + :2_1",
+                    [{"param_1": 3, "2_1": 2}],
+                )
+            ],
+        )
+
+    def test_full_slice_against_integer_offset(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).order_by(User.id).offset(2)
+
+        self.assert_sql(
+            testing.db,
+            lambda: q[2:5],
+            [
+                (
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users ORDER BY users.id "
+                    "LIMIT :param_1 OFFSET :param_2",
+                    [{"param_1": 3, "param_2": 4}],
+                )
+            ],
+        )
+
+    @testing.requires.sql_expression_limit_offset
+    def test_start_slice_against_expression_offset(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).order_by(User.id).offset(literal_column("2"))
+
+        self.assert_sql(
+            testing.db,
+            lambda: q[2:],
+            [
+                (
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users ORDER BY users.id "
+                    "LIMIT -1 OFFSET 2 + :2_1",
+                    [{"2_1": 2}],
                 )
             ],
         )

@@ -3054,14 +3054,18 @@ class Query(object):
 
         """
         if start is not None and stop is not None:
-            self._offset = (self._offset or 0) + start
+            self._offset = self._offset if self._offset is not None else 0
+            if start != 0:
+                self._offset += start
             self._limit = stop - start
         elif start is None and stop is not None:
             self._limit = stop
         elif start is not None and stop is None:
-            self._offset = (self._offset or 0) + start
+            self._offset = self._offset if self._offset is not None else 0
+            if start != 0:
+                self._offset += start
 
-        if self._offset == 0:
+        if isinstance(self._offset, int) and self._offset == 0:
             self._offset = None
 
     @_generative(_no_statement_condition)
