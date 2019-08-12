@@ -1368,6 +1368,41 @@ class symbol(object):
         finally:
             symbol._lock.release()
 
+    @classmethod
+    def parse_user_argument(
+        cls, arg, choices, name, resolve_symbol_names=False
+    ):
+        """Given a user parameter, parse the parameter into a chosen symbol.
+
+        The user argument can be a string name that matches the name of a
+        symbol, or the symbol object itself, or any number of alternate choices
+        such as True/False/ None etc.
+
+        :param arg: the user argument.
+        :param choices: dictionary of symbol object to list of possible
+         entries.
+        :param name: name of the argument.   Used in an :class:`.ArgumentError`
+         that is raised if the parameter doesn't match any available argument.
+        :param resolve_symbol_names: include the name of each symbol as a valid
+         entry.
+
+        """
+        # note using hash lookup is tricky here because symbol's `__hash__`
+        # is its int value which we don't want included in the lookup
+        # explicitly, so we iterate and compare each.
+        for sym, choice in choices.items():
+            if arg is sym:
+                return sym
+            elif resolve_symbol_names and arg == sym.name:
+                return sym
+            elif arg in choice:
+                return sym
+
+        if arg is None:
+            return None
+
+        raise exc.ArgumentError("Invalid value for '%s': %r" % (name, arg))
+
 
 _creation_order = 1
 
