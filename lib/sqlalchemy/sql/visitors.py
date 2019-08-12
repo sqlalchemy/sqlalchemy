@@ -76,7 +76,8 @@ def _generate_dispatch(cls):
     """
     if "__visit_name__" in cls.__dict__:
         visit_name = cls.__visit_name__
-        if isinstance(visit_name, str):
+
+        if isinstance(visit_name, util.compat.string_types):
             # There is an optimization opportunity here because the
             # the string name of the class's __visit_name__ is known at
             # this early stage (import time) so it can be pre-constructed.
