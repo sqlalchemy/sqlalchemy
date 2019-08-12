@@ -501,13 +501,11 @@ API Documentation - Available Pool Implementations
    .. automethod:: connect
    .. automethod:: dispose
    .. automethod:: recreate
-   .. automethod:: unique_connection
 
 .. autoclass:: sqlalchemy.pool.QueuePool
 
    .. automethod:: __init__
    .. automethod:: connect
-   .. automethod:: unique_connection
 
 .. autoclass:: SingletonThreadPool
 
