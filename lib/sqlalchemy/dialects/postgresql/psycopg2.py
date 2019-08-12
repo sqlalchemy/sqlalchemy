@@ -689,17 +689,18 @@ class PGDialect_psycopg2(PGDialect):
         self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
 
-        if executemany_mode:
-            if executemany_mode not in (
-                    EXECUTEMANY_DEFAULT.name,
-                    EXECUTEMANY_BATCH.name,
-                    EXECUTEMANY_VALUES.name):
-                raise exc.ArgumentError(
-                    "Unsupported value for 'executemany_mode': %s" %
-                    executemany_mode)
-            self.psycopg2_executemany_mode = util.symbol(executemany_mode)
-        else:
-            self.psycopg2_executemany_mode = None
+        # Parse executemany_mode argument, allowing it to be only one of the
+        # symbol names
+        self.psycopg2_executemany_mode = util.symbol.parse_user_argument(
+            executemany_mode,
+            {
+                EXECUTEMANY_DEFAULT: [],
+                EXECUTEMANY_BATCH: [],
+                EXECUTEMANY_VALUES: []
+            },
+            "executemany_mode",
+            resolve_symbol_names=True
+        )
 
         if not isinstance(executemany_page_size, int):
             raise exc.ArgumentError(

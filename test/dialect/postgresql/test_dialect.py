@@ -425,7 +425,7 @@ class ExecutemanyFlagOptionsTest(fixtures.TablesTest):
         for opt in [1, True, "batch_insert"]:
             assert_raises_message(
                 exc.ArgumentError,
-                "Unsupported value for 'executemany_mode': %s" % opt,
+                "Invalid value for 'executemany_mode': %r" % opt,
                 engines.testing_engine,
                 options={"executemany_mode": opt}
             )
