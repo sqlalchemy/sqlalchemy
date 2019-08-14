@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4777
-
-    Fixed regression caused by new selectinload for many-to-one logic where
-    a primaryjoin condition not based on real foreign keys would cause
-    KeyError if a related object did not exist for a given key value on the
-    parent object.

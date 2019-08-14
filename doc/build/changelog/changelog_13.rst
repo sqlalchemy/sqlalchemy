@@ -12,7 +12,161 @@
 
 .. changelog::
     :version: 1.3.7
-    :include_notes_from: unreleased_13
+    :released: August 14, 2019
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4778
+
+        Fixed issue where :class:`.Index` object which contained a mixture of
+        functional expressions which were not resolvable to a particular column,
+        in combination with string-based column names, would fail to initialize
+        its internal state correctly leading to failures during DDL compilation.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 4798
+
+        The dialects that support json are supposed to take arguments
+        ``json_serializer`` and ``json_deserializer`` at the create_engine() level,
+        however the SQLite dialect calls them ``_json_serilizer`` and
+        ``_json_deserilalizer``.  The names have been corrected, the old names are
+        accepted with a change warning, and these parameters are now documented as
+        :paramref:`.create_engine.json_serializer` and
+        :paramref:`.create_engine.json_deserializer`.
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4804
+
+        The MySQL dialects will emit "SET NAMES" at the start of a connection when
+        charset is given to the MySQL driver, to appease an apparent behavior
+        observed in MySQL 8.0 that raises a collation error when a UNION includes
+        string columns unioned against columns of the form CAST(NULL AS CHAR(..)),
+        which is what SQLAlchemy's polymorphic_union function does.   The issue
+        seems to have affected PyMySQL for at least a year, however has recently
+        appeared as of mysqlclient 1.4.4 based on changes in how this DBAPI creates
+        a connection.  As the presence of this directive impacts three separate
+        MySQL charset settings which each have intricate effects based on their
+        presense,  SQLAlchemy will now emit the directive on new connections to
+        ensure correct behavior.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 4623
+
+        Added new dialect flag for the psycopg2 dialect, ``executemany_mode`` which
+        supersedes the previous experimental ``use_batch_mode`` flag.
+        ``executemany_mode`` supports both the "execute batch" and "execute values"
+        functions provided by psycopg2, the latter which is used for compiled
+        :func:`.insert` constructs.   Pull request courtesy Yuval Dinari.
+
+        .. seealso::
+
+            :ref:`psycopg2_executemany_mode`
+
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4787
+
+        Fixed bug where :meth:`.TypeEngine.column_expression` method would not be
+        applied to subsequent SELECT statements inside of a UNION or other
+        :class:`.CompoundSelect`, even though the SELECT statements are rendered at
+        the topmost level of the statement.   New logic now differentiates between
+        rendering the column expression, which is needed for all SELECTs in the
+        list, vs. gathering the returned data type for the result row, which is
+        needed only for the first SELECT.
+
+    .. change:
+        :tags: bug, sqlite
+        :tickets: 4793
+
+        Fixed bug where usage of "PRAGMA table_info" in SQLite dialect meant that
+        reflection features to detect for table existence, list of table columns,
+        and list of foreign keys, would default to any table in any attached
+        database, when no schema name was given and the table did not exist in the
+        base schema.  The fix explicitly runs PRAGMA for the 'main' schema and then
+        the 'temp' schema if the 'main' returned no rows, to maintain the behavior
+        of tables + temp tables in the "no schema" namespace, attached tables only
+        in the "schema" namespace.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4780
+
+        Fixed issue where internal cloning of SELECT constructs could lead to a key
+        error if the copy of the SELECT changed its state such that its list of
+        columns changed.  This was observed to be occurring in some ORM scenarios
+        which may be unique to 1.3 and above, so is partially a regression fix.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4777
+
+        Fixed regression caused by new selectinload for many-to-one logic where
+        a primaryjoin condition not based on real foreign keys would cause
+        KeyError if a related object did not exist for a given key value on the
+        parent object.
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 4783
+
+        Added reserved words ARRAY and MEMBER to the MySQL reserved words list, as
+        MySQL 8.0 has now made these reserved.
+
+
+    .. change::
+        :tags: bug, events
+        :tickets: 4794
+
+        Fixed issue in event system where using the ``once=True`` flag with
+        dynamically generated listener functions would cause event registration of
+        future events to fail if those listener functions were garbage collected
+        after they were used, due to an assumption that a listened function is
+        strongly referenced.  The "once" wrapped is now modified to strongly
+        reference the inner function persistently, and documentation is updated
+        that using "once" does not imply automatic de-registration of listener
+        functions.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4751
+
+        Added another fix for an upstream MySQL 8 issue where a case sensitive
+        table name is reported incorrectly in foreign key constraint reflection,
+        this is an extension of the fix first added for :ticket:`4344` which
+        affects a case sensitive column name.  The new issue occurs through MySQL
+        8.0.17, so the general logic of the 88718 fix remains in place.
+
+        .. seealso::
+
+            https://bugs.mysql.com/bug.php?id=96365 - upstream bug
+
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 4782
+
+        Added new :func:`.mssql.try_cast` construct for SQL Server which emits
+        "TRY_CAST" syntax.  Pull request courtesy Leonel Atencio.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4803
+
+        Fixed bug where using :meth:`.Query.first` or a slice expression in
+        conjunction with a query that has an expression based "offset" applied
+        would raise TypeError, due to an "or" conditional against "offset" that did
+        not expect it to be a SQL expression as opposed to an integer or None.
+
 
 .. changelog::
     :version: 1.3.6

@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, mssql
-    :tickets: 4782
-
-    Added new :func:`.mssql.try_cast` construct for SQL Server which emits
-    "TRY_CAST" syntax.  Pull request courtesy Leonel Atencio.
