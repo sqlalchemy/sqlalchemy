@@ -609,8 +609,9 @@ class DefaultRequirements(SuiteRequirements):
     def sql_expression_limit_offset(self):
         return (
             fails_if(
-                ["mysql"],
-                "MySQL can't accommodate full expressions in OFFSET or LIMIT",
+                ["mysql", "mssql"],
+                "Target backend can't accommodate full expressions in "
+                "OFFSET or LIMIT",
             )
             + self.offset
         )

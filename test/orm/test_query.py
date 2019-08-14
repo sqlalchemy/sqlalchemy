@@ -2395,6 +2395,7 @@ class ComparatorTest(QueryTest):
 # more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
     __dialect__ = "default"
+    __backend__ = True
 
     def test_first(self):
         User = self.classes.User
@@ -2498,11 +2499,16 @@ class SliceTest(QueryTest):
             ],
         )
 
+    @testing.requires.sql_expression_limit_offset
     def test_first_against_expression_offset(self):
         User = self.classes.User
 
         sess = create_session()
-        q = sess.query(User).order_by(User.id).offset(literal_column("2"))
+        q = (
+            sess.query(User)
+            .order_by(User.id)
+            .offset(literal_column("2") + literal_column("3"))
+        )
 
         self.assert_sql(
             testing.db,
@@ -2511,7 +2517,7 @@ class SliceTest(QueryTest):
                 (
                     "SELECT users.id AS users_id, users.name AS users_name "
                     "FROM users ORDER BY users.id "
-                    "LIMIT :param_1 OFFSET 2",
+                    "LIMIT :param_1 OFFSET 2 + 3",
                     [{"param_1": 1}],
                 )
             ],
@@ -2522,7 +2528,11 @@ class SliceTest(QueryTest):
         User = self.classes.User
 
         sess = create_session()
-        q = sess.query(User).order_by(User.id).offset(literal_column("2"))
+        q = (
+            sess.query(User)
+            .order_by(User.id)
+            .offset(literal_column("2") + literal_column("3"))
+        )
 
         self.assert_sql(
             testing.db,
@@ -2531,8 +2541,8 @@ class SliceTest(QueryTest):
                 (
                     "SELECT users.id AS users_id, users.name AS users_name "
                     "FROM users ORDER BY users.id "
-                    "LIMIT :param_1 OFFSET 2 + :2_1",
-                    [{"param_1": 3, "2_1": 2}],
+                    "LIMIT :param_1 OFFSET 2 + 3 + :param_2",
+                    [{"param_1": 3, "param_2": 2}],
                 )
             ],
         )
