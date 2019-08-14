@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4803
-
-    Fixed bug where using :meth:`.Query.first` or a slice expression in
-    conjunction with a query that has an expression based "offset" applied
-    would raise TypeError, due to an "or" conditional against "offset" that did
-    not expect it to be a SQL expression as opposed to an integer or None.
-
