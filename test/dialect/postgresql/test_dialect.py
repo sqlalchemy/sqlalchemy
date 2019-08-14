@@ -1,5 +1,5 @@
 # coding: utf-8
-
+import contextlib
 import datetime
 import logging
 import logging.handlers
@@ -28,12 +28,16 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
+from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_BATCH
+from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_DEFAULT
+from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
@@ -41,7 +45,6 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
-from sqlalchemy.testing.mock import Mock
 from ...engine import test_execute
 
 
@@ -50,8 +53,10 @@ class DialectTest(fixtures.TestBase):
 
     def test_version_parsing(self):
         def mock_conn(res):
-            return Mock(
-                execute=Mock(return_value=Mock(scalar=Mock(return_value=res)))
+            return mock.Mock(
+                execute=mock.Mock(
+                    return_value=mock.Mock(scalar=mock.Mock(return_value=res))
+                )
             )
 
         dialect = postgresql.dialect()
@@ -153,11 +158,13 @@ class DialectTest(fixtures.TestBase):
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
 
-class BatchInsertsTest(fixtures.TablesTest):
+class ExecuteManyMode(object):
     __only_on__ = "postgresql+psycopg2"
     __backend__ = True
 
     run_create_tables = "each"
+
+    options = None
 
     @classmethod
     def define_tables(cls, metadata):
@@ -170,13 +177,18 @@ class BatchInsertsTest(fixtures.TablesTest):
             Column("z", Integer, server_default="5"),
         )
 
+    @contextlib.contextmanager
+    def expect_deprecated_opts(self):
+        yield
+
     def setup(self):
-        super(BatchInsertsTest, self).setup()
-        self.engine = engines.testing_engine(options={"use_batch_mode": True})
+        super(ExecuteManyMode, self).setup()
+        with self.expect_deprecated_opts():
+            self.engine = engines.testing_engine(options=self.options)
 
     def teardown(self):
         self.engine.dispose()
-        super(BatchInsertsTest, self).teardown()
+        super(ExecuteManyMode, self).teardown()
 
     def test_insert(self):
         with self.engine.connect() as conn:
@@ -193,6 +205,133 @@ class BatchInsertsTest(fixtures.TablesTest):
                 conn.execute(select([self.tables.data])).fetchall(),
                 [(1, "x1", "y1", 5), (2, "x2", "y2", 5), (3, "x3", "y3", 5)],
             )
+
+    def test_insert_no_page_size(self):
+        from psycopg2 import extras
+
+        eng = self.engine
+        if eng.dialect.executemany_mode is EXECUTEMANY_BATCH:
+            meth = extras.execute_batch
+            stmt = "INSERT INTO data (x, y) VALUES (%(x)s, %(y)s)"
+            expected_kwargs = {}
+        else:
+            meth = extras.execute_values
+            stmt = "INSERT INTO data (x, y) VALUES %s"
+            expected_kwargs = {"template": "(%(x)s, %(y)s)"}
+
+        with mock.patch.object(
+            extras, meth.__name__, side_effect=meth
+        ) as mock_exec:
+            with eng.connect() as conn:
+                conn.execute(
+                    self.tables.data.insert(),
+                    [
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ],
+                )
+
+        eq_(
+            mock_exec.mock_calls,
+            [
+                mock.call(
+                    mock.ANY,
+                    stmt,
+                    (
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ),
+                    **expected_kwargs
+                )
+            ],
+        )
+
+    def test_insert_page_size(self):
+        opts = self.options.copy()
+        opts["executemany_batch_page_size"] = 500
+        opts["executemany_values_page_size"] = 1000
+
+        with self.expect_deprecated_opts():
+            eng = engines.testing_engine(options=opts)
+
+        from psycopg2 import extras
+
+        if eng.dialect.executemany_mode is EXECUTEMANY_BATCH:
+            meth = extras.execute_batch
+            stmt = "INSERT INTO data (x, y) VALUES (%(x)s, %(y)s)"
+            expected_kwargs = {"page_size": 500}
+        else:
+            meth = extras.execute_values
+            stmt = "INSERT INTO data (x, y) VALUES %s"
+            expected_kwargs = {"page_size": 1000, "template": "(%(x)s, %(y)s)"}
+
+        with mock.patch.object(
+            extras, meth.__name__, side_effect=meth
+        ) as mock_exec:
+            with eng.connect() as conn:
+                conn.execute(
+                    self.tables.data.insert(),
+                    [
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ],
+                )
+
+        eq_(
+            mock_exec.mock_calls,
+            [
+                mock.call(
+                    mock.ANY,
+                    stmt,
+                    (
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ),
+                    **expected_kwargs
+                )
+            ],
+        )
+
+    def test_update_fallback(self):
+        from psycopg2 import extras
+
+        eng = self.engine
+        meth = extras.execute_batch
+        stmt = "UPDATE data SET y=%(yval)s WHERE data.x = %(xval)s"
+        expected_kwargs = {}
+
+        with mock.patch.object(
+            extras, meth.__name__, side_effect=meth
+        ) as mock_exec:
+            with eng.connect() as conn:
+                conn.execute(
+                    self.tables.data.update()
+                    .where(self.tables.data.c.x == bindparam("xval"))
+                    .values(y=bindparam("yval")),
+                    [
+                        {"xval": "x1", "yval": "y5"},
+                        {"xval": "x3", "yval": "y6"},
+                    ],
+                )
+
+        eq_(
+            mock_exec.mock_calls,
+            [
+                mock.call(
+                    mock.ANY,
+                    stmt,
+                    (
+                        {"xval": "x1", "yval": "y5"},
+                        {"xval": "x3", "yval": "y6"},
+                    ),
+                    **expected_kwargs
+                )
+            ],
+        )
 
     def test_not_sane_rowcount(self):
         self.engine.connect().close()
@@ -220,6 +359,49 @@ class BatchInsertsTest(fixtures.TablesTest):
                     select([self.tables.data]).order_by(self.tables.data.c.id)
                 ).fetchall(),
                 [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
+            )
+
+
+class UseBatchModeTest(ExecuteManyMode, fixtures.TablesTest):
+    options = {"use_batch_mode": True}
+
+    def expect_deprecated_opts(self):
+        return expect_deprecated(
+            "The psycopg2 use_batch_mode flag is superseded by "
+            "executemany_mode='batch'"
+        )
+
+
+class ExecutemanyBatchModeTest(ExecuteManyMode, fixtures.TablesTest):
+    options = {"executemany_mode": "batch"}
+
+
+class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
+    options = {"executemany_mode": "values"}
+
+
+class ExecutemanyFlagOptionsTest(fixtures.TablesTest):
+    __only_on__ = "postgresql+psycopg2"
+    __backend__ = True
+
+    def test_executemany_correct_flag_options(self):
+        for opt, expected in [
+            (None, EXECUTEMANY_DEFAULT),
+            ("batch", EXECUTEMANY_BATCH),
+            ("values", EXECUTEMANY_VALUES),
+        ]:
+            self.engine = engines.testing_engine(
+                options={"executemany_mode": opt}
+            )
+            is_(self.engine.dialect.executemany_mode, expected)
+
+    def test_executemany_wrong_flag_options(self):
+        for opt in [1, True, "batch_insert"]:
+            assert_raises_message(
+                exc.ArgumentError,
+                "Invalid value for 'executemany_mode': %r" % opt,
+                engines.testing_engine,
+                options={"executemany_mode": opt},
             )
 
 
@@ -503,7 +685,9 @@ $$ LANGUAGE plpgsql;
 
             if version:
                 dialect = postgresql.dialect()
-                dialect._get_server_version_info = Mock(return_value=version)
+                dialect._get_server_version_info = mock.Mock(
+                    return_value=version
+                )
                 dialect.initialize(testing.db.connect())
             else:
                 dialect = testing.db.dialect
