@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 4807
+
+    Fixed an issue whereby if the dialect "initialize" process which occurs on
+    first connect would encounter an unexpected exception, the initialize
+    process would fail to complete and then no longer attempt on subsequent
+    connection attempts, leaving the dialect in an un-initialized, or partially
+    initialized state, within the scope of parameters that need to be
+    established based on inspection of a live connection.   The "invoke once"
+    logic in the event system has been reworked to accommodate for this
+    occurrence using new, private API features that establish an "exec once"
+    hook that will continue to allow the initializer to fire off on subsequent
+    connections, until it completes without raising an exception. This does not
+    impact the behavior of the existing ``once=True`` flag within the event
+    system.
