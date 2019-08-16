@@ -171,6 +171,78 @@ class EventsTest(fixtures.TestBase):
             t2.dispatch.event_one,
         )
 
+    def test_exec_once(self):
+        m1 = Mock()
+
+        event.listen(self.Target, "event_one", m1)
+
+        t1 = self.Target()
+        t2 = self.Target()
+
+        t1.dispatch.event_one.for_modify(t1.dispatch).exec_once(5, 6)
+
+        t1.dispatch.event_one.for_modify(t1.dispatch).exec_once(7, 8)
+
+        t2.dispatch.event_one.for_modify(t2.dispatch).exec_once(9, 10)
+
+        eq_(m1.mock_calls, [call(5, 6), call(9, 10)])
+
+    def test_exec_once_exception(self):
+        m1 = Mock()
+        m1.side_effect = ValueError
+
+        event.listen(self.Target, "event_one", m1)
+
+        t1 = self.Target()
+
+        assert_raises(
+            ValueError,
+            t1.dispatch.event_one.for_modify(t1.dispatch).exec_once,
+            5,
+            6,
+        )
+
+        t1.dispatch.event_one.for_modify(t1.dispatch).exec_once(7, 8)
+
+        eq_(m1.mock_calls, [call(5, 6)])
+
+    def test_exec_once_unless_exception(self):
+        m1 = Mock()
+        m1.side_effect = ValueError
+
+        event.listen(self.Target, "event_one", m1)
+
+        t1 = self.Target()
+
+        assert_raises(
+            ValueError,
+            t1.dispatch.event_one.for_modify(
+                t1.dispatch
+            ).exec_once_unless_exception,
+            5,
+            6,
+        )
+
+        assert_raises(
+            ValueError,
+            t1.dispatch.event_one.for_modify(
+                t1.dispatch
+            ).exec_once_unless_exception,
+            7,
+            8,
+        )
+
+        m1.side_effect = None
+        t1.dispatch.event_one.for_modify(
+            t1.dispatch
+        ).exec_once_unless_exception(9, 10)
+
+        t1.dispatch.event_one.for_modify(
+            t1.dispatch
+        ).exec_once_unless_exception(11, 12)
+
+        eq_(m1.mock_calls, [call(5, 6), call(7, 8), call(9, 10)])
+
     def test_immutable_methods(self):
         t1 = self.Target()
         for meth in [
@@ -1145,6 +1217,70 @@ class RemovalTest(fixtures.TestBase):
         eq_(m2.mock_calls, [call("x")])
         eq_(m3.mock_calls, [call("x")])
         eq_(m4.mock_calls, [call("z")])
+
+    def test_once_unless_exception(self):
+        Target = self._fixture()
+
+        m1 = Mock()
+        m2 = Mock()
+        m3 = Mock()
+        m4 = Mock()
+
+        m1.side_effect = ValueError
+        m2.side_effect = ValueError
+        m3.side_effect = ValueError
+
+        event.listen(Target, "event_one", m1)
+        event.listen(Target, "event_one", m2, _once_unless_exception=True)
+        event.listen(Target, "event_one", m3, _once_unless_exception=True)
+
+        t1 = Target()
+
+        # only m1 is called, raises
+        assert_raises(ValueError, t1.dispatch.event_one, "x")
+
+        # now m1 and m2 can be called but not m3
+        m1.side_effect = None
+
+        assert_raises(ValueError, t1.dispatch.event_one, "y")
+
+        # now m3 can be called
+        m2.side_effect = None
+
+        event.listen(Target, "event_one", m4, _once_unless_exception=True)
+        assert_raises(ValueError, t1.dispatch.event_one, "z")
+
+        assert_raises(ValueError, t1.dispatch.event_one, "q")
+
+        eq_(m1.mock_calls, [call("x"), call("y"), call("z"), call("q")])
+        eq_(m2.mock_calls, [call("y"), call("z")])
+        eq_(m3.mock_calls, [call("z"), call("q")])
+        eq_(m4.mock_calls, [])  # m4 never got called because m3 blocked it
+
+        # now m4 can be called
+        m3.side_effect = None
+
+        t1.dispatch.event_one("p")
+        eq_(
+            m1.mock_calls,
+            [call("x"), call("y"), call("z"), call("q"), call("p")],
+        )
+
+        # m2 already got called, so no "p"
+        eq_(m2.mock_calls, [call("y"), call("z")])
+        eq_(m3.mock_calls, [call("z"), call("q"), call("p")])
+        eq_(m4.mock_calls, [call("p")])
+
+        t1.dispatch.event_one("j")
+        eq_(
+            m1.mock_calls,
+            [call("x"), call("y"), call("z"), call("q"), call("p"), call("j")],
+        )
+
+        # nobody got "j" because they've all been successful
+        eq_(m2.mock_calls, [call("y"), call("z")])
+        eq_(m3.mock_calls, [call("z"), call("q"), call("p")])
+        eq_(m4.mock_calls, [call("p")])
 
     def test_once_doesnt_dereference_listener(self):
         # test for [ticket:4794]

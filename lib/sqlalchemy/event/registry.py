@@ -192,6 +192,7 @@ class _EventKey(object):
 
     def listen(self, *args, **kw):
         once = kw.pop("once", False)
+        once_unless_exception = kw.pop("_once_unless_exception", False)
         named = kw.pop("named", False)
 
         target, identifier, fn = (
@@ -212,10 +213,12 @@ class _EventKey(object):
         if hasattr(stub_function, "_sa_warn"):
             stub_function._sa_warn()
 
-        if once:
-            self.with_wrapper(util.only_once(self._listen_fn)).listen(
-                *args, **kw
-            )
+        if once or once_unless_exception:
+            self.with_wrapper(
+                util.only_once(
+                    self._listen_fn, retry_on_exception=once_unless_exception
+                )
+            ).listen(*args, **kw)
         else:
             self.dispatch_target.dispatch._listen(self, *args, **kw)
 

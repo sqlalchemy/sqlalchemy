@@ -1466,7 +1466,7 @@ def warn_limited(msg, args):
     warnings.warn(msg, exc.SAWarning, stacklevel=2)
 
 
-def only_once(fn):
+def only_once(fn, retry_on_exception):
     """Decorate the given function to be a no-op after it is called exactly
     once."""
 
@@ -1478,7 +1478,12 @@ def only_once(fn):
         strong_fn = fn  # noqa
         if once:
             once_fn = once.pop()
-            return once_fn(*arg, **kw)
+            try:
+                return once_fn(*arg, **kw)
+            except:
+                if retry_on_exception:
+                    once.insert(0, once_fn)
+                raise
 
     return go
 

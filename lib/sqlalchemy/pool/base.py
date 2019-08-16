@@ -646,7 +646,7 @@ class _ConnectionRecord(object):
             if first_connect_check:
                 pool.dispatch.first_connect.for_modify(
                     pool.dispatch
-                ).exec_once(self.connection, self)
+                ).exec_once_unless_exception(self.connection, self)
             if pool.dispatch.connect:
                 pool.dispatch.connect(self.connection, self)
 

@@ -199,7 +199,12 @@ class DefaultEngineStrategy(EngineStrategy):
                 dialect.initialize(c)
                 dialect.do_rollback(c.connection)
 
-            event.listen(pool, "first_connect", first_connect, once=True)
+            event.listen(
+                pool,
+                "first_connect",
+                first_connect,
+                _once_unless_exception=True,
+            )
 
         dialect_cls.engine_created(engine)
         if entrypoint is not dialect_cls:

@@ -250,7 +250,9 @@ class _EmptyListener(_InstanceLevelDispatch):
     def _needs_modify(self, *args, **kw):
         raise NotImplementedError("need to call for_modify()")
 
-    exec_once = insert = append = remove = clear = _needs_modify
+    exec_once = (
+        exec_once_unless_exception
+    ) = insert = append = remove = clear = _needs_modify
 
     def __call__(self, *args, **kw):
         """Execute this event."""
@@ -276,17 +278,40 @@ class _CompoundListener(_InstanceLevelDispatch):
     def _memoized_attr__exec_once_mutex(self):
         return threading.Lock()
 
+    def _exec_once_impl(self, retry_on_exception, *args, **kw):
+        with self._exec_once_mutex:
+            if not self._exec_once:
+                try:
+                    self(*args, **kw)
+                    exception = False
+                except:
+                    exception = True
+                    raise
+                finally:
+                    if not exception or not retry_on_exception:
+                        self._exec_once = True
+
     def exec_once(self, *args, **kw):
         """Execute this event, but only if it has not been
         executed already for this collection."""
 
         if not self._exec_once:
-            with self._exec_once_mutex:
-                if not self._exec_once:
-                    try:
-                        self(*args, **kw)
-                    finally:
-                        self._exec_once = True
+            self._exec_once_impl(False, *args, **kw)
+
+    def exec_once_unless_exception(self, *args, **kw):
+        """Execute this event, but only if it has not been
+        executed already for this collection, or was called
+        by a previous exec_once_unless_exception call and
+        raised an exception.
+
+        If exec_once was already called, then this method will never run
+        the callable regardless of whether it raised or not.
+
+        .. versionadded:: 1.3.8
+
+        """
+        if not self._exec_once:
+            self._exec_once_impl(True, *args, **kw)
 
     def __call__(self, *args, **kw):
         """Execute this event."""
