@@ -10,11 +10,13 @@ from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import dialects
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import extract
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import schema
@@ -191,20 +193,53 @@ class ExecuteManyMode(object):
         super(ExecuteManyMode, self).teardown()
 
     def test_insert(self):
-        with self.engine.connect() as conn:
-            conn.execute(
-                self.tables.data.insert(),
-                [
-                    {"x": "x1", "y": "y1"},
-                    {"x": "x2", "y": "y2"},
-                    {"x": "x3", "y": "y3"},
-                ],
-            )
+        from psycopg2 import extras
 
-            eq_(
-                conn.execute(select([self.tables.data])).fetchall(),
-                [(1, "x1", "y1", 5), (2, "x2", "y2", 5), (3, "x3", "y3", 5)],
-            )
+        if self.engine.dialect.executemany_mode is EXECUTEMANY_BATCH:
+            meth = extras.execute_batch
+            stmt = "INSERT INTO data (x, y) VALUES (%(x)s, %(y)s)"
+            expected_kwargs = {}
+        else:
+            meth = extras.execute_values
+            stmt = "INSERT INTO data (x, y) VALUES %s"
+            expected_kwargs = {"template": "(%(x)s, %(y)s)"}
+
+        with mock.patch.object(
+            extras, meth.__name__, side_effect=meth
+        ) as mock_exec:
+            with self.engine.connect() as conn:
+                conn.execute(
+                    self.tables.data.insert(),
+                    [
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ],
+                )
+
+                eq_(
+                    conn.execute(select([self.tables.data])).fetchall(),
+                    [
+                        (1, "x1", "y1", 5),
+                        (2, "x2", "y2", 5),
+                        (3, "x3", "y3", 5),
+                    ],
+                )
+        eq_(
+            mock_exec.mock_calls,
+            [
+                mock.call(
+                    mock.ANY,
+                    stmt,
+                    (
+                        {"x": "x1", "y": "y1"},
+                        {"x": "x2", "y": "y2"},
+                        {"x": "x3", "y": "y3"},
+                    ),
+                    **expected_kwargs
+                )
+            ],
+        )
 
     def test_insert_no_page_size(self):
         from psycopg2 import extras
@@ -249,14 +284,14 @@ class ExecuteManyMode(object):
         )
 
     def test_insert_page_size(self):
+        from psycopg2 import extras
+
         opts = self.options.copy()
         opts["executemany_batch_page_size"] = 500
         opts["executemany_values_page_size"] = 1000
 
         with self.expect_deprecated_opts():
             eng = engines.testing_engine(options=opts)
-
-        from psycopg2 import extras
 
         if eng.dialect.executemany_mode is EXECUTEMANY_BATCH:
             meth = extras.execute_batch
@@ -378,6 +413,119 @@ class ExecutemanyBatchModeTest(ExecuteManyMode, fixtures.TablesTest):
 
 class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
     options = {"executemany_mode": "values"}
+
+    def test_insert_w_newlines(self):
+        from psycopg2 import extras
+
+        t = self.tables.data
+
+        ins = t.insert(inline=True).values(
+            id=bindparam("id"),
+            x=select([literal_column("5")]).select_from(self.tables.data),
+            y=bindparam("y"),
+            z=bindparam("z"),
+        )
+        # compiled SQL has a newline in it
+        eq_(
+            str(ins.compile(testing.db)),
+            "INSERT INTO data (id, x, y, z) VALUES (%(id)s, "
+            "(SELECT 5 \nFROM data), %(y)s, %(z)s)",
+        )
+        meth = extras.execute_values
+        with mock.patch.object(
+            extras, "execute_values", side_effect=meth
+        ) as mock_exec:
+
+            with self.engine.connect() as conn:
+                conn.execute(
+                    ins,
+                    [
+                        {"id": 1, "y": "y1", "z": 1},
+                        {"id": 2, "y": "y2", "z": 2},
+                        {"id": 3, "y": "y3", "z": 3},
+                    ],
+                )
+
+        eq_(
+            mock_exec.mock_calls,
+            [
+                mock.call(
+                    mock.ANY,
+                    "INSERT INTO data (id, x, y, z) VALUES %s",
+                    (
+                        {"id": 1, "y": "y1", "z": 1},
+                        {"id": 2, "y": "y2", "z": 2},
+                        {"id": 3, "y": "y3", "z": 3},
+                    ),
+                    template="(%(id)s, (SELECT 5 \nFROM data), %(y)s, %(z)s)",
+                )
+            ],
+        )
+
+    def test_insert_modified_by_event(self):
+        from psycopg2 import extras
+
+        t = self.tables.data
+
+        ins = t.insert(inline=True).values(
+            id=bindparam("id"),
+            x=select([literal_column("5")]).select_from(self.tables.data),
+            y=bindparam("y"),
+            z=bindparam("z"),
+        )
+        # compiled SQL has a newline in it
+        eq_(
+            str(ins.compile(testing.db)),
+            "INSERT INTO data (id, x, y, z) VALUES (%(id)s, "
+            "(SELECT 5 \nFROM data), %(y)s, %(z)s)",
+        )
+        meth = extras.execute_batch
+        with mock.patch.object(
+            extras, "execute_values"
+        ) as mock_values, mock.patch.object(
+            extras, "execute_batch", side_effect=meth
+        ) as mock_batch:
+
+            with self.engine.connect() as conn:
+
+                # create an event hook that will change the statement to
+                # something else, meaning the dialect has to detect that
+                # insert_single_values_expr is no longer useful
+                @event.listens_for(conn, "before_cursor_execute", retval=True)
+                def before_cursor_execute(
+                    conn, cursor, statement, parameters, context, executemany
+                ):
+                    statement = (
+                        "INSERT INTO data (id, y, z) VALUES "
+                        "(%(id)s, %(y)s, %(z)s)"
+                    )
+                    return statement, parameters
+
+                conn.execute(
+                    ins,
+                    [
+                        {"id": 1, "y": "y1", "z": 1},
+                        {"id": 2, "y": "y2", "z": 2},
+                        {"id": 3, "y": "y3", "z": 3},
+                    ],
+                )
+
+        eq_(mock_values.mock_calls, [])
+        eq_(
+            mock_batch.mock_calls,
+            [
+                mock.call(
+                    mock.ANY,
+                    "INSERT INTO data (id, y, z) VALUES "
+                    "(%(id)s, %(y)s, %(z)s)",
+                    (
+                        {"id": 1, "y": "y1", "z": 1},
+                        {"id": 2, "y": "y2", "z": 2},
+                        {"id": 3, "y": "y3", "z": 3},
+                    ),
+                )
+            ],
+        )
 
 
 class ExecutemanyFlagOptionsTest(fixtures.TablesTest):
