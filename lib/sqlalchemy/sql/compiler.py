@@ -495,6 +495,15 @@ class SQLCompiler(Compiled):
 
     """
 
+    insert_single_values_expr = None
+    """When an INSERT is compiled with a single set of parameters inside
+    a VALUES expression, the string is assigned here, where it can be
+    used for insert batching schemes to rewrite the VALUES expression.
+
+    .. versionadded:: 1.3.8
+
+    """
+
     insert_prefetch = update_prefetch = ()
 
     def __init__(
@@ -2468,7 +2477,10 @@ class SQLCompiler(Compiled):
                 )
             )
         else:
-            text += " VALUES (%s)" % ", ".join([c[1] for c in crud_params])
+            insert_single_values_expr = ", ".join([c[1] for c in crud_params])
+            text += " VALUES (%s)" % insert_single_values_expr
+            if toplevel:
+                self.insert_single_values_expr = insert_single_values_expr
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(

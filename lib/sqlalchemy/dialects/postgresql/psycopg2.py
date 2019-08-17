@@ -849,8 +849,6 @@ class PGDialect_psycopg2(PGDialect):
         else:
             return None
 
-    _insert_values_match = re.compile(r".* VALUES (\(.+\))").match
-
     def do_executemany(self, cursor, statement, parameters, context=None):
         if self.executemany_mode is EXECUTEMANY_DEFAULT:
             cursor.executemany(statement, parameters)
@@ -860,8 +858,14 @@ class PGDialect_psycopg2(PGDialect):
             self.executemany_mode is EXECUTEMANY_VALUES
             and context
             and context.isinsert
+            and context.compiled.insert_single_values_expr
         ):
-            executemany_values = self._insert_values_match(statement)
+            executemany_values = (
+                "(%s)" % context.compiled.insert_single_values_expr
+            )
+            # guard for statement that was altered via event hook or similar
+            if executemany_values not in statement:
+                executemany_values = None
         else:
             executemany_values = None
 
@@ -870,7 +874,7 @@ class PGDialect_psycopg2(PGDialect):
             # into executemany(), since no DBAPI has ever supported that
             # until the introduction of psycopg2's executemany_values, so
             # we are not yet using the fetch=True flag.
-            statement = statement.replace(executemany_values.group(1), "%s")
+            statement = statement.replace(executemany_values, "%s")
             if self.executemany_values_page_size:
                 kwargs = {"page_size": self.executemany_values_page_size}
             else:
@@ -879,7 +883,7 @@ class PGDialect_psycopg2(PGDialect):
                 cursor,
                 statement,
                 parameters,
-                template=executemany_values.group(1),
+                template=executemany_values,
                 **kwargs
             )
 
