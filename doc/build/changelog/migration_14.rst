@@ -616,6 +616,91 @@ expression on the outside to apply an "AS <name>" label directly::
 
 :ticket:`4449`
 
+.. _change_4808:
+
+New "post compile" bound parameters used for LIMIT/OFFSET in Oracle, SQL Server
+-------------------------------------------------------------------------------
+
+A major goal of the 1.4 series is to establish that all Core SQL constructs
+are completely cacheable, meaning that a particular :class:`.Compiled`
+structure will produce an identical SQL string regardless of any SQL parameters
+used with it, which notably includes those used to specify the LIMIT and
+OFFSET values, typically used for pagination and "top N" style results.
+
+While SQLAlchemy has used bound parameters for LIMIT/OFFSET schemes for many
+years, a few outliers remained where such parameters were not allowed, including
+a SQL Server "TOP N" statement, such as::
+
+    SELECT TOP 5 mytable.id, mytable.data FROM mytable
+
+as well as with Oracle, where the FIRST_ROWS() hint (which SQLAlchemy will
+use if the ``optimize_limits=True`` parameter is passed to
+:func:`.create_engine` with an Oracle URL) does not allow them,
+but also that using bound parameters with ROWNUM comparisons has been reported
+as producing slower query plans::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS(5) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id, mytable.data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= :param_1
+    ) anon_1 WHERE ora_rn > :param_2
+
+In order to allow for all statements to be unconditionally cacheable at the
+compilation level, a new form of bound parameter called a "post compile"
+parameter has been added, which makes use of the same mechanism as that
+of "expanding IN parameters".  This is a :func:`.bindparam` that behaves
+identically to any other bound parameter except that parameter value will
+be rendered literally into the SQL string before sending it to the DBAPI
+``cursor.execute()`` method.   The new parameter is used internally by the
+SQL Server and Oracle dialects, so that the drivers receive the literal
+rendered value but the rest of SQLAlchemy can still consider this as a
+bound parameter.   The above two statements when stringified using
+``str(statement.compile(dialect=<dialect>))`` now look like::
+
+    SELECT TOP [POSTCOMPILE_param_1] mytable.id, mytable.data FROM mytable
+
+and::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id, mytable.data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= [POSTCOMPILE_param_1]
+    ) anon_1 WHERE ora_rn > [POSTCOMPILE_param_2]
+
+The ``[POSTCOMPILE_<param>]`` format is also what is seen when an
+"expanding IN" is used.
+
+When viewing the SQL logging output, the final form of the statement will
+be seen::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS(5) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id AS id, mytable.data AS data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= 8
+    ) anon_1 WHERE ora_rn > 3
+
+
+The "post compile parameter" feature is exposed as public API through the
+:paramref:`.bindparam.literal_execute` parameter, however is currently not
+intended for general use.   The literal values are rendered using the
+:meth:`.TypeEngine.literal_processor` of the underlying datatype, which in
+SQLAlchemy has **extremely limited** scope, supporting only integers and simple
+string values.
+
+:ticket:`4808`
+
 .. _change_4712:
 
 Connection-level transactions can now be inactive based on subtransaction

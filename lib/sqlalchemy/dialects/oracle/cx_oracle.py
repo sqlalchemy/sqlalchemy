@@ -518,13 +518,13 @@ class OracleCompiler_cx_oracle(OracleCompiler):
             quote is True
             or quote is not False
             and self.preparer._bindparam_requires_quotes(name)
+            and not kw.get("post_compile", False)
         ):
-            if kw.get("expanding", False):
-                raise exc.CompileError(
-                    "Can't use expanding feature with parameter name "
-                    "%r on Oracle; it requires quoting which is not supported "
-                    "in this context." % name
-                )
+            # interesting to note about expanding parameters - since the
+            # new parameters take the form <paramname>_<int>, at least if
+            # they are originally formed from reserved words, they no longer
+            # need quoting :).    names that include illegal characters
+            # won't work however.
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
             return OracleCompiler.bindparam_string(self, quoted_name, **kw)

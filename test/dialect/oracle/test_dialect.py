@@ -150,6 +150,19 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
         testing.db.execute(t.insert(), {"100K": 10})
         eq_(testing.db.scalar(t.select()), 10)
 
+    @testing.provide_metadata
+    def test_expanding_quote_roundtrip(self):
+        t = Table("asfd", self.metadata, Column("foo", Integer))
+        t.create()
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                select([t]).where(
+                    t.c.foo.in_(bindparam("uid", expanding=True))
+                ),
+                uid=[1, 2, 3],
+            )
+
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     def _dialect(self, server_version, **kw):

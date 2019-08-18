@@ -274,7 +274,7 @@ class AltSelectableTest(
                 "SELECT a_1.id AS a_1_id, b.id AS b_id FROM a AS a_1 "
                 "JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) "
                 "ON a_1.b_id = b.id WHERE a_1.id "
-                "IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                "IN ([POSTCOMPILE_primary_keys]) ORDER BY a_1.id",
                 [{"primary_keys": [1]}],
             ),
         )
