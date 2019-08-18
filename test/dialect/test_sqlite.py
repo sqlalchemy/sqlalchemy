@@ -1770,10 +1770,45 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 ")"
             )
 
+            conn.execute(
+                "CREATE TABLE implicit_referred (pk integer primary key)"
+            )
+            # single col foreign key with no referred column given,
+            # must assume primary key of referred table
+            conn.execute(
+                "CREATE TABLE implicit_referrer "
+                "(id integer REFERENCES implicit_referred)"
+            )
+
+            conn.execute(
+                "CREATE TABLE implicit_referred_comp "
+                "(pk1 integer, pk2 integer, primary key (pk1, pk2))"
+            )
+            # composite foreign key with no referred columns given,
+            # must assume primary key of referred table
+            conn.execute(
+                "CREATE TABLE implicit_referrer_comp "
+                "(id1 integer, id2 integer, foreign key(id1, id2) "
+                "REFERENCES implicit_referred_comp)"
+            )
+
+            # worst case - FK that refers to nonexistent table so we cant
+            # get pks.  requires FK pragma is turned off
+            conn.execute(
+                "CREATE TABLE implicit_referrer_comp_fake "
+                "(id1 integer, id2 integer, foreign key(id1, id2) "
+                "REFERENCES fake_table)"
+            )
+
     @classmethod
     def teardown_class(cls):
         with testing.db.begin() as conn:
             for name in [
+                "implicit_referrer_comp_fake",
+                "implicit_referrer",
+                "implicit_referred",
+                "implicit_referrer_comp",
+                "implicit_referred_comp",
                 "m",
                 "main.l",
                 "k",
@@ -1890,6 +1925,72 @@ class ConstraintReflectionTest(fixtures.TestBase):
                     "options": {},
                 },
             ],
+        )
+
+    def test_foreign_key_implicit_parent(self):
+        inspector = Inspector(testing.db)
+        fks = inspector.get_foreign_keys("implicit_referrer")
+        eq_(
+            fks,
+            [
+                {
+                    "name": None,
+                    "constrained_columns": ["id"],
+                    "referred_schema": None,
+                    "referred_table": "implicit_referred",
+                    "referred_columns": ["pk"],
+                    "options": {},
+                }
+            ],
+        )
+
+    def test_foreign_key_composite_implicit_parent(self):
+        inspector = Inspector(testing.db)
+        fks = inspector.get_foreign_keys("implicit_referrer_comp")
+        eq_(
+            fks,
+            [
+                {
+                    "name": None,
+                    "constrained_columns": ["id1", "id2"],
+                    "referred_schema": None,
+                    "referred_table": "implicit_referred_comp",
+                    "referred_columns": ["pk1", "pk2"],
+                    "options": {},
+                }
+            ],
+        )
+
+    def test_foreign_key_implicit_missing_parent(self):
+        # test when the FK refers to a non-existent table and column names
+        # aren't given.   only sqlite allows this case to exist
+        inspector = Inspector(testing.db)
+        fks = inspector.get_foreign_keys("implicit_referrer_comp_fake")
+        # the referred table doesn't exist but the operation does not fail
+        eq_(
+            fks,
+            [
+                {
+                    "name": None,
+                    "constrained_columns": ["id1", "id2"],
+                    "referred_schema": None,
+                    "referred_table": "fake_table",
+                    "referred_columns": [],
+                    "options": {},
+                }
+            ],
+        )
+
+    def test_foreign_key_implicit_missing_parent_reflection(self):
+        # full Table reflection fails however, which is not a new behavior
+        m = MetaData()
+        assert_raises_message(
+            exc.NoSuchTableError,
+            "fake_table",
+            Table,
+            "implicit_referrer_comp_fake",
+            m,
+            autoload_with=testing.db,
         )
 
     def test_unnamed_inline_foreign_key(self):

@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sqlite, reflection
+    :tickets: 4810
+
+    Fixed bug where a FOREIGN KEY that was set up to refer to the parent table
+    by table name only without the column names would not correctly be
+    reflected as far as setting up the "referred columns", since SQLite's
+    PRAGMA does not report on these columns if they weren't given explicitly.
+    For some reason this was harcoded to assume the name of the local column,
+    which might work for some cases but is not correct. The new approach
+    reflects the primary key of the referred table and uses the constraint
+    columns list as the referred columns list, if the remote column(s) aren't
+    present in the reflected pragma directly.
+
