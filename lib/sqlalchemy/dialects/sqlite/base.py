@@ -1754,8 +1754,22 @@ class SQLiteDialect(default.DefaultDialect):
         for row in pragma_fks:
             (numerical_id, rtbl, lcol, rcol) = (row[0], row[2], row[3], row[4])
 
-            if rcol is None:
-                rcol = lcol
+            if not rcol:
+                # no referred column, which means it was not named in the
+                # original DDL.  The referred columns of the foreign key
+                # constraint are therefore the primary key of the referred
+                # table.
+                referred_pk = self.get_pk_constraint(
+                    connection, rtbl, schema=schema, **kw
+                )
+                # note that if table doesnt exist, we still get back a record,
+                # just it has no columns in it
+                referred_columns = referred_pk["constrained_columns"]
+            else:
+                # note we use this list only if this is the first column
+                # in the constraint.  for subsequent columns we ignore the
+                # list and append "rcol" if present.
+                referred_columns = []
 
             if self._broken_fk_pragma_quotes:
                 rtbl = re.sub(r"^[\"\[`\']|[\"\]`\']$", "", rtbl)
@@ -1768,13 +1782,15 @@ class SQLiteDialect(default.DefaultDialect):
                     "constrained_columns": [],
                     "referred_schema": schema,
                     "referred_table": rtbl,
-                    "referred_columns": [],
+                    "referred_columns": referred_columns,
                     "options": {},
                 }
                 fks[numerical_id] = fk
 
             fk["constrained_columns"].append(lcol)
-            fk["referred_columns"].append(rcol)
+
+            if rcol:
+                fk["referred_columns"].append(rcol)
 
         def fk_sig(constrained_columns, referred_table, referred_columns):
             return (
