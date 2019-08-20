@@ -583,3 +583,122 @@ is needed, use :class:`.TypeDecorator` instead.
    :members:
 
 
+.. _custom_and_decorated_types_reflection:
+
+Working with Custom Types and Reflection
+-----------------------------------------
+
+It is important to note that database types which are modified to have
+additional in-Python behaviors, including types based on
+:class:`.TypeDecorator` as well as other user-defined subclasses of datatypes,
+do not have any representation within a database schema.    When using database
+the introspection features described at :ref:`metadata_reflection`, SQLAlchemy
+makes use of a fixed mapping which links the datatype information reported by a
+database server to a SQLAlchemy datatype object.   For example, if we look
+inside of a PostgreSQL schema at the definition for a particular database
+column, we might receive back the string ``"VARCHAR"``.  SQLAlchemy's
+PostgreSQL dialect has a hardcoded mapping which links the string name
+``"VARCHAR"`` to the SQLAlchemy :class:`.VARCHAR` class, and that's how when we
+emit a statement like ``Table('my_table', m, autoload_with=engine)``, the
+:class:`.Column` object within it would have an instance of :class:`.VARCHAR`
+present inside of it.
+
+The implication of this is that if a :class:`.Table` object makes use of type
+objects that don't correspond directly to the database-native type name, if we
+create a new :class:`.Table` object against a new :class:`.MetaData` collection
+for this database table elsewhere using reflection, it will not have this
+datatype. For example::
+
+    >>> from sqlalchemy import Table, Column, MetaData, create_engine, PickleType, Integer
+    >>> metadata = MetaData()
+    >>> my_table = Table("my_table", metadata, Column('id', Integer), Column("data", PickleType))
+    >>> engine = create_engine("sqlite://", echo='debug')
+    >>> my_table.create(engine)
+    INFO sqlalchemy.engine.base.Engine
+    CREATE TABLE my_table (
+        id INTEGER,
+        data BLOB
+    )
+
+Above, we made use of :class:`.PickleType`, which is a :class:`.TypeDecorator`
+that works on top of the :class:`.LargeBinary` datatype, which on SQLite
+corresponds to the database type ``BLOB``.  In the CREATE TABLE, we see that
+the ``BLOB`` datatype is used.   The SQLite database knows nothing about the
+:class:`.PickleType` we've used.
+
+If we look at the datatype of ``my_table.c.data.type``, as this is a Python
+object that was created by us directly, it is :class:`.PickleType`::
+
+    >>> my_table.c.data.type
+    PickleType()
+
+However, if we create another instance of :class:`.Table` using reflection,
+the use of :class:`.PickleType` is not represented in the SQLite database we've
+created; we instead get back :class:`.BLOB`::
+
+    >>> metadata_two = MetaData()
+    >>> my_reflected_table = Table("my_table", metadata_two, autoload_with=engine)
+    INFO sqlalchemy.engine.base.Engine PRAGMA main.table_info("my_table")
+    INFO sqlalchemy.engine.base.Engine ()
+    DEBUG sqlalchemy.engine.base.Engine Col ('cid', 'name', 'type', 'notnull', 'dflt_value', 'pk')
+    DEBUG sqlalchemy.engine.base.Engine Row (0, 'id', 'INTEGER', 0, None, 0)
+    DEBUG sqlalchemy.engine.base.Engine Row (1, 'data', 'BLOB', 0, None, 0)
+
+    >>> my_reflected_table.c.data.type
+    BLOB()
+
+Typically, when an application defines explicit :class:`.Table` metadata with
+custom types, there is no need to use table reflection because the necessary
+:class:`.Table` metadata is already present.  However, for the case where an
+application, or a combination of them, need to make use of both explicit
+:class:`.Table` metadata which includes custom, Python-level datatypes, as well
+as :class:`.Table` objects which set up their :class:`.Column` objects as
+reflected from the database, which nevertheless still need to exhibit the
+additional Python behaviors of the custom datatypes, additional steps must be
+taken to allow this.
+
+The most straightforward is to override specific columns as described at
+:ref:`reflection_overriding_columns`.  In this technique, we simply
+use reflection in combination with explicit :class:`.Column` objects for those
+columns for which we want to use a custom or decorated datatype::
+
+    >>> metadata_three = MetaData()
+    >>> my_reflected_table = Table("my_table", metadata_three, Column("data", PickleType), autoload_with=engine)
+
+The ``my_reflected_table`` object above is reflected, and will load the
+definition of the "id" column from the SQLite database.  But for the "data"
+column, we've overridden the reflected object with an explicit :class:`.Column`
+definition that includes our desired in-Python datatype, the
+:class:`.PickleType`. The reflection process will leave this :class:`.Column`
+object intact::
+
+    >>> my_reflected_table.c.data.type
+    PickleType()
+
+A more elaborate way to convert from database-native type objects to custom
+datatypes is to use the :meth:`.DDLEvents.column_reflect` event handler.   If
+for example we knew that we wanted all :class:`.BLOB` datatypes to in fact be
+:class:`.PickleType`, we could set up a rule across the board::
+
+
+    from sqlalchemy import BLOB
+    from sqlalchemy import event
+    from sqlalchemy import PickleType
+    from sqlalchemy import Table
+
+    @event.listens_for(Table, "column_reflect")
+    def _setup_pickletype(inspector, table, column_info):
+        if isinstance(column_info["type"], BLOB):
+            column_info["type"] = PickleType()
+
+When the above code is invoked *before* any table reflection occurs (note also
+it should be invoked **only once** in the application, as it is a global rule),
+upon reflecting any :class:`.Table` that includes a column with a :class:`.BLOB`
+datatype, the resulting datatype will be stored in the :class:`.Column` object
+as :class:`.PickleType`.
+
+In practice, the above event-based approach would likely have additional rules
+in order to affect only those columns where the datatype is important, such as
+a lookup table of table names and possibly column names, or other heuristics
+in order to accurately determine which columns should be established with an
+in Python datatype.

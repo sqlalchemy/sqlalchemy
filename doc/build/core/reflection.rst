@@ -54,6 +54,8 @@ hasn't already been loaded; once loaded, new calls to
 :class:`~sqlalchemy.schema.Table` with the same name will not re-issue any
 reflection queries.
 
+.. _reflection_overriding_columns:
+
 Overriding Reflected Columns
 ----------------------------
 
@@ -64,7 +66,14 @@ primary keys that may not be configured within the database, etc.::
     >>> mytable = Table('mytable', meta,
     ... Column('id', Integer, primary_key=True),   # override reflected 'id' to have primary key
     ... Column('mydata', Unicode(50)),    # override reflected 'mydata' to be Unicode
-    ... autoload=True)
+    ... # additional Column objects which require no change are reflected normally
+    ... autoload_with=some_engine)
+
+.. seealso::
+
+    :ref:`custom_and_decorated_types_reflection` - illustrates how the above
+    column override technique applies to the use of custom datatypes with
+    table reflection.
 
 Reflecting Views
 ----------------
