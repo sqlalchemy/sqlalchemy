@@ -1,7 +1,13 @@
 import logging.handlers
 
 import sqlalchemy as tsa
+from sqlalchemy import bindparam
+from sqlalchemy import Column
+from sqlalchemy import MetaData
+from sqlalchemy import or_
 from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import util
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
@@ -18,7 +24,11 @@ class LogParamsTest(fixtures.TestBase):
 
     def setup(self):
         self.eng = engines.testing_engine(options={"echo": True})
+        self.no_param_engine = engines.testing_engine(
+            options={"echo": True, "hide_parameters": True}
+        )
         self.eng.execute("create table foo (data string)")
+        self.no_param_engine.execute("create table foo (data string)")
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.addHandler(self.buf)
@@ -39,6 +49,16 @@ class LogParamsTest(fixtures.TestBase):
             "{'data': '4'}, {'data': '5'}, {'data': '6'}, {'data': '7'}"
             "  ... displaying 10 of 100 total bound "
             "parameter sets ...  {'data': '98'}, {'data': '99'}]",
+        )
+
+    def test_log_no_parameters(self):
+        self.no_param_engine.execute(
+            "INSERT INTO foo (data) values (:data)",
+            [{"data": str(i)} for i in range(100)],
+        )
+        eq_(
+            self.buf.buffer[1].message,
+            "[SQL parameters hidden due to hide_parameters=True]",
         )
 
     def test_log_large_list(self):
@@ -105,6 +125,48 @@ class LogParamsTest(fixtures.TestBase):
             str(exception),
             r"\(.*.NoneType\) None\n\[SQL: foo\]\n\[parameters: {'x': 'y'}\]",
         )
+
+    def test_exception_format_hide_parameters(self):
+        exception = tsa.exc.IntegrityError(
+            "foo", {"x": "y"}, None, hide_parameters=True
+        )
+        eq_regex(
+            str(exception),
+            r"\(.*.NoneType\) None\n\[SQL: foo\]\n"
+            r"\[SQL parameters hidden due to hide_parameters=True\]",
+        )
+
+    def test_exception_format_hide_parameters_dbapi_round_trip(self):
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            r".*INSERT INTO nonexistent \(data\) values \(:data\)\]\n"
+            r"\[SQL parameters hidden due to hide_parameters=True\]",
+            lambda: self.no_param_engine.execute(
+                "INSERT INTO nonexistent (data) values (:data)",
+                [{"data": str(i)} for i in range(10)],
+            ),
+        )
+
+    def test_exception_format_hide_parameters_nondbapi_round_trip(self):
+        foo = Table("foo", MetaData(), Column("data", String))
+
+        with self.no_param_engine.connect() as conn:
+            assert_raises_message(
+                tsa.exc.StatementError,
+                r"\(sqlalchemy.exc.InvalidRequestError\) A value is required "
+                r"for bind parameter 'the_data_2'\n"
+                r"\[SQL: SELECT foo.data \nFROM foo \nWHERE "
+                r"foo.data = \? OR foo.data = \?\]\n"
+                r"\[SQL parameters hidden due to hide_parameters=True\]",
+                conn.execute,
+                select([foo]).where(
+                    or_(
+                        foo.c.data == bindparam("the_data_1"),
+                        foo.c.data == bindparam("the_data_2"),
+                    )
+                ),
+                {"the_data_1": "some data"},
+            )
 
     def test_exception_format_unexpected_parameter(self):
         # test that if the parameters aren't any known type, we just

@@ -518,10 +518,14 @@ class ExecuteTest(fixtures.TestBase):
     def _test_stmt_exception_pickleable(self, orig):
         for sa_exc in (
             tsa.exc.StatementError(
-                "some error", "select * from table", {"foo": "bar"}, orig
+                "some error",
+                "select * from table",
+                {"foo": "bar"},
+                orig,
+                False,
             ),
             tsa.exc.InterfaceError(
-                "select * from table", {"foo": "bar"}, orig
+                "select * from table", {"foo": "bar"}, orig, True
             ),
             tsa.exc.NoReferencedTableError("message", "tname"),
             tsa.exc.NoReferencedColumnError("message", "tname", "cname"),
