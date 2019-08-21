@@ -85,7 +85,7 @@
         list, vs. gathering the returned data type for the result row, which is
         needed only for the first SELECT.
 
-    .. change:
+    .. change::
         :tags: bug, sqlite
         :tickets: 4793
 
