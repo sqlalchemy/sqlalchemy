@@ -14,7 +14,9 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import not_in_
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import all_partial_orderings
@@ -3657,6 +3659,65 @@ class EventPropagateTest(fixtures.TestBase):
 
             classes[:] = [None, None, None, None]
             canary[:] = []
+
+
+class CollectionInitTest(fixtures.TestBase):
+    def setUp(self):
+        class A(object):
+            pass
+
+        class B(object):
+            pass
+
+        self.A = A
+        self.B = B
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+        attributes.register_attribute(A, "bs", uselist=True, useobject=True)
+
+    def test_bulk_replace_resets_empty(self):
+        A = self.A
+        a1 = A()
+        state = attributes.instance_state(a1)
+
+        existing = a1.bs
+
+        is_(state._empty_collections["bs"], existing)
+        is_not_(existing._sa_adapter, None)
+
+        a1.bs = []  # replaces previous "empty" collection
+        not_in_("bs", state._empty_collections)  # empty is replaced
+        is_(existing._sa_adapter, None)
+
+    def test_assert_false_on_default_value(self):
+        A = self.A
+        a1 = A()
+        state = attributes.instance_state(a1)
+
+        attributes.init_state_collection(state, state.dict, "bs")
+
+        assert_raises(
+            AssertionError, A.bs.impl._default_value, state, state.dict
+        )
+
+    def test_loader_inits_collection_already_exists(self):
+        A, B = self.A, self.B
+        a1 = A()
+        b1, b2 = B(), B()
+        a1.bs = [b1, b2]
+        eq_(a1.__dict__["bs"], [b1, b2])
+
+        old = a1.__dict__["bs"]
+        is_not_(old._sa_adapter, None)
+        state = attributes.instance_state(a1)
+
+        # this occurs during a load with populate_existing
+        adapter = attributes.init_state_collection(state, state.dict, "bs")
+
+        new = a1.__dict__["bs"]
+        eq_(new, [])
+        is_(new._sa_adapter, adapter)
+        is_(old._sa_adapter, None)
 
 
 class TestUnlink(fixtures.TestBase):

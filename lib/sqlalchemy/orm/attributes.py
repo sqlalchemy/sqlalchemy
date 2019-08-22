@@ -671,6 +671,11 @@ class AttributeImpl(object):
     def _default_value(self, state, dict_):
         """Produce an empty value for an uninitialized scalar attribute."""
 
+        assert self.key not in dict_, (
+            "_default_value should only be invoked for an "
+            "uninitialized or expired attribute"
+        )
+
         value = None
         for fn in self.dispatch.init_scalar:
             ret = fn(state, value, dict_)
@@ -1201,6 +1206,11 @@ class CollectionAttributeImpl(AttributeImpl):
     def _default_value(self, state, dict_):
         """Produce an empty collection for an un-initialized attribute"""
 
+        assert self.key not in dict_, (
+            "_default_value should only be invoked for an "
+            "uninitialized or expired attribute"
+        )
+
         if self.key in state._empty_collections:
             return state._empty_collections[self.key]
 
@@ -1321,8 +1331,18 @@ class CollectionAttributeImpl(AttributeImpl):
             new_values, old_collection, new_collection, initiator=evt
         )
 
-        del old._sa_adapter
-        self.dispatch.dispose_collection(state, old, old_collection)
+        self._dispose_previous_collection(state, old, old_collection, True)
+
+    def _dispose_previous_collection(
+        self, state, collection, adapter, fire_event
+    ):
+        del collection._sa_adapter
+
+        # discarding old collection make sure it is not referenced in empty
+        # collections.
+        state._empty_collections.pop(self.key, None)
+        if fire_event:
+            self.dispatch.dispose_collection(state, collection, adapter)
 
     def _invalidate_collection(self, collection):
         adapter = getattr(collection, "_sa_adapter")
@@ -1360,7 +1380,9 @@ class CollectionAttributeImpl(AttributeImpl):
     ):
         """Retrieve the CollectionAdapter associated with the given state.
 
-        Creates a new CollectionAdapter if one does not exist.
+        if user_data is None, retrieves it from the state using normal
+        "get()" rules, which will fire lazy callables or return the "empty"
+        collection value.
 
         """
         if user_data is None:
@@ -1368,7 +1390,7 @@ class CollectionAttributeImpl(AttributeImpl):
             if user_data is PASSIVE_NO_RESULT:
                 return user_data
 
-        return getattr(user_data, "_sa_adapter")
+        return user_data._sa_adapter
 
 
 def backref_listeners(attribute, key, uselist):
@@ -1905,12 +1927,22 @@ def init_collection(obj, key):
 
 
 def init_state_collection(state, dict_, key):
-    """Initialize a collection attribute and return the collection adapter."""
+    """Initialize a collection attribute and return the collection adapter.
 
+    Discards any existing collection which may be there.
+
+    """
     attr = state.manager[key].impl
+
+    old = dict_.pop(key, None)  # discard old collection
+    if old is not None:
+        old_collection = old._sa_adapter
+        attr._dispose_previous_collection(state, old, old_collection, False)
+
     user_data = attr._default_value(state, dict_)
     adapter = attr.get_collection(state, dict_, user_data)
     adapter._reset_empty()
+
     return adapter
 
 
