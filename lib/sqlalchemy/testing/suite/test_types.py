@@ -4,11 +4,10 @@ import datetime
 import decimal
 import json
 
-import mock
-
 from .. import config
 from .. import engines
 from .. import fixtures
+from .. import mock
 from ..assertions import eq_
 from ..config import requirements
 from ..schema import Column
