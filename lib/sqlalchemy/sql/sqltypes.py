@@ -1356,6 +1356,18 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.2.3
 
+        :param sort_key_function: a Python callable which may be used as the
+           "key" argument in the Python sorted() built in.   Python
+           Enum objects are not inherently sortable; for projects that want
+           to use Enum objects as the type for primary key columns with the
+           ORM, an **arbitrary** sorting must be provided; this does not need
+           to match the database sorting, it only needs to be deterministic
+           based on the values of the enum itself (e.g. sorts the same way
+           every time).
+
+           .. versionadded:: 1.3.x
+
+
         """
         self._enum_init(enums, kw)
 
@@ -1377,6 +1389,7 @@ class Enum(Emulated, String, SchemaType):
         self.native_enum = kw.pop("native_enum", True)
         self.create_constraint = kw.pop("create_constraint", True)
         self.values_callable = kw.pop("values_callable", None)
+        self._sort_key_function = kw.pop("sort_key_function", None)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1448,6 +1461,10 @@ class Enum(Emulated, String, SchemaType):
                 for value in values
             ]
         )
+
+    @property
+    def sort_key_function(self):
+        return self._sort_key_function
 
     @property
     def native(self):

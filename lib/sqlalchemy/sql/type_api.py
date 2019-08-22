@@ -370,6 +370,18 @@ class TypeEngine(Visitable):
 
         return x == y
 
+    @property
+    def sort_key_function(self):
+        """Return a sorting function that can be passed as the key to sorted.
+
+        Returns None by default, which indicates that the values stored by
+        this type are self-sorting.
+
+        .. versionadded:: 1.3.x
+
+        """
+        return None
+
     def get_dbapi_type(self, dbapi):
         """Return the corresponding type object from the underlying DB-API, if
         any.
@@ -1353,6 +1365,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
         return self.impl.compare_values(x, y)
+
+    @property
+    def sort_key_function(self):
+        return self.impl.sort_key_function
 
     def __repr__(self):
         return util.generic_repr(self, to_inspect=self.impl)

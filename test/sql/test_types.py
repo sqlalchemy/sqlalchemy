@@ -1658,6 +1658,22 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             [(1, "two"), (2, "two"), (3, "one")],
         )
 
+    def test_pep435_custom_sort_key(self):
+        def sort_enum_key_value(value):
+            return value.value
+
+        table = Table(
+            "stdlib_enum_table3",
+            MetaData(),
+            Column(
+                "someenum",
+                Enum(self.SomeEnum, sort_key_function=sort_enum_key_value),
+                primary_key=True,
+            ),
+        )
+
+        eq_(table.c.someenum.type.sort_key_function, sort_enum_key_value)
+
     def test_pep435_enum_round_trip(self):
         stdlib_enum_table = self.tables["stdlib_enum_table"]
 

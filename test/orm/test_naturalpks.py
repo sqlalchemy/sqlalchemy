@@ -3,11 +3,15 @@ Primary key changing capabilities and passive/non-passive cascading updates.
 
 """
 
+import itertools
+
 import sqlalchemy as sa
+from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -1751,6 +1755,74 @@ class JoinedInheritanceTest(fixtures.MappedTest):
         eq_(
             sess.execute(self.tables.owner.select()).fetchall(),
             [("pointy haired", "dog")],
+        )
+
+
+class UnsortablePKTest(fixtures.MappedTest):
+    """Test integration with TypeEngine.sort_key_function"""
+
+    class HashableDict(dict):
+        def __hash__(self):
+            return hash((self["x"], self["y"]))
+
+    @classmethod
+    def define_tables(cls, metadata):
+        class MyUnsortable(TypeDecorator):
+            impl = String(10)
+
+            def process_bind_param(self, value, dialect):
+                return "%s,%s" % (value["x"], value["y"])
+
+            def process_result_value(self, value, dialect):
+                rec = value.split(",")
+                return cls.HashableDict({"x": rec[0], "y": rec[1]})
+
+            def sort_key_function(self, value):
+                return (value["x"], value["y"])
+
+        Table(
+            "data",
+            metadata,
+            Column("info", MyUnsortable(), primary_key=True),
+            Column("int_value", Integer),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Data(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        mapper(cls.classes.Data, cls.tables.data)
+
+    def test_updates_sorted(self):
+        Data = self.classes.Data
+        s = Session()
+
+        s.add_all(
+            [
+                Data(info=self.HashableDict(x="a", y="b")),
+                Data(info=self.HashableDict(x="a", y="a")),
+                Data(info=self.HashableDict(x="b", y="b")),
+                Data(info=self.HashableDict(x="b", y="a")),
+            ]
+        )
+        s.commit()
+
+        aa, ab, ba, bb = s.query(Data).order_by(Data.info).all()
+
+        counter = itertools.count()
+        ab.int_value = bindparam(key=None, callable_=lambda: next(counter))
+        ba.int_value = bindparam(key=None, callable_=lambda: next(counter))
+        bb.int_value = bindparam(key=None, callable_=lambda: next(counter))
+        aa.int_value = bindparam(key=None, callable_=lambda: next(counter))
+
+        s.commit()
+
+        eq_(
+            s.query(Data.int_value).order_by(Data.info).all(),
+            [(0,), (1,), (2,), (3,)],
         )
 
 
