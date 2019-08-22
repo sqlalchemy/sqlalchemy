@@ -3479,6 +3479,34 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
         assert "addresses" not in u1.__dict__
 
+    def test_populate_existing_propagate(self):
+        # both SelectInLoader and SubqueryLoader receive the loaded collection
+        # at once and use attributes.set_committed_value().  However
+        # joinedloader receives the collection per-row, so has an initial
+        # step where it invokes init_state_collection().  This has to clear
+        # out an existing collection to function correctly with
+        # populate_existing.
+        User, Address, sess = self._eager_config_fixture()
+        u1 = sess.query(User).get(8)
+        u1.addresses[2].email_address = "foofoo"
+        del u1.addresses[1]
+        u1 = sess.query(User).populate_existing().filter_by(id=8).one()
+        # collection is reverted
+        eq_(len(u1.addresses), 3)
+
+        # attributes on related items reverted
+        eq_(u1.addresses[2].email_address, "ed@lala.com")
+
+    def test_no_crash_on_existing(self):
+        User, Address, sess = self._eager_config_fixture()
+        u1 = User(id=12, name="u", addresses=[])
+        sess.add(u1)
+        sess.commit()
+
+        sess.query(User).filter(User.id == 12).options(
+            joinedload(User.addresses)
+        ).first()
+
     def test_loads_second_level_collection_to_scalar(self):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 

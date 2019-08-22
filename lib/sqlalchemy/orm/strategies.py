@@ -1981,6 +1981,9 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     def _create_collection_loader(self, context, key, _instance, populators):
         def load_collection_from_joined_new_row(state, dict_, row):
+            # note this must unconditionally clear out any existing collection.
+            # an existing collection would be present only in the case of
+            # populate_existing().
             collection = attributes.init_state_collection(state, dict_, key)
             result_list = util.UniqueAppender(
                 collection, "append_without_event"
