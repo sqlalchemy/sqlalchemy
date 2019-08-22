@@ -254,6 +254,12 @@ def create_engine(*args, **kwargs):
         be applied to all connections.  See
         :meth:`~sqlalchemy.engine.Connection.execution_options`
 
+    :param hide_parameters: Boolean, when set to True, SQL statement parameters
+        will not be displayed in INFO logging nor will they be formatted into
+        the string representation of :class:`.StatementError` objects.
+
+        .. versionadded:: 1.3.8
+
     :param implicit_returning=True: When ``True``, a RETURNING-
         compatible construct, if available, will be used to
         fetch newly generated primary key values when a single row

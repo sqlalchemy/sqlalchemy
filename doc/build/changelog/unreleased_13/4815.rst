@@ -1,0 +1,8 @@
+.. change::
+    :tags: feature, engine
+    :tickets: 4815
+
+    Added new parameter :paramref:`.create_engine.hide_parameters` which when
+    set to True will cause SQL parameters to no longer be logged, nor rendered
+    in the string representation of a :class:`.StatementError` object.
+
