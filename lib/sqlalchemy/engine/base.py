@@ -1222,9 +1222,14 @@ class Connection(Connectable):
 
         if self._echo:
             self.engine.logger.info(statement)
-            self.engine.logger.info(
-                "%r", sql_util._repr_params(parameters, batches=10)
-            )
+            if not self.engine.hide_parameters:
+                self.engine.logger.info(
+                    "%r", sql_util._repr_params(parameters, batches=10)
+                )
+            else:
+                self.engine.logger.info(
+                    "[SQL parameters hidden due to hide_parameters=True]"
+                )
 
         evt_handled = False
         try:
@@ -1388,6 +1393,7 @@ class Connection(Connectable):
                     parameters,
                     e,
                     self.dialect.dbapi.Error,
+                    hide_parameters=self.engine.hide_parameters,
                     dialect=self.dialect,
                 ),
                 exc_info,
@@ -1408,6 +1414,7 @@ class Connection(Connectable):
                     parameters,
                     e,
                     self.dialect.dbapi.Error,
+                    hide_parameters=self.engine.hide_parameters,
                     connection_invalidated=self._is_disconnect,
                     dialect=self.dialect,
                 )
@@ -1508,6 +1515,7 @@ class Connection(Connectable):
                 None,
                 e,
                 dialect.dbapi.Error,
+                hide_parameters=engine.hide_parameters,
                 connection_invalidated=is_disconnect,
             )
         else:
@@ -1904,6 +1912,7 @@ class Engine(Connectable, log.Identified):
         echo=None,
         proxy=None,
         execution_options=None,
+        hide_parameters=False,
     ):
         self.pool = pool
         self.url = url
@@ -1911,6 +1920,7 @@ class Engine(Connectable, log.Identified):
         if logging_name:
             self.logging_name = logging_name
         self.echo = echo
+        self.hide_parameters = hide_parameters
         log.instance_logger(self, echoflag=echo)
         if proxy:
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
@@ -2339,6 +2349,7 @@ class OptionEngine(Engine):
         self.dialect = proxied.dialect
         self.logging_name = proxied.logging_name
         self.echo = proxied.echo
+        self.hide_parameters = proxied.hide_parameters
         log.instance_logger(self, echoflag=self.echo)
 
         # note: this will propagate events that are assigned to the parent
