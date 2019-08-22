@@ -2748,6 +2748,25 @@ class Mapper(InspectionAttr):
         return identity_key[1]
 
     @_memoized_configured_property
+    def _persistent_sortkey_fn(self):
+        key_fns = [col.type.sort_key_function for col in self.primary_key]
+
+        if set(key_fns).difference([None]):
+
+            def key(state):
+                return tuple(
+                    key_fn(val) if key_fn is not None else val
+                    for key_fn, val in zip(key_fns, state.key[1])
+                )
+
+        else:
+
+            def key(state):
+                return state.key[1]
+
+        return key
+
+    @_memoized_configured_property
     def _identity_key_props(self):
         return [self._columntoproperty[col] for col in self.primary_key]
 

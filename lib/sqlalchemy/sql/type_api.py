@@ -132,6 +132,16 @@ class TypeEngine(Visitable):
 
     """
 
+    sort_key_function = None
+    """A sorting function that can be passed as the key to sorted.
+
+    The default value of ``None`` indicates that the values stored by
+    this type are self-sorting.
+
+    .. versionadded:: 1.3.8
+
+    """
+
     should_evaluate_none = False
     """If True, the Python constant ``None`` is considered to be handled
     explicitly by this type.
@@ -1346,6 +1356,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
         return self.impl.compare_values(x, y)
+
+    @property
+    def sort_key_function(self):
+        return self.impl.sort_key_function
 
     def __repr__(self):
         return util.generic_repr(self, to_inspect=self.impl)

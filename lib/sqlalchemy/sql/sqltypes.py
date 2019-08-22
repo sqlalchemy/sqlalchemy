@@ -18,6 +18,7 @@ from . import elements
 from . import operators
 from . import type_api
 from .base import _bind_or_error
+from .base import NO_ARG
 from .base import SchemaEventTarget
 from .elements import _defer_name
 from .elements import _literal_as_binds
@@ -1355,6 +1356,19 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.2.3
 
+        :param sort_key_function: a Python callable which may be used as the
+           "key" argument in the Python ``sorted()`` built-in.   The SQLAlchemy
+           ORM requires that primary key columns which are mapped must
+           be sortable in some way.  When using an unsortable enumeration
+           object such as a Python 3 ``Enum`` object, this parameter may be
+           used to set a default sort key function for the objects.  By
+           default, the database value of the enumeration is used as the
+           sorting function.
+
+            .. versionadded:: 1.3.8
+
+
+
         """
         self._enum_init(enums, kw)
 
@@ -1376,6 +1390,7 @@ class Enum(Emulated, String, SchemaType):
         self.native_enum = kw.pop("native_enum", True)
         self.create_constraint = kw.pop("create_constraint", True)
         self.values_callable = kw.pop("values_callable", None)
+        self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1447,6 +1462,13 @@ class Enum(Emulated, String, SchemaType):
                 for value in values
             ]
         )
+
+    @property
+    def sort_key_function(self):
+        if self._sort_key_function is NO_ARG:
+            return self._db_value_for_elem
+        else:
+            return self._sort_key_function
 
     @property
     def native(self):
