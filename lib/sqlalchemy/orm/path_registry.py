@@ -100,8 +100,8 @@ class PathRegistry(object):
     def __reduce__(self):
         return _unreduce_path, (self.serialize(),)
 
-    def serialize(self):
-        path = self.path
+    @classmethod
+    def _serialize_path(cls, path):
         return list(
             zip(
                 [m.class_ for m in [path[i] for i in range(0, len(path), 2)]],
@@ -110,10 +110,7 @@ class PathRegistry(object):
         )
 
     @classmethod
-    def deserialize(cls, path):
-        if path is None:
-            return None
-
+    def _deserialize_path(cls, path):
         p = tuple(
             chain(
                 *[
@@ -129,6 +126,35 @@ class PathRegistry(object):
         )
         if p and p[-1] is None:
             p = p[0:-1]
+        return p
+
+    @classmethod
+    def serialize_context_dict(cls, dict_, tokens):
+        return [
+            ((key, cls._serialize_path(path)), value)
+            for (key, path), value in [
+                (k, v)
+                for k, v in dict_.items()
+                if isinstance(k, tuple) and k[0] in tokens
+            ]
+        ]
+
+    @classmethod
+    def deserialize_context_dict(cls, serialized):
+        return util.OrderedDict(
+            ((key, tuple(cls._deserialize_path(path))), value)
+            for (key, path), value in serialized
+        )
+
+    def serialize(self):
+        path = self.path
+        return self._serialize_path(path)
+
+    @classmethod
+    def deserialize(cls, path):
+        if path is None:
+            return None
+        p = cls._deserialize_path(path)
         return cls.coerce(p)
 
     @classmethod
