@@ -464,12 +464,16 @@ class Load(Generative, MapperOption):
 
     def __getstate__(self):
         d = self.__dict__.copy()
+        d["context"] = PathRegistry.serialize_context_dict(
+            d["context"], ("loader",)
+        )
         d["path"] = self.path.serialize()
         return d
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.path = PathRegistry.deserialize(self.path)
+        self.context = PathRegistry.deserialize_context_dict(self.context)
 
     def _chop_path(self, to_chop, path):
         i = -1
