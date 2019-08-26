@@ -3451,7 +3451,7 @@ class PGDialect(default.DefaultDialect):
         # "CHECK (((a > 1) AND (a < 5)))"
         # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
         def match_cons(src):
-            m = re.match(r"^CHECK *\(\((.+)\)\)$", src)
+            m = re.match(r"^CHECK *\(\((.+)\)\)( NOT VALID)?$", src)
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 return ""
