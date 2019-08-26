@@ -1244,6 +1244,83 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         )
 
+    def test_array_literal_contains(self):
+        self.assert_compile(
+            postgresql.array([1, 2]).contains([3, 4, 5]),
+            "ARRAY[%(param_1)s, %(param_2)s] @> ARRAY[%(param_3)s, "
+            "%(param_4)s, %(param_5)s]",
+            checkparams={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+                "param_5": 5,
+            },
+        )
+
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contains([""]),
+            "ARRAY[%(param_1)s, %(param_2)s] @> ARRAY[%(param_3)s]",
+            checkparams={"param_1": "a", "param_2": "b", "param_3": ""},
+        )
+
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contains([]),
+            "ARRAY[%(param_1)s, %(param_2)s] @> ARRAY[]",
+            checkparams={"param_1": "a", "param_2": "b"},
+        )
+
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contains([0]),
+            "ARRAY[%(param_1)s, %(param_2)s] @> ARRAY[%(param_3)s]",
+            checkparams={"param_1": "a", "param_2": "b", "param_3": 0},
+        )
+
+    def test_array_literal_contained_by(self):
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contained_by(["a", "b", "c"]),
+            "ARRAY[%(param_1)s, %(param_2)s] <@ ARRAY[%(param_3)s, "
+            "%(param_4)s, %(param_5)s]",
+            checkparams={
+                "param_1": "a",
+                "param_2": "b",
+                "param_3": "a",
+                "param_4": "b",
+                "param_5": "c",
+            },
+        )
+
+        self.assert_compile(
+            postgresql.array([1, 2]).contained_by([3, 4, 5]),
+            "ARRAY[%(param_1)s, %(param_2)s] <@ ARRAY[%(param_3)s, "
+            "%(param_4)s, %(param_5)s]",
+            checkparams={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+                "param_5": 5,
+            },
+        )
+
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contained_by([""]),
+            "ARRAY[%(param_1)s, %(param_2)s] <@ ARRAY[%(param_3)s]",
+            checkparams={"param_1": "a", "param_2": "b", "param_3": ""},
+        )
+
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contained_by([]),
+            "ARRAY[%(param_1)s, %(param_2)s] <@ ARRAY[]",
+            checkparams={"param_1": "a", "param_2": "b"},
+        )
+
+        self.assert_compile(
+            postgresql.array(["a", "b"]).contained_by([0]),
+            "ARRAY[%(param_1)s, %(param_2)s] <@ ARRAY[%(param_3)s]",
+            checkparams={"param_1": "a", "param_2": "b", "param_3": 0},
+        )
+
     def test_array_literal_insert(self):
         m = MetaData()
         t = Table("t", m, Column("data", postgresql.ARRAY(Integer)))
