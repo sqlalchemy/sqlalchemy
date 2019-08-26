@@ -3,6 +3,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
+from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
@@ -742,6 +743,62 @@ class PathRegistryTest(_fixtures.FixtureTest):
         eq_(p1.serialize(), [(User, "addresses"), (Address, "email_address")])
         eq_(p2.serialize(), [(User, "addresses"), (Address, None)])
         eq_(p3.serialize(), [(User, "addresses")])
+
+    def test_serialize_context_dict(self):
+        reg = util.OrderedDict()
+        umapper = inspect(self.classes.User)
+        amapper = inspect(self.classes.Address)
+
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
+
+        p1.set(reg, "p1key", "p1value")
+        p2.set(reg, "p2key", "p2value")
+        p3.set(reg, "p3key", "p3value")
+        eq_(
+            reg,
+            {
+                ("p1key", p1.path): "p1value",
+                ("p2key", p2.path): "p2value",
+                ("p3key", p3.path): "p3value",
+            },
+        )
+
+        serialized = PathRegistry.serialize_context_dict(
+            reg, ("p1key", "p2key")
+        )
+        eq_(
+            serialized,
+            [
+                (("p1key", p1.serialize()), "p1value"),
+                (("p2key", p2.serialize()), "p2value"),
+            ],
+        )
+
+    def test_deseralize_context_dict(self):
+        umapper = inspect(self.classes.User)
+        amapper = inspect(self.classes.Address)
+
+        p1 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses, amapper))
+        p3 = PathRegistry.coerce((amapper, amapper.attrs.email_address))
+
+        serialized = [
+            (("p1key", p1.serialize()), "p1value"),
+            (("p2key", p2.serialize()), "p2value"),
+            (("p3key", p3.serialize()), "p3value"),
+        ]
+        deserialized = PathRegistry.deserialize_context_dict(serialized)
+
+        eq_(
+            deserialized,
+            {
+                ("p1key", p1.path): "p1value",
+                ("p2key", p2.path): "p2value",
+                ("p3key", p3.path): "p3value",
+            },
+        )
 
     def test_deseralize(self):
         User = self.classes.User
