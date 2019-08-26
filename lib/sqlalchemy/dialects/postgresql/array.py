@@ -113,9 +113,6 @@ class array(expression.Tuple):
 
     def _bind_param(self, operator, obj, _assume_scalar=False, type_=None):
         if _assume_scalar or operator is operators.getitem:
-            # if getitem->slice were called, Indexable produces
-            # a Slice object from that
-            assert isinstance(obj, int)
             return expression.BindParameter(
                 None,
                 obj,
