@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 4822
-
-    Fixed bug where Postgresql operators such as
-    :meth:`.postgresql.ARRAY.Comparator.contains` and
-    :meth:`.postgresql.ARRAY.Comparator.contained_by` would fail to function
-    correctly for non-integer values when used against a
-    :class:`.postgresql.array` object, due to an erroneous assert statement.
