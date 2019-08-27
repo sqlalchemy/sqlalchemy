@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4823
-
-    Fixed bug where :class:`.Load` objects were not pickleable due to
-    mapper/relationship state in the internal context dictionary.  These
-    objects are now converted to picklable using similar techniques as that of
-    other elements within the loader option system that have long been
-    serializable.

@@ -12,7 +12,108 @@
 
 .. changelog::
     :version: 1.3.8
-    :include_notes_from: unreleased_13
+    :released: August 27, 2019
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4823
+
+        Fixed bug where :class:`.Load` objects were not pickleable due to
+        mapper/relationship state in the internal context dictionary.  These
+        objects are now converted to picklable using similar techniques as that of
+        other elements within the loader option system that have long been
+        serializable.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4623
+
+        Revised the approach for the just added support for the psycopg2
+        "execute_values()" feature added in 1.3.7 for :ticket:`4623`.  The approach
+        relied upon a regular expression that would fail to match for a more
+        complex INSERT statement such as one which had subqueries involved.   The
+        new approach matches exactly the string that was rendered as the VALUES
+        clause.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 4285
+
+        Added support for the use of an :class:`.Enum` datatype using Python
+        pep-435 enumeration objects as values for use as a primary key column
+        mapped by the ORM.  As these values are not inherently sortable, as
+        required by the ORM for primary keys, a new
+        :attr:`.TypeEngine.sort_key_function` attribute is added to the typing
+        system which allows any SQL type to  implement a sorting for Python objects
+        of its type which is consulted by the unit of work.   The :class:`.Enum`
+        type then defines this using the  database value of a given enumeration.
+        The sorting scheme can be  also be redefined by passing a callable to the
+        :paramref:`.Enum.sort_key_function` parameter.  Pull request courtesy
+        Nicolas Caniart.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4807
+
+        Fixed an issue whereby if the dialect "initialize" process which occurs on
+        first connect would encounter an unexpected exception, the initialize
+        process would fail to complete and then no longer attempt on subsequent
+        connection attempts, leaving the dialect in an un-initialized, or partially
+        initialized state, within the scope of parameters that need to be
+        established based on inspection of a live connection.   The "invoke once"
+        logic in the event system has been reworked to accommodate for this
+        occurrence using new, private API features that establish an "exec once"
+        hook that will continue to allow the initializer to fire off on subsequent
+        connections, until it completes without raising an exception. This does not
+        impact the behavior of the existing ``once=True`` flag within the event
+        system.
+
+    .. change::
+        :tags: bug, sqlite, reflection
+        :tickets: 4810
+
+        Fixed bug where a FOREIGN KEY that was set up to refer to the parent table
+        by table name only without the column names would not correctly be
+        reflected as far as setting up the "referred columns", since SQLite's
+        PRAGMA does not report on these columns if they weren't given explicitly.
+        For some reason this was harcoded to assume the name of the local column,
+        which might work for some cases but is not correct. The new approach
+        reflects the primary key of the referred table and uses the constraint
+        columns list as the referred columns list, if the remote column(s) aren't
+        present in the reflected pragma directly.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 4822
+
+        Fixed bug where Postgresql operators such as
+        :meth:`.postgresql.ARRAY.Comparator.contains` and
+        :meth:`.postgresql.ARRAY.Comparator.contained_by` would fail to function
+        correctly for non-integer values when used against a
+        :class:`.postgresql.array` object, due to an erroneous assert statement.
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 4815
+
+        Added new parameter :paramref:`.create_engine.hide_parameters` which when
+        set to True will cause SQL parameters to no longer be logged, nor rendered
+        in the string representation of a :class:`.StatementError` object.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 4824
+
+        Added support for reflection of CHECK constraints that include the special
+        PostgreSQL qualifier "NOT VALID", which can be present for CHECK
+        constraints that were added to an exsiting table with the directive that
+        they not be applied to existing data in the table. The PostgreSQL
+        dictionary for CHECK constraints as returned by
+        :meth:`.Inspector.get_check_constraints` may include an additional entry
+        ``dialect_options`` which within will contain an entry ``"not_valid":
+        True`` if this symbol is detected.   Pull request courtesy Bill Finn.
 
 .. changelog::
     :version: 1.3.7
