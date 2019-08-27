@@ -194,7 +194,7 @@ def save_obj(base_mapper, states, uowtransaction, single=False):
 
     # if batch=false, call _save_obj separately for each object
     if not single and not base_mapper.batch:
-        for state in _sort_states(states):
+        for state in _sort_states(base_mapper, states):
             save_obj(base_mapper, [state], uowtransaction, single=True)
         return
 
@@ -1605,7 +1605,7 @@ def _connections_for_states(base_mapper, uowtransaction, states):
         connection = uowtransaction.transaction.connection(base_mapper)
         connection_callable = None
 
-    for state in _sort_states(states):
+    for state in _sort_states(base_mapper, states):
         if connection_callable:
             connection = connection_callable(base_mapper, state.obj())
 
@@ -1623,12 +1623,15 @@ def _cached_connection_dict(base_mapper):
     )
 
 
-def _sort_states(states):
+def _sort_states(mapper, states):
     pending = set(states)
     persistent = set(s for s in pending if s.key is not None)
     pending.difference_update(persistent)
+
     try:
-        persistent_sorted = sorted(persistent, key=lambda q: q.key[1])
+        persistent_sorted = sorted(
+            persistent, key=mapper._persistent_sortkey_fn
+        )
     except TypeError as err:
         raise sa_exc.InvalidRequestError(
             "Could not sort objects by primary key; primary key "

@@ -1,0 +1,15 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 4285
+
+    Added support for the use of an :class:`.Enum` datatype using Python
+    pep-435 enumeration objects as values for use as a primary key column
+    mapped by the ORM.  As these values are not inherently sortable, as
+    required by the ORM for primary keys, a new
+    :attr:`.TypeEngine.sort_key_function` attribute is added to the typing
+    system which allows any SQL type to  implement a sorting for Python objects
+    of its type which is consulted by the unit of work.   The :class:`.Enum`
+    type then defines this using the  database value of a given enumeration.
+    The sorting scheme can be  also be redefined by passing a callable to the
+    :paramref:`.Enum.sort_key_function` parameter.  Pull request courtesy
+    Nicolas Caniart.

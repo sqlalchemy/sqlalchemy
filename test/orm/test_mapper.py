@@ -346,7 +346,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         states[4].insert_order = DontCompareMeToString(1)
         states[2].insert_order = DontCompareMeToString(3)
         eq_(
-            _sort_states(states),
+            _sort_states(m, states),
             [states[4], states[3], states[0], states[1], states[2]],
         )
 

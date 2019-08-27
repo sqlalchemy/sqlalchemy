@@ -15,12 +15,14 @@ from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.persistence import _sort_states
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -3398,6 +3400,7 @@ class EnsurePKSortableTest(fixtures.MappedTest):
     two = MySortableEnum("two", 2)
     three = MyNotSortableEnum("three", 3)
     four = MyNotSortableEnum("four", 4)
+    five = MyNotSortableEnum("five", 5)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3411,9 +3414,24 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         Table(
             "t2",
             metadata,
-            Column("id", Enum(cls.MyNotSortableEnum), primary_key=True),
+            Column(
+                "id",
+                Enum(cls.MyNotSortableEnum, sort_key_function=None),
+                primary_key=True,
+            ),
             Column("data", String(10)),
         )
+
+        Table(
+            "t3",
+            metadata,
+            Column("id", Enum(cls.MyNotSortableEnum), primary_key=True),
+            Column("value", Integer),
+        )
+
+    @staticmethod
+    def sort_enum_key_value(value):
+        return value.value
 
     @classmethod
     def setup_classes(cls):
@@ -3423,10 +3441,15 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         class T2(cls.Basic):
             pass
 
+        class T3(cls.Basic):
+            def __str__(self):
+                return "T3(id={})".format(self.id)
+
     @classmethod
     def setup_mappers(cls):
         mapper(cls.classes.T1, cls.tables.t1)
         mapper(cls.classes.T2, cls.tables.t2)
+        mapper(cls.classes.T3, cls.tables.t3)
 
     def test_exception_persistent_flush_py3k(self):
         s = Session()
@@ -3459,3 +3482,21 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         a.data = "bar"
         b.data = "foo"
         s.commit()
+
+    def test_pep435_custom_sort_key(self):
+        s = Session()
+
+        a = self.classes.T3(id=self.three, value=1)
+        b = self.classes.T3(id=self.four, value=2)
+        s.add_all([a, b])
+        s.commit()
+
+        c = self.classes.T3(id=self.five, value=0)
+        s.add(c)
+
+        states = [o._sa_instance_state for o in [b, a, c]]
+        eq_(
+            _sort_states(inspect(self.classes.T3), states),
+            # pending come first, then "four" < "three"
+            [o._sa_instance_state for o in [c, b, a]],
+        )

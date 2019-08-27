@@ -1658,6 +1658,45 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             [(1, "two"), (2, "two"), (3, "one")],
         )
 
+    def test_pep435_default_sort_key(self):
+        one, two, a_member, b_member = (
+            self.one,
+            self.two,
+            self.a_member,
+            self.b_member,
+        )
+        typ = Enum(self.SomeEnum)
+
+        is_(typ.sort_key_function.__func__, typ._db_value_for_elem.__func__)
+
+        eq_(
+            sorted([two, one, a_member, b_member], key=typ.sort_key_function),
+            [a_member, b_member, one, two],
+        )
+
+    def test_pep435_custom_sort_key(self):
+        one, two, a_member, b_member = (
+            self.one,
+            self.two,
+            self.a_member,
+            self.b_member,
+        )
+
+        def sort_enum_key_value(value):
+            return str(value.value)
+
+        typ = Enum(self.SomeEnum, sort_key_function=sort_enum_key_value)
+        is_(typ.sort_key_function, sort_enum_key_value)
+
+        eq_(
+            sorted([two, one, a_member, b_member], key=typ.sort_key_function),
+            [one, two, a_member, b_member],
+        )
+
+    def test_pep435_no_sort_key(self):
+        typ = Enum(self.SomeEnum, sort_key_function=None)
+        is_(typ.sort_key_function, None)
+
     def test_pep435_enum_round_trip(self):
         stdlib_enum_table = self.tables["stdlib_enum_table"]
 
