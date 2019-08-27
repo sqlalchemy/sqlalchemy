@@ -3439,20 +3439,24 @@ class PGDialect(default.DefaultDialect):
 
         c = connection.execute(sql.text(CHECK_SQL), table_oid=table_oid)
 
-        # samples:
-        # "CHECK (((a > 1) AND (a < 5)))"
-        # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
-        def match_cons(src):
-            m = re.match(r"^CHECK *\(\((.+)\)\)$", src)
+        ret = []
+        for name, src in c:
+            # samples:
+            # "CHECK (((a > 1) AND (a < 5)))"
+            # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
+            # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
+            m = re.match(r"^CHECK *\(\((.+)\)\)( NOT VALID)?$", src)
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
-                return ""
-            return m.group(1)
+                sqltext = ""
+            else:
+                sqltext = m.group(1)
+            entry = {"name": name, "sqltext": sqltext}
+            if m and m.group(2):
+                entry["dialect_options"] = {"not_valid": True}
 
-        return [
-            {"name": name, "sqltext": match_cons(src)}
-            for name, src in c.fetchall()
-        ]
+            ret.append(entry)
+        return ret
 
     def _load_enums(self, connection, schema=None):
         schema = schema or self.default_schema_name

@@ -552,6 +552,12 @@ class Inspector(object):
         sqltext
           the check constraint's SQL expression
 
+        dialect_options
+          may or may not be present; a dictionary with additional
+          dialect-specific options for this CHECK constraint
+
+          .. versionadded:: 1.3.8
+
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
 
