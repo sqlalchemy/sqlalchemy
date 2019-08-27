@@ -1,0 +1,22 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 4449
+
+    Additional logic has been added such that certain SQL expressions which
+    typically wrap a single database column will use the name of that column as
+    their "anonymous label" name within a SELECT statement, potentially making
+    key-based lookups in result tuples more intutive.   The primary example of
+    this is that of a CAST expression, e.g. ``CAST(table.colname AS INTEGER)``,
+    which will export its default name as "colname", rather than the usual
+    "anon_1" label, that is, ``CAST(table.colname AS INTEGER) AS colname``.
+    If the inner expression doesn't have a name, then the previous "anonymous
+    label" logic is used.  When using SELECT statements that make use of
+    :meth:`.Select.apply_labels`, such as those emitted by the ORM, the
+    labeling logic will produce ``<tablename>_<inner column name>`` in the same
+    was as if the column were named alone.   The logic applies right now to the
+    :func:`.cast` and :func:`.type_coerce` constructs as well as some
+    single-element boolean expressions.
+
+    .. seealso::
+
+        :ref:`change_4449`

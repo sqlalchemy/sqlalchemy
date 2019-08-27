@@ -1508,7 +1508,7 @@ object as arguments:
     >>> from sqlalchemy import cast
     >>> s = select([cast(users.c.id, String)])
     >>> conn.execute(s).fetchall()
-    {opensql}SELECT CAST(users.id AS VARCHAR) AS anon_1
+    {opensql}SELECT CAST(users.id AS VARCHAR) AS id
     FROM users
     ()
     {stop}[('1',), ('2',)]
