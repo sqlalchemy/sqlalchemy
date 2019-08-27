@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 4824
+
+    Added support for reflection of CHECK constraints that include the special
+    PostgreSQL qualifier "NOT VALID", which can be present for CHECK
+    constraints that were added to an exsiting table with the directive that
+    they not be applied to existing data in the table. The PostgreSQL
+    dictionary for CHECK constraints as returned by
+    :meth:`.Inspector.get_check_constraints` may include an additional entry
+    ``dialect_options`` which within will contain an entry ``"not_valid":
+    True`` if this symbol is detected.   Pull request courtesy Bill Finn.

@@ -1540,9 +1540,10 @@ class ReflectionTest(fixtures.TestBase):
         )
 
     def test_reflect_check_warning(self):
+        rows = [("some name", "NOTCHECK foobar")]
         conn = mock.Mock(
-            execute=lambda *arg, **kw: mock.Mock(
-                fetchall=lambda: [("some name", "NOTCHECK foobar")]
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
             )
         )
         with mock.patch.object(
@@ -1552,6 +1553,30 @@ class ReflectionTest(fixtures.TestBase):
                 "Could not parse CHECK constraint text: 'NOTCHECK foobar'"
             ):
                 testing.db.dialect.get_check_constraints(conn, "foo")
+
+    def test_reflect_with_not_valid_check_constraint(self):
+        rows = [("some name", "CHECK ((a IS NOT NULL)) NOT VALID")]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        with mock.patch.object(
+            testing.db.dialect, "get_table_oid", lambda *arg, **kw: 1
+        ):
+            check_constraints = testing.db.dialect.get_check_constraints(
+                conn, "foo"
+            )
+            eq_(
+                check_constraints,
+                [
+                    {
+                        "name": "some name",
+                        "sqltext": "a IS NOT NULL",
+                        "dialect_options": {"not_valid": True},
+                    }
+                ],
+            )
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
