@@ -13,14 +13,9 @@ def before_execute_hook(conn, clauseelement, multiparams, params):
     else:
         raise NotImplementedError
 
-# from sqlalchemy.ext.compiler import compiles
-# @compiles(Select)
-# def select_warn_for_cartesian_compiler(element, compiler, **kw):
-#     warn_for_cartesian(element)
-#     return compiler.visit_select(element, **kw)
 
-
-def warn_for_cartesian(element):
+def find_unmatching_froms(element, start_with=None):
+    # TODO: It would be nicer to use OrderedSet, but it seems to not be too much optimize, so let's skip for now
     froms = set(element.froms)
     if not froms:
         return
@@ -64,11 +59,16 @@ def warn_for_cartesian(element):
     # take any element from the list of FROMS.
     # then traverse all the edges and ensure we can reach
     # all other FROMS
-    start_with = froms.pop()
+    if start_with is not None:
+        assert start_with in froms
+    else:
+        start_with = next(iter(froms))
+    froms.remove(start_with)
     the_rest = froms
     stack = collections.deque([start_with])
     while stack and the_rest:
         node = stack.popleft()
+        # the_rest.pop(node, None)
         the_rest.discard(node)
         for edge in list(edges):
             if edge not in edges:
@@ -82,11 +82,18 @@ def warn_for_cartesian(element):
 
     # FROMS left over?  boom
     if the_rest:
+        return the_rest, start_with
+    else:
+        return None, None
+
+def warn_for_cartesian(element):
+    froms, start_with = find_unmatching_froms(element)
+    if froms:
         util.warn(
             'for stmt %s FROM elements %s are not joined up to FROM element "%r"'
             % (
                 id(element),  # defeat the warnings filter
-                ", ".join('"%r"' % f for f in the_rest),
+                ", ".join('"%r"' % f for f in froms),
                 start_with,
             )
         )
