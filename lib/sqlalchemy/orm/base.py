@@ -216,7 +216,6 @@ def _assertions(*assertions):
         for assertion in assertions:
             assertion(self, fn.__name__)
         fn(self, *args[1:], **kw)
-        return self
 
     return generate
 

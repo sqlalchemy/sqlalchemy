@@ -36,6 +36,8 @@ from .. import inspect
 from .. import inspection
 from .. import util
 from ..sql import operators
+from ..sql import visitors
+from ..sql.traversals import HasCacheKey
 
 
 __all__ = (
@@ -54,7 +56,9 @@ __all__ = (
 )
 
 
-class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
+class MapperProperty(
+    HasCacheKey, _MappedAttribute, InspectionAttr, util.MemoizedSlots
+):
     """Represent a particular class attribute mapped by :class:`.Mapper`.
 
     The most common occurrences of :class:`.MapperProperty` are the
@@ -73,6 +77,11 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
         "key",
         "info",
     )
+
+    _cache_key_traversal = [
+        ("parent", visitors.ExtendedInternalTraversal.dp_has_cache_key),
+        ("key", visitors.ExtendedInternalTraversal.dp_string),
+    ]
 
     cascade = frozenset()
     """The set of 'cascade' attribute names.
@@ -647,7 +656,7 @@ class MapperOption(object):
 
         self.process_query(query)
 
-    def _generate_cache_key(self, path):
+    def _generate_path_cache_key(self, path):
         """Used by the "baked lazy loader" to see if this option can be cached.
 
         The "baked lazy loader" refers to the :class:`.Query` that is

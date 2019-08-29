@@ -86,7 +86,6 @@ __all__ = [
 from .base import _from_objects  # noqa
 from .base import ColumnCollection  # noqa
 from .base import Executable  # noqa
-from .base import Generative  # noqa
 from .base import PARSE_AUTOCOMMIT  # noqa
 from .dml import Delete  # noqa
 from .dml import Insert  # noqa
@@ -242,7 +241,6 @@ _UnaryExpression = UnaryExpression
 _Case = Case
 _Tuple = Tuple
 _Over = Over
-_Generative = Generative
 _TypeClause = TypeClause
 _Extract = Extract
 _Exists = Exists

@@ -82,6 +82,9 @@ the FROM clause of a SELECT statement.
 .. autoclass:: BindParameter
    :members:
 
+.. autoclass:: CacheKey
+   :members:
+
 .. autoclass:: Case
    :members:
 
@@ -90,6 +93,7 @@ the FROM clause of a SELECT statement.
 
 .. autoclass:: ClauseElement
    :members:
+   :inherited-members:
 
 
 .. autoclass:: ClauseList

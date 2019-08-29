@@ -31,6 +31,7 @@ from .base import ColumnSet
 from .base import DedupeColumnCollection
 from .base import Executable
 from .base import Generative
+from .base import HasMemoized
 from .base import Immutable
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
@@ -39,11 +40,13 @@ from .elements import and_
 from .elements import BindParameter
 from .elements import ClauseElement
 from .elements import ClauseList
+from .elements import ColumnClause
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
 from .elements import True_
 from .elements import UnaryExpression
+from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 
@@ -201,6 +204,8 @@ class Selectable(ReturnsRows):
 class HasPrefixes(object):
     _prefixes = ()
 
+    _traverse_internals = [("_prefixes", InternalTraversal.dp_prefix_sequence)]
+
     @_generative
     @_document_text_coercion(
         "expr",
@@ -252,6 +257,8 @@ class HasPrefixes(object):
 class HasSuffixes(object):
     _suffixes = ()
 
+    _traverse_internals = [("_suffixes", InternalTraversal.dp_prefix_sequence)]
+
     @_generative
     @_document_text_coercion(
         "expr",
@@ -295,7 +302,7 @@ class HasSuffixes(object):
         )
 
 
-class FromClause(roles.AnonymizedFromClauseRole, Selectable):
+class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
@@ -529,11 +536,6 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
         return getattr(self, "name", self.__class__.__name__ + " object")
 
-    def _reset_exported(self):
-        """delete memoized collections when a FromClause is cloned."""
-
-        self._memoized_property.expire_instance(self)
-
     def _generate_fromclause_column_proxies(self, fromclause):
         fromclause._columns._populate_separate_keys(
             col._make_proxy(fromclause) for col in self.c
@@ -667,6 +669,14 @@ class Join(FromClause):
     """
 
     __visit_name__ = "join"
+
+    _traverse_internals = [
+        ("left", InternalTraversal.dp_clauseelement),
+        ("right", InternalTraversal.dp_clauseelement),
+        ("onclause", InternalTraversal.dp_clauseelement),
+        ("isouter", InternalTraversal.dp_boolean),
+        ("full", InternalTraversal.dp_boolean),
+    ]
 
     _is_join = True
 
@@ -804,25 +814,6 @@ class Join(FromClause):
         super(Join, self)._refresh_for_new_column(column)
         self.left._refresh_for_new_column(column)
         self.right._refresh_for_new_column(column)
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self._reset_exported()
-        self.left = clone(self.left, **kw)
-        self.right = clone(self.right, **kw)
-        self.onclause = clone(self.onclause, **kw)
-
-    def get_children(self, **kwargs):
-        return self.left, self.right, self.onclause
-
-    def _cache_key(self, **kw):
-        return (
-            Join,
-            self.isouter,
-            self.full,
-            self.left._cache_key(**kw),
-            self.right._cache_key(**kw),
-            self.onclause._cache_key(**kw),
-        )
 
     def _match_primaries(self, left, right):
         if isinstance(left, Join):
@@ -1175,6 +1166,11 @@ class AliasedReturnsRows(FromClause):
     _is_from_container = True
     named_with_column = True
 
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("name", InternalTraversal.dp_anon_name),
+    ]
+
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
             "The %s class is not intended to be constructed "
@@ -1243,18 +1239,13 @@ class AliasedReturnsRows(FromClause):
 
     def _copy_internals(self, clone=_clone, **kw):
         element = clone(self.element, **kw)
+
+        # the element clone is usually against a Table that returns the
+        # same object.  don't reset exported .c. collections and other
+        # memoized details if nothing changed
         if element is not self.element:
             self._reset_exported()
-        self.element = element
-
-    def get_children(self, column_collections=True, **kw):
-        if column_collections:
-            for c in self.c:
-                yield c
-        yield self.element
-
-    def _cache_key(self, **kw):
-        return (self.__class__, self.element._cache_key(**kw), self._orig_name)
+            self.element = element
 
     @property
     def _from_objects(self):
@@ -1396,6 +1387,11 @@ class TableSample(AliasedReturnsRows):
 
     __visit_name__ = "tablesample"
 
+    _traverse_internals = AliasedReturnsRows._traverse_internals + [
+        ("sampling", InternalTraversal.dp_clauseelement),
+        ("seed", InternalTraversal.dp_clauseelement),
+    ]
+
     @classmethod
     def _factory(cls, selectable, sampling, name=None, seed=None):
         """Return a :class:`.TableSample` object.
@@ -1466,6 +1462,16 @@ class CTE(Generative, HasSuffixes, AliasedReturnsRows):
 
     __visit_name__ = "cte"
 
+    _traverse_internals = (
+        AliasedReturnsRows._traverse_internals
+        + [
+            ("_cte_alias", InternalTraversal.dp_clauseelement),
+            ("_restates", InternalTraversal.dp_clauseelement_unordered_set),
+            ("recursive", InternalTraversal.dp_boolean),
+        ]
+        + HasSuffixes._traverse_internals
+    )
+
     @classmethod
     def _factory(cls, selectable, name=None, recursive=False):
         r"""Return a new :class:`.CTE`, or Common Table Expression instance.
@@ -1495,14 +1501,12 @@ class CTE(Generative, HasSuffixes, AliasedReturnsRows):
 
     def _copy_internals(self, clone=_clone, **kw):
         super(CTE, self)._copy_internals(clone, **kw)
+        # TODO: I don't like that we can't use the traversal data here
         if self._cte_alias is not None:
             self._cte_alias = clone(self._cte_alias, **kw)
         self._restates = frozenset(
             [clone(elem, **kw) for elem in self._restates]
         )
-
-    def _cache_key(self, *arg, **kw):
-        raise NotImplementedError("TODO")
 
     def alias(self, name=None, flat=False):
         """Return an :class:`.Alias` of this :class:`.CTE`.
@@ -1764,6 +1768,8 @@ class Subquery(AliasedReturnsRows):
 class FromGrouping(GroupedElement, FromClause):
     """Represent a grouping of a FROM clause"""
 
+    _traverse_internals = [("element", InternalTraversal.dp_clauseelement)]
+
     def __init__(self, element):
         self.element = coercions.expect(roles.FromClauseRole, element)
 
@@ -1791,15 +1797,6 @@ class FromGrouping(GroupedElement, FromClause):
     @property
     def _hide_froms(self):
         return self.element._hide_froms
-
-    def get_children(self, **kwargs):
-        return (self.element,)
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-
-    def _cache_key(self, **kw):
-        return (FromGrouping, self.element._cache_key(**kw))
 
     @property
     def _from_objects(self):
@@ -1842,6 +1839,14 @@ class TableClause(Immutable, FromClause):
     """
 
     __visit_name__ = "table"
+
+    _traverse_internals = [
+        (
+            "columns",
+            InternalTraversal.dp_fromclause_canonical_column_collection,
+        ),
+        ("name", InternalTraversal.dp_string),
+    ]
 
     named_with_column = True
 
@@ -1894,17 +1899,6 @@ class TableClause(Immutable, FromClause):
     def append_column(self, c):
         self._columns.add(c)
         c.table = self
-
-    def get_children(self, column_collections=True, **kwargs):
-        if column_collections:
-            return [c for c in self.c]
-        else:
-            return []
-
-    def _cache_key(self, **kw):
-        return (TableClause, self.name) + tuple(
-            col._cache_key(**kw) for col in self._columns
-        )
 
     @util.dependencies("sqlalchemy.sql.dml")
     def insert(self, dml, values=None, inline=False, **kwargs):
@@ -1965,6 +1959,13 @@ class TableClause(Immutable, FromClause):
 
 
 class ForUpdateArg(ClauseElement):
+    _traverse_internals = [
+        ("of", InternalTraversal.dp_clauseelement_list),
+        ("nowait", InternalTraversal.dp_boolean),
+        ("read", InternalTraversal.dp_boolean),
+        ("skip_locked", InternalTraversal.dp_boolean),
+    ]
+
     @classmethod
     def parse_legacy_select(self, arg):
         """Parse the for_update argument of :func:`.select`.
@@ -2029,19 +2030,6 @@ class ForUpdateArg(ClauseElement):
     def __hash__(self):
         return id(self)
 
-    def _copy_internals(self, clone=_clone, **kw):
-        if self.of is not None:
-            self.of = [clone(col, **kw) for col in self.of]
-
-    def _cache_key(self, **kw):
-        return (
-            ForUpdateArg,
-            self.nowait,
-            self.read,
-            self.skip_locked,
-            self.of._cache_key(**kw) if self.of is not None else None,
-        )
-
     def __init__(
         self,
         nowait=False,
@@ -2074,6 +2062,7 @@ class SelectBase(
     roles.DMLSelectRole,
     roles.CompoundElementRole,
     roles.InElementRole,
+    HasMemoized,
     HasCTE,
     Executable,
     SupportsCloneAnnotations,
@@ -2091,9 +2080,6 @@ class SelectBase(
     _is_select_statement = True
 
     _memoized_property = util.group_expirable_memoized_property()
-
-    def _reset_memoizations(self):
-        self._memoized_property.expire_instance(self)
 
     def _generate_fromclause_column_proxies(self, fromclause):
         # type: (FromClause)
@@ -2339,6 +2325,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     """
 
     __visit_name__ = "grouping"
+    _traverse_internals = [("element", InternalTraversal.dp_clauseelement)]
 
     _is_select_container = True
 
@@ -2349,9 +2336,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     @property
     def select_statement(self):
         return self.element
-
-    def get_children(self, **kwargs):
-        return (self.element,)
 
     def self_group(self, against=None):
         # type: (Optional[Any]) -> FromClause
@@ -2376,12 +2360,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
         """
         return self.element.selected_columns
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-
-    def _cache_key(self, **kw):
-        return (SelectStatementGrouping, self.element._cache_key(**kw))
 
     @property
     def _from_objects(self):
@@ -2758,9 +2736,6 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     def _label_resolve_dict(self):
         raise NotImplementedError()
 
-    def _copy_internals(self, clone=_clone, **kw):
-        raise NotImplementedError()
-
 
 class CompoundSelect(GenerativeSelect):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other
@@ -2784,6 +2759,16 @@ class CompoundSelect(GenerativeSelect):
     """
 
     __visit_name__ = "compound_select"
+
+    _traverse_internals = [
+        ("selects", InternalTraversal.dp_clauseelement_list),
+        ("_limit_clause", InternalTraversal.dp_clauseelement),
+        ("_offset_clause", InternalTraversal.dp_clauseelement),
+        ("_order_by_clause", InternalTraversal.dp_clauseelement),
+        ("_group_by_clause", InternalTraversal.dp_clauseelement),
+        ("_for_update_arg", InternalTraversal.dp_clauseelement),
+        ("keyword", InternalTraversal.dp_string),
+    ] + SupportsCloneAnnotations._traverse_internals
 
     UNION = util.symbol("UNION")
     UNION_ALL = util.symbol("UNION ALL")
@@ -3004,47 +2989,6 @@ class CompoundSelect(GenerativeSelect):
         """
         return self.selects[0].selected_columns
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self._reset_memoizations()
-        self.selects = [clone(s, **kw) for s in self.selects]
-        if hasattr(self, "_col_map"):
-            del self._col_map
-        for attr in (
-            "_limit_clause",
-            "_offset_clause",
-            "_order_by_clause",
-            "_group_by_clause",
-            "_for_update_arg",
-        ):
-            if getattr(self, attr) is not None:
-                setattr(self, attr, clone(getattr(self, attr), **kw))
-
-    def get_children(self, **kwargs):
-        return [self._order_by_clause, self._group_by_clause] + list(
-            self.selects
-        )
-
-    def _cache_key(self, **kw):
-        return (
-            (CompoundSelect, self.keyword)
-            + tuple(stmt._cache_key(**kw) for stmt in self.selects)
-            + (
-                self._order_by_clause._cache_key(**kw)
-                if self._order_by_clause is not None
-                else None,
-            )
-            + (
-                self._group_by_clause._cache_key(**kw)
-                if self._group_by_clause is not None
-                else None,
-            )
-            + (
-                self._for_update_arg._cache_key(**kw)
-                if self._for_update_arg is not None
-                else None,
-            )
-        )
-
     def bind(self):
         if self._bind:
             return self._bind
@@ -3193,10 +3137,34 @@ class Select(
     _hints = util.immutabledict()
     _statement_hints = ()
     _distinct = False
-    _from_cloned = None
+    _distinct_on = ()
     _correlate = ()
     _correlate_except = None
     _memoized_property = SelectBase._memoized_property
+
+    _traverse_internals = (
+        [
+            ("_from_obj", InternalTraversal.dp_fromclause_ordered_set),
+            ("_raw_columns", InternalTraversal.dp_clauseelement_list),
+            ("_whereclause", InternalTraversal.dp_clauseelement),
+            ("_having", InternalTraversal.dp_clauseelement),
+            ("_order_by_clause", InternalTraversal.dp_clauseelement_list),
+            ("_group_by_clause", InternalTraversal.dp_clauseelement_list),
+            ("_correlate", InternalTraversal.dp_clauseelement_unordered_set),
+            (
+                "_correlate_except",
+                InternalTraversal.dp_clauseelement_unordered_set,
+            ),
+            ("_for_update_arg", InternalTraversal.dp_clauseelement),
+            ("_statement_hints", InternalTraversal.dp_statement_hint_list),
+            ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_distinct", InternalTraversal.dp_boolean),
+            ("_distinct_on", InternalTraversal.dp_clauseelement_list),
+        ]
+        + HasPrefixes._traverse_internals
+        + HasSuffixes._traverse_internals
+        + SupportsCloneAnnotations._traverse_internals
+    )
 
     @util.deprecated_params(
         autocommit=(
@@ -3416,13 +3384,14 @@ class Select(
         """
         self._auto_correlate = correlate
         if distinct is not False:
-            if distinct is True:
-                self._distinct = True
-            else:
-                self._distinct = [
-                    coercions.expect(roles.WhereHavingRole, e)
-                    for e in util.to_list(distinct)
-                ]
+            self._distinct = True
+            if not isinstance(distinct, bool):
+                self._distinct_on = tuple(
+                    [
+                        coercions.expect(roles.WhereHavingRole, e)
+                        for e in util.to_list(distinct)
+                    ]
+                )
 
         if from_obj is not None:
             self._from_obj = util.OrderedSet(
@@ -3472,15 +3441,17 @@ class Select(
 
         GenerativeSelect.__init__(self, **kwargs)
 
+    # @_memoized_property
     @property
     def _froms(self):
-        # would love to cache this,
-        # but there's just enough edge cases, particularly now that
-        # declarative encourages construction of SQL expressions
-        # without tables present, to just regen this each time.
+        # current roadblock to caching is two tests that test that the
+        # SELECT can be compiled to a string, then a Table is created against
+        # columns, then it can be compiled again and works.  this is somewhat
+        # valid as people make select() against declarative class where
+        # columns don't have their Table yet and perhaps some operations
+        # call upon _froms and cache it too soon.
         froms = []
         seen = set()
-        translate = self._from_cloned
 
         for item in itertools.chain(
             _from_objects(*self._raw_columns),
@@ -3493,8 +3464,6 @@ class Select(
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
                 )
-            if translate and item in translate:
-                item = translate[item]
             if not seen.intersection(item._cloned_set):
                 froms.append(item)
             seen.update(item._cloned_set)
@@ -3518,15 +3487,6 @@ class Select(
             itertools.chain(*[_expand_cloned(f._hide_froms) for f in froms])
         )
         if toremove:
-            # if we're maintaining clones of froms,
-            # add the copies out to the toremove list.  only include
-            # clones that are lexical equivalents.
-            if self._from_cloned:
-                toremove.update(
-                    self._from_cloned[f]
-                    for f in toremove.intersection(self._from_cloned)
-                    if self._from_cloned[f]._is_lexical_equivalent(f)
-                )
             # filter out to FROM clauses not in the list,
             # using a list to maintain ordering
             froms = [f for f in froms if f not in toremove]
@@ -3707,7 +3667,6 @@ class Select(
         return False
 
     def _copy_internals(self, clone=_clone, **kw):
-
         # Select() object has been cloned and probably adapted by the
         # given clone function.  Apply the cloning function to internal
         # objects
@@ -3719,37 +3678,42 @@ class Select(
         # as of 0.7.4 we also put the current version of _froms, which
         # gets cleared on each generation.  previously we were "baking"
         # _froms into self._from_obj.
-        self._from_cloned = from_cloned = dict(
-            (f, clone(f, **kw)) for f in self._from_obj.union(self._froms)
-        )
 
-        # 3. update persistent _from_obj with the cloned versions.
+        all_the_froms = list(
+            itertools.chain(
+                _from_objects(*self._raw_columns),
+                _from_objects(self._whereclause)
+                if self._whereclause is not None
+                else (),
+            )
+        )
+        new_froms = {f: clone(f, **kw) for f in all_the_froms}
+        # copy FROM collections
+
         self._from_obj = util.OrderedSet(
-            from_cloned[f] for f in self._from_obj
-        )
+            clone(f, **kw) for f in self._from_obj
+        ).union(f for f in new_froms.values() if isinstance(f, Join))
 
-        # the _correlate collection is done separately, what can happen
-        # here is the same item is _correlate as in _from_obj but the
-        # _correlate version has an annotation on it - (specifically
-        # RelationshipProperty.Comparator._criterion_exists() does
-        # this). Also keep _correlate liberally open with its previous
-        # contents, as this set is used for matching, not rendering.
-        self._correlate = set(clone(f) for f in self._correlate).union(
-            self._correlate
-        )
-
-        # do something similar for _correlate_except - this is a more
-        # unusual case but same idea applies
+        self._correlate = set(clone(f) for f in self._correlate)
         if self._correlate_except:
             self._correlate_except = set(
                 clone(f) for f in self._correlate_except
-            ).union(self._correlate_except)
+            )
 
         # 4. clone other things.   The difficulty here is that Column
-        # objects are not actually cloned, and refer to their original
-        # .table, resulting in the wrong "from" parent after a clone
-        # operation.  Hence _from_cloned and _from_obj supersede what is
-        # present here.
+        # objects are usually not altered by a straight clone because they
+        # are dependent on the FROM cloning we just did above in order to
+        # be targeted correctly, or a new FROM we have might be a JOIN
+        # object which doesn't have its own columns.  so give the cloner a
+        # hint.
+        def replace(obj, **kw):
+            if isinstance(obj, ColumnClause) and obj.table in new_froms:
+                newelem = new_froms[obj.table].corresponding_column(obj)
+                return newelem
+
+        kw["replace"] = replace
+
+        # TODO: I'd still like to try to leverage the traversal data
         self._raw_columns = [clone(c, **kw) for c in self._raw_columns]
         for attr in (
             "_limit_clause",
@@ -3763,67 +3727,12 @@ class Select(
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr), **kw))
 
-        # erase _froms collection,
-        # etc.
         self._reset_memoizations()
 
     def get_children(self, **kwargs):
-        """return child elements as per the ClauseElement specification."""
-
-        return (
-            self._raw_columns
-            + list(self._froms)
-            + [
-                x
-                for x in (
-                    self._whereclause,
-                    self._having,
-                    self._order_by_clause,
-                    self._group_by_clause,
-                )
-                if x is not None
-            ]
-        )
-
-    def _cache_key(self, **kw):
-        return (
-            (Select,)
-            + ("raw_columns",)
-            + tuple(elem._cache_key(**kw) for elem in self._raw_columns)
-            + ("elements",)
-            + tuple(
-                elem._cache_key(**kw) if elem is not None else None
-                for elem in (
-                    self._whereclause,
-                    self._having,
-                    self._order_by_clause,
-                    self._group_by_clause,
-                )
-            )
-            + ("from_obj",)
-            + tuple(elem._cache_key(**kw) for elem in self._from_obj)
-            + ("correlate",)
-            + tuple(
-                elem._cache_key(**kw)
-                for elem in (
-                    self._correlate if self._correlate is not None else ()
-                )
-            )
-            + ("correlate_except",)
-            + tuple(
-                elem._cache_key(**kw)
-                for elem in (
-                    self._correlate_except
-                    if self._correlate_except is not None
-                    else ()
-                )
-            )
-            + ("for_update",),
-            (
-                self._for_update_arg._cache_key(**kw)
-                if self._for_update_arg is not None
-                else None,
-            ),
+        # TODO: define "get_children" traversal items separately?
+        return self._froms + super(Select, self).get_children(
+            omit_attrs=["_from_obj", "_correlate", "_correlate_except"]
         )
 
     @_generative
@@ -3987,10 +3896,8 @@ class Select(
         """
         if expr:
             expr = [coercions.expect(roles.ByOfRole, e) for e in expr]
-            if isinstance(self._distinct, list):
-                self._distinct = self._distinct + expr
-            else:
-                self._distinct = expr
+            self._distinct = True
+            self._distinct_on = self._distinct_on + tuple(expr)
         else:
             self._distinct = True
 
@@ -4489,6 +4396,11 @@ class TextualSelect(SelectBase):
 
     __visit_name__ = "textual_select"
 
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("column_args", InternalTraversal.dp_clauseelement_list),
+    ] + SupportsCloneAnnotations._traverse_internals
+
     _is_textual = True
 
     def __init__(self, text, columns, positional=False):
@@ -4532,18 +4444,6 @@ class TextualSelect(SelectBase):
     def _generate_fromclause_column_proxies(self, fromclause):
         fromclause._columns._populate_separate_keys(
             c._make_proxy(fromclause) for c in self.column_args
-        )
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self._reset_memoizations()
-        self.element = clone(self.element, **kw)
-
-    def get_children(self, **kw):
-        return [self.element]
-
-    def _cache_key(self, **kw):
-        return (TextualSelect, self.element._cache_key(**kw)) + tuple(
-            col._cache_key(**kw) for col in self.column_args
         )
 
     def _scalar_type(self):

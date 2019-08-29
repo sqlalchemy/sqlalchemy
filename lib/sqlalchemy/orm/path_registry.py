@@ -15,7 +15,8 @@ from .base import class_mapper
 from .. import exc
 from .. import inspection
 from .. import util
-
+from ..sql import visitors
+from ..sql.traversals import HasCacheKey
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ _WILDCARD_TOKEN = "*"
 _DEFAULT_TOKEN = "_sa_default"
 
 
-class PathRegistry(object):
+class PathRegistry(HasCacheKey):
     """Represent query load paths and registry functions.
 
     Basically represents structures like:
@@ -57,6 +58,10 @@ class PathRegistry(object):
     is_token = False
     is_root = False
 
+    _cache_key_traversal = [
+        ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key_list)
+    ]
+
     def __eq__(self, other):
         return other is not None and self.path == other.path
 
@@ -77,6 +82,9 @@ class PathRegistry(object):
 
     def __len__(self):
         return len(self.path)
+
+    def __hash__(self):
+        return id(self)
 
     @property
     def length(self):

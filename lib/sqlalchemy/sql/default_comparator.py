@@ -178,6 +178,9 @@ def _unsupported_impl(expr, op, *arg, **kw):
 
 def _inv_impl(expr, op, **kw):
     """See :meth:`.ColumnOperators.__inv__`."""
+
+    # undocumented element currently used by the ORM for
+    # relationship.contains()
     if hasattr(expr, "negation_clause"):
         return expr.negation_clause
     else:

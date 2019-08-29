@@ -118,11 +118,14 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
             )
         )
 
+        modifiers = operator(left, right).modifiers
+
         assert operator(left, right).compare(
             BinaryExpression(
                 coercions.expect(roles.WhereHavingRole, left),
                 coercions.expect(roles.WhereHavingRole, right),
                 operator,
+                modifiers=modifiers,
             )
         )
 

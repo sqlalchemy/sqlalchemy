@@ -71,7 +71,7 @@ _CONFIGURE_MUTEX = util.threading.RLock()
 
 @inspection._self_inspects
 @log.class_logger
-class Mapper(InspectionAttr):
+class Mapper(sql_base.HasCacheKey, InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
 
@@ -728,6 +728,10 @@ class Mapper(InspectionAttr):
 
         """
         return self
+
+    _cache_key_traversal = [
+        ("class_", visitors.ExtendedInternalTraversal.dp_plain_obj)
+    ]
 
     @property
     def entity(self):

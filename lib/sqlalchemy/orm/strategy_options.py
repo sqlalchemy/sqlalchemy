@@ -26,11 +26,13 @@ from .. import inspect
 from .. import util
 from ..sql import coercions
 from ..sql import roles
+from ..sql import visitors
 from ..sql.base import _generative
 from ..sql.base import Generative
+from ..sql.traversals import HasCacheKey
 
 
-class Load(Generative, MapperOption):
+class Load(HasCacheKey, Generative, MapperOption):
     """Represents loader options which modify the state of a
     :class:`.Query` in order to affect how various mapped attributes are
     loaded.
@@ -70,6 +72,17 @@ class Load(Generative, MapperOption):
 
     """
 
+    _cache_key_traversal = [
+        ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key),
+        ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
+        ("_of_type", visitors.ExtendedInternalTraversal.dp_multi),
+        (
+            "_context_cache_key",
+            visitors.ExtendedInternalTraversal.dp_has_cache_key_tuples,
+        ),
+        ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
+    ]
+
     def __init__(self, entity):
         insp = inspect(entity)
         self.path = insp._path_registry
@@ -89,7 +102,16 @@ class Load(Generative, MapperOption):
         load._of_type = None
         return load
 
-    def _generate_cache_key(self, path):
+    @property
+    def _context_cache_key(self):
+        serialized = []
+        for (key, loader_path), obj in self.context.items():
+            if key != "loader":
+                continue
+            serialized.append(loader_path + (obj,))
+        return serialized
+
+    def _generate_path_cache_key(self, path):
         if path.path[0].is_aliased_class:
             return False
 
@@ -522,9 +544,16 @@ class _UnboundLoad(Load):
         self._to_bind = []
         self.local_opts = {}
 
+    _cache_key_traversal = [
+        ("path", visitors.ExtendedInternalTraversal.dp_multi_list),
+        ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
+        ("_to_bind", visitors.ExtendedInternalTraversal.dp_has_cache_key_list),
+        ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
+    ]
+
     _is_chain_link = False
 
-    def _generate_cache_key(self, path):
+    def _generate_path_cache_key(self, path):
         serialized = ()
         for val in self._to_bind:
             for local_elem, val_elem in zip(self.path, val.path):
@@ -533,7 +562,7 @@ class _UnboundLoad(Load):
             else:
                 opt = val._bind_loader([path.path[0]], None, None, False)
                 if opt:
-                    c_key = opt._generate_cache_key(path)
+                    c_key = opt._generate_path_cache_key(path)
                     if c_key is False:
                         return False
                     elif c_key:
@@ -660,7 +689,6 @@ class _UnboundLoad(Load):
 
         opt = meth(opt, all_tokens[-1], **kw)
         opt._is_chain_link = False
-
         return opt
 
     def _chop_path(self, to_chop, path):

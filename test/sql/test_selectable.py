@@ -1070,7 +1070,7 @@ class SelectableTest(
         s4 = s3.with_only_columns([table2.c.b])
         self.assert_compile(s4, "SELECT t2.b FROM t2")
 
-    def test_from_list_warning_against_existing(self):
+    def test_from_list_against_existing_one(self):
         c1 = Column("c1", Integer)
         s = select([c1])
 
@@ -1081,7 +1081,7 @@ class SelectableTest(
 
         self.assert_compile(s, "SELECT t.c1 FROM t")
 
-    def test_from_list_recovers_after_warning(self):
+    def test_from_list_against_existing_two(self):
         c1 = Column("c1", Integer)
         c2 = Column("c2", Integer)
 
@@ -1090,18 +1090,11 @@ class SelectableTest(
         # force a compile.
         eq_(str(s), "SELECT c1")
 
-        @testing.emits_warning()
-        def go():
-            return Table("t", MetaData(), c1, c2)
-
-        t = go()
+        t = Table("t", MetaData(), c1, c2)
 
         eq_(c1._from_objects, [t])
         eq_(c2._from_objects, [t])
 
-        # 's' has been baked.  Can't afford
-        # not caching select._froms.
-        # hopefully the warning will clue the user
         self.assert_compile(s, "SELECT t.c1 FROM t")
         self.assert_compile(select([c1]), "SELECT t.c1 FROM t")
         self.assert_compile(select([c2]), "SELECT t.c2 FROM t")
@@ -1123,6 +1116,26 @@ class SelectableTest(
             a,
             "foo",
         )
+
+    def test_whereclause_adapted(self):
+        table1 = table("t1", column("a"))
+
+        s1 = select([table1]).subquery()
+
+        s2 = select([s1]).where(s1.c.a == 5)
+
+        assert s2._whereclause.left.table is s1
+
+        ta = select([table1]).subquery()
+
+        s3 = sql_util.ClauseAdapter(ta).traverse(s2)
+
+        assert s1 not in s3._froms
+
+        # these are new assumptions with the newer approach that
+        # actively swaps out whereclause and others
+        assert s3._whereclause.left.table is not s1
+        assert s3._whereclause.left.table in s3._froms
 
 
 class RefreshForNewColTest(fixtures.TestBase):
@@ -2241,25 +2254,6 @@ class AnnotationsTest(fixtures.TestBase):
             annot = obj._annotate({})
             ne_(set([obj]), set([annot]))
 
-    def test_compare(self):
-        t = table("t", column("x"), column("y"))
-        x_a = t.c.x._annotate({})
-        assert t.c.x.compare(x_a)
-        assert x_a.compare(t.c.x)
-        assert not x_a.compare(t.c.y)
-        assert not t.c.y.compare(x_a)
-        assert (t.c.x == 5).compare(x_a == 5)
-        assert not (t.c.y == 5).compare(x_a == 5)
-
-        s = select([t]).subquery()
-        x_p = s.c.x
-        assert not x_a.compare(x_p)
-        assert not t.c.x.compare(x_p)
-        x_p_a = x_p._annotate({})
-        assert x_p_a.compare(x_p)
-        assert x_p.compare(x_p_a)
-        assert not x_p_a.compare(x_a)
-
     def test_proxy_set_iteration_includes_annotated(self):
         from sqlalchemy.schema import Column
 
@@ -2542,13 +2536,13 @@ class AnnotationsTest(fixtures.TestBase):
         ):
             # the columns clause isn't changed at all
             assert sel._raw_columns[0].table is a1
-            assert sel._froms[0] is sel._froms[1].left
+            assert sel._froms[0].element is sel._froms[1].left.element
 
             eq_(str(s), str(sel))
 
         # when we are modifying annotations sets only
-        # partially, each element is copied unconditionally
-        # when encountered.
+        # partially, elements are copied uniquely based on id().
+        # this is new as of 1.4, previously they'd be copied every time
         for sel in (
             sql_util._deep_deannotate(s, {"foo": "bar"}),
             sql_util._deep_annotate(s, {"foo": "bar"}),

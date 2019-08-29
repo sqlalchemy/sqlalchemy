@@ -16,23 +16,29 @@ import itertools
 import operator
 import re
 
-from . import clause_compare
 from . import coercions
 from . import operators
 from . import roles
+from . import traversals
 from . import type_api
 from .annotation import Annotated
 from .annotation import SupportsWrappingAnnotations
 from .base import _clone
 from .base import _generative
 from .base import Executable
+from .base import HasCacheKey
+from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
 from .base import PARSE_AUTOCOMMIT
 from .coercions import _document_text_coercion
+from .traversals import _copy_internals
+from .traversals import _get_children
+from .traversals import NO_CACHE
 from .visitors import cloned_traverse
+from .visitors import InternalTraversal
 from .visitors import traverse
-from .visitors import Visitable
+from .visitors import Traversible
 from .. import exc
 from .. import inspection
 from .. import util
@@ -162,7 +168,9 @@ def not_(clause):
 
 
 @inspection._self_inspects
-class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
+class ClauseElement(
+    roles.SQLRole, SupportsWrappingAnnotations, HasCacheKey, Traversible
+):
     """Base class for elements of a programmatically constructed SQL
     expression.
 
@@ -189,6 +197,13 @@ class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
     _is_select_statement = False
 
     _order_by_label_element = None
+
+    @property
+    def _cache_key_traversal(self):
+        try:
+            return self._traverse_internals
+        except AttributeError:
+            return NO_CACHE
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -220,28 +235,6 @@ class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
 
         """
         return self
-
-    def _cache_key(self, **kw):
-        """return an optional cache key.
-
-        The cache key is a tuple which can contain any series of
-        objects that are hashable and also identifies
-        this object uniquely within the presence of a larger SQL expression
-        or statement, for the purposes of caching the resulting query.
-
-        The cache key should be based on the SQL compiled structure that would
-        ultimately be produced.   That is, two structures that are composed in
-        exactly the same way should produce the same cache key; any difference
-        in the strucures that would affect the SQL string or the type handlers
-        should result in a different cache key.
-
-        If a structure cannot produce a useful cache key, it should raise
-        NotImplementedError, which will result in the entire structure
-        for which it's part of not being useful as a cache key.
-
-
-        """
-        raise NotImplementedError()
 
     @property
     def _constructor(self):
@@ -336,9 +329,9 @@ class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
         (see :class:`.ColumnElement`)
 
         """
-        return clause_compare.compare(self, other, **kw)
+        return traversals.compare(self, other, **kw)
 
-    def _copy_internals(self, clone=_clone, **kw):
+    def _copy_internals(self, **kw):
         """Reassign internal elements to be clones of themselves.
 
         Called during a copy-and-traverse operation on newly
@@ -349,21 +342,46 @@ class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
         traversal, cloned traversal, annotations).
 
         """
-        pass
 
-    def get_children(self, **kwargs):
-        r"""Return immediate child elements of this :class:`.ClauseElement`.
+        try:
+            traverse_internals = self._traverse_internals
+        except AttributeError:
+            return
+
+        for attrname, obj, meth in _copy_internals.run_generated_dispatch(
+            self, traverse_internals, "_generated_copy_internals_traversal"
+        ):
+            if obj is not None:
+                result = meth(self, obj, **kw)
+                if result is not None:
+                    setattr(self, attrname, result)
+
+    def get_children(self, omit_attrs=None, **kw):
+        r"""Return immediate child :class:`.Traversible` elements of this
+        :class:`.Traversible`.
 
         This is used for visit traversal.
 
-        \**kwargs may contain flags that change the collection that is
+        \**kw may contain flags that change the collection that is
         returned, for example to return a subset of items in order to
         cut down on larger traversals, or to return child items from a
         different context (such as schema-level collections instead of
         clause-level).
 
         """
-        return []
+        result = []
+        try:
+            traverse_internals = self._traverse_internals
+        except AttributeError:
+            return result
+
+        for attrname, obj, meth in _get_children.run_generated_dispatch(
+            self, traverse_internals, "_generated_get_children_traversal"
+        ):
+            if obj is None or omit_attrs and attrname in omit_attrs:
+                continue
+            result.extend(meth(obj, **kw))
+        return result
 
     def self_group(self, against=None):
         # type: (Optional[Any]) -> ClauseElement
@@ -501,6 +519,8 @@ class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
         return or_(self, other)
 
     def __invert__(self):
+        # undocumented element currently used by the ORM for
+        # relationship.contains()
         if hasattr(self, "negation_clause"):
             return self.negation_clause
         else:
@@ -508,9 +528,7 @@ class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
 
     def _negate(self):
         return UnaryExpression(
-            self.self_group(against=operators.inv),
-            operator=operators.inv,
-            negate=None,
+            self.self_group(against=operators.inv), operator=operators.inv
         )
 
     def __bool__(self):
@@ -730,9 +748,6 @@ class ColumnElement(
             )
         else:
             return comparator_factory(self)
-
-    def _cache_key(self, **kw):
-        raise NotImplementedError(self.__class__)
 
     def __getattr__(self, key):
         try:
@@ -968,6 +983,13 @@ class BindParameter(roles.InElementRole, ColumnElement):
     """
 
     __visit_name__ = "bindparam"
+
+    _traverse_internals = [
+        ("key", InternalTraversal.dp_anon_name),
+        ("type", InternalTraversal.dp_type),
+        ("callable", InternalTraversal.dp_plain_dict),
+        ("value", InternalTraversal.dp_plain_obj),
+    ]
 
     _is_crud = False
     _expanding_in_types = ()
@@ -1321,26 +1343,19 @@ class BindParameter(roles.InElementRole, ColumnElement):
             )
         return c
 
-    def _cache_key(self, bindparams=None, **kw):
-        if bindparams is None:
-            # even though _cache_key is a private method, we would like to
-            # be super paranoid about this point.   You can't include the
-            # "value" or "callable" in the cache key, because the value is
-            # not part of the structure of a statement and is likely to
-            # change every time.  However you cannot *throw it away* either,
-            # because you can't invoke the statement without the parameter
-            # values that were explicitly placed.    So require that they
-            # are collected here to make sure this happens.
-            if self._value_required_for_cache:
-                raise NotImplementedError(
-                    "bindparams collection argument required for _cache_key "
-                    "implementation.  Bound parameter cache keys are not safe "
-                    "to use without accommodating for the value or callable "
-                    "within the parameter itself."
-                )
-        else:
-            bindparams.append(self)
-        return (BindParameter, self.type._cache_key, self._orig_key)
+    def _gen_cache_key(self, anon_map, bindparams):
+        if self in anon_map:
+            return (anon_map[self], self.__class__)
+
+        id_ = anon_map[self]
+        bindparams.append(self)
+
+        return (
+            id_,
+            self.__class__,
+            self.type._gen_cache_key,
+            traversals._resolve_name_for_compare(self, self.key, anon_map),
+        )
 
     def _convert_to_unique(self):
         if not self.unique:
@@ -1377,11 +1392,10 @@ class TypeClause(ClauseElement):
 
     __visit_name__ = "typeclause"
 
+    _traverse_internals = [("type", InternalTraversal.dp_type)]
+
     def __init__(self, type_):
         self.type = type_
-
-    def _cache_key(self, **kw):
-        return (TypeClause, self.type._cache_key)
 
 
 class TextClause(
@@ -1418,6 +1432,11 @@ class TextClause(
     """
 
     __visit_name__ = "textclause"
+
+    _traverse_internals = [
+        ("_bindparams", InternalTraversal.dp_string_clauseelement_dict),
+        ("text", InternalTraversal.dp_string),
+    ]
 
     _is_text_clause = True
 
@@ -1861,19 +1880,6 @@ class TextClause(
         else:
             return self
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self._bindparams = dict(
-            (b.key, clone(b, **kw)) for b in self._bindparams.values()
-        )
-
-    def get_children(self, **kwargs):
-        return list(self._bindparams.values())
-
-    def _cache_key(self, **kw):
-        return (self.text,) + tuple(
-            bind._cache_key for bind in self._bindparams.values()
-        )
-
 
 class Null(roles.ConstExprRole, ColumnElement):
     """Represent the NULL keyword in a SQL statement.
@@ -1885,6 +1891,8 @@ class Null(roles.ConstExprRole, ColumnElement):
 
     __visit_name__ = "null"
 
+    _traverse_internals = []
+
     @util.memoized_property
     def type(self):
         return type_api.NULLTYPE
@@ -1894,9 +1902,6 @@ class Null(roles.ConstExprRole, ColumnElement):
         """Return a constant :class:`.Null` construct."""
 
         return Null()
-
-    def _cache_key(self, **kw):
-        return (Null,)
 
 
 class False_(roles.ConstExprRole, ColumnElement):
@@ -1908,6 +1913,7 @@ class False_(roles.ConstExprRole, ColumnElement):
     """
 
     __visit_name__ = "false"
+    _traverse_internals = []
 
     @util.memoized_property
     def type(self):
@@ -1954,9 +1960,6 @@ class False_(roles.ConstExprRole, ColumnElement):
 
         return False_()
 
-    def _cache_key(self, **kw):
-        return (False_,)
-
 
 class True_(roles.ConstExprRole, ColumnElement):
     """Represent the ``true`` keyword, or equivalent, in a SQL statement.
@@ -1967,6 +1970,8 @@ class True_(roles.ConstExprRole, ColumnElement):
     """
 
     __visit_name__ = "true"
+
+    _traverse_internals = []
 
     @util.memoized_property
     def type(self):
@@ -2020,9 +2025,6 @@ class True_(roles.ConstExprRole, ColumnElement):
 
         return True_()
 
-    def _cache_key(self, **kw):
-        return (True_,)
-
 
 class ClauseList(
     roles.InElementRole,
@@ -2037,6 +2039,11 @@ class ClauseList(
     """
 
     __visit_name__ = "clauselist"
+
+    _traverse_internals = [
+        ("clauses", InternalTraversal.dp_clauseelement_list),
+        ("operator", InternalTraversal.dp_operator),
+    ]
 
     def __init__(self, *clauses, **kwargs):
         self.operator = kwargs.pop("operator", operators.comma_op)
@@ -2082,17 +2089,6 @@ class ClauseList(
                 coercions.expect(self._text_converter_role, clause)
             )
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self.clauses = [clone(clause, **kw) for clause in self.clauses]
-
-    def get_children(self, **kwargs):
-        return self.clauses
-
-    def _cache_key(self, **kw):
-        return (ClauseList, self.operator) + tuple(
-            clause._cache_key(**kw) for clause in self.clauses
-        )
-
     @property
     def _from_objects(self):
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
@@ -2113,11 +2109,6 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
             "BooleanClauseList has a private constructor"
-        )
-
-    def _cache_key(self, **kw):
-        return (BooleanClauseList, self.operator) + tuple(
-            clause._cache_key(**kw) for clause in self.clauses
         )
 
     @classmethod
@@ -2250,6 +2241,8 @@ or_ = BooleanClauseList.or_
 class Tuple(ClauseList, ColumnElement):
     """Represent a SQL tuple."""
 
+    _traverse_internals = ClauseList._traverse_internals + []
+
     def __init__(self, *clauses, **kw):
         """Return a :class:`.Tuple`.
 
@@ -2288,11 +2281,6 @@ class Tuple(ClauseList, ColumnElement):
     @property
     def _select_iterable(self):
         return (self,)
-
-    def _cache_key(self, **kw):
-        return (Tuple,) + tuple(
-            clause._cache_key(**kw) for clause in self.clauses
-        )
 
     def _bind_param(self, operator, obj, type_=None):
         return Tuple(
@@ -2338,6 +2326,12 @@ class Case(ColumnElement):
     """
 
     __visit_name__ = "case"
+
+    _traverse_internals = [
+        ("value", InternalTraversal.dp_clauseelement),
+        ("whens", InternalTraversal.dp_clauseelement_tuples),
+        ("else_", InternalTraversal.dp_clauseelement),
+    ]
 
     def __init__(self, whens, value=None, else_=None):
         r"""Produce a ``CASE`` expression.
@@ -2501,40 +2495,6 @@ class Case(ColumnElement):
         else:
             self.else_ = None
 
-    def _copy_internals(self, clone=_clone, **kw):
-        if self.value is not None:
-            self.value = clone(self.value, **kw)
-        self.whens = [(clone(x, **kw), clone(y, **kw)) for x, y in self.whens]
-        if self.else_ is not None:
-            self.else_ = clone(self.else_, **kw)
-
-    def get_children(self, **kwargs):
-        if self.value is not None:
-            yield self.value
-        for x, y in self.whens:
-            yield x
-            yield y
-        if self.else_ is not None:
-            yield self.else_
-
-    def _cache_key(self, **kw):
-        return (
-            (
-                Case,
-                self.value._cache_key(**kw)
-                if self.value is not None
-                else None,
-            )
-            + tuple(
-                (x._cache_key(**kw), y._cache_key(**kw)) for x, y in self.whens
-            )
-            + (
-                self.else_._cache_key(**kw)
-                if self.else_ is not None
-                else None,
-            )
-        )
-
     @property
     def _from_objects(self):
         return list(
@@ -2603,6 +2563,11 @@ class Cast(WrapsColumnExpression, ColumnElement):
 
     __visit_name__ = "cast"
 
+    _traverse_internals = [
+        ("clause", InternalTraversal.dp_clauseelement),
+        ("typeclause", InternalTraversal.dp_clauseelement),
+    ]
+
     def __init__(self, expression, type_):
         r"""Produce a ``CAST`` expression.
 
@@ -2662,20 +2627,6 @@ class Cast(WrapsColumnExpression, ColumnElement):
         )
         self.typeclause = TypeClause(self.type)
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self.clause = clone(self.clause, **kw)
-        self.typeclause = clone(self.typeclause, **kw)
-
-    def get_children(self, **kwargs):
-        return self.clause, self.typeclause
-
-    def _cache_key(self, **kw):
-        return (
-            Cast,
-            self.clause._cache_key(**kw),
-            self.typeclause._cache_key(**kw),
-        )
-
     @property
     def _from_objects(self):
         return self.clause._from_objects
@@ -2685,7 +2636,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
         return self.clause
 
 
-class TypeCoerce(WrapsColumnExpression, ColumnElement):
+class TypeCoerce(HasMemoized, WrapsColumnExpression, ColumnElement):
     """Represent a Python-side type-coercion wrapper.
 
     :class:`.TypeCoerce` supplies the :func:`.expression.type_coerce`
@@ -2704,6 +2655,13 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
     """
 
     __visit_name__ = "type_coerce"
+
+    _traverse_internals = [
+        ("clause", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+    ]
+
+    _memoized_property = util.group_expirable_memoized_property()
 
     def __init__(self, expression, type_):
         r"""Associate a SQL expression with a particular type, without rendering
@@ -2773,21 +2731,11 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
             roles.ExpressionElementRole, expression, type_=self.type
         )
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self.clause = clone(self.clause, **kw)
-        self.__dict__.pop("typed_expression", None)
-
-    def get_children(self, **kwargs):
-        return (self.clause,)
-
-    def _cache_key(self, **kw):
-        return (TypeCoerce, self.type._cache_key, self.clause._cache_key(**kw))
-
     @property
     def _from_objects(self):
         return self.clause._from_objects
 
-    @util.memoized_property
+    @_memoized_property
     def typed_expression(self):
         if isinstance(self.clause, BindParameter):
             bp = self.clause._clone()
@@ -2806,6 +2754,11 @@ class Extract(ColumnElement):
 
     __visit_name__ = "extract"
 
+    _traverse_internals = [
+        ("expr", InternalTraversal.dp_clauseelement),
+        ("field", InternalTraversal.dp_string),
+    ]
+
     def __init__(self, field, expr, **kwargs):
         """Return a :class:`.Extract` construct.
 
@@ -2817,15 +2770,6 @@ class Extract(ColumnElement):
         self.type = type_api.INTEGERTYPE
         self.field = field
         self.expr = coercions.expect(roles.ExpressionElementRole, expr)
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.expr = clone(self.expr, **kw)
-
-    def get_children(self, **kwargs):
-        return (self.expr,)
-
-    def _cache_key(self, **kw):
-        return (Extract, self.field, self.expr._cache_key(**kw))
 
     @property
     def _from_objects(self):
@@ -2847,17 +2791,10 @@ class _label_reference(ColumnElement):
 
     __visit_name__ = "label_reference"
 
+    _traverse_internals = [("element", InternalTraversal.dp_clauseelement)]
+
     def __init__(self, element):
         self.element = element
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-
-    def _cache_key(self, **kw):
-        return (_label_reference, self.element._cache_key(**kw))
-
-    def get_children(self, **kwargs):
-        return [self.element]
 
     @property
     def _from_objects(self):
@@ -2867,15 +2804,14 @@ class _label_reference(ColumnElement):
 class _textual_label_reference(ColumnElement):
     __visit_name__ = "textual_label_reference"
 
+    _traverse_internals = [("element", InternalTraversal.dp_string)]
+
     def __init__(self, element):
         self.element = element
 
     @util.memoized_property
     def _text_clause(self):
         return TextClause._create_text(self.element)
-
-    def _cache_key(self, **kw):
-        return (_textual_label_reference, self.element)
 
 
 class UnaryExpression(ColumnElement):
@@ -2894,13 +2830,18 @@ class UnaryExpression(ColumnElement):
 
     __visit_name__ = "unary"
 
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("operator", InternalTraversal.dp_operator),
+        ("modifier", InternalTraversal.dp_operator),
+    ]
+
     def __init__(
         self,
         element,
         operator=None,
         modifier=None,
         type_=None,
-        negate=None,
         wraps_column_expression=False,
     ):
         self.operator = operator
@@ -2909,7 +2850,6 @@ class UnaryExpression(ColumnElement):
             against=self.operator or self.modifier
         )
         self.type = type_api.to_instance(type_)
-        self.negate = negate
         self.wraps_column_expression = wraps_column_expression
 
     @classmethod
@@ -3135,37 +3075,13 @@ class UnaryExpression(ColumnElement):
     def _from_objects(self):
         return self.element._from_objects
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-
-    def _cache_key(self, **kw):
-        return (
-            UnaryExpression,
-            self.element._cache_key(**kw),
-            self.operator,
-            self.modifier,
-        )
-
-    def get_children(self, **kwargs):
-        return (self.element,)
-
     def _negate(self):
-        if self.negate is not None:
-            return UnaryExpression(
-                self.element,
-                operator=self.negate,
-                negate=self.operator,
-                modifier=self.modifier,
-                type_=self.type,
-                wraps_column_expression=self.wraps_column_expression,
-            )
-        elif self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
+        if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
             return UnaryExpression(
                 self.self_group(against=operators.inv),
                 operator=operators.inv,
                 type_=type_api.BOOLEANTYPE,
                 wraps_column_expression=self.wraps_column_expression,
-                negate=None,
             )
         else:
             return ClauseElement._negate(self)
@@ -3286,15 +3202,6 @@ class AsBoolean(WrapsColumnExpression, UnaryExpression):
         # type: (Optional[Any]) -> ClauseElement
         return self
 
-    def _cache_key(self, **kw):
-        return (
-            self.element._cache_key(**kw),
-            self.type._cache_key,
-            self.operator,
-            self.negate,
-            self.modifier,
-        )
-
     def _negate(self):
         if isinstance(self.element, (True_, False_)):
             return self.element._negate()
@@ -3317,6 +3224,14 @@ class BinaryExpression(ColumnElement):
     """
 
     __visit_name__ = "binary"
+
+    _traverse_internals = [
+        ("left", InternalTraversal.dp_clauseelement),
+        ("right", InternalTraversal.dp_clauseelement),
+        ("operator", InternalTraversal.dp_operator),
+        ("negate", InternalTraversal.dp_operator),
+        ("modifiers", InternalTraversal.dp_plain_dict),
+    ]
 
     _is_implicitly_boolean = True
     """Indicates that any database will know this is a boolean expression
@@ -3360,20 +3275,6 @@ class BinaryExpression(ColumnElement):
     def _from_objects(self):
         return self.left._from_objects + self.right._from_objects
 
-    def _copy_internals(self, clone=_clone, **kw):
-        self.left = clone(self.left, **kw)
-        self.right = clone(self.right, **kw)
-
-    def get_children(self, **kwargs):
-        return self.left, self.right
-
-    def _cache_key(self, **kw):
-        return (
-            BinaryExpression,
-            self.left._cache_key(**kw),
-            self.right._cache_key(**kw),
-        )
-
     def self_group(self, against=None):
         # type: (Optional[Any]) -> ClauseElement
 
@@ -3406,6 +3307,12 @@ class Slice(ColumnElement):
 
     __visit_name__ = "slice"
 
+    _traverse_internals = [
+        ("start", InternalTraversal.dp_plain_obj),
+        ("stop", InternalTraversal.dp_plain_obj),
+        ("step", InternalTraversal.dp_plain_obj),
+    ]
+
     def __init__(self, start, stop, step):
         self.start = start
         self.stop = stop
@@ -3416,9 +3323,6 @@ class Slice(ColumnElement):
         # type: (Optional[Any]) -> ClauseElement
         assert against is operator.getitem
         return self
-
-    def _cache_key(self, **kw):
-        return (Slice, self.start, self.stop, self.step)
 
 
 class IndexExpression(BinaryExpression):
@@ -3444,6 +3348,11 @@ class GroupedElement(ClauseElement):
 class Grouping(GroupedElement, ColumnElement):
     """Represent a grouping within a column expression"""
 
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+    ]
+
     def __init__(self, element):
         self.element = element
         self.type = getattr(element, "type", type_api.NULLTYPE)
@@ -3459,15 +3368,6 @@ class Grouping(GroupedElement, ColumnElement):
     @property
     def _label(self):
         return getattr(self.element, "_label", None) or self.anon_label
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-
-    def get_children(self, **kwargs):
-        return (self.element,)
-
-    def _cache_key(self, **kw):
-        return (Grouping, self.element._cache_key(**kw))
 
     @property
     def _from_objects(self):
@@ -3500,6 +3400,14 @@ class Over(ColumnElement):
     """
 
     __visit_name__ = "over"
+
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("order_by", InternalTraversal.dp_clauseelement),
+        ("partition_by", InternalTraversal.dp_clauseelement),
+        ("range_", InternalTraversal.dp_plain_obj),
+        ("rows", InternalTraversal.dp_plain_obj),
+    ]
 
     order_by = None
     partition_by = None
@@ -3667,30 +3575,6 @@ class Over(ColumnElement):
     def type(self):
         return self.element.type
 
-    def get_children(self, **kwargs):
-        return [
-            c
-            for c in (self.element, self.partition_by, self.order_by)
-            if c is not None
-        ]
-
-    def _cache_key(self, **kw):
-        return (
-            (Over,)
-            + tuple(
-                e._cache_key(**kw) if e is not None else None
-                for e in (self.element, self.partition_by, self.order_by)
-            )
-            + (self.range_, self.rows)
-        )
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-        if self.partition_by is not None:
-            self.partition_by = clone(self.partition_by, **kw)
-        if self.order_by is not None:
-            self.order_by = clone(self.order_by, **kw)
-
     @property
     def _from_objects(self):
         return list(
@@ -3722,6 +3606,11 @@ class WithinGroup(ColumnElement):
     """
 
     __visit_name__ = "withingroup"
+
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("order_by", InternalTraversal.dp_clauseelement),
+    ]
 
     order_by = None
 
@@ -3791,25 +3680,6 @@ class WithinGroup(ColumnElement):
         else:
             return self.element.type
 
-    def get_children(self, **kwargs):
-        return [c for c in (self.element, self.order_by) if c is not None]
-
-    def _cache_key(self, **kw):
-        return (
-            WithinGroup,
-            self.element._cache_key(**kw)
-            if self.element is not None
-            else None,
-            self.order_by._cache_key(**kw)
-            if self.order_by is not None
-            else None,
-        )
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.element = clone(self.element, **kw)
-        if self.order_by is not None:
-            self.order_by = clone(self.order_by, **kw)
-
     @property
     def _from_objects(self):
         return list(
@@ -3844,6 +3714,11 @@ class FunctionFilter(ColumnElement):
     """
 
     __visit_name__ = "funcfilter"
+
+    _traverse_internals = [
+        ("func", InternalTraversal.dp_clauseelement),
+        ("criterion", InternalTraversal.dp_clauseelement),
+    ]
 
     criterion = None
 
@@ -3932,23 +3807,6 @@ class FunctionFilter(ColumnElement):
     def type(self):
         return self.func.type
 
-    def get_children(self, **kwargs):
-        return [c for c in (self.func, self.criterion) if c is not None]
-
-    def _copy_internals(self, clone=_clone, **kw):
-        self.func = clone(self.func, **kw)
-        if self.criterion is not None:
-            self.criterion = clone(self.criterion, **kw)
-
-    def _cache_key(self, **kw):
-        return (
-            FunctionFilter,
-            self.func._cache_key(**kw),
-            self.criterion._cache_key(**kw)
-            if self.criterion is not None
-            else None,
-        )
-
     @property
     def _from_objects(self):
         return list(
@@ -3962,7 +3820,7 @@ class FunctionFilter(ColumnElement):
         )
 
 
-class Label(roles.LabeledColumnExprRole, ColumnElement):
+class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
     """Represents a column label (AS).
 
     Represent a label, as typically applied to any column-level
@@ -3971,6 +3829,14 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
     """
 
     __visit_name__ = "label"
+
+    _traverse_internals = [
+        ("name", InternalTraversal.dp_anon_name),
+        ("_type", InternalTraversal.dp_type),
+        ("_element", InternalTraversal.dp_clauseelement),
+    ]
+
+    _memoized_property = util.group_expirable_memoized_property()
 
     def __init__(self, name, element, type_=None):
         """Return a :class:`Label` object for the
@@ -4010,14 +3876,11 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
     def __reduce__(self):
         return self.__class__, (self.name, self._element, self._type)
 
-    def _cache_key(self, **kw):
-        return (Label, self.element._cache_key(**kw), self._resolve_label)
-
     @util.memoized_property
     def _is_implicitly_boolean(self):
         return self.element._is_implicitly_boolean
 
-    @util.memoized_property
+    @_memoized_property
     def _allow_label_resolve(self):
         return self.element._allow_label_resolve
 
@@ -4031,7 +3894,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
             self._type or getattr(self._element, "type", None)
         )
 
-    @util.memoized_property
+    @_memoized_property
     def element(self):
         return self._element.self_group(against=operators.as_)
 
@@ -4057,13 +3920,9 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
     def foreign_keys(self):
         return self.element.foreign_keys
 
-    def get_children(self, **kwargs):
-        return (self.element,)
-
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
+        self._reset_memoizations()
         self._element = clone(self._element, **kw)
-        self.__dict__.pop("element", None)
-        self.__dict__.pop("_allow_label_resolve", None)
         if anonymize_labels:
             self.name = self._resolve_label = _anonymous_label(
                 "%%(%d %s)s"
@@ -4123,6 +3982,13 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
     """
 
     __visit_name__ = "column"
+
+    _traverse_internals = [
+        ("name", InternalTraversal.dp_string),
+        ("type", InternalTraversal.dp_type),
+        ("table", InternalTraversal.dp_clauseelement),
+        ("is_literal", InternalTraversal.dp_boolean),
+    ]
 
     onupdate = default = server_default = server_onupdate = None
 
@@ -4253,14 +4119,6 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
             return []
 
     table = property(_get_table, _set_table)
-
-    def _cache_key(self, **kw):
-        return (
-            self.name,
-            self.table.name if self.table is not None else None,
-            self.is_literal,
-            self.type._cache_key,
-        )
 
     @_memoized_property
     def _from_objects(self):
@@ -4395,11 +4253,10 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
 class CollationClause(ColumnElement):
     __visit_name__ = "collation"
 
+    _traverse_internals = [("collation", InternalTraversal.dp_string)]
+
     def __init__(self, collation):
         self.collation = collation
-
-    def _cache_key(self, **kw):
-        return (CollationClause, self.collation)
 
 
 class _IdentifiedClause(Executable, ClauseElement):

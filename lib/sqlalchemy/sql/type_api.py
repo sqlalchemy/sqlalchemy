@@ -12,8 +12,8 @@
 
 from . import operators
 from .base import SchemaEventTarget
-from .visitors import Visitable
-from .visitors import VisitableType
+from .visitors import Traversible
+from .visitors import TraversibleType
 from .. import exc
 from .. import util
 
@@ -28,7 +28,7 @@ INDEXABLE = None
 _resolve_value_to_type = None
 
 
-class TypeEngine(Visitable):
+class TypeEngine(Traversible):
     """The ultimate base class for all SQL datatypes.
 
     Common subclasses of :class:`.TypeEngine` include
@@ -535,8 +535,13 @@ class TypeEngine(Visitable):
         return dialect.type_descriptor(self)
 
     @util.memoized_property
-    def _cache_key(self):
-        return util.constructor_key(self, self.__class__)
+    def _gen_cache_key(self):
+        names = util.get_cls_kwargs(self.__class__)
+        return (self.__class__,) + tuple(
+            (k, self.__dict__[k])
+            for k in names
+            if k in self.__dict__ and not k.startswith("_")
+        )
 
     def adapt(self, cls, **kw):
         """Produce an "adapted" form of this type, given an "impl" class
@@ -617,7 +622,7 @@ class TypeEngine(Visitable):
         return util.generic_repr(self)
 
 
-class VisitableCheckKWArg(util.EnsureKWArgType, VisitableType):
+class VisitableCheckKWArg(util.EnsureKWArgType, TraversibleType):
     pass
 
 

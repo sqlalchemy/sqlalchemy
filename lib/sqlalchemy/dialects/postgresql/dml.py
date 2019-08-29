@@ -103,7 +103,6 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoUpdate(
             constraint, index_elements, index_where, set_, where
         )
-        return self
 
     @_generative
     def on_conflict_do_nothing(
@@ -138,7 +137,6 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoNothing(
             constraint, index_elements, index_where
         )
-        return self
 
 
 insert = public_factory(Insert, ".dialects.postgresql.insert")

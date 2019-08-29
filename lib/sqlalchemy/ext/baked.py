@@ -198,7 +198,7 @@ class BakedQuery(object):
             self.spoil()
         else:
             for opt in options:
-                cache_key = opt._generate_cache_key(cache_path)
+                cache_key = opt._generate_path_cache_key(cache_path)
                 if cache_key is False:
                     self.spoil()
                 elif cache_key is not None:

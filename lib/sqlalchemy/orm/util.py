@@ -30,10 +30,12 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import sql
 from .. import util
+from ..sql import base as sql_base
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
+from ..sql import visitors
 
 
 all_cascades = frozenset(
@@ -530,7 +532,7 @@ class AliasedClass(object):
         return str(self._aliased_insp)
 
 
-class AliasedInsp(InspectionAttr):
+class AliasedInsp(sql_base.HasCacheKey, InspectionAttr):
     """Provide an inspection interface for an
     :class:`.AliasedClass` object.
 
@@ -626,6 +628,12 @@ class AliasedInsp(InspectionAttr):
 
     def __clause_element__(self):
         return self.selectable
+
+    _cache_key_traversal = [
+        ("name", visitors.ExtendedInternalTraversal.dp_string),
+        ("_adapt_on_names", visitors.ExtendedInternalTraversal.dp_boolean),
+        ("selectable", visitors.ExtendedInternalTraversal.dp_clauseelement),
+    ]
 
     @property
     def class_(self):
