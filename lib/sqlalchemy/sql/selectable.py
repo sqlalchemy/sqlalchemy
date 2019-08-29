@@ -19,6 +19,7 @@ from . import operators
 from . import roles
 from . import type_api
 from .annotation import Annotated
+from .annotation import SupportsCloneAnnotations
 from .base import _clone
 from .base import _cloned_difference
 from .base import _cloned_intersection
@@ -2068,6 +2069,7 @@ class SelectBase(
     roles.InElementRole,
     HasCTE,
     Executable,
+    SupportsCloneAnnotations,
     Selectable,
 ):
     """Base class for SELECT statements.

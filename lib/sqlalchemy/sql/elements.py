@@ -22,6 +22,7 @@ from . import operators
 from . import roles
 from . import type_api
 from .annotation import Annotated
+from .annotation import SupportsWrappingAnnotations
 from .base import _clone
 from .base import _generative
 from .base import Executable
@@ -161,7 +162,7 @@ def not_(clause):
 
 
 @inspection._self_inspects
-class ClauseElement(roles.SQLRole, Visitable):
+class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
     """Base class for elements of a programmatically constructed SQL
     expression.
 
@@ -266,37 +267,6 @@ class ClauseElement(roles.SQLRole, Visitable):
         d = self.__dict__.copy()
         d.pop("_is_clone_of", None)
         return d
-
-    def _annotate(self, values):
-        """return a copy of this ClauseElement with annotations
-        updated by the given dictionary.
-
-        """
-        return Annotated(self, values)
-
-    def _with_annotations(self, values):
-        """return a copy of this ClauseElement with annotations
-        replaced by the given dictionary.
-
-        """
-        return Annotated(self, values)
-
-    def _deannotate(self, values=None, clone=False):
-        """return a copy of this :class:`.ClauseElement` with annotations
-        removed.
-
-        :param values: optional tuple of individual values
-         to remove.
-
-        """
-        if clone:
-            # clone is used when we are also copying
-            # the expression for a deep deannotation
-            return self._clone()
-        else:
-            # if no clone, since we have no annotations we return
-            # self
-            return self
 
     def _execute_on_connection(self, connection, multiparams, params):
         if self.supports_execution:
@@ -4135,6 +4105,12 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
     def _set_table(self, table):
         self._memoized_property.expire_instance(self)
         self.__dict__["table"] = table
+
+    def get_children(self, column_tables=False, **kw):
+        if column_tables and self.table is not None:
+            return [self.table]
+        else:
+            return []
 
     table = property(_get_table, _set_table)
 
