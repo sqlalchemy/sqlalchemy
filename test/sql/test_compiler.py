@@ -2632,14 +2632,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                     str(sel),
                     "SELECT casttest.id, casttest.v1, casttest.v2, "
                     "casttest.ts, "
-                    "CAST(casttest.v1 AS DECIMAL) AS anon_1 \nFROM casttest",
+                    "CAST(casttest.v1 AS DECIMAL) AS v1 \nFROM casttest",
                 )
             else:
                 eq_(
                     str(sel),
                     "SELECT casttest.id, casttest.v1, casttest.v2, "
                     "casttest.ts, CAST(casttest.v1 AS NUMERIC) AS "
-                    "anon_1 \nFROM casttest",
+                    "v1 \nFROM casttest",
                 )
 
         # first test with PostgreSQL engine
@@ -3033,7 +3033,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 exprs[2],
                 str(exprs[2]),
                 "CAST(mytable.name AS NUMERIC)",
-                "anon_1",
+                "name",  # due to [ticket:4449]
             ),
             (t1.c.col1, "col1", "mytable.col1", None),
             (
@@ -3350,7 +3350,7 @@ class StringifySpecialTest(fixtures.TestBase):
 
         eq_ignore_whitespace(
             str(stmt),
-            "SELECT CAST(mytable.myid AS MyType) AS anon_1 FROM mytable",
+            "SELECT CAST(mytable.myid AS MyType) AS myid FROM mytable",
         )
 
     def test_within_group(self):
@@ -4398,7 +4398,7 @@ class ResultMapTest(fixtures.TestBase):
     def test_label_plus_element(self):
         t = Table("t", MetaData(), Column("a", Integer))
         l1 = t.c.a.label("bar")
-        tc = type_coerce(t.c.a, String)
+        tc = type_coerce(t.c.a + "str", String)
         stmt = select([t.c.a, l1, tc])
         comp = stmt.compile()
         tc_anon_label = comp._create_result_map()["anon_1"][1][0]
@@ -4408,7 +4408,7 @@ class ResultMapTest(fixtures.TestBase):
                 "a": ("a", (t.c.a, "a", "a"), t.c.a.type),
                 "bar": ("bar", (l1, "bar"), l1.type),
                 "anon_1": (
-                    "%%(%d anon)s" % id(tc),
+                    tc.anon_label,
                     (tc_anon_label, "anon_1", tc),
                     tc.type,
                 ),

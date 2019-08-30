@@ -121,7 +121,7 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         table = self._fixture()
         self.assert_compile(
             select([cast(table.c.y, String)]),
-            "SELECT CAST(test_table.y AS VARCHAR) AS anon_1 FROM test_table",
+            "SELECT CAST(test_table.y AS VARCHAR) AS y FROM test_table",
         )
 
     def test_select_cols_use_labels(self):

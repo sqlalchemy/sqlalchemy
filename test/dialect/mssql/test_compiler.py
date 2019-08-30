@@ -1203,7 +1203,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([try_cast(t1.c.id, Integer)]),
-            "SELECT TRY_CAST (t1.id AS INTEGER) AS anon_1 FROM t1",
+            "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
 
 

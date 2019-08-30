@@ -535,6 +535,87 @@ as::
 
 :ticket:`4753`
 
+.. _change_4449:
+
+Improved column labeling for simple column expressions using CAST or similar
+----------------------------------------------------------------------------
+
+A user pointed out that the PostgreSQL database has a convenient behavior when
+using functions like CAST against a named column, in that the result column name
+is named the same as the inner expression::
+
+    test=> SELECT CAST(data AS VARCHAR) FROM foo;
+
+    data
+    ------
+     5
+    (1 row)
+
+This allows one to apply CAST to table columns while not losing the column
+name (above using the name ``"data"``) in the result row.    Compare to
+databases such as MySQL/MariaDB, as well as most others, where the column
+name is taken from the full SQL expression and is not very portable::
+
+    MariaDB [test]> SELECT CAST(data AS CHAR) FROM foo;
+    +--------------------+
+    | CAST(data AS CHAR) |
+    +--------------------+
+    | 5                  |
+    +--------------------+
+    1 row in set (0.003 sec)
+
+
+In SQLAlchemy Core expressions, we never deal with a raw generated name like
+the above, as SQLAlchemy applies auto-labeling to expressions like these, which
+are up until now always a so-called "anonymous" expression::
+
+    >>> print(select([cast(foo.c.data, String)]))
+    SELECT CAST(foo.data AS VARCHAR) AS anon_1     # old behavior
+    FROM foo
+
+These anonymous expressions were necessary as SQLAlchemy's
+:class:`.ResultProxy` made heavy use of result column names in order to match
+up datatypes, such as the :class:`.String` datatype which used to have
+result-row-processing behavior, to the correct column, so most importantly the
+names had to be both easy to determine in a database-agnostic manner as well as
+unique in all cases.    In SQLAlchemy 1.0 as part of :ticket:`918`, this
+reliance on named columns in result rows (specifically the
+``cursor.description`` element of the PEP-249 cursor) was scaled back to not be
+necessary for most Core SELECT constructs; in release 1.4, the system overall
+is becoming more comfortable with SELECT statements that have duplicate column
+or label names such as in :ref:`change_4753`.  So we now emulate PostgreSQL's
+reasonable behavior for simple modifications to a single column, most
+prominently with CAST::
+
+    >>> print(select([cast(foo.c.data, String)]))
+    SELECT CAST(foo.data AS VARCHAR) AS data
+    FROM foo
+
+For CAST against expressions that don't have a name, the previous logic is used
+to generate the usual "anonymous" labels::
+
+    >>> print(select([cast('hi there,' + foo.c.data, String)]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
+    FROM foo
+
+A :func:`.cast` against a :class:`.Label`, despite having to omit the label
+expression as these don't render inside of a CAST, will nonetheless make use of
+the given name::
+
+    >>> print(select([cast(('hi there,' + foo.c.data).label('hello_data'), String)]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    FROM foo
+
+And of course as was always the case, :class:`.Label` can be applied to the
+expression on the outside to apply an "AS <name>" label directly::
+
+    >>> print(select([cast(('hi there,' + foo.c.data), String).label('hello_data')]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    FROM foo
+
+
+:ticket:`4449`
+
 .. _change_4712:
 
 Connection-level transactions can now be inactive based on subtransaction

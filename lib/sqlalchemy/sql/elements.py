@@ -914,6 +914,42 @@ class ColumnElement(
         return self._anon_label(getattr(self, "_label", None))
 
 
+class WrapsColumnExpression(object):
+    """Mixin that defines a :class:`.ColumnElement` as a wrapper with special
+    labeling behavior for an expression that already has a name.
+
+    .. versionadded:: 1.4
+
+    .. seealso::
+
+        :ref:`change_4449`
+
+
+    """
+
+    @property
+    def wrapped_column_expression(self):
+        raise NotImplementedError()
+
+    @property
+    def _label(self):
+        wce = self.wrapped_column_expression
+        if hasattr(wce, "_label"):
+            return wce._label
+        else:
+            return None
+
+    @property
+    def anon_label(self):
+        wce = self.wrapped_column_expression
+        if hasattr(wce, "name"):
+            return wce.name
+        elif hasattr(wce, "anon_label"):
+            return wce.anon_label
+        else:
+            return super(WrapsColumnExpression, self).anon_label
+
+
 class BindParameter(roles.InElementRole, ColumnElement):
     r"""Represent a "bound expression".
 
@@ -2477,7 +2513,7 @@ def literal_column(text, type_=None):
     return ColumnClause(text, type_=type_, is_literal=True)
 
 
-class Cast(ColumnElement):
+class Cast(WrapsColumnExpression, ColumnElement):
     """Represent a ``CAST`` expression.
 
     :class:`.Cast` is produced using the :func:`.cast` factory function,
@@ -2582,8 +2618,12 @@ class Cast(ColumnElement):
     def _from_objects(self):
         return self.clause._from_objects
 
+    @property
+    def wrapped_column_expression(self):
+        return self.clause
 
-class TypeCoerce(ColumnElement):
+
+class TypeCoerce(WrapsColumnExpression, ColumnElement):
     """Represent a Python-side type-coercion wrapper.
 
     :class:`.TypeCoerce` supplies the :func:`.expression.type_coerce`
@@ -2693,6 +2733,10 @@ class TypeCoerce(ColumnElement):
             return bp
         else:
             return self.clause
+
+    @property
+    def wrapped_column_expression(self):
+        return self.clause
 
 
 class Extract(ColumnElement):
@@ -3162,7 +3206,7 @@ class CollectionAggregate(UnaryExpression):
         )
 
 
-class AsBoolean(UnaryExpression):
+class AsBoolean(WrapsColumnExpression, UnaryExpression):
     def __init__(self, element, operator, negate):
         self.element = element
         self.type = type_api.BOOLEANTYPE
@@ -3171,6 +3215,10 @@ class AsBoolean(UnaryExpression):
         self.modifier = None
         self.wraps_column_expression = True
         self._is_implicitly_boolean = element._is_implicitly_boolean
+
+    @property
+    def wrapped_column_expression(self):
+        return self.element
 
     def self_group(self, against=None):
         # type: (Optional[Any]) -> ClauseElement

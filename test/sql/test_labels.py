@@ -1,13 +1,22 @@
 from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import cast
 from sqlalchemy import exc as exceptions
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import type_coerce
 from sqlalchemy.engine import default
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import coercions
 from sqlalchemy.sql import column
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import table
 from sqlalchemy.sql.elements import _truncated_label
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.elements import WrapsColumnExpression
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
@@ -628,4 +637,185 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             set(compiled._create_result_map()),
             set(["tablename_columnn_1", "tablename_columnn_2"]),
+        )
+
+
+class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
+    """Test the :class:`.WrapsColumnExpression` mixin, which provides
+    auto-labels that match a named expression
+
+    """
+
+    __dialect__ = "default"
+
+    table1 = table("some_table", column("name"), column("value"))
+
+    def _fixture(self):
+        class SomeColThing(WrapsColumnExpression, ColumnElement):
+            def __init__(self, expression):
+                self.clause = coercions.expect(
+                    roles.ExpressionElementRole, expression
+                )
+
+            @property
+            def wrapped_column_expression(self):
+                return self.clause
+
+        @compiles(SomeColThing)
+        def process(element, compiler, **kw):
+            return "SOME_COL_THING(%s)" % compiler.process(
+                element.clause, **kw
+            )
+
+        return SomeColThing
+
+    def test_column_auto_label_dupes(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    table1.c.name,
+                    table1.c.name,
+                    expr(table1.c.name),
+                    expr(table1.c.name),
+                ]
+            ),
+            "SELECT some_table.name, some_table.name, "
+            "SOME_COL_THING(some_table.name) AS name, "
+            "SOME_COL_THING(some_table.name) AS name FROM some_table",
+        )
+
+    def test_anon_expression_fallback(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select([table1.c.name + "foo", expr(table1.c.name + "foo")]),
+            "SELECT some_table.name || :name_1 AS anon_1, "
+            "SOME_COL_THING(some_table.name || :name_2) AS anon_2 "
+            "FROM some_table",
+        )
+
+    def test_anon_expression_fallback_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [table1.c.name + "foo", expr(table1.c.name + "foo")]
+            ).apply_labels(),
+            "SELECT some_table.name || :name_1 AS anon_1, "
+            "SOME_COL_THING(some_table.name || :name_2) AS anon_2 "
+            "FROM some_table",
+        )
+
+    def test_label_auto_label(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    expr(table1.c.name.label("foo")),
+                    table1.c.name.label("bar"),
+                    table1.c.value,
+                ]
+            ),
+            "SELECT SOME_COL_THING(some_table.name) AS foo, "
+            "some_table.name AS bar, some_table.value FROM some_table",
+        )
+
+    def test_cast_auto_label(self):
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    cast(table1.c.name, Integer),
+                    cast(table1.c.name, String),
+                    table1.c.name,
+                ]
+            ),
+            "SELECT CAST(some_table.name AS INTEGER) AS name, "
+            "CAST(some_table.name AS VARCHAR) AS name, "
+            "some_table.name FROM some_table",
+        )
+
+    def test_type_coerce_auto_label(self):
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    type_coerce(table1.c.name, Integer),
+                    type_coerce(table1.c.name, String),
+                    table1.c.name,
+                ]
+            ),
+            # ideally type_coerce wouldn't label at all...
+            "SELECT some_table.name AS name, "
+            "some_table.name AS name, "
+            "some_table.name FROM some_table",
+        )
+
+    def test_boolean_auto_label(self):
+        col = column("value", Boolean)
+
+        self.assert_compile(
+            select([~col, col]),
+            # not sure if this SQL is right but this is what it was
+            # before the new labeling, just different label name
+            "SELECT value = 0 AS value, value",
+        )
+
+    def test_label_auto_label_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    expr(table1.c.name.label("foo")),
+                    table1.c.name.label("bar"),
+                    table1.c.value,
+                ]
+            ).apply_labels(),
+            # the expr around label is treated the same way as plain column
+            # with label
+            "SELECT SOME_COL_THING(some_table.name) AS foo, "
+            "some_table.name AS bar, "
+            "some_table.value AS some_table_value FROM some_table",
+        )
+
+    def test_column_auto_label_dupes_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    table1.c.name,
+                    table1.c.name,
+                    expr(table1.c.name),
+                    expr(table1.c.name),
+                ]
+            ).apply_labels(),
+            "SELECT some_table.name AS some_table_name, "
+            "some_table.name AS some_table_name_1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name_2, "
+            "SOME_COL_THING(some_table.name) AS some_table_name_3 "
+            "FROM some_table",
+        )
+
+    def test_column_auto_label_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select([table1.c.name, expr(table1.c.value)]).apply_labels(),
+            "SELECT some_table.name AS some_table_name, "
+            "SOME_COL_THING(some_table.value) "
+            "AS some_table_value FROM some_table",
         )

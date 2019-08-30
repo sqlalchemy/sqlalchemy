@@ -849,7 +849,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         t.insert().values(data=coerce_fn("d1", MyType)).execute()
 
         eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)])
+            select([t.c.data.label("x"), coerce_fn(t.c.data, MyType)])
             .alias()
             .select()
             .execute()
