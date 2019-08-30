@@ -384,6 +384,25 @@ class Query(object):
             else self._query_entity_zero().entity_zero
         )
 
+    def _deep_entity_zero(self):
+        """Return a 'deep' entity; this is any entity we can find associated
+        with the first entity / column experssion.   this is used only for
+        session.get_bind().
+
+        """
+
+        if (
+            self._select_from_entity is not None
+            and not self._select_from_entity.is_clause_element
+        ):
+            return self._select_from_entity.mapper
+        for ent in self._entities:
+            ezero = ent._deep_entity_zero()
+            if ezero is not None:
+                return ezero.mapper
+        else:
+            return None
+
     @property
     def _mapper_entities(self):
         for ent in self._entities:
@@ -394,13 +413,7 @@ class Query(object):
         return self._joinpoint.get("_joinpoint_entity", self._entity_zero())
 
     def _bind_mapper(self):
-        ezero = self._entity_zero()
-        if ezero is not None:
-            insp = inspect(ezero)
-            if not insp.is_clause_element:
-                return insp.mapper
-
-        return None
+        return self._deep_entity_zero()
 
     def _only_full_mapper_zero(self, methname):
         if self._entities != [self._primary_entity]:
@@ -3900,6 +3913,12 @@ class Query(object):
         else:
             context.statement = self._simple_statement(context)
 
+        if for_statement:
+            ezero = self._mapper_zero()
+            if ezero is not None:
+                context.statement = context.statement._annotate(
+                    {"deepentity": ezero}
+                )
         return context
 
     def _compound_eager_statement(self, context):
@@ -4159,6 +4178,9 @@ class _MapperEntity(_QueryEntity):
 
     @property
     def entity_zero_or_selectable(self):
+        return self.entity_zero
+
+    def _deep_entity_zero(self):
         return self.entity_zero
 
     def corresponds_to(self, entity):
@@ -4430,6 +4452,14 @@ class _BundleEntity(_QueryEntity):
         else:
             return None
 
+    def _deep_entity_zero(self):
+        for ent in self._entities:
+            ezero = ent._deep_entity_zero()
+            if ezero is not None:
+                return ezero
+        else:
+            return None
+
     def adapt_to_selectable(self, query, sel):
         c = _BundleEntity(query, self.bundle, setup_entities=False)
         # c._label_name = self._label_name
@@ -4530,7 +4560,7 @@ class _ColumnEntity(_QueryEntity):
         # of FROMs for the overall expression - this helps
         # subqueries which were built from ORM constructs from
         # leaking out their entities into the main select construct
-        self.actual_froms = actual_froms = set(column._from_objects)
+        self.actual_froms = set(column._from_objects)
 
         if not search_entities:
             self.entity_zero = _entity
@@ -4540,7 +4570,6 @@ class _ColumnEntity(_QueryEntity):
             else:
                 self.entities = []
                 self.mapper = None
-            self._from_entities = set(self.entities)
         else:
             all_elements = [
                 elem
@@ -4551,21 +4580,9 @@ class _ColumnEntity(_QueryEntity):
             ]
 
             self.entities = util.unique_list(
-                [
-                    elem._annotations["parententity"]
-                    for elem in all_elements
-                    if "parententity" in elem._annotations
-                ]
+                [elem._annotations["parententity"] for elem in all_elements]
             )
 
-            self._from_entities = set(
-                [
-                    elem._annotations["parententity"]
-                    for elem in all_elements
-                    if "parententity" in elem._annotations
-                    and actual_froms.intersection(elem._from_objects)
-                ]
-            )
             if self.entities:
                 self.entity_zero = self.entities[0]
                 self.mapper = self.entity_zero.mapper
@@ -4577,6 +4594,22 @@ class _ColumnEntity(_QueryEntity):
                 self.mapper = None
 
     supports_single_entity = False
+
+    def _deep_entity_zero(self):
+        if self.mapper is not None:
+            return self.mapper
+
+        else:
+            for obj in visitors.iterate(
+                self.column,
+                {"column_tables": True, "column_collections": False},
+            ):
+                if "parententity" in obj._annotations:
+                    return obj._annotations["parententity"]
+                elif "deepentity" in obj._annotations:
+                    return obj._annotations["deepentity"]
+            else:
+                return None
 
     @property
     def entity_zero_or_selectable(self):

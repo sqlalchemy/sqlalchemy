@@ -41,7 +41,10 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import ne_
 
 
 metadata = MetaData()
@@ -2196,12 +2199,21 @@ class AnnotationsTest(fixtures.TestBase):
         t = table("t", column("x"))
 
         a = t.alias()
-        s = t.select()
-        s2 = a.select()
 
-        for obj in [t, t.c.x, a, s, s2, t.c.x > 1, (t.c.x > 1).label(None)]:
+        for obj in [t, t.c.x, a, t.c.x > 1, (t.c.x > 1).label(None)]:
             annot = obj._annotate({})
             eq_(set([obj]), set([annot]))
+
+    def test_clone_annotations_dont_hash(self):
+        t = table("t", column("x"))
+
+        s = t.select()
+        a = t.alias()
+        s2 = a.select()
+
+        for obj in [s, s2]:
+            annot = obj._annotate({})
+            ne_(set([obj]), set([annot]))
 
     def test_compare(self):
         t = table("t", column("x"), column("y"))
@@ -2423,7 +2435,7 @@ class AnnotationsTest(fixtures.TestBase):
                 expected,
             )
 
-    def test_deannotate(self):
+    def test_deannotate_wrapping(self):
         table1 = table("table1", column("col1"), column("col2"))
 
         bin_ = table1.c.col1 == bindparam("foo", value=None)
@@ -2433,7 +2445,7 @@ class AnnotationsTest(fixtures.TestBase):
         b4 = sql_util._deep_deannotate(bin_)
 
         for elem in (b2._annotations, b2.left._annotations):
-            assert "_orm_adapt" in elem
+            in_("_orm_adapt", elem)
 
         for elem in (
             b3._annotations,
@@ -2441,17 +2453,47 @@ class AnnotationsTest(fixtures.TestBase):
             b4._annotations,
             b4.left._annotations,
         ):
-            assert elem == {}
+            eq_(elem, {})
 
-        assert b2.left is not bin_.left
-        assert b3.left is not b2.left and b2.left is not bin_.left
-        assert b4.left is bin_.left  # since column is immutable
+        is_not_(b2.left, bin_.left)
+        is_not_(b3.left, b2.left)
+        is_not_(b2.left, bin_.left)
+        is_(b4.left, bin_.left)  # since column is immutable
         # deannotate copies the element
-        assert (
-            bin_.right is not b2.right
-            and b2.right is not b3.right
-            and b3.right is not b4.right
+        is_not_(bin_.right, b2.right)
+        is_not_(b2.right, b3.right)
+        is_not_(b3.right, b4.right)
+
+    def test_deannotate_clone(self):
+        table1 = table("table1", column("col1"), column("col2"))
+
+        subq = (
+            select([table1])
+            .where(table1.c.col1 == bindparam("foo"))
+            .subquery()
         )
+        stmt = select([subq])
+
+        s2 = sql_util._deep_annotate(stmt, {"_orm_adapt": True})
+        s3 = sql_util._deep_deannotate(s2)
+        s4 = sql_util._deep_deannotate(s3)
+
+        eq_(stmt._annotations, {})
+        eq_(subq._annotations, {})
+
+        eq_(s2._annotations, {"_orm_adapt": True})
+        eq_(s3._annotations, {})
+        eq_(s4._annotations, {})
+
+        # select._raw_columns[0] is the subq object
+        eq_(s2._raw_columns[0]._annotations, {"_orm_adapt": True})
+        eq_(s3._raw_columns[0]._annotations, {})
+        eq_(s4._raw_columns[0]._annotations, {})
+
+        is_not_(s3, s2)
+        is_not_(s4, s3)  # deep deannotate makes a clone unconditionally
+
+        is_(s3._deannotate(), s3)  # regular deannotate returns same object
 
     def test_annotate_unique_traversal(self):
         """test that items are copied only once during

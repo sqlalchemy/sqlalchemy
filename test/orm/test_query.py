@@ -139,6 +139,23 @@ class RowTupleTest(QueryTest):
         assert row.id == 7
         assert row.uname == "jack"
 
+    def test_deep_entity(self):
+        users, User = (self.tables.users, self.classes.User)
+
+        mapper(User, users)
+
+        sess = create_session()
+        bundle = Bundle("b1", User.id, User.name)
+        subq1 = sess.query(User.id).subquery()
+        subq2 = sess.query(bundle).subquery()
+        cte = sess.query(User.id).cte()
+        ex = sess.query(User).exists()
+
+        is_(sess.query(subq1)._deep_entity_zero(), inspect(User))
+        is_(sess.query(subq2)._deep_entity_zero(), inspect(User))
+        is_(sess.query(cte)._deep_entity_zero(), inspect(User))
+        is_(sess.query(ex)._deep_entity_zero(), inspect(User))
+
     def test_column_metadata(self):
         users, Address, addresses, User = (
             self.tables.users,
@@ -156,6 +173,8 @@ class RowTupleTest(QueryTest):
         fn = func.count(User.id)
         name_label = User.name.label("uname")
         bundle = Bundle("b1", User.id, User.name)
+        subq1 = sess.query(User.id).subquery()
+        subq2 = sess.query(bundle).subquery()
         cte = sess.query(User.id).cte()
         for q, asserted in [
             (
@@ -270,6 +289,30 @@ class RowTupleTest(QueryTest):
                         "aliased": False,
                         "expr": cte.c.id,
                         "type": cte.c.id.type,
+                        "name": "id",
+                        "entity": None,
+                    }
+                ],
+            ),
+            (
+                sess.query(subq1.c.id),
+                [
+                    {
+                        "aliased": False,
+                        "expr": subq1.c.id,
+                        "type": subq1.c.id.type,
+                        "name": "id",
+                        "entity": None,
+                    }
+                ],
+            ),
+            (
+                sess.query(subq2.c.id),
+                [
+                    {
+                        "aliased": False,
+                        "expr": subq2.c.id,
+                        "type": subq2.c.id.type,
                         "name": "id",
                         "entity": None,
                     }
@@ -5518,12 +5561,15 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class SessionBindTest(QueryTest):
     @contextlib.contextmanager
-    def _assert_bind_args(self, session):
+    def _assert_bind_args(self, session, expect_mapped_bind=True):
         get_bind = mock.Mock(side_effect=session.get_bind)
         with mock.patch.object(session, "get_bind", get_bind):
             yield
         for call_ in get_bind.mock_calls:
-            is_(call_[1][0], inspect(self.classes.User))
+            if expect_mapped_bind:
+                is_(call_[1][0], inspect(self.classes.User))
+            else:
+                is_(call_[1][0], None)
             is_not_(call_[2]["clause"], None)
 
     def test_single_entity_q(self):
@@ -5532,11 +5578,42 @@ class SessionBindTest(QueryTest):
         with self._assert_bind_args(session):
             session.query(User).all()
 
+    def test_aliased_entity_q(self):
+        User = self.classes.User
+        u = aliased(User)
+        session = Session()
+        with self._assert_bind_args(session):
+            session.query(u).all()
+
     def test_sql_expr_entity_q(self):
         User = self.classes.User
         session = Session()
         with self._assert_bind_args(session):
             session.query(User.id).all()
+
+    def test_sql_expr_subquery_from_entity(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            subq = session.query(User.id).subquery()
+            session.query(subq).all()
+
+    def test_sql_expr_cte_from_entity(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            cte = session.query(User.id).cte()
+            subq = session.query(cte).subquery()
+            session.query(subq).all()
+
+    def test_sql_expr_bundle_cte_from_entity(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session):
+            cte = session.query(User.id, User.name).cte()
+            subq = session.query(cte).subquery()
+            bundle = Bundle(subq.c.id, subq.c.name)
+            session.query(bundle).all()
 
     def test_count(self):
         User = self.classes.User
@@ -5593,6 +5670,35 @@ class SessionBindTest(QueryTest):
         session = Session()
         with self._assert_bind_args(session):
             session.query(func.max(User.score)).scalar()
+
+    def test_plain_table(self):
+        User = self.classes.User
+
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=False):
+            session.query(inspect(User).local_table).all()
+
+    def test_plain_table_from_self(self):
+        User = self.classes.User
+
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=False):
+            session.query(inspect(User).local_table).from_self().all()
+
+    def test_plain_table_count(self):
+        User = self.classes.User
+
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=False):
+            session.query(inspect(User).local_table).count()
+
+    def test_plain_table_select_from(self):
+        User = self.classes.User
+
+        table = inspect(User).local_table
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=False):
+            session.query(table).select_from(table).all()
 
     @testing.requires.nested_aggregates
     def test_column_property_select(self):
