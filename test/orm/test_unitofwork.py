@@ -3407,7 +3407,11 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         Table(
             "t1",
             metadata,
-            Column("id", Enum(cls.MySortableEnum), primary_key=True),
+            Column(
+                "id",
+                Enum(cls.MySortableEnum, create_constraint=False),
+                primary_key=True,
+            ),
             Column("data", String(10)),
         )
 
@@ -3416,7 +3420,11 @@ class EnsurePKSortableTest(fixtures.MappedTest):
             metadata,
             Column(
                 "id",
-                Enum(cls.MyNotSortableEnum, sort_key_function=None),
+                Enum(
+                    cls.MyNotSortableEnum,
+                    sort_key_function=None,
+                    create_constraint=False,
+                ),
                 primary_key=True,
             ),
             Column("data", String(10)),
@@ -3425,7 +3433,11 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         Table(
             "t3",
             metadata,
-            Column("id", Enum(cls.MyNotSortableEnum), primary_key=True),
+            Column(
+                "id",
+                Enum(cls.MyNotSortableEnum, create_constraint=False),
+                primary_key=True,
+            ),
             Column("value", Integer),
         )
 

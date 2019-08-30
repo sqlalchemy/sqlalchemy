@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 4285
+
+    Fixed unit test regression released in 1.3.8 that would cause failure for
+    Oracle, SQL Server and other non-native ENUM platforms due to new
+    enumeration tests added as part of :ticket:`4285` enum sortability in the
+    unit of work; the enumerations created constraints that were duplicated on
+    name.
