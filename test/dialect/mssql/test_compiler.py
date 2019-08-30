@@ -758,8 +758,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s,
-            "SELECT TOP 10 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
-            checkparams={"x_1": 5},
+            "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
+            "WHERE t.x = :x_1 ORDER BY t.y",
+            checkparams={"x_1": 5, "param_1": 10},
         )
 
     def test_limit_zero_using_top(self):
@@ -769,8 +770,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s,
-            "SELECT TOP 0 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
-            checkparams={"x_1": 5},
+            "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
+            "WHERE t.x = :x_1 ORDER BY t.y",
+            checkparams={"x_1": 5, "param_1": 0},
         )
         c = s.compile(dialect=mssql.dialect())
         eq_(len(c._result_columns), 2)
@@ -906,8 +908,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # of zero, so produces TOP 0
         self.assert_compile(
             s,
-            "SELECT TOP 0 t.x, t.y FROM t " "WHERE t.x = :x_1 ORDER BY t.y",
-            checkparams={"x_1": 5},
+            "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
+            "WHERE t.x = :x_1 ORDER BY t.y",
+            checkparams={"x_1": 5, "param_1": 0},
         )
 
     def test_primary_key_no_identity(self):

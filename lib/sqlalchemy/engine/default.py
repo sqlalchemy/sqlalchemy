@@ -695,8 +695,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         processors = compiled._bind_processors
 
-        if compiled.contains_expanding_parameters:
-            positiontup = self._expand_in_parameters(compiled, processors)
+        if compiled.literal_execute_params:
+            positiontup = self._literal_execute_parameters(
+                compiled, processors
+            )
         elif compiled.positional:
             positiontup = self.compiled.positiontup
 
@@ -744,21 +746,34 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         return self
 
-    def _expand_in_parameters(self, compiled, processors):
-        """handle special 'expanding' parameters, IN tuples that are rendered
-        on a per-parameter basis for an otherwise fixed SQL statement string.
+    def _literal_execute_parameters(self, compiled, processors):
+        """handle special post compile parameters.
+
+        These include:
+
+        * "expanding" parameters -typically IN tuples that are rendered
+          on a per-parameter basis for an otherwise fixed SQL statement string.
+
+        * literal_binds compiled with the literal_execute flag.  Used for
+          things like SQL Server "TOP N" where the driver does not accommodate
+          N as a bound parameter.
 
         """
         if self.executemany:
             raise exc.InvalidRequestError(
-                "'expanding' parameters can't be used with " "executemany()"
+                "'literal_execute' or 'expanding' parameters can't be "
+                "used with executemany()"
             )
 
-        if self.compiled.positional and self.compiled._numeric_binds:
-            # I'm not familiar with any DBAPI that uses 'numeric'
+        if compiled.positional and compiled._numeric_binds:
+            # I'm not familiar with any DBAPI that uses 'numeric'.
+            # strategy would likely be to make use of numbers greater than
+            # the highest number present; then for expanding parameters,
+            # append them to the end of the parameter list.   that way
+            # we avoid having to renumber all the existing parameters.
             raise NotImplementedError(
-                "'expanding' bind parameters not supported with "
-                "'numeric' paramstyle at this time."
+                "'post-compile' bind parameters are not supported with "
+                "the 'numeric' paramstyle at this time."
             )
 
         self._expanded_parameters = {}
@@ -773,12 +788,21 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         to_update_sets = {}
 
         for name in (
-            self.compiled.positiontup
+            compiled.positiontup
             if compiled.positional
-            else self.compiled.binds
+            else compiled.bind_names.values()
         ):
-            parameter = self.compiled.binds[name]
-            if parameter.expanding:
+            parameter = compiled.binds[name]
+            if parameter in compiled.literal_execute_params:
+
+                if not parameter.expanding:
+                    value = compiled_params.pop(name)
+                    replacement_expressions[
+                        name
+                    ] = compiled.render_literal_bindparam(
+                        parameter, render_literal_value=value
+                    )
+                    continue
 
                 if name in replacement_expressions:
                     to_update = to_update_sets[name]
@@ -791,58 +815,25 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     # param.
                     values = compiled_params.pop(name)
 
-                    if not values:
-                        to_update = to_update_sets[name] = []
-                        replacement_expressions[
-                            name
-                        ] = self.compiled.visit_empty_set_expr(
-                            parameter._expanding_in_types
-                            if parameter._expanding_in_types
-                            else [parameter.type]
-                        )
+                    leep = compiled._literal_execute_expanding_parameter
+                    to_update, replacement_expr = leep(name, parameter, values)
 
-                    elif isinstance(values[0], (tuple, list)):
-                        to_update = to_update_sets[name] = [
-                            ("%s_%s_%s" % (name, i, j), value)
-                            for i, tuple_element in enumerate(values, 1)
-                            for j, value in enumerate(tuple_element, 1)
-                        ]
-                        replacement_expressions[name] = (
-                            "VALUES " if self.dialect.tuple_in_values else ""
-                        ) + ", ".join(
-                            "(%s)"
-                            % ", ".join(
-                                self.compiled.bindtemplate
-                                % {
-                                    "name": to_update[
-                                        i * len(tuple_element) + j
-                                    ][0]
-                                }
-                                for j, value in enumerate(tuple_element)
-                            )
-                            for i, tuple_element in enumerate(values)
-                        )
-                    else:
-                        to_update = to_update_sets[name] = [
-                            ("%s_%s" % (name, i), value)
-                            for i, value in enumerate(values, 1)
-                        ]
-                        replacement_expressions[name] = ", ".join(
-                            self.compiled.bindtemplate % {"name": key}
-                            for key, value in to_update
-                        )
+                    to_update_sets[name] = to_update
+                    replacement_expressions[name] = replacement_expr
 
-                compiled_params.update(to_update)
-                processors.update(
-                    (key, processors[name])
-                    for key, value in to_update
-                    if name in processors
-                )
-                if compiled.positional:
-                    positiontup.extend(name for name, value in to_update)
-                self._expanded_parameters[name] = [
-                    expand_key for expand_key, value in to_update
-                ]
+                if not parameter.literal_execute:
+                    compiled_params.update(to_update)
+
+                    processors.update(
+                        (key, processors[name])
+                        for key, value in to_update
+                        if name in processors
+                    )
+                    if compiled.positional:
+                        positiontup.extend(name for name, value in to_update)
+                    self._expanded_parameters[name] = [
+                        expand_key for expand_key, value in to_update
+                    ]
             elif compiled.positional:
                 positiontup.append(name)
 
@@ -850,7 +841,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return replacement_expressions[m.group(1)]
 
         self.statement = re.sub(
-            r"\[EXPANDING_(\S+)\]", process_expanding, self.statement
+            r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.statement
         )
         return positiontup
 
@@ -1214,6 +1205,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         inputsizes = {}
         for bindparam in self.compiled.bind_names:
+            if bindparam in self.compiled.literal_execute_params:
+                continue
 
             dialect_impl = bindparam.type._unwrapped_dialect_impl(self.dialect)
             dialect_impl_cls = type(dialect_impl)

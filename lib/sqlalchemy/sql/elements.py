@@ -211,6 +211,15 @@ class ClauseElement(roles.SQLRole, Visitable):
 
         return c
 
+    def _with_binary_element_type(self, type_):
+        """in the context of binary expression, convert the type of this
+        object to the one given.
+
+        applies only to :class:`.ColumnElement` classes.
+
+        """
+        return self
+
     def _cache_key(self, **kw):
         """return an optional cache key.
 
@@ -732,6 +741,14 @@ class ColumnElement(
     def type(self):
         return type_api.NULLTYPE
 
+    def _with_binary_element_type(self, type_):
+        cloned = self._clone()
+        cloned._copy_internals(
+            clone=lambda element: element._with_binary_element_type(type_)
+        )
+        cloned.type = type_
+        return cloned
+
     @util.memoized_property
     def comparator(self):
         try:
@@ -986,6 +1003,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         callable_=None,
         expanding=False,
         isoutparam=False,
+        literal_execute=False,
         _compared_to_operator=None,
         _compared_to_type=None,
     ):
@@ -1198,6 +1216,30 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
             :func:`.outparam`
 
+        :param literal_execute:
+          if True, the bound parameter will be rendered in the compile phase
+          with a special "POSTCOMPILE" token, and the SQLAlchemy compiler will
+          render the final value of the parameter into the SQL statement at
+          statement execution time, omitting the value from the parameter
+          dictionary / list passed to DBAPI ``cursor.execute()``.  This
+          produces a similar effect as that of using the ``literal_binds``,
+          compilation flag,  however takes place as the statement is sent to
+          the DBAPI ``cursor.execute()`` method, rather than when the statement
+          is compiled.   The primary use of this
+          capability is for rendering LIMIT / OFFSET clauses for database
+          drivers that can't accommodate for bound parameters in these
+          contexts, while allowing SQL constructs to be cacheable at the
+          compilation level.
+
+          .. versionadded:: 1.4 Added "post compile" bound parameters
+
+            .. seealso::
+
+                :ref:`change_4808`.
+
+
+
+
         """
         if isinstance(key, ColumnClause):
             type_ = key.type
@@ -1235,6 +1277,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.isoutparam = isoutparam
         self.required = required
         self.expanding = expanding
+        self.literal_execute = literal_execute
 
         if type_ is None:
             if _compared_to_type is not None:
@@ -1643,14 +1686,17 @@ class TextClause(
 
         for bind in binds:
             try:
-                existing = new_params[bind.key]
+                # the regex used for text() currently will not match
+                # a unique/anonymous key in any case, so use the _orig_key
+                # so that a text() construct can support unique parameters
+                existing = new_params[bind._orig_key]
             except KeyError:
                 raise exc.ArgumentError(
                     "This text() construct doesn't define a "
-                    "bound parameter named %r" % bind.key
+                    "bound parameter named %r" % bind._orig_key
                 )
             else:
-                new_params[existing.key] = bind
+                new_params[existing._orig_key] = bind
 
         for key, value in names_to_values.items():
             try:

@@ -246,17 +246,29 @@ LIMIT/OFFSET Support
 --------------------
 
 MSSQL has no support for the LIMIT or OFFSET keywords. LIMIT is
-supported directly through the ``TOP`` Transact SQL keyword::
+supported directly through the ``TOP`` Transact SQL keyword.   A statement
+such as::
 
-    select.limit
+    select([some_table]).limit(5)
 
-will yield::
+will render similarly to::
 
-    SELECT TOP n
+    SELECT TOP 5 col1, col2.. FROM table
 
-If using SQL Server 2005 or above, LIMIT with OFFSET
-support is available through the ``ROW_NUMBER OVER`` construct.
-For versions below 2005, LIMIT with OFFSET usage will fail.
+LIMIT with OFFSET support is implemented using the using the ``ROW_NUMBER()``
+window function.   A statement such as::
+
+    select([some_table]).order_by(some_table.c.col3).limit(5).offset(10)
+
+will render similarly to::
+
+    SELECT anon_1.col1, anon_1.col2 FROM (SELECT col1, col2,
+    ROW_NUMBER() OVER (ORDER BY col3) AS
+    mssql_rn FROM table WHERE t.x = :x_1) AS
+    anon_1 WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1
+
+Note that when using LIMIT and OFFSET together, the statement must have
+an ORDER BY as well.
 
 .. _mssql_isolation_level:
 
@@ -1603,8 +1615,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
             # so have to use literal here.
-            s += "TOP %d " % select._limit
-
+            kw["literal_execute"] = True
+            s += "TOP %s " % self.process(select._limit_clause, **kw)
         if s:
             return s
         else:

@@ -25,7 +25,7 @@ which affect the behavior of the dialect regardless of driver in use.
 * ``optimize_limits`` - defaults to ``False``. see the section on
   LIMIT/OFFSET.
 
-* ``use_binds_for_limits`` - defaults to ``True``.  see the section on
+* ``use_binds_for_limits`` - deprecated.  see the section on
   LIMIT/OFFSET.
 
 Auto Increment Behavior
@@ -71,30 +71,33 @@ lowercase names should be used on the SQLAlchemy side.
 LIMIT/OFFSET Support
 --------------------
 
-Oracle has no support for the LIMIT or OFFSET keywords.  SQLAlchemy uses
-a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology
-is taken from
-http://www.oracle.com/technetwork/issue-archive/2006/06-sep/o56asktom-086197.html .
+Oracle has no direct support for LIMIT and OFFSET until version 12c.
+To achieve this behavior across all widely used versions of Oracle starting
+with the 8 series, SQLAlchemy currently makes use of ROWNUM to achieve
+LIMIT/OFFSET; the exact methodology is taken from
+https://blogs.oracle.com/oraclemagazine/on-rownum-and-limiting-results .
 
-There are two options which affect its behavior:
+There is currently a single option to affect its behavior:
 
-* the "FIRST ROWS()" optimization keyword is not used by default.  To enable
+* the "FIRST_ROWS()" optimization keyword is not used by default.  To enable
   the usage of this optimization directive, specify ``optimize_limits=True``
   to :func:`.create_engine`.
-* the values passed for the limit/offset are sent as bound parameters.   Some
-  users have observed that Oracle produces a poor query plan when the values
-  are sent as binds and not rendered literally.   To render the limit/offset
-  values literally within the SQL statement, specify
-  ``use_binds_for_limits=False`` to :func:`.create_engine`.
 
-Some users have reported better performance when the entirely different
-approach of a window query is used, i.e. ROW_NUMBER() OVER (ORDER BY), to
-provide LIMIT/OFFSET (note that the majority of users don't observe this).
-To suit this case the method used for LIMIT/OFFSET can be replaced entirely.
-See the recipe at
-http://www.sqlalchemy.org/trac/wiki/UsageRecipes/WindowFunctionsByDefault
-which installs a select compiler that overrides the generation of limit/offset
-with a window function.
+.. versionchanged:: 1.4
+    The Oracle dialect renders limit/offset integer values using a "post
+    compile" scheme which renders the integer directly before passing the
+    statement to the cursor for execution.   The ``use_binds_for_limits`` flag
+    no longer has an effect.
+
+    .. seealso::
+
+        :ref:`change_4808`.
+
+Support for changing the row number strategy, which would include one that
+makes use of the ``row_number()`` window function as well as one that makes
+use of the Oracle 12c  "FETCH FIRST N ROW / OFFSET N ROWS" keywords may be
+added in a future release.
+
 
 .. _oracle_returning:
 
@@ -364,6 +367,7 @@ from ...types import CHAR
 from ...types import CLOB
 from ...types import FLOAT
 from ...types import INTEGER
+from ...types import Integer
 from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import TIMESTAMP
@@ -855,17 +859,9 @@ class OracleCompiler(compiler.SQLCompiler):
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
             if limit_clause is not None or offset_clause is not None:
-                # See http://www.oracle.com/technology/oramag/oracle/06-sep/\
-                # o56asktom.html
-                #
-                # Generalized form of an Oracle pagination query:
-                #   select ... from (
-                #     select /*+ FIRST_ROWS(N) */ ...., rownum as ora_rn from
-                #       (  select distinct ... where ... order by ...
-                #     ) where ROWNUM <= :limit+:offset
-                #   ) where ora_rn > :offset
-                # Outer select and "ROWNUM as ora_rn" can be dropped if
-                # limit=0
+                # currently using form at:
+                # https://blogs.oracle.com/oraclemagazine/\
+                # on-rownum-and-limiting-results
 
                 kwargs["select_wraps_for"] = orig_select = select
                 select = select._generate()
@@ -896,8 +892,17 @@ class OracleCompiler(compiler.SQLCompiler):
                     and self.dialect.optimize_limits
                     and select._simple_int_limit
                 ):
+                    param = sql.bindparam(
+                        "_ora_frow",
+                        select._limit,
+                        type_=Integer,
+                        literal_execute=True,
+                        unique=True,
+                    )
                     limitselect = limitselect.prefix_with(
-                        "/*+ FIRST_ROWS(%d) */" % select._limit
+                        expression.text(
+                            "/*+ FIRST_ROWS(:_ora_frow) */"
+                        ).bindparams(param)
                     )
 
                 limitselect._oracle_visit = True
@@ -913,14 +918,20 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # If needed, add the limiting clause
                 if limit_clause is not None:
-                    if not self.dialect.use_binds_for_limits:
-                        # use simple int limits, will raise an exception
-                        # if the limit isn't specified this way
+                    if select._simple_int_limit and (
+                        offset_clause is None or select._simple_int_offset
+                    ):
                         max_row = select._limit
 
                         if offset_clause is not None:
                             max_row += select._offset
-                        max_row = sql.literal_column("%d" % max_row)
+                        max_row = sql.bindparam(
+                            None,
+                            max_row,
+                            type_=Integer,
+                            literal_execute=True,
+                            unique=True,
+                        )
                     else:
                         max_row = limit_clause
                         if offset_clause is not None:
@@ -969,10 +980,15 @@ class OracleCompiler(compiler.SQLCompiler):
                             adapter.traverse(elem) for elem in for_update.of
                         ]
 
-                    if not self.dialect.use_binds_for_limits:
-                        offset_clause = sql.literal_column(
-                            "%d" % select._offset
+                    if select._simple_int_offset:
+                        offset_clause = sql.bindparam(
+                            None,
+                            select._offset,
+                            Integer,
+                            literal_execute=True,
+                            unique=True,
                         )
+
                     offsetselect = offsetselect.where(
                         sql.literal_column("ora_rn") > offset_clause
                     )
@@ -1150,11 +1166,21 @@ class OracleDialect(default.DefaultDialect):
         (sa_schema.Index, {"bitmap": False, "compress": False}),
     ]
 
+    @util.deprecated_params(
+        use_binds_for_limits=(
+            "1.4",
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated. The dialect now renders LIMIT /OFFSET integers "
+            "inline in all cases using a post-compilation hook, so that the "
+            "value is still represented by a 'bound parameter' on the Core "
+            "Expression side.",
+        )
+    )
     def __init__(
         self,
         use_ansi=True,
         optimize_limits=False,
-        use_binds_for_limits=True,
+        use_binds_for_limits=None,
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
         **kwargs
@@ -1163,7 +1189,6 @@ class OracleDialect(default.DefaultDialect):
         self._use_nchar_for_unicode = use_nchar_for_unicode
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
-        self.use_binds_for_limits = use_binds_for_limits
         self.exclude_tablespaces = exclude_tablespaces
 
     def initialize(self, connection):

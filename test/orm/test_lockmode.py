@@ -342,7 +342,7 @@ class CompileTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "FROM (SELECT anon_2.users_id AS users_id, "
             "anon_2.users_name AS users_name FROM "
             "(SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users) anon_2 WHERE ROWNUM <= :param_1) anon_1 "
+            "FROM users) anon_2 WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
             "LEFT OUTER JOIN addresses addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id FOR UPDATE",
             dialect="oracle",

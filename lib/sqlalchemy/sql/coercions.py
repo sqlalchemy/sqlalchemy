@@ -294,11 +294,11 @@ class BinaryElementImpl(
 
     def _post_coercion(self, resolved, expr, **kw):
         if (
-            isinstance(resolved, elements.BindParameter)
+            isinstance(resolved, (elements.Grouping, elements.BindParameter))
             and resolved.type._isnull
+            and not expr.type._isnull
         ):
-            resolved = resolved._clone()
-            resolved.type = expr.type
+            resolved = resolved._with_binary_element_type(expr.type)
         return resolved
 
 
@@ -360,6 +360,7 @@ class InElementImpl(RoleImpl, roles.InElementRole):
                 element = element._with_expanding_in_types(
                     [elem.type for elem in expr]
                 )
+
             return element
         else:
             return element
