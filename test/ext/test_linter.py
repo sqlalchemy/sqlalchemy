@@ -161,6 +161,12 @@ class TestFinder(fixtures.TablesTest):
         assert start == self.d
         assert froms == {self.a, self.b, self.c}
 
+    def test_no_froms(self):
+        query = (select([1]))
+
+        froms, start = find_unmatching_froms(query)
+        assert not froms
+
 
 class TestLinter(fixtures.TablesTest):
     @classmethod
@@ -176,6 +182,15 @@ class TestLinter(fixtures.TablesTest):
         self.c = self.tables.table_c
         self.d = self.tables.table_d
         event.listen(testing.db, 'before_execute', linter.before_execute_hook)
+
+    def test_noop_for_unhandled_objects(self):
+        with testing.db.connect() as conn:
+            conn.execute('SELECT 1;').fetchone()
+
+    def test_does_not_modify_query(self):
+        with testing.db.connect() as conn:
+            [result] = conn.execute(select([1])).fetchone()
+            assert result == 1
 
     def test_integration(self):
         query = (
