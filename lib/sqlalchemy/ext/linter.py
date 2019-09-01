@@ -7,6 +7,10 @@ from sqlalchemy.sql import visitors
 from sqlalchemy.sql.expression import Select
 
 
+def _indent(text, indent):
+    return "\n".join(indent + line for line in text.split("\n"))
+
+
 def before_execute_hook(conn, clauseelement, multiparams, params):
     if isinstance(clauseelement, Select):
         lint(clauseelement)
@@ -93,14 +97,14 @@ def warn_for_unmatching_froms(query):
     # type: (Select) -> None
     froms, start_with = find_unmatching_froms(query)
     if froms:
-        util.warn(
-            'for stmt %s FROM elements %s are not joined up to FROM element "%r"'
-            % (
-                id(query),  # defeat the warnings filter
-                ", ".join('"%r"' % f for f in froms),
-                start_with,
-            )
+        template = '''Query\n{query}\nhas FROM elements:\n{froms}\nthat are not joined up to FROM element\n{start}'''
+        indent = '    '
+        message = template.format(
+            query=_indent(str(query), indent),
+            froms=_indent('\n'.join(str(from_) for from_ in froms), indent + '* '),
+            start=_indent(str(start_with), indent + '* '),
         )
+        util.warn(message)
 
 
 def lint(query):
