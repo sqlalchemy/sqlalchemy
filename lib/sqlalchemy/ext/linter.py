@@ -9,9 +9,7 @@ from sqlalchemy.sql.expression import Select
 
 def before_execute_hook(conn, clauseelement, multiparams, params):
     if isinstance(clauseelement, Select):
-        warn_for_cartesian(clauseelement)
-    else:
-        raise NotImplementedError
+        lint(clauseelement)
 
 
 def find_unmatching_froms(element, start_with=None):
@@ -86,14 +84,19 @@ def find_unmatching_froms(element, start_with=None):
     else:
         return None, None
 
-def warn_for_cartesian(element):
-    froms, start_with = find_unmatching_froms(element)
+
+def warn_for_unmatching_froms(query):
+    froms, start_with = find_unmatching_froms(query)
     if froms:
         util.warn(
             'for stmt %s FROM elements %s are not joined up to FROM element "%r"'
             % (
-                id(element),  # defeat the warnings filter
+                id(query),  # defeat the warnings filter
                 ", ".join('"%r"' % f for f in froms),
                 start_with,
             )
         )
+
+
+def lint(query):
+    warn_for_unmatching_froms(query)
