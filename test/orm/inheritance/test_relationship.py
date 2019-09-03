@@ -1821,6 +1821,7 @@ class JoinedloadOverWPolyAliased(
 
             __mapper_args__ = {
                 "polymorphic_on": type,
+                "polymorphic_identity": "parent",
                 "with_polymorphic": ("*", None),
             }
 
