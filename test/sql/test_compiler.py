@@ -3040,6 +3040,60 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(len(set(pp)), total_params, "%s %s" % (len(set(pp)), len(pp)))
         eq_(len(set(pp.values())), total_params)
 
+    def test_bind_anon_name_no_special_chars(self):
+        for paramstyle in "named", "pyformat":
+            dialect = default.DefaultDialect()
+            dialect.paramstyle = paramstyle
+
+            for name, named, pyformat in [
+                ("%(my name)s", ":my_name_s_1", "%(my_name_s_1)s"),
+                ("myname(foo)", ":myname_foo_1", "%(myname_foo_1)s"),
+                (
+                    "this is a name",
+                    ":this_is_a_name_1",
+                    "%(this_is_a_name_1)s",
+                ),
+                ("_leading_one", ":leading_one_1", "%(leading_one_1)s"),
+                ("3leading_two", ":3leading_two_1", "%(3leading_two_1)s"),
+                ("$leading_three", ":leading_three_1", "%(leading_three_1)s"),
+                ("%(tricky", ":tricky_1", "%(tricky_1)s"),
+                ("5(tricky", ":5_tricky_1", "%(5_tricky_1)s"),
+            ]:
+                t = table("t", column(name, String))
+                expr = t.c[name] == "foo"
+
+                self.assert_compile(
+                    expr,
+                    "t.%s = %s"
+                    % (
+                        dialect.identifier_preparer.quote(name),
+                        named if paramstyle == "named" else pyformat,
+                    ),
+                    dialect=dialect,
+                    checkparams={named[1:]: "foo"},
+                )
+
+    def test_bind_anon_name_special_chars_uniqueify_one(self):
+        # test that the chars are escaped before doing the counter,
+        # otherwise these become the same name and bind params will conflict
+        t = table("t", column("_3foo"), column("4%foo"))
+
+        self.assert_compile(
+            (t.c["_3foo"] == "foo") & (t.c["4%foo"] == "bar"),
+            't._3foo = :3foo_1 AND t."4%foo" = :4_foo_1',
+            checkparams={"3foo_1": "foo", "4_foo_1": "bar"},
+        )
+
+    def test_bind_anon_name_special_chars_uniqueify_two(self):
+
+        t = table("t", column("_3foo"), column("4(foo"))
+
+        self.assert_compile(
+            (t.c["_3foo"] == "foo") & (t.c["4(foo"] == "bar"),
+            't._3foo = :3foo_1 AND t."4(foo" = :4_foo_1',
+            checkparams={"3foo_1": "foo", "4_foo_1": "bar"},
+        )
+
     def test_bind_as_col(self):
         t = table("foo", column("id"))
 

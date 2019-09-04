@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4837
+
+    Characters that interfere with "pyformat" or "named" formats in bound
+    parameters, namely ``%, (, )`` and the space character, as well as a few
+    other typically undesirable characters, are stripped early for a
+    :func:`.bindparam` that is using an anonymized name, which is typically
+    generated automatically from a named column which itself includes these
+    characters in its name and does not use a ``.key``, so that they do not
+    interfere either with the SQLAlchemy compiler's use of string formatting or
+    with the driver-level parsing of the parameter, both of which could be
+    demonstrated before the fix.  The change only applies to anonymized
+    parameter names that are generated and consumed internally, not end-user
+    defined names, so the change should have no impact on any existing code.
+    Applies in particular to the psycopg2 driver which does not otherwise quote
+    special parameter names, but also strips leading underscores to suit Oracle
+    (but not yet leading numbers, as some anon parameters are currently
+    entirely numeric/underscore based); Oracle in any case continues to quote
+    parameter names that include special characters.
