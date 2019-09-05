@@ -1160,7 +1160,13 @@ class BindParameter(ColumnElement):
 
         if unique:
             self.key = _anonymous_label(
-                "%%(%d %s)s" % (id(self), key or "param")
+                "%%(%d %s)s"
+                % (
+                    id(self),
+                    re.sub(r"[%\(\) \$]+", "_", key).strip("_")
+                    if key is not None
+                    else "param",
+                )
             )
         else:
             self.key = key or _anonymous_label("%%(%d param)s" % id(self))
