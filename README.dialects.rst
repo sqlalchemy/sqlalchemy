@@ -46,7 +46,7 @@ The file structure of a dialect is typically similar to the following::
                                               ...
 
 An example of this structure can be seen in the Access dialect at
-https://bitbucket.org/zzzeek/sqlalchemy-access/.
+https://github.com/sqlalchemy/sqlalchemy-access .
 
 Key aspects of this file layout include:
 
