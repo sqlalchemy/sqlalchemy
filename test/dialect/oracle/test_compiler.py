@@ -177,14 +177,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             "SELECT anon_1.col1, anon_1.col2 FROM "
-            "(SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */ "
+            "(SELECT /*+ FIRST_ROWS([POSTCOMPILE_ora_frow_1]) */ "
             "anon_2.col1 AS col1, "
             "anon_2.col2 AS col2, ROWNUM AS ora_rn FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable) anon_2 WHERE ROWNUM <= "
             "[POSTCOMPILE_param_1]) anon_1 WHERE ora_rn > "
             "[POSTCOMPILE_param_2]",
-            checkparams={"_ora_frow_1": 10, "param_1": 30, "param_2": 20},
+            checkparams={"ora_frow_1": 10, "param_1": 30, "param_2": 20},
             dialect=oracle.OracleDialect(optimize_limits=True),
         )
 
@@ -263,13 +263,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select([t]).with_for_update().limit(10).order_by(t.c.col2)
         self.assert_compile(
             s,
-            "SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */ "
+            "SELECT /*+ FIRST_ROWS([POSTCOMPILE_ora_frow_1]) */ "
             "anon_1.col1, anon_1.col2 FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
             "sometable.col2) anon_1 WHERE ROWNUM <= [POSTCOMPILE_param_1] "
             "FOR UPDATE",
-            checkparams={"param_1": 10, "_ora_frow_1": 10},
+            checkparams={"param_1": 10, "ora_frow_1": 10},
             dialect=oracle.OracleDialect(optimize_limits=True),
         )
 
