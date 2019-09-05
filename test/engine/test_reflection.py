@@ -1146,10 +1146,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         )
         sa.Index("where", table_a.c["from"])
 
-        # There's currently no way to calculate identifier case
-        # normalization in isolation, so...
-
-        if testing.against("firebird", "oracle"):
+        if meta.bind.dialect.requires_name_normalize:
             check_col = "TRUE"
         else:
             check_col = "true"
