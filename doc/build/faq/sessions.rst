@@ -225,6 +225,78 @@ How do I make a Query that always adds a certain filter to every query?
 
 See the recipe at `FilteredQuery <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/FilteredQuery>`_.
 
+.. _faq_query_deduplicating:
+
+My Query does not return the same number of objects as query.count() tells me - why?
+-------------------------------------------------------------------------------------
+
+The :class:`.Query` object, when asked to return a list of ORM-mapped objects,
+will **deduplicate the objects based on primary key**.   That is, if we
+for example use the ``User`` mapping described at :ref:`ormtutorial_toplevel`,
+and we had a SQL query like the following::
+
+    q = session.query(User).outerjoin(User.addresses).filter(User.name == 'jack')
+
+Above, the sample data used in the tutorial has two rows in the ``addresses``
+table for the ``users`` row with the name ``'jack'``, primary key value 5.
+If we ask the above query for a :meth:`.Query.count`, we will get the answer
+**2**::
+
+    >>> q.count()
+    2
+
+However, if we run :meth:`.Query.all` or iterate over the query, we get back
+**one element**::
+
+  >>> q.all()
+  [User(id=5, name='jack', ...)]
+
+This is because when the :class:`.Query` object returns full entities, they
+are **deduplicated**.    This does not occur if we instead request individual
+columns back::
+
+  >>> session.query(User.id, User.name).outerjoin(User.addresses).filter(User.name == 'jack').all()
+  [(5, 'jack'), (5, 'jack')]
+
+There are two main reasons the :class:`.Query` will deduplicate:
+
+* **To allow joined eager loading to work correctly** - :ref:`joined_eager_loading`
+  works by querying rows using joins against related tables, where it then routes
+  rows from those joins into collections upon the lead objects.   In order to do this,
+  it has to fetch rows where the lead object primary key is repeated for each
+  sub-entry.   This pattern can then continue into further sub-collections such
+  that a multiple of rows may be processed for a single lead object, such as
+  ``User(id=5)``.   The dedpulication allows us to receive objects in the way they
+  were queried, e.g. all the ``User()`` objects whose name is ``'jack'`` which
+  for us is one object, with
+  the ``User.addresses`` collection eagerly loaded as was indicated either
+  by ``lazy='joined'`` on the :func:`.relationship` or via the :func:`.joinedload`
+  option.    For consistency, the deduplication is still applied whether or not
+  the joinedload is established, as the key philosophy behind eager loading
+  is that these options never affect the result.
+
+* **To eliminate confusion regarding the identity map** - this is admittedly
+  the less critical reason.  As the :class:`.Session`
+  makes use of an :term:`identity map`, even though our SQL result set has two
+  rows with primary key 5, there is only one ``User(id=5)`` object inside the :class:`.Session`
+  which must be maintained uniquely on its identity, that is, its primary key /
+  class combination.   It doesn't actually make much sense, if one is querying for
+  ``User()`` objects, to get the same object multiple times in the list.   An
+  ordered set would potentially be a better representation of what :class:`.Query`
+  seeks to return when it returns full objects.
+
+The issue of :class:`.Query` deduplication remains problematic, mostly for the
+single reason that the :meth:`.Query.count` method is inconsistent, and the
+current status is that joined eager loading has in recent releases been
+superseded first by the "subquery eager loading" strategy and more recently the
+"select IN eager loading" strategy, both of which are generally more
+appropriate for collection eager loading. As this evolution continues,
+SQLAlchemy may alter this behavior on :class:`.Query`, which may also involve
+new APIs in order to more directly control this behavior, and may also alter
+the behavior of joined eager loading in order to create a more consistent usage
+pattern.
+
+
 I've created a mapping against an Outer Join, and while the query returns rows, no objects are returned.  Why not?
 ------------------------------------------------------------------------------------------------------------------
 
