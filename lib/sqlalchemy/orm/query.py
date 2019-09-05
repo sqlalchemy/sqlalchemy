@@ -2665,10 +2665,18 @@ class Query(object):
             self._suffixes = suffixes
 
     def all(self):
-        """Return the results represented by this ``Query`` as a list.
+        """Return the results represented by this :class:`.Query` as a list.
 
-        This results in an execution of the underlying query.
+        This results in an execution of the underlying SQL statement.
 
+        .. warning::  The :class:`.Query` object, when asked to return either
+           a sequence or iterator that consists of full ORM-mapped entities,
+           will **deduplicate entries based on primary key**.  See the FAQ for
+           more details.
+
+            .. seealso::
+
+                :ref:`faq_query_deduplicating`
         """
         return list(self)
 
@@ -3017,7 +3025,8 @@ class Query(object):
                           statement.with_only_columns([1]))
 
     def count(self):
-        r"""Return a count of rows this Query would return.
+        r"""Return a count of rows this the SQL formed by this :class:`Query`
+        would return.
 
         This generates the SQL for this Query as follows::
 
@@ -3025,13 +3034,31 @@ class Query(object):
                 SELECT <rest of query follows...>
             ) AS anon_1
 
-        For fine grained control over specific columns
-        to count, to skip the usage of a subquery or
-        otherwise control of the FROM clause,
-        or to use other aggregate functions,
-        use :attr:`~sqlalchemy.sql.expression.func`
-        expressions in conjunction
-        with :meth:`~.Session.query`, i.e.::
+        The above SQL returns a single row, which is the aggregate value
+        of the count function; the :meth:`.Query.count` method then returns
+        that single integer value.
+
+        .. warning::
+
+            It is important to note that the value returned by
+            count() is **not the same as the number of ORM objects that this
+            Query would return from a method such as the .all() method**.
+            The :class:`.Query` object, when asked to return full entities,
+            will **deduplicate entries based on primary key**, meaning if the
+            same primary key value would appear in the results more than once,
+            only one object of that primary key would be present.  This does
+            not apply to a query that is against individual columns.
+
+            .. seealso::
+
+                :ref:`faq_query_deduplicating`
+
+                :ref:`orm_tutorial_query_returning`
+
+        For fine grained control over specific columns to count, to skip the
+        usage of a subquery or otherwise control of the FROM clause, or to use
+        other aggregate functions, use :attr:`~sqlalchemy.sql.expression.func`
+        expressions in conjunction with :meth:`~.Session.query`, i.e.::
 
             from sqlalchemy import func
 
