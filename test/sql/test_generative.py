@@ -1015,10 +1015,9 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         s = vis.traverse(s)
 
-        assert t2alias not in s._froms  # not present because it's been
-        # cloned
+        assert t2alias in s._froms  # present because it was not cloned
         assert t1alias in s._froms  # present because the adapter placed
-        # it there
+        # it there and was also not cloned
 
         # correlate list on "s" needs to take into account the full
         # _cloned_set for each element in _froms when correlating
@@ -1592,7 +1591,18 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = select([s1]).limit(5).offset(10).alias()
         talias = t1.alias("bar")
 
+        # here is the problem.   s2 is derived from s1 which is derived
+        # from t1
+        assert s2.is_derived_from(t1)
+
+        # however, s2 is not derived from talias, which *is* derived from t1
         assert not s2.is_derived_from(talias)
+
+        # therefore, talias gets its table replaced, except for a rule
+        # we added to ClauseAdapter to stop traversal if the selectable is
+        # not derived from an alias of a table.  This rule was previously
+        # in Alias._copy_internals().
+
         j = s1.outerjoin(talias, s1.c.col1 == talias.c.col1)
 
         self.assert_compile(

@@ -806,10 +806,25 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         return newcol
 
     def replace(self, col):
-        if isinstance(col, FromClause) and self.selectable.is_derived_from(
-            col
-        ):
-            return self.selectable
+        if isinstance(col, FromClause):
+            if self.selectable.is_derived_from(col):
+                return self.selectable
+            elif isinstance(col, Alias) and isinstance(
+                col.element, TableClause
+            ):
+                # we are a SELECT statement and not derived from an alias of a
+                # table (which nonetheless may be a table our SELECT derives
+                # from), so return the alias to prevent futher traversal
+                # or
+                # we are an alias of a table and we are not derived from an
+                # alias of a table (which nonetheless may be the same table
+                # as ours) so, same thing
+                return col
+            else:
+                # other cases where we are a selectable and the element
+                # is another join or selectable that contains a table which our
+                # selectable derives from, that we want to process
+                return None
         elif not isinstance(col, ColumnElement):
             return None
         elif self.include_fn and not self.include_fn(col):

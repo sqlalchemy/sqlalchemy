@@ -208,6 +208,9 @@ class StructureComparatorStrategy(object):
             else isinstance(right.name, elements._anonymous_label)
         )
 
+    def compare_cte(self, elements, left, right, **kw):
+        raise NotImplementedError("TODO")
+
     def compare_extract(self, left, right, **kw):
         return left.field == right.field
 

@@ -1247,13 +1247,10 @@ class AliasedReturnsRows(FromClause):
         self.element._generate_fromclause_column_proxies(self)
 
     def _copy_internals(self, clone=_clone, **kw):
-        # don't apply anything to an aliased Table
-        # for now.   May want to drive this from
-        # the given **kw.
-        if isinstance(self.element, TableClause):
-            return
-        self._reset_exported()
-        self.element = clone(self.element, **kw)
+        element = clone(self.element, **kw)
+        if element is not self.element:
+            self._reset_exported()
+        self.element = element
 
     def get_children(self, column_collections=True, **kw):
         if column_collections:
@@ -1508,6 +1505,9 @@ class CTE(Generative, HasSuffixes, AliasedReturnsRows):
         self._restates = frozenset(
             [clone(elem, **kw) for elem in self._restates]
         )
+
+    def _cache_key(self, *arg, **kw):
+        raise NotImplementedError("TODO")
 
     def alias(self, name=None, flat=False):
         """Return an :class:`.Alias` of this :class:`.CTE`.
@@ -2738,10 +2738,7 @@ class GenerativeSelect(SelectBase):
         raise NotImplementedError()
 
     def _copy_internals(self, clone=_clone, **kw):
-        if self._limit_clause is not None:
-            self._limit_clause = clone(self._limit_clause, **kw)
-        if self._offset_clause is not None:
-            self._offset_clause = clone(self._offset_clause, **kw)
+        raise NotImplementedError()
 
 
 class CompoundSelect(GenerativeSelect):
@@ -2987,12 +2984,13 @@ class CompoundSelect(GenerativeSelect):
         return self.selects[0].selected_columns
 
     def _copy_internals(self, clone=_clone, **kw):
-        super(CompoundSelect, self)._copy_internals(clone, **kw)
         self._reset_memoizations()
         self.selects = [clone(s, **kw) for s in self.selects]
         if hasattr(self, "_col_map"):
             del self._col_map
         for attr in (
+            "_limit_clause",
+            "_offset_clause",
             "_order_by_clause",
             "_group_by_clause",
             "_for_update_arg",
@@ -3568,7 +3566,6 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         return False
 
     def _copy_internals(self, clone=_clone, **kw):
-        super(Select, self)._copy_internals(clone, **kw)
 
         # Select() object has been cloned and probably adapted by the
         # given clone function.  Apply the cloning function to internal
@@ -3614,6 +3611,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         # present here.
         self._raw_columns = [clone(c, **kw) for c in self._raw_columns]
         for attr in (
+            "_limit_clause",
+            "_offset_clause",
             "_whereclause",
             "_having",
             "_order_by_clause",
