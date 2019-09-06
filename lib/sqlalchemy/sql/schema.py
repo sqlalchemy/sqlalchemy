@@ -104,7 +104,15 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
         for item in args:
             if item is not None:
-                item._set_parent_with_dispatch(self)
+                try:
+                    spwd = item._set_parent_with_dispatch
+                except AttributeError:
+                    raise exc.ArgumentError(
+                        "'SchemaItem' object, such as a 'Column' or a "
+                        "'Constraint' expected, got %r" % item
+                    )
+                else:
+                    spwd(self)
 
     def get_children(self, **kwargs):
         """used to allow SchemaVisitor access"""

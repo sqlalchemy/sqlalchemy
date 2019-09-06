@@ -1466,6 +1466,37 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             t.info["bar"] = "zip"
             assert t.info["bar"] == "zip"
 
+    def test_invalid_objects(self):
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "'SchemaItem' object, such as a 'Column' or a "
+            "'Constraint' expected, got <.*ColumnClause at .*; q>",
+            Table,
+            "asdf",
+            MetaData(),
+            tsa.column("q", Integer),
+        )
+
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            r"'SchemaItem' object, such as a 'Column' or a "
+            r"'Constraint' expected, got String\(\)",
+            Table,
+            "asdf",
+            MetaData(),
+            String(),
+        )
+
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "'SchemaItem' object, such as a 'Column' or a "
+            "'Constraint' expected, got 12",
+            Table,
+            "asdf",
+            MetaData(),
+            12,
+        )
+
     def test_reset_exported_passes(self):
 
         m = MetaData()
