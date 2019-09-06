@@ -707,6 +707,7 @@ from ...util.langhelpers import public_factory
 
 
 # http://sqlserverbuilds.blogspot.com/
+MS_2017_VERSION = (14,)
 MS_2016_VERSION = (13,)
 MS_2014_VERSION = (12,)
 MS_2012_VERSION = (11,)
