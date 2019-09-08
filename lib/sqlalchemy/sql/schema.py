@@ -107,9 +107,11 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
                 try:
                     spwd = item._set_parent_with_dispatch
                 except AttributeError:
-                    raise exc.ArgumentError(
-                        "'SchemaItem' object, such as a 'Column' or a "
-                        "'Constraint' expected, got %r" % item
+                    util.raise_from_cause(
+                        exc.ArgumentError(
+                            "'SchemaItem' object, such as a 'Column' or a "
+                            "'Constraint' expected, got %r" % item
+                        )
                     )
                 else:
                     spwd(self)
