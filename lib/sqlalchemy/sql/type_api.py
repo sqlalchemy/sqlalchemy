@@ -1461,7 +1461,7 @@ def to_instance(typeobj, *arg, **kw):
     if typeobj is None:
         return NULLTYPE
 
-    if util.callable(typeobj):
+    if callable(typeobj):
         return typeobj(*arg, **kw)
     else:
         return typeobj
