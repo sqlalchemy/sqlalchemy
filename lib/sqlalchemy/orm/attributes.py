@@ -328,7 +328,7 @@ def create_proxied_attribute(descriptor):
 
         @util.memoized_property
         def comparator(self):
-            if util.callable(self._comparator):
+            if callable(self._comparator):
                 self._comparator = self._comparator()
             if self._adapt_to_entity:
                 self._comparator = self._comparator.adapt_to_entity(
@@ -702,8 +702,10 @@ class AttributeImpl(object):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
-                if self.accepts_scalar_loader and \
-                        key in state.expired_attributes:
+                if (
+                    self.accepts_scalar_loader
+                    and key in state.expired_attributes
+                ):
                     value = state._load_expired(state, passive)
                 elif key in state.callables:
                     callable_ = state.callables[key]

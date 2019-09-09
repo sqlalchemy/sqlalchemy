@@ -1824,7 +1824,7 @@ class RelationshipProperty(StrategizedProperty):
         class or aliased class tha is referred towards.
 
         """
-        if util.callable(self.argument) and not isinstance(
+        if callable(self.argument) and not isinstance(
             self.argument, (type, mapperlib.Mapper)
         ):
             argument = self.argument()
@@ -1888,7 +1888,7 @@ class RelationshipProperty(StrategizedProperty):
             "remote_side",
         ):
             attr_value = getattr(self, attr)
-            if util.callable(attr_value):
+            if callable(attr_value):
                 setattr(self, attr, attr_value())
 
         # remove "annotations" which are present if mapped class

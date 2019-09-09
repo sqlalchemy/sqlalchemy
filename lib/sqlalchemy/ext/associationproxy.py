@@ -1180,7 +1180,7 @@ class _AssociationList(_AssociationCollection):
 
     for func_name, func in list(locals().items()):
         if (
-            util.callable(func)
+            callable(func)
             and func.__name__ == func_name
             and not func.__doc__
             and hasattr(list, func_name)
@@ -1355,7 +1355,7 @@ class _AssociationDict(_AssociationCollection):
 
     for func_name, func in list(locals().items()):
         if (
-            util.callable(func)
+            callable(func)
             and func.__name__ == func_name
             and not func.__doc__
             and hasattr(dict, func_name)
@@ -1574,7 +1574,7 @@ class _AssociationSet(_AssociationCollection):
 
     for func_name, func in list(locals().items()):
         if (
-            util.callable(func)
+            callable(func)
             and func.__name__ == func_name
             and not func.__doc__
             and hasattr(set, func_name)

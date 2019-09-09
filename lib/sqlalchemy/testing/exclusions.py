@@ -208,7 +208,7 @@ class Predicate(object):
             )
 
             return SpecPredicate(db, op, spec, description=description)
-        elif util.callable(predicate):
+        elif callable(predicate):
             return LambdaPredicate(predicate, description)
         else:
             assert False, "unknown predicate type: %s" % predicate

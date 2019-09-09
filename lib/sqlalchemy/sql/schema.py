@@ -2222,13 +2222,13 @@ class ColumnDefault(DefaultGenerator):
             raise exc.ArgumentError(
                 "ColumnDefault may not be a server-side default type."
             )
-        if util.callable(arg):
+        if callable(arg):
             arg = self._maybe_wrap_callable(arg)
         self.arg = arg
 
     @util.memoized_property
     def is_callable(self):
-        return util.callable(self.arg)
+        return callable(self.arg)
 
     @util.memoized_property
     def is_clause_element(self):
@@ -4211,7 +4211,7 @@ class MetaData(SchemaItem):
                     for name, schname in zip(available, available_w_schema)
                     if extend_existing or schname not in current
                 ]
-            elif util.callable(only):
+            elif callable(only):
                 load = [
                     name
                     for name, schname in zip(available, available_w_schema)

@@ -170,7 +170,7 @@ class CompiledSQL(SQLMatchRule):
 
     def _all_params(self, context):
         if self.params:
-            if util.callable(self.params):
+            if callable(self.params):
                 params = self.params(context)
             else:
                 params = self.params

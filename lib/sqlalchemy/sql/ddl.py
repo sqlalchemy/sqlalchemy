@@ -258,7 +258,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
     def _check_ddl_on(self, on):
         if on is not None and (
             not isinstance(on, util.string_types + (tuple, list, set))
-            and not util.callable(on)
+            and not callable(on)
         ):
             raise exc.ArgumentError(
                 "Expected the name of a database dialect, a tuple "
