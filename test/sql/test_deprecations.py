@@ -579,6 +579,15 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         is_true(stmt.compare(select([self.table1.c.myid]).scalar_subquery()))
 
+    def test_as_scalar_from_subquery(self):
+        with testing.expect_deprecated(
+            r"The Subquery.as_scalar\(\) method, which was previously "
+            r"``Alias.as_scalar\(\)`` prior to version 1.4"
+        ):
+            stmt = select([self.table1.c.myid]).subquery().as_scalar()
+
+        is_true(stmt.compare(select([self.table1.c.myid]).scalar_subquery()))
+
     def test_fromclause_subquery(self):
         stmt = select([self.table1.c.myid])
         with testing.expect_deprecated(

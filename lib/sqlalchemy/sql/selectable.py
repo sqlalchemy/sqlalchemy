@@ -1753,6 +1753,18 @@ class Subquery(AliasedReturnsRows):
             roles.SelectStatementRole, selectable
         ).subquery(name=name)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Subquery.as_scalar` method, which was previously "
+        "``Alias.as_scalar()`` prior to version 1.4, is deprecated and "
+        "will be removed in a future release; Please use the "
+        ":meth:`.Select.scalar_subquery` method of the :func:`.select` "
+        "construct before constructing a subquery object, or with the ORM "
+        "use the :meth:`.Query.scalar_subquery` method.",
+    )
+    def as_scalar(self):
+        return self.element.scalar_subquery()
+
 
 class FromGrouping(GroupedElement, FromClause):
     """Represent a grouping of a FROM clause"""
