@@ -1130,7 +1130,6 @@ class OracleDialect(default.DefaultDialect):
     supports_alter = True
     supports_unicode_statements = False
     supports_unicode_binds = False
-    max_identifier_length = 30
 
     supports_simple_order_by_label = False
     cte_follows_insert = True
@@ -1201,6 +1200,8 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs = self.colspecs.copy()
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
+
+        self.max_identifier_length = 128 if self.server_version_info >= (12,2) else 30
 
     @property
     def _is_oracle_8(self):
