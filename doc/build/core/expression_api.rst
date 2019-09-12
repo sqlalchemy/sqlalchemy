@@ -18,3 +18,4 @@ see :ref:`sqlexpression_toplevel`.
     functions
     compiler
     serializer
+    visitors
