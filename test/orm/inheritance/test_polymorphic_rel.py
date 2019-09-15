@@ -3,9 +3,11 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy import testing
+from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
@@ -174,6 +176,7 @@ class _PolymorphicTestBase(object):
             sess.query(Company, Person, c, e)
             .join(Person, Company.employees)
             .join(e, c.employees)
+            .filter(Person.person_id != e.person_id)
             .filter(Person.name == "dilbert")
             .filter(e.name == "wally")
         )
@@ -897,14 +900,27 @@ class _PolymorphicTestBase(object):
         ]
 
         def go():
+            wp = with_polymorphic(Person, "*")
             eq_(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .options(subqueryload(Engineer.machines))
-                .filter(Person.name == "dilbert")
+                sess.query(wp)
+                .options(subqueryload(wp.Engineer.machines))
+                .filter(wp.name == "dilbert")
                 .all(),
                 expected,
             )
+
+            # the old version of this test has never worked, apparently,
+            # was always spitting out a cartesian product.  Since we
+            # are getting rid of query.with_polymorphic() is it not
+            # worth fixing.
+            # eq_(
+            #    sess.query(Person)
+            #    .with_polymorphic("*")
+            #    .options(subqueryload(Engineer.machines))
+            #    .filter(Person.name == "dilbert")
+            #    .all(),
+            #    expected,
+            # )
 
         self.assert_sql_count(testing.db, go, 2)
 
@@ -1393,6 +1409,7 @@ class _PolymorphicTestBase(object):
             .join(Company.employees)
             .filter(Company.name == "Elbonia, Inc.")
             .filter(palias.name == "dilbert")
+            .filter(palias.person_id != Person.person_id)
             .all(),
             expected,
         )
@@ -1420,8 +1437,10 @@ class _PolymorphicTestBase(object):
                 ),
             )
         ]
+
         eq_(
             sess.query(palias, Company.name, Person)
+            .select_from(join(palias, Company, true()))
             .join(Company.employees)
             .filter(Company.name == "Elbonia, Inc.")
             .filter(palias.name == "dilbert")
@@ -1438,6 +1457,7 @@ class _PolymorphicTestBase(object):
             .join(Company.employees)
             .filter(Company.name == "Elbonia, Inc.")
             .filter(palias.name == "dilbert")
+            .filter(palias.company_id != Person.company_id)
             .all(),
             expected,
         )

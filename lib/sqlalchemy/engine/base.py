@@ -16,6 +16,7 @@ from .. import exc
 from .. import inspection
 from .. import log
 from .. import util
+from ..sql import compiler
 from ..sql import schema
 from ..sql import util as sql_util
 
@@ -1083,6 +1084,8 @@ class Connection(Connectable):
                     schema_translate_map=self.schema_for_object
                     if not self.schema_for_object.is_default
                     else None,
+                    linting=self.dialect.compiler_linting
+                    | compiler.WARN_LINTING,
                 )
                 self._execution_options["compiled_cache"][key] = compiled_sql
         else:
@@ -1093,6 +1096,7 @@ class Connection(Connectable):
                 schema_translate_map=self.schema_for_object
                 if not self.schema_for_object.is_default
                 else None,
+                linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
             )
 
         ret = self._execute_context(

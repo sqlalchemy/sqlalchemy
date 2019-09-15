@@ -5,6 +5,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from .compiler import COLLECT_CARTESIAN_PRODUCTS  # noqa
+from .compiler import FROM_LINTING  # noqa
+from .compiler import NO_LINTING  # noqa
+from .compiler import WARN_LINTING  # noqa
 from .expression import Alias  # noqa
 from .expression import alias  # noqa
 from .expression import all_  # noqa

@@ -28,6 +28,7 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import Unicode
 from sqlalchemy import union
 from sqlalchemy import util
@@ -3783,7 +3784,7 @@ class CountTest(QueryTest):
         User, Address = self.classes.User, self.classes.Address
 
         s = create_session()
-        q = s.query(User, Address)
+        q = s.query(User, Address).join(Address, true())
         eq_(q.count(), 20)  # cartesian product
 
         q = s.query(User, Address).join(User.addresses)
@@ -3793,10 +3794,10 @@ class CountTest(QueryTest):
         User, Address = self.classes.User, self.classes.Address
 
         s = create_session()
-        q = s.query(User, Address).limit(2)
+        q = s.query(User, Address).join(Address, true()).limit(2)
         eq_(q.count(), 2)
 
-        q = s.query(User, Address).limit(100)
+        q = s.query(User, Address).join(Address, true()).limit(100)
         eq_(q.count(), 20)
 
         q = s.query(User, Address).join(User.addresses).limit(100)
@@ -3818,7 +3819,7 @@ class CountTest(QueryTest):
         q = s.query(User.name)
         eq_(q.count(), 4)
 
-        q = s.query(User.name, Address)
+        q = s.query(User.name, Address).join(Address, true())
         eq_(q.count(), 20)
 
         q = s.query(Address.user_id)
@@ -3888,7 +3889,9 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
+            .join(Address, true())
             .filter(User.name == "jack")
+            .filter(User.id + Address.user_id > 0)
             .distinct()
             .order_by(User.id, User.name, Address.email_address)
         )
@@ -4541,9 +4544,9 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             s.query(User)
-            .select_from(
+            .select_entity_from(
                 text("select * from users")
-                .columns(id=Integer, name=String)
+                .columns(User.id, User.name)
                 .subquery()
             )
             .order_by(User.id)

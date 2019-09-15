@@ -502,12 +502,15 @@ class RoundTripTest(PolymorphTest):
         session = Session()
         dilbert = get_dilbert(session)
 
+        # this unusual test is selecting from the plain people/engineers
+        # table at the same time as the polymorphic entity
         is_(
             dilbert,
             session.query(Person)
             .filter(
                 (Engineer.engineer_name == "engineer1")
                 & (engineers.c.person_id == people.c.person_id)
+                & (people.c.person_id == Person.person_id)
             )
             .first(),
         )

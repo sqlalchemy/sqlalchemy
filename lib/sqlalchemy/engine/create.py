@@ -13,6 +13,7 @@ from .. import event
 from .. import exc
 from .. import pool as poollib
 from .. import util
+from ..sql import compiler
 
 
 @util.deprecated_params(
@@ -141,6 +142,16 @@ def create_engine(url, **kwargs):
 
     :param empty_in_strategy:   No longer used; SQLAlchemy now uses
         "empty set" behavior for IN in all cases.
+
+    :param enable_from_linting: defaults to True.  Will emit a warning
+        if a given SELECT statement is found to have un-linked FROM elements
+        which would cause a cartesian product.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :ref:`change_4737`
 
     :param encoding: Defaults to ``utf-8``.  This is the string
         encoding used by SQLAlchemy for string encode/decode
@@ -445,6 +456,11 @@ def create_engine(url, **kwargs):
         dbapi = dialect_cls.dbapi(**dbapi_args)
 
     dialect_args["dbapi"] = dbapi
+
+    dialect_args.setdefault("compiler_linting", compiler.NO_LINTING)
+    enable_from_linting = kwargs.pop("enable_from_linting", True)
+    if enable_from_linting:
+        dialect_args["compiler_linting"] ^= compiler.COLLECT_CARTESIAN_PRODUCTS
 
     for plugin in plugins:
         plugin.handle_dialect_kwargs(dialect_cls, dialect_args)

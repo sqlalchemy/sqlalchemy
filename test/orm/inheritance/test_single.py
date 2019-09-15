@@ -8,6 +8,7 @@ from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import class_mapper
@@ -143,29 +144,40 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         session, m1, e1, e2 = self._fixture_one()
 
         ealias = aliased(Engineer)
-        eq_(session.query(Manager, ealias).all(), [(m1, e1), (m1, e2)])
+        eq_(
+            session.query(Manager, ealias).join(ealias, true()).all(),
+            [(m1, e1), (m1, e2)],
+        )
 
         eq_(session.query(Manager.name).all(), [("Tom",)])
 
         eq_(
-            session.query(Manager.name, ealias.name).all(),
+            session.query(Manager.name, ealias.name)
+            .join(ealias, true())
+            .all(),
             [("Tom", "Kurt"), ("Tom", "Ed")],
         )
 
         eq_(
-            session.query(
-                func.upper(Manager.name), func.upper(ealias.name)
-            ).all(),
+            session.query(func.upper(Manager.name), func.upper(ealias.name))
+            .join(ealias, true())
+            .all(),
             [("TOM", "KURT"), ("TOM", "ED")],
         )
 
         eq_(
-            session.query(Manager).add_entity(ealias).all(),
+            session.query(Manager)
+            .add_entity(ealias)
+            .join(ealias, true())
+            .all(),
             [(m1, e1), (m1, e2)],
         )
 
         eq_(
-            session.query(Manager.name).add_column(ealias.name).all(),
+            session.query(Manager.name)
+            .add_column(ealias.name)
+            .join(ealias, true())
+            .all(),
             [("Tom", "Kurt"), ("Tom", "Ed")],
         )
 

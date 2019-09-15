@@ -423,10 +423,8 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with self._expect_implicit_subquery():
             eq_(
                 s.query(User)
-                .select_from(
-                    text("select * from users").columns(
-                        id=Integer, name=String
-                    )
+                .select_entity_from(
+                    text("select * from users").columns(User.id, User.name)
                 )
                 .order_by(User.id)
                 .all(),

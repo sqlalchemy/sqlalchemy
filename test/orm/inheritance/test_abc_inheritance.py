@@ -210,6 +210,7 @@ def produce_test(parent, child, direction):
                 C,
                 tc,
                 polymorphic_identity="c",
+                with_polymorphic=("*", tc.join(tb, btoc).join(ta, atob)),
                 inherits=B,
                 inherit_condition=btoc,
             )

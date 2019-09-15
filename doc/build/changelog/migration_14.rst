@@ -756,6 +756,136 @@ the cascade settings for a viewonly relationship.
 :ticket:`4993`
 :ticket:`4994`
 
+New Features - Core
+====================
+
+.. _change_4737:
+
+
+Built-in FROM linting will warn for any potential cartesian products in a SELECT statement
+------------------------------------------------------------------------------------------
+
+As the Core expression language as well as the ORM are built on an "implicit
+FROMs" model where a particular FROM clause is automatically added if any part
+of the query refers to it, a common issue is the case where a SELECT statement,
+either a top level statement or an embedded subquery, contains FROM elements
+that are not joined to the rest of the FROM elements in the query, causing
+what's referred to as a "cartesian product" in the result set, i.e. every
+possible combination of rows from each FROM element not otherwise joined.  In
+relational databases, this is nearly always an undesirable outcome as it
+produces an enormous result set full of duplicated, uncorrelated data.
+
+SQLAlchemy, for all of its great features, is particularly prone to this sort
+of issue happening as a SELECT statement will have elements added to its FROM
+clause automatically from any table seen in the other clauses. A typical
+scenario looks like the following, where two tables are JOINed together,
+however an additional entry in the WHERE clause that perhaps inadvertently does
+not line up with these two tables will create an additional FROM entry::
+
+    address_alias = aliased(Address)
+
+    q = session.query(User).\
+        join(address_alias, User.addresses).\
+        filter(Address.email_address == 'foo')
+
+The above query selects from a JOIN of ``User`` and ``address_alias``, the
+latter of which is an alias of the ``Address`` entity.  However, the
+``Address`` entity is used within the WHERE clause directly, so the above would
+result in the SQL::
+
+    SELECT
+        users.id AS users_id, users.name AS users_name,
+        users.fullname AS users_fullname,
+        users.nickname AS users_nickname
+    FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE addresses.email_address = :email_address_1
+
+In the above SQL, we can see what SQLAlchemy developers term "the dreaded
+comma", as we see "FROM addresses, users JOIN addresses" in the FROM clause
+which is the classic sign of a cartesian product; where a query is making use
+of JOIN in order to join FROM clauses together, however because one of them is
+not joined, it uses a comma.      The above query will return a full set of
+rows that join the "user" and "addresses" table together on the "id / user_id"
+column, and will then apply all those rows into a cartesian product against
+every row in the "addresses" table directly.   That is, if there are ten user
+rows and 100 rows in addresses, the above query will return its expected result
+rows, likely to be 100 as all address rows would be selected, multiplied by 100
+again, so that the total result size would be 10000 rows.
+
+The "table1, table2 JOIN table3" pattern is one that also occurs quite
+frequently within the SQLAlchemy ORM due to either subtle mis-application of
+ORM features particularly those related to joined eager loading or joined table
+inheritance, as well as a result of SQLAlchemy ORM bugs within those same
+systems.   Similar issues apply to SELECT statements that use "implicit joins",
+where the JOIN keyword is not used and instead each FROM element is linked with
+another one via the WHERE clause.
+
+For some years there has been a recipe on the Wiki that applies a graph
+algorithm to a :func:`.select` construct at query execution time and inspects
+the structure of the query for these un-linked FROM clauses, parsing through
+the WHERE clause and all JOIN clauses to determine how FROM elements are linked
+together and ensuring that all the FROM elements are connected in a single
+graph. This recipe has now been adapted to be part of the :class:`.SQLCompiler`
+itself where it now optionally emits a warning for a statement if this
+condition is detected.   The warning is enabled using the
+:paramref:`.create_engine.enable_from_linting` flag and is enabled by default.
+The computational overhead of the linter is very low, and additionally it only
+occurs during statement compilation which means for a cached SQL statement it
+only occurs once.
+
+Using this feature, our ORM query above will emit a warning::
+
+    >>> q.all()
+    SAWarning: SELECT statement has a cartesian product between FROM
+    element(s) "addresses_1", "users" and FROM element "addresses".
+    Apply join condition(s) between each element to resolve.
+
+The linter feature accommodates not just for tables linked together through the
+JOIN clauses but also through the WHERE clause  Above, we can add a WHERE
+clause to link the new ``Address`` entity with the previous ``address_alias``
+entity and that will remove the warning::
+
+    q = session.query(User).\
+        join(address_alias, User.addresses).\
+        filter(Address.email_address == 'foo').\
+        filter(Address.id == address_alias.id)  # resolve cartesian products,
+                                                # will no longer warn
+
+The cartesian product warning considers **any** kind of link between two
+FROM clauses to be a resolution, even if the end result set is still
+wasteful, as the linter is intended only to detect the common case of a
+FROM clause that is completely unexpected.  If the FROM clause is referred
+to explicitly elsewhere and linked to the other FROMs, no warning is emitted::
+
+    q = session.query(User).\
+        join(address_alias, User.addresses).\
+        filter(Address.email_address == 'foo').\
+        filter(Address.id > address_alias.id)  # will generate a lot of rows,
+                                               # but no warning
+
+Full cartesian products are also allowed if they are explicitly stated; if we
+wanted for example the cartesian product of ``User`` and ``Address``, we can
+JOIN on :func:`.true` so that every row will match with every other; the
+following query will return all rows and produce no warnings::
+
+    from sqlalchemy import true
+
+    # intentional cartesian product
+    q = session.query(User).join(Address, true())  # intentional cartesian product
+
+The warning is only generated by default when the statement is compiled by the
+:class:`.Connection` for execution; calling the :meth:`.ClauseElement.compile`
+method will not emit a warning unless the linting flag is supplied::
+
+    >>> from sqlalchemy.sql import FROM_LINTING
+    >>> print(q.statement.compile(linting=FROM_LINTING))
+    SAWarning: SELECT statement has a cartesian product between FROM element(s) "addresses" and FROM element "users".  Apply join condition(s) between each element to resolve.
+    SELECT users.id, users.name, users.fullname, users.nickname
+    FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE addresses.email_address = :email_address_1
+
+:ticket:`4737`
+
 
 
 Behavior Changes - Core

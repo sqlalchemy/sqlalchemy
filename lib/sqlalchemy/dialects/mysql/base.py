@@ -1434,7 +1434,10 @@ class MySQLCompiler(compiler.SQLCompiler):
         else:
             return ""
 
-    def visit_join(self, join, asfrom=False, **kwargs):
+    def visit_join(self, join, asfrom=False, from_linter=None, **kwargs):
+        if from_linter:
+            from_linter.edges.add((join.left, join.right))
+
         if join.full:
             join_type = " FULL OUTER JOIN "
         elif join.isouter:
@@ -1444,11 +1447,15 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         return "".join(
             (
-                self.process(join.left, asfrom=True, **kwargs),
+                self.process(
+                    join.left, asfrom=True, from_linter=from_linter, **kwargs
+                ),
                 join_type,
-                self.process(join.right, asfrom=True, **kwargs),
+                self.process(
+                    join.right, asfrom=True, from_linter=from_linter, **kwargs
+                ),
                 " ON ",
-                self.process(join.onclause, **kwargs),
+                self.process(join.onclause, from_linter=from_linter, **kwargs),
             )
         )
 
