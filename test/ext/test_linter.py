@@ -1,9 +1,9 @@
-from sqlalchemy import select, Integer, event, testing
+from sqlalchemy import event, Integer, select, testing
 from sqlalchemy.ext import linter
 from sqlalchemy.ext.linter import find_unmatching_froms
-from sqlalchemy.testing import fixtures, expect_warnings
-from sqlalchemy.testing.schema import Table, Column
+from sqlalchemy.testing import expect_warnings, fixtures
 from sqlalchemy.testing.mock import patch
+from sqlalchemy.testing.schema import Column, Table
 
 
 class TestFindUnmatchingFroms(fixtures.TablesTest):
@@ -105,7 +105,11 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
             assert not froms
 
     def test_disconnected_subquery(self):
-        subq = select([self.a]).where(self.a.c.col_a == self.b.c.col_b).subquery()
+        subq = (
+            select([self.a])
+            .where(self.a.c.col_a == self.b.c.col_b)
+            .subquery()
+        )
         stmt = select([self.c]).select_from(subq)
 
         froms, start = find_unmatching_froms(stmt, self.c)
@@ -117,8 +121,16 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         assert froms == {self.c}
 
     def test_now_connect_it(self):
-        subq = select([self.a]).where(self.a.c.col_a == self.b.c.col_b).subquery()
-        stmt = select([self.c]).select_from(subq).where(self.c.c.col_c == subq.c.col_a)
+        subq = (
+            select([self.a])
+            .where(self.a.c.col_a == self.b.c.col_b)
+            .subquery()
+        )
+        stmt = (
+            select([self.c])
+            .select_from(subq)
+            .where(self.c.c.col_c == subq.c.col_a)
+        )
 
         froms, start = find_unmatching_froms(stmt)
         assert not froms
@@ -131,7 +143,10 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         query = (
             select([self.a])
             .select_from(
-                self.a.join(self.b.join(self.c, self.b.c.col_b == self.c.c.col_c), self.a.c.col_a == self.b.c.col_b)
+                self.a.join(
+                    self.b.join(self.c, self.b.c.col_b == self.c.c.col_c),
+                    self.a.c.col_a == self.b.c.col_b,
+                )
             )
         )
         froms, start = find_unmatching_froms(query)

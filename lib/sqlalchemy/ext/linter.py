@@ -2,7 +2,6 @@ import collections
 import itertools
 
 from sqlalchemy import util
-
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.expression import Select
 
@@ -17,8 +16,9 @@ def before_execute_hook(conn, clauseelement, multiparams, params):
 
 
 def find_unmatching_froms(query, start_with=None):
-    # type: (Select, Optional[FromClause]) -> Tuple[Set[FromClause], FromClause]
-    # TODO: It would be nicer to use OrderedSet, but it seems to not be too much optimize, so let's skip for now
+    # type: (Select, Optional[FromClause]) -> Tuple[Set[FromClause], FromClause]  # noqa
+    # TODO: It would be nicer to use OrderedSet, but it seems to not
+    #  be too much optimized, so let's skip for now
     froms = set(query.froms)
     if not froms:
         return None, None
@@ -97,7 +97,8 @@ def warn_for_unmatching_froms(query):
     # type: (Select) -> None
     froms, start_with = find_unmatching_froms(query)
     if froms:
-        template = '''Query\n{query}\nhas FROM elements:\n{froms}\nthat are not joined up to FROM element\n{start}'''
+        template = 'Query\n{query}\nhas FROM elements:\n{froms}\nthat ' \
+                   'are not joined up to FROM element\n{start}'''
         indent = '    '
         froms_str = '\n'.join('* {elem}'.format(elem=from_) for from_ in froms)
         message = template.format(
