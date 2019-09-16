@@ -783,6 +783,9 @@ Here's a rundown of some of the most common operators used in
         session.query(User.name).filter(User.name.like('%ed%'))
     ))
 
+ .. note:: for composite (multi-column) IN queries, group columns together
+    using :func:`.tuple_`
+
 * :meth:`NOT IN <.ColumnOperators.notin_>`::
 
     query.filter(~User.name.in_(['ed', 'wendy', 'jack']))
