@@ -784,7 +784,15 @@ Here's a rundown of some of the most common operators used in
     ))
 
  .. note:: for composite (multi-column) IN queries, group columns together
-    using :func:`.tuple_`
+    using :func:`.tuple_` :
+
+    .. sourcecode:: python
+
+        from sqlalchemy import tuple_
+        query.filter(
+            tuple_(User.name, User.nickname).\
+            in_([('ed', 'edsnickname'), ('wendy', 'windy')])
+        )
 
 * :meth:`NOT IN <.ColumnOperators.notin_>`::
 
