@@ -2108,7 +2108,8 @@ class Tuple(ClauseList, ColumnElement):
     def __init__(self, *clauses, **kw):
         """Return a :class:`.Tuple`.
 
-        Main usage is to produce a composite IN construct::
+        Main usage is to produce a composite IN construct using
+        :meth:`.ColumnOperators.in_` ::
 
             from sqlalchemy import tuple_
 
