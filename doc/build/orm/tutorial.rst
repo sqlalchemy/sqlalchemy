@@ -783,16 +783,12 @@ Here's a rundown of some of the most common operators used in
         session.query(User.name).filter(User.name.like('%ed%'))
     ))
 
- .. note:: for composite (multi-column) IN queries, group columns together
-    using :func:`.tuple_` :
-
-    .. sourcecode:: python
-
-        from sqlalchemy import tuple_
-        query.filter(
-            tuple_(User.name, User.nickname).\
-            in_([('ed', 'edsnickname'), ('wendy', 'windy')])
-        )
+    # use tuple_() for composite (multi-column) queries
+    from sqlalchemy import tuple_
+    query.filter(
+        tuple_(User.name, User.nickname).\
+        in_([('ed', 'edsnickname'), ('wendy', 'windy')])
+    )
 
 * :meth:`NOT IN <.ColumnOperators.notin_>`::
 
