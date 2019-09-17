@@ -381,6 +381,23 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def cross_schema_fk_reflection(self):
+        """target system must support reflection of inter-schema foreign keys
+
+        """
+        return exclusions.closed()
+
+    @property
+    def implicit_default_schema(self):
+        """target system has a strong concept of 'default' schema that can
+           be referred to implicitly.
+
+           basically, PostgreSQL.
+
+        """
+        return exclusions.closed()
+
+    @property
     def server_side_cursors(self):
         """Target dialect must support server side cursors."""
 
