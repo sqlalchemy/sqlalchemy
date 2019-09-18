@@ -697,6 +697,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def independent_connections(self):
+        """
+        Target must support simultaneous, independent database connections.
+        """
+        return exclusions.open()
+
+    @property
     def skip_mysql_on_windows(self):
         """Catchall for a large variety of MySQL on Windows failures"""
         return exclusions.open()
