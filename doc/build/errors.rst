@@ -468,7 +468,7 @@ to pass it to the :meth:`.Connection.execute` method of a :class:`.Connection`::
 
 When using the ORM, a similar facility is available via the :class:`.Session`::
 
- result = session.exxecute(stmt)
+ result = session.execute(stmt)
 
 .. seealso::
 
