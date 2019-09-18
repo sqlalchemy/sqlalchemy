@@ -859,6 +859,16 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def order_by_col_from_union(self):
+        """target database supports ordering by a column from a SELECT
+        inside of a UNION
+
+        E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
+
+        """
+        return exclusions.open()
+
+    @property
     def order_by_label_with_expression(self):
         """target backend supports ORDER BY a column label within an
         expression.
