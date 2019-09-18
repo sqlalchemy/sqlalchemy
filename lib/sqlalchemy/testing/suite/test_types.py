@@ -615,6 +615,7 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         eq_(row, (True, False))
         assert isinstance(row[0], bool)
 
+    @testing.requires.nullable_booleans
     def test_null(self):
         boolean_table = self.tables.boolean_table
 

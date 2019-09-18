@@ -173,6 +173,12 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def nullable_booleans(self):
+        """Target database allows boolean columns to store NULL."""
+
+        return exclusions.open()
+
+    @property
     def nullsordering(self):
         """Target backends that support nulls ordering."""
 
