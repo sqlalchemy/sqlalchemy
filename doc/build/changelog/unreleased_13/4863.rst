@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 4863
+
+    Added support for sqlite "URI" connections, which allow for sqlite-specific
+    flags to be passed in the query string such as "read only" for Python
+    sqlite3 drivers that support this.
+
+    .. seealso::
+
+        :ref:`pysqlite_uri_connections`

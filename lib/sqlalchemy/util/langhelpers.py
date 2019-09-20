@@ -1116,11 +1116,14 @@ def asint(value):
     return int(value)
 
 
-def coerce_kw_type(kw, key, type_, flexi_bool=True):
+def coerce_kw_type(kw, key, type_, flexi_bool=True, dest=None):
     r"""If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
     when coercing to boolean.
     """
+
+    if dest is None:
+        dest = kw
 
     if (
         key in kw
@@ -1128,9 +1131,9 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
         and kw[key] is not None
     ):
         if type_ is bool and flexi_bool:
-            kw[key] = asbool(kw[key])
+            dest[key] = asbool(kw[key])
         else:
-            kw[key] = type_(kw[key])
+            dest[key] = type_(kw[key])
 
 
 def constructor_copy(obj, cls, *args, **kw):

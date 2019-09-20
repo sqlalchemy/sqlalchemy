@@ -700,13 +700,6 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         assert u("méil") in result.keys()
         assert ue("\u6e2c\u8a66") in result.keys()
 
-    def test_file_path_is_absolute(self):
-        d = pysqlite_dialect.dialect()
-        eq_(
-            d.create_connect_args(make_url("sqlite:///foo.db")),
-            ([os.path.abspath("foo.db")], {}),
-        )
-
     def test_pool_class(self):
         e = create_engine("sqlite+pysqlite://")
         assert e.pool.__class__ is pool.SingletonThreadPool
@@ -716,6 +709,41 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
         e = create_engine("sqlite+pysqlite:///foo.db")
         assert e.pool.__class__ is pool.NullPool
+
+    def test_connect_args(self):
+        """test create_connect_args scenarios including support for uri=True"""
+
+        d = pysqlite_dialect.dialect()
+        for url, expected in [
+            (
+                "sqlite:///foo.db",  # file path is absolute
+                ([os.path.abspath("foo.db")], {}),
+            ),
+            ("sqlite:////abs/path/to/foo.db", (["/abs/path/to/foo.db"], {})),
+            ("sqlite://", ([":memory:"], {})),
+            (
+                "sqlite:///?check_same_thread=true",
+                ([":memory:"], {"check_same_thread": True}),
+            ),
+            (
+                "sqlite:///file:path/to/database?"
+                "check_same_thread=true&timeout=10&mode=ro&nolock=1&uri=true",
+                (
+                    ["file:path/to/database?mode=ro&nolock=1"],
+                    {"check_same_thread": True, "timeout": 10.0, "uri": True},
+                ),
+            ),
+            (
+                "sqlite:///file:path/to/database?" "mode=ro&uri=true",
+                (["file:path/to/database?mode=ro"], {"uri": True}),
+            ),
+            (
+                "sqlite:///file:path/to/database?uri=true",
+                (["file:path/to/database"], {"uri": True}),
+            ),
+        ]:
+            url = make_url(url)
+            eq_(d.create_connect_args(url), expected)
 
 
 class AttachedDBTest(fixtures.TestBase):

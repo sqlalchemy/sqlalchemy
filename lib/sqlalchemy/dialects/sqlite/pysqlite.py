@@ -66,6 +66,68 @@ present.  Specify ``sqlite://`` and nothing else::
     # in-memory database
     e = create_engine('sqlite://')
 
+.. _pysqlite_uri_connections:
+
+URI Connections
+^^^^^^^^^^^^^^^
+
+Modern versions of SQLite support an alternative system of connecting using a
+`driver level URI <https://www.sqlite.org/uri.html>`_, which has the  advantage
+that additional driver-level arguments can be passed including options such as
+"read only".   The Python sqlite3 driver supports this mode under modern Python
+3 versions.   The SQLAlchemy pysqlite driver supports this mode of use by
+specifing "uri=true" in the URL query string.  The SQLite-level "URI" is kept
+as the "database" portion of the SQLAlchemy url (that is, following a slash)::
+
+    e = create_engine("sqlite:///file:path/to/database?mode=ro&uri=true")
+
+.. note::  The "uri=true" parameter must appear in the **query string**
+   of the URL.  It will not currently work as expected if it is only
+   present in the :paramref:`.create_engine.connect_args` parameter dictionary.
+
+The logic reconciles the simultaneous presence of SQLAlchemy's query string and
+SQLite's query string by separating out the parameters that belong to the
+Python sqlite3 driver vs. those that belong to the SQLite URI.  This is
+achieved through the use of a fixed list of parameters known to be accepted by
+the Python side of the driver.  For example, to include a URL that indicates
+the Python sqlite3 "timeout" and "check_same_thread" parameters, along with the
+SQLite "mode" and "nolock" parameters, they can all be passed together on the
+query string::
+
+    e = create_engine(
+        "sqlite:///file:path/to/database?"
+        "check_same_thread=true&timeout=10&mode=ro&nolock=1&uri=true"
+    )
+
+Above, the pysqlite / sqlite3 DBAPI would be passed arguments as::
+
+    sqlite3.connect(
+        "file:path/to/database?mode=ro&nolock=1",
+        check_same_thread=True, timeout=10, uri=True
+    )
+
+Regarding future parameters added to either the Python or native drivers. new
+parameter names added to the SQLite URI scheme should be automatically
+accommodated by this scheme.  New parameter names added to the Python driver
+side can be accommodated by specifying them in the
+:paramref:`.create_engine.connect_args` dictionary, until dialect support is
+added by SQLAlchemy.   For the less likely case that the native SQLite driver
+adds a new parameter name that overlaps with one of the existing, known Python
+driver parameters (such as "timeout" perhaps), SQLAlchemy's dialect would
+require adjustment for the URL scheme to continue to support this.
+
+As is always the case for all SQLAlchemy dialects, the entire "URL" process
+can be bypassed in :func:`.create_engine` through the use of the
+:paramref:`.create_engine.creator` parameter which allows for a custom callable
+that creates a Python sqlite3 driver level connection directly.
+
+.. versionadded:: 1.3.9
+
+.. seealso::
+
+    `Uniform Resource Identifiers <https://www.sqlite.org/uri.html>`_ - in
+    the SQLite documentation
+
 Compatibility with sqlite3 "native" date and datetime types
 -----------------------------------------------------------
 
@@ -317,7 +379,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
     driver = "pysqlite"
 
-    def __init__(self, **kwargs):
+    def __init__(self, uri=False, **kwargs):
         SQLiteDialect.__init__(self, **kwargs)
 
         if self.dbapi is not None:
@@ -362,18 +424,54 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 " sqlite:///relative/path/to/file.db\n"
                 " sqlite:////absolute/path/to/file.db" % (url,)
             )
-        filename = url.database or ":memory:"
-        if filename != ":memory:":
-            filename = os.path.abspath(filename)
 
-        opts = url.query.copy()
-        util.coerce_kw_type(opts, "timeout", float)
-        util.coerce_kw_type(opts, "isolation_level", str)
-        util.coerce_kw_type(opts, "detect_types", int)
-        util.coerce_kw_type(opts, "check_same_thread", bool)
-        util.coerce_kw_type(opts, "cached_statements", int)
+        # theoretically, this list can be augmented, at least as far as
+        # parameter names accepted by sqlite3/pysqlite, using
+        # inspect.getfullargspec().  for the moment this seems like overkill
+        # as these parameters don't change very often, and as always,
+        # parameters passed to connect_args will always go to the
+        # sqlite3/pysqlite driver.
+        pysqlite_args = [
+            ("uri", bool),
+            ("timeout", float),
+            ("isolation_level", str),
+            ("detect_types", int),
+            ("check_same_thread", bool),
+            ("cached_statements", int),
+        ]
+        opts = url.query
+        pysqlite_opts = {}
+        for key, type_ in pysqlite_args:
+            util.coerce_kw_type(opts, key, type_, dest=pysqlite_opts)
 
-        return ([filename], opts)
+        if pysqlite_opts.get("uri", False):
+            uri_opts = opts.copy()
+            # here, we are actually separating the parameters that go to
+            # sqlite3/pysqlite vs. those that go the SQLite URI.  What if
+            # two names conflict?  again, this seems to be not the case right
+            # now, and in the case that new names are added to
+            # either side which overlap, again the sqlite3/pysqlite parameters
+            # can be passed through connect_args instead of in the URL.
+            # If SQLite native URIs add a parameter like "timeout" that
+            # we already have listed here for the python driver, then we need
+            # to adjust for that here.
+            for key, type_ in pysqlite_args:
+                uri_opts.pop(key, None)
+            filename = url.database
+            if uri_opts:
+                # sorting of keys is for unit test support
+                filename += "?" + (
+                    "&".join(
+                        "%s=%s" % (key, uri_opts[key])
+                        for key in sorted(uri_opts)
+                    )
+                )
+        else:
+            filename = url.database or ":memory:"
+            if filename != ":memory:":
+                filename = os.path.abspath(filename)
+
+        return ([filename], pysqlite_opts)
 
     def is_disconnect(self, e, connection, cursor):
         return isinstance(
