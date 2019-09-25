@@ -1688,13 +1688,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 [c for c in select.c if c.key != "mssql_rn"]
             )
             if offset_clause is not None:
-                limitselect.append_whereclause(mssql_rn > offset_clause)
+                limitselect = limitselect.where(mssql_rn > offset_clause)
                 if limit_clause is not None:
-                    limitselect.append_whereclause(
+                    limitselect = limitselect.where(
                         mssql_rn <= (limit_clause + offset_clause)
                     )
             else:
-                limitselect.append_whereclause(mssql_rn <= (limit_clause))
+                limitselect = limitselect.where(mssql_rn <= (limit_clause))
             return self.process(limitselect, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)

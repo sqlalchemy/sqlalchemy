@@ -207,12 +207,10 @@ _SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")
 _DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")
 
 
-def _generative(*assertions):
-    """Mark a method as generative, e.g. method-chained."""
-
+def _assertions(*assertions):
     @util.decorator
     def generate(fn, *args, **kw):
-        self = args[0]._clone()
+        self = args[0]
         for assertion in assertions:
             assertion(self, fn.__name__)
         fn(self, *args[1:], **kw)

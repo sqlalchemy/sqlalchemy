@@ -792,7 +792,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select(
             [], exists([1], table2.c.otherid == table1.c.myid), from_obj=table1
         )
-        s.append_column(table1)
+        s.column.non_generative(s, table1)
         self.assert_compile(
             s,
             "SELECT mytable.myid, mytable.name, "

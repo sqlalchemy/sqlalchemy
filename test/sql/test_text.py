@@ -77,12 +77,12 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_select_composition_two(self):
         s = select()
-        s.append_column(column("column1"))
-        s.append_column(column("column2"))
-        s.append_whereclause(text("column1=12"))
-        s.append_whereclause(text("column2=19"))
+        s = s.column(column("column1"))
+        s = s.column(column("column2"))
+        s = s.where(text("column1=12"))
+        s = s.where(text("column2=19"))
         s = s.order_by("column1")
-        s.append_from(text("table1"))
+        s = s.select_from(text("table1"))
         self.assert_compile(
             s,
             "SELECT column1, column2 FROM table1 WHERE "

@@ -527,7 +527,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class Vis(CloningVisitor):
             def visit_select(self, select):
-                select.append_whereclause(t1.c.col2 == 7)
+                select.where.non_generative(select, t1.c.col2 == 7)
 
         s3 = Vis().traverse(s2)
         assert str(s3) == s3_assert
@@ -537,7 +537,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class Vis(ClauseVisitor):
             def visit_select(self, select):
-                select.append_whereclause(t1.c.col2 == 7)
+                select.where.non_generative(select, t1.c.col2 == 7)
 
         Vis().traverse(s2)
         assert str(s2) == s3_assert
@@ -546,7 +546,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class Vis(CloningVisitor):
             def visit_select(self, select):
-                select.append_whereclause(t1.c.col3 == 9)
+                select.where.non_generative(select, t1.c.col3 == 9)
 
         s4 = Vis().traverse(s3)
         print(str(s3))
@@ -719,7 +719,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class Vis(CloningVisitor):
             def visit_select(self, select):
-                select.append_whereclause(t1.c.col2 == 7)
+                select.where.non_generative(select, t1.c.col2 == 7)
 
         self.assert_compile(
             select([t2]).where(

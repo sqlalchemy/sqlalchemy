@@ -345,8 +345,8 @@ class SelectableTest(
         sel = select([literal_column("1").label("a")])
         eq_(list(sel.selected_columns.keys()), ["a"])
         cloned = visitors.ReplacingCloningVisitor().traverse(sel)
-        cloned.append_column(literal_column("2").label("b"))
-        cloned.append_column(func.foo())
+        cloned.column.non_generative(cloned, literal_column("2").label("b"))
+        cloned.column.non_generative(cloned, func.foo())
         eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo()"])
 
     def test_clone_col_list_changes_then_proxy(self):
@@ -354,7 +354,7 @@ class SelectableTest(
         stmt = select([t.c.q]).subquery()
 
         def add_column(stmt):
-            stmt.append_column(t.c.p)
+            stmt.column.non_generative(stmt, t.c.p)
 
         stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
         eq_(list(stmt.c.keys()), ["q"])
@@ -365,7 +365,7 @@ class SelectableTest(
         stmt = select([t.c.q]).subquery()
 
         def add_column(stmt):
-            stmt.append_column(t.c.p)
+            stmt.column.non_generative(stmt, t.c.p)
 
         stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
         eq_(list(stmt.c.keys()), ["q"])
@@ -395,7 +395,7 @@ class SelectableTest(
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
-        replaced.append_column(joinfrom.c.b)
+        replaced.column.non_generative(replaced, joinfrom.c.b)
         self.assert_compile(
             replaced,
             "SELECT basefrom.a, joinfrom.b FROM (SELECT 1 AS a) AS basefrom "
@@ -948,7 +948,7 @@ class SelectableTest(
         s = select([t])
 
         with testing.expect_deprecated("The SelectBase.c"):
-            s.append_whereclause(s.c.x > 5)
+            s.where.non_generative(s, s.c.x > 5)
         assert_raises_message(
             exc.InvalidRequestError,
             r"select\(\) construct refers to itself as a FROM",

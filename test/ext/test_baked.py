@@ -1379,7 +1379,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         class CachingQuery(Query):
             cache = {}
 
-            @_generative()
+            @_generative
             def set_cache_key(self, key):
                 self._cache_key = key
 

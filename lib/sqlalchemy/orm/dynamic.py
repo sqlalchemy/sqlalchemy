@@ -310,7 +310,7 @@ class AppenderMixin(object):
                 ).added_items
             )
         else:
-            return iter(self._clone(sess))
+            return iter(self._generate(sess))
 
     def __getitem__(self, index):
         sess = self.session
@@ -320,7 +320,7 @@ class AppenderMixin(object):
                 attributes.PASSIVE_NO_INITIALIZE,
             ).indexed(index)
         else:
-            return self._clone(sess).__getitem__(index)
+            return self._generate(sess).__getitem__(index)
 
     def count(self):
         sess = self.session
@@ -332,9 +332,9 @@ class AppenderMixin(object):
                 ).added_items
             )
         else:
-            return self._clone(sess).count()
+            return self._generate(sess).count()
 
-    def _clone(self, sess=None):
+    def _generate(self, sess=None):
         # note we're returning an entirely new Query class instance
         # here without any assignment capabilities; the class of this
         # query is determined by the session.

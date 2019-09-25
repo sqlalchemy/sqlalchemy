@@ -809,7 +809,10 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
-        replaced.append_column(joinfrom.c.b)
+
+        with testing.expect_deprecated(r"The Select.append_column\(\)"):
+            replaced.append_column(joinfrom.c.b)
+
         self.assert_compile(
             replaced,
             "SELECT basefrom.a, joinfrom.b FROM (SELECT 1 AS a) AS basefrom "
@@ -1023,3 +1026,101 @@ class TextualSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "The SelectBase.c and SelectBase.columns"
         ):
             eq_(t.c.c.type._type_affinity, String)
+
+
+class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def _expect_deprecated(self, clsname, methname, newmeth):
+        return testing.expect_deprecated(
+            r"The %s.append_%s\(\) method is deprecated "
+            r"and will be removed in a future release.  Use the generative "
+            r"method %s.%s\(\)." % (clsname, methname, clsname, newmeth)
+        )
+
+    def test_append_whereclause(self):
+        t = table("t", column("q"))
+        stmt = select([t])
+
+        with self._expect_deprecated("Select", "whereclause", "where"):
+            stmt.append_whereclause(t.c.q == 5)
+
+        self.assert_compile(stmt, "SELECT t.q FROM t WHERE t.q = :q_1")
+
+    def test_append_having(self):
+        t = table("t", column("q"))
+        stmt = select([t]).group_by(t.c.q)
+
+        with self._expect_deprecated("Select", "having", "having"):
+            stmt.append_having(t.c.q == 5)
+
+        self.assert_compile(
+            stmt, "SELECT t.q FROM t GROUP BY t.q HAVING t.q = :q_1"
+        )
+
+    def test_append_order_by(self):
+        t = table("t", column("q"), column("x"))
+        stmt = select([t]).where(t.c.q == 5)
+
+        with self._expect_deprecated(
+            "GenerativeSelect", "order_by", "order_by"
+        ):
+            stmt.append_order_by(t.c.x)
+
+        self.assert_compile(
+            stmt, "SELECT t.q, t.x FROM t WHERE t.q = :q_1 ORDER BY t.x"
+        )
+
+    def test_append_group_by(self):
+        t = table("t", column("q"))
+        stmt = select([t])
+
+        with self._expect_deprecated(
+            "GenerativeSelect", "group_by", "group_by"
+        ):
+            stmt.append_group_by(t.c.q)
+
+        stmt = stmt.having(t.c.q == 5)
+
+        self.assert_compile(
+            stmt, "SELECT t.q FROM t GROUP BY t.q HAVING t.q = :q_1"
+        )
+
+    def test_append_correlation(self):
+        t1 = table("t1", column("q"))
+        t2 = table("t2", column("q"), column("p"))
+
+        inner = select([t2.c.p]).where(t2.c.q == t1.c.q)
+
+        with self._expect_deprecated("Select", "correlation", "correlate"):
+            inner.append_correlation(t1)
+        stmt = select([t1]).where(t1.c.q == inner.scalar_subquery())
+
+        self.assert_compile(
+            stmt,
+            "SELECT t1.q FROM t1 WHERE t1.q = "
+            "(SELECT t2.p FROM t2 WHERE t2.q = t1.q)",
+        )
+
+    def test_append_column(self):
+        t1 = table("t1", column("q"), column("p"))
+        stmt = select([t1.c.q])
+        with self._expect_deprecated("Select", "column", "column"):
+            stmt.append_column(t1.c.p)
+        self.assert_compile(stmt, "SELECT t1.q, t1.p FROM t1")
+
+    def test_append_prefix(self):
+        t1 = table("t1", column("q"), column("p"))
+        stmt = select([t1.c.q])
+        with self._expect_deprecated("Select", "prefix", "prefix_with"):
+            stmt.append_prefix("FOO BAR")
+        self.assert_compile(stmt, "SELECT FOO BAR t1.q FROM t1")
+
+    def test_append_from(self):
+        t1 = table("t1", column("q"))
+        t2 = table("t2", column("q"))
+
+        stmt = select([t1])
+        with self._expect_deprecated("Select", "from", "select_from"):
+            stmt.append_from(t1.join(t2, t1.c.q == t2.c.q))
+        self.assert_compile(stmt, "SELECT t1.q FROM t1 JOIN t2 ON t1.q = t2.q")
