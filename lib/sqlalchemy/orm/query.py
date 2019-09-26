@@ -975,60 +975,6 @@ class Query(Generative):
         """
         return self._get_impl(ident, loading.load_on_pk_identity)
 
-    def _identity_lookup(
-        self,
-        mapper,
-        primary_key_identity,
-        identity_token=None,
-        passive=attributes.PASSIVE_OFF,
-        lazy_loaded_from=None,
-    ):
-        """Locate an object in the identity map.
-
-        Given a primary key identity, constructs an identity key and then
-        looks in the session's identity map.  If present, the object may
-        be run through unexpiration rules (e.g. load unloaded attributes,
-        check if was deleted).
-
-        For performance reasons, while the :class:`.Query` must be
-        instantiated, it may be instantiated with no entities, and the
-        mapper is passed::
-
-            obj = session.query()._identity_lookup(inspect(SomeClass), (1, ))
-
-        :param mapper: mapper in use
-        :param primary_key_identity: the primary key we are searching for, as
-         a tuple.
-        :param identity_token: identity token that should be used to create
-         the identity key.  Used as is, however overriding subclasses can
-         repurpose this in order to interpret the value in a special way,
-         such as if None then look among multiple target tokens.
-        :param passive: passive load flag passed to
-         :func:`.loading.get_from_identity`, which impacts the behavior if
-         the object is found; the object may be validated and/or unexpired
-         if the flag allows for SQL to be emitted.
-        :param lazy_loaded_from: an :class:`.InstanceState` that is
-         specifically asking for this identity as a related identity.  Used
-         for sharding schemes where there is a correspondence between an object
-         and a related object being lazy-loaded (or otherwise
-         relationship-loaded).
-
-         .. versionadded:: 1.2.9
-
-        :return: None if the object is not found in the identity map, *or*
-         if the object was unexpired and found to have been deleted.
-         if passive flags disallow SQL and the object is expired, returns
-         PASSIVE_NO_RESULT.   In all other cases the instance is returned.
-
-        .. versionadded:: 1.2.7
-
-        """
-
-        key = mapper.identity_key_from_primary_key(
-            primary_key_identity, identity_token=identity_token
-        )
-        return loading.get_from_identity(self.session, key, passive)
-
     def _get_impl(self, primary_key_identity, db_load_fn, identity_token=None):
         # convert composite types to individual args
         if hasattr(primary_key_identity, "__composite_values__"):
@@ -1071,7 +1017,7 @@ class Query(Generative):
             and self._for_update_arg is None
         ):
 
-            instance = self._identity_lookup(
+            instance = self.session._identity_lookup(
                 mapper, primary_key_identity, identity_token=identity_token
             )
 

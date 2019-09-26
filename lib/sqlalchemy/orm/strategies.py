@@ -709,7 +709,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # Query class in use, as it may have special rules for how it
             # does this, including how it decides what the correct
             # identity_token would be for this identity.
-            instance = session.query()._identity_lookup(
+
+            instance = session._identity_lookup(
                 self.entity,
                 primary_key_identity,
                 passive=passive,

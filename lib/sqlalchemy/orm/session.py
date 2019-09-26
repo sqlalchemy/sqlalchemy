@@ -1542,6 +1542,60 @@ class Session(_SessionClassMethods):
 
         return self._query_cls(entities, self, **kwargs)
 
+    def _identity_lookup(
+        self,
+        mapper,
+        primary_key_identity,
+        identity_token=None,
+        passive=attributes.PASSIVE_OFF,
+        lazy_loaded_from=None,
+    ):
+        """Locate an object in the identity map.
+
+        Given a primary key identity, constructs an identity key and then
+        looks in the session's identity map.  If present, the object may
+        be run through unexpiration rules (e.g. load unloaded attributes,
+        check if was deleted).
+
+        e.g.::
+
+            obj = session._identity_lookup(inspect(SomeClass), (1, ))
+
+        :param mapper: mapper in use
+        :param primary_key_identity: the primary key we are searching for, as
+         a tuple.
+        :param identity_token: identity token that should be used to create
+         the identity key.  Used as is, however overriding subclasses can
+         repurpose this in order to interpret the value in a special way,
+         such as if None then look among multiple target tokens.
+        :param passive: passive load flag passed to
+         :func:`.loading.get_from_identity`, which impacts the behavior if
+         the object is found; the object may be validated and/or unexpired
+         if the flag allows for SQL to be emitted.
+        :param lazy_loaded_from: an :class:`.InstanceState` that is
+         specifically asking for this identity as a related identity.  Used
+         for sharding schemes where there is a correspondence between an object
+         and a related object being lazy-loaded (or otherwise
+         relationship-loaded).
+
+        :return: None if the object is not found in the identity map, *or*
+         if the object was unexpired and found to have been deleted.
+         if passive flags disallow SQL and the object is expired, returns
+         PASSIVE_NO_RESULT.   In all other cases the instance is returned.
+
+        .. versionchanged:: 1.4.0 - the :meth:`.Session._identity_lookup`
+           method was moved from :class:`.Query` to
+           :class:`.Session`, to avoid having to instantiate the
+           :class:`.Query` object.
+
+
+        """
+
+        key = mapper.identity_key_from_primary_key(
+            primary_key_identity, identity_token=identity_token
+        )
+        return loading.get_from_identity(self, key, passive)
+
     @property
     @util.contextmanager
     def no_autoflush(self):
