@@ -560,6 +560,10 @@ class QueryTest(fixtures.MappedTest):
         self._fixture()
         sess = Session()
 
+        # warm up cache
+        for attr in [Parent.data1, Parent.data2, Parent.data3, Parent.data4]:
+            attr.__clause_element__()
+
         @profiling.function_call_count()
         def go():
             for i in range(10):

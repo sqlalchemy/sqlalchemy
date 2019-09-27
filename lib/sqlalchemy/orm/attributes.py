@@ -168,18 +168,18 @@ class QueryableAttribute(
         """
         return inspection.inspect(self._parententity)
 
-    @property
+    @util.memoized_property
     def expression(self):
-        return self.comparator.__clause_element__()
+        return self.comparator.__clause_element__()._annotate(
+            {"orm_key": self.key}
+        )
+
+    @property
+    def _annotations(self):
+        return self.__clause_element__()._annotations
 
     def __clause_element__(self):
-        return self.comparator.__clause_element__()
-
-    def _query_clause_element(self):
-        """like __clause_element__(), but called specifically
-        by :class:`.Query` to allow special behavior."""
-
-        return self.comparator._query_clause_element()
+        return self.expression
 
     def _bulk_update_tuples(self, value):
         """Return setter tuples for a bulk UPDATE."""
@@ -207,7 +207,7 @@ class QueryableAttribute(
         )
 
     def label(self, name):
-        return self._query_clause_element().label(name)
+        return self.__clause_element__().label(name)
 
     def operate(self, op, *other, **kwargs):
         return op(self.comparator, *other, **kwargs)

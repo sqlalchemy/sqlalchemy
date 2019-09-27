@@ -668,10 +668,11 @@ class AliasedInsp(InspectionAttr):
             state["represents_outer_join"],
         )
 
-    def _adapt_element(self, elem):
-        return self._adapter.traverse(elem)._annotate(
-            {"parententity": self, "parentmapper": self.mapper}
-        )
+    def _adapt_element(self, elem, key=None):
+        d = {"parententity": self, "parentmapper": self.mapper}
+        if key:
+            d["orm_key"] = key
+        return self._adapter.traverse(elem)._annotate(d)
 
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers

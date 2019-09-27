@@ -364,23 +364,19 @@ def surface_selectables_only(clause):
             stack.append(elem.table)
 
 
-def surface_column_elements(clause, include_scalar_selects=True):
-    """traverse and yield only outer-exposed column elements, such as would
-    be addressable in the WHERE clause of a SELECT if this element were
-    in the columns clause."""
+def extract_first_column_annotation(column, annotation_name):
+    filter_ = (FromGrouping, SelectBase)
 
-    filter_ = (FromGrouping,)
-    if not include_scalar_selects:
-        filter_ += (SelectBase,)
-
-    stack = deque([clause])
+    stack = deque([column])
     while stack:
         elem = stack.popleft()
-        yield elem
+        if annotation_name in elem._annotations:
+            return elem._annotations[annotation_name]
         for sub in elem.get_children():
             if isinstance(sub, filter_):
                 continue
             stack.append(sub)
+    return None
 
 
 def selectables_overlap(left, right):

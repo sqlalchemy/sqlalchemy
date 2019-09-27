@@ -3,6 +3,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -792,7 +793,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
 
         self.assert_compile(
-            sess.query(User, "1"),
+            sess.query(User, literal_column("1")),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "1 FROM users",
         )

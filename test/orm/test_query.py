@@ -1005,14 +1005,14 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         s = create_session()
         q = s.query(User)
-        assert_raises(sa_exc.InvalidRequestError, q.add_column, object())
+        assert_raises(sa_exc.ArgumentError, q.add_column, object())
 
     def test_invalid_column_tuple(self):
         User = self.classes.User
 
         s = create_session()
         q = s.query(User)
-        assert_raises(sa_exc.InvalidRequestError, q.add_column, (1, 1))
+        assert_raises(sa_exc.ArgumentError, q.add_column, (1, 1))
 
     def test_distinct(self):
         """test that a distinct() call is not valid before 'clauseelement'
@@ -2449,6 +2449,9 @@ class ComparatorTest(QueryTest):
             def __clause_element__(self):
                 return self.expr
 
+        # this use case isn't exactly needed in this form, however it tests
+        # that we resolve for multiple __clause_element__() calls as is needed
+        # by systems like composites
         sess = Session()
         eq_(
             sess.query(Comparator(User.id))
@@ -3398,11 +3401,11 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             q3,
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
-            "anon_1.param_1 AS anon_1_param_1 "
-            "FROM (SELECT users.id AS users_id, users.name AS "
-            "users_name, :param_1 AS param_1 "
-            "FROM users UNION SELECT users.id AS users_id, "
-            "users.name AS users_name, 'y' FROM users) AS anon_1",
+            "anon_1.anon_2 AS anon_1_anon_2 FROM "
+            "(SELECT users.id AS users_id, users.name AS users_name, "
+            ":param_1 AS anon_2 FROM users "
+            "UNION SELECT users.id AS users_id, users.name AS users_name, "
+            "'y' FROM users) AS anon_1",
         )
 
     def test_union_literal_expressions_results(self):
@@ -3410,7 +3413,8 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
 
         s = Session()
 
-        q1 = s.query(User, literal("x"))
+        x_literal = literal("x")
+        q1 = s.query(User, x_literal)
         q2 = s.query(User, literal_column("'y'"))
         q3 = q1.union(q2)
 
@@ -3421,7 +3425,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         eq_([x["name"] for x in q6.column_descriptions], ["User", "foo"])
 
         for q in (
-            q3.order_by(User.id, text("anon_1_param_1")),
+            q3.order_by(User.id, x_literal),
             q6.order_by(User.id, "foo"),
         ):
             eq_(
@@ -4231,12 +4235,14 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         s = create_session()
-        assert_raises(
-            sa_exc.InvalidRequestError, s.query, User.id, text("users.name")
+
+        self.assert_compile(
+            s.query(User.id, text("users.name")),
+            "SELECT users.id AS users_id, users.name FROM users",
         )
 
         eq_(
-            s.query(User.id, "name").order_by(User.id).all(),
+            s.query(User.id, literal_column("name")).order_by(User.id).all(),
             [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")],
         )
 

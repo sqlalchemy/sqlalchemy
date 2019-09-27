@@ -413,19 +413,26 @@ class CompositeProperty(DescriptorProperty):
 
         __hash__ = None
 
-        @property
+        @util.memoized_property
         def clauses(self):
-            return self.__clause_element__()
-
-        def __clause_element__(self):
             return expression.ClauseList(
                 group=False, *self._comparable_elements
             )
 
-        def _query_clause_element(self):
-            return CompositeProperty.CompositeBundle(
-                self.prop, self.__clause_element__()
+        def __clause_element__(self):
+            return self.expression
+
+        @util.memoized_property
+        def expression(self):
+            clauses = self.clauses._annotate(
+                {
+                    "bundle": True,
+                    "parententity": self._parententity,
+                    "parentmapper": self._parententity,
+                    "orm_key": self.prop.key,
+                }
             )
+            return CompositeProperty.CompositeBundle(self.prop, clauses)
 
         def _bulk_update_tuples(self, value):
             if value is None:
