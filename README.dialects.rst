@@ -16,13 +16,16 @@ standard setuptools entry points.  As of version 0.8, this system has
 been enhanced, so that a dialect can also be "plugged in" at runtime.
 
 On the testing side, SQLAlchemy as of 0.8 also includes a "dialect
-compliance suite" that is usable by third party libraries.  There is no
-longer a strong need for a new dialect to run through SQLAlchemy's full
-testing suite, as a large portion of these tests do not have
-dialect-sensitive functionality.  The "dialect compliance suite" should
-be viewed as the primary target for new dialects, and as it continues
-to grow and mature it should become a more thorough and efficient system
-of testing new dialects.
+compliance suite" that is usable by third party libraries::
+
+    lib/sqlalchemy/testing/suite
+
+There is no longer a strong need for a new dialect to run through
+SQLAlchemy's full testing suite, as a large portion of these tests do
+not have dialect-sensitive functionality.  The "dialect compliance suite"
+should be viewed as the primary target for new dialects, and as it
+continues to grow and mature it should become a more thorough and
+efficient system of testing new dialects.
 
 
 Dialect Layout
@@ -53,17 +56,13 @@ Key aspects of this file layout include:
 * setup.py - should specify setuptools entrypoints, allowing the
   dialect to be usable from create_engine(), e.g.::
 
-        entry_points={
+        entry_points = {
          'sqlalchemy.dialects': [
-              'access = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
               'access.pyodbc = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
               ]
         }
 
-  Above, the two entrypoints ``access`` and ``access.pyodbc`` allow URLs to be
-  used such as::
-
-    create_engine("access://user:pw@dsn")
+  Above, the entrypoint ``access.pyodbc`` allow URLs to be used such as::
 
     create_engine("access+pyodbc://user:pw@dsn")
 
@@ -99,16 +98,20 @@ Key aspects of this file layout include:
   The other portion invokes SQLAlchemy's pytest plugin::
 
     from sqlalchemy.dialects import registry
+    import pytest
 
-    registry.register("access", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
     registry.register("access.pyodbc", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
+
+    pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
     from sqlalchemy.testing.plugin.pytestplugin import *
 
   Where above, the ``registry`` module, introduced in SQLAlchemy 0.8, provides
-  an in-Python means of installing the dialect entrypoints without the use
+  an in-Python means of installing the dialect entrypoint(s) without the use
   of setuptools, using the ``registry.register()`` function in a way that
   is similar to the ``entry_points`` directive we placed in our ``setup.py``.
+  (The ``pytest.register_assert_rewrite`` is there just to suppress a spurious
+  warning from pytest.)
 
 * requirements.py - The ``requirements.py`` file is where directives
   regarding database and dialect capabilities are set up.
@@ -136,7 +139,9 @@ Key aspects of this file layout include:
 
       class Requirements(SuiteRequirements):
           @property
-          def table_reflection(self):
+          def nullable_booleans(self):
+              """Target database allows boolean columns to store NULL."""
+              # Access Yes/No doesn't allow null
               return exclusions.closed()
 
           @property
@@ -174,13 +179,13 @@ Key aspects of this file layout include:
 
       from sqlalchemy.testing.suite import *
 
-      from sqlalchemy.testing.suite import ComponentReflectionTest as _ComponentReflectionTest
+      from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
 
-      class ComponentReflectionTest(_ComponentReflectionTest):
+      class IntegerTest(_IntegerTest):
           @classmethod
-          def define_views(cls, metadata, schema):
-              # bypass the "define_views" section of the
-              # fixture
+          def test_huge_int(cls):
+              # bypass this test because Access ODBC fails with
+              # [ODBC Microsoft Access Driver]Optional feature not implemented.
               return
 
 Going Forward

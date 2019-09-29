@@ -1,4 +1,5 @@
 *.pyc
+*.pyd
 *.pyo
 *.egg
 /build/
@@ -19,12 +20,10 @@ coverage.xml
 sqlnet.log
 /mapping_setup.py
 /test.py
+/test?.py
 /.cache/
 /.mypy_cache
 *.sw[o,p]
-/test?.py
-/test.py
-/mapping_setup.py
 *.rej
 test/test_schema.db
 *test_schema.db
