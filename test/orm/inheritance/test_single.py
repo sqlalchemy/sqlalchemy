@@ -287,7 +287,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         self.assert_compile(
             sess.query(literal("1")).select_from(a1),
-            "SELECT :param_1 AS param_1 FROM employees AS employees_1 "
+            "SELECT :param_1 AS anon_1 FROM employees AS employees_1 "
             "WHERE employees_1.type IN (:type_1, :type_2)",
         )
 

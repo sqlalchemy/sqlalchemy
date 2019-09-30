@@ -292,7 +292,7 @@ class ColumnProperty(StrategizedProperty):
 
         def _memoized_method___clause_element__(self):
             if self.adapter:
-                return self.adapter(self.prop.columns[0])
+                return self.adapter(self.prop.columns[0], self.prop.key)
             else:
                 # no adapter, so we aren't aliased
                 # assert self._parententity is self._parentmapper
@@ -300,6 +300,7 @@ class ColumnProperty(StrategizedProperty):
                     {
                         "parententity": self._parententity,
                         "parentmapper": self._parententity,
+                        "orm_key": self.prop.key,
                     }
                 )
 

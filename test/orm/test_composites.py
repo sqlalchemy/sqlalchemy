@@ -20,6 +20,8 @@ from sqlalchemy.testing.schema import Table
 
 
 class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -309,6 +311,20 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(
             sess.query(start, end).filter(start == Point(3, 4)).all(),
             [(Point(3, 4), Point(5, 6))],
+        )
+
+    def test_cols_as_core_clauseelement(self):
+        Edge = self.classes.Edge
+        Point = self.classes.Point
+
+        start, end = Edge.start, Edge.end
+
+        stmt = select([start, end]).where(start == Point(3, 4))
+        self.assert_compile(
+            stmt,
+            "SELECT edges.x1, edges.y1, edges.x2, edges.y2 "
+            "FROM edges WHERE edges.x1 = :x1_1 AND edges.y1 = :y1_1",
+            checkparams={"x1_1": 3, "y1_1": 4},
         )
 
     def test_query_cols_labeled(self):

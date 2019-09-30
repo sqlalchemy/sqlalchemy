@@ -7,7 +7,6 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import select
@@ -2211,7 +2210,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             sess.expunge_all()
 
         assert_raises(
-            sa_exc.InvalidRequestError, sess.query(User).add_column, object()
+            sa_exc.ArgumentError, sess.query(User).add_column, object()
         )
 
     def test_add_multi_columns(self):
@@ -2270,7 +2269,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             .order_by(User.id)
         )
         q = sess.query(User)
-        result = q.add_column("count").from_statement(s).all()
+        result = q.add_column(s.selected_columns.count).from_statement(s).all()
         assert result == expected
 
     def test_raw_columns(self):
@@ -2315,7 +2314,10 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         )
         q = create_session().query(User)
         result = (
-            q.add_column("count").add_column("concat").from_statement(s).all()
+            q.add_column(s.selected_columns.count)
+            .add_column(s.selected_columns.concat)
+            .from_statement(s)
+            .all()
         )
         assert result == expected
 
@@ -2399,7 +2401,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         ]:
             q = s.query(crit)
             mzero = q._entity_zero()
-            is_(mzero.persist_selectable, q._query_entity_zero().selectable)
+            is_(mzero, q._query_entity_zero().entity_zero)
             q = q.join(j)
             self.assert_compile(q, exp)
 
@@ -2429,7 +2431,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         ]:
             q = s.query(crit)
             mzero = q._entity_zero()
-            is_(inspect(mzero).selectable, q._query_entity_zero().selectable)
+            is_(mzero, q._query_entity_zero().entity_zero)
             q = q.join(j)
             self.assert_compile(q, exp)
 

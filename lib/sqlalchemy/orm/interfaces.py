@@ -363,6 +363,7 @@ class PropComparator(operators.ColumnOperators):
     __slots__ = "prop", "property", "_parententity", "_adapt_to_entity"
 
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
+        # type: (MapperProperty, Mapper, Optional(AliasedInsp))
         self.prop = self.property = prop
         self._parententity = adapt_to_entity or parentmapper
         self._adapt_to_entity = adapt_to_entity
@@ -370,10 +371,15 @@ class PropComparator(operators.ColumnOperators):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def _query_clause_element(self):
-        return self.__clause_element__()
-
     def _bulk_update_tuples(self, value):
+        # type: (ColumnOperators) -> List[tuple[ColumnOperators, Any]]
+        """Receive a SQL expression that represents a value in the SET
+        clause of an UPDATE statement.
+
+        Return a tuple that can be passed to a :class:`.Update` construct.
+
+        """
+
         return [(self.__clause_element__(), value)]
 
     def adapt_to_entity(self, adapt_to_entity):
