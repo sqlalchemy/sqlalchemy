@@ -546,6 +546,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
+        #
+        # TODO: the "not self.uselist" can be taken out entirely; a m2o
+        # load that populates for a list (very unusual, but is possible with
+        # the API) can still set for "None" and the attribute system will
+        # populate as an empty list.
         self.use_get = (
             not self.is_aliased_class
             and not self.uselist
@@ -2238,6 +2243,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         if query_info.load_only_child:
             our_states = collections.defaultdict(list)
+            none_states = []
 
             mapper = self.parent
 
@@ -2258,11 +2264,19 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 if attributes.PASSIVE_NO_RESULT in related_ident:
                     query_info = self._fallback_query_info
                     break
+
+                # organize states into lists keyed to particular foreign
+                # key values.
                 if None not in related_ident:
                     our_states[related_ident].append(
                         (state, state_dict, overwrite)
                     )
+                else:
+                    # For FK values that have None, add them to a
+                    # separate collection that will be populated separately
+                    none_states.append((state, state_dict, overwrite))
 
+        # note the above conditional may have changed query_info
         if not query_info.load_only_child:
             our_states = [
                 (state.key[1], state, state.dict, overwrite)
@@ -2358,11 +2372,13 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 q.add_criteria(_setup_outermost_orderby)
 
         if query_info.load_only_child:
-            self._load_via_child(our_states, query_info, q, context)
+            self._load_via_child(
+                our_states, none_states, query_info, q, context
+            )
         else:
             self._load_via_parent(our_states, query_info, q, context)
 
-    def _load_via_child(self, our_states, query_info, q, context):
+    def _load_via_child(self, our_states, none_states, query_info, q, context):
         uselist = self.uselist
 
         # this sort is really for the benefit of the unit tests
@@ -2370,7 +2386,6 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         while our_keys:
             chunk = our_keys[0 : self._chunksize]
             our_keys = our_keys[self._chunksize :]
-
             data = {
                 k: v
                 for k, v in q(context.session).params(
@@ -2396,6 +2411,14 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                         dict_,
                         related_obj if not uselist else [related_obj],
                     )
+        # populate none states with empty value / collection
+        for state, dict_, overwrite in none_states:
+            if not overwrite and self.key in dict_:
+                continue
+
+            # note it's OK if this is a uselist=True attribute, the empty
+            # collection will be populated
+            state.get_impl(self.key).set_committed_value(state, dict_, None)
 
     def _load_via_parent(self, our_states, query_info, q, context):
         uselist = self.uselist

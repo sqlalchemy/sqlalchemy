@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4872
+
+    Fixed regression in selectinload loader strategy caused by #4775 (released
+    in version 1.3.6) where a many-to-one attribute of None would no longer be
+    populated by the loader.  While this was usually not noticeable due to the
+    lazyloader populating None upon get, it would lead to a detached instance
+    error if the object were detached.

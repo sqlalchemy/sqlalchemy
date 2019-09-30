@@ -1171,6 +1171,87 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
+    def test_m2o_none_value_present(self):
+        orders, Order, addresses, Address = (
+            self.tables.orders,
+            self.classes.Order,
+            self.tables.addresses,
+            self.classes.Address,
+        )
+
+        mapper(
+            Order,
+            orders,
+            properties={"address": relationship(Address, lazy="selectin")},
+        )
+        mapper(Address, addresses)
+
+        sess = create_session()
+        q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
+
+        o4, o5 = q.all()
+        assert o4.__dict__["address"] is not None
+        assert o5.__dict__["address"] is None
+
+        # test overwrite
+
+        o5.address = Address()
+        sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id).all()
+        assert o5.__dict__["address"] is not None
+
+        o5.address = Address()
+        sess.query(Order).populate_existing().filter(
+            Order.id.in_([4, 5])
+        ).order_by(Order.id).all()
+        assert o5.__dict__["address"] is None
+
+    def test_m2o_uselist_none_value_present(self):
+        orders, Order, addresses, Address = (
+            self.tables.orders,
+            self.classes.Order,
+            self.tables.addresses,
+            self.classes.Address,
+        )
+
+        mapper(
+            Order,
+            orders,
+            properties={
+                "address": relationship(Address, lazy="selectin", uselist=True)
+            },
+        )
+        mapper(Address, addresses)
+
+        sess = create_session()
+        q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
+
+        o4, o5 = q.all()
+        assert len(o4.__dict__["address"])
+        eq_(o5.__dict__["address"], [])
+
+    def test_o2m_empty_list_present(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses), lazy="selectin"
+                )
+            ),
+        )
+        q = create_session().query(User)
+        result = q.filter(users.c.id == 10).all()
+        u1 = result[0]
+
+        eq_(u1.__dict__["addresses"], [])
+
     def test_double_with_aggregate(self):
         User, users, orders, Order = (
             self.classes.User,
