@@ -1089,6 +1089,32 @@ class UtilTest(fixtures.ORMTest):
         attributes.del_attribute(f1, "coll")
         assert "coll" not in f1.__dict__
 
+    def test_set_commited_value_none_uselist(self):
+        """test that set_committed_value->None to a uselist generates an
+        empty list """
+
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(
+            Foo, "col_list", uselist=True, useobject=True
+        )
+        attributes.register_attribute(
+            Foo, "col_set", uselist=True, useobject=True, typecallable=set
+        )
+
+        f1 = Foo()
+        attributes.set_committed_value(f1, "col_list", None)
+        eq_(f1.col_list, [])
+
+        attributes.set_committed_value(f1, "col_set", None)
+        eq_(f1.col_set, set())
+
     def test_initiator_arg(self):
         class Foo(object):
             pass
