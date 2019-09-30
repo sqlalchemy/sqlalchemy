@@ -3543,7 +3543,7 @@ class Query(object):
         # we get just "SELECT 1" without any entities.
         return sql.exists(
             self.enable_eagerloads(False)
-            .add_columns("1")
+            .add_columns(sql.literal_column("1"))
             .with_labels()
             .statement.with_only_columns([1])
         )
@@ -4477,6 +4477,12 @@ class _ColumnEntity(_QueryEntity):
         check_column = False
 
         if isinstance(column, util.string_types):
+            util.warn_deprecated(
+                "Plain string expression passed to Query() should be "
+                "explicitly declared using literal_column(); "
+                "automatic coercion of this value will be removed in "
+                "SQLAlchemy 1.4"
+            )
             column = sql.literal_column(column)
             self._label_name = column.name
             search_entities = False

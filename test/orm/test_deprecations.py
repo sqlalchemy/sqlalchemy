@@ -48,6 +48,7 @@ from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util.compat import pypy
 from . import _fixtures
 from .test_options import PathTest as OptionsPathTest
+from .test_query import QueryTest
 from .test_transaction import _LocalFixture
 
 
@@ -212,6 +213,73 @@ class DeprecationWarningsTest(fixtures.DeclarativeMappedTest):
             # that it be set to True, so we've changed the default here
             # so that the warning emits
             s.is_modified(f1, passive=True)
+
+
+class DeprecationQueryTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_textual_query_column(self):
+        s = Session()
+
+        with assertions.expect_deprecated(
+            r"Plain string expression passed to Query\(\) should be "
+            "explicitly "
+        ):
+            self.assert_compile(s.query("1"), "SELECT 1")
+
+    def test_as_column(self):
+        User = self.classes.User
+
+        s = Session()
+        with assertions.expect_deprecated(
+            r"Plain string expression passed to Query\(\) should be "
+            "explicitly "
+        ):
+            eq_(
+                s.query(User.id, "name").order_by(User.id).all(),
+                [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")],
+            )
+
+    def test_raw_columns(self):
+        addresses, users, User = (
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        (user7, user8, user9, user10) = sess.query(User).all()
+        expected = [
+            (user7, 1, "Name:jack"),
+            (user8, 3, "Name:ed"),
+            (user9, 1, "Name:fred"),
+            (user10, 0, "Name:chuck"),
+        ]
+
+        # test with a straight statement
+        s = select(
+            [
+                users,
+                func.count(addresses.c.id).label("count"),
+                ("Name:" + users.c.name).label("concat"),
+            ],
+            from_obj=[users.outerjoin(addresses)],
+            group_by=[c for c in users.c],
+            order_by=[users.c.id],
+        )
+        q = create_session().query(User)
+
+        with assertions.expect_deprecated(
+            r"Plain string expression passed to Query\(\) should be "
+            "explicitly "
+        ):
+            result = (
+                q.add_column("count")
+                .add_column("concat")
+                .from_statement(s)
+                .all()
+            )
+        assert result == expected
 
 
 class DeprecatedAccountingFlagsTest(_LocalFixture):

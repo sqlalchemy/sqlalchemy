@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4873
+
+    Passing a plain string expression to :meth:`.Session.query` is deprecated,
+    as all string coercions were removed in :ticket:`4481` and this one should
+    have been included.   The :func:`.literal_column` function may be used to
+    produce a textual column expression.
