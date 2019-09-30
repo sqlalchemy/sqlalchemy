@@ -4160,12 +4160,14 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         s = create_session()
+
+        # text() will work in 1.4
         assert_raises(
             sa_exc.InvalidRequestError, s.query, User.id, text("users.name")
         )
 
         eq_(
-            s.query(User.id, "name").order_by(User.id).all(),
+            s.query(User.id, literal_column("name")).order_by(User.id).all(),
             [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")],
         )
 

@@ -2270,7 +2270,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             .order_by(User.id)
         )
         q = sess.query(User)
-        result = q.add_column("count").from_statement(s).all()
+        result = q.add_column(literal_column("count")).from_statement(s).all()
         assert result == expected
 
     def test_raw_columns(self):
@@ -2315,7 +2315,10 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         )
         q = create_session().query(User)
         result = (
-            q.add_column("count").add_column("concat").from_statement(s).all()
+            q.add_column(literal_column("count"))
+            .add_column(literal_column("concat"))
+            .from_statement(s)
+            .all()
         )
         assert result == expected
 
