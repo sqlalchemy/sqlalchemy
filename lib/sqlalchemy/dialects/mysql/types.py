@@ -422,17 +422,22 @@ class TIME(sqltypes.TIME):
         time = datetime.time
 
         def process(value):
-            # convert from a timedelta value
             if value is not None:
-                microseconds = value.microseconds
-                seconds = value.seconds
-                minutes = seconds // 60
-                return time(
-                    minutes // 60,
-                    minutes % 60,
-                    seconds - minutes * 60,
-                    microsecond=microseconds,
-                )
+                if isinstance(value, datetime.timedelta):
+                    # convert timedelta value to datetime.time
+                    microseconds = value.microseconds
+                    seconds = value.seconds
+                    minutes = seconds // 60
+                    return time(
+                        minutes // 60,
+                        minutes % 60,
+                        seconds - minutes * 60,
+                        microsecond=microseconds,
+                    )
+                elif isinstance(value, datetime.time):
+                    return value
+                else:
+                    raise ValueError("Unexpected type: %s" % type(value))
             else:
                 return None
 
