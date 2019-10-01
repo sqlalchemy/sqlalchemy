@@ -183,7 +183,6 @@ class ColumnLoader(LoaderStrategy):
         memoized_populators,
         **kwargs
     ):
-
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]

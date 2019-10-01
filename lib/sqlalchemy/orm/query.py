@@ -774,6 +774,11 @@ class Query(Generative):
             )
         entity = self._entities[0]._clone()
         self._entities = [entity] + self._entities[1:]
+
+        # NOTE: we likely should set primary_entity here, however
+        # this hasn't been changed for many years and we'd like to
+        # deprecate this method.
+
         entity.set_with_polymorphic(
             self,
             cls_or_mappers,

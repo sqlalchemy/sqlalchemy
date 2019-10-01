@@ -37,6 +37,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Or
@@ -2483,6 +2484,63 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 {"param_1": sjb_id},
             ),
         )
+
+    def test_optimized_load_subclass_labels(self):
+        # test for issue #4718, however it may be difficult to maintain
+        # the conditions here:
+        # 1. optimized get is used to load some attributes
+        # 2. the subtable-only statement is generated
+        # 3. the mapper (a subclass mapper) is against a with_polymorphic
+        #    that is using a labeled select
+        #
+        # the optimized loader has to cancel out the polymorphic for the
+        # query (or adapt around it) since optimized get creates a simple
+        # SELECT statement.   Otherwise it often relies on _key_fallback
+        # columns in order to do the lookup.
+        #
+        # note this test can't fail when the fix is missing unless
+        # ResultProxy._key_fallback no longer allows a non-matching column
+        # lookup without warning or raising.
+
+        base, sub = self.tables.base, self.tables.sub
+
+        class Base(fixtures.ComparableEntity):
+            pass
+
+        class Sub(Base):
+            pass
+
+        mapper(
+            Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
+        )
+
+        mapper(
+            Sub,
+            sub,
+            inherits=Base,
+            polymorphic_identity="sub",
+            with_polymorphic=(
+                "*",
+                base.outerjoin(sub).select(use_labels=True).alias("foo"),
+            ),
+        )
+        sess = Session()
+        s1 = Sub(
+            data="s1data", sub="s1sub", subcounter=1, counter=1, subcounter2=1
+        )
+        sess.add(s1)
+        sess.flush()
+        sess.expire(s1, ["sub"])
+
+        def _key_fallback(self, key, raiseerr):
+            raise KeyError(key)
+
+        with mock.patch(
+            "sqlalchemy.engine.result.ResultMetaData._key_fallback",
+            _key_fallback,
+        ):
+
+            eq_(s1.sub, "s1sub")
 
     def test_optimized_passes(self):
         """"test that the 'optimized load' routine doesn't crash when

@@ -23,6 +23,7 @@ from . import strategy_options
 from .base import _DEFER_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .util import _none_set
+from .util import aliased
 from .util import state_str
 from .. import exc as sa_exc
 from .. import util
@@ -633,7 +634,6 @@ def _instance_processor(
     if mapper.polymorphic_map and not _polymorphic_from and not refresh_state:
         # if we are doing polymorphic, dispatch to a different _instance()
         # method specific to the subclass mapper
-
         def ensure_no_pk(row):
             identitykey = (
                 identity_class,
@@ -957,9 +957,10 @@ def load_scalar_attributes(mapper, state, attribute_names):
         # by default
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
+            wp = aliased(mapper, statement)
             result = load_on_ident(
-                session.query(mapper)
-                .options(strategy_options.Load(mapper).undefer("*"))
+                session.query(wp)
+                .options(strategy_options.Load(wp).undefer("*"))
                 .from_statement(statement),
                 None,
                 only_load_props=attribute_names,
