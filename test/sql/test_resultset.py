@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import csv
 import operator
 
 from sqlalchemy import CHAR
@@ -24,6 +25,7 @@ from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.engine import result as _result
+from sqlalchemy.engine import Row
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
@@ -32,6 +34,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import le_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import not_in_
@@ -39,6 +42,7 @@ from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import collections_abc
 
 
 class ResultProxyTest(fixtures.TablesTest):
@@ -1043,10 +1047,13 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(r["_row"], "Hidden row")
 
     def test_nontuple_row(self):
-        """ensure the C version of BaseRowProxy handles
-        duck-type-dependent rows."""
+        """ensure the C version of BaseRow handles
+        duck-type-dependent rows.
 
-        from sqlalchemy.engine import RowProxy
+
+        As of 1.4 they are converted internally to tuples in any case.
+
+        """
 
         class MyList(object):
             def __init__(self, data):
@@ -1058,11 +1065,11 @@ class ResultProxyTest(fixtures.TablesTest):
             def __getitem__(self, i):
                 return list.__getitem__(self.internal_list, i)
 
-        proxy = RowProxy(
+        proxy = Row(
             object(),
-            MyList(["value"]),
             [None],
-            {"key": (None, None, 0), 0: (None, None, 0)},
+            {"key": (0, None, "key"), 0: (0, None, "key")},
+            MyList(["value"]),
         )
         eq_(list(proxy), ["value"])
         eq_(proxy[0], "value")
@@ -1108,20 +1115,25 @@ class ResultProxyTest(fixtures.TablesTest):
             engine.execute(t.delete())
             eq_(len(mock_rowcount.__get__.mock_calls), 2)
 
-    def test_rowproxy_is_sequence(self):
-        from sqlalchemy.util import collections_abc
-        from sqlalchemy.engine import RowProxy
+    def test_row_is_sequence(self):
 
-        row = RowProxy(
-            object(),
-            ["value"],
-            [None],
-            {"key": (None, None, 0), 0: (None, None, 0)},
+        row = Row(
+            object(), [None], {"key": (None, 0), 0: (None, 0)}, ["value"]
         )
-        assert isinstance(row, collections_abc.Sequence)
+        is_true(isinstance(row, collections_abc.Sequence))
+
+    def test_row_is_hashable(self):
+
+        row = Row(
+            object(),
+            [None, None, None],
+            {"key": (None, 0), 0: (None, 0)},
+            (1, "value", "foo"),
+        )
+        eq_(hash(row), hash((1, "value", "foo")))
 
     @testing.provide_metadata
-    def test_rowproxy_getitem_indexes_compiled(self):
+    def test_row_getitem_indexes_compiled(self):
         values = Table(
             "rp",
             self.metadata,
@@ -1141,7 +1153,7 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(row[1:0:-1], ("Uno",))
 
     @testing.only_on("sqlite")
-    def test_rowproxy_getitem_indexes_raw(self):
+    def test_row_getitem_indexes_raw(self):
         row = testing.db.execute("select 'One' as key, 'Uno' as value").first()
         eq_(row["key"], "One")
         eq_(row["value"], "Uno")
@@ -1153,7 +1165,6 @@ class ResultProxyTest(fixtures.TablesTest):
 
     @testing.requires.cextensions
     def test_row_c_sequence_check(self):
-        import csv
 
         metadata = MetaData()
         metadata.bind = "sqlite://"

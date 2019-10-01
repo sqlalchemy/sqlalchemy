@@ -359,11 +359,6 @@ def _instance_processor(
     # call overhead.  _instance() is the most
     # performance-critical section in the whole ORM.
 
-    pk_cols = mapper.primary_key
-
-    if adapter:
-        pk_cols = [adapter.columns[c] for c in pk_cols]
-
     identity_class = mapper._identity_class
 
     populators = collections.defaultdict(list)
@@ -489,6 +484,12 @@ def _instance_processor(
     else:
         refresh_identity_key = None
 
+        pk_cols = mapper.primary_key
+
+        if adapter:
+            pk_cols = [adapter.columns[c] for c in pk_cols]
+        tuple_getter = result._tuple_getter(pk_cols, True)
+
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
     else:
@@ -508,11 +509,7 @@ def _instance_processor(
         else:
             # look at the row, see if that identity is in the
             # session, or we have to create a new one
-            identitykey = (
-                identity_class,
-                tuple([row[column] for column in pk_cols]),
-                identity_token,
-            )
+            identitykey = (identity_class, tuple_getter(row), identity_token)
 
             instance = session_identity_map.get(identitykey)
 
@@ -853,8 +850,10 @@ def _decorate_polymorphic_switch(
 
     polymorphic_instances = util.PopulateDict(configure_subclass_mapper)
 
+    getter = result._getter(polymorphic_on)
+
     def polymorphic_instance(row):
-        discriminator = row[polymorphic_on]
+        discriminator = getter(row)
         if discriminator is not None:
             _instance = polymorphic_instances[discriminator]
             if _instance:

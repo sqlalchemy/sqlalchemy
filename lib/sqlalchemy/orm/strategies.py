@@ -1382,20 +1382,20 @@ class SubqueryLoader(PostLoader):
 
         if self.uselist:
             self._create_collection_loader(
-                context, collections, local_cols, populators
+                context, result, collections, local_cols, populators
             )
         else:
             self._create_scalar_loader(
-                context, collections, local_cols, populators
+                context, result, collections, local_cols, populators
             )
 
     def _create_collection_loader(
-        self, context, collections, local_cols, populators
+        self, context, result, collections, local_cols, populators
     ):
+        tuple_getter = result._tuple_getter(local_cols)
+
         def load_collection_from_subq(state, dict_, row):
-            collection = collections.get(
-                tuple([row[col] for col in local_cols]), ()
-            )
+            collection = collections.get(tuple_getter(row), ())
             state.get_impl(self.key).set_committed_value(
                 state, dict_, collection
             )
@@ -1413,12 +1413,12 @@ class SubqueryLoader(PostLoader):
             populators["eager"].append((self.key, collections.loader))
 
     def _create_scalar_loader(
-        self, context, collections, local_cols, populators
+        self, context, result, collections, local_cols, populators
     ):
+        tuple_getter = result._tuple_getter(local_cols)
+
         def load_scalar_from_subq(state, dict_, row):
-            collection = collections.get(
-                tuple([row[col] for col in local_cols]), (None,)
-            )
+            collection = collections.get(tuple_getter(row), (None,))
             if len(collection) > 1:
                 util.warn(
                     "Multiple rows returned with "

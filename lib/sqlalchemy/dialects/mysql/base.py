@@ -2309,7 +2309,7 @@ class MySQLDialect(default.DefaultDialect):
         """Proxy result rows to smooth over MySQL-Python driver
         inconsistencies."""
 
-        return [_DecodingRowProxy(row, charset) for row in rp.fetchall()]
+        return [_DecodingRow(row, charset) for row in rp.fetchall()]
 
     def _compat_fetchone(self, rp, charset=None):
         """Proxy a result row to smooth over MySQL-Python driver
@@ -2317,7 +2317,7 @@ class MySQLDialect(default.DefaultDialect):
 
         row = rp.fetchone()
         if row:
-            return _DecodingRowProxy(row, charset)
+            return _DecodingRow(row, charset)
         else:
             return None
 
@@ -2327,7 +2327,7 @@ class MySQLDialect(default.DefaultDialect):
 
         row = rp.first()
         if row:
-            return _DecodingRowProxy(row, charset)
+            return _DecodingRow(row, charset)
         else:
             return None
 
@@ -2916,7 +2916,7 @@ class MySQLDialect(default.DefaultDialect):
         return rows
 
 
-class _DecodingRowProxy(object):
+class _DecodingRow(object):
     """Return unicode-decoded values based on type inspection.
 
     Smooth over data type issues (esp. with alpha driver versions) and

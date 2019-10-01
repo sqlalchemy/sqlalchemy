@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Define result set constructs including :class:`.ResultProxy`
-and :class:`.RowProxy."""
+and :class:`.Row."""
 
 
 import collections
@@ -17,7 +17,14 @@ from .. import util
 from ..sql import expression
 from ..sql import sqltypes
 from ..sql import util as sql_util
+from ..sql.compiler import RM_NAME
+from ..sql.compiler import RM_OBJECTS
+from ..sql.compiler import RM_RENDERED_NAME
+from ..sql.compiler import RM_TYPE
+from ..util.compat import collections_abc
 
+
+_UNPICKLED = util.symbol("unpickled")
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.
@@ -43,21 +50,27 @@ except ImportError:
 
 
 try:
-    from sqlalchemy.cresultproxy import BaseRowProxy
+    from sqlalchemy.cresultproxy import BaseRow
+    from sqlalchemy.cresultproxy import tuplegetter as _tuplegetter
 
-    _baserowproxy_usecext = True
+    _baserow_usecext = True
 except ImportError:
-    _baserowproxy_usecext = False
+    _baserow_usecext = False
 
-    class BaseRowProxy(object):
-        __slots__ = ("_parent", "_row", "_processors", "_keymap")
+    class BaseRow(object):
+        __slots__ = ("_parent", "_data", "_keymap")
 
-        def __init__(self, parent, row, processors, keymap):
-            """RowProxy objects are constructed by ResultProxy objects."""
+        def __init__(self, parent, processors, keymap, data):
+            """Row objects are constructed by ResultProxy objects."""
 
             self._parent = parent
-            self._row = row
-            self._processors = processors
+
+            self._data = tuple(
+                [
+                    proc(value) if proc else value
+                    for proc, value in zip(processors, data)
+                ]
+            )
             self._keymap = keymap
 
         def __reduce__(self):
@@ -66,63 +79,70 @@ except ImportError:
                 (self.__class__, self.__getstate__()),
             )
 
-        def values(self):
-            """Return the values represented by this RowProxy as a list."""
+        def _values_impl(self):
             return list(self)
 
         def __iter__(self):
-            for processor, value in zip(self._processors, self._row):
-                if processor is None:
-                    yield value
-                else:
-                    yield processor(value)
+            return iter(self._data)
 
         def __len__(self):
-            return len(self._row)
+            return len(self._data)
 
-        def __getitem__(self, key):
+        def __hash__(self):
+            return hash(self._data)
+
+        def _get_by_key_impl(self, key):
             try:
-                processor, obj, index = self._keymap[key]
+                rec = self._keymap[key]
             except KeyError:
-                processor, obj, index = self._parent._key_fallback(key)
+                rec = self._parent._key_fallback(key)
             except TypeError:
+                # the non-C version detects a slice using TypeError.
+                # this is pretty inefficient for the slice use case
+                # but is more efficient for the integer use case since we
+                # don't have to check it up front.
                 if isinstance(key, slice):
-                    l = []
-                    for processor, value in zip(
-                        self._processors[key], self._row[key]
-                    ):
-                        if processor is None:
-                            l.append(value)
-                        else:
-                            l.append(processor(value))
-                    return tuple(l)
+                    return tuple(self._data[key])
                 else:
                     raise
-            if index is None:
+            if rec[MD_INDEX] is None:
                 raise exc.InvalidRequestError(
                     "Ambiguous column name '%s' in "
-                    "result set column descriptions" % obj
+                    "result set column descriptions" % rec[MD_LOOKUP_KEY]
                 )
-            if processor is not None:
-                return processor(self._row[index])
-            else:
-                return self._row[index]
+
+            return self._data[rec[MD_INDEX]]
+
+        def _get_by_key_impl_mapping(self, key):
+            # the C code has two different methods so that we can distinguish
+            # between tuple-like keys (integers, slices) and mapping-like keys
+            # (strings, objects)
+            return self._get_by_key_impl(key)
 
         def __getattr__(self, name):
             try:
-                return self[name]
+                return self._get_by_key_impl_mapping(name)
             except KeyError as e:
                 raise AttributeError(e.args[0])
 
 
-class RowProxy(BaseRowProxy):
-    """Proxy values from a single cursor row.
+class Row(BaseRow, collections_abc.Sequence):
+    """Represent a single result row.
 
-    Mostly follows "ordered dictionary" behavior, mapping result
-    values to the string-based column name, the integer position of
-    the result in the row, as well as Column instances which can be
-    mapped to the original Columns that produced this result set (for
-    results that correspond to constructed SQL expressions).
+    The :class:`.Row` object seeks to act mostly like a Python named
+    tuple, but also provides for mapping-oriented access via the
+    :attr:`.Row._mapping` attribute.
+
+    .. seealso::
+
+        :ref:`coretutorial_selecting` - includes examples of selecting
+        rows from SELECT statements.
+
+    .. versionchanged 1.4::
+
+        Renamed ``RowProxy`` to :class:`.Row`.  :class:`.Row` is no longer a
+        "proxy" object in that it contains the final form of data within it.
+
     """
 
     __slots__ = ()
@@ -131,22 +151,21 @@ class RowProxy(BaseRowProxy):
         return self._parent._has_key(key)
 
     def __getstate__(self):
-        return {"_parent": self._parent, "_row": tuple(self)}
+        return {"_parent": self._parent, "_data": self._data}
 
     def __setstate__(self, state):
         self._parent = parent = state["_parent"]
-        self._row = state["_row"]
-        self._processors = parent._processors
+        self._data = state["_data"]
         self._keymap = parent._keymap
-
-    __hash__ = None
 
     def _op(self, other, op):
         return (
             op(tuple(self), tuple(other))
-            if isinstance(other, RowProxy)
+            if isinstance(other, Row)
             else op(tuple(self), other)
         )
+
+    __hash__ = BaseRow.__hash__
 
     def __lt__(self, other):
         return self._op(other, operator.lt)
@@ -170,9 +189,12 @@ class RowProxy(BaseRowProxy):
         return repr(sql_util._repr_row(self))
 
     def has_key(self, key):
-        """Return True if this RowProxy contains the given key."""
+        """Return True if this Row contains the given key."""
 
         return self._parent._has_key(key)
+
+    def __getitem__(self, key):
+        return self._get_by_key_impl(key)
 
     def items(self):
         """Return a list of tuples, each tuple containing a key/value pair."""
@@ -180,9 +202,9 @@ class RowProxy(BaseRowProxy):
         return [(key, self[key]) for key in self.keys()]
 
     def keys(self):
-        """Return the list of keys as strings represented by this RowProxy."""
+        """Return the list of keys as strings represented by this Row."""
 
-        return self._parent.keys
+        return [k for k in self._parent.keys if k is not None]
 
     def iterkeys(self):
         return iter(self._parent.keys)
@@ -190,13 +212,23 @@ class RowProxy(BaseRowProxy):
     def itervalues(self):
         return iter(self)
 
+    def values(self):
+        """Return the values represented by this Row as a list."""
+        return self._values_impl()
 
-try:
-    # Register RowProxy with Sequence,
-    # so sequence protocol is implemented
-    util.collections_abc.Sequence.register(RowProxy)
-except ImportError:
-    pass
+
+BaseRowProxy = BaseRow
+RowProxy = Row
+
+
+# metadata entry tuple indexes.
+# using raw tuple is faster than namedtuple.
+MD_INDEX = 0  # integer index in cursor.description
+MD_OBJECTS = 1  # other string keys and ColumnElement obj that can match
+MD_LOOKUP_KEY = 2  # string key we usually expect for key-based lookup
+MD_RENDERED_NAME = 3  # name that is usually in cursor.description
+MD_PROCESSOR = 4  # callable to process a result value into a row
+MD_UNTRANSLATED = 5  # raw name from cursor.description
 
 
 class ResultMetaData(object):
@@ -209,7 +241,6 @@ class ResultMetaData(object):
         "matched_on_name",
         "_processors",
         "keys",
-        "_orig_processors",
     )
 
     def __init__(self, parent, cursor_description):
@@ -217,12 +248,13 @@ class ResultMetaData(object):
         dialect = context.dialect
         self.case_sensitive = dialect.case_sensitive
         self.matched_on_name = False
-        self._orig_processors = None
 
         if context.result_column_struct:
-            result_columns, cols_are_ordered, textual_ordered = (
-                context.result_column_struct
-            )
+            (
+                result_columns,
+                cols_are_ordered,
+                textual_ordered,
+            ) = context.result_column_struct
             num_ctx_cols = len(result_columns)
         else:
             result_columns = (
@@ -241,9 +273,9 @@ class ResultMetaData(object):
         )
 
         self._keymap = {}
-        if not _baserowproxy_usecext:
+        if not _baserow_usecext:
             # keymap indexes by integer index: this is only used
-            # in the pure Python BaseRowProxy.__getitem__
+            # in the pure Python BaseRow.__getitem__
             # implementation to avoid an expensive
             # isinstance(key, util.int_types) in the most common
             # case path
@@ -251,19 +283,29 @@ class ResultMetaData(object):
             len_raw = len(raw)
 
             self._keymap.update(
-                [(elem[0], (elem[3], elem[4], elem[0])) for elem in raw]
+                [
+                    (metadata_entry[MD_INDEX], metadata_entry)
+                    for metadata_entry in raw
+                ]
                 + [
-                    (elem[0] - len_raw, (elem[3], elem[4], elem[0]))
-                    for elem in raw
+                    (metadata_entry[MD_INDEX] - len_raw, metadata_entry)
+                    for metadata_entry in raw
                 ]
             )
 
         # processors in key order for certain per-row
         # views like __iter__ and slices
-        self._processors = [elem[3] for elem in raw]
+        self._processors = [
+            metadata_entry[MD_PROCESSOR] for metadata_entry in raw
+        ]
 
         # keymap by primary string...
-        by_key = dict([(elem[2], (elem[3], elem[4], elem[0])) for elem in raw])
+        by_key = dict(
+            [
+                (metadata_entry[MD_LOOKUP_KEY], metadata_entry)
+                for metadata_entry in raw
+            ]
+        )
 
         # for compiled SQL constructs, copy additional lookup keys into
         # the key lookup map, such as Column objects, labels,
@@ -276,13 +318,13 @@ class ResultMetaData(object):
             # ambiguous column exception when accessed.
             if len(by_key) != num_ctx_cols:
                 seen = set()
-                for rec in raw:
-                    key = rec[1]
+                for metadata_entry in raw:
+                    key = metadata_entry[MD_RENDERED_NAME]
                     if key in seen:
                         # this is an "ambiguous" element, replacing
                         # the full record in the map
                         key = key.lower() if not self.case_sensitive else key
-                        by_key[key] = (None, key, None)
+                        by_key[key] = (None, (), key)
                     seen.add(key)
 
                 # copy secondary elements from compiled columns
@@ -290,10 +332,10 @@ class ResultMetaData(object):
                 # element
                 self._keymap.update(
                     [
-                        (obj_elem, by_key[elem[2]])
-                        for elem in raw
-                        if elem[4]
-                        for obj_elem in elem[4]
+                        (obj_elem, by_key[metadata_entry[MD_LOOKUP_KEY]])
+                        for metadata_entry in raw
+                        if metadata_entry[MD_OBJECTS]
+                        for obj_elem in metadata_entry[MD_OBJECTS]
                     ]
                 )
 
@@ -304,9 +346,9 @@ class ResultMetaData(object):
                 if not self.matched_on_name:
                     self._keymap.update(
                         [
-                            (elem[4][0], (elem[3], elem[4], elem[0]))
-                            for elem in raw
-                            if elem[4]
+                            (metadata_entry[MD_OBJECTS][0], metadata_entry)
+                            for metadata_entry in raw
+                            if metadata_entry[MD_OBJECTS]
                         ]
                     )
             else:
@@ -314,10 +356,10 @@ class ResultMetaData(object):
                 # columns into self._keymap
                 self._keymap.update(
                     [
-                        (obj_elem, (elem[3], elem[4], elem[0]))
-                        for elem in raw
-                        if elem[4]
-                        for obj_elem in elem[4]
+                        (obj_elem, metadata_entry)
+                        for metadata_entry in raw
+                        if metadata_entry[MD_OBJECTS]
+                        for obj_elem in metadata_entry[MD_OBJECTS]
                     ]
                 )
 
@@ -328,7 +370,14 @@ class ResultMetaData(object):
         # update keymap with "translated" names (sqlite-only thing)
         if not num_ctx_cols and context._translate_colname:
             self._keymap.update(
-                [(elem[5], self._keymap[elem[2]]) for elem in raw if elem[5]]
+                [
+                    (
+                        metadata_entry[MD_UNTRANSLATED],
+                        self._keymap[metadata_entry[MD_LOOKUP_KEY]],
+                    )
+                    for metadata_entry in raw
+                    if metadata_entry[MD_UNTRANSLATED]
+                ]
             )
 
     def _merge_cursor_description(
@@ -407,15 +456,19 @@ class ResultMetaData(object):
             return [
                 (
                     idx,
-                    key,
-                    name.lower() if not case_sensitive else name,
+                    rmap_entry[RM_OBJECTS],
+                    rmap_entry[RM_NAME].lower()
+                    if not case_sensitive
+                    else rmap_entry[RM_NAME],
+                    rmap_entry[RM_RENDERED_NAME],
                     context.get_result_processor(
-                        type_, key, cursor_description[idx][1]
+                        rmap_entry[RM_TYPE],
+                        rmap_entry[RM_RENDERED_NAME],
+                        cursor_description[idx][1],
                     ),
-                    obj,
                     None,
                 )
-                for idx, (key, name, obj, type_) in enumerate(result_columns)
+                for idx, rmap_entry in enumerate(result_columns)
             ]
         else:
             # name-based or text-positional cases, where we need
@@ -440,12 +493,12 @@ class ResultMetaData(object):
             return [
                 (
                     idx,
+                    obj,
                     colname,
                     colname,
                     context.get_result_processor(
                         mapped_type, colname, coltype
                     ),
-                    obj,
                     untranslated,
                 )
                 for (
@@ -520,8 +573,8 @@ class ResultMetaData(object):
         ) in self._colnames_from_description(context, cursor_description):
             if idx < num_ctx_cols:
                 ctx_rec = result_columns[idx]
-                obj = ctx_rec[2]
-                mapped_type = ctx_rec[3]
+                obj = ctx_rec[RM_OBJECTS]
+                mapped_type = ctx_rec[RM_TYPE]
                 if obj[0] in seen:
                     raise exc.InvalidRequestError(
                         "Duplicate column expression requested "
@@ -537,7 +590,9 @@ class ResultMetaData(object):
     def _merge_cols_by_name(self, context, cursor_description, result_columns):
         dialect = context.dialect
         case_sensitive = dialect.case_sensitive
-        result_map = self._create_result_map(result_columns, case_sensitive)
+        match_map = self._create_description_match_map(
+            result_columns, case_sensitive
+        )
 
         self.matched_on_name = True
         for (
@@ -547,7 +602,7 @@ class ResultMetaData(object):
             coltype,
         ) in self._colnames_from_description(context, cursor_description):
             try:
-                ctx_rec = result_map[colname]
+                ctx_rec = match_map[colname]
             except KeyError:
                 mapped_type = sqltypes.NULLTYPE
                 obj = None
@@ -566,10 +621,20 @@ class ResultMetaData(object):
             yield idx, colname, sqltypes.NULLTYPE, coltype, None, untranslated
 
     @classmethod
-    def _create_result_map(cls, result_columns, case_sensitive=True):
+    def _create_description_match_map(
+        cls, result_columns, case_sensitive=True
+    ):
+        """when matching cursor.description to a set of names that are present
+        in a Compiled object, as is the case with TextualSelect, get all the
+        names we expect might match those in cursor.description.
+        """
+
         d = {}
         for elem in result_columns:
-            key, rec = elem[0], elem[1:]
+            key, rec = (
+                elem[RM_RENDERED_NAME],
+                (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE]),
+            )
             if not case_sensitive:
                 key = key.lower()
             if key in d:
@@ -581,17 +646,16 @@ class ResultMetaData(object):
                 d[key] = e_name, e_obj + rec[1], e_type
             else:
                 d[key] = rec
+
         return d
 
     def _key_fallback(self, key, raiseerr=True):
         map_ = self._keymap
         result = None
+        # lowercase col support will be deprecated, at the
+        # create_engine() / dialect level
         if isinstance(key, util.string_types):
             result = map_.get(key if self.case_sensitive else key.lower())
-        # fallback for targeting a ColumnElement to a textual expression
-        # this is a rare use case which only occurs when matching text()
-        # or colummn('name') constructs to ColumnElements, or after a
-        # pickle/unpickle roundtrip
         elif isinstance(key, expression.ColumnElement):
             if (
                 key._label
@@ -610,12 +674,16 @@ class ResultMetaData(object):
                 result = map_[
                     key.name if self.case_sensitive else key.name.lower()
                 ]
+
             # search extra hard to make sure this
             # isn't a column/label name overlap.
             # this check isn't currently available if the row
             # was unpickled.
-            if result is not None and result[1] is not None:
-                for obj in result[1]:
+            if result is not None and result[MD_OBJECTS] not in (
+                None,
+                _UNPICKLED,
+            ):
+                for obj in result[MD_OBJECTS]:
                     if key._compare_name_for_result(obj):
                         break
                 else:
@@ -639,13 +707,14 @@ class ResultMetaData(object):
             return self._key_fallback(key, False) is not None
 
     def _getter(self, key, raiseerr=True):
-        if key in self._keymap:
-            processor, obj, index = self._keymap[key]
-        else:
-            ret = self._key_fallback(key, raiseerr)
-            if ret is None:
+        try:
+            rec = self._keymap[key]
+        except KeyError:
+            rec = self._key_fallback(key, raiseerr)
+            if rec is None:
                 return None
-            processor, obj, index = ret
+
+        index, obj = rec[0:2]
 
         if index is None:
             raise exc.InvalidRequestError(
@@ -653,29 +722,66 @@ class ResultMetaData(object):
                 "result set column descriptions" % obj
             )
 
-        return operator.itemgetter(index)
+        return operator.methodcaller("_get_by_key_impl", index)
+
+    def _tuple_getter(self, keys, raiseerr=True):
+        """Given a list of keys, return a callable that will deliver a tuple.
+
+        This is strictly used by the ORM and the keys are Column objects.
+        However, this might be some nice-ish feature if we could find a very
+        clean way of presenting it.
+
+        note that in the new world of "row._mapping", this is a mapping-getter.
+        maybe the name should indicate that somehow.
+
+
+        """
+        indexes = []
+        for key in keys:
+            try:
+                rec = self._keymap[key]
+            except KeyError:
+                rec = self._key_fallback(key, raiseerr)
+                if rec is None:
+                    return None
+
+            index, obj = rec[0:2]
+
+            if index is None:
+                raise exc.InvalidRequestError(
+                    "Ambiguous column name '%s' in "
+                    "result set column descriptions" % obj
+                )
+            indexes.append(index)
+
+        if _baserow_usecext:
+            return _tuplegetter(*indexes)
+        else:
+            return self._pure_py_tuplegetter(*indexes)
+
+    def _pure_py_tuplegetter(self, *indexes):
+        getters = [
+            operator.methodcaller("_get_by_key_impl", index)
+            for index in indexes
+        ]
+        return lambda rec: tuple(getter(rec) for getter in getters)
 
     def __getstate__(self):
         return {
-            "_pickled_keymap": dict(
-                (key, index)
-                for key, (processor, obj, index) in self._keymap.items()
+            "_keymap": {
+                key: (rec[MD_INDEX], _UNPICKLED, key)
+                for key, rec in self._keymap.items()
                 if isinstance(key, util.string_types + util.int_types)
-            ),
+            },
             "keys": self.keys,
             "case_sensitive": self.case_sensitive,
             "matched_on_name": self.matched_on_name,
         }
 
     def __setstate__(self, state):
-        # the row has been processed at pickling time so we don't need any
-        # processor anymore
         self._processors = [None for _ in range(len(state["keys"]))]
-        self._keymap = keymap = {}
-        for key, index in state["_pickled_keymap"].items():
-            # not preserving "obj" here, unfortunately our
-            # proxy comparison fails with the unpickle
-            keymap[key] = (None, None, index)
+        self._keymap = state["_keymap"]
+
         self.keys = state["keys"]
         self.case_sensitive = state["case_sensitive"]
         self.matched_on_name = state["matched_on_name"]
@@ -702,7 +808,7 @@ class ResultProxy(object):
 
     """
 
-    _process_row = RowProxy
+    _process_row = Row
     out_parameters = None
     _autoclose_connection = False
     _metadata = None
@@ -727,6 +833,14 @@ class ResultProxy(object):
         else:
             return getter(key, raiseerr)
 
+    def _tuple_getter(self, key, raiseerr=True):
+        try:
+            getter = self._metadata._tuple_getter
+        except AttributeError:
+            return self._non_result(None)
+        else:
+            return getter(key, raiseerr)
+
     def _has_key(self, key):
         try:
             has_key = self._metadata._has_key
@@ -745,6 +859,9 @@ class ResultProxy(object):
                 if self.context.compiled._cached_metadata:
                     self._metadata = self.context.compiled._cached_metadata
                 else:
+                    # TODO: what we hope to do here is have "Legacy" be
+                    # the default in 1.4 but a flag (somewhere?) will have it
+                    # use non-legacy. ORM should be able to use non-legacy
                     self._metadata = (
                         self.context.compiled._cached_metadata
                     ) = ResultMetaData(self, cursor_description)
@@ -1054,7 +1171,7 @@ class ResultProxy(object):
         """Return the values of default columns that were fetched using
         the :meth:`.ValuesBase.return_defaults` feature.
 
-        The value is an instance of :class:`.RowProxy`, or ``None``
+        The value is an instance of :class:`.Row`, or ``None``
         if :meth:`.ValuesBase.return_defaults` was not used or if the
         backend does not support RETURNING.
 
@@ -1178,16 +1295,17 @@ class ResultProxy(object):
         metadata = self._metadata
         keymap = metadata._keymap
         processors = metadata._processors
+
         if self._echo:
             log = self.context.engine.logger.debug
             l = []
             for row in rows:
                 log("Row %r", sql_util._repr_row(row))
-                l.append(process_row(metadata, row, processors, keymap))
+                l.append(process_row(metadata, processors, keymap, row))
             return l
         else:
             return [
-                process_row(metadata, row, processors, keymap) for row in rows
+                process_row(metadata, processors, keymap, row) for row in rows
             ]
 
     def fetchall(self):
@@ -1456,76 +1574,16 @@ class FullyBufferedResultProxy(ResultProxy):
         return ret
 
 
-class BufferedColumnRow(RowProxy):
-    def __init__(self, parent, row, processors, keymap):
-        # preprocess row
-        row = list(row)
-        # this is a tad faster than using enumerate
-        index = 0
-        for processor in parent._orig_processors:
-            if processor is not None:
-                row[index] = processor(row[index])
-            index += 1
-        row = tuple(row)
-        super(BufferedColumnRow, self).__init__(
-            parent, row, processors, keymap
-        )
+class BufferedColumnRow(Row):
+    """Row is now BufferedColumn in all cases"""
 
 
 class BufferedColumnResultProxy(ResultProxy):
     """A ResultProxy with column buffering behavior.
 
-    ``ResultProxy`` that loads all columns into memory each time
-    fetchone() is called.  If fetchmany() or fetchall() are called,
-    the full grid of results is fetched.  This is to operate with
-    databases where result rows contain "live" results that fall out
-    of scope unless explicitly fetched.
-
-    .. versionchanged:: 1.2  This :class:`.ResultProxy` is not used by
-       any SQLAlchemy-included dialects.
+    .. versionchanged:: 1.4   This is now the default behavior of the Row
+       and this class does not change behavior in any way.
 
     """
 
     _process_row = BufferedColumnRow
-
-    def _init_metadata(self):
-        super(BufferedColumnResultProxy, self)._init_metadata()
-
-        metadata = self._metadata
-
-        # don't double-replace the processors, in the case
-        # of a cached ResultMetaData
-        if metadata._orig_processors is None:
-            # orig_processors will be used to preprocess each row when
-            # they are constructed.
-            metadata._orig_processors = metadata._processors
-            # replace the all type processors by None processors.
-            metadata._processors = [None for _ in range(len(metadata.keys))]
-            keymap = {}
-            for k, (func, obj, index) in metadata._keymap.items():
-                keymap[k] = (None, obj, index)
-            metadata._keymap = keymap
-
-    def fetchall(self):
-        # can't call cursor.fetchall(), since rows must be
-        # fully processed before requesting more from the DBAPI.
-        l = []
-        while True:
-            row = self.fetchone()
-            if row is None:
-                break
-            l.append(row)
-        return l
-
-    def fetchmany(self, size=None):
-        # can't call cursor.fetchmany(), since rows must be
-        # fully processed before requesting more from the DBAPI.
-        if size is None:
-            return self.fetchall()
-        l = []
-        for i in range(size):
-            row = self.fetchone()
-            if row is None:
-                break
-            l.append(row)
-        return l
