@@ -1012,6 +1012,13 @@ def contains_eager(loadopt, attr, alias=None):
         if not isinstance(alias, str):
             info = inspect(alias)
             alias = info.selectable
+        else:
+            util.warn_deprecated(
+                "Passing a string name for the 'alias' argument to "
+                "'contains_eager()` is deprecated, and will not work in a "
+                "future release.  Please use a sqlalchemy.alias() or "
+                "sqlalchemy.orm.aliased() construct."
+            )
 
     elif getattr(attr, "_of_type", None):
         ot = inspect(attr._of_type)

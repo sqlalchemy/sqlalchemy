@@ -36,6 +36,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import joinedload
@@ -63,6 +64,7 @@ from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import collections_abc
 from test.orm import _fixtures
 
 
@@ -99,7 +101,7 @@ class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_true(self):
         User = self.classes.User
         row = create_session().query(User).only_return_tuples(True).first()
-        assert isinstance(row, tuple)
+        assert isinstance(row, collections_abc.Sequence)
 
     def test_multiple_entity_false(self):
         User = self.classes.User
@@ -109,7 +111,7 @@ class OnlyReturnTuplesTest(QueryTest):
             .only_return_tuples(False)
             .first()
         )
-        assert isinstance(row, tuple)
+        assert isinstance(row, collections_abc.Sequence)
 
     def test_multiple_entity_true(self):
         User = self.classes.User
@@ -119,7 +121,7 @@ class OnlyReturnTuplesTest(QueryTest):
             .only_return_tuples(True)
             .first()
         )
-        assert isinstance(row, tuple)
+        assert isinstance(row, collections_abc.Sequence)
 
 
 class RowTupleTest(QueryTest):
@@ -1762,7 +1764,9 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         )
 
         result = list(
-            session.query(User).instances(s.execute(emailad="jack@bean.com"))
+            session.query(User)
+            .params(emailad="jack@bean.com")
+            .from_statement(s)
         )
         eq_([User(id=7)], result)
 
@@ -4168,7 +4172,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
 class TextTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_fulltext(self):
+    def test_needs_text(self):
         User = self.classes.User
 
         assert_raises_message(
@@ -4177,6 +4181,9 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             create_session().query(User).from_statement,
             "select * from users order by id",
         )
+
+    def test_select_star(self):
+        User = self.classes.User
 
         eq_(
             create_session()
@@ -4194,6 +4201,97 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             .first(),
             None,
         )
+
+    def test_columns_mismatched(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter
+        User = self.classes.User
+
+        s = create_session()
+        q = s.query(User).from_statement(
+            text(
+                "select name, 27 as foo, id as users_id from users order by id"
+            )
+        )
+        eq_(
+            q.all(),
+            [
+                User(id=7, name="jack"),
+                User(id=8, name="ed"),
+                User(id=9, name="fred"),
+                User(id=10, name="chuck"),
+            ],
+        )
+
+    def test_columns_multi_table_uselabels(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session()
+        q = s.query(User, Address).from_statement(
+            text(
+                "select users.name AS users_name, users.id AS users_id, "
+                "addresses.id AS addresses_id FROM users JOIN addresses "
+                "ON users.id = addresses.user_id WHERE users.id=8 "
+                "ORDER BY addresses.id"
+            )
+        )
+
+        eq_(
+            q.all(),
+            [
+                (User(id=8), Address(id=2)),
+                (User(id=8), Address(id=3)),
+                (User(id=8), Address(id=4)),
+            ],
+        )
+
+    def test_columns_multi_table_uselabels_contains_eager(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session()
+        q = (
+            s.query(User)
+            .from_statement(
+                text(
+                    "select users.name AS users_name, users.id AS users_id, "
+                    "addresses.id AS addresses_id FROM users JOIN addresses "
+                    "ON users.id = addresses.user_id WHERE users.id=8 "
+                    "ORDER BY addresses.id"
+                )
+            )
+            .options(contains_eager(User.addresses))
+        )
+
+        def go():
+            r = q.all()
+            eq_(r[0].addresses, [Address(id=2), Address(id=3), Address(id=4)])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_other_eager_loads(self):
+        # this is new in 1.4.  with textclause, we build up column loaders
+        # normally, so that eager loaders also get installed.  previously,
+        # _compile_context() didn't build up column loaders and attempted
+        # to get them after the fact.
+        User = self.classes.User
+
+        s = create_session()
+        q = (
+            s.query(User)
+            .from_statement(text("select * from users ORDER BY users.id"))
+            .options(subqueryload(User.addresses))
+        )
+
+        def go():
+            eq_(q.all(), self.static.user_address_result)
+
+        self.assert_sql_count(testing.db, go, 2)
 
     def test_whereclause(self):
         User = self.classes.User
@@ -4231,7 +4329,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             "id in (:id1, :id2)",
         )
 
-    def test_as_column(self):
+    def test_plain_textual_column(self):
         User = self.classes.User
 
         s = create_session()

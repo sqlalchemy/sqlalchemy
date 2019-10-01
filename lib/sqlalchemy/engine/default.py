@@ -653,6 +653,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             compiled._result_columns,
             compiled._ordered_columns,
             compiled._textual_ordered_columns,
+            compiled._loose_column_name_matching,
         )
 
         self.unicode_statement = util.text_type(compiled)

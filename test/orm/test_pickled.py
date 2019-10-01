@@ -793,8 +793,6 @@ class TupleLabelTest(_fixtures.FixtureTest):
                 eq_(row.User, row[0])
                 eq_(row.orders, row[1])
 
-            # test here that first col is not labeled, only
-            # one name in keys, matches correctly
             for row in sess.query(User.name + "hoho", User.name):
                 eq_(list(row.keys()), ["name"])
                 eq_(row[0], row.name + "hoho")
