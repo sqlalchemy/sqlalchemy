@@ -664,11 +664,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 20, "param_2": 10},
         )
 
-    def test_long_labels(self):
+    def test_long_labels_legacy_ident_length(self):
         dialect = default.DefaultDialect()
         dialect.max_identifier_length = 30
 
-        ora_dialect = oracle.dialect()
+        ora_dialect = oracle.dialect(max_identifier_length=30)
 
         m = MetaData()
         a_table = Table(
