@@ -29,6 +29,7 @@ from .base import MySQLExecutionContext
 from .types import TIME
 from ... import util
 from ...connectors.pyodbc import PyODBCConnector
+from ...sql.sqltypes import Time
 
 
 class _pyodbcTIME(TIME):
@@ -50,7 +51,7 @@ class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
-    colspecs = util.update_copy(MySQLDialect.colspecs, {TIME: _pyodbcTIME})
+    colspecs = util.update_copy(MySQLDialect.colspecs, {Time: _pyodbcTIME})
     supports_unicode_statements = False
     execution_ctx_cls = MySQLExecutionContext_pyodbc
 
