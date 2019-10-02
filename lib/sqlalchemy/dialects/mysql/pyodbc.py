@@ -79,5 +79,18 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
         else:
             return None
 
+    def on_connect(self):
+        super_ = super(MySQLDialect_pyodbc, self).on_connect()
+
+        def on_connect(conn):
+            if super_ is not None:
+                super_(conn)
+
+            conn.setdecoding(1, encoding='utf-8')  # pyodbc.SQL_CHAR
+            conn.setdecoding(-8, encoding='utf-8')  # pyodbc.SQL_WCHAR
+            conn.setencoding(encoding='utf-8')
+
+        return on_connect
+
 
 dialect = MySQLDialect_pyodbc
