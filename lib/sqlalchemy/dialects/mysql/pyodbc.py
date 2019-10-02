@@ -40,7 +40,7 @@ class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
-    supports_unicode_statements = True
+    supports_unicode_statements = False
     execution_ctx_cls = MySQLExecutionContext_pyodbc
 
     pyodbc_driver_name = "MySQL"
