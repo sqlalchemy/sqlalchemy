@@ -15,17 +15,12 @@ which allows external dialects to be integrated into SQLAlchemy using
 standard setuptools entry points.  As of version 0.8, this system has
 been enhanced, so that a dialect can also be "plugged in" at runtime.
 
-On the testing side, SQLAlchemy as of 0.8 also includes a "dialect
-compliance suite" that is usable by third party libraries::
-
-    lib/sqlalchemy/testing/suite
-
-There is no longer a strong need for a new dialect to run through
-SQLAlchemy's full testing suite, as a large portion of these tests do
-not have dialect-sensitive functionality.  The "dialect compliance suite"
-should be viewed as the primary target for new dialects, and as it
-continues to grow and mature it should become a more thorough and
-efficient system of testing new dialects.
+On the testing side, SQLAlchemy includes a "dialect compliance
+suite" that is usable by third party libraries, in the source tree
+at ``lib/sqlalchemy/testing/suite``.   There's no need for a third party
+dialect to run through SQLAlchemy's full testing suite, as a large portion of
+these tests do not have dialect-sensitive functionality.  The "dialect
+compliance suite" should be viewed as the primary target for new dialects.
 
 
 Dialect Layout
@@ -174,18 +169,18 @@ Key aspects of this file layout include:
   That's all that's needed - the ``sqlalchemy.testing.suite`` package
   contains an ever expanding series of tests, most of which should be
   annotated with specific requirement decorators so that they can be
-  fully controlled. To specifically modify some of the tests, they can
-  be imported by name and subclassed::
+  fully controlled.  In the case that the decorators are not covering
+  a particular test, a test can also be directly modified or bypassed.
+  In the example below, the Access dialect test suite overrides the
+  ``get_huge_int()`` test::
 
       from sqlalchemy.testing.suite import *
 
       from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
 
       class IntegerTest(_IntegerTest):
-          @classmethod
-          def test_huge_int(cls):
-              # bypass this test because Access ODBC fails with
-              # [ODBC Microsoft Access Driver]Optional feature not implemented.
+          def test_huge_int(self):
+              # bypass test for feature unsupported by Access ODBC
               return
 
 Going Forward
