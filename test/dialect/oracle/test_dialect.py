@@ -164,6 +164,8 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect._check_unicode_description = Mock()
         dialect._get_default_schema_name = Mock()
         dialect._detect_decimal_char = Mock()
+        dialect.__check_max_identifier_length = Mock()
+        dialect._get_compat_server_version_info = Mock()
         return dialect
 
     def test_ora8_flags(self):

@@ -316,7 +316,15 @@ def create_engine(*args, **kwargs):
         the size of dynamically generated column labels to that many
         characters. If less than 6, labels are generated as
         "_(counter)". If ``None``, the value of
-        ``dialect.max_identifier_length`` is used instead.
+        ``dialect.max_identifier_length``, which may be affected via the
+        :paramref:`.create_engine.max_identifier_length` parameter,
+        is used instead.   The value of :paramref:`.create_engine.label_length`
+        may not be larger than that of
+        :paramref:`.create_engine.max_identfier_length`.
+
+        .. seealso::
+
+            :paramref:`.create_engine.max_identifier_length`
 
     :param listeners: A list of one or more
         :class:`~sqlalchemy.interfaces.PoolListener` objects which will
@@ -326,6 +334,21 @@ def create_engine(*args, **kwargs):
         the "name" field of logging records generated within the
         "sqlalchemy.engine" logger. Defaults to a hexstring of the
         object's id.
+
+    :param max_identifier_length: integer; override the max_identifier_length
+        determined by the dialect.  if ``None`` or zero, has no effect.  This
+        is the database's configured maximum number of characters that may be
+        used in a SQL identifier such as a table name, column name, or label
+        name. All dialects determine this value automatically, however in the
+        case of a new database version for which this value has changed but
+        SQLAlchemy's dialect has not been adjusted, the value may be passed
+        here.
+
+        .. versionadded:: 1.3.9
+
+        .. seealso::
+
+            :paramref:`.create_engine.label_length`
 
     :param max_overflow=10: the number of connections to allow in
         connection pool "overflow", that is connections that can be

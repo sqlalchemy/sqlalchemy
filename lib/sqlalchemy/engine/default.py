@@ -111,6 +111,7 @@ class DefaultDialect(interfaces.Dialect):
     # length at which to truncate
     # any identifier.
     max_identifier_length = 9999
+    _user_defined_max_identifier_length = None
 
     # length at which to truncate
     # the name of an index.
@@ -206,6 +207,7 @@ class DefaultDialect(interfaces.Dialect):
         case_sensitive=True,
         supports_native_boolean=None,
         empty_in_strategy="static",
+        max_identifier_length=None,
         label_length=None,
         **kwargs
     ):
@@ -250,11 +252,10 @@ class DefaultDialect(interfaces.Dialect):
                 "'dynamic', or 'dynamic_warn'"
             )
 
-        if label_length and label_length > self.max_identifier_length:
-            raise exc.ArgumentError(
-                "Label length of %d is greater than this dialect's"
-                " maximum identifier length of %d"
-                % (label_length, self.max_identifier_length)
+        self._user_defined_max_identifier_length = max_identifier_length
+        if self._user_defined_max_identifier_length:
+            self.max_identifier_length = (
+                self._user_defined_max_identifier_length
             )
         self.label_length = label_length
 
@@ -314,6 +315,21 @@ class DefaultDialect(interfaces.Dialect):
         ):
             self._description_decoder = self.description_encoding = None
 
+        if not self._user_defined_max_identifier_length:
+            max_ident_length = self._check_max_identifier_length(connection)
+            if max_ident_length:
+                self.max_identifier_length = max_ident_length
+
+        if (
+            self.label_length
+            and self.label_length > self.max_identifier_length
+        ):
+            raise exc.ArgumentError(
+                "Label length of %d is greater than this dialect's"
+                " maximum identifier length of %d"
+                % (self.label_length, self.max_identifier_length)
+            )
+
     def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 
@@ -324,6 +340,18 @@ class DefaultDialect(interfaces.Dialect):
         that receives the direct DBAPI connection, with all wrappers removed.
 
         If None is returned, no listener will be generated.
+
+        """
+        return None
+
+    def _check_max_identifier_length(self, connection):
+        """Perform a connection / server version specific check to determine
+        the max_identifier_length.
+
+        If the dialect's class level max_identifier_length should be used,
+        can return None.
+
+        .. versionadded:: 1.3.9
 
         """
         return None
