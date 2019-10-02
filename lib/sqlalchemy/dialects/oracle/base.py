@@ -67,6 +67,110 @@ against data dictionary data received from Oracle, so unless identifier names
 have been truly created as case sensitive (i.e. using quoted names), all
 lowercase names should be used on the SQLAlchemy side.
 
+.. _oracle_max_identifier_lengths:
+
+Max Identifier Lengths
+----------------------
+
+Oracle has changed the default max identifier length as of Oracle Server
+version 12.2.   Prior to this version, the length was 30, and for 12.2 and
+greater it is now 128.   This change impacts SQLAlchemy in the area of
+generated SQL label names as well as the generation of constraint names,
+particularly in the case where the constraint naming convention feature
+described at :ref:`constraint_naming_conventions` is being used.
+
+To assist with this change and others, Oracle includes the concept of a
+"compatibility" version, which is a version number that is independent of the
+actual server version in order to assist with migration of Oracle databases,
+and may be configured within the Oracle server itself. This compatibility
+version is retrieved using the query  ``SELECT value FROM v$parameter WHERE
+name = 'compatible';``.   The SQLAlchemy Oracle dialect as of version 1.3.9
+will use this query upon first connect in order to determine the effective
+compatibility version of the server, which determines what the maximum allowed
+identifier length is for the server.
+
+For the duration of the SQLAlchemy 1.3 series, the default max identifier
+length will remain at 30, even if compatibility version 12.2 or greater is in
+use.  When the newer version is detected, a warning will be emitted upon first
+connect, which refers the user to make use of the
+:paramref:`.create_engine.max_identifier_length` parameter in order to assure
+forwards compatibility with SQLAlchemy 1.4, which will be changing this value
+to 128 when compatibility version 12.2 or greater is detected.
+
+Using :paramref:`.create_engine.max_identifier_length`, the effective identifier
+length used by the SQLAlchemy dialect will be used as given, overriding the
+current default value of 30, so that when Oracle 12.2 or greater is used, the
+newer identifier length may be taken advantage of::
+
+    engine = create_engine(
+        "oracle+cx_oracle://scott:tiger@oracle122",
+        max_identifier_length=128)
+
+The maximum identifier length comes into play both when generating anonymized
+SQL labels in SELECT statements, but more crucially when generating constraint
+names from a naming convention.  It is this area that has created the need for
+SQLAlchemy to change this default conservatively.   For example, the following
+naming convention produces two very different constraint names based on the
+identifier length::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Index
+    from sqlalchemy import Integer
+    from sqlalchemy import MetaData
+    from sqlalchemy import Table
+    from sqlalchemy.dialects import oracle
+    from sqlalchemy.schema import CreateIndex
+
+    m = MetaData(naming_convention={"ix": "ix_%(column_0N_name)s"})
+
+    t = Table(
+        "t",
+        m,
+        Column("some_column_name_1", Integer),
+        Column("some_column_name_2", Integer),
+        Column("some_column_name_3", Integer),
+    )
+
+    ix = Index(
+        None,
+        t.c.some_column_name_1,
+        t.c.some_column_name_2,
+        t.c.some_column_name_3,
+    )
+
+    oracle_dialect = oracle.dialect(max_identifier_length=30)
+    print(CreateIndex(ix).compile(dialect=oracle_dialect))
+
+With an identifier length of 30, the above CREATE INDEX looks like::
+
+    CREATE INDEX ix_some_column_name_1s_70cd ON t
+    (some_column_name_1, some_column_name_2, some_column_name_3)
+
+However with length=128, it becomes::
+
+    CREATE INDEX ix_some_column_name_1some_column_name_2some_column_name_3 ON t
+    (some_column_name_1, some_column_name_2, some_column_name_3)
+
+The implication here is that by upgrading SQLAlchemy to version 1.4 on
+an existing Oracle 12.2 or greater database, the generation of constraint
+names will change, which can impact the behavior of database migrations.
+A key example is a migration that wishes to "DROP CONSTRAINT" on a name that
+was previously generated with the shorter length.  This migration will fail
+when the identifier length is changed without the name of the index or
+constraint first being adjusted.
+
+Therefore, applications are strongly advised to make use of
+:paramref:`.create_engine.max_identifier_length` in order to maintain control
+of the generation of truncated names, and to fully review and test all database
+migrations in a staging environment when changing this value to ensure that the
+impact of this change has been mitigated.
+
+
+.. versionadded:: 1.3.9 Added the
+   :paramref:`.create_engine.max_identifier_length` parameter; the Oracle
+   dialect now detects compatibility version 12.2 or greater and warns
+   about upcoming max identitifier length changes in SQLAlchemy 1.4.
+
 
 LIMIT/OFFSET Support
 --------------------
@@ -351,6 +455,7 @@ columns for non-unique indexes, all but the last column for unique indexes).
 from itertools import groupby
 import re
 
+from ... import exc
 from ... import schema as sa_schema
 from ... import sql
 from ... import types as sqltypes
@@ -1132,6 +1237,11 @@ class OracleDialect(default.DefaultDialect):
     supports_unicode_binds = False
     max_identifier_length = 30
 
+    # this should be set to
+    # "SELECT value FROM v$parameter WHERE name = 'compatible'"
+    # upon connect.
+    _compat_server_version_info = None
+
     supports_simple_order_by_label = False
     cte_follows_insert = True
 
@@ -1193,6 +1303,13 @@ class OracleDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
+
+        _compat_server_version_info = self._get_compat_server_version_info(
+            connection
+        )
+        if _compat_server_version_info is not None:
+            self._compat_server_version_info = _compat_server_version_info
+
         self.implicit_returning = self.__dict__.get(
             "implicit_returning", self.server_version_info > (10,)
         )
@@ -1201,6 +1318,21 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs = self.colspecs.copy()
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
+
+    def _get_compat_server_version_info(self, connection):
+        try:
+            return connection.execute(
+                "SELECT value FROM v$parameter WHERE name = 'compatible'"
+            ).scalar()
+        except exc.DBAPIError as err:
+            util.warn("Could not determine compatibility version: %s" % err)
+
+    @property
+    def _effective_compat_server_version_info(self):
+        if self._compat_server_version_info is not None:
+            return self._compat_server_version_info
+        else:
+            return self.server_version_info
 
     @property
     def _is_oracle_8(self):
@@ -1221,6 +1353,27 @@ class OracleDialect(default.DefaultDialect):
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass
+
+    def _check_max_identifier_length(self, connection):
+        if self._effective_compat_server_version_info >= (12, 2):
+            util.warn(
+                "Oracle compatibility version %r is known to have a maximum "
+                "identifier length of 128, rather than the historical default "
+                "of 30. SQLAlchemy 1.4 will use 128 for this "
+                "database; please set max_identifier_length=128 "
+                "in create_engine() in order to "
+                "test the application with this new length, or set to 30 in "
+                "order to assure that 30 continues to be used.  "
+                "In particular, pay close attention to the behavior of "
+                "database migrations as dynamically generated names may "
+                "change. See the section 'Max Identifier Lengths' in the "
+                "SQLAlchemy Oracle dialect documentation for background."
+                % ((self.server_version_info,))
+            )
+            return 128
+        else:
+            # use the default
+            return None
 
     def _check_unicode_returns(self, connection):
         additional_tests = [

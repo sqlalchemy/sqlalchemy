@@ -7,6 +7,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import type_coerce
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
@@ -18,13 +19,14 @@ from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import WrapsColumnExpression
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-
 
 IDENT_LENGTH = 29
 
@@ -46,7 +48,9 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _length_fixture(self, length=IDENT_LENGTH, positional=False):
         dialect = default.DefaultDialect()
-        dialect.max_identifier_length = length
+        dialect.max_identifier_length = (
+            dialect._user_defined_max_identifier_length
+        ) = length
         if positional:
             dialect.paramstyle = "format"
             dialect.positional = True
@@ -54,8 +58,125 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _engine_fixture(self, length=IDENT_LENGTH):
         eng = engines.testing_engine()
-        eng.dialect.max_identifier_length = length
+        eng.dialect.max_identifier_length = (
+            eng.dialect._user_defined_max_identifier_length
+        ) = length
         return eng
+
+    def test_label_length_raise_too_large(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={"label_length": max_ident_length + 10}
+        )
+        assert_raises_message(
+            exceptions.ArgumentError,
+            "Label length of %d is greater than this dialect's maximum "
+            "identifier length of %d"
+            % (max_ident_length + 10, max_ident_length),
+            eng.connect,
+        )
+
+    def test_label_length_custom_maxlen(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={
+                "label_length": max_ident_length + 10,
+                "max_identifier_length": max_ident_length + 20,
+            }
+        )
+        with eng.connect() as conn:
+            eq_(conn.dialect.max_identifier_length, max_ident_length + 20)
+
+    def test_label_length_custom_maxlen_dialect_only(self):
+        dialect = default.DefaultDialect(max_identifier_length=47)
+        eq_(dialect.max_identifier_length, 47)
+
+    def test_label_length_custom_maxlen_user_set_manually(self):
+        eng = engines.testing_engine()
+        eng.dialect.max_identifier_length = 47
+
+        # assume the dialect has no on-connect change
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=lambda conn: None,
+        ):
+            with eng.connect():
+                pass
+
+        # it was maintained
+        eq_(eng.dialect.max_identifier_length, 47)
+
+    def test_label_length_too_large_custom_maxlen(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={
+                "label_length": max_ident_length - 10,
+                "max_identifier_length": max_ident_length - 20,
+            }
+        )
+        assert_raises_message(
+            exceptions.ArgumentError,
+            "Label length of %d is greater than this dialect's maximum "
+            "identifier length of %d"
+            % (max_ident_length - 10, max_ident_length - 20),
+            eng.connect,
+        )
+
+    def test_custom_max_identifier_length(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={"max_identifier_length": max_ident_length + 20}
+        )
+        with eng.connect() as conn:
+            eq_(conn.dialect.max_identifier_length, max_ident_length + 20)
+
+    def test_max_identifier_length_onconnect(self):
+        eng = engines.testing_engine()
+
+        def _check_max_identifer_length(conn):
+            return 47
+
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=_check_max_identifer_length,
+        ) as mock_:
+            with eng.connect():
+                eq_(eng.dialect.max_identifier_length, 47)
+        eq_(mock_.mock_calls, [mock.call(mock.ANY)])
+
+    def test_max_identifier_length_onconnect_returns_none(self):
+        eng = engines.testing_engine()
+
+        max_ident_length = eng.dialect.max_identifier_length
+
+        def _check_max_identifer_length(conn):
+            return None
+
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=_check_max_identifer_length,
+        ) as mock_:
+            with eng.connect():
+                eq_(eng.dialect.max_identifier_length, max_ident_length)
+        eq_(mock_.mock_calls, [mock.call(mock.ANY)])
+
+    def test_custom_max_identifier_length_onconnect(self):
+        eng = engines.testing_engine(options={"max_identifier_length": 49})
+
+        def _check_max_identifer_length(conn):
+            return 47
+
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=_check_max_identifer_length,
+        ) as mock_:
+            with eng.connect():
+                eq_(eng.dialect.max_identifier_length, 49)
+        eq_(mock_.mock_calls, [])  # was not called
 
     def test_table_alias_1(self):
         self.assert_compile(
