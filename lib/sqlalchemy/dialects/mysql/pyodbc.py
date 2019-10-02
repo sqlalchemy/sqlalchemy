@@ -45,11 +45,6 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
 
     pyodbc_driver_name = "MySQL"
 
-    def __init__(self, **kw):
-        # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
-        kw.setdefault("convert_unicode", True)
-        super(MySQLDialect_pyodbc, self).__init__(**kw)
-
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 
