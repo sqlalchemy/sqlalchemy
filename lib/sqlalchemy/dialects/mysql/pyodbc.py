@@ -35,7 +35,7 @@ from ...sql.sqltypes import Time
 class _pyodbcTIME(TIME):
     def result_processor(self, dialect, coltype):
         def process(value):
-            # pyodbc already returns a datetime.time object, so no need to convert
+            # pyodbc returns a datetime.time object; no need to convert
             return value
 
         return process
