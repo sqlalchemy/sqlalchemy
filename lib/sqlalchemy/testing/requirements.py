@@ -173,6 +173,14 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def standalone_null_binds_whereclause(self):
+        """target database/driver supports bound parameters with NULL in the
+        WHERE clause, in situations where it has to be typed.
+
+        """
+        return exclusions.open()
+
+    @property
     def intersect(self):
         """Target database must support INTERSECT or equivalent."""
         return exclusions.closed()

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 4886
+
+    Restored adding cx_Oracle.DATETIME to the setinputsizes() call when a
+    SQLAlchemy :class:`.Date`, :class:`.DateTime` or :class:`.Time` datatype is
+    used, as some complex queries require this to be present.  This was removed
+    in the 1.2 series for arbitrary reasons.

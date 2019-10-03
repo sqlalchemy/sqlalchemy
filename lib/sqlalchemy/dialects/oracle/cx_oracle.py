@@ -782,6 +782,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 )
 
             self._include_setinputsizes = {
+                cx_Oracle.DATETIME,
                 cx_Oracle.NCLOB,
                 cx_Oracle.CLOB,
                 cx_Oracle.LOB,
