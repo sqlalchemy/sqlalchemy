@@ -321,40 +321,41 @@ class ResultMetaData(object):
             # dupe records with "None" for index which results in
             # ambiguous column exception when accessed.
             if len(by_key) != num_ctx_cols:
-                seen = set()
+                # new in 1.4: get the complete set of all possible keys,
+                # strings, objects, whatever, that are dupes across two
+                # different records, first.
+                index_by_key = {}
+                dupes = set()
                 for metadata_entry in raw:
-                    key = metadata_entry[MD_RENDERED_NAME]
-                    if key in seen:
-                        # this is an "ambiguous" element, replacing
-                        # the full record in the map
-                        key = key.lower() if not self.case_sensitive else key
-                        by_key[key] = (None, (), key)
-                    seen.add(key)
+                    for key in (metadata_entry[MD_RENDERED_NAME],) + (
+                        metadata_entry[MD_OBJECTS] or ()
+                    ):
+                        if not self.case_sensitive and isinstance(
+                            key, util.string_types
+                        ):
+                            key = key.lower()
+                        idx = metadata_entry[MD_INDEX]
+                        # if this key has been associated with more than one
+                        # positional index, it's a dupe
+                        if index_by_key.setdefault(key, idx) != idx:
+                            dupes.add(key)
 
-                # copy secondary elements from compiled columns
-                # into self._keymap, write in the potentially "ambiguous"
-                # element
+                # then put everything we have into the keymap excluding only
+                # those keys that are dupes.
                 self._keymap.update(
                     [
-                        (obj_elem, by_key[metadata_entry[MD_LOOKUP_KEY]])
+                        (obj_elem, metadata_entry)
                         for metadata_entry in raw
                         if metadata_entry[MD_OBJECTS]
                         for obj_elem in metadata_entry[MD_OBJECTS]
+                        if obj_elem not in dupes
                     ]
                 )
 
-                # if we did a pure positional match, then reset the
-                # original "expression element" back to the "unambiguous"
-                # entry.  This is a new behavior in 1.1 which impacts
-                # TextualSelect but also straight compiled SQL constructs.
-                if not self.matched_on_name:
-                    self._keymap.update(
-                        [
-                            (metadata_entry[MD_OBJECTS][0], metadata_entry)
-                            for metadata_entry in raw
-                            if metadata_entry[MD_OBJECTS]
-                        ]
-                    )
+                # then for the dupe keys, put the "ambiguous column"
+                # record into by_key.
+                by_key.update({key: (None, (), key) for key in dupes})
+
             else:
                 # no dupes - copy secondary elements from compiled
                 # columns into self._keymap
@@ -502,16 +503,16 @@ class ResultMetaData(object):
                 (
                     idx,
                     obj,
-                    colname,
-                    colname,
+                    cursor_colname,
+                    cursor_colname,
                     context.get_result_processor(
-                        mapped_type, colname, coltype
+                        mapped_type, cursor_colname, coltype
                     ),
                     untranslated,
                 )
                 for (
                     idx,
-                    colname,
+                    cursor_colname,
                     mapped_type,
                     coltype,
                     obj,
@@ -592,7 +593,6 @@ class ResultMetaData(object):
             else:
                 mapped_type = sqltypes.NULLTYPE
                 obj = None
-
             yield idx, colname, mapped_type, coltype, obj, untranslated
 
     def _merge_cols_by_name(
@@ -758,7 +758,7 @@ class ResultMetaData(object):
         if index is None:
             raise exc.InvalidRequestError(
                 "Ambiguous column name '%s' in "
-                "result set column descriptions" % obj
+                "result set column descriptions" % rec[MD_LOOKUP_KEY]
             )
 
         return operator.methodcaller("_get_by_key_impl", index)

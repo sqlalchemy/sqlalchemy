@@ -31,6 +31,7 @@ from sqlalchemy import Unicode
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
@@ -1743,6 +1744,38 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
 class ExpressionTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    def test_function_element_column_labels(self):
+        users = self.tables.users
+        sess = Session()
+
+        class max_(expression.FunctionElement):
+            name = "max"
+
+        @compiles(max_)
+        def visit_max(element, compiler, **kw):
+            return "max(%s)" % compiler.process(element.clauses, **kw)
+
+        q = sess.query(max_(users.c.id))
+        eq_(q.all(), [(10,)])
+
+    def test_truly_unlabeled_sql_expressions(self):
+        users = self.tables.users
+        sess = Session()
+
+        class not_named_max(expression.ColumnElement):
+            name = "not_named_max"
+
+        @compiles(not_named_max)
+        def visit_max(element, compiler, **kw):
+            return "max(id)"
+
+        # assert that there is no "AS max_" or any label of any kind.
+        eq_(str(select([not_named_max()])), "SELECT max(id)")
+
+        # ColumnElement still handles it by applying label()
+        q = sess.query(not_named_max()).select_from(users)
+        eq_(q.all(), [(10,)])
 
     def test_deferred_instances(self):
         User, addresses, Address = (
@@ -4340,6 +4373,11 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             s.query(User.id, text("users.name")),
             "SELECT users.id AS users_id, users.name FROM users",
+        )
+
+        eq_(
+            s.query(User.id, text("users.name")).all(),
+            [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")],
         )
 
         eq_(
