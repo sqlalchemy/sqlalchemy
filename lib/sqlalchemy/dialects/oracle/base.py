@@ -84,27 +84,21 @@ To assist with this change and others, Oracle includes the concept of a
 actual server version in order to assist with migration of Oracle databases,
 and may be configured within the Oracle server itself. This compatibility
 version is retrieved using the query  ``SELECT value FROM v$parameter WHERE
-name = 'compatible';``.   The SQLAlchemy Oracle dialect as of version 1.3.9
+name = 'compatible';``.   The SQLAlchemy Oracle dialect
 will use this query upon first connect in order to determine the effective
 compatibility version of the server, which determines what the maximum allowed
 identifier length is for the server.
 
-For the duration of the SQLAlchemy 1.3 series, the default max identifier
-length will remain at 30, even if compatibility version 12.2 or greater is in
-use.  When the newer version is detected, a warning will be emitted upon first
-connect, which refers the user to make use of the
-:paramref:`.create_engine.max_identifier_length` parameter in order to assure
-forwards compatibility with SQLAlchemy 1.4, which will be changing this value
-to 128 when compatibility version 12.2 or greater is detected.
-
-Using :paramref:`.create_engine.max_identifier_length`, the effective identifier
-length used by the SQLAlchemy dialect will be used as given, overriding the
-current default value of 30, so that when Oracle 12.2 or greater is used, the
-newer identifier length may be taken advantage of::
+As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialect
+is 128 characters.  Upon first connect, the compatibility version is detected
+and if it is less than Oracle version 12.2, the max identifier length is
+changed to be 30 characters.  In all cases, setting the
+:paramref:`.create_engine.max_identifier_length` parameter will bypass this
+change and the value given will be used as is::
 
     engine = create_engine(
         "oracle+cx_oracle://scott:tiger@oracle122",
-        max_identifier_length=128)
+        max_identifier_length=30)
 
 The maximum identifier length comes into play both when generating anonymized
 SQL labels in SELECT statements, but more crucially when generating constraint
@@ -151,25 +145,20 @@ However with length=128, it becomes::
     CREATE INDEX ix_some_column_name_1some_column_name_2some_column_name_3 ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
 
-The implication here is that by upgrading SQLAlchemy to version 1.4 on
-an existing Oracle 12.2 or greater database, the generation of constraint
-names will change, which can impact the behavior of database migrations.
-A key example is a migration that wishes to "DROP CONSTRAINT" on a name that
-was previously generated with the shorter length.  This migration will fail
-when the identifier length is changed without the name of the index or
-constraint first being adjusted.
-
-Therefore, applications are strongly advised to make use of
+Applications which have run versions of SQLAlchemy prior to 1.4 on an  Oracle
+server version 12.2 or greater are therefore subject to the scenario of a
+database migration that wishes to "DROP CONSTRAINT" on a name that was
+previously generated with the shorter length.  This migration will fail when
+the identifier length is changed without the name of the index or constraint
+first being adjusted.  Such applications are strongly advised to make use of
 :paramref:`.create_engine.max_identifier_length` in order to maintain control
 of the generation of truncated names, and to fully review and test all database
 migrations in a staging environment when changing this value to ensure that the
 impact of this change has been mitigated.
 
-
-.. versionadded:: 1.3.9 Added the
-   :paramref:`.create_engine.max_identifier_length` parameter; the Oracle
-   dialect now detects compatibility version 12.2 or greater and warns
-   about upcoming max identitifier length changes in SQLAlchemy 1.4.
+.. versionchanged:: 1.4 the default max_identifier_length for Oracle is 128
+   characters, which is adjusted down to 30 upon first connect if an older
+   version of Oracle server (compatibility version < 12.2) is detected.
 
 
 LIMIT/OFFSET Support
@@ -1235,7 +1224,7 @@ class OracleDialect(default.DefaultDialect):
     supports_alter = True
     supports_unicode_statements = False
     supports_unicode_binds = False
-    max_identifier_length = 30
+    max_identifier_length = 128
 
     # this should be set to
     # "SELECT value FROM v$parameter WHERE name = 'compatible'"
@@ -1355,22 +1344,8 @@ class OracleDialect(default.DefaultDialect):
         pass
 
     def _check_max_identifier_length(self, connection):
-        if self._effective_compat_server_version_info >= (12, 2):
-            util.warn(
-                "Oracle compatibility version %r is known to have a maximum "
-                "identifier length of 128, rather than the historical default "
-                "of 30. SQLAlchemy 1.4 will use 128 for this "
-                "database; please set max_identifier_length=128 "
-                "in create_engine() in order to "
-                "test the application with this new length, or set to 30 in "
-                "order to assure that 30 continues to be used.  "
-                "In particular, pay close attention to the behavior of "
-                "database migrations as dynamically generated names may "
-                "change. See the section 'Max Identifier Lengths' in the "
-                "SQLAlchemy Oracle dialect documentation for background."
-                % ((self.server_version_info,))
-            )
-            return 128
+        if self._effective_compat_server_version_info < (12, 2):
+            return 30
         else:
             # use the default
             return None
