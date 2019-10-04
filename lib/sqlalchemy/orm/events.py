@@ -1463,6 +1463,15 @@ class SessionEvents(event.Events):
         'dirty', and 'deleted' lists still show pre-flush state as well
         as the history settings on instance attributes.
 
+        .. warning:: This event runs after the :class:`.Session` has emitted
+           SQL to modify the database, but **before** it has altered its
+           internal state to reflect those changes, including that newly
+           inserted objects are placed into the identity map.  ORM operations
+           emitted within this event such as loads of related items
+           may produce new identity map entries that will immediately
+           be replaced, sometimes causing confusing results.  SQLAlchemy will
+           emit a warning for this condition as of version 1.3.9.
+
         :param session: The target :class:`.Session`.
         :param flush_context: Internal :class:`.UOWTransaction` object
          which handles the details of the flush.

@@ -125,10 +125,13 @@ class WeakInstanceDict(IdentityMap):
                 if existing is not state:
                     self._manage_removed_state(existing)
                 else:
-                    return
+                    return None
+        else:
+            existing = None
 
         self._dict[state.key] = state
         self._manage_incoming_state(state)
+        return existing
 
     def add(self, state):
         key = state.key
@@ -297,9 +300,12 @@ class StrongInstanceDict(IdentityMap):
                 self._manage_removed_state(existing)
             else:
                 return
+        else:
+            existing = None
 
         self._dict[state.key] = state.obj()
         self._manage_incoming_state(state)
+        return existing
 
     def add(self, state):
         if state.key in self:
