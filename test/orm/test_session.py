@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import Sequence
 from sqlalchemy import String
@@ -650,6 +651,53 @@ class SessionStateTest(_fixtures.FixtureTest):
                 s.identity_map.add,
                 sa.orm.attributes.instance_state(u2),
             )
+
+    def test_internal_identity_conflict_warning_weak(self):
+        self._test_internal_identity_conflict_warning(True)
+
+    def test_internal_identity_conflict_warning_strong(self):
+        self._test_internal_identity_conflict_warning(False)
+
+    def _test_internal_identity_conflict_warning(self, weak_identity_map):
+        # test for issue #4890
+        # see also test_naturalpks::ReversePKsTest::test_reverse
+        users, User = self.tables.users, self.classes.User
+        addresses, Address = self.tables.addresses, self.classes.Address
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        with testing.expect_deprecated():
+            session = Session(weak_identity_map=weak_identity_map)
+
+        @event.listens_for(session, "after_flush")
+        def load_collections(session, flush_context):
+            for target in set(session.new).union(session.dirty):
+                if isinstance(target, User):
+                    target.addresses
+
+        u1 = User(name="u1")
+        a1 = Address(email_address="e1", user=u1)
+        session.add_all([u1, a1])
+        session.flush()
+
+        session.expire_all()
+
+        # create new Address via backref, so that u1.addresses remains
+        # expired and a2 is in pending mutations
+        a2 = Address(email_address="e2", user=u1)
+        assert "addresses" not in inspect(u1).dict
+        assert a2 in inspect(u1)._pending_mutations["addresses"].added_items
+
+        with assertions.expect_warnings(
+            r"Identity map already had an identity "
+            r"for \(.*Address.*\), replacing"
+        ):
+            session.flush()
 
     def test_pickled_update(self):
         users, User = self.tables.users, pickleable.User

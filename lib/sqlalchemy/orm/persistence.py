@@ -1082,7 +1082,6 @@ def _emit_insert_statements(
             multiparams = [rec[2] for rec in records]
 
             c = cached_connections[connection].execute(statement, multiparams)
-
             if bookkeeping:
                 for (
                     (

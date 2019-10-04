@@ -1882,7 +1882,18 @@ class Session(_SessionClassMethods):
                 # there can be an existing state in the identity map
                 # that is replaced when the primary keys of two instances
                 # are swapped; see test/orm/test_naturalpks.py -> test_reverse
-                self.identity_map.replace(state)
+                old = self.identity_map.replace(state)
+                if (
+                    old is not None
+                    and mapper._identity_key_from_state(old) == instance_key
+                    and old.obj() is not None
+                ):
+                    util.warn(
+                        "Identity map already had an identity for %s, "
+                        "replacing it with newly flushed object.   Are there "
+                        "load operations occurring inside of an event handler "
+                        "within the flush?" % (instance_key,)
+                    )
                 state._orphaned_outside_of_session = False
 
         statelib.InstanceState._commit_all_states(
