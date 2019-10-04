@@ -23,6 +23,7 @@
 """
 
 import re
+import sys
 
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
@@ -86,9 +87,19 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             if super_ is not None:
                 super_(conn)
 
-            conn.setdecoding(1, encoding='utf-8')  # pyodbc.SQL_CHAR
-            conn.setdecoding(-8, encoding='utf-8')  # pyodbc.SQL_WCHAR
-            conn.setencoding(encoding='utf-8')
+            # declare Unicode encoding for pyodbc as per
+            #   https://github.com/mkleehammer/pyodbc/wiki/Unicode
+            pyodbc_SQL_CHAR = 1  # pyodbc.SQL_CHAR
+            pyodbc_SQL_WCHAR = -8  # pyodbc.SQL_WCHAR
+            if sys.version_info.major > 2:
+                conn.setdecoding(pyodbc_SQL_CHAR, encoding='utf-8')
+                conn.setdecoding(pyodbc_SQL_WCHAR, encoding='utf-8')
+                conn.setencoding(encoding='utf-8')
+            else:
+                conn.setdecoding(pyodbc_SQL_CHAR, encoding='utf-8')
+                conn.setdecoding(pyodbc_SQL_WCHAR, encoding='utf-8')
+                conn.setencoding(str, encoding='utf-8')
+                conn.setencoding(unicode, encoding='utf-8')
 
         return on_connect
 
