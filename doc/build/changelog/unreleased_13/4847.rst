@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, sql
-    :tickets: 4847
-
-    Added an explicit error message for the case when objects passed to
-    :class:`.Table` are not :class:`.SchemaItem` objects, rather than resolving
-    to an attribute error.
-
