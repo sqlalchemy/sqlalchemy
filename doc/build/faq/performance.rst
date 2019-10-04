@@ -89,7 +89,7 @@ For that you need to use the
 Below is a simple recipe which works profiling into a context manager::
 
     import cProfile
-    import StringIO
+    import io
     import pstats
     import contextlib
 
@@ -99,7 +99,7 @@ Below is a simple recipe which works profiling into a context manager::
         pr.enable()
         yield
         pr.disable()
-        s = StringIO.StringIO()
+        s = io.StringIO()
         ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
         ps.print_stats()
         # uncomment this to see who's calling what
