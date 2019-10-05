@@ -4449,7 +4449,10 @@ class TextualSelect(SelectBase):
 
     def __init__(self, text, columns, positional=False):
         self.element = text
-        self.column_args = columns
+        # convert for ORM attributes->columns, etc
+        self.column_args = [
+            coercions.expect(roles.ColumnsClauseRole, c) for c in columns
+        ]
         self.positional = positional
 
     @SelectBase._memoized_property

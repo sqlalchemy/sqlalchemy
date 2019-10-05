@@ -4278,7 +4278,13 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
                 label = quoted_name(label, t.name.quote)
 
             # ensure the label name doesn't conflict with that
-            # of an existing column
+            # of an existing column.   note that this implies that any
+            # Column must **not** set up its _label before its parent table
+            # has all of its other Column objects set up.  There are several
+            # tables in the test suite which will fail otherwise; example:
+            # table "owner" has columns "name" and "owner_name".  Therefore
+            # column owner.name cannot use the label "owner_name", it has
+            # to be "owner_name_1".
             if label in t.c:
                 _label = label
                 counter = 1
@@ -4339,7 +4345,6 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
         c._proxies = [self]
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
-
         return c.key, c
 
 

@@ -1783,6 +1783,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
     def returning_clause(self, stmt, returning_cols):
+        # SQL server returning clause requires that the columns refer to
+        # the virtual table names "inserted" or "deleted".   Here, we make
+        # a simple alias of our table with that name, and then adapt the
+        # columns we have from the list of RETURNING columns to that new name
+        # so that they render as "inserted.<colname>" / "deleted.<colname>".
 
         if self.isinsert or self.isupdate:
             target = stmt.table.alias("inserted")
@@ -1791,9 +1796,21 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
         adapter = sql_util.ClauseAdapter(target)
 
+        # adapter.traverse() takes a column from our target table and returns
+        # the one that is linked to the "inserted" / "deleted" tables.  So  in
+        # order to retrieve these values back from the result  (e.g. like
+        # row[column]), tell the compiler to also add the original unadapted
+        # column to the result map.   Before #4877, these were  (unknowingly)
+        # falling back using string name matching in the result set which
+        # necessarily used an expensive KeyError in order to match.
+
         columns = [
             self._label_select_column(
-                None, adapter.traverse(c), True, False, {}
+                None,
+                adapter.traverse(c),
+                True,
+                False,
+                {"result_map_targets": (c,)},
             )
             for c in expression._select_iterables(returning_cols)
         ]

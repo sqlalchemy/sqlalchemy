@@ -4466,8 +4466,8 @@ class ResultMapTest(fixtures.TestBase):
         eq_(
             comp._create_result_map(),
             {
-                "a": ("a", (t.c.a, "a", "a"), t.c.a.type),
-                "b": ("b", (t.c.b, "b", "b"), t.c.b.type),
+                "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type),
+                "b": ("b", (t.c.b, "b", "b", "t_b"), t.c.b.type),
             },
         )
 
@@ -4478,7 +4478,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile()
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (t.c.a, "a", "a"), t.c.a.type)},
+            {"a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type)},
         )
 
     def test_compound_only_top_populates(self):
@@ -4487,7 +4487,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile()
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (t.c.a, "a", "a"), t.c.a.type)},
+            {"a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type)},
         )
 
     def test_label_plus_element(self):
@@ -4500,7 +4500,7 @@ class ResultMapTest(fixtures.TestBase):
         eq_(
             comp._create_result_map(),
             {
-                "a": ("a", (t.c.a, "a", "a"), t.c.a.type),
+                "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type),
                 "bar": ("bar", (l1, "bar"), l1.type),
                 "anon_1": (
                     tc.anon_label,
@@ -4541,7 +4541,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (aint, "a", "a"), aint.type)},
+            {"a": ("a", (aint, "a", "a", "t2_a"), aint.type)},
         )
 
     def test_insert_from_select(self):
@@ -4557,7 +4557,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (aint, "a", "a"), aint.type)},
+            {"a": ("a", (aint, "a", "a", "t2_a"), aint.type)},
         )
 
     def test_nested_api(self):
@@ -4596,12 +4596,22 @@ class ResultMapTest(fixtures.TestBase):
             {
                 "otherid": (
                     "otherid",
-                    (table2.c.otherid, "otherid", "otherid"),
+                    (
+                        table2.c.otherid,
+                        "otherid",
+                        "otherid",
+                        "myothertable_otherid",
+                    ),
                     table2.c.otherid.type,
                 ),
                 "othername": (
                     "othername",
-                    (table2.c.othername, "othername", "othername"),
+                    (
+                        table2.c.othername,
+                        "othername",
+                        "othername",
+                        "myothertable_othername",
+                    ),
                     table2.c.othername.type,
                 ),
                 "k1": ("k1", (1, 2, 3), int_),
@@ -4612,18 +4622,23 @@ class ResultMapTest(fixtures.TestBase):
             {
                 "myid": (
                     "myid",
-                    (table1.c.myid, "myid", "myid"),
+                    (table1.c.myid, "myid", "myid", "mytable_myid"),
                     table1.c.myid.type,
                 ),
                 "k2": ("k2", (3, 4, 5), int_),
                 "name": (
                     "name",
-                    (table1.c.name, "name", "name"),
+                    (table1.c.name, "name", "name", "mytable_name"),
                     table1.c.name.type,
                 ),
                 "description": (
                     "description",
-                    (table1.c.description, "description", "description"),
+                    (
+                        table1.c.description,
+                        "description",
+                        "description",
+                        "mytable_description",
+                    ),
                     table1.c.description.type,
                 ),
             },

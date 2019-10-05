@@ -490,6 +490,13 @@ class SQLCompiler(Compiled):
     True unless using an unordered TextualSelect.
     """
 
+    _loose_column_name_matching = False
+    """tell the result object that the SQL staement is textual, wants to match
+    up to Column objects, and may be using the ._label in the SELECT rather
+    than the base name.
+
+    """
+
     _numeric_binds = False
     """
     True if paramstyle is "numeric".  This paramstyle is trickier than
@@ -799,6 +806,7 @@ class SQLCompiler(Compiled):
         within_label_clause=False,
         within_columns_clause=False,
         render_label_as_label=None,
+        result_map_targets=(),
         **kw
     ):
         # only render labels within the columns clause
@@ -820,7 +828,7 @@ class SQLCompiler(Compiled):
                 add_to_result_map(
                     labelname,
                     label.name,
-                    (label, labelname) + label._alt_names,
+                    (label, labelname) + label._alt_names + result_map_targets,
                     label.type,
                 )
 
@@ -847,7 +855,12 @@ class SQLCompiler(Compiled):
         )
 
     def visit_column(
-        self, column, add_to_result_map=None, include_table=True, **kwargs
+        self,
+        column,
+        add_to_result_map=None,
+        include_table=True,
+        result_map_targets=(),
+        **kwargs
     ):
         name = orig_name = column.name
         if name is None:
@@ -859,7 +872,10 @@ class SQLCompiler(Compiled):
 
         if add_to_result_map is not None:
             add_to_result_map(
-                name, orig_name, (column, name, column.key), column.type
+                name,
+                orig_name,
+                (column, name, column.key, column._label) + result_map_targets,
+                column.type,
             )
 
         if is_literal:
@@ -948,6 +964,13 @@ class SQLCompiler(Compiled):
             self._ordered_columns = (
                 self._textual_ordered_columns
             ) = taf.positional
+
+            # enable looser result column matching when the SQL text links to
+            # Column objects by name only
+            self._loose_column_name_matching = not taf.positional and bool(
+                taf.column_args
+            )
+
             for c in taf.column_args:
                 self.process(
                     c,

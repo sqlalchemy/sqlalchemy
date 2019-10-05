@@ -427,12 +427,12 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             {
                 "id": (
                     "id",
-                    (t.selected_columns.id, "id", "id"),
+                    (t.selected_columns.id, "id", "id", "id"),
                     t.selected_columns.id.type,
                 ),
                 "name": (
                     "name",
-                    (t.selected_columns.name, "name", "name"),
+                    (t.selected_columns.name, "name", "name", "name"),
                     t.selected_columns.name.type,
                 ),
             },
@@ -447,12 +447,12 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             {
                 "id": (
                     "id",
-                    (t.selected_columns.id, "id", "id"),
+                    (t.selected_columns.id, "id", "id", "id"),
                     t.selected_columns.id.type,
                 ),
                 "name": (
                     "name",
-                    (t.selected_columns.name, "name", "name"),
+                    (t.selected_columns.name, "name", "name", "name"),
                     t.selected_columns.name.type,
                 ),
             },
@@ -474,7 +474,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             {
                 "myid": (
                     "myid",
-                    (table1.c.myid, "myid", "myid"),
+                    (table1.c.myid, "myid", "myid", "mytable_myid"),
                     table1.c.myid.type,
                 )
             },

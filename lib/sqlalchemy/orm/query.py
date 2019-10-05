@@ -3159,12 +3159,6 @@ class Query(Generative):
 
         """
         statement = coercions.expect(roles.SelectStatementRole, statement)
-
-        # TODO: coercions above should have this handled
-        assert isinstance(
-            statement, (expression.TextClause, expression.SelectBase)
-        )
-
         self._statement = statement
 
     def first(self):
@@ -3395,21 +3389,21 @@ class Query(Generative):
             ]
         ]
 
-    def instances(self, cursor, __context=None):
-        """Given a ResultProxy cursor as returned by connection.execute(),
-        return an ORM result as an iterator.
+    def instances(self, result_proxy, context=None):
+        """Return an ORM result given a :class:`.ResultProxy` and
+        :class:`.QueryContext`.
 
-        e.g.::
-
-            result = engine.execute("select * from users")
-            for u in session.query(User).instances(result):
-                print u
         """
-        context = __context
         if context is None:
+            util.warn_deprecated(
+                "Using the Query.instances() method without a context "
+                "is deprecated and will be disallowed in a future release.  "
+                "Please make use of :meth:`.Query.from_statement` "
+                "for linking ORM results to arbitrary select constructs."
+            )
             context = QueryContext(self)
 
-        return loading.instances(self, cursor, context)
+        return loading.instances(self, result_proxy, context)
 
     def merge_result(self, iterator, load=True):
         """Merge a result into this :class:`.Query` object's Session.
@@ -3824,6 +3818,22 @@ class Query(Generative):
         context = QueryContext(self)
 
         if context.statement is not None:
+            if isinstance(context.statement, expression.TextClause):
+                # setup for all entities, including contains_eager entities.
+                for entity in self._entities:
+                    entity.setup_context(self, context)
+                context.statement = expression.TextualSelect(
+                    context.statement,
+                    context.primary_columns,
+                    positional=False,
+                )
+            else:
+                # allow TextualSelect with implicit columns as well
+                # as select() with ad-hoc columns, see test_query::TextTest
+                self._from_obj_alias = sql.util.ColumnAdapter(
+                    context.statement, adapt_on_names=True
+                )
+
             return context
 
         context.labels = not for_statement or self._with_labels
@@ -4603,7 +4613,9 @@ class _ColumnEntity(_QueryEntity):
         if ("fetch_column", self) in context.attributes:
             column = context.attributes[("fetch_column", self)]
         else:
-            column = query._adapt_clause(self.column, False, True)
+            column = self.column
+            if query._from_obj_alias:
+                column = query._from_obj_alias.columns[column]
 
         if column._annotations:
             # annotated columns perform more slowly in compiler and
@@ -4697,6 +4709,7 @@ class QueryContext(object):
                 self.statement = query._statement.apply_labels()
             else:
                 self.statement = query._statement
+            self.order_by = None
         else:
             self.statement = None
             self.from_clause = query._from_obj

@@ -26,6 +26,7 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.engine import result as _result
 from sqlalchemy.engine import Row
+from sqlalchemy.sql.selectable import TextualSelect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
@@ -192,29 +193,16 @@ class ResultProxyTest(fixtures.TablesTest):
         row = testing.db.execute(content.select(use_labels=True)).first()
         in_(content.c.type, row)
         not_in_(bar.c.content_type, row)
-        in_(sql.column("content_type"), row)
-
-        row = testing.db.execute(
-            select([content.c.type.label("content_type")])
-        ).first()
-        in_(content.c.type, row)
-
-        not_in_(bar.c.content_type, row)
-
-        in_(sql.column("content_type"), row)
 
         row = testing.db.execute(
             select([func.now().label("content_type")])
         ).first()
+
         not_in_(content.c.type, row)
-
         not_in_(bar.c.content_type, row)
-
-        in_(sql.column("content_type"), row)
 
     def test_pickled_rows(self):
         users = self.tables.users
-        addresses = self.tables.addresses
 
         users.insert().execute(
             {"user_id": 7, "user_name": "jack"},
@@ -246,25 +234,9 @@ class ResultProxyTest(fixtures.TablesTest):
                     eq_(list(result[0].keys()), ["user_id", "user_name"])
 
                 eq_(result[0][0], 7)
-                eq_(result[0][users.c.user_id], 7)
-                eq_(result[0][users.c.user_name], "jack")
-
-                if not pickle or use_labels:
-                    assert_raises(
-                        exc.NoSuchColumnError,
-                        lambda: result[0][addresses.c.user_id],
-                    )
-                else:
-                    # test with a different table.  name resolution is
-                    # causing 'user_id' to match when use_labels wasn't used.
-                    eq_(result[0][addresses.c.user_id], 7)
 
                 assert_raises(
                     exc.NoSuchColumnError, lambda: result[0]["fake key"]
-                )
-                assert_raises(
-                    exc.NoSuchColumnError,
-                    lambda: result[0][addresses.c.address_id],
                 )
 
     def test_column_error_printing(self):
@@ -350,11 +322,9 @@ class ResultProxyTest(fixtures.TablesTest):
 
         eq_(r.user_id, 2)
         eq_(r["user_id"], 2)
-        eq_(r[users.c.user_id], 2)
 
         eq_(r.user_name, "jack")
         eq_(r["user_name"], "jack")
-        eq_(r[users.c.user_name], "jack")
 
     def test_column_accessor_textual_select(self):
         users = self.tables.users
@@ -373,11 +343,9 @@ class ResultProxyTest(fixtures.TablesTest):
 
         eq_(r.user_id, 2)
         eq_(r["user_id"], 2)
-        eq_(r[users.c.user_id], 2)
 
         eq_(r.user_name, "jack")
         eq_(r["user_name"], "jack")
-        eq_(r[users.c.user_name], "jack")
 
     def test_column_accessor_dotted_union(self):
         users = self.tables.users
@@ -848,6 +816,81 @@ class ResultProxyTest(fixtures.TablesTest):
             set([users.c.user_id in row, addresses.c.user_id in row]),
             set([True]),
         )
+
+    def test_loose_matching_one(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "john"})
+            conn.execute(
+                addresses.insert(),
+                {"address_id": 1, "user_id": 1, "address": "email"},
+            )
+
+            # use some column labels in the SELECT
+            result = conn.execute(
+                TextualSelect(
+                    text(
+                        "select users.user_name AS users_user_name, "
+                        "users.user_id AS user_id, "
+                        "addresses.address_id AS address_id "
+                        "FROM users JOIN addresses "
+                        "ON users.user_id = addresses.user_id "
+                        "WHERE users.user_id=1 "
+                    ),
+                    [
+                        users.c.user_id,
+                        users.c.user_name,
+                        addresses.c.address_id,
+                    ],
+                    positional=False,
+                )
+            )
+            row = result.first()
+            eq_(row[users.c.user_id], 1)
+            eq_(row[users.c.user_name], "john")
+
+    def test_loose_matching_two(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        with testing.db.connect() as conn:
+            # MARKMARK
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "john"})
+            conn.execute(
+                addresses.insert(),
+                {"address_id": 1, "user_id": 1, "address": "email"},
+            )
+
+            # use some column labels in the SELECT
+            result = conn.execute(
+                TextualSelect(
+                    text(
+                        "select users.user_name AS users_user_name, "
+                        "users.user_id AS user_id, "
+                        "addresses.user_id "
+                        "FROM users JOIN addresses "
+                        "ON users.user_id = addresses.user_id "
+                        "WHERE users.user_id=1 "
+                    ),
+                    [users.c.user_id, users.c.user_name, addresses.c.user_id],
+                    positional=False,
+                )
+            )
+            row = result.first()
+
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "Ambiguous column name",
+                lambda: row[users.c.user_id],
+            )
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "Ambiguous column name",
+                lambda: row[addresses.c.user_id],
+            )
+            eq_(row[users.c.user_name], "john")
 
     def test_ambiguous_column_by_col_plus_label(self):
         users = self.tables.users
@@ -1363,79 +1406,37 @@ class KeyTargetingTest(fixtures.TablesTest):
         assert_raises(KeyError, lambda: row["keyed2_c"])
         assert_raises(KeyError, lambda: row["keyed2_q"])
 
-    def test_column_label_overlap_fallback(self):
-        content, bar = self.tables.content, self.tables.bar
-        row = testing.db.execute(
-            select([content.c.type.label("content_type")])
-        ).first()
-
-        not_in_(content.c.type, row)
-        not_in_(bar.c.content_type, row)
-
-        in_(sql.column("content_type"), row)
-
-        row = testing.db.execute(
-            select([func.now().label("content_type")])
-        ).first()
-        not_in_(content.c.type, row)
-        not_in_(bar.c.content_type, row)
-        in_(sql.column("content_type"), row)
-
-    def test_column_label_overlap_fallback_2(self):
-        content, bar = self.tables.content, self.tables.bar
-        row = testing.db.execute(content.select(use_labels=True)).first()
-        in_(content.c.type, row)
-        not_in_(bar.c.content_type, row)
-        not_in_(sql.column("content_type"), row)
-
     def test_columnclause_schema_column_one(self):
-        keyed2 = self.tables.keyed2
-
-        # this is addressed by [ticket:2932]
-        # ColumnClause._compare_name_for_result allows the
-        # columns which the statement is against to be lightweight
-        # cols, which results in a more liberal comparison scheme
+        # originally addressed by [ticket:2932], however liberalized
+        # Column-targeting rules are deprecated
         a, b = sql.column("a"), sql.column("b")
         stmt = select([a, b]).select_from(table("keyed2"))
         row = testing.db.execute(stmt).first()
 
-        in_(keyed2.c.a, row)
-        in_(keyed2.c.b, row)
         in_(a, row)
         in_(b, row)
 
     def test_columnclause_schema_column_two(self):
         keyed2 = self.tables.keyed2
 
-        a, b = sql.column("a"), sql.column("b")
         stmt = select([keyed2.c.a, keyed2.c.b])
         row = testing.db.execute(stmt).first()
 
         in_(keyed2.c.a, row)
         in_(keyed2.c.b, row)
-        in_(a, row)
-        in_(b, row)
 
     def test_columnclause_schema_column_three(self):
-        keyed2 = self.tables.keyed2
-
         # this is also addressed by [ticket:2932]
 
-        a, b = sql.column("a"), sql.column("b")
         stmt = text("select a, b from keyed2").columns(a=CHAR, b=CHAR)
         row = testing.db.execute(stmt).first()
 
-        in_(keyed2.c.a, row)
-        in_(keyed2.c.b, row)
-        in_(a, row)
-        in_(b, row)
         in_(stmt.selected_columns.a, row)
         in_(stmt.selected_columns.b, row)
 
     def test_columnclause_schema_column_four(self):
-        keyed2 = self.tables.keyed2
-
-        # this is also addressed by [ticket:2932]
+        # originally addressed by [ticket:2932], however liberalized
+        # Column-targeting rules are deprecated
 
         a, b = sql.column("keyed2_a"), sql.column("keyed2_b")
         stmt = text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
@@ -1443,16 +1444,12 @@ class KeyTargetingTest(fixtures.TablesTest):
         )
         row = testing.db.execute(stmt).first()
 
-        in_(keyed2.c.a, row)
-        in_(keyed2.c.b, row)
         in_(a, row)
         in_(b, row)
         in_(stmt.selected_columns.keyed2_a, row)
         in_(stmt.selected_columns.keyed2_b, row)
 
     def test_columnclause_schema_column_five(self):
-        keyed2 = self.tables.keyed2
-
         # this is also addressed by [ticket:2932]
 
         stmt = text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
@@ -1460,8 +1457,6 @@ class KeyTargetingTest(fixtures.TablesTest):
         )
         row = testing.db.execute(stmt).first()
 
-        in_(keyed2.c.a, row)
-        in_(keyed2.c.b, row)
         in_(stmt.selected_columns.keyed2_a, row)
         in_(stmt.selected_columns.keyed2_b, row)
 
@@ -1577,14 +1572,6 @@ class PositionalTextTest(fixtures.TablesTest):
         eq_(row[c3], "c1")
         eq_(row[c4], "d1")
 
-        # key fallback rules still match this to a column
-        # unambiguously based on its name
-        eq_(row[text1.c.a], "a1")
-
-        # key fallback rules still match this to a column
-        # unambiguously based on its name
-        eq_(row[text1.c.d], "d1")
-
         # text1.c.b goes nowhere....because we hit key fallback
         # but the text1.c.b doesn't derive from text1.c.c
         assert_raises_message(
@@ -1609,10 +1596,6 @@ class PositionalTextTest(fixtures.TablesTest):
         eq_(row[c2], "b1")
         eq_(row[c3], "c1")
         eq_(row[c4], "d1")
-
-        # key fallback rules still match this to a column
-        # unambiguously based on its name
-        eq_(row[text1.c.a], "a1")
 
     def test_anon_aliased_name_conflict(self):
         text1 = self.tables.text1

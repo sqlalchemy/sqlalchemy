@@ -19,6 +19,7 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import comparable_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
@@ -55,6 +56,7 @@ from sqlalchemy.util.compat import pypy
 from . import _fixtures
 from .inheritance import _poly_fixtures
 from .test_options import PathTest as OptionsPathTest
+from .test_query import QueryTest
 from .test_transaction import _LocalFixture
 
 
@@ -2976,3 +2978,233 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 addresses,
                 non_primary=True,
             )
+
+
+class InstancesTest(QueryTest, AssertsCompiledSQL):
+    def test_from_alias_one(self):
+        User, addresses, users = (
+            self.classes.User,
+            self.tables.addresses,
+            self.tables.users,
+        )
+
+        query = (
+            users.select(users.c.id == 7)
+            .union(users.select(users.c.id > 7))
+            .alias("ulist")
+            .outerjoin(addresses)
+            .select(
+                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
+            )
+        )
+        sess = create_session()
+        q = sess.query(User)
+
+        # note this has multiple problems because we aren't giving Query
+        # the statement where it would be able to create an adapter
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context",
+                "Retreiving row values using Column objects with only "
+                "matching names",
+            ):
+                result = list(
+                    q.options(
+                        contains_alias("ulist"), contains_eager("addresses")
+                    ).instances(query.execute())
+                )
+            assert self.static.user_address_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_contains_eager(self):
+        users, addresses, User = (
+            self.tables.users,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        selectquery = users.outerjoin(addresses).select(
+            users.c.id < 10,
+            use_labels=True,
+            order_by=[users.c.id, addresses.c.id],
+        )
+        q = sess.query(User)
+
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context"
+            ):
+                result = list(
+                    q.options(contains_eager("addresses")).instances(
+                        selectquery.execute()
+                    )
+                )
+            assert self.static.user_address_result[0:3] == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess.expunge_all()
+
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context"
+            ):
+                result = list(
+                    q.options(contains_eager(User.addresses)).instances(
+                        selectquery.execute()
+                    )
+                )
+            assert self.static.user_address_result[0:3] == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_contains_eager_string_alias(self):
+        addresses, users, User = (
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        q = sess.query(User)
+
+        adalias = addresses.alias("adalias")
+        selectquery = users.outerjoin(adalias).select(
+            use_labels=True, order_by=[users.c.id, adalias.c.id]
+        )
+
+        # note this has multiple problems because we aren't giving Query
+        # the statement where it would be able to create an adapter
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context",
+                r"Passing a string name for the 'alias' argument to "
+                r"'contains_eager\(\)` is deprecated",
+                "Retreiving row values using Column objects with only "
+                "matching names",
+            ):
+                result = list(
+                    q.options(
+                        contains_eager("addresses", alias="adalias")
+                    ).instances(selectquery.execute())
+                )
+            assert self.static.user_address_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_contains_eager_aliased_instances(self):
+        addresses, users, User = (
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        q = sess.query(User)
+
+        adalias = addresses.alias("adalias")
+        selectquery = users.outerjoin(adalias).select(
+            use_labels=True, order_by=[users.c.id, adalias.c.id]
+        )
+
+        # note this has multiple problems because we aren't giving Query
+        # the statement where it would be able to create an adapter
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context"
+            ):
+                result = list(
+                    q.options(
+                        contains_eager("addresses", alias=adalias)
+                    ).instances(selectquery.execute())
+                )
+            assert self.static.user_address_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_contains_eager_multi_string_alias(self):
+        orders, items, users, order_items, User = (
+            self.tables.orders,
+            self.tables.items,
+            self.tables.users,
+            self.tables.order_items,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        q = sess.query(User)
+
+        oalias = orders.alias("o1")
+        ialias = items.alias("i1")
+        query = (
+            users.outerjoin(oalias)
+            .outerjoin(order_items)
+            .outerjoin(ialias)
+            .select(use_labels=True)
+            .order_by(users.c.id, oalias.c.id, ialias.c.id)
+        )
+
+        # test using string alias with more than one level deep
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context",
+                r"Passing a string name for the 'alias' argument to "
+                r"'contains_eager\(\)` is deprecated",
+                "Retreiving row values using Column objects with only "
+                "matching names",
+            ):
+                result = list(
+                    q.options(
+                        contains_eager("orders", alias="o1"),
+                        contains_eager("orders.items", alias="i1"),
+                    ).instances(query.execute())
+                )
+            assert self.static.user_order_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_contains_eager_multi_alias(self):
+        orders, items, users, order_items, User = (
+            self.tables.orders,
+            self.tables.items,
+            self.tables.users,
+            self.tables.order_items,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        q = sess.query(User)
+
+        oalias = orders.alias("o1")
+        ialias = items.alias("i1")
+        query = (
+            users.outerjoin(oalias)
+            .outerjoin(order_items)
+            .outerjoin(ialias)
+            .select(use_labels=True)
+            .order_by(users.c.id, oalias.c.id, ialias.c.id)
+        )
+
+        # test using Alias with more than one level deep
+
+        # new way:
+        # from sqlalchemy.orm.strategy_options import Load
+        # opt = Load(User).contains_eager('orders', alias=oalias).
+        #     contains_eager('items', alias=ialias)
+
+        def go():
+            with testing.expect_deprecated(
+                r"Using the Query.instances\(\) method without a context"
+            ):
+                result = list(
+                    q.options(
+                        contains_eager("orders", alias=oalias),
+                        contains_eager("orders.items", alias=ialias),
+                    ).instances(query.execute())
+                )
+            assert self.static.user_order_result == result
+
+        self.assert_sql_count(testing.db, go, 1)

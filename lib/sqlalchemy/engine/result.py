@@ -254,12 +254,15 @@ class ResultMetaData(object):
                 result_columns,
                 cols_are_ordered,
                 textual_ordered,
+                loose_column_name_matching,
             ) = context.result_column_struct
             num_ctx_cols = len(result_columns)
         else:
             result_columns = (
                 cols_are_ordered
-            ) = num_ctx_cols = textual_ordered = False
+            ) = (
+                num_ctx_cols
+            ) = loose_column_name_matching = textual_ordered = False
 
         # merge cursor.description with the column info
         # present in the compiled structure, if any
@@ -270,6 +273,7 @@ class ResultMetaData(object):
             num_ctx_cols,
             cols_are_ordered,
             textual_ordered,
+            loose_column_name_matching,
         )
 
         self._keymap = {}
@@ -388,6 +392,7 @@ class ResultMetaData(object):
         num_ctx_cols,
         cols_are_ordered,
         textual_ordered,
+        loose_column_name_matching,
     ):
         """Merge a cursor.description with compiled result column information.
 
@@ -482,7 +487,10 @@ class ResultMetaData(object):
                 # compiled SQL with a mismatch of description cols
                 # vs. compiled cols, or textual w/ unordered columns
                 raw_iterator = self._merge_cols_by_name(
-                    context, cursor_description, result_columns
+                    context,
+                    cursor_description,
+                    result_columns,
+                    loose_column_name_matching,
                 )
             else:
                 # no compiled SQL, just a raw string
@@ -587,13 +595,18 @@ class ResultMetaData(object):
 
             yield idx, colname, mapped_type, coltype, obj, untranslated
 
-    def _merge_cols_by_name(self, context, cursor_description, result_columns):
+    def _merge_cols_by_name(
+        self,
+        context,
+        cursor_description,
+        result_columns,
+        loose_column_name_matching,
+    ):
         dialect = context.dialect
         case_sensitive = dialect.case_sensitive
         match_map = self._create_description_match_map(
-            result_columns, case_sensitive
+            result_columns, case_sensitive, loose_column_name_matching
         )
-
         self.matched_on_name = True
         for (
             idx,
@@ -622,7 +635,10 @@ class ResultMetaData(object):
 
     @classmethod
     def _create_description_match_map(
-        cls, result_columns, case_sensitive=True
+        cls,
+        result_columns,
+        case_sensitive=True,
+        loose_column_name_matching=False,
     ):
         """when matching cursor.description to a set of names that are present
         in a Compiled object, as is the case with TextualSelect, get all the
@@ -631,22 +647,29 @@ class ResultMetaData(object):
 
         d = {}
         for elem in result_columns:
-            key, rec = (
-                elem[RM_RENDERED_NAME],
-                (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE]),
-            )
+            key = elem[RM_RENDERED_NAME]
             if not case_sensitive:
                 key = key.lower()
             if key in d:
-                # conflicting keyname, just double up the list
-                # of objects.  this will cause an "ambiguous name"
-                # error if an attempt is made by the result set to
-                # access.
+                # conflicting keyname - just add the column-linked objects
+                # to the existing record.  if there is a duplicate column
+                # name in the cursor description, this will allow all of those
+                # objects to raise an ambiguous column error
                 e_name, e_obj, e_type = d[key]
-                d[key] = e_name, e_obj + rec[1], e_type
+                d[key] = e_name, e_obj + elem[RM_OBJECTS], e_type
             else:
-                d[key] = rec
+                d[key] = (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE])
 
+            if loose_column_name_matching:
+                # when using a textual statement with an unordered set
+                # of columns that line up, we are expecting the user
+                # to be using label names in the SQL that match to the column
+                # expressions.  Enable more liberal matching for this case;
+                # duplicate keys that are ambiguous will be fixed later.
+                for r_key in elem[RM_OBJECTS]:
+                    d.setdefault(
+                        r_key, (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE])
+                    )
         return d
 
     def _key_fallback(self, key, raiseerr=True):
@@ -688,6 +711,22 @@ class ResultMetaData(object):
                         break
                 else:
                     result = None
+            if result is not None:
+                if result[MD_OBJECTS] is _UNPICKLED:
+                    util.warn_deprecated(
+                        "Retreiving row values using Column objects from a "
+                        "row that was unpickled is deprecated; adequate "
+                        "state cannot be pickled for this to be efficient.   "
+                        "This usage will raise KeyError in a future release."
+                    )
+                else:
+                    util.warn_deprecated(
+                        "Retreiving row values using Column objects with only "
+                        "matching names as keys is deprecated, and will raise "
+                        "KeyError in a future release; only Column "
+                        "objects that are explicitly part of the statement "
+                        "object should be used."
+                    )
         if result is None:
             if raiseerr:
                 raise exc.NoSuchColumnError(

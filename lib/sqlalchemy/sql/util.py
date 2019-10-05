@@ -798,9 +798,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
                 if newcol is not None:
                     return newcol
         if self.adapt_on_names and newcol is None:
-            # TODO: this should be changed to .exported_columns if and
-            # when we need to be able to adapt a plain Select statement
-            newcol = self.selectable.c.get(col.name)
+            newcol = self.selectable.exported_columns.get(col.name)
         return newcol
 
     def replace(self, col):
