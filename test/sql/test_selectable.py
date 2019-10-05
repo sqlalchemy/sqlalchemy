@@ -2735,6 +2735,7 @@ class WithLabelsTest(fixtures.TestBase):
         eq_(
             list(sel.subquery().c.keys()),
             ["t_x_id", t2.c.id._label_anon_label],
+            # ["t_x_id", "t_x_id"]  # if we turn off deduping entirely,
         )
         self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
         self._assert_subq_result_keys(sel, ["t_x_id", "t_x_id_1"])
@@ -2803,7 +2804,13 @@ class WithLabelsTest(fixtures.TestBase):
             list(sel.selected_columns.keys()),
             ["t_x_a", t2.c.a._label_anon_label],
         )
+
+        # deduping for different cols but same label
         eq_(list(sel.subquery().c.keys()), ["t_x_a", t2.c.a._label_anon_label])
+
+        # if we turn off deduping entirely
+        # eq_(list(sel.subquery().c.keys()), ["t_x_a", "t_x_a"])
+
         self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
         self._assert_subq_result_keys(sel, ["t_x_id", "t_x_id_1"])
 

@@ -362,7 +362,7 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     _a_bc_wdupes = (
         "SELECT a.id AS a_id, anon_1.b_id AS b_id, anon_1.b_a_id AS b_a_id, "
         "anon_1.c_id AS c_id, anon_1.c_b_id AS c_b_id, "
-        "anon_1.b_a_id AS b_a_id_1, anon_1.c_b_id AS c_b_id_1 "
+        "anon_1.b_a_id AS b_a_id__1, anon_1.c_b_id AS c_b_id__1 "
         "FROM a JOIN "
         "(SELECT b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
         "c.b_id AS c_b_id "
@@ -373,19 +373,10 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_bc_wdupes_anon_map = (
         "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
-        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
-        "c.b_id AS c_b_id_1 "
-        "FROM a JOIN (b JOIN c ON b.id = c.b_id) ON a.id = b.a_id "
-        "WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
-        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
-    )
-
-    _a_bc_wdupes_anon_map = (
-        "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
-        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
-        "c.b_id AS c_b_id_1 FROM a JOIN (b JOIN c ON b.id = c.b_id) "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id__1, "
+        "c.b_id AS c_b_id__1 FROM a JOIN (b JOIN c ON b.id = c.b_id) "
         "ON a.id = b.a_id WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
-        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
+        "WHERE anon_1.b_a_id = anon_1.c_b_id"
     )
 
     _a_bc_comma_a1_selbc = (
@@ -477,7 +468,7 @@ class JoinRewriteTest(_JoinRewriteTestBase, fixtures.TestBase):
     _b_a_id_double_overlap_annotated = (
         "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS anon_1_b_a_id, "
         "anon_1.b_a_id_1 AS anon_1_b_a_id_1 "
-        "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS b_a_id_2 "
+        "FROM (SELECT b.id AS b_id, b.a_id AS b_a_id, b_a.id AS b_a_id_1 "
         "FROM b JOIN b_a ON b.id = b_a.id) AS anon_1"
     )
 
@@ -534,7 +525,7 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_bc_wdupes = (
         "SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, c.id AS c_id, "
-        "c.b_id AS c_b_id, b.a_id AS b_a_id_1, c.b_id AS c_b_id_1 "
+        "c.b_id AS c_b_id, b.a_id AS b_a_id__1, c.b_id AS c_b_id__1 "
         "FROM a JOIN "
         "(b JOIN c ON b.id = c.b_id) "
         "ON a.id = b.a_id "
@@ -544,11 +535,11 @@ class JoinPlainTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_bc_wdupes_anon_map = (
         "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
-        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
-        "c.b_id AS c_b_id_1 "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id__1, "
+        "c.b_id AS c_b_id__1 "
         "FROM a JOIN (b JOIN c ON b.id = c.b_id) ON a.id = b.a_id "
         "WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
-        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
+        "WHERE anon_1.b_a_id = anon_1.c_b_id"
     )
 
     _a_bc_comma_a1_selbc = (
@@ -680,11 +671,11 @@ class JoinNoUseLabelsTest(_JoinRewriteTestBase, fixtures.TestBase):
 
     _a_bc_wdupes_anon_map = (
         "SELECT 1 FROM (SELECT a.id AS a_id, b.id AS b_id, b.a_id AS b_a_id, "
-        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id_1, "
-        "c.b_id AS c_b_id_1 "
+        "c.id AS c_id, c.b_id AS c_b_id, b.a_id AS b_a_id__1, "
+        "c.b_id AS c_b_id__1 "
         "FROM a JOIN (b JOIN c ON b.id = c.b_id) ON a.id = b.a_id "
         "WHERE b.id = :id_1 AND c.id = :id_2) AS anon_1 "
-        "WHERE anon_1.b_a_id_1 = anon_1.c_b_id_1"
+        "WHERE anon_1.b_a_id = anon_1.c_b_id"
     )
 
     _a_bc_comma_a1_selbc = (

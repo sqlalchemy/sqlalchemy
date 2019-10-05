@@ -924,9 +924,9 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 ]
             ).apply_labels(),
             "SELECT some_table.name AS some_table_name, "
-            "some_table.name AS some_table_name_1, "
-            "SOME_COL_THING(some_table.name) AS some_table_name_2, "
-            "SOME_COL_THING(some_table.name) AS some_table_name_3 "
+            "some_table.name AS some_table_name__1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name_1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name_2 "
             "FROM some_table",
         )
 

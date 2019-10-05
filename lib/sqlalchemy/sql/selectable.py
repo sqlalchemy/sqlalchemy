@@ -4174,33 +4174,78 @@ class Select(
             (name_for_col(c), c) for c in cols
         ).as_immutable()
 
-    @_memoized_property
-    def _columns_plus_names(self):
+    def _generate_columns_plus_names(self, anon_for_dupe_key):
         cols = _select_iterables(self._raw_columns)
 
+        # when use_labels is on:
+        # in all cases == if we see the same label name, use _label_anon_label
+        # for subsequent occurences of that label
+        #
+        # anon_for_dupe_key == if we see the same column object multiple
+        # times under a particular name, whether it's the _label name or the
+        # anon label, apply _dedupe_label_anon_label to the subsequent
+        # occurrences of it.
+
         if self.use_labels:
-            names = set()
+            names = {}
 
             def name_for_col(c):
                 if c._label is None or not c._render_label_in_columns_clause:
                     return (None, c)
 
                 name = c._label
+
                 if name in names:
-                    name = c._label_anon_label
+                    # when looking to see if names[name] is the same column as
+                    # c, use hash(), so that an annotated version of the column
+                    # is seen as the same as the non-annotated
+                    if hash(names[name]) != hash(c):
+
+                        # different column under the same name.  apply
+                        # disambiguating label
+                        name = c._label_anon_label
+
+                        if anon_for_dupe_key and name in names:
+                            # here, c._label_anon_label is definitely unique to
+                            # that column identity (or annotated version), so
+                            # this should always be true.
+                            # this is also an infrequent codepath because
+                            # you need two levels of duplication to be here
+                            assert hash(names[name]) == hash(c)
+
+                            # the column under the disambiguating label is
+                            # already present.  apply the "dedupe" label to
+                            # subsequent occurrences of the column so that the
+                            # original stays non-ambiguous
+                            name = c._dedupe_label_anon_label
+                        else:
+                            names[name] = c
+                    elif anon_for_dupe_key:
+                        # same column under the same name. apply the "dedupe"
+                        # label so that the original stays non-ambiguous
+                        name = c._dedupe_label_anon_label
                 else:
-                    names.add(name)
+                    names[name] = c
                 return name, c
 
             return [name_for_col(c) for c in cols]
         else:
             return [(None, c) for c in cols]
 
+    @_memoized_property
+    def _columns_plus_names(self):
+        """generate label names plus columns to render in a SELECT."""
+
+        return self._generate_columns_plus_names(True)
+
     def _generate_fromclause_column_proxies(self, subquery):
+        """generate column proxies to place in the exported .c collection
+        of a subquery."""
+
         keys_seen = set()
         prox = []
 
-        for name, c in self._columns_plus_names:
+        for name, c in self._generate_columns_plus_names(False):
             if not hasattr(c, "_make_proxy"):
                 continue
             if name is None:

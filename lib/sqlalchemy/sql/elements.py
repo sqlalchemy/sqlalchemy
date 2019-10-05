@@ -878,7 +878,13 @@ class ColumnElement(
         while self._is_clone_of is not None:
             self = self._is_clone_of
 
-        return _anonymous_label("%%(%d %s)s" % (id(self), seed or "anon"))
+        # as of 1.4 anonymous label for ColumnElement uses hash(), not id(),
+        # as the identifier, because a column and its annotated version are
+        # the same thing in a SQL statement
+        if isinstance(seed, _anonymous_label):
+            return _anonymous_label("%s%%(%d %s)s" % (seed, hash(self), ""))
+
+        return _anonymous_label("%%(%d %s)s" % (hash(self), seed or "anon"))
 
     @util.memoized_property
     def anon_label(self):
@@ -899,6 +905,10 @@ class ColumnElement(
     @util.memoized_property
     def _label_anon_label(self):
         return self._anon_label(getattr(self, "_label", None))
+
+    @util.memoized_property
+    def _dedupe_label_anon_label(self):
+        return self._anon_label(getattr(self, "_label", "anon") + "_")
 
 
 class WrapsColumnExpression(object):
