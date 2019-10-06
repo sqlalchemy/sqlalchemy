@@ -1182,16 +1182,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         e = engines.testing_engine(options={"poolclass": AssertionPool})
         fn(e)
 
-    @testing.uses_deprecated()
-    def test_reflect_uses_bind_constructor_conn(self):
-        self._test_reflect_uses_bind(
-            lambda e: MetaData(e.connect(), reflect=True)
-        )
-
-    @testing.uses_deprecated()
-    def test_reflect_uses_bind_constructor_engine(self):
-        self._test_reflect_uses_bind(lambda e: MetaData(e, reflect=True))
-
     def test_reflect_uses_bind_constructor_conn_reflect(self):
         self._test_reflect_uses_bind(lambda e: MetaData(e.connect()).reflect())
 
