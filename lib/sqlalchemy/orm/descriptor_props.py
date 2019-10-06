@@ -97,15 +97,6 @@ class CompositeProperty(DescriptorProperty):
 
     """
 
-    @util.deprecated_params(
-        extension=(
-            "0.7",
-            ":class:`.AttributeExtension` is deprecated in favor of the "
-            ":class:`.AttributeEvents` listener interface.  The "
-            ":paramref:`.composite.extension` parameter will be "
-            "removed in a future release.",
-        )
-    )
     def __init__(self, class_, *attrs, **kwargs):
         r"""Return a composite column-based property for use with a Mapper.
 
@@ -147,12 +138,6 @@ class CompositeProperty(DescriptorProperty):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
-
-        :param extension:
-          an :class:`.AttributeExtension` instance,
-          or list of extensions, which will be prepended to the list of
-          attribute listeners for the resulting descriptor placed on the
-          class.
 
         """
         super(CompositeProperty, self).__init__()

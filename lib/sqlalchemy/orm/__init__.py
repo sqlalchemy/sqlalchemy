@@ -16,9 +16,6 @@ documentation for an overview of how this module is used.
 from . import exc  # noqa
 from . import mapper as mapperlib  # noqa
 from . import strategy_options
-from .deprecated_interfaces import AttributeExtension  # noqa
-from .deprecated_interfaces import MapperExtension  # noqa
-from .deprecated_interfaces import SessionExtension  # noqa
 from .descriptor_props import ComparableProperty  # noqa
 from .descriptor_props import CompositeProperty  # noqa
 from .descriptor_props import SynonymProperty  # noqa

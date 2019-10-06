@@ -9,11 +9,9 @@
 
 Contains various base classes used throughout the ORM.
 
-Defines some key base classes prominent within the internals,
-as well as the now-deprecated ORM extension classes.
+Defines some key base classes prominent within the internals.
 
-Other than the deprecated extensions, this module and the
-classes within are mostly private, though some attributes
+This module and the classes within are mostly private, though some attributes
 are exposed when inspecting mappings.
 
 """
@@ -40,11 +38,7 @@ from .. import util
 from ..sql import operators
 
 
-# imported later
-MapperExtension = SessionExtension = AttributeExtension = None
-
 __all__ = (
-    "AttributeExtension",
     "EXT_CONTINUE",
     "EXT_STOP",
     "EXT_SKIP",
@@ -53,11 +47,9 @@ __all__ = (
     "MANYTOONE",
     "NOT_EXTENSION",
     "LoaderStrategy",
-    "MapperExtension",
     "MapperOption",
     "MapperProperty",
     "PropComparator",
-    "SessionExtension",
     "StrategizedProperty",
 )
 

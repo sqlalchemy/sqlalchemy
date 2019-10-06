@@ -51,8 +51,6 @@ def _register_attribute(
     **kw
 ):
 
-    attribute_ext = list(util.to_list(prop.extension, default=[]))
-
     listen_hooks = []
 
     uselist = useobject and prop.uselist
@@ -105,7 +103,6 @@ def _register_attribute(
                 uselist=uselist,
                 compare_function=compare_function,
                 useobject=useobject,
-                extension=attribute_ext,
                 trackparent=useobject
                 and (
                     prop.single_parent

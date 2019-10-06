@@ -465,7 +465,6 @@ class AttributeImpl(object):
         callable_,
         dispatch,
         trackparent=False,
-        extension=None,
         compare_function=None,
         active_history=False,
         parent_token=None,
@@ -489,19 +488,6 @@ class AttributeImpl(object):
         :param trackparent:
           if True, attempt to track if an instance has a parent attached
           to it via this attribute.
-
-        :param extension:
-          a single or list of AttributeExtension object(s) which will
-          receive set/delete/append/remove/etc. events.
-          The event package is now used.
-
-          .. deprecated::  1.3
-
-            The :paramref:`.AttributeImpl.extension` parameter is deprecated
-            and will be removed in a future release, corresponding to the
-            "extension" parameter on the :class:`.MapperProprty` classes
-            like :func:`.column_property` and :func:`.relationship`  The
-            events system is now used.
 
         :param compare_function:
           a function that compares two values which are normally
@@ -544,13 +530,6 @@ class AttributeImpl(object):
             self.accepts_scalar_loader = accepts_scalar_loader
         else:
             self.accepts_scalar_loader = self.default_accepts_scalar_loader
-
-        # TODO: pass in the manager here
-        # instead of doing a lookup
-        attr = manager_of_class(class_)[key]
-
-        for ext in util.to_list(extension or []):
-            ext._adapt_listener(attr, ext)
 
         if active_history:
             self.dispatch._active_history = True
@@ -1075,7 +1054,6 @@ class CollectionAttributeImpl(AttributeImpl):
         dispatch,
         typecallable=None,
         trackparent=False,
-        extension=None,
         copy_function=None,
         compare_function=None,
         **kwargs
@@ -1086,7 +1064,6 @@ class CollectionAttributeImpl(AttributeImpl):
             callable_,
             dispatch,
             trackparent=trackparent,
-            extension=extension,
             compare_function=compare_function,
             **kwargs
         )

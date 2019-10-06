@@ -108,13 +108,6 @@ class Mapper(InspectionAttr):
     _dispose_called = False
 
     @util.deprecated_params(
-        extension=(
-            "0.7",
-            ":class:`.MapperExtension` is deprecated in favor of the "
-            ":class:`.MapperEvents` listener interface.  The "
-            ":paramref:`.mapper.extension` parameter will be "
-            "removed in a future release.",
-        ),
         order_by=(
             "1.1",
             "The :paramref:`.mapper.order_by` parameter "
@@ -141,7 +134,6 @@ class Mapper(InspectionAttr):
         inherits=None,
         inherit_condition=None,
         inherit_foreign_keys=None,
-        extension=None,
         order_by=False,
         always_refresh=False,
         version_id_col=None,
@@ -294,10 +286,6 @@ class Mapper(InspectionAttr):
           be excluded from mapping.
 
           See :ref:`include_exclude_cols` for an example.
-
-        :param extension: A :class:`.MapperExtension` instance or
-           list of :class:`.MapperExtension` instances which will be applied
-           to all operations by this :class:`.Mapper`.
 
         :param include_properties: An inclusive list or set of string column
           names to map.
@@ -673,7 +661,6 @@ class Mapper(InspectionAttr):
         self._memoized_values = {}
         self._compiled_cache_size = _compiled_cache_size
         self._reconstructor = None
-        self._deprecated_extensions = util.to_list(extension or [])
         self.allow_partial_pks = allow_partial_pks
 
         if self.inherits and not self.concrete:
@@ -715,9 +702,7 @@ class Mapper(InspectionAttr):
         try:
             self.dispatch._events._new_mapper_instance(class_, self)
             self._configure_inheritance()
-            self._configure_legacy_instrument_class()
             self._configure_class_instrumentation()
-            self._configure_listeners()
             self._configure_properties()
             self._configure_polymorphic_setter()
             self._configure_pks()
@@ -1012,6 +997,9 @@ class Mapper(InspectionAttr):
                     "Class '%s' does not inherit from '%s'"
                     % (self.class_.__name__, self.inherits.class_.__name__)
                 )
+
+            self.dispatch._update(self.inherits.dispatch)
+
             if self.non_primary != self.inherits.non_primary:
                 np = not self.non_primary and "primary" or "non-primary"
                 raise sa_exc.ArgumentError(
@@ -1205,42 +1193,6 @@ class Mapper(InspectionAttr):
     def _set_polymorphic_on(self, polymorphic_on):
         self.polymorphic_on = polymorphic_on
         self._configure_polymorphic_setter(True)
-
-    def _configure_legacy_instrument_class(self):
-
-        if self.inherits:
-            self.dispatch._update(self.inherits.dispatch)
-            super_extensions = set(
-                chain(
-                    *[
-                        m._deprecated_extensions
-                        for m in self.inherits.iterate_to_root()
-                    ]
-                )
-            )
-        else:
-            super_extensions = set()
-
-        for ext in self._deprecated_extensions:
-            if ext not in super_extensions:
-                ext._adapt_instrument_class(self, ext)
-
-    def _configure_listeners(self):
-        if self.inherits:
-            super_extensions = set(
-                chain(
-                    *[
-                        m._deprecated_extensions
-                        for m in self.inherits.iterate_to_root()
-                    ]
-                )
-            )
-        else:
-            super_extensions = set()
-
-        for ext in self._deprecated_extensions:
-            if ext not in super_extensions:
-                ext._adapt_listener(self, ext)
 
     def _configure_class_instrumentation(self):
         """If this mapper is to be a primary mapper (i.e. the

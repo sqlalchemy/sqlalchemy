@@ -25,7 +25,6 @@ from .base import instance_str
 from .base import object_mapper
 from .base import object_state
 from .base import state_str
-from .deprecated_interfaces import SessionExtension
 from .unitofwork import UOWTransaction
 from .. import engine
 from .. import exc as sa_exc
@@ -37,7 +36,7 @@ from ..sql import roles
 from ..sql import util as sql_util
 
 
-__all__ = ["Session", "SessionTransaction", "SessionExtension", "sessionmaker"]
+__all__ = ["Session", "SessionTransaction", "sessionmaker"]
 
 _sessions = weakref.WeakValueDictionary()
 """Weak-referencing dictionary of :class:`.Session` objects.
@@ -660,13 +659,6 @@ class Session(_SessionClassMethods):
             "The :paramref:`.Session._enable_transaction_accounting` "
             "parameter is deprecated and will be removed in a future release.",
         ),
-        extension=(
-            "0.7",
-            ":class:`.SessionExtension` is deprecated in favor of the "
-            ":class:`.SessionEvents` listener interface.  The "
-            ":paramref:`.Session.extension` parameter will be "
-            "removed in a future release.",
-        ),
     )
     def __init__(
         self,
@@ -678,7 +670,6 @@ class Session(_SessionClassMethods):
         twophase=False,
         weak_identity_map=None,
         binds=None,
-        extension=None,
         enable_baked_queries=True,
         info=None,
         query_cls=None,
@@ -789,11 +780,6 @@ class Session(_SessionClassMethods):
            so that all attribute/object access subsequent to a completed
            transaction will load from the most recent database state.
 
-        :param extension: An optional
-           :class:`~.SessionExtension` instance, or a list
-           of such instances, which will receive pre- and post- commit and
-           flush events, as well as a post-rollback event.
-
         :param info: optional dictionary of arbitrary data to be associated
            with this :class:`.Session`.  Is available via the
            :attr:`.Session.info` attribute.  Note the dictionary is copied at
@@ -849,10 +835,6 @@ class Session(_SessionClassMethods):
         self._query_cls = query_cls if query_cls else query.Query
         if info:
             self.info.update(info)
-
-        if extension:
-            for ext in util.to_list(extension):
-                SessionExtension._adapt_listener(self, ext)
 
         if binds is not None:
             for key, bind in binds.items():

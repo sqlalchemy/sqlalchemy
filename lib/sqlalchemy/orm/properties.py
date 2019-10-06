@@ -44,7 +44,6 @@ class ColumnProperty(StrategizedProperty):
         "instrument",
         "comparator_factory",
         "descriptor",
-        "extension",
         "active_history",
         "expire_on_flush",
         "info",
@@ -56,15 +55,6 @@ class ColumnProperty(StrategizedProperty):
         "_deferred_column_loader",
     )
 
-    @util.deprecated_params(
-        extension=(
-            "0.7",
-            ":class:`.AttributeExtension` is deprecated in favor of the "
-            ":class:`.AttributeEvents` listener interface.  The "
-            ":paramref:`.column_property.extension` parameter will be "
-            "removed in a future release.",
-        )
-    )
     def __init__(self, *columns, **kwargs):
         r"""Provide a column-level property for use with a Mapper.
 
@@ -125,10 +115,6 @@ class ColumnProperty(StrategizedProperty):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
 
-        :param extension:
-            an :class:`.AttributeExtension` instance, or list of extensions,
-            which will be prepended to the list of attribute listeners for the
-            resulting descriptor placed on the class.
 
         """
         super(ColumnProperty, self).__init__()
@@ -148,7 +134,6 @@ class ColumnProperty(StrategizedProperty):
             "comparator_factory", self.__class__.Comparator
         )
         self.descriptor = kwargs.pop("descriptor", None)
-        self.extension = kwargs.pop("extension", None)
         self.active_history = kwargs.pop("active_history", False)
         self.expire_on_flush = kwargs.pop("expire_on_flush", True)
 

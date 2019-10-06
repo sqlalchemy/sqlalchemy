@@ -14,7 +14,6 @@ from .interfaces import ExceptionContext
 from .util import _distill_params
 from .. import exc
 from .. import inspection
-from .. import interfaces
 from .. import log
 from .. import util
 from ..sql import schema
@@ -1910,7 +1909,6 @@ class Engine(Connectable, log.Identified):
         url,
         logging_name=None,
         echo=None,
-        proxy=None,
         execution_options=None,
         hide_parameters=False,
     ):
@@ -1922,8 +1920,6 @@ class Engine(Connectable, log.Identified):
         self.echo = echo
         self.hide_parameters = hide_parameters
         log.instance_logger(self, echoflag=echo)
-        if proxy:
-            interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
 
