@@ -4284,12 +4284,15 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         s = create_session()
         q = (
             s.query(User)
-            .from_statement(text("select * from users ORDER BY users.id"))
+            .from_statement(text("select * from users"))
             .options(subqueryload(User.addresses))
         )
+        # we can't ORDER BY in this test because SQL server won't let the
+        # ORDER BY work inside the subqueryload; the test needs to use
+        # subqueryload (not selectinload) to confirm the feature
 
         def go():
-            eq_(q.all(), self.static.user_address_result)
+            eq_(set(q.all()), set(self.static.user_address_result))
 
         self.assert_sql_count(testing.db, go, 2)
 
