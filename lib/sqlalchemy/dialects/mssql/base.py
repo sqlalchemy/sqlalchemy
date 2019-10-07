@@ -2263,7 +2263,6 @@ class MSDialect(default.DefaultDialect):
         self,
         query_timeout=None,
         use_scope_identity=True,
-        max_identifier_length=None,
         schema_name="dbo",
         isolation_level=None,
         deprecate_large_types=None,
@@ -2274,9 +2273,6 @@ class MSDialect(default.DefaultDialect):
         self.schema_name = schema_name
 
         self.use_scope_identity = use_scope_identity
-        self.max_identifier_length = (
-            int(max_identifier_length or 0) or self.max_identifier_length
-        )
         self.deprecate_large_types = deprecate_large_types
         self.legacy_schema_aliasing = legacy_schema_aliasing
 

@@ -24,6 +24,7 @@ IDENT_LENGTH = 29
 
 class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "DefaultDialect"
+    __backend__ = True
 
     table1 = table(
         "some_large_named_table",
