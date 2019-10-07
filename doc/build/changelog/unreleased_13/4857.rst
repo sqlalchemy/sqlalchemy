@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4857
+
+    Fixed bug in SQL Server dialect with new "max_identifier_length" feature
+    where the mssql dialect already featured this flag, and the implementation
+    did not accommodate for the new initialization hook correctly.
+
