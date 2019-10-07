@@ -1010,9 +1010,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
           :class:`.SchemaItem` derived constructs which will be applied
           as options to the column.  These include instances of
           :class:`.Constraint`, :class:`.ForeignKey`, :class:`.ColumnDefault`,
-          and :class:`.Sequence`.  In some cases an equivalent keyword
-          argument is available such as ``server_default``, ``default``
-          and ``unique``.
+          :class:`.Sequence`, :class:`.Generated`.  In some cases an
+          equivalent keyword argument is available such as ``server_default``,
+          ``default`` and ``unique``.
 
         :param autoincrement: Set up "auto increment" semantics for an integer
           primary key column.  The default value is the string ``"auto"``
@@ -1278,6 +1278,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         self.constraints = set()
         self.foreign_keys = set()
         self.comment = kwargs.pop("comment", None)
+        self.generated = None
 
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
@@ -4330,3 +4331,71 @@ class _SchemaTranslateMap(object):
 
 _default_schema_map = _SchemaTranslateMap(None)
 _schema_getter = _SchemaTranslateMap._schema_getter
+
+
+class Generated(SchemaItem):
+    """Defines a generated column.
+
+    Defines a generated column col_name data_type [GENERATED ALWAYS] AS (...)
+    [VIRTUAL | STORED]
+    ``Generated`` is specified as an argument to a :class:`.Column` object,
+    e.g.::
+
+        sa.Table('square', meta,
+            sa.Column('side', sa.Float, nullable=False),
+            sa.Column('area', sa.Float, Computed('side * side'))
+            )
+
+    .. versionadded:: 1.3.10
+    """
+
+    __visit_name__ = "generated_column"
+
+    @_document_text_coercion(
+        "sqltext", ":class:`.Generated`", ":paramref:`.Generated.sqltext`"
+    )
+    def __init__(self, sqltext, persisted=None):
+        """Construct a generated column
+
+        :param sqltext:
+         A string containing the column generation expression, which will be
+         used verbatim, or a SQL expression construct.   If given as a string,
+         the object is converted to a :func:`.text` object.
+
+        :param persisted:
+          Optional, controls how this column should be persisted by the
+          database.   Possible values are:
+
+          * None, the default, it will use the default persistence defined
+            by the database
+          * True, will render a `STORED` (or equivalent) when creating the
+            table
+          * False, will render a `VIRTUAL` when creating the table
+        """
+        self.sqltext = coercions.expect(roles.DDLExpressionRole, sqltext)
+        self.persisted = persisted
+        self.column = None
+
+    def _set_parent(self, parent):
+        if (
+            parent.server_default is not None
+            or parent.server_onupdate is not None
+        ):
+            raise exc.ArgumentError(
+                "A generated column cannot specify a server_default or a "
+                "server_onupdate argument"
+            )
+        self.column = parent
+        parent.generated = self
+
+        FetchedValue()._set_parent(parent)
+        FetchedValue(for_update=True)._set_parent(parent)
+
+    def copy(self, target_table=None, **kw):
+        if target_table is not None:
+            sqltext = _copy_expression(self.sqltext, self.table, target_table)
+        else:
+            sqltext = self.sqltext
+        g = Generated(sqltext, persisted=self.persisted)
+
+        return self._schema_item_copy(g)
