@@ -782,3 +782,36 @@ runs operations on a new transaction.   The "test harness" pattern described
 at :ref:`session_external_transaction` is the common place for this to occur.
 
 The new behavior is described in the errors page at :ref:`error_8s2a`.
+
+
+Dialect Changes
+===============
+
+.. _change_4895:
+
+Removed "join rewriting" logic from SQLite dialect; updated imports
+-------------------------------------------------------------------
+
+Dropped support for right-nested join rewriting to support old SQLite
+versions prior to 3.7.16, released in 2013.   It is not expected that
+any modern Python versions rely upon this limitation.
+
+The behavior was first introduced in 0.9 and was part of the larger change of
+allowing for right nested joins as described at :ref:`feature_joins_09`.
+However the SQLite workaround produced many regressions in the 2013-2014
+period due to its complexity. In 2016, the dialect was modified so that the
+join rewriting logic would only occur for SQLite verisons prior to 3.7.16 after
+bisection was used to  identify where SQLite fixed its support for this
+construct, and no further issues were reported against the behavior (even
+though some bugs were found internally).    It is now anticipated that there
+are little to no Python builds for Python 2.7 or 3.4 and above (the supported
+Python versions) which would include a SQLite version prior to 3.7.17, and
+the behavior is only necessary only in more complex ORM joining scenarios.
+A warning is now emitted if the installed SQLite version is older than
+3.7.16.
+
+In related changes, the module imports for SQLite no longer attempt to
+import the "pysqlite2" driver on Python 3 as this driver does not exist
+on Python 3; a very old warning for old pysqlite2 versions is also dropped.
+
+:ticket:`4895`

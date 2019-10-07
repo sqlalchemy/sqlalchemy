@@ -1467,9 +1467,15 @@ class SQLiteDialect(default.DefaultDialect):
         self.native_datetime = native_datetime
 
         if self.dbapi is not None:
-            self.supports_right_nested_joins = (
-                self.dbapi.sqlite_version_info >= (3, 7, 16)
-            )
+            if self.dbapi.sqlite_version_info < (3, 7, 16):
+                util.warn(
+                    "SQLite version %s is older than 3.7.16, and will not "
+                    "support right nested joins, as are sometimes used in "
+                    "more complex ORM scenarios.  SQLAlchemy 1.4 and above "
+                    "no longer tries to rewrite these joins."
+                    % (self.dbapi.sqlite_version_info,)
+                )
+
             self._broken_dotted_colnames = self.dbapi.sqlite_version_info < (
                 3,
                 10,

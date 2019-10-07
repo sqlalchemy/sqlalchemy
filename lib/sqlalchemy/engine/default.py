@@ -65,7 +65,6 @@ class DefaultDialect(interfaces.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
 
-    supports_right_nested_joins = True
     cte_follows_insert = False
 
     supports_native_enum = False
@@ -201,7 +200,6 @@ class DefaultDialect(interfaces.Dialect):
         paramstyle=None,
         dbapi=None,
         implicit_returning=None,
-        supports_right_nested_joins=None,
         case_sensitive=True,
         supports_native_boolean=None,
         empty_in_strategy="static",
@@ -232,8 +230,6 @@ class DefaultDialect(interfaces.Dialect):
         self.positional = self.paramstyle in ("qmark", "format", "numeric")
         self.identifier_preparer = self.preparer(self)
         self.type_compiler = self.type_compiler(self)
-        if supports_right_nested_joins is not None:
-            self.supports_right_nested_joins = supports_right_nested_joins
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive

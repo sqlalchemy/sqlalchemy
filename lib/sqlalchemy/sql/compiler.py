@@ -2049,136 +2049,6 @@ class SQLCompiler(Compiled):
     def get_statement_hint_text(self, hint_texts):
         return " ".join(hint_texts)
 
-    def _transform_select_for_nested_joins(self, select):
-        """Rewrite any "a JOIN (b JOIN c)" expression as
-        "a JOIN (select * from b JOIN c) AS anon", to support
-        databases that can't parse a parenthesized join correctly
-        (i.e. sqlite < 3.7.16).
-
-        """
-        cloned = {}
-        column_translate = [{}]
-        created = set()
-
-        def visit(element, **kw):
-            if element in column_translate[-1]:
-                return column_translate[-1][element]
-
-            elif element in cloned:
-                return cloned[element]
-
-            newelem = cloned[element] = element._clone()
-            if (
-                newelem._is_from_clause
-                and newelem._is_join
-                and isinstance(newelem.right, selectable.FromGrouping)
-            ):
-
-                newelem._reset_exported()
-                newelem.left = visit(newelem.left, **kw)
-
-                right = visit(newelem.right, **kw)
-
-                selectable_ = selectable.Select(
-                    [right.element], use_labels=True
-                ).alias()
-                created.add(selectable_)
-                created.update(selectable_.c)
-
-                for c in selectable_.c:
-                    c._key_label = c.key
-                    c._label = c.name
-
-                translate_dict = dict(
-                    zip(newelem.right.element.c, selectable_.c)
-                )
-
-                # translating from both the old and the new
-                # because different select() structures will lead us
-                # to traverse differently
-                translate_dict[right.element.left] = selectable_
-                translate_dict[right.element.right] = selectable_
-                translate_dict[newelem.right.element.left] = selectable_
-                translate_dict[newelem.right.element.right] = selectable_
-
-                # propagate translations that we've gained
-                # from nested visit(newelem.right) outwards
-                # to the enclosing select here.  this happens
-                # only when we have more than one level of right
-                # join nesting, i.e. "a JOIN (b JOIN (c JOIN d))"
-                for k, v in list(column_translate[-1].items()):
-                    if v in translate_dict:
-                        # remarkably, no current ORM tests (May 2013)
-                        # hit this condition, only test_join_rewriting
-                        # does.
-                        column_translate[-1][k] = translate_dict[v]
-
-                column_translate[-1].update(translate_dict)
-
-                newelem.right = selectable_
-
-                newelem.onclause = visit(newelem.onclause, **kw)
-
-            elif newelem._is_from_container:
-                # if we hit an Alias, CompoundSelect or ScalarSelect, put a
-                # marker in the stack.
-                kw["transform_clue"] = "select_container"
-                newelem._copy_internals(clone=visit, **kw)
-            elif newelem._is_returns_rows and newelem._is_select_statement:
-                barrier_select = (
-                    kw.get("transform_clue", None) == "select_container"
-                )
-                # if we're still descended from an
-                # Alias/CompoundSelect/ScalarSelect, we're
-                # in a FROM clause, so start with a new translate collection
-                if barrier_select:
-                    column_translate.append({})
-                kw["transform_clue"] = "inside_select"
-                if not newelem._is_select_container:
-                    froms = newelem.froms
-                    newelem._raw_columns = list(newelem.selected_columns)
-                    newelem._from_obj.update(froms)
-                    newelem._reset_memoizations()
-                newelem._copy_internals(clone=visit, **kw)
-                if barrier_select:
-                    del column_translate[-1]
-            else:
-                newelem._copy_internals(clone=visit, **kw)
-
-            return newelem
-
-        return visit(select)
-
-    def _transform_result_map_for_nested_joins(
-        self, select, transformed_select
-    ):
-        self._result_columns[:] = [
-            result_rec
-            if col is tcol
-            else (
-                result_rec[0],
-                name,
-                tuple([col if obj is tcol else obj for obj in result_rec[2]]),
-                result_rec[3],
-            )
-            for result_rec, (name, col), (tname, tcol) in zip(
-                self._result_columns,
-                select._columns_plus_names,
-                transformed_select._columns_plus_names,
-            )
-        ]
-
-        # TODO: it's not anticipated that we need to correct anon_map
-        # however if we do, this is what it looks like:
-        # for (name, col), (tname, tcol) in zip(
-        #    select._columns_plus_names,
-        #    transformed_select._columns_plus_names,
-        # ):
-        #    if isinstance(name, elements._anonymous_label) and name != tname:
-        #        m1 = re.match(r"^%\((\d+ .+?)\)s$", name)
-        #        m2 = re.match(r"^%\((\d+ .+?)\)s$", tname)
-        #        self.anon_map[m1.group(1)] = self.anon_map[m2.group(1)]
-
     _default_stack_entry = util.immutabledict(
         [("correlate_froms", frozenset()), ("asfrom_froms", frozenset())]
     )
@@ -2214,31 +2084,10 @@ class SQLCompiler(Compiled):
         asfrom=False,
         fromhints=None,
         compound_index=0,
-        nested_join_translation=False,
         select_wraps_for=None,
         lateral=False,
         **kwargs
     ):
-
-        needs_nested_translation = (
-            select.use_labels
-            and not nested_join_translation
-            and not self.stack
-            and not self.dialect.supports_right_nested_joins
-        )
-
-        if needs_nested_translation:
-            transformed_select = self._transform_select_for_nested_joins(
-                select
-            )
-            text = self.visit_select(
-                transformed_select,
-                asfrom=asfrom,
-                fromhints=fromhints,
-                compound_index=compound_index,
-                nested_join_translation=True,
-                **kwargs
-            )
 
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
@@ -2257,13 +2106,6 @@ class SQLCompiler(Compiled):
         # instead.
         if not populate_result_map and "add_to_result_map" in kwargs:
             del kwargs["add_to_result_map"]
-
-        if needs_nested_translation:
-            if populate_result_map:
-                self._transform_result_map_for_nested_joins(
-                    select, transformed_select
-                )
-            return text
 
         froms = self._setup_select_stack(select, entry, asfrom, lateral)
 
