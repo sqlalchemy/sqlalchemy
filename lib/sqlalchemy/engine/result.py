@@ -711,7 +711,7 @@ class ResultMetaData(object):
                         break
                 else:
                     result = None
-            if False:  # result is not None:
+            if result is not None:
                 if result[MD_OBJECTS] is _UNPICKLED:
                     util.warn_deprecated(
                         "Retreiving row values using Column objects from a "
