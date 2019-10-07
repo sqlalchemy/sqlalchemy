@@ -592,6 +592,17 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "sqlite"
 
+    def test_3_7_16_warning(self):
+        with expect_warnings(
+            r"SQLite version \(3, 2, 8\) is older than 3.7.16, and "
+            "will not support right nested joins"
+        ):
+            sqlite.dialect(
+                dbapi=mock.Mock(
+                    version_info=(2, 6, 0), sqlite_version_info=(3, 2, 8)
+                )
+            )
+
     def test_extra_reserved_words(self):
         """Tests reserved words in identifiers.
 
