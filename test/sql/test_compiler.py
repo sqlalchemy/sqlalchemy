@@ -571,16 +571,185 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = s.compile(dialect=default.DefaultDialect(paramstyle="qmark"))
         eq_(s.positiontup, ["a", "b", "c"])
 
+    def test_overlapping_labels_use_labels(self):
+        foo = table("foo", column("id"), column("bar_id"))
+        foo_bar = table("foo_bar", column("id"))
+
+        stmt = select([foo, foo_bar]).apply_labels()
+        self.assert_compile(
+            stmt,
+            "SELECT foo.id AS foo_id, foo.bar_id AS foo_bar_id, "
+            "foo_bar.id AS foo_bar_id_1 "
+            "FROM foo, foo_bar",
+        )
+
+    def test_overlapping_labels_plus_dupes_use_labels(self):
+        foo = table("foo", column("id"), column("bar_id"))
+        foo_bar = table("foo_bar", column("id"))
+
+        # current approach is:
+        # 1. positional nature of columns is always maintained in all cases
+        # 2. two different columns that have the same label, second one
+        #    is disambiguated
+        # 3. if the same column is repeated, it gets deduped using a special
+        #    'dedupe' label that will show two underscores
+        # 4. The disambiguating label generated in #2 also has to be deduped.
+        # 5. The derived columns, e.g. subquery().c etc. do not export the
+        #    "dedupe" columns, at all.  they are unreachable (because they
+        #    are unreachable anyway in SQL unless you use "SELECT *")
+        #
+        # this is all new logic necessitated by #4753 since we allow columns
+        # to be repeated.   We would still like the targeting of this column,
+        # both in a result set as well as in a derived selectable, to be
+        # unambiguous (DBs like postgresql won't let us reference an ambiguous
+        # label in a derived selectable even if its the same column repeated).
+        #
+        # this kind of thing happens of course because the ORM is in some
+        # more exotic cases writing in joins where columns may be duped.
+        # it might be nice to fix it on that side also, however SQLAlchemy
+        # has deduped columns in SELECT statements for 13 years so having a
+        # robust behavior when dupes are present is still very useful.
+
+        stmt = select(
+            [
+                foo.c.id,
+                foo.c.bar_id,
+                foo_bar.c.id,
+                foo.c.bar_id,
+                foo.c.id,
+                foo.c.bar_id,
+                foo_bar.c.id,
+                foo_bar.c.id,
+            ]
+        ).apply_labels()
+        self.assert_compile(
+            stmt,
+            "SELECT foo.id AS foo_id, "
+            "foo.bar_id AS foo_bar_id, "  # 1. 1st foo.bar_id, as is
+            "foo_bar.id AS foo_bar_id_1, "  # 2. 1st foo_bar.id, disamb from 1
+            "foo.bar_id AS foo_bar_id__1, "  # 3. 2nd foo.bar_id, dedupe from 1
+            "foo.id AS foo_id__1, "
+            "foo.bar_id AS foo_bar_id__1, "  # 4. 3rd foo.bar_id, same as 3
+            "foo_bar.id AS foo_bar_id__2, "  # 5. 2nd foo_bar.id
+            "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
+            "FROM foo, foo_bar",
+        )
+
+        # for the subquery, the labels created for repeated occurrences
+        # of the same column are not used.  only the label applied to the
+        # first occurrence of each column is used
+        self.assert_compile(
+            select([stmt.subquery()]),
+            "SELECT "
+            "anon_1.foo_id, "  # from 1st foo.id in derived (line 1)
+            "anon_1.foo_bar_id, "  # from 1st foo.bar_id in derived (line 2)
+            "anon_1.foo_bar_id_1, "  # from 1st foo_bar.id in derived (line 3)
+            "anon_1.foo_bar_id, "  # from 1st foo.bar_id in derived (line 2)
+            "anon_1.foo_id, "  # from 1st foo.id in derived (line 1)
+            "anon_1.foo_bar_id, "  # from 1st foo.bar_id in derived (line 2)
+            "anon_1.foo_bar_id_1, "  # from 1st foo_bar.id in derived (line 3)
+            "anon_1.foo_bar_id_1 "  # from 1st foo_bar.id in derived (line 3)
+            "FROM ("
+            "SELECT foo.id AS foo_id, "
+            "foo.bar_id AS foo_bar_id, "  # 1. 1st foo.bar_id, as is
+            "foo_bar.id AS foo_bar_id_1, "  # 2. 1st foo_bar.id, disamb from 1
+            "foo.bar_id AS foo_bar_id__1, "  # 3. 2nd foo.bar_id, dedupe from 1
+            "foo.id AS foo_id__1, "
+            "foo.bar_id AS foo_bar_id__1, "  # 4. 3rd foo.bar_id, same as 3
+            "foo_bar.id AS foo_bar_id__2, "  # 5. 2nd foo_bar.id
+            "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
+            "FROM foo, foo_bar"
+            ") AS anon_1",
+        )
+
     def test_dupe_columns_use_labels(self):
-        """as of 1.4, there's no deduping.
-
-        however the labels will still uniqify themselves...
-        """
-
         t = table("t", column("a"), column("b"))
         self.assert_compile(
-            select([t.c.a, t.c.a, t.c.b]).apply_labels(),
-            "SELECT t.a AS t_a, t.a AS t_a_1, t.b AS t_b FROM t",
+            select([t.c.a, t.c.a, t.c.b, t.c.a]).apply_labels(),
+            "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
+            "t.a AS t_a__1 FROM t",
+        )
+
+    def test_dupe_columns_use_labels_derived_selectable(self):
+        t = table("t", column("a"), column("b"))
+        stmt = select([t.c.a, t.c.a, t.c.b, t.c.a]).apply_labels().subquery()
+
+        self.assert_compile(
+            select([stmt]),
+            "SELECT anon_1.t_a, anon_1.t_a, anon_1.t_b, anon_1.t_a FROM "
+            "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__1 "
+            "FROM t) AS anon_1",
+        )
+
+    def test_dupe_columns_use_labels_mix_annotations(self):
+        t = table("t", column("a"), column("b"))
+        a, b, a_a = t.c.a, t.c.b, t.c.a._annotate({"some_orm_thing": True})
+
+        self.assert_compile(
+            select([a, a_a, b, a_a]).apply_labels(),
+            "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
+            "t.a AS t_a__1 FROM t",
+        )
+
+        self.assert_compile(
+            select([a_a, a, b, a_a]).apply_labels(),
+            "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
+            "t.a AS t_a__1 FROM t",
+        )
+
+        self.assert_compile(
+            select([a_a, a_a, b, a]).apply_labels(),
+            "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
+            "t.a AS t_a__1 FROM t",
+        )
+
+    def test_dupe_columns_use_labels_derived_selectable_mix_annotations(self):
+        t = table("t", column("a"), column("b"))
+        a, b, a_a = t.c.a, t.c.b, t.c.a._annotate({"some_orm_thing": True})
+        stmt = select([a, a_a, b, a_a]).apply_labels().subquery()
+
+        self.assert_compile(
+            select([stmt]),
+            "SELECT anon_1.t_a, anon_1.t_a, anon_1.t_b, anon_1.t_a FROM "
+            "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__1 "
+            "FROM t) AS anon_1",
+        )
+
+    def test_overlapping_labels_plus_dupes_use_labels_mix_annotations(self):
+        foo = table("foo", column("id"), column("bar_id"))
+        foo_bar = table("foo_bar", column("id"))
+
+        foo_bar__id = foo_bar.c.id._annotate({"some_orm_thing": True})
+
+        stmt = select(
+            [
+                foo.c.bar_id,
+                foo_bar.c.id,
+                foo_bar.c.id,
+                foo_bar__id,
+                foo_bar__id,
+            ]
+        ).apply_labels()
+
+        self.assert_compile(
+            stmt,
+            "SELECT foo.bar_id AS foo_bar_id, foo_bar.id AS foo_bar_id_1, "
+            "foo_bar.id AS foo_bar_id__1, foo_bar.id AS foo_bar_id__1, "
+            "foo_bar.id AS foo_bar_id__1 FROM foo, foo_bar",
+        )
+
+    def test_dupe_columns_use_labels_from_anon(self):
+
+        t = table("t", column("a"), column("b"))
+        a = t.alias()
+
+        # second and third occurrences of a.c.a are labeled, but are
+        # dupes of each other.
+        self.assert_compile(
+            select([a.c.a, a.c.a, a.c.b, a.c.a]).apply_labels(),
+            "SELECT t_1.a AS t_1_a, t_1.a AS t_1_a__1, t_1.b AS t_1_b, "
+            "t_1.a AS t_1_a__1 "
+            "FROM t AS t_1",
         )
 
     def test_nested_label_targeting(self):
