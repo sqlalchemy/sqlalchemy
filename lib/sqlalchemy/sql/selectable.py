@@ -4191,8 +4191,9 @@ class Select(
 
             def name_for_col(c):
                 if c._label is None or not c._render_label_in_columns_clause:
-                    return (None, c)
+                    return (None, c, False)
 
+                repeated = False
                 name = c._label
 
                 if name in names:
@@ -4218,19 +4219,22 @@ class Select(
                             # subsequent occurrences of the column so that the
                             # original stays non-ambiguous
                             name = c._dedupe_label_anon_label
+                            repeated = True
                         else:
                             names[name] = c
                     elif anon_for_dupe_key:
                         # same column under the same name. apply the "dedupe"
                         # label so that the original stays non-ambiguous
                         name = c._dedupe_label_anon_label
+                        repeated = True
                 else:
                     names[name] = c
-                return name, c
+                return name, c, repeated
 
             return [name_for_col(c) for c in cols]
         else:
-            return [(None, c) for c in cols]
+            # repeated name logic only for use labels at the moment
+            return [(None, c, False) for c in cols]
 
     @_memoized_property
     def _columns_plus_names(self):
@@ -4245,7 +4249,7 @@ class Select(
         keys_seen = set()
         prox = []
 
-        for name, c in self._generate_columns_plus_names(False):
+        for name, c, repeated in self._generate_columns_plus_names(False):
             if not hasattr(c, "_make_proxy"):
                 continue
             if name is None:

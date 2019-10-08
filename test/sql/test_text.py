@@ -20,6 +20,7 @@ from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises_message
@@ -47,6 +48,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             text("select * from foo where lala = bar"),
             "select * from foo where lala = bar",
+        )
+
+    def test_text_adds_to_result_map(self):
+        t1, t2 = text("t1"), text("t2")
+
+        stmt = select([t1, t2])
+        compiled = stmt.compile()
+        eq_(
+            compiled._result_columns,
+            [
+                (None, None, (t1,), sqltypes.NULLTYPE),
+                (None, None, (t2,), sqltypes.NULLTYPE),
+            ],
         )
 
 

@@ -99,6 +99,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select([func.foo()], use_labels=True), "SELECT foo() AS foo_1"
         )
 
+    def test_use_labels_function_element(self):
+        from sqlalchemy.ext.compiler import compiles
+
+        class max_(FunctionElement):
+            name = "max"
+
+        @compiles(max_)
+        def visit_max(element, compiler, **kw):
+            return "max(%s)" % compiler.process(element.clauses, **kw)
+
+        self.assert_compile(
+            select([max_(5, 6)], use_labels=True),
+            "SELECT max(:max_2, :max_3) AS max_1",
+        )
+
     def test_underscores(self):
         self.assert_compile(func.if_(), "if()")
 

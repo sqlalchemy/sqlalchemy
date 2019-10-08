@@ -398,6 +398,7 @@ Example usage::
 
 """
 from .. import exc
+from ..sql import sqltypes
 from ..sql import visitors
 
 
@@ -475,4 +476,22 @@ class _dispatcher(object):
                     "compilation handler." % type(element)
                 )
 
-        return fn(element, compiler, **kw)
+        # if compilation includes add_to_result_map, collect add_to_result_map
+        # arguments from the user-defined callable, which are probably none
+        # because this is not public API.  if it wasn't called, then call it
+        # ourselves.
+        arm = kw.get("add_to_result_map", None)
+        if arm:
+            arm_collection = []
+            kw["add_to_result_map"] = lambda *args: arm_collection.append(args)
+
+        expr = fn(element, compiler, **kw)
+
+        if arm:
+            if not arm_collection:
+                arm_collection.append(
+                    (None, None, (element,), sqltypes.NULLTYPE)
+                )
+            for tup in arm_collection:
+                arm(*tup)
+        return expr
