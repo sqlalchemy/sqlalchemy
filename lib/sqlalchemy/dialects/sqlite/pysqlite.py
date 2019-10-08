@@ -18,19 +18,8 @@ r"""
 Driver
 ------
 
-When using Python 2.5 and above, the built in ``sqlite3`` driver is
-already installed and no additional installation is needed.  Otherwise,
-the ``pysqlite2`` driver needs to be present.  This is the same driver as
-``sqlite3``, just with a different name.
-
-The ``pysqlite2`` driver will be loaded first, and if not found, ``sqlite3``
-is loaded.  This allows an explicitly installed pysqlite driver to take
-precedence over the built in one.   As with all dialects, a specific
-DBAPI module may be provided to :func:`~sqlalchemy.create_engine()` to control
-this explicitly::
-
-    from sqlite3 import dbapi2 as sqlite
-    e = create_engine('sqlite+pysqlite:///file.db', module=sqlite)
+The ``sqlite3`` Python DBAPI is standard on all modern Python versions;
+for cPython and Pypy, no additional installation is necessary.
 
 
 Connect Strings
@@ -379,30 +368,18 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
     driver = "pysqlite"
 
-    def __init__(self, uri=False, **kwargs):
-        SQLiteDialect.__init__(self, **kwargs)
-
-        if self.dbapi is not None:
-            sqlite_ver = self.dbapi.version_info
-            if sqlite_ver < (2, 1, 3):
-                util.warn(
-                    (
-                        "The installed version of pysqlite2 (%s) is out-dated "
-                        "and will cause errors in some cases.  Version 2.1.3 "
-                        "or greater is recommended."
-                    )
-                    % ".".join([str(subver) for subver in sqlite_ver])
-                )
-
     @classmethod
     def dbapi(cls):
-        try:
-            from pysqlite2 import dbapi2 as sqlite
-        except ImportError:
+        if util.py2k:
             try:
-                from sqlite3 import dbapi2 as sqlite  # try 2.5+ stdlib name.
-            except ImportError as e:
-                raise e
+                from pysqlite2 import dbapi2 as sqlite
+            except ImportError:
+                try:
+                    from sqlite3 import dbapi2 as sqlite
+                except ImportError as e:
+                    raise e
+        else:
+            from sqlite3 import dbapi2 as sqlite
         return sqlite
 
     @classmethod
