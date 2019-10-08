@@ -1960,7 +1960,9 @@ class MSDDLCompiler(compiler.DDLCompiler):
                 or column.autoincrement is True
             ):
                 colspec += " NOT NULL"
-            else:
+            elif column.computed is None:
+                # nullable is True by default and computed column do not
+                # support NULL
                 colspec += " NULL"
 
         if column.table is None:
