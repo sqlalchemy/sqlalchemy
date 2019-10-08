@@ -1187,6 +1187,20 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         return "".join(table_opts)
 
+    def visit_computed_column(self, generated):
+        text = " GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
+            generated.sqltext, include_table=False, literal_binds=True
+        )
+        # explicitly check for True|False since None means server default
+        if generated.persisted is True:
+            raise exc.CompileError(
+                "oracle does not support persited (stored) computed "
+                "columns. Remove 'persisted' or set it to False"
+            )
+        elif generated.persisted is False:
+            text += " VIRTUAL"
+        return text
+
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
 
