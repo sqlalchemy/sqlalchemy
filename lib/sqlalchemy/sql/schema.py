@@ -1010,7 +1010,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
           :class:`.SchemaItem` derived constructs which will be applied
           as options to the column.  These include instances of
           :class:`.Constraint`, :class:`.ForeignKey`, :class:`.ColumnDefault`,
-          :class:`.Sequence`, :class:`.Generated`.  In some cases an
+          :class:`.Sequence`, :class:`.Computed`.  In some cases an
           equivalent keyword argument is available such as ``server_default``,
           ``default`` and ``unique``.
 
@@ -1278,7 +1278,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         self.constraints = set()
         self.foreign_keys = set()
         self.comment = kwargs.pop("comment", None)
-        self.generated = None
+        self.computed = None
 
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
@@ -4333,12 +4333,12 @@ _default_schema_map = _SchemaTranslateMap(None)
 _schema_getter = _SchemaTranslateMap._schema_getter
 
 
-class Generated(SchemaItem):
+class Computed(SchemaItem):
     """Defines a generated column.
 
     Defines a generated column col_name data_type [GENERATED ALWAYS] AS (...)
     [VIRTUAL | STORED]
-    ``Generated`` is specified as an argument to a :class:`.Column` object,
+    ``Computed`` is specified as an argument to a :class:`.Column` object,
     e.g.::
 
         sa.Table('square', meta,
@@ -4349,10 +4349,10 @@ class Generated(SchemaItem):
     .. versionadded:: 1.3.10
     """
 
-    __visit_name__ = "generated_column"
+    __visit_name__ = "computed_column"
 
     @_document_text_coercion(
-        "sqltext", ":class:`.Generated`", ":paramref:`.Generated.sqltext`"
+        "sqltext", ":class:`.Computed`", ":paramref:`.Computed.sqltext`"
     )
     def __init__(self, sqltext, persisted=None):
         """Construct a generated column
@@ -4386,7 +4386,7 @@ class Generated(SchemaItem):
                 "server_onupdate argument"
             )
         self.column = parent
-        parent.generated = self
+        parent.computed = self
 
         FetchedValue()._set_parent(parent)
         FetchedValue(for_update=True)._set_parent(parent)
@@ -4396,6 +4396,6 @@ class Generated(SchemaItem):
             sqltext = _copy_expression(self.sqltext, self.table, target_table)
         else:
             sqltext = self.sqltext
-        g = Generated(sqltext, persisted=self.persisted)
+        g = Computed(sqltext, persisted=self.persisted)
 
         return self._schema_item_copy(g)

@@ -3161,8 +3161,8 @@ class DDLCompiler(Compiled):
         if not column.nullable:
             colspec += " NOT NULL"
 
-        if column.generated is not None:
-            colspec += self.process(column.generated)
+        if column.computed is not None:
+            colspec += self.process(column.computed)
         return colspec
 
     def create_table_suffix(self, table):
@@ -3302,15 +3302,15 @@ class DDLCompiler(Compiled):
             text += " MATCH %s" % constraint.match
         return text
 
-    def visit_generated_column(self, generated):
-        text = " GENERATED ALWAYS AS (%s) " % self.sql_compiler.process(
+    def visit_computed_column(self, generated):
+        text = " GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
             generated.sqltext, include_table=False, literal_binds=True
         )
-        # eplicilely check for True|False since None means server default
+        # explicitly check for True|False since None means server default
         if generated.persisted is True:
-            text += "STORED "
+            text += " STORED"
         elif generated.persisted is False:
-            text += "VIRTUAL "
+            text += " VIRTUAL"
         return text
 
 
