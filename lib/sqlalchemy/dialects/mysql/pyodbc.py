@@ -26,8 +26,19 @@ import re
 
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
+from .types import TIME
 from ... import util
 from ...connectors.pyodbc import PyODBCConnector
+from ...sql.sqltypes import Time
+
+
+class _pyodbcTIME(TIME):
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            # pyodbc returns a datetime.time object; no need to convert
+            return value
+
+        return process
 
 
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
@@ -40,6 +51,7 @@ class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
+    colspecs = util.update_copy(MySQLDialect.colspecs, {Time: _pyodbcTIME})
     supports_unicode_statements = False
     execution_ctx_cls = MySQLExecutionContext_pyodbc
 
