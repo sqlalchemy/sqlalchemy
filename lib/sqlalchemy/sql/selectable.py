@@ -1157,12 +1157,7 @@ class Join(FromClause):
 
     @property
     def _from_objects(self):
-        return (
-            [self]
-            + self.onclause._from_objects
-            + self.left._from_objects
-            + self.right._from_objects
-        )
+        return [self] + self.left._from_objects + self.right._from_objects
 
 
 # FromClause ->
