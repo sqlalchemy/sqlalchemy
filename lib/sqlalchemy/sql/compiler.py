@@ -3158,11 +3158,11 @@ class DDLCompiler(Compiled):
         if default is not None:
             colspec += " DEFAULT " + default
 
-        if not column.nullable:
-            colspec += " NOT NULL"
-
         if column.computed is not None:
             colspec += self.process(column.computed)
+
+        if not column.nullable:
+            colspec += " NOT NULL"
         return colspec
 
     def create_table_suffix(self, table):
