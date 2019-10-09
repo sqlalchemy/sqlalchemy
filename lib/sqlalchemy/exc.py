@@ -332,6 +332,8 @@ class StatementError(SQLAlchemyError):
     orig = None
     """The DBAPI exception object."""
 
+    ismulti = None
+
     def __init__(
         self,
         message,
@@ -340,11 +342,13 @@ class StatementError(SQLAlchemyError):
         orig,
         hide_parameters=False,
         code=None,
+        ismulti=None,
     ):
         SQLAlchemyError.__init__(self, message, code=code)
         self.statement = statement
         self.params = params
         self.orig = orig
+        self.ismulti = ismulti
         self.hide_parameters = hide_parameters
         self.detail = []
 
@@ -360,6 +364,7 @@ class StatementError(SQLAlchemyError):
                 self.params,
                 self.orig,
                 self.hide_parameters,
+                self.ismulti,
             ),
         )
 
@@ -381,7 +386,9 @@ class StatementError(SQLAlchemyError):
                         "[SQL parameters hidden due to hide_parameters=True]"
                     )
                 else:
-                    params_repr = util._repr_params(self.params, 10)
+                    params_repr = util._repr_params(
+                        self.params, 10, ismulti=self.ismulti
+                    )
                     details.append("[parameters: %r]" % params_repr)
         code_str = self._code_str()
         if code_str:
@@ -424,6 +431,7 @@ class DBAPIError(StatementError):
         hide_parameters=False,
         connection_invalidated=False,
         dialect=None,
+        ismulti=None,
     ):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
@@ -448,6 +456,7 @@ class DBAPIError(StatementError):
                     orig,
                     hide_parameters=hide_parameters,
                     code=orig.code,
+                    ismulti=ismulti,
                 )
             elif not isinstance(orig, dbapi_base_err) and statement:
                 return StatementError(
@@ -461,6 +470,7 @@ class DBAPIError(StatementError):
                     params,
                     orig,
                     hide_parameters=hide_parameters,
+                    ismulti=ismulti,
                 )
 
             glob = globals()
@@ -481,6 +491,7 @@ class DBAPIError(StatementError):
             connection_invalidated=connection_invalidated,
             hide_parameters=hide_parameters,
             code=cls.code,
+            ismulti=ismulti,
         )
 
     def __reduce__(self):
@@ -492,6 +503,7 @@ class DBAPIError(StatementError):
                 self.orig,
                 self.hide_parameters,
                 self.connection_invalidated,
+                self.ismulti,
             ),
         )
 
@@ -503,6 +515,7 @@ class DBAPIError(StatementError):
         hide_parameters=False,
         connection_invalidated=False,
         code=None,
+        ismulti=None,
     ):
         try:
             text = str(orig)
@@ -517,6 +530,7 @@ class DBAPIError(StatementError):
             orig,
             hide_parameters,
             code=code,
+            ismulti=ismulti,
         )
         self.connection_invalidated = connection_invalidated
 
