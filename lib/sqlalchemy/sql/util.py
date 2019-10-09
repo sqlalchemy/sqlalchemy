@@ -468,31 +468,29 @@ class _repr_params(_repr_base):
 
     """
 
-    __slots__ = "params", "batches"
+    __slots__ = "params", "batches", "ismulti"
 
-    def __init__(self, params, batches, max_chars=300):
+    def __init__(self, params, batches, max_chars=300, ismulti=None):
         self.params = params
+        self.ismulti = ismulti
         self.batches = batches
         self.max_chars = max_chars
 
     def __repr__(self):
+        if self.ismulti is None:
+            return self.trunc(self.params)
+
         if isinstance(self.params, list):
             typ = self._LIST
-            ismulti = self.params and isinstance(
-                self.params[0], (list, dict, tuple)
-            )
+
         elif isinstance(self.params, tuple):
             typ = self._TUPLE
-            ismulti = self.params and isinstance(
-                self.params[0], (list, dict, tuple)
-            )
         elif isinstance(self.params, dict):
             typ = self._DICT
-            ismulti = False
         else:
             return self.trunc(self.params)
 
-        if ismulti and len(self.params) > self.batches:
+        if self.ismulti and len(self.params) > self.batches:
             msg = " ... displaying %i of %i total bound parameter sets ... "
             return " ".join(
                 (
@@ -503,7 +501,7 @@ class _repr_params(_repr_base):
                     self._repr_multi(self.params[-2:], typ)[1:],
                 )
             )
-        elif ismulti:
+        elif self.ismulti:
             return self._repr_multi(self.params, typ)
         else:
             return self._repr_params(self.params, typ)

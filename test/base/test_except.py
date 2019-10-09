@@ -241,6 +241,7 @@ class WrapTest(fixtures.TestBase):
                 ],
                 OperationalError(),
                 DatabaseError,
+                ismulti=True,
             )
         except sa_exceptions.DBAPIError as exc:
             eq_(
@@ -288,6 +289,7 @@ class WrapTest(fixtures.TestBase):
                 ],
                 OperationalError(),
                 DatabaseError,
+                ismulti=True,
             )
         except sa_exceptions.DBAPIError as exc:
             eq_(

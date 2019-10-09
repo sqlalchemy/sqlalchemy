@@ -1209,7 +1209,10 @@ class Connection(Connectable):
             self.engine.logger.info(statement)
             if not self.engine.hide_parameters:
                 self.engine.logger.info(
-                    "%r", sql_util._repr_params(parameters, batches=10)
+                    "%r",
+                    sql_util._repr_params(
+                        parameters, batches=10, ismulti=context.executemany
+                    ),
                 )
             else:
                 self.engine.logger.info(
@@ -1380,6 +1383,9 @@ class Connection(Connectable):
                     self.dialect.dbapi.Error,
                     hide_parameters=self.engine.hide_parameters,
                     dialect=self.dialect,
+                    ismulti=context.executemany
+                    if context is not None
+                    else None,
                 ),
                 exc_info,
             )
@@ -1402,6 +1408,9 @@ class Connection(Connectable):
                     hide_parameters=self.engine.hide_parameters,
                     connection_invalidated=self._is_disconnect,
                     dialect=self.dialect,
+                    ismulti=context.executemany
+                    if context is not None
+                    else None,
                 )
             else:
                 sqlalchemy_exception = None

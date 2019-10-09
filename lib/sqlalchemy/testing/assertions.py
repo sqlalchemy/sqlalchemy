@@ -303,6 +303,20 @@ def assert_raises(except_cls, callable_, *args, **kw):
     assert success, "Callable did not raise an exception"
 
 
+def assert_raises_return(except_cls, callable_, *args, **kw):
+    ret_err = None
+    try:
+        callable_(*args, **kw)
+        success = False
+    except except_cls as err:
+        success = True
+        ret_err = err
+
+    # assert outside the block so it works for AssertionError too !
+    assert success, "Callable did not raise an exception"
+    return ret_err
+
+
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     try:
         callable_(*args, **kwargs)
