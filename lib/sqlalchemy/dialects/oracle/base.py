@@ -84,10 +84,12 @@ To assist with this change and others, Oracle includes the concept of a
 actual server version in order to assist with migration of Oracle databases,
 and may be configured within the Oracle server itself. This compatibility
 version is retrieved using the query  ``SELECT value FROM v$parameter WHERE
-name = 'compatible';``.   The SQLAlchemy Oracle dialect
-will use this query upon first connect in order to determine the effective
-compatibility version of the server, which determines what the maximum allowed
-identifier length is for the server.
+name = 'compatible';``.   The SQLAlchemy Oracle dialect, when tasked with
+determining the default max identifier length, will attempt to use this query
+upon first connect in order to determine the effective compatibility version of
+the server, which determines what the maximum allowed identifier length is for
+the server.  If the table is not available, the  server version information is
+used instead.
 
 As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialect
 is 128 characters.  Upon first connect, the compatibility version is detected
@@ -1226,11 +1228,6 @@ class OracleDialect(default.DefaultDialect):
     supports_unicode_binds = False
     max_identifier_length = 128
 
-    # this should be set to
-    # "SELECT value FROM v$parameter WHERE name = 'compatible'"
-    # upon connect.
-    _compat_server_version_info = None
-
     supports_simple_order_by_label = False
     cte_follows_insert = True
 
@@ -1293,12 +1290,6 @@ class OracleDialect(default.DefaultDialect):
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
 
-        _compat_server_version_info = self._get_compat_server_version_info(
-            connection
-        )
-        if _compat_server_version_info is not None:
-            self._compat_server_version_info = _compat_server_version_info
-
         self.implicit_returning = self.__dict__.get(
             "implicit_returning", self.server_version_info > (10,)
         )
@@ -1308,18 +1299,24 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
 
-    def _get_compat_server_version_info(self, connection):
+    def _get_effective_compat_server_version_info(self, connection):
+        # dialect does not need compat levels below 12.2, so don't query
+        # in those cases
+
+        if self.server_version_info < (12, 2):
+            return self.server_version_info
         try:
-            return connection.execute(
+            compat = connection.execute(
                 "SELECT value FROM v$parameter WHERE name = 'compatible'"
             ).scalar()
-        except exc.DBAPIError as err:
-            util.warn("Could not determine compatibility version: %s" % err)
+        except exc.DBAPIError:
+            compat = None
 
-    @property
-    def _effective_compat_server_version_info(self):
-        if self._compat_server_version_info is not None:
-            return self._compat_server_version_info
+        if compat:
+            try:
+                return tuple(int(x) for x in compat.split("."))
+            except:
+                return self.server_version_info
         else:
             return self.server_version_info
 
@@ -1344,7 +1341,10 @@ class OracleDialect(default.DefaultDialect):
         pass
 
     def _check_max_identifier_length(self, connection):
-        if self._effective_compat_server_version_info < (12, 2):
+        if self._get_effective_compat_server_version_info(connection) < (
+            12,
+            2,
+        ):
             return 30
         else:
             # use the default
