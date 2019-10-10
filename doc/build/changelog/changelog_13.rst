@@ -12,7 +12,28 @@
 
 .. changelog::
     :version: 1.3.10
-    :include_notes_from: unreleased_13
+    :released: October 9, 2019
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4857
+
+        Fixed bug in SQL Server dialect with new "max_identifier_length" feature
+        where the mssql dialect already featured this flag, and the implementation
+        did not accommodate for the new initialization hook correctly.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4898, 4857
+
+        Fixed regression in Oracle dialect that was inadvertently using max
+        identifier length of 128 characters on Oracle server 12.2 and greater even
+        though the stated contract for the remainder of the 1.3 series is  that
+        this value stays at 30 until version SQLAlchemy 1.4.  Also repaired issues
+        with the retrieval of the "compatibility" version, and removed the warning
+        emitted when the "v$parameter" view was not accessible as this was  causing
+        user confusion.
 
 .. changelog::
     :version: 1.3.9
