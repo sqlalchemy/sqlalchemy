@@ -471,6 +471,32 @@ class SelectableTest(
         criterion = a.c.col1 == table2.c.col2
         self.assert_(criterion.compare(j.onclause))
 
+    def test_join_doesnt_derive_from_onclause(self):
+        # test issue #4621.   the hide froms from the join comes from
+        # Join._from_obj(), which should not include tables in the ON clause
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        t3 = table("t3", column("c"))
+        t4 = table("t4", column("d"))
+
+        j = t1.join(t2, onclause=t1.c.a == t3.c.c)
+
+        j2 = t4.join(j, onclause=t4.c.d == t2.c.b)
+
+        stmt = select([t1, t2, t3, t4]).select_from(j2)
+        self.assert_compile(
+            stmt,
+            "SELECT t1.a, t2.b, t3.c, t4.d FROM t3, "
+            "t4 JOIN (t1 JOIN t2 ON t1.a = t3.c) ON t4.d = t2.b",
+        )
+
+        stmt = select([t1]).select_from(t3).select_from(j2)
+        self.assert_compile(
+            stmt,
+            "SELECT t1.a FROM t3, t4 JOIN (t1 JOIN t2 ON t1.a = t3.c) "
+            "ON t4.d = t2.b",
+        )
+
     @testing.fails("not supported with rework, need a new approach")
     def test_alias_handles_column_context(self):
         # not quite a use case yet but this is expected to become
