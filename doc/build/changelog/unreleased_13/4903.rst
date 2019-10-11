@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, firebird
+    :tickets: 4903
+
+    Added additional "disconnect" message "Error writing data to the
+    connection" to Firebird disconnection detection.  Pull request courtesy
+    lukens.
