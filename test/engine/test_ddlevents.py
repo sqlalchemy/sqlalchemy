@@ -428,28 +428,6 @@ class DDLExecutionTest(fixtures.TestBase):
         assert "xyzzy" in strings
         assert "fnord" in strings
 
-    @testing.uses_deprecated(r".*use the DDLEvents")
-    def test_table_by_metadata_deprecated(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
-        DDL("mxyzptlk").execute_at("before-create", users)
-        DDL("klptzyxm").execute_at("after-create", users)
-        DDL("xyzzy").execute_at("before-drop", users)
-        DDL("fnord").execute_at("after-drop", users)
-
-        metadata.create_all()
-        strings = [str(x) for x in engine.mock]
-        assert "mxyzptlk" in strings
-        assert "klptzyxm" in strings
-        assert "xyzzy" not in strings
-        assert "fnord" not in strings
-        del engine.mock[:]
-        metadata.drop_all()
-        strings = [str(x) for x in engine.mock]
-        assert "mxyzptlk" not in strings
-        assert "klptzyxm" not in strings
-        assert "xyzzy" in strings
-        assert "fnord" in strings
-
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
 
@@ -457,29 +435,6 @@ class DDLExecutionTest(fixtures.TestBase):
         event.listen(metadata, "after_create", DDL("klptzyxm"))
         event.listen(metadata, "before_drop", DDL("xyzzy"))
         event.listen(metadata, "after_drop", DDL("fnord"))
-
-        metadata.create_all()
-        strings = [str(x) for x in engine.mock]
-        assert "mxyzptlk" in strings
-        assert "klptzyxm" in strings
-        assert "xyzzy" not in strings
-        assert "fnord" not in strings
-        del engine.mock[:]
-        metadata.drop_all()
-        strings = [str(x) for x in engine.mock]
-        assert "mxyzptlk" not in strings
-        assert "klptzyxm" not in strings
-        assert "xyzzy" in strings
-        assert "fnord" in strings
-
-    @testing.uses_deprecated(r".*use the DDLEvents")
-    def test_metadata_deprecated(self):
-        metadata, engine = self.metadata, self.engine
-
-        DDL("mxyzptlk").execute_at("before-create", metadata)
-        DDL("klptzyxm").execute_at("after-create", metadata)
-        DDL("xyzzy").execute_at("before-drop", metadata)
-        DDL("fnord").execute_at("after-drop", metadata)
 
         metadata.create_all()
         strings = [str(x) for x in engine.mock]
@@ -518,37 +473,6 @@ class DDLExecutionTest(fixtures.TestBase):
             DropConstraint(constraint).execute_if(dialect="postgresql"),
         )
 
-        metadata.create_all(bind=nonpg_mock)
-        strings = " ".join(str(x) for x in nonpg_mock.mock)
-        assert "my_test_constraint" not in strings
-        metadata.drop_all(bind=nonpg_mock)
-        strings = " ".join(str(x) for x in nonpg_mock.mock)
-        assert "my_test_constraint" not in strings
-        metadata.create_all(bind=pg_mock)
-        strings = " ".join(str(x) for x in pg_mock.mock)
-        assert "my_test_constraint" in strings
-        metadata.drop_all(bind=pg_mock)
-        strings = " ".join(str(x) for x in pg_mock.mock)
-        assert "my_test_constraint" in strings
-
-    @testing.uses_deprecated(r".*use the DDLEvents")
-    def test_conditional_constraint_deprecated(self):
-        metadata, users = self.metadata, self.users
-        nonpg_mock = engines.mock_engine(dialect_name="sqlite")
-        pg_mock = engines.mock_engine(dialect_name="postgresql")
-        constraint = CheckConstraint(
-            "a < b", name="my_test_constraint", table=users
-        )
-
-        # by placing the constraint in an Add/Drop construct, the
-        # 'inline_ddl' flag is set to False
-
-        AddConstraint(constraint, on="postgresql").execute_at(
-            "after-create", users
-        )
-        DropConstraint(constraint, on="postgresql").execute_at(
-            "before-drop", users
-        )
         metadata.create_all(bind=nonpg_mock)
         strings = " ".join(str(x) for x in nonpg_mock.mock)
         assert "my_test_constraint" not in strings
@@ -630,9 +554,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         def executor(*a, **kw):
             return None
 
-        engine = create_mock_engine(
-            testing.db.name + "://", executor
-        )
+        engine = create_mock_engine(testing.db.name + "://", executor)
         # fmt: off
         engine.dialect.identifier_preparer = \
             tsa.sql.compiler.IdentifierPreparer(

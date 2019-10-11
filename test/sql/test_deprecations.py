@@ -23,7 +23,6 @@ from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
-from sqlalchemy.schema import DDL
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import roles
@@ -33,7 +32,6 @@ from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -123,162 +121,6 @@ class DeprecationWarningsTest(fixtures.TestBase):
             "will be removed in a future release."
         ):
             select([column("x")], for_update=True)
-
-    @testing.provide_metadata
-    def test_table_useexisting(self):
-        meta = self.metadata
-
-        Table("t", meta, Column("x", Integer))
-        meta.create_all()
-
-        with testing.expect_deprecated(
-            "The Table.useexisting parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            Table("t", meta, useexisting=True, autoload_with=testing.db)
-
-        with testing.expect_deprecated(
-            "The Table.useexisting parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            assert_raises_message(
-                exc.ArgumentError,
-                "useexisting is synonymous with extend_existing.",
-                Table,
-                "t",
-                meta,
-                useexisting=True,
-                extend_existing=True,
-                autoload_with=testing.db,
-            )
-
-
-class DDLListenerDeprecationsTest(fixtures.TestBase):
-    def setup(self):
-        self.bind = self.engine = engines.mock_engine()
-        self.metadata = MetaData(self.bind)
-        self.table = Table("t", self.metadata, Column("id", Integer))
-        self.users = Table(
-            "users",
-            self.metadata,
-            Column("user_id", Integer, primary_key=True),
-            Column("user_name", String(40)),
-        )
-
-    def test_append_listener(self):
-        metadata, table = self.metadata, self.table
-
-        def fn(*a):
-            return None
-
-        with testing.expect_deprecated(".* is deprecated .*"):
-            table.append_ddl_listener("before-create", fn)
-        with testing.expect_deprecated(".* is deprecated .*"):
-            assert_raises(
-                exc.InvalidRequestError, table.append_ddl_listener, "blah", fn
-            )
-
-        with testing.expect_deprecated(".* is deprecated .*"):
-            metadata.append_ddl_listener("before-create", fn)
-        with testing.expect_deprecated(".* is deprecated .*"):
-            assert_raises(
-                exc.InvalidRequestError,
-                metadata.append_ddl_listener,
-                "blah",
-                fn,
-            )
-
-    def test_deprecated_append_ddl_listener_table(self):
-        metadata, users, engine = self.metadata, self.users, self.engine
-        canary = []
-        with testing.expect_deprecated(".* is deprecated .*"):
-            users.append_ddl_listener(
-                "before-create", lambda e, t, b: canary.append("mxyzptlk")
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            users.append_ddl_listener(
-                "after-create", lambda e, t, b: canary.append("klptzyxm")
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            users.append_ddl_listener(
-                "before-drop", lambda e, t, b: canary.append("xyzzy")
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            users.append_ddl_listener(
-                "after-drop", lambda e, t, b: canary.append("fnord")
-            )
-
-        metadata.create_all()
-        assert "mxyzptlk" in canary
-        assert "klptzyxm" in canary
-        assert "xyzzy" not in canary
-        assert "fnord" not in canary
-        del engine.mock[:]
-        canary[:] = []
-        metadata.drop_all()
-        assert "mxyzptlk" not in canary
-        assert "klptzyxm" not in canary
-        assert "xyzzy" in canary
-        assert "fnord" in canary
-
-    def test_deprecated_append_ddl_listener_metadata(self):
-        metadata, engine = self.metadata, self.engine
-        canary = []
-        with testing.expect_deprecated(".* is deprecated .*"):
-            metadata.append_ddl_listener(
-                "before-create",
-                lambda e, t, b, tables=None: canary.append("mxyzptlk"),
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            metadata.append_ddl_listener(
-                "after-create",
-                lambda e, t, b, tables=None: canary.append("klptzyxm"),
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            metadata.append_ddl_listener(
-                "before-drop",
-                lambda e, t, b, tables=None: canary.append("xyzzy"),
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            metadata.append_ddl_listener(
-                "after-drop",
-                lambda e, t, b, tables=None: canary.append("fnord"),
-            )
-
-        metadata.create_all()
-        assert "mxyzptlk" in canary
-        assert "klptzyxm" in canary
-        assert "xyzzy" not in canary
-        assert "fnord" not in canary
-        del engine.mock[:]
-        canary[:] = []
-        metadata.drop_all()
-        assert "mxyzptlk" not in canary
-        assert "klptzyxm" not in canary
-        assert "xyzzy" in canary
-        assert "fnord" in canary
-
-    def test_filter_deprecated(self):
-        cx = self.engine
-
-        tbl = Table("t", MetaData(), Column("id", Integer))
-        target = cx.name
-
-        assert DDL("")._should_execute_deprecated("x", tbl, cx)
-        with testing.expect_deprecated(".* is deprecated .*"):
-            assert DDL("", on=target)._should_execute_deprecated("x", tbl, cx)
-        with testing.expect_deprecated(".* is deprecated .*"):
-            assert not DDL("", on="bogus")._should_execute_deprecated(
-                "x", tbl, cx
-            )
-        with testing.expect_deprecated(".* is deprecated .*"):
-            assert DDL(
-                "", on=lambda d, x, y, z: True
-            )._should_execute_deprecated("x", tbl, cx)
-        with testing.expect_deprecated(".* is deprecated .*"):
-            assert DDL(
-                "", on=lambda d, x, y, z: z.engine.name != "bogus"
-            )._should_execute_deprecated("x", tbl, cx)
 
 
 class ConvertUnicodeDeprecationTest(fixtures.TestBase):
