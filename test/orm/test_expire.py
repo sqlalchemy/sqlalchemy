@@ -4,6 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -191,8 +192,23 @@ class ExpireTest(_fixtures.FixtureTest):
         o1 = s.query(Order).first()
         assert "description" not in o1.__dict__
         s.expire(o1)
+
+        # the deferred attribute is listed as expired (new in 1.4)
+        eq_(
+            inspect(o1).expired_attributes,
+            {"id", "isopen", "address_id", "user_id", "description"},
+        )
+
+        # unexpire by accessing isopen
         assert o1.isopen is not None
+
+        # all expired_attributes are cleared
+        eq_(inspect(o1).expired_attributes, set())
+
+        # but description wasn't loaded (new in 1.4)
         assert "description" not in o1.__dict__
+
+        # loads using deferred callable
         assert o1.description
 
     def test_deferred_notfound(self):
@@ -992,25 +1008,26 @@ class ExpireTest(_fixtures.FixtureTest):
         assert "isopen" not in o.__dict__
         assert "description" not in o.__dict__
 
-        # test that expired attribute access refreshes
+        # test that expired attribute access does not refresh
         # the deferred
         def go():
             assert o.isopen == 1
             assert o.description == "order 3"
 
-        self.assert_sql_count(testing.db, go, 1)
+        # requires two statements
+        self.assert_sql_count(testing.db, go, 2)
 
         sess.expire(o, ["description", "isopen"])
         assert "isopen" not in o.__dict__
         assert "description" not in o.__dict__
-        # test that the deferred attribute triggers the full
+        # test that the deferred attribute does not trigger the full
         # reload
 
         def go():
             assert o.description == "order 3"
             assert o.isopen == 1
 
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 2)
 
         sa.orm.clear_mappers()
 
@@ -1195,13 +1212,15 @@ class ExpireTest(_fixtures.FixtureTest):
         u1 = sess.query(User).options(undefer(User.name)).first()
         del u1.name
         sess.expire(u1)
-        assert "name" not in attributes.instance_state(u1).expired_attributes
+        assert "name" in attributes.instance_state(u1).expired_attributes
         assert "name" not in attributes.instance_state(u1).callables
 
         # single attribute expire, the attribute gets the callable
         sess.expunge_all()
         u1 = sess.query(User).options(undefer(User.name)).first()
         sess.expire(u1, ["name"])
+
+        # the expire cancels the undefer
         assert "name" in attributes.instance_state(u1).expired_attributes
         assert "name" not in attributes.instance_state(u1).callables
 
@@ -1305,7 +1324,7 @@ class ExpireTest(_fixtures.FixtureTest):
         item = s.query(Order).first()
         s.expire(item, ["isopen", "description"])
         item.isopen
-        assert "description" in item.__dict__
+        assert "description" not in item.__dict__
 
 
 class PolymorphicExpireTest(fixtures.MappedTest):

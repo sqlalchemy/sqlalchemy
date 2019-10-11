@@ -1357,7 +1357,7 @@ def noload(*keys):
 
 @loader_option()
 def raiseload(loadopt, attr, sql_only=False):
-    """Indicate that the given relationship attribute should disallow lazy loads.
+    """Indicate that the given attribute should raise an error if accessed.
 
     A relationship attribute configured with :func:`.orm.raiseload` will
     raise an :exc:`~sqlalchemy.exc.InvalidRequestError` upon access.   The
@@ -1367,15 +1367,19 @@ def raiseload(loadopt, attr, sql_only=False):
     to read through SQL logs to ensure lazy loads aren't occurring, this
     strategy will cause them to raise immediately.
 
-    :param sql_only: if True, raise only if the lazy load would emit SQL,
-     but not if it is only checking the identity map, or determining that
-     the related value should just be None due to missing keys.  When False,
-     the strategy will raise for all varieties of lazyload.
+    :func:`.orm.raiseload` applies to :func:`.relationship` attributes only.
+    In order to apply raise-on-SQL behavior to a column-based attribute,
+    use the :paramref:`.orm.defer.raiseload` parameter on the :func:`.defer`
+    loader option.
+
+    :param sql_only: if True, raise only if the lazy load would emit SQL, but
+     not if it is only checking the identity map, or determining that the
+     related value should just be None due to missing keys.  When False, the
+     strategy will raise for all varieties of relationship loading.
 
     This function is part of the :class:`.Load` interface and supports
     both method-chained and standalone operation.
 
-    :func:`.orm.raiseload` applies to :func:`.relationship` attributes only.
 
     .. versionadded:: 1.1
 
@@ -1384,6 +1388,8 @@ def raiseload(loadopt, attr, sql_only=False):
         :ref:`loading_toplevel`
 
         :ref:`prevent_lazy_with_raiseload`
+
+        :ref:`deferred_raiseload`
 
     """
 
@@ -1440,7 +1446,7 @@ def defaultload(*keys):
 
 
 @loader_option()
-def defer(loadopt, key):
+def defer(loadopt, key, raiseload=False):
     r"""Indicate that the given column-oriented attribute should be deferred,
     e.g. not loaded until accessed.
 
@@ -1480,6 +1486,16 @@ def defer(loadopt, key):
 
     :param key: Attribute to be deferred.
 
+    :param raiseload: raise :class:`.InvalidRequestError` if the column
+     value is to be loaded from emitting SQL.   Used to prevent unwanted
+     SQL from being emitted.
+
+     .. versionadded:: 1.4
+
+     .. seealso::
+
+        :ref:`deferred_raiseload`
+
     :param \*addl_attrs: This option supports the old 0.8 style
      of specifying a path as a series of attributes, which is now superseded
      by the method-chained style.
@@ -1497,13 +1513,14 @@ def defer(loadopt, key):
         :func:`.orm.undefer`
 
     """
-    return loadopt.set_column_strategy(
-        (key,), {"deferred": True, "instrument": True}
-    )
+    strategy = {"deferred": True, "instrument": True}
+    if raiseload:
+        strategy["raiseload"] = True
+    return loadopt.set_column_strategy((key,), strategy)
 
 
 @defer._add_unbound_fn
-def defer(key, *addl_attrs):
+def defer(key, *addl_attrs, **kw):
     if addl_attrs:
         util.warn_deprecated(
             "The *addl_attrs on orm.defer is deprecated.  Please use "
@@ -1511,7 +1528,7 @@ def defer(key, *addl_attrs):
             "indicate a path."
         )
     return _UnboundLoad._from_keys(
-        _UnboundLoad.defer, (key,) + addl_attrs, False, {}
+        _UnboundLoad.defer, (key,) + addl_attrs, False, kw
     )
 
 

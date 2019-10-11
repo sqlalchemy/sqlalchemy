@@ -593,11 +593,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
             del self.__dict__["parents"]
 
         self.expired_attributes.update(
-            [
-                impl.key
-                for impl in self.manager._loader_impls
-                if impl.expire_missing or impl.key in dict_
-            ]
+            [impl.key for impl in self.manager._loader_impls]
         )
 
         if self.callables:
@@ -671,8 +667,13 @@ class InstanceState(interfaces.InspectionAttrInfo):
             return PASSIVE_NO_RESULT
 
         toload = self.expired_attributes.intersection(self.unmodified)
+        toload = toload.difference(
+            attr
+            for attr in toload
+            if not self.manager[attr].impl.load_on_unexpire
+        )
 
-        self.manager.deferred_scalar_loader(self, toload)
+        self.manager.expired_attribute_loader(self, toload)
 
         # if the loader failed, or this
         # instance state didn't have an identity,
@@ -719,11 +720,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
         was never populated or modified.
 
         """
-        return self.unloaded.intersection(
-            attr
-            for attr in self.manager
-            if self.manager[attr].impl.expire_missing
-        )
+        return self.unloaded
 
     @property
     def _unloaded_non_object(self):

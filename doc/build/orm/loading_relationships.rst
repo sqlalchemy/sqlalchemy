@@ -292,9 +292,16 @@ Conversely, to set up the raise for just the ``Item`` objects::
     session.query(Order).options(
         joinedload(Order.items).raiseload('*'))
 
+
+The :func:`.raiseload` option applies only to relationship attributes.  For
+column-oriented attributes, the :func:`.defer` option supports the
+:paramref:`.orm.defer.raiseload` option which works in the same way.
+
 .. seealso::
 
     :ref:`wildcard_loader_strategies`
+
+    :ref:`deferred_raiseload`
 
 .. _joined_eager_loading:
 

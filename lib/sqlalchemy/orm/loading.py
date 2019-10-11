@@ -21,6 +21,7 @@ from . import exc as orm_exc
 from . import path_registry
 from . import strategy_options
 from .base import _DEFER_FOR_STATE
+from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .util import _none_set
 from .util import aliased
@@ -384,6 +385,8 @@ def _instance_processor(
                 # searching in the result to see if the column might
                 # be present in some unexpected way.
                 populators["expire"].append((prop.key, False))
+            elif col is _RAISE_FOR_STATE:
+                populators["new"].append((prop.key, prop._raise_column_loader))
             else:
                 getter = None
                 # the "adapter" can be here via different paths,

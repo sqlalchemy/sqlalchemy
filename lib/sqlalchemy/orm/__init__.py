@@ -154,6 +154,15 @@ def deferred(*columns, **kw):
      :class:`.Column` object, however a collection is supported in order
      to support multiple columns mapped under the same attribute.
 
+    :param raiseload: boolean, if True, indicates an exception should be raised
+     if the load operation is to take place.
+
+     .. versionadded:: 1.4
+
+     .. seealso::
+
+        :ref:`deferred_raiseload`
+
     :param \**kw: additional keyword arguments passed to
      :class:`.ColumnProperty`.
 

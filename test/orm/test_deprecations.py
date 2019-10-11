@@ -870,6 +870,30 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
 class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def test_deferred_scalar_loader_name_change(self):
+        class Foo(object):
+            pass
+
+        def myloader(*arg, **kw):
+            pass
+
+        instrumentation.register_class(Foo)
+        manager = instrumentation.manager_of_class(Foo)
+
+        with testing.expect_deprecated(
+            "The ClassManager.deferred_scalar_loader attribute is now named "
+            "expired_attribute_loader"
+        ):
+            manager.deferred_scalar_loader = myloader
+
+        is_(manager.expired_attribute_loader, myloader)
+
+        with testing.expect_deprecated(
+            "The ClassManager.deferred_scalar_loader attribute is now named "
+            "expired_attribute_loader"
+        ):
+            is_(manager.deferred_scalar_loader, myloader)
+
     def test_polymorphic_union_w_select(self):
         users, addresses = self.tables.users, self.tables.addresses
 

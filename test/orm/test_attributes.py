@@ -449,7 +449,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         manager = attributes.manager_of_class(Foo)
-        manager.deferred_scalar_loader = loader
+        manager.expired_attribute_loader = loader
         attributes.register_attribute(Foo, "a", uselist=False, useobject=False)
         attributes.register_attribute(Foo, "b", uselist=False, useobject=False)
 
@@ -495,7 +495,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(MyTest)
         manager = attributes.manager_of_class(MyTest)
-        manager.deferred_scalar_loader = loader
+        manager.expired_attribute_loader = loader
         attributes.register_attribute(
             MyTest, "a", uselist=False, useobject=False
         )
@@ -2245,7 +2245,7 @@ class HistoryTest(fixtures.TestBase):
         def scalar_loader(state, toload):
             state.dict["someattr"] = "one"
 
-        state.manager.deferred_scalar_loader = scalar_loader
+        state.manager.expired_attribute_loader = scalar_loader
 
         eq_(self._someattr_history(f), ((), ["one"], ()))
 

@@ -36,7 +36,7 @@ class DescriptorProperty(MapperProperty):
 
         class _ProxyImpl(object):
             accepts_scalar_loader = False
-            expire_missing = True
+            load_on_unexpire = True
             collection = False
 
             @property

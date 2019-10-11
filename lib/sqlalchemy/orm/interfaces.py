@@ -538,9 +538,10 @@ class StrategizedProperty(MapperProperty):
             return self._strategies[key]
         except KeyError:
             cls = self._strategy_lookup(self, *key)
-            self._strategies[key] = self._strategies[cls] = strategy = cls(
-                self, key
-            )
+            # this previosuly was setting self._strategies[cls], that's
+            # a bad idea; should use strategy key at all times because every
+            # strategy has multiple keys at this point
+            self._strategies[key] = strategy = cls(self, key)
             return strategy
 
     def setup(self, context, query_entity, path, adapter, **kwargs):

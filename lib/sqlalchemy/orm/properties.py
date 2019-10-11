@@ -53,6 +53,8 @@ class ColumnProperty(StrategizedProperty):
         "_is_polymorphic_discriminator",
         "_mapped_by_synonym",
         "_deferred_column_loader",
+        "_raise_column_loader",
+        "raiseload",
     )
 
     def __init__(self, *columns, **kwargs):
@@ -115,6 +117,16 @@ class ColumnProperty(StrategizedProperty):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
 
+        :param raiseload: if True, indicates the column should raise an error
+            when undeferred, rather than loading the value.  This can be
+            altered at query time by using the :func:`.deferred` option with
+            raiseload=False.
+
+            .. versionadded:: 1.4
+
+            .. seealso::
+
+                :ref:`deferred_raiseload`
 
         """
         super(ColumnProperty, self).__init__()
@@ -129,6 +141,7 @@ class ColumnProperty(StrategizedProperty):
         ]
         self.group = kwargs.pop("group", None)
         self.deferred = kwargs.pop("deferred", False)
+        self.raiseload = kwargs.pop("raiseload", False)
         self.instrument = kwargs.pop("_instrument", True)
         self.comparator_factory = kwargs.pop(
             "comparator_factory", self.__class__.Comparator
@@ -163,12 +176,22 @@ class ColumnProperty(StrategizedProperty):
             ("deferred", self.deferred),
             ("instrument", self.instrument),
         )
+        if self.raiseload:
+            self.strategy_key += (("raiseload", True),)
 
     @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
     def _memoized_attr__deferred_column_loader(self, state, strategies):
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key),
+            self.key,
+        )
+
+    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__raise_column_loader(self, state, strategies):
+        return state.InstanceState._instance_level_callable_processor(
+            self.parent.class_manager,
+            strategies.LoadDeferredColumns(self.key, True),
             self.key,
         )
 

@@ -182,8 +182,80 @@ refined so that it is more compatible with Core.
 :ticket:`4617`
 
 
+New Features - ORM
+==================
+
+.. _change_4826:
+
+Raiseload for Columns
+---------------------
+
+The "raiseload" feature, which raises :class:`.InvalidRequestError` when an
+unloaded attribute is accessed, is now available for column-oriented attributes
+using the :paramref:`.orm.defer.raiseload` parameter of :func:`.defer`. This
+works in the same manner as that of the :func:`.raiseload` option used by
+relationship loading::
+
+    book = session.query(Book).options(defer(Book.summary, raiseload=True)).first()
+
+    # would raise an exception
+    book.summary
+
+To configure column-level raiseload on a mapping, the
+:paramref:`.deferred.raiseload` parameter of :func:`.deferred` may be used.  The
+:func:`.undefer` option may then be used at query time to eagerly load
+the attribute::
+
+    class Book(Base):
+        __tablename__ = 'book'
+
+        book_id = Column(Integer, primary_key=True)
+        title = Column(String(200), nullable=False)
+        summary = deferred(Column(String(2000)), raiseload=True)
+        excerpt = deferred(Column(Text), raiseload=True)
+
+    book_w_excerpt = session.query(Book).options(undefer(Book.excerpt)).first()
+
+It was originally considered that the existing :func:`.raiseload` option that
+works for :func:`.relationship` attributes be expanded to also support column-oriented
+attributes.    However, this would break the "wildcard" behavior of :func:`.raiseload`,
+which is documented as allowing one to prevent all relationships from loading::
+
+    session.query(Order).options(
+        joinedload(Order.items), raiseload('*'))
+
+Above, if we had expanded :func:`.raiseload` to accommodate for columns  as
+well, the wildcard would also prevent columns from loading and thus be  a
+backwards incompatible change; additionally, it's not clear if
+:func:`.raiseload` covered both column expressions and relationships, how one
+would achieve the  effect above of only blocking relationship loads, without
+new API being added.   So to keep things simple, the option for columns
+remains on :func:`.defer`:
+
+    :func:`.raiseload` - query option to raise for relationship loads
+
+    :paramref:`.orm.defer.raiseload` - query option to raise for column expression loads
 
 
+As part of this change, the behavior of "deferred" in conjunction with
+attribute expiration has changed.   Previously, when an object would be marked
+as expired, and then unexpired via the access of one of the expired attributes,
+attributes which were mapped as "deferred" at the mapper level would also load.
+This has been changed such that an attribute that is deferred in the mapping
+will never "unexpire", it only loads when accessed as part of the deferral
+loader.
+
+An attribute that is not mapped as "deferred", however was deferred at query
+time via the :func:`.defer` option, will be reset when the object or attribute
+is expired; that is, the deferred option is removed. This is the same behavior
+as was present previously.
+
+
+.. seealso::
+
+    :ref:`deferred_raiseload`
+
+:ticket:`4826`
 
 Behavioral Changes - ORM
 ========================

@@ -206,6 +206,8 @@ _SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")
 
 _DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")
 
+_RAISE_FOR_STATE = util.symbol("RAISE_FOR_STATE")
+
 
 def _assertions(*assertions):
     @util.decorator

@@ -874,6 +874,72 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         # self.sql_count_(0, go)
         self.sql_count_(1, go)
 
+    def test_raise_on_col_rowproc_only(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(
+            Order,
+            orders,
+            properties={
+                "description": deferred(orders.c.description, raiseload=True)
+            },
+        )
+
+        sess = create_session()
+        stmt = sa.select([Order]).order_by(Order.id)
+        o1 = (sess.query(Order).from_statement(stmt).all())[0]
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Order.description' is not available due to raiseload=True",
+            getattr,
+            o1,
+            "description",
+        )
+
+    def test_locates_col_w_option_rowproc_only(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders)
+
+        sess = create_session()
+        stmt = sa.select([Order]).order_by(Order.id)
+        o1 = (
+            sess.query(Order)
+            .from_statement(stmt)
+            .options(defer(Order.description))
+            .all()
+        )[0]
+
+        def go():
+            eq_(o1.description, "order 1")
+
+        # prior to 1.0 we'd search in the result for this column
+        # self.sql_count_(0, go)
+        self.sql_count_(1, go)
+
+    def test_raise_on_col_w_option_rowproc_only(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(Order, orders)
+
+        sess = create_session()
+        stmt = sa.select([Order]).order_by(Order.id)
+        o1 = (
+            sess.query(Order)
+            .from_statement(stmt)
+            .options(defer(Order.description, raiseload=True))
+            .all()
+        )[0]
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Order.description' is not available due to raiseload=True",
+            getattr,
+            o1,
+            "description",
+        )
+
     def test_deep_options(self):
         users, items, order_items, Order, Item, User, orders = (
             self.tables.users,
@@ -1781,3 +1847,177 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
         )
         q.first()
         eq_(a1.my_expr, 5)
+
+
+class RaiseLoadTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = deferred(Column(Integer))
+            z = deferred(Column(Integer), raiseload=True)
+
+    @classmethod
+    def insert_data(cls):
+        A = cls.classes.A
+        s = Session()
+        s.add(A(id=1, x=2, y=3, z=4))
+        s.commit()
+
+    def test_mapper_raise(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).first()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.z' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "z",
+        )
+        eq_(a1.x, 2)
+
+    def test_mapper_defer_unraise(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.z)).first()
+        assert "z" not in a1.__dict__
+        eq_(a1.z, 4)
+        eq_(a1.x, 2)
+
+    def test_mapper_undefer_unraise(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(undefer(A.z)).first()
+        assert "z" in a1.__dict__
+        eq_(a1.z, 4)
+        eq_(a1.x, 2)
+
+    def test_deferred_raise_option_raise_column_plain(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.x)).first()
+        a1.x
+
+        s.close()
+
+        a1 = s.query(A).options(defer(A.x, raiseload=True)).first()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.x' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "x",
+        )
+
+    def test_deferred_raise_option_load_column_unexpire(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.x, raiseload=True)).first()
+        s.expire(a1, ["x"])
+
+        # after expire(), options are cleared.  relationship w/ raiseload
+        # works this way also
+        eq_(a1.x, 2)
+
+    def test_mapper_raise_after_expire_attr(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).first()
+
+        s.expire(a1, ["z"])
+
+        # raises even after expire()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.z' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "z",
+        )
+
+    def test_mapper_raise_after_expire_obj(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).first()
+
+        s.expire(a1)
+
+        # raises even after expire()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.z' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "z",
+        )
+
+    def test_mapper_raise_after_modify_attr_expire_obj(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).first()
+
+        a1.z = 10
+        s.expire(a1)
+
+        # raises even after expire()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.z' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "z",
+        )
+
+    def test_deferred_raise_option_load_after_expire_obj(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.y, raiseload=True)).first()
+
+        s.expire(a1)
+
+        # after expire(), options are cleared.  relationship w/ raiseload
+        # works this way also
+        eq_(a1.y, 3)
+
+    def test_option_raiseload_unexpire_modified_obj(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.y, raiseload=True)).first()
+
+        a1.y = 10
+        s.expire(a1)
+
+        # after expire(), options are cleared.  relationship w/ raiseload
+        # works this way also
+        eq_(a1.y, 3)
+
+    def test_option_raise_deferred(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.y, raiseload=True)).first()
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'A.y' is not available due to raiseload=True",
+            getattr,
+            a1,
+            "y",
+        )
+
+    def test_does_expire_cancel_normal_defer_option(self):
+        A = self.classes.A
+        s = Session()
+        a1 = s.query(A).options(defer(A.x)).first()
+
+        # expire object
+        s.expire(a1)
+
+        # unexpire object
+        eq_(a1.id, 1)
+
+        assert "x" in a1.__dict__

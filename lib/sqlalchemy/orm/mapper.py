@@ -1247,7 +1247,7 @@ class Mapper(InspectionAttr):
         self.class_manager = manager
 
         manager.mapper = self
-        manager.deferred_scalar_loader = util.partial(
+        manager.expired_attribute_loader = util.partial(
             loading.load_scalar_attributes, self
         )
 

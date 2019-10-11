@@ -468,7 +468,7 @@ class AttributeImpl(object):
         compare_function=None,
         active_history=False,
         parent_token=None,
-        expire_missing=True,
+        load_on_unexpire=True,
         send_modified_events=True,
         accepts_scalar_loader=None,
         **kwargs
@@ -503,10 +503,13 @@ class AttributeImpl(object):
           Allows multiple AttributeImpls to all match a single
           owner attribute.
 
-        :param expire_missing:
-          if False, don't add an "expiry" callable to this attribute
-          during state.expire_attributes(None), if no value is present
-          for this key.
+        :param load_on_unexpire:
+          if False, don't include this attribute in a load-on-expired
+          operation, i.e. the "expired_attribute_loader" process.
+          The attribute can still be in the "expired" list and be
+          considered to be "expired".   Previously, this flag was called
+          "expire_missing" and is only used by a deferred column
+          attribute.
 
         :param send_modified_events:
           if False, the InstanceState._modified_event method will have no
@@ -534,7 +537,7 @@ class AttributeImpl(object):
         if active_history:
             self.dispatch._active_history = True
 
-        self.expire_missing = expire_missing
+        self.load_on_unexpire = load_on_unexpire
         self._modified_token = Event(self, OP_MODIFIED)
 
     __slots__ = (
@@ -546,7 +549,7 @@ class AttributeImpl(object):
         "parent_token",
         "send_modified_events",
         "is_equal",
-        "expire_missing",
+        "load_on_unexpire",
         "_modified_token",
         "accepts_scalar_loader",
     )
@@ -683,6 +686,7 @@ class AttributeImpl(object):
 
                 if (
                     self.accepts_scalar_loader
+                    and self.load_on_unexpire
                     and key in state.expired_attributes
                 ):
                     value = state._load_expired(state, passive)

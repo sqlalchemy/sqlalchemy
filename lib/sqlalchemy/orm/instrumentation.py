@@ -49,11 +49,30 @@ class ClassManager(dict):
 
     _state_setter = staticmethod(util.attrsetter(STATE_ATTR))
 
-    deferred_scalar_loader = None
+    expired_attribute_loader = None
+    "previously known as deferred_scalar_loader"
 
     original_init = object.__init__
 
     factory = None
+
+    @property
+    @util.deprecated(
+        "1.4",
+        message="The ClassManager.deferred_scalar_loader attribute is now "
+        "named expired_attribute_loader",
+    )
+    def deferred_scalar_loader(self):
+        return self.expired_attribute_loader
+
+    @deferred_scalar_loader.setter
+    @util.deprecated(
+        "1.4",
+        message="The ClassManager.deferred_scalar_loader attribute is now "
+        "named expired_attribute_loader",
+    )
+    def deferred_scalar_loader(self, obj):
+        self.expired_attribute_loader = obj
 
     def __init__(self, class_):
         self.class_ = class_

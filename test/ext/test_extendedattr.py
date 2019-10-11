@@ -229,7 +229,7 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
                 return attributes.ATTR_WAS_SET
 
             manager = register_class(Foo)
-            manager.deferred_scalar_loader = loader
+            manager.expired_attribute_loader = loader
             attributes.register_attribute(
                 Foo, "a", uselist=False, useobject=False
             )

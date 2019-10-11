@@ -21,6 +21,7 @@ from . import query
 from . import unitofwork
 from . import util as orm_util
 from .base import _DEFER_FOR_STATE
+from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
@@ -287,11 +288,14 @@ class ExpressionColumnLoader(ColumnLoader):
 
 @log.class_logger
 @properties.ColumnProperty.strategy_for(deferred=True, instrument=True)
+@properties.ColumnProperty.strategy_for(
+    deferred=True, instrument=True, raiseload=True
+)
 @properties.ColumnProperty.strategy_for(do_nothing=True)
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
 
-    __slots__ = "columns", "group"
+    __slots__ = "columns", "group", "raiseload"
 
     def __init__(self, parent, strategy_key):
         super(DeferredColumnLoader, self).__init__(parent, strategy_key)
@@ -299,6 +303,7 @@ class DeferredColumnLoader(LoaderStrategy):
             raise NotImplementedError(
                 "Deferred loading for composite " "types not implemented yet"
             )
+        self.raiseload = self.strategy_opts.get("raiseload", False)
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
 
@@ -306,14 +311,23 @@ class DeferredColumnLoader(LoaderStrategy):
         self, context, path, loadopt, mapper, result, adapter, populators
     ):
 
-        # this path currently does not check the result
-        # for the column; this is because in most cases we are
-        # working just with the setup_query() directive which does
-        # not support this, and the behavior here should be consistent.
+        # for a DeferredColumnLoader, this method is only used during a
+        # "row processor only" query; see test_deferred.py ->
+        # tests with "rowproc_only" in their name.  As of the 1.0 series,
+        # loading._instance_processor doesn't use a "row processing" function
+        # to populate columns, instead it uses data in the "populators"
+        # dictionary.  Normally, the DeferredColumnLoader.setup_query()
+        # sets up that data in the "memoized_populators" dictionary
+        # and "create_row_processor()" here is never invoked.
         if not self.is_class_level:
-            set_deferred_for_local_state = (
-                self.parent_property._deferred_column_loader
-            )
+            if self.raiseload:
+                set_deferred_for_local_state = (
+                    self.parent_property._raise_column_loader
+                )
+            else:
+                set_deferred_for_local_state = (
+                    self.parent_property._deferred_column_loader
+                )
             populators["new"].append((self.key, set_deferred_for_local_state))
         else:
             populators["expire"].append((self.key, False))
@@ -327,7 +341,7 @@ class DeferredColumnLoader(LoaderStrategy):
             useobject=False,
             compare_function=self.columns[0].type.compare_values,
             callable_=self._load_for_state,
-            expire_missing=False,
+            load_on_unexpire=False,
         )
 
     def setup_query(
@@ -374,8 +388,10 @@ class DeferredColumnLoader(LoaderStrategy):
             )
         elif self.is_class_level:
             memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
-        else:
+        elif not self.raiseload:
             memoized_populators[self.parent_property] = _DEFER_FOR_STATE
+        else:
+            memoized_populators[self.parent_property] = _RAISE_FOR_STATE
 
     def _load_for_state(self, state, passive):
         if not state.key:
@@ -408,6 +424,9 @@ class DeferredColumnLoader(LoaderStrategy):
                 % (orm_util.state_str(state), self.key)
             )
 
+        if self.raiseload:
+            self._invoke_raise_load(state, passive, "raise")
+
         query = session.query(localparent)
         if (
             loading.load_on_ident(
@@ -419,19 +438,33 @@ class DeferredColumnLoader(LoaderStrategy):
 
         return attributes.ATTR_WAS_SET
 
+    def _invoke_raise_load(self, state, passive, lazy):
+        raise sa_exc.InvalidRequestError(
+            "'%s' is not available due to raiseload=True" % (self,)
+        )
+
 
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
 
-    def __init__(self, key):
+    def __init__(self, key, raiseload=False):
         self.key = key
+        self.raiseload = raiseload
 
     def __call__(self, state, passive=attributes.PASSIVE_OFF):
         key = self.key
 
         localparent = state.manager.mapper
         prop = localparent._props[key]
-        strategy = prop._strategies[DeferredColumnLoader]
+        if self.raiseload:
+            strategy_key = (
+                ("deferred", True),
+                ("instrument", True),
+                ("raiseload", True),
+            )
+        else:
+            strategy_key = (("deferred", True), ("instrument", True))
+        strategy = prop._get_strategy(strategy_key)
         return strategy._load_for_state(state, passive)
 
 
