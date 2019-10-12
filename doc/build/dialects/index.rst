@@ -46,6 +46,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 
 * `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix.
 * `PyHive <https://github.com/dropbox/PyHive#sqlalchemy>`_ - driver for `Apache Hive <https://hive.apache.org/>`_ and `Presto <https://prestodb.github.io/>`_.
+* `pybigquery <https://github.com/mxmzdlv/pybigquery/>`_ - driver for Google BigQuery.
 * `sqlalchemy-redshift <https://pypi.python.org/pypi/sqlalchemy-redshift>`_ - driver for Amazon Redshift, adapts
   the existing PostgreSQL/psycopg2 driver.
 * `sqlalchemy-drill <https://github.com/JohnOmernik/sqlalchemy-drill>`_ - driver for Apache Drill.
