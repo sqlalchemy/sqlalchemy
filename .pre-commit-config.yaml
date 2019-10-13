@@ -12,4 +12,10 @@ repos:
     hooks:
     -   id: zimports
 
+-   repo: https://github.com/pycqa/flake8
+    rev: master
+    hooks:
+    -   id: flake8
+
+
 
