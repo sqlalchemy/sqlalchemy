@@ -868,6 +868,34 @@ class PreparerTest(fixtures.TestBase):
         a_eq(unformat("`foo`.bar"), ["foo", "bar"])
         a_eq(unformat("`foo`.`b``a``r`.`baz`"), ["foo", "b`a`r", "baz"])
 
+    def test_alembic_quote(self):
+        t1 = Table(
+            "TableOne", MetaData(), Column("MyCol", Integer, index=True)
+        )
+        t2 = Table(
+            "some_table", MetaData(), Column("some_col", Integer, index=True)
+        )
+        t3 = Table(
+            "some_table", MetaData(), Column("some_col", Integer, index=True)
+        )
+        ix3 = Index("my_index", t3.c.some_col)
+        ix4 = Index("MyIndex", t3.c.some_col)
+        ix5 = Index(None, t3.c.some_col)
+
+        for idx, expected in [
+            (list(t1.indexes)[0], "ix_TableOne_MyCol"),
+            (list(t2.indexes)[0], "ix_some_table_some_col"),
+            (ix3, "my_index"),
+            (ix4, "MyIndex"),
+            (ix5, "ix_some_table_some_col"),
+        ]:
+            eq_(
+                testing.db.dialect.identifier_preparer.format_constraint(
+                    idx, _alembic_quote=False
+                ),
+                expected,
+            )
+
 
 class QuotedIdentTest(fixtures.TestBase):
     def test_concat_quotetrue(self):

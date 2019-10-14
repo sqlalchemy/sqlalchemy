@@ -3698,7 +3698,7 @@ class IdentifierPreparer(object):
         return ident
 
     @util.dependencies("sqlalchemy.sql.naming")
-    def format_constraint(self, naming, constraint):
+    def format_constraint(self, naming, constraint, _alembic_quote=True):
         if isinstance(constraint.name, elements._defer_name):
             name = naming._constraint_name_for_table(
                 constraint, constraint.table
@@ -3725,7 +3725,10 @@ class IdentifierPreparer(object):
         else:
             self.dialect.validate_identifier(name)
 
-        return self.quote(name)
+        if not _alembic_quote:
+            return name
+        else:
+            return self.quote(name)
 
     def format_index(self, index):
         return self.format_constraint(index)
