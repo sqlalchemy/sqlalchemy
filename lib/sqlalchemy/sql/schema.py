@@ -1500,7 +1500,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                     "To create indexes with a specific name, create an "
                     "explicit Index object external to the Table."
                 )
-            Index(None, self, unique=bool(self.unique), _column_flag=True)
+            table.append_constraint(
+                Index(
+                    None, self.key, unique=bool(self.unique), _column_flag=True
+                )
+            )
+
         elif self.unique:
             if isinstance(self.unique, util.string_types):
                 raise exc.ArgumentError(

@@ -31,8 +31,12 @@ from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
 from sqlalchemy.engine import default
+from sqlalchemy.schema import AddConstraint
+from sqlalchemy.schema import CreateIndex
+from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import naming
+from sqlalchemy.sql.elements import _NONE_NAME
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -4409,6 +4413,97 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return u1
 
+    def _colliding_name_fixture(self, naming_convention, id_flags):
+        m1 = MetaData(naming_convention=naming_convention)
+
+        t1 = Table(
+            "foo",
+            m1,
+            Column("id", Integer, **id_flags),
+            Column("foo_id", Integer),
+        )
+        return t1
+
+    def test_colliding_col_label_from_index_flag(self):
+        t1 = self._colliding_name_fixture(
+            {"ix": "ix_%(column_0_label)s"}, {"index": True}
+        )
+
+        idx = list(t1.indexes)[0]
+
+        # name is generated up front.  alembic really prefers this
+        eq_(idx.name, "ix_foo_id")
+        self.assert_compile(
+            CreateIndex(idx), "CREATE INDEX ix_foo_id ON foo (id)"
+        )
+
+    def test_colliding_col_label_from_unique_flag(self):
+        t1 = self._colliding_name_fixture(
+            {"uq": "uq_%(column_0_label)s"}, {"unique": True}
+        )
+
+        const = [c for c in t1.constraints if isinstance(c, UniqueConstraint)]
+        uq = const[0]
+
+        # name is generated up front.  alembic really prefers this
+        eq_(uq.name, "uq_foo_id")
+
+        self.assert_compile(
+            AddConstraint(uq),
+            "ALTER TABLE foo ADD CONSTRAINT uq_foo_id UNIQUE (id)",
+        )
+
+    def test_colliding_col_label_from_index_obj(self):
+        t1 = self._colliding_name_fixture({"ix": "ix_%(column_0_label)s"}, {})
+
+        idx = Index(None, t1.c.id)
+        is_(idx, list(t1.indexes)[0])
+        eq_(idx.name, "ix_foo_id")
+        self.assert_compile(
+            CreateIndex(idx), "CREATE INDEX ix_foo_id ON foo (id)"
+        )
+
+    def test_colliding_col_label_from_unique_obj(self):
+        t1 = self._colliding_name_fixture({"uq": "uq_%(column_0_label)s"}, {})
+        uq = UniqueConstraint(t1.c.id)
+        const = [c for c in t1.constraints if isinstance(c, UniqueConstraint)]
+        is_(const[0], uq)
+        eq_(const[0].name, "uq_foo_id")
+        self.assert_compile(
+            AddConstraint(const[0]),
+            "ALTER TABLE foo ADD CONSTRAINT uq_foo_id UNIQUE (id)",
+        )
+
+    def test_colliding_col_label_from_index_flag_no_conv(self):
+        t1 = self._colliding_name_fixture({"ck": "foo"}, {"index": True})
+
+        idx = list(t1.indexes)[0]
+
+        # this behavior needs to fail, as of #4911 since we are testing it,
+        # ensure it raises a CompileError.  In #4289 we may want to revisit
+        # this in some way, most likely specifically to Postgresql only.
+        assert_raises_message(
+            exc.CompileError,
+            "CREATE INDEX requires that the index have a name",
+            CreateIndex(idx).compile,
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            "DROP INDEX requires that the index have a name",
+            DropIndex(idx).compile,
+        )
+
+    def test_colliding_col_label_from_unique_flag_no_conv(self):
+        t1 = self._colliding_name_fixture({"ck": "foo"}, {"unique": True})
+
+        const = [c for c in t1.constraints if isinstance(c, UniqueConstraint)]
+        is_(const[0].name, None)
+
+        self.assert_compile(
+            AddConstraint(const[0]), "ALTER TABLE foo ADD UNIQUE (id)"
+        )
+
     def test_uq_name(self):
         u1 = self._fixture(
             naming_convention={"uq": "uq_%(table_name)s_%(column_0_name)s"}
@@ -4774,11 +4869,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         u1 = Table("user", m1, Column("x", Boolean()))
         # constraint is not hit
-        eq_(
+        is_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
                 0
             ].name,
-            "_unnamed_",
+            _NONE_NAME,
         )
         # but is hit at compile time
         self.assert_compile(
@@ -4840,11 +4935,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         u1 = Table("user", m1, Column("x", Boolean()))
         # constraint gets special _defer_none_name
-        eq_(
+        is_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
                 0
             ].name,
-            "_unnamed_",
+            _NONE_NAME,
         )
         # no issue with native boolean
         self.assert_compile(
@@ -4866,11 +4961,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         u1 = Table("user", m1, Column("x", Boolean()))
         # constraint gets special _defer_none_name
-        eq_(
+        is_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
                 0
             ].name,
-            "_unnamed_",
+            _NONE_NAME,
         )
 
         self.assert_compile(
@@ -4902,3 +4997,14 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         eq_(t2a.primary_key.name, t2b.primary_key.name)
         eq_(t2b.primary_key.name, "t2_pk")
+
+    def test_expression_index(self):
+        m = MetaData(naming_convention={"ix": "ix_%(column_0_label)s"})
+        t = Table("t", m, Column("q", Integer), Column("p", Integer))
+        ix = Index(None, t.c.q + 5)
+        t.append_constraint(ix)
+
+        # huh.  pretty cool
+        self.assert_compile(
+            CreateIndex(ix), "CREATE INDEX ix_t_q ON t (q + 5)"
+        )
