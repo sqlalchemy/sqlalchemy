@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 4911
+
+    Fixed bug where a table that would have a column label overlap with a plain
+    column name, such as "foo.id AS foo_id" vs. "foo.foo_id", would prematurely
+    generate the ``._label`` attribute for a column before this overlap could
+    be detected due to the use of the ``index=True`` or ``unique=True`` flag on
+    the column in conjunction with the default naming convention of
+    ``"column_0_label"``.  This would then lead to failures when ``._label``
+    were used later to generate a bound parameter name, in particular those
+    used by the ORM when generating the WHERE clause for an UPDATE statement.
+    The issue has been fixed by using an alternate ``._label`` accessor for DDL
+    generation that does not affect the state of the :class:`.Column`.   The
+    accessor also bypasses the key-deduplication step as it is not necessary
+    for DDL, the naming is now consistently ``"<tablename>_<columnname>"``
+    without any subsequent numeric symbols when used in DDL.
+
+
