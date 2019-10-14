@@ -292,6 +292,26 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1",
         )
 
+    def test_labels_no_collision_index(self):
+        """test for [ticket:4911] """
+
+        t = Table(
+            "foo",
+            MetaData(),
+            Column("id", Integer, index=True),
+            Column("foo_id", Integer),
+        )
+
+        self.assert_compile(
+            t.update().where(t.c.id == 5),
+            "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :id_1",
+        )
+
+        self.assert_compile(
+            t.update().where(t.c.id == bindparam(key=t.c.id._label)),
+            "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1",
+        )
+
     def test_inline_defaults(self):
         m = MetaData()
         foo = Table("foo", m, Column("id", Integer))
