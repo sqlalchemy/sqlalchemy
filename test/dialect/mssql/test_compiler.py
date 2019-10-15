@@ -1,5 +1,6 @@
 # -*- encoding: utf-8
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import delete
 from sqlalchemy import extract
 from sqlalchemy import func
@@ -1192,6 +1193,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select([try_cast(t1.c.id, Integer)]),
             "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
+
+    def test_column_computed(self):
+        flag = object()
+        for persisted, text in (
+            (flag, ""),
+            (None, ""),
+            (True, " PERSISTED"),
+            (False, ""),
+        ):
+            m = MetaData()
+            kwargs = {"persisted": persisted} if persisted != flag else {}
+            t = Table(
+                "t",
+                m,
+                Column("x", Integer),
+                Column("y", Integer, Computed("x + 2", **kwargs)),
+            )
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE t (x INTEGER NULL, y AS (x + 2)%s)" % text,
+            )
 
 
 class SchemaTest(fixtures.TestBase):

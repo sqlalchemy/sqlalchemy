@@ -1,4 +1,5 @@
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import func
@@ -437,6 +438,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_quoting_initial_chars(self):
         self.assert_compile(column("_somecol"), '"_somecol"')
         self.assert_compile(column("$somecol"), '"$somecol"')
+
+    def test_column_computed(self):
+        flag = object()
+        for persisted in (flag, None):
+            m = MetaData()
+            kwargs = {"persisted": persisted} if persisted != flag else {}
+            t = Table(
+                "t",
+                m,
+                Column("x", Integer),
+                Column("y", Integer, Computed("x + 2", **kwargs)),
+            )
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+                "ALWAYS AS (x + 2))",
+            )
+
+    def test_column_computed_specify_persisted(self):
+        for persisted in (True, False):
+            m = MetaData()
+            t = Table(
+                "t",
+                m,
+                Column("x", Integer),
+                Column("y", Integer, Computed("x + 2", persisted=persisted)),
+            )
+            assert_raises_message(
+                exc.CompileError,
+                "firebird does not support specifying a persistence method. "
+                "Remove 'persisted' or set it to None",
+                schema.CreateTable(t).compile,
+                dialect=firebird.dialect(),
+            )
 
 
 class TypesTest(fixtures.TestBase):

@@ -1505,7 +1505,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         if column.computed is not None:
             # the default visit_computed_column is compatible
-            colspec.append(self.process(column.computed))
+            colspec.append(self.process(column.computed).strip())
 
         is_timestamp = isinstance(
             column.type._unwrapped_dialect_impl(self.dialect),

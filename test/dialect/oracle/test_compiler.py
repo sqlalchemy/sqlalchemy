@@ -2,6 +2,8 @@
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import except_
+from sqlalchemy import Computed
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
@@ -28,6 +30,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -1184,6 +1187,43 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx3),
             "CREATE BITMAP INDEX idx3 ON testtbl (data)",
+        )
+
+    def test_column_computed(self):
+        flag = object()
+        for persisted, persisted_text in (
+            (flag, ""),
+            (None, ""),
+            (False, " VIRTUAL"),
+        ):
+            m = MetaData()
+            kwargs = {"persisted": persisted} if persisted != flag else {}
+            t = Table(
+                "t",
+                m,
+                Column("x", Integer),
+                Column("y", Integer, Computed("x + 2", **kwargs)),
+            )
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+                "ALWAYS AS (x + 2)%s)" % persisted_text,
+            )
+
+    def test_column_computed_persited(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", persisted=True)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            r"oracle does not support persited \(stored\) computed columns."
+            " Remove 'persisted' or set it to False",
+            schema.CreateTable(t).compile,
+            dialect=oracle.dialect(),
         )
 
 
