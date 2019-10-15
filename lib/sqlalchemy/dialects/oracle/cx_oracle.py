@@ -429,9 +429,16 @@ class _OracleDate(sqltypes.Date):
         return process
 
 
+# TODO: the names used across CHAR / VARCHAR / NCHAR / NVARCHAR
+# here are inconsistent and not very good
 class _OracleChar(sqltypes.CHAR):
     def get_dbapi_type(self, dbapi):
         return dbapi.FIXED_CHAR
+
+
+class _OracleNChar(sqltypes.NCHAR):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.FIXED_NCHAR
 
 
 class _OracleUnicodeStringNCHAR(oracle.NVARCHAR2):
@@ -722,12 +729,12 @@ class OracleDialect_cx_oracle(OracleDialect):
         sqltypes.String: _OracleString,
         sqltypes.UnicodeText: _OracleUnicodeTextCLOB,
         sqltypes.CHAR: _OracleChar,
+        sqltypes.NCHAR: _OracleNChar,
         sqltypes.Enum: _OracleEnum,
         oracle.LONG: _OracleLong,
         oracle.RAW: _OracleRaw,
         sqltypes.Unicode: _OracleUnicodeStringCHAR,
         sqltypes.NVARCHAR: _OracleUnicodeStringNCHAR,
-        sqltypes.NCHAR: _OracleUnicodeStringNCHAR,
         oracle.NCLOB: _OracleUnicodeTextNCLOB,
         oracle.ROWID: _OracleRowid,
     }
