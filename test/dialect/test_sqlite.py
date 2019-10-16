@@ -757,24 +757,33 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             url = make_url(url)
             eq_(d.create_connect_args(url), expected)
 
-    def test_column_computed(self):
-        flag = object()
+    def _test_column_computed(self, *args):
+        m = MetaData()
+        kwargs = {"persisted": args[0]} if len(args) == 1 else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "sqlite does not support computed columns",
+            schema.CreateTable(t).compile,
+            dialect=sqlite.dialect(),
+        )
 
-        for persisted in (flag, None, True, False):
-            m = MetaData()
-            kwargs = {"persisted": persisted} if persisted != flag else {}
-            t = Table(
-                "t",
-                m,
-                Column("x", Integer),
-                Column("y", Integer, Computed("x + 2", **kwargs)),
-            )
-            assert_raises_message(
-                exc.CompileError,
-                "sqlite does not support computed columns",
-                schema.CreateTable(t).compile,
-                dialect=sqlite.dialect(),
-            )
+    def test_column_computed_no_persisted(self):
+        self._test_column_computed()
+
+    def test_column_computed_persisted_none(self):
+        self._test_column_computed(None)
+
+    def test_column_computed_persisted_true(self):
+        self._test_column_computed(True)
+
+    def test_column_computed_persisted_false(self):
+        self._test_column_computed(False)
 
 
 class AttachedDBTest(fixtures.TestBase):

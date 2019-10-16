@@ -439,39 +439,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(column("_somecol"), '"_somecol"')
         self.assert_compile(column("$somecol"), '"$somecol"')
 
-    def test_column_computed(self):
-        flag = object()
-        for persisted in (flag, None):
-            m = MetaData()
-            kwargs = {"persisted": persisted} if persisted != flag else {}
-            t = Table(
-                "t",
-                m,
-                Column("x", Integer),
-                Column("y", Integer, Computed("x + 2", **kwargs)),
-            )
-            self.assert_compile(
-                schema.CreateTable(t),
-                "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
-                "ALWAYS AS (x + 2))",
-            )
+    def _test_column_computed(self, *args):
+        m = MetaData()
+        kwargs = {"persisted": args[0]} if len(args) == 1 else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+            "ALWAYS AS (x + 2))",
+        )
 
-    def test_column_computed_specify_persisted(self):
-        for persisted in (True, False):
-            m = MetaData()
-            t = Table(
-                "t",
-                m,
-                Column("x", Integer),
-                Column("y", Integer, Computed("x + 2", persisted=persisted)),
-            )
-            assert_raises_message(
-                exc.CompileError,
-                "firebird does not support specifying a persistence method. "
-                "Remove 'persisted' or set it to None",
-                schema.CreateTable(t).compile,
-                dialect=firebird.dialect(),
-            )
+    def test_column_computed_no_persisted(self):
+        self._test_column_computed()
+
+    def test_column_computed_persisted_none(self):
+        self._test_column_computed(None)
+
+    def _test_column_computed_persisted(self, persisted):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", persisted=persisted)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "firebird does not support specifying a persistence method. "
+            "Remove 'persisted' or set it to None",
+            schema.CreateTable(t).compile,
+            dialect=firebird.dialect(),
+        )
+
+    def test_column_computed_persisted_true(self):
+        self._test_column_computed_persisted(True)
+
+    def test_column_computed_persisted_false(self):
+        self._test_column_computed_persisted(False)
 
 
 class TypesTest(fixtures.TestBase):
