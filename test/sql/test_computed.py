@@ -1,9 +1,12 @@
 # coding: utf-8
-import pytest
 from sqlalchemy import Column, Computed, Integer, MetaData, Table
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.schema import CreateTable
-from sqlalchemy.testing import AssertsCompiledSQL, fixtures
+from sqlalchemy.testing import (
+    AssertsCompiledSQL,
+    fixtures,
+    assert_raises_message,
+)
 
 
 class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -41,20 +44,15 @@ class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):
             "A generated column cannot specify a server_default or a "
             "server_onupdate argument"
         )
-        with pytest.raises(ArgumentError, match=text):
+
+        def fn(**kwargs):
             m = MetaData()
             Table(
                 "t",
                 m,
                 Column("x", Integer),
-                Column("y", Integer, Computed("x + 2"), server_default="42"),
+                Column("y", Integer, Computed("x + 2"), **kwargs),
             )
 
-        with pytest.raises(ArgumentError, match=text):
-            m = MetaData()
-            Table(
-                "t",
-                m,
-                Column("x", Integer),
-                Column("y", Integer, Computed("x + 2"), server_onupdate="42"),
-            )
+        assert_raises_message(ArgumentError, text, fn, server_default="42")
+        assert_raises_message(ArgumentError, text, fn, server_onupdate="42")
