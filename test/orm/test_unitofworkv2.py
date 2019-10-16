@@ -1,4 +1,5 @@
 from sqlalchemy import cast
+from sqlalchemy import Computed
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import FetchedValue
@@ -2941,3 +2942,143 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         s.commit()
         eq_(s.query(cast(JSONThing.data, String)).scalar(), "null")
         eq_(s.query(cast(JSONThing.data_null, String)).scalar(), None)
+
+
+class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
+    __backend__ = True
+
+    __unsupported_on__ = ("sqlite",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, Computed("foo + 42")),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test, eager_defaults=True)
+
+    def test_insert_computed(self):
+        Thing = self.classes.Thing
+        s = Session()
+
+        t1, t2 = (Thing(id=1, foo=5), Thing(id=2, foo=10))
+
+        s.add_all([t1, t2])
+
+        if testing.db.dialect.implicit_returning:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (%(id)s, %(foo)s) "
+                    "RETURNING test.bar",
+                    [{"foo": 5, "id": 1}],
+                    dialect="postgresql",
+                ),
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (%(id)s, %(foo)s) "
+                    "RETURNING test.bar",
+                    [{"foo": 10, "id": 2}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (:id, :foo)",
+                    [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 2}],
+                ),
+            )
+
+        def go():
+            eq_(t1.bar, 5 + 42)
+            eq_(t2.bar, 10 + 42)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_update_computed(self):
+        Thing = self.classes.Thing
+        s = Session()
+
+        t1, t2 = (Thing(id=1, foo=1), Thing(id=2, foo=2))
+
+        s.add_all([t1, t2])
+        s.flush()
+
+        t1.foo = 5
+        t2.foo = 6
+
+        if testing.db.dialect.implicit_returning:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "UPDATE test SET foo=%(foo)s "
+                    "WHERE test.id = %(test_id)s "
+                    "RETURNING test.bar",
+                    [{"foo": 5, "test_id": 1}],
+                    dialect="postgresql",
+                ),
+                CompiledSQL(
+                    "UPDATE test SET foo=%(foo)s "
+                    "WHERE test.id = %(test_id)s "
+                    "RETURNING test.bar",
+                    [{"foo": 6, "test_id": 2}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            self.assert_sql_execution(
+                testing.db,
+                s.flush,
+                CompiledSQL(
+                    "UPDATE test SET foo=:foo WHERE test.id = :test_id",
+                    [{"foo": 5, "test_id": 1}],
+                ),
+                CompiledSQL(
+                    "UPDATE test SET foo=:foo "
+                    "WHERE test.id = :test_id",
+                    [{"foo": 6, "test_id": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 2}],
+                ),
+            )
+
+        def go():
+            eq_(t1.bar, 5 + 42)
+            eq_(t2.bar, 6 + 42)
+
+        self.assert_sql_count(testing.db, go, 0)
