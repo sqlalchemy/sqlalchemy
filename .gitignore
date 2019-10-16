@@ -9,6 +9,7 @@
 *.orig
 *,cover
 /.tox
+/venv/
 .venv
 *.egg-info
 .coverage
@@ -19,6 +20,8 @@ coverage.xml
 *.patch
 sqlnet.log
 /mapping_setup.py
+/shard?_*.db
+/test.cfg
 /test.py
 /test?.py
 /.cache/
