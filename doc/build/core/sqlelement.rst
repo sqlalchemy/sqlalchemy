@@ -143,7 +143,7 @@ the FROM clause of a SELECT statement.
 .. autoclass:: WithinGroup
    :members:
 
-.. autoclass:: WrapsColumnExpression
+.. autoclass:: sqlalchemy.sql.elements.WrapsColumnExpression
    :members:
 
 .. autoclass:: sqlalchemy.sql.elements.True_
