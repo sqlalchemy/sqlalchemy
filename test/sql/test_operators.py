@@ -73,12 +73,41 @@ class LoopOperate(operators.ColumnOperators):
 
 
 class DefaultColumnComparatorTest(fixtures.TestBase):
-    def _do_scalar_test(self, operator, compare_to):
+    @testing.combinations((operators.desc_op, desc), (operators.asc_op, asc))
+    def test_scalar(self, operator, compare_to):
         left = column("left")
         assert left.comparator.operate(operator).compare(compare_to(left))
         self._loop_test(operator)
 
-    def _do_operate_test(self, operator, right=column("right")):
+    right_column = column("right")
+
+    @testing.combinations(
+        (operators.add, right_column),
+        (operators.is_, None),
+        (operators.isnot, None),
+        (operators.is_, null()),
+        (operators.is_, true()),
+        (operators.is_, false()),
+        (operators.eq, True),
+        (operators.ne, True),
+        (operators.is_distinct_from, True),
+        (operators.is_distinct_from, False),
+        (operators.is_distinct_from, None),
+        (operators.isnot_distinct_from, True),
+        (operators.is_, True),
+        (operators.isnot, True),
+        (operators.is_, False),
+        (operators.isnot, False),
+        (operators.like_op, right_column),
+        (operators.notlike_op, right_column),
+        (operators.ilike_op, right_column),
+        (operators.notilike_op, right_column),
+        (operators.is_, right_column),
+        (operators.isnot, right_column),
+        (operators.concat_op, right_column),
+        id_="ns",
+    )
+    def test_operate(self, operator, right):
         left = column("left")
 
         assert left.comparator.operate(operator, right).compare(
@@ -109,84 +138,13 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         loop = LoopOperate()
         is_(operator(loop, *arg), operator)
 
-    def test_desc(self):
-        self._do_scalar_test(operators.desc_op, desc)
-
-    def test_asc(self):
-        self._do_scalar_test(operators.asc_op, asc)
-
-    def test_plus(self):
-        self._do_operate_test(operators.add)
-
-    def test_is_null(self):
-        self._do_operate_test(operators.is_, None)
-
-    def test_isnot_null(self):
-        self._do_operate_test(operators.isnot, None)
-
-    def test_is_null_const(self):
-        self._do_operate_test(operators.is_, null())
-
-    def test_is_true_const(self):
-        self._do_operate_test(operators.is_, true())
-
-    def test_is_false_const(self):
-        self._do_operate_test(operators.is_, false())
-
-    def test_equals_true(self):
-        self._do_operate_test(operators.eq, True)
-
-    def test_notequals_true(self):
-        self._do_operate_test(operators.ne, True)
-
-    def test_is_distinct_from_true(self):
-        self._do_operate_test(operators.is_distinct_from, True)
-
-    def test_is_distinct_from_false(self):
-        self._do_operate_test(operators.is_distinct_from, False)
-
-    def test_is_distinct_from_null(self):
-        self._do_operate_test(operators.is_distinct_from, None)
-
-    def test_isnot_distinct_from_true(self):
-        self._do_operate_test(operators.isnot_distinct_from, True)
-
-    def test_is_true(self):
-        self._do_operate_test(operators.is_, True)
-
-    def test_isnot_true(self):
-        self._do_operate_test(operators.isnot, True)
-
-    def test_is_false(self):
-        self._do_operate_test(operators.is_, False)
-
-    def test_isnot_false(self):
-        self._do_operate_test(operators.isnot, False)
-
-    def test_like(self):
-        self._do_operate_test(operators.like_op)
-
-    def test_notlike(self):
-        self._do_operate_test(operators.notlike_op)
-
-    def test_ilike(self):
-        self._do_operate_test(operators.ilike_op)
-
-    def test_notilike(self):
-        self._do_operate_test(operators.notilike_op)
-
-    def test_is(self):
-        self._do_operate_test(operators.is_)
-
-    def test_isnot(self):
-        self._do_operate_test(operators.isnot)
-
     def test_no_getitem(self):
         assert_raises_message(
             NotImplementedError,
             "Operator 'getitem' is not supported on this expression",
-            self._do_operate_test,
+            self.test_operate,
             operators.getitem,
+            column("right"),
         )
         assert_raises_message(
             NotImplementedError,
@@ -274,9 +232,6 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
             collate(left, right)
         )
 
-    def test_concat(self):
-        self._do_operate_test(operators.concat_op)
-
     def test_default_adapt(self):
         class TypeOne(TypeEngine):
             pass
@@ -329,7 +284,8 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def _factorial_fixture(self):
+    @testing.fixture
+    def factorial(self):
         class MyInteger(Integer):
             class comparator_factory(Integer.Comparator):
                 def factorial(self):
@@ -355,24 +311,24 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         return MyInteger
 
-    def test_factorial(self):
-        col = column("somecol", self._factorial_fixture())
+    def test_factorial(self, factorial):
+        col = column("somecol", factorial())
         self.assert_compile(col.factorial(), "somecol !")
 
-    def test_double_factorial(self):
-        col = column("somecol", self._factorial_fixture())
+    def test_double_factorial(self, factorial):
+        col = column("somecol", factorial())
         self.assert_compile(col.factorial().factorial(), "somecol ! !")
 
-    def test_factorial_prefix(self):
-        col = column("somecol", self._factorial_fixture())
+    def test_factorial_prefix(self, factorial):
+        col = column("somecol", factorial())
         self.assert_compile(col.factorial_prefix(), "!! somecol")
 
-    def test_factorial_invert(self):
-        col = column("somecol", self._factorial_fixture())
+    def test_factorial_invert(self, factorial):
+        col = column("somecol", factorial())
         self.assert_compile(~col, "!!! somecol")
 
-    def test_double_factorial_invert(self):
-        col = column("somecol", self._factorial_fixture())
+    def test_double_factorial_invert(self, factorial):
+        col = column("somecol", factorial())
         self.assert_compile(~(~col), "!!! (!!! somecol)")
 
     def test_unary_no_ops(self):
@@ -1845,7 +1801,15 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     table1 = table("mytable", column("myid", Integer))
 
-    def _test_math_op(self, py_op, sql_op):
+    @testing.combinations(
+        ("add", operator.add, "+"),
+        ("mul", operator.mul, "*"),
+        ("sub", operator.sub, "-"),
+        ("div", operator.truediv if util.py3k else operator.div, "/"),
+        ("mod", operator.mod, "%"),
+        id_="iaa",
+    )
+    def test_math_op(self, py_op, sql_op):
         for (lhs, rhs, res) in (
             (5, self.table1.c.myid, ":myid_1 %s mytable.myid"),
             (5, literal(5), ":param_1 %s :param_2"),
@@ -1861,24 +1825,6 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             (literal(7), literal(5.5), ":param_1 %s :param_2"),
         ):
             self.assert_compile(py_op(lhs, rhs), res % sql_op)
-
-    def test_math_op_add(self):
-        self._test_math_op(operator.add, "+")
-
-    def test_math_op_mul(self):
-        self._test_math_op(operator.mul, "*")
-
-    def test_math_op_sub(self):
-        self._test_math_op(operator.sub, "-")
-
-    def test_math_op_div(self):
-        if util.py3k:
-            self._test_math_op(operator.truediv, "/")
-        else:
-            self._test_math_op(operator.div, "/")
-
-    def test_math_op_mod(self):
-        self._test_math_op(operator.mod, "%")
 
 
 class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -1898,7 +1844,16 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         clause = tuple_(1, 2, 3)
         eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
 
-    def _test_comparison_op(self, py_op, fwd_op, rev_op):
+    @testing.combinations(
+        (operator.lt, "<", ">"),
+        (operator.gt, ">", "<"),
+        (operator.eq, "=", "="),
+        (operator.ne, "!=", "!="),
+        (operator.le, "<=", ">="),
+        (operator.ge, ">=", "<="),
+        id_="naa",
+    )
+    def test_comparison_op(self, py_op, fwd_op, rev_op):
         dt = datetime.datetime(2012, 5, 10, 15, 27, 18)
         for (lhs, rhs, l_sql, r_sql) in (
             ("a", self.table1.c.myid, ":myid_1", "mytable.myid"),
@@ -1934,24 +1889,6 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 + rev_sql
                 + "'",
             )
-
-    def test_comparison_operators_lt(self):
-        self._test_comparison_op(operator.lt, "<", ">"),
-
-    def test_comparison_operators_gt(self):
-        self._test_comparison_op(operator.gt, ">", "<")
-
-    def test_comparison_operators_eq(self):
-        self._test_comparison_op(operator.eq, "=", "=")
-
-    def test_comparison_operators_ne(self):
-        self._test_comparison_op(operator.ne, "!=", "!=")
-
-    def test_comparison_operators_le(self):
-        self._test_comparison_op(operator.le, "<=", ">=")
-
-    def test_comparison_operators_ge(self):
-        self._test_comparison_op(operator.ge, ">=", "<=")
 
 
 class NonZeroTest(fixtures.TestBase):
@@ -2690,38 +2627,39 @@ class CustomOpTest(fixtures.TestBase):
         assert operators.is_comparison(op1)
         assert not operators.is_comparison(op2)
 
-    def test_return_types(self):
+    @testing.combinations(
+        (sqltypes.NULLTYPE,),
+        (Integer(),),
+        (ARRAY(String),),
+        (String(50),),
+        (Boolean(),),
+        (DateTime(),),
+        (sqltypes.JSON(),),
+        (postgresql.ARRAY(Integer),),
+        (sqltypes.Numeric(5, 2),),
+        id_="r",
+    )
+    def test_return_types(self, typ):
         some_return_type = sqltypes.DECIMAL()
 
-        for typ in [
-            sqltypes.NULLTYPE,
-            Integer(),
-            ARRAY(String),
-            String(50),
-            Boolean(),
-            DateTime(),
-            sqltypes.JSON(),
-            postgresql.ARRAY(Integer),
-            sqltypes.Numeric(5, 2),
-        ]:
-            c = column("x", typ)
-            expr = c.op("$", is_comparison=True)(None)
-            is_(expr.type, sqltypes.BOOLEANTYPE)
+        c = column("x", typ)
+        expr = c.op("$", is_comparison=True)(None)
+        is_(expr.type, sqltypes.BOOLEANTYPE)
 
-            c = column("x", typ)
-            expr = c.bool_op("$")(None)
-            is_(expr.type, sqltypes.BOOLEANTYPE)
+        c = column("x", typ)
+        expr = c.bool_op("$")(None)
+        is_(expr.type, sqltypes.BOOLEANTYPE)
 
-            expr = c.op("$")(None)
-            is_(expr.type, typ)
+        expr = c.op("$")(None)
+        is_(expr.type, typ)
 
-            expr = c.op("$", return_type=some_return_type)(None)
-            is_(expr.type, some_return_type)
+        expr = c.op("$", return_type=some_return_type)(None)
+        is_(expr.type, some_return_type)
 
-            expr = c.op("$", is_comparison=True, return_type=some_return_type)(
-                None
-            )
-            is_(expr.type, some_return_type)
+        expr = c.op("$", is_comparison=True, return_type=some_return_type)(
+            None
+        )
+        is_(expr.type, some_return_type)
 
 
 class TupleTypingTest(fixtures.TestBase):
@@ -2756,7 +2694,8 @@ class TupleTypingTest(fixtures.TestBase):
 class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def _fixture(self):
+    @testing.fixture
+    def t_fixture(self):
         m = MetaData()
 
         t = Table(
@@ -2767,8 +2706,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
         return t
 
-    def test_any_array(self):
-        t = self._fixture()
+    def test_any_array(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 == any_(t.c.arrval),
@@ -2776,8 +2715,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_any_array_method(self):
-        t = self._fixture()
+    def test_any_array_method(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 == t.c.arrval.any_(),
@@ -2785,8 +2724,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_all_array(self):
-        t = self._fixture()
+    def test_all_array(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 == all_(t.c.arrval),
@@ -2794,8 +2733,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_all_array_method(self):
-        t = self._fixture()
+    def test_all_array_method(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 == t.c.arrval.all_(),
@@ -2803,8 +2742,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_any_comparator_array(self):
-        t = self._fixture()
+    def test_any_comparator_array(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 > any_(t.c.arrval),
@@ -2812,8 +2751,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_all_comparator_array(self):
-        t = self._fixture()
+    def test_all_comparator_array(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 > all_(t.c.arrval),
@@ -2821,8 +2760,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_any_comparator_array_wexpr(self):
-        t = self._fixture()
+    def test_any_comparator_array_wexpr(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             t.c.data > any_(t.c.arrval),
@@ -2830,8 +2769,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={},
         )
 
-    def test_all_comparator_array_wexpr(self):
-        t = self._fixture()
+    def test_all_comparator_array_wexpr(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             t.c.data > all_(t.c.arrval),
@@ -2839,8 +2778,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={},
         )
 
-    def test_illegal_ops(self):
-        t = self._fixture()
+    def test_illegal_ops(self, t_fixture):
+        t = t_fixture
 
         assert_raises_message(
             exc.ArgumentError,
@@ -2856,8 +2795,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             t.c.data + all_(t.c.arrval), "tab1.data + ALL (tab1.arrval)"
         )
 
-    def test_any_array_comparator_accessor(self):
-        t = self._fixture()
+    def test_any_array_comparator_accessor(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             t.c.arrval.any(5, operator.gt),
@@ -2865,8 +2804,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_all_array_comparator_accessor(self):
-        t = self._fixture()
+    def test_all_array_comparator_accessor(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             t.c.arrval.all(5, operator.gt),
@@ -2874,8 +2813,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
-    def test_any_array_expression(self):
-        t = self._fixture()
+    def test_any_array_expression(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 == any_(t.c.arrval[5:6] + postgresql.array([3, 4])),
@@ -2891,8 +2830,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_all_array_expression(self):
-        t = self._fixture()
+    def test_all_array_expression(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5 == all_(t.c.arrval[5:6] + postgresql.array([3, 4])),
@@ -2908,8 +2847,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_any_subq(self):
-        t = self._fixture()
+    def test_any_subq(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5
@@ -2919,8 +2858,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"data_1": 10, "param_1": 5},
         )
 
-    def test_any_subq_method(self):
-        t = self._fixture()
+    def test_any_subq_method(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5
@@ -2933,8 +2872,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"data_1": 10, "param_1": 5},
         )
 
-    def test_all_subq(self):
-        t = self._fixture()
+    def test_all_subq(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5
@@ -2944,8 +2883,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"data_1": 10, "param_1": 5},
         )
 
-    def test_all_subq_method(self):
-        t = self._fixture()
+    def test_all_subq_method(self, t_fixture):
+        t = t_fixture
 
         self.assert_compile(
             5

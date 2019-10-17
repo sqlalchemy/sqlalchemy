@@ -32,7 +32,9 @@ from .assertions import ne_  # noqa
 from .assertions import not_in_  # noqa
 from .assertions import startswith_  # noqa
 from .assertions import uses_deprecated  # noqa
+from .config import combinations  # noqa
 from .config import db  # noqa
+from .config import fixture  # noqa
 from .config import requirements as requires  # noqa
 from .exclusions import _is_excluded  # noqa
 from .exclusions import _server_version  # noqa
