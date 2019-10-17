@@ -948,6 +948,14 @@ class Query(Generative):
 
         mapper = self._only_full_mapper_zero("get")
 
+        is_none = primary_key_identity is None
+        if is_none:
+            raise sa_exc.InvalidRequestError(
+                "Invalid value None passed to formulate "
+                "primary key for query.get(); primary key columns are %s"
+                % ",".join("'%s'" % c for c in mapper.primary_key)
+            )
+
         is_dict = isinstance(primary_key_identity, dict)
         if not is_dict:
             primary_key_identity = util.to_list(primary_key_identity)

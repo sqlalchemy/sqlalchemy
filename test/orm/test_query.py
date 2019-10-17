@@ -780,6 +780,13 @@ class GetTest(QueryTest):
 
         s = users.outerjoin(addresses)
 
+    def test_get_none_pk(self):
+        User = self.classes.User
+
+        s = Session()
+        q = s.query(User.id)
+        assert_raises(sa_exc.InvalidRequestError, q.get, None)
+
         class UserThing(fixtures.ComparableEntity):
             pass
 
