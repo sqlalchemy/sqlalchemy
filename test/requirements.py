@@ -772,7 +772,8 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def nullsordering(self):
         """Target backends that support nulls ordering."""
-        return fails_on_everything_except("postgresql", "oracle", "firebird")
+        return fails_on_everything_except("postgresql", "oracle", "firebird",
+                                          "sqlite >= 3.30.0")
 
     @property
     def reflects_pk_names(self):
