@@ -16,6 +16,7 @@ is py.test.
 
 from __future__ import absolute_import
 
+import abc
 import re
 import sys
 
@@ -24,8 +25,15 @@ py3k = sys.version_info >= (3, 0)
 
 if py3k:
     import configparser
+
+    ABC = abc.ABC
 else:
     import ConfigParser as configparser
+    import collections as collections_abc  # noqa
+
+    class ABC(object):
+        __metaclass__ = abc.ABCMeta
+
 
 # late imports
 fixtures = None
@@ -231,14 +239,6 @@ def set_coverage_flag(value):
     options.has_coverage = value
 
 
-_skip_test_exception = None
-
-
-def set_skip_test(exc):
-    global _skip_test_exception
-    _skip_test_exception = exc
-
-
 def post_begin():
     """things to set up later, once we know coverage is running."""
     # Lazy setup of other options (post coverage)
@@ -324,10 +324,10 @@ def _monkeypatch_cdecimal(options, file_config):
 
 
 @post
-def _init_skiptest(options, file_config):
+def _init_symbols(options, file_config):
     from sqlalchemy.testing import config
 
-    config._skip_test_exception = _skip_test_exception
+    config._fixture_functions = _fixture_fn_class()
 
 
 @post
@@ -478,10 +478,10 @@ def _setup_profiling(options, file_config):
     )
 
 
-def want_class(cls):
+def want_class(name, cls):
     if not issubclass(cls, fixtures.TestBase):
         return False
-    elif cls.__name__.startswith("_"):
+    elif name.startswith("_"):
         return False
     elif (
         config.options.backend_only
@@ -703,3 +703,29 @@ def _do_skips(cls):
 
 def _setup_config(config_obj, ctx):
     config._current.push(config_obj, testing)
+
+
+class FixtureFunctions(ABC):
+    @abc.abstractmethod
+    def skip_test_exception(self, *arg, **kw):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def combinations(self, *args, **kw):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def param_ident(self, *args, **kw):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def fixture(self, fn):
+        raise NotImplementedError()
+
+
+_fixture_fn_class = None
+
+
+def set_fixture_functions(fixture_fn_class):
+    global _fixture_fn_class
+    _fixture_fn_class = fixture_fn_class

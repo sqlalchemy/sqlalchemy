@@ -1,115 +1,54 @@
+"""A legacy test for a particular somewhat complicated mapping."""
+
 from sqlalchemy import CHAR
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.util import function_named
-
-
-class BaseObject(object):
-    def __init__(self, *args, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-
-class Publication(BaseObject):
-    pass
-
-
-class Issue(BaseObject):
-    pass
-
-
-class Location(BaseObject):
-    def __repr__(self):
-        return "%s(%s, %s)" % (
-            self.__class__.__name__,
-            str(getattr(self, "issue_id", None)),
-            repr(str(self._name.name)),
-        )
-
-    def _get_name(self):
-        return self._name
-
-    def _set_name(self, name):
-        session = create_session()
-        s = (
-            session.query(LocationName)
-            .filter(LocationName.name == name)
-            .first()
-        )
-        session.expunge_all()
-        if s is not None:
-            self._name = s
-
-            return
-
-        found = False
-
-        for i in session.new:
-            if isinstance(i, LocationName) and i.name == name:
-                self._name = i
-                found = True
-
-                break
-
-        if found is False:
-            self._name = LocationName(name=name)
-
-    name = property(_get_name, _set_name)
-
-
-class LocationName(BaseObject):
-    def __repr__(self):
-        return "%s()" % (self.__class__.__name__)
-
-
-class PageSize(BaseObject):
-    def __repr__(self):
-        return "%s(%sx%s, %s)" % (
-            self.__class__.__name__,
-            self.width,
-            self.height,
-            self.name,
-        )
-
-
-class Magazine(BaseObject):
-    def __repr__(self):
-        return "%s(%s, %s)" % (
-            self.__class__.__name__,
-            repr(self.location),
-            repr(self.size),
-        )
-
-
-class Page(BaseObject):
-    def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, str(self.page_no))
-
-
-class MagazinePage(Page):
-    def __repr__(self):
-        return "%s(%s, %s)" % (
-            self.__class__.__name__,
-            str(self.page_no),
-            repr(self.magazine),
-        )
-
-
-class ClassifiedPage(MagazinePage):
-    pass
 
 
 class MagazineTest(fixtures.MappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.Comparable
+
+        class Publication(Base):
+            pass
+
+        class Issue(Base):
+            pass
+
+        class Location(Base):
+            pass
+
+        class LocationName(Base):
+            pass
+
+        class PageSize(Base):
+            pass
+
+        class Magazine(Base):
+            pass
+
+        class Page(Base):
+            pass
+
+        class MagazinePage(Page):
+            pass
+
+        class ClassifiedPage(MagazinePage):
+            pass
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -198,9 +137,65 @@ class MagazineTest(fixtures.MappedTest):
             Column("name", String(45), default=""),
         )
 
+    def _generate_data(self):
+        (
+            Publication,
+            Issue,
+            Location,
+            LocationName,
+            PageSize,
+            Magazine,
+            Page,
+            MagazinePage,
+            ClassifiedPage,
+        ) = self.classes(
+            "Publication",
+            "Issue",
+            "Location",
+            "LocationName",
+            "PageSize",
+            "Magazine",
+            "Page",
+            "MagazinePage",
+            "ClassifiedPage",
+        )
+        london = LocationName(name="London")
+        pub = Publication(name="Test")
+        issue = Issue(issue=46, publication=pub)
+        location = Location(ref="ABC", name=london, issue=issue)
 
-def _generate_round_trip_test(use_unions=False, use_joins=False):
-    def test_roundtrip(self):
+        page_size = PageSize(name="A4", width=210, height=297)
+
+        magazine = Magazine(location=location, size=page_size)
+
+        ClassifiedPage(magazine=magazine, page_no=1)
+        MagazinePage(magazine=magazine, page_no=2)
+        ClassifiedPage(magazine=magazine, page_no=3)
+
+        return pub
+
+    def _setup_mapping(self, use_unions, use_joins):
+        (
+            Publication,
+            Issue,
+            Location,
+            LocationName,
+            PageSize,
+            Magazine,
+            Page,
+            MagazinePage,
+            ClassifiedPage,
+        ) = self.classes(
+            "Publication",
+            "Issue",
+            "Location",
+            "LocationName",
+            "PageSize",
+            "Magazine",
+            "Page",
+            "MagazinePage",
+            "ClassifiedPage",
+        )
         mapper(Publication, self.tables.publication)
 
         mapper(
@@ -228,7 +223,7 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
                         cascade="all, delete-orphan",
                     ),
                 ),
-                "_name": relationship(LocationName),
+                "name": relationship(LocationName),
             },
         )
 
@@ -354,42 +349,29 @@ def _generate_round_trip_test(use_unions=False, use_joins=False):
             primary_key=[self.tables.page.c.id],
         )
 
-        session = create_session()
+    @testing.combinations(
+        ("unions", True, False),
+        ("joins", False, True),
+        ("plain", False, False),
+        id_="iaa",
+    )
+    def test_magazine_round_trip(self, use_unions, use_joins):
+        self._setup_mapping(use_unions, use_joins)
 
-        pub = Publication(name="Test")
-        issue = Issue(issue=46, publication=pub)
-        location = Location(ref="ABC", name="London", issue=issue)
+        Publication = self.classes.Publication
 
-        page_size = PageSize(name="A4", width=210, height=297)
+        session = Session()
 
-        magazine = Magazine(location=location, size=page_size)
-
-        page = ClassifiedPage(magazine=magazine, page_no=1)
-        page2 = MagazinePage(magazine=magazine, page_no=2)
-        page3 = ClassifiedPage(magazine=magazine, page_no=3)
+        pub = self._generate_data()
         session.add(pub)
+        session.commit()
+        session.close()
 
-        session.flush()
-        print([x for x in session])
-        session.expunge_all()
-
-        session.flush()
-        session.expunge_all()
         p = session.query(Publication).filter(Publication.name == "Test").one()
 
-        print(p.issues[0].locations[0].magazine.pages)
-        print([page, page2, page3])
-        assert repr(p.issues[0].locations[0].magazine.pages) == repr(
-            [page, page2, page3]
-        ), repr(p.issues[0].locations[0].magazine.pages)
-
-    test_roundtrip = function_named(
-        test_roundtrip,
-        "test_%s"
-        % (not use_union and (use_joins and "joins" or "select") or "unions"),
-    )
-    setattr(MagazineTest, test_roundtrip.__name__, test_roundtrip)
-
-
-for (use_union, use_join) in [(True, False), (False, True), (False, False)]:
-    _generate_round_trip_test(use_union, use_join)
+        test_pub = self._generate_data()
+        eq_(p, test_pub)
+        eq_(
+            p.issues[0].locations[0].magazine.pages,
+            test_pub.issues[0].locations[0].magazine.pages,
+        )

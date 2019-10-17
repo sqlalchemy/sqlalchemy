@@ -7,7 +7,6 @@ from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
@@ -15,7 +14,6 @@ from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
@@ -23,7 +21,6 @@ from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
-from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
@@ -33,15 +30,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.util import function_named
-
-
-class AttrSettable(object):
-    def __init__(self, **kwargs):
-        [setattr(self, k, v) for k, v in kwargs.items()]
-
-    def __repr__(self):
-        return self.__class__.__name__ + "(%s)" % (hex(id(self)))
 
 
 class RelationshipTest1(fixtures.MappedTest):
@@ -84,16 +72,16 @@ class RelationshipTest1(fixtures.MappedTest):
             Column("manager_name", String(50)),
         )
 
-    def teardown(self):
-        people.update(values={people.c.manager_id: None}).execute()
-        super(RelationshipTest1, self).teardown()
-
-    def test_parent_refs_descendant(self):
-        class Person(AttrSettable):
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Comparable):
             pass
 
         class Manager(Person):
             pass
+
+    def test_parent_refs_descendant(self):
+        Person, Manager = self.classes("Person", "Manager")
 
         mapper(
             Person,
@@ -132,11 +120,7 @@ class RelationshipTest1(fixtures.MappedTest):
         assert p.manager is m
 
     def test_descendant_refs_parent(self):
-        class Person(AttrSettable):
-            pass
-
-        class Manager(Person):
-            pass
+        Person, Manager = self.classes("Person", "Manager")
 
         mapper(Person, people)
         mapper(
@@ -212,31 +196,22 @@ class RelationshipTest2(fixtures.MappedTest):
             Column("data", String(30)),
         )
 
-    def test_relationshiponsubclass_j1_nodata(self):
-        self._do_test("join1", False)
-
-    def test_relationshiponsubclass_j2_nodata(self):
-        self._do_test("join2", False)
-
-    def test_relationshiponsubclass_j1_data(self):
-        self._do_test("join1", True)
-
-    def test_relationshiponsubclass_j2_data(self):
-        self._do_test("join2", True)
-
-    def test_relationshiponsubclass_j3_nodata(self):
-        self._do_test("join3", False)
-
-    def test_relationshiponsubclass_j3_data(self):
-        self._do_test("join3", True)
-
-    def _do_test(self, jointype="join1", usedata=False):
-        class Person(AttrSettable):
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Comparable):
             pass
 
         class Manager(Person):
             pass
 
+    @testing.combinations(
+        ("join1",), ("join2",), ("join3",), argnames="jointype"
+    )
+    @testing.combinations(
+        ("usedata", True), ("nodata", False), id_="ia", argnames="usedata"
+    )
+    def test_relationshiponsubclass(self, jointype, usedata):
+        Person, Manager = self.classes("Person", "Manager")
         if jointype == "join1":
             poly_union = polymorphic_union(
                 {
@@ -378,21 +353,20 @@ class RelationshipTest3(fixtures.MappedTest):
             Column("data", String(30)),
         )
 
-
-def _generate_test(jointype="join1", usedata=False):
-    def _do_test(self):
-        class Person(AttrSettable):
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Comparable):
             pass
 
         class Manager(Person):
             pass
 
-        if usedata:
+        class Data(cls.Comparable):
+            def __init__(self, data):
+                self.data = data
 
-            class Data(object):
-                def __init__(self, data):
-                    self.data = data
-
+    def _setup_mappings(self, jointype, usedata):
+        Person, Manager, Data = self.classes("Person", "Manager", "Data")
         if jointype == "join1":
             poly_union = polymorphic_union(
                 {
@@ -419,6 +393,8 @@ def _generate_test(jointype="join1", usedata=False):
             poly_union = people.outerjoin(managers)
         elif jointype == "join4":
             poly_union = None
+        else:
+            assert False
 
         if usedata:
             mapper(Data, data)
@@ -467,6 +443,16 @@ def _generate_test(jointype="join1", usedata=False):
             polymorphic_identity="manager",
         )
 
+    @testing.combinations(
+        ("join1",), ("join2",), ("join3",), ("join4",), argnames="jointype"
+    )
+    @testing.combinations(
+        ("usedata", True), ("nodata", False), id_="ia", argnames="usedata"
+    )
+    def test_relationship_on_base_class(self, jointype, usedata):
+        self._setup_mappings(jointype, usedata)
+        Person, Manager, Data = self.classes("Person", "Manager", "Data")
+
         sess = create_session()
         p = Person(name="person1")
         p2 = Person(name="person2")
@@ -493,20 +479,6 @@ def _generate_test(jointype="join1", usedata=False):
         if usedata:
             assert p.data.data == "ps data"
             assert m.data.data == "ms data"
-
-    do_test = function_named(
-        _do_test,
-        "test_relationship_on_base_class_%s_%s"
-        % (jointype, data and "nodata" or "data"),
-    )
-    return do_test
-
-
-for jointype in ["join1", "join2", "join3", "join4"]:
-    for data in (True, False):
-        _fn = _generate_test(jointype, data)
-        setattr(RelationshipTest3, _fn.__name__, _fn)
-del _fn
 
 
 class RelationshipTest4(fixtures.MappedTest):
@@ -845,12 +817,16 @@ class RelationshipTest6(fixtures.MappedTest):
             Column("status", String(30)),
         )
 
-    def test_basic(self):
-        class Person(AttrSettable):
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Comparable):
             pass
 
         class Manager(Person):
             pass
+
+    def test_basic(self):
+        Person, Manager = self.classes("Person", "Manager")
 
         mapper(Person, people)
 
@@ -1119,9 +1095,9 @@ class RelationshipTest8(fixtures.MappedTest):
         )
 
 
-class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
+class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
     @classmethod
-    def setup_class(cls):
+    def define_tables(cls, metadata):
         #  cars---owned by---  people (abstract) --- has a --- status
         #   |                  ^    ^                            |
         #   |                  |    |                            |
@@ -1129,10 +1105,8 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         #   |                                                    |
         #   +--------------------------------------- has a ------+
 
-        global metadata, status, people, engineers, managers, cars
-        metadata = MetaData(testing.db)
         # table definitions
-        status = Table(
+        Table(
             "status",
             metadata,
             Column(
@@ -1144,7 +1118,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             Column("name", String(20)),
         )
 
-        people = Table(
+        Table(
             "people",
             metadata,
             Column(
@@ -1162,7 +1136,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             Column("name", String(50)),
         )
 
-        engineers = Table(
+        Table(
             "engineers",
             metadata,
             Column(
@@ -1174,7 +1148,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             Column("field", String(30)),
         )
 
-        managers = Table(
+        Table(
             "managers",
             metadata,
             Column(
@@ -1186,7 +1160,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             Column("category", String(70)),
         )
 
-        cars = Table(
+        Table(
             "cars",
             metadata,
             Column(
@@ -1209,52 +1183,31 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-        metadata.create_all()
-
     @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+    def setup_classes(cls):
+        class Status(cls.Comparable):
+            pass
 
-    def teardown(self):
-        clear_mappers()
-        for t in reversed(metadata.sorted_tables):
-            t.delete().execute()
-
-    def test_join_to(self):
-        # class definitions
-        class PersistentObject(object):
-            def __init__(self, **kwargs):
-                for key, value in kwargs.items():
-                    setattr(self, key, value)
-
-        class Status(PersistentObject):
-            def __repr__(self):
-                return "Status %s" % self.name
-
-        class Person(PersistentObject):
-            def __repr__(self):
-                return "Ordinary person %s" % self.name
+        class Person(cls.Comparable):
+            pass
 
         class Engineer(Person):
-            def __repr__(self):
-                return "Engineer %s, field %s, status %s" % (
-                    self.name,
-                    self.field,
-                    self.status,
-                )
+            pass
 
         class Manager(Person):
-            def __repr__(self):
-                return "Manager %s, category %s, status %s" % (
-                    self.name,
-                    self.category,
-                    self.status,
-                )
+            pass
 
-        class Car(PersistentObject):
-            def __repr__(self):
-                return "Car number %d" % self.car_id
+        class Car(cls.Comparable):
+            pass
 
+    @classmethod
+    def setup_mappers(cls):
+        status, people, engineers, managers, cars = cls.tables(
+            "status", "people", "engineers", "managers", "cars"
+        )
+        Status, Person, Engineer, Manager, Car = cls.classes(
+            "Status", "Person", "Engineer", "Manager", "Car"
+        )
         # create a union that represents both types of joins.
         employee_join = polymorphic_union(
             {
@@ -1274,7 +1227,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             polymorphic_identity="person",
             properties={"status": relationship(status_mapper)},
         )
-        engineer_mapper = mapper(
+        mapper(
             Engineer,
             engineers,
             inherits=person_mapper,
@@ -1295,6 +1248,11 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             },
         )
 
+    @classmethod
+    def insert_data(cls):
+        Status, Person, Engineer, Manager, Car = cls.classes(
+            "Status", "Person", "Engineer", "Manager", "Car"
+        )
         session = create_session()
 
         active = Status(name="active")
@@ -1323,7 +1281,7 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         session.flush()
 
         # get E4
-        engineer4 = session.query(engineer_mapper).filter_by(name="E4").one()
+        engineer4 = session.query(Engineer).filter_by(name="E4").one()
 
         # create 2 cars for E4, one active and one dead
         car1 = Car(employee=engineer4, status=active)
@@ -1332,9 +1290,11 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
         session.add(car2)
         session.flush()
 
-        # this particular adapt used to cause a recursion overflow;
-        # added here for testing
-        Query(Person)._adapt_clause(employee_join, False, False)
+    def test_join_to_q_person(self):
+        Status, Person, Engineer, Manager, Car = self.classes(
+            "Status", "Person", "Engineer", "Manager", "Car"
+        )
+        session = create_session()
 
         r = (
             session.query(Person)
@@ -1344,31 +1304,52 @@ class GenerativeTest(fixtures.TestBase, AssertsExecutionResults):
             .order_by(Person.person_id)
         )
         eq_(
-            str(list(r)),
-            "[Manager M2, category YYYYYYYYY, status "
-            "Status active, Engineer E2, field X, "
-            "status Status active]",
+            list(r),
+            [
+                Manager(
+                    name="M2",
+                    category="YYYYYYYYY",
+                    status=Status(name="active"),
+                ),
+                Engineer(name="E2", field="X", status=Status(name="active")),
+            ],
         )
+
+    def test_join_to_q_engineer(self):
+        Status, Person, Engineer, Manager, Car = self.classes(
+            "Status", "Person", "Engineer", "Manager", "Car"
+        )
+        session = create_session()
         r = (
             session.query(Engineer)
             .join("status")
             .filter(
                 Person.name.in_(["E2", "E3", "E4", "M4", "M2", "M1"])
-                & (status.c.name == "active")
+                & (Status.name == "active")
             )
             .order_by(Person.name)
         )
         eq_(
-            str(list(r)),
-            "[Engineer E2, field X, status Status "
-            "active, Engineer E3, field X, status "
-            "Status active]",
+            list(r),
+            [
+                Engineer(name="E2", field="X", status=Status(name="active")),
+                Engineer(name="E3", field="X", status=Status(name="active")),
+            ],
         )
 
+    def test_join_to_q_person_car(self):
+        Status, Person, Engineer, Manager, Car = self.classes(
+            "Status", "Person", "Engineer", "Manager", "Car"
+        )
+        session = create_session()
         r = session.query(Person).filter(
             exists([1], Car.owner == Person.person_id)
         )
-        eq_(str(list(r)), "[Engineer E4, field X, status Status dead]")
+
+        eq_(
+            list(r),
+            [Engineer(name="E4", field="X", status=Status(name="dead"))],
+        )
 
 
 class MultiLevelTest(fixtures.MappedTest):

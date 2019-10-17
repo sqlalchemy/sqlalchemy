@@ -2,9 +2,7 @@
 
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
-from sqlalchemy import func
 from sqlalchemy import Integer
-from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -12,12 +10,12 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.schema import Column
-from sqlalchemy.testing.util import function_named
 
 
 class Person(fixtures.ComparableEntity):
@@ -115,8 +113,6 @@ class PolymorphTest(fixtures.MappedTest):
             Column("golf_swing", String(30)),
         )
 
-        metadata.create_all()
-
 
 class InsertOrderTest(PolymorphTest):
     def test_insert_order(self):
@@ -198,28 +194,41 @@ class InsertOrderTest(PolymorphTest):
         eq_(session.query(Company).get(c.company_id), c)
 
 
+@testing.combinations(
+    ("lazy", True), ("nonlazy", False), argnames="lazy_relationship", id_="ia"
+)
+@testing.combinations(
+    ("redefine", True),
+    ("noredefine", False),
+    argnames="redefine_colprop",
+    id_="ia",
+)
+@testing.combinations(
+    ("unions", True),
+    ("unions", False),
+    ("joins", False),
+    ("auto", False),
+    ("none", False),
+    argnames="with_polymorphic,include_base",
+    id_="rr",
+)
 class RoundTripTest(PolymorphTest):
-    pass
+    lazy_relationship = None
+    include_base = None
+    redefine_colprop = None
+    with_polymorphic = None
 
+    run_inserts = "once"
+    run_deletes = None
+    run_setup_mappers = "once"
 
-def _generate_round_trip_test(
-    include_base, lazy_relationship, redefine_colprop, with_polymorphic
-):
-    """generates a round trip test.
+    @classmethod
+    def setup_mappers(cls):
+        include_base = cls.include_base
+        lazy_relationship = cls.lazy_relationship
+        redefine_colprop = cls.redefine_colprop
+        with_polymorphic = cls.with_polymorphic
 
-    include_base - whether or not to include the base 'person' type in
-    the union.
-
-    lazy_relationship - whether or not the Company relationship to
-    People is lazy or eager.
-
-    redefine_colprop - if we redefine the 'name' column to be
-    'people_name' on the base Person class
-
-    use_literal_join - primary join condition is explicitly specified
-    """
-
-    def test_roundtrip(self):
         if with_polymorphic == "unions":
             if include_base:
                 person_join = polymorphic_union(
@@ -306,6 +315,11 @@ def _generate_round_trip_test(
             },
         )
 
+    @classmethod
+    def insert_data(cls):
+        redefine_colprop = cls.redefine_colprop
+        include_base = cls.include_base
+
         if redefine_colprop:
             person_attribute_name = "person_name"
         else:
@@ -340,15 +354,48 @@ def _generate_round_trip_test(
             ),
         ]
 
-        dilbert = employees[1]
-
-        session = create_session()
+        session = Session()
         c = Company(name="company1")
         c.employees = employees
         session.add(c)
 
-        session.flush()
-        session.expunge_all()
+        session.commit()
+
+    @testing.fixture
+    def get_dilbert(self):
+        def run(session):
+            if self.redefine_colprop:
+                person_attribute_name = "person_name"
+            else:
+                person_attribute_name = "name"
+
+            dilbert = (
+                session.query(Engineer)
+                .filter_by(**{person_attribute_name: "dilbert"})
+                .one()
+            )
+            return dilbert
+
+        return run
+
+    def test_lazy_load(self):
+        lazy_relationship = self.lazy_relationship
+        with_polymorphic = self.with_polymorphic
+
+        if self.redefine_colprop:
+            person_attribute_name = "person_name"
+        else:
+            person_attribute_name = "name"
+
+        session = create_session()
+
+        dilbert = (
+            session.query(Engineer)
+            .filter_by(**{person_attribute_name: "dilbert"})
+            .one()
+        )
+        employees = session.query(Person).order_by(Person.person_id).all()
+        company = session.query(Company).first()
 
         eq_(session.query(Person).get(dilbert.person_id), dilbert)
         session.expunge_all()
@@ -362,20 +409,29 @@ def _generate_round_trip_test(
         session.expunge_all()
 
         def go():
-            cc = session.query(Company).get(c.company_id)
+            cc = session.query(Company).get(company.company_id)
             eq_(cc.employees, employees)
 
         if not lazy_relationship:
             if with_polymorphic != "none":
                 self.assert_sql_count(testing.db, go, 1)
             else:
-                self.assert_sql_count(testing.db, go, 5)
+                self.assert_sql_count(testing.db, go, 2)
 
         else:
             if with_polymorphic != "none":
                 self.assert_sql_count(testing.db, go, 2)
             else:
-                self.assert_sql_count(testing.db, go, 6)
+                self.assert_sql_count(testing.db, go, 3)
+
+    def test_baseclass_lookup(self, get_dilbert):
+        session = Session()
+        dilbert = get_dilbert(session)
+
+        if self.redefine_colprop:
+            person_attribute_name = "person_name"
+        else:
+            person_attribute_name = "name"
 
         # test selecting from the query, using the base
         # mapped table (people) as the selection criterion.
@@ -388,12 +444,14 @@ def _generate_round_trip_test(
             dilbert,
         )
 
-        assert (
-            session.query(Person)
-            .filter(getattr(Person, person_attribute_name) == "dilbert")
-            .first()
-            .person_id
-        )
+    def test_subclass_lookup(self, get_dilbert):
+        session = Session()
+        dilbert = get_dilbert(session)
+
+        if self.redefine_colprop:
+            person_attribute_name = "person_name"
+        else:
+            person_attribute_name = "name"
 
         eq_(
             session.query(Engineer)
@@ -401,6 +459,10 @@ def _generate_round_trip_test(
             .first(),
             dilbert,
         )
+
+    def test_baseclass_base_alias_filter(self, get_dilbert):
+        session = Session()
+        dilbert = get_dilbert(session)
 
         # test selecting from the query, joining against
         # an alias of the base "people" table.  test that
@@ -417,6 +479,13 @@ def _generate_round_trip_test(
             )
             .first(),
         )
+
+    def test_subclass_base_alias_filter(self, get_dilbert):
+        session = Session()
+        dilbert = get_dilbert(session)
+
+        palias = people.alias("palias")
+
         is_(
             dilbert,
             session.query(Engineer)
@@ -426,6 +495,11 @@ def _generate_round_trip_test(
             )
             .first(),
         )
+
+    def test_baseclass_sub_table_filter(self, get_dilbert):
+        session = Session()
+        dilbert = get_dilbert(session)
+
         is_(
             dilbert,
             session.query(Person)
@@ -435,6 +509,11 @@ def _generate_round_trip_test(
             )
             .first(),
         )
+
+    def test_subclass_getitem(self, get_dilbert):
+        session = Session()
+        dilbert = get_dilbert(session)
+
         is_(
             dilbert,
             session.query(Engineer).filter(
@@ -442,17 +521,16 @@ def _generate_round_trip_test(
             )[0],
         )
 
-        session.flush()
-        session.expunge_all()
+    def test_primary_table_only_for_requery(self):
 
-        def go():
-            session.query(Person).filter(
-                getattr(Person, person_attribute_name) == "dilbert"
-            ).first()
+        session = Session()
 
-        self.assert_sql_count(testing.db, go, 1)
-        session.expunge_all()
-        dilbert = (
+        if self.redefine_colprop:
+            person_attribute_name = "person_name"
+        else:
+            person_attribute_name = "name"
+
+        dilbert = (  # noqa
             session.query(Person)
             .filter(getattr(Person, person_attribute_name) == "dilbert")
             .first()
@@ -469,7 +547,14 @@ def _generate_round_trip_test(
 
         self.assert_sql_count(testing.db, go, 1)
 
-        # test standalone orphans
+    def test_standalone_orphans(self):
+        if self.redefine_colprop:
+            person_attribute_name = "person_name"
+        else:
+            person_attribute_name = "name"
+
+        session = Session()
+
         daboss = Boss(
             status="BBB",
             manager_name="boss",
@@ -478,52 +563,3 @@ def _generate_round_trip_test(
         )
         session.add(daboss)
         assert_raises(sa_exc.DBAPIError, session.flush)
-
-        c = session.query(Company).first()
-        daboss.company = c
-        manager_list = [e for e in c.employees if isinstance(e, Manager)]
-        session.flush()
-        session.expunge_all()
-
-        eq_(
-            session.query(Manager).order_by(Manager.person_id).all(),
-            manager_list,
-        )
-        c = session.query(Company).first()
-
-        session.delete(c)
-        session.flush()
-
-        eq_(select([func.count("*")]).select_from(people).scalar(), 0)
-
-    test_roundtrip = function_named(
-        test_roundtrip,
-        "test_%s%s%s_%s"
-        % (
-            (lazy_relationship and "lazy" or "eager"),
-            (include_base and "_inclbase" or ""),
-            (redefine_colprop and "_redefcol" or ""),
-            with_polymorphic,
-        ),
-    )
-    setattr(RoundTripTest, test_roundtrip.__name__, test_roundtrip)
-
-
-for lazy_relationship in [True, False]:
-    for redefine_colprop in [True, False]:
-        for with_polymorphic_ in ["unions", "joins", "auto", "none"]:
-            if with_polymorphic_ == "unions":
-                for include_base in [True, False]:
-                    _generate_round_trip_test(
-                        include_base,
-                        lazy_relationship,
-                        redefine_colprop,
-                        with_polymorphic_,
-                    )
-            else:
-                _generate_round_trip_test(
-                    False,
-                    lazy_relationship,
-                    redefine_colprop,
-                    with_polymorphic_,
-                )
