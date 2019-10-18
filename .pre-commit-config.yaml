@@ -16,6 +16,14 @@ repos:
     rev: master
     hooks:
     -   id: flake8
+        additional_dependencies:
+          - flake8-import-order
+          - flake8-builtins
+          - flake8-docstrings
+          - flake8-rst-docstrings
+          - pydocstyle<4.0.0
+          - pygments
+
 
 
 
