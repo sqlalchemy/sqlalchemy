@@ -2254,8 +2254,6 @@ class Engine(Connectable, log.Identified):
         """
 
         with self._optional_conn_ctx_manager(connection) as conn:
-            if not schema:
-                schema = self.dialect.default_schema_name
             return self.dialect.get_table_names(conn, schema)
 
     def has_table(self, table_name, schema=None):
