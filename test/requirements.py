@@ -788,7 +788,7 @@ class DefaultRequirements(SuiteRequirements):
         """target database can select an aggregate from a subquery that's
         also using an aggregate"""
 
-        return skip_if(["mssql"])
+        return skip_if(["mssql", "sqlite"])
 
     @property
     def array_type(self):
