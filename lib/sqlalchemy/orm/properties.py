@@ -182,7 +182,8 @@ class ColumnProperty(StrategizedProperty):
                 "Column defined with column_property currently ignore setted"
                 " value. This behaviour will be changed in a future version"
                 " to raise an exception. Set the kwarg raise_on_set to False"
-                " to preserve the current behaviour"
+                " to preserve the current behaviour",
+                stacklevel=5  # set the stack level to warn at the correct line
             )
             self.raise_on_set = False
 

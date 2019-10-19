@@ -1470,14 +1470,14 @@ class _hash_limit_string(compat.text_type):
         return hash(self) == hash(other)
 
 
-def warn(msg):
+def warn(msg, stacklevel=2):
     """Issue a warning.
 
     If msg is a string, :class:`.exc.SAWarning` is used as
     the category.
 
     """
-    warnings.warn(msg, exc.SAWarning, stacklevel=2)
+    warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
 
 
 def warn_limited(msg, args):
