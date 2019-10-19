@@ -357,3 +357,14 @@ class ColumnProperty(StrategizedProperty):
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
+
+
+class _ColumnPropertyProxy(ColumnProperty):
+    def __init__(self, *columns, **kwargs):
+        # will be changed to True in a future release
+        kwargs.setdefault("raise_on_set", "warn")
+        super().__init__(*columns, **kwargs)
+
+
+_ColumnPropertyProxy.__doc__ = ColumnProperty.__doc__
+_ColumnPropertyProxy.__init__.__doc__ = ColumnProperty.__init__.__doc__
