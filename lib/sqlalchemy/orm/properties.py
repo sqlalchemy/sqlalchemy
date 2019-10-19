@@ -55,6 +55,7 @@ class ColumnProperty(StrategizedProperty):
         "_deferred_column_loader",
         "_raise_column_loader",
         "raiseload",
+        "raise_on_set",
     )
 
     def __init__(self, *columns, **kwargs):
@@ -128,6 +129,17 @@ class ColumnProperty(StrategizedProperty):
 
                 :ref:`deferred_raiseload`
 
+        :param raise_on_set: if True, indicated that this property cannot
+            be set by directly, but is fetched by the orm from the database.
+            Defaults to True for computed columns and columns defined by
+            calling :func:`.orm.column_property` directly
+
+            .. versionadded:: 1.3.10
+
+            .. seealso::
+
+                :class:`.Computed`
+
         """
         super(ColumnProperty, self).__init__()
         self._orig_columns = [
@@ -163,6 +175,16 @@ class ColumnProperty(StrategizedProperty):
                     break
             else:
                 self.doc = None
+
+        self.raise_on_set = kwargs.pop("raise_on_set", False)
+        if self.raise_on_set == "warn":
+            util.warn(
+                "Column defined with column_property currently ignore setted"
+                " value. This behaviour will be changed in a future version"
+                " to raise an exception. Set the kwarg raise_on_set to False"
+                " to preserve the current behaviour"
+            )
+            self.raise_on_set = False
 
         if kwargs:
             raise TypeError(
