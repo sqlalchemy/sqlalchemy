@@ -1841,6 +1841,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             prop, properties.ConcreteInheritedProperty
         ):
             mapped_column = []
+            kwargs = {}
             for c in columns:
                 mc = self.persist_selectable.corresponding_column(c)
                 if mc is None:
@@ -1860,8 +1861,10 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                             "force this column to be mapped as a read-only "
                             "attribute." % (key, self, c)
                         )
+                if mc.computed is not None:
+                    kwargs["raise_on_set"] = True
                 mapped_column.append(mc)
-            return properties.ColumnProperty(*mapped_column)
+            return properties.ColumnProperty(*mapped_column, **kwargs)
         else:
             raise sa_exc.ArgumentError(
                 "WARNING: when configuring property '%s' on %s, "

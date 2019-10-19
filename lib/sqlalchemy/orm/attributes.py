@@ -270,6 +270,8 @@ class InstrumentedAttribute(QueryableAttribute):
     """
 
     def __set__(self, instance, value):
+        if self.prop.raise_on_set is True:
+            raise AttributeError("can't set attribute %s" % self.key)
         self.impl.set(
             instance_state(instance), instance_dict(instance), value, None
         )
