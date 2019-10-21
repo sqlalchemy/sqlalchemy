@@ -246,17 +246,29 @@ LIMIT/OFFSET Support
 --------------------
 
 MSSQL has no support for the LIMIT or OFFSET keywords. LIMIT is
-supported directly through the ``TOP`` Transact SQL keyword::
+supported directly through the ``TOP`` Transact SQL keyword.   A statement
+such as::
 
-    select.limit
+    select([some_table]).limit(5)
 
-will yield::
+will render similarly to::
 
-    SELECT TOP n
+    SELECT TOP 5 col1, col2.. FROM table
 
-If using SQL Server 2005 or above, LIMIT with OFFSET
-support is available through the ``ROW_NUMBER OVER`` construct.
-For versions below 2005, LIMIT with OFFSET usage will fail.
+LIMIT with OFFSET support is implemented using the using the ``ROW_NUMBER()``
+window function.   A statement such as::
+
+    select([some_table]).order_by(some_table.c.col3).limit(5).offset(10)
+
+will render similarly to::
+
+    SELECT anon_1.col1, anon_1.col2 FROM (SELECT col1, col2,
+    ROW_NUMBER() OVER (ORDER BY col3) AS
+    mssql_rn FROM table WHERE t.x = :x_1) AS
+    anon_1 WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1
+
+Note that when using LIMIT and OFFSET together, the statement must have
+an ORDER BY as well.
 
 .. _mssql_isolation_level:
 
@@ -695,6 +707,7 @@ from ...util.langhelpers import public_factory
 
 
 # http://sqlserverbuilds.blogspot.com/
+MS_2017_VERSION = (14,)
 MS_2016_VERSION = (13,)
 MS_2014_VERSION = (12,)
 MS_2012_VERSION = (11,)
@@ -1603,8 +1616,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
             # so have to use literal here.
-            s += "TOP %d " % select._limit
-
+            kw["literal_execute"] = True
+            s += "TOP %s " % self.process(select._limit_clause, **kw)
         if s:
             return s
         else:
@@ -1675,13 +1688,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 [c for c in select.c if c.key != "mssql_rn"]
             )
             if offset_clause is not None:
-                limitselect.append_whereclause(mssql_rn > offset_clause)
+                limitselect = limitselect.where(mssql_rn > offset_clause)
                 if limit_clause is not None:
-                    limitselect.append_whereclause(
+                    limitselect = limitselect.where(
                         mssql_rn <= (limit_clause + offset_clause)
                     )
             else:
-                limitselect.append_whereclause(mssql_rn <= (limit_clause))
+                limitselect = limitselect.where(mssql_rn <= (limit_clause))
             return self.process(limitselect, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)
@@ -1770,6 +1783,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
     def returning_clause(self, stmt, returning_cols):
+        # SQL server returning clause requires that the columns refer to
+        # the virtual table names "inserted" or "deleted".   Here, we make
+        # a simple alias of our table with that name, and then adapt the
+        # columns we have from the list of RETURNING columns to that new name
+        # so that they render as "inserted.<colname>" / "deleted.<colname>".
 
         if self.isinsert or self.isupdate:
             target = stmt.table.alias("inserted")
@@ -1778,9 +1796,21 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
         adapter = sql_util.ClauseAdapter(target)
 
+        # adapter.traverse() takes a column from our target table and returns
+        # the one that is linked to the "inserted" / "deleted" tables.  So  in
+        # order to retrieve these values back from the result  (e.g. like
+        # row[column]), tell the compiler to also add the original unadapted
+        # column to the result map.   Before #4877, these were  (unknowingly)
+        # falling back using string name matching in the result set which
+        # necessarily used an expensive KeyError in order to match.
+
         columns = [
             self._label_select_column(
-                None, adapter.traverse(c), True, False, {}
+                None,
+                adapter.traverse(c),
+                True,
+                False,
+                {"result_map_targets": (c,)},
             )
             for c in expression._select_iterables(returning_cols)
         ]
@@ -2062,9 +2092,9 @@ class MSDDLCompiler(compiler.DDLCompiler):
             return ""
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % self.preparer.format_constraint(
-                constraint
-            )
+            formatted_name = self.preparer.format_constraint(constraint)
+            if formatted_name is not None:
+                text += "CONSTRAINT %s " % formatted_name
         text += "UNIQUE "
 
         clustered = constraint.dialect_options["mssql"]["clustered"]
@@ -2161,12 +2191,21 @@ def _db_plus_owner(fn):
 def _switch_db(dbname, connection, fn, *arg, **kw):
     if dbname:
         current_db = connection.scalar("select db_name()")
-        connection.execute("use %s" % dbname)
+        if current_db != dbname:
+            connection.execute(
+                "use %s"
+                % connection.dialect.identifier_preparer.quote_schema(dbname)
+            )
     try:
         return fn(*arg, **kw)
     finally:
-        if dbname:
-            connection.execute("use %s" % current_db)
+        if dbname and current_db != dbname:
+            connection.execute(
+                "use %s"
+                % connection.dialect.identifier_preparer.quote_schema(
+                    current_db
+                )
+            )
 
 
 def _owner_plus_db(dialect, schema):
@@ -2253,7 +2292,6 @@ class MSDialect(default.DefaultDialect):
         self,
         query_timeout=None,
         use_scope_identity=True,
-        max_identifier_length=None,
         schema_name="dbo",
         isolation_level=None,
         deprecate_large_types=None,
@@ -2264,9 +2302,6 @@ class MSDialect(default.DefaultDialect):
         self.schema_name = schema_name
 
         self.use_scope_identity = use_scope_identity
-        self.max_identifier_length = (
-            int(max_identifier_length or 0) or self.max_identifier_length
-        )
         self.deprecate_large_types = deprecate_large_types
         self.legacy_schema_aliasing = legacy_schema_aliasing
 

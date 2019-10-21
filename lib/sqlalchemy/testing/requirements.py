@@ -45,6 +45,26 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def standard_cursor_sql(self):
+        """Target database passes SQL-92 style statements to cursor.execute()
+        when a statement like select() or insert() is run.
+
+        A very small portion of dialect-level tests will ensure that certain
+        conditions are present in SQL strings, and these tests use very basic
+        SQL that will work on any SQL-like platform in order to assert results.
+
+        It's normally a given for any pep-249 DBAPI that a statement like
+        "SELECT id, name FROM table WHERE some_table.id=5" will work.
+        However, there are dialects that don't actually produce SQL Strings
+        and instead may work with symbolic objects instead, or dialects that
+        aren't working with SQL, so for those this requirement can be marked
+        as excluded.
+
+        """
+
+        return exclusions.open()
+
+    @property
     def on_update_cascade(self):
         """"target database must support ON UPDATE..CASCADE behavior in
         foreign keys."""
@@ -153,6 +173,12 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def nullable_booleans(self):
+        """Target database allows boolean columns to store NULL."""
+
+        return exclusions.open()
+
+    @property
     def nullsordering(self):
         """Target backends that support nulls ordering."""
 
@@ -165,6 +191,14 @@ class SuiteRequirements(Requirements):
 
         """
         return exclusions.closed()
+
+    @property
+    def standalone_null_binds_whereclause(self):
+        """target database/driver supports bound parameters with NULL in the
+        WHERE clause, in situations where it has to be typed.
+
+        """
+        return exclusions.open()
 
     @property
     def intersect(self):
@@ -358,6 +392,23 @@ class SuiteRequirements(Requirements):
         """Target database must support external schemas, and have one
         named 'test_schema'."""
 
+        return exclusions.closed()
+
+    @property
+    def cross_schema_fk_reflection(self):
+        """target system must support reflection of inter-schema foreign keys
+
+        """
+        return exclusions.closed()
+
+    @property
+    def implicit_default_schema(self):
+        """target system has a strong concept of 'default' schema that can
+           be referred to implicitly.
+
+           basically, PostgreSQL.
+
+        """
         return exclusions.closed()
 
     @property
@@ -822,6 +873,16 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def order_by_col_from_union(self):
+        """target database supports ordering by a column from a SELECT
+        inside of a UNION
+
+        E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
+
+        """
+        return exclusions.open()
+
+    @property
     def order_by_label_with_expression(self):
         """target backend supports ORDER BY a column label within an
         expression.
@@ -862,6 +923,13 @@ class SuiteRequirements(Requirements):
         """Target driver must raise a DBAPI-level exception, such as
         InterfaceError, when the underlying connection has been closed
         and the execute() method is called.
+        """
+        return exclusions.open()
+
+    @property
+    def independent_connections(self):
+        """
+        Target must support simultaneous, independent database connections.
         """
         return exclusions.open()
 

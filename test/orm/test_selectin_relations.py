@@ -1171,6 +1171,87 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
+    def test_m2o_none_value_present(self):
+        orders, Order, addresses, Address = (
+            self.tables.orders,
+            self.classes.Order,
+            self.tables.addresses,
+            self.classes.Address,
+        )
+
+        mapper(
+            Order,
+            orders,
+            properties={"address": relationship(Address, lazy="selectin")},
+        )
+        mapper(Address, addresses)
+
+        sess = create_session()
+        q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
+
+        o4, o5 = q.all()
+        assert o4.__dict__["address"] is not None
+        assert o5.__dict__["address"] is None
+
+        # test overwrite
+
+        o5.address = Address()
+        sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id).all()
+        assert o5.__dict__["address"] is not None
+
+        o5.address = Address()
+        sess.query(Order).populate_existing().filter(
+            Order.id.in_([4, 5])
+        ).order_by(Order.id).all()
+        assert o5.__dict__["address"] is None
+
+    def test_m2o_uselist_none_value_present(self):
+        orders, Order, addresses, Address = (
+            self.tables.orders,
+            self.classes.Order,
+            self.tables.addresses,
+            self.classes.Address,
+        )
+
+        mapper(
+            Order,
+            orders,
+            properties={
+                "address": relationship(Address, lazy="selectin", uselist=True)
+            },
+        )
+        mapper(Address, addresses)
+
+        sess = create_session()
+        q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
+
+        o4, o5 = q.all()
+        assert len(o4.__dict__["address"])
+        eq_(o5.__dict__["address"], [])
+
+    def test_o2m_empty_list_present(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses), lazy="selectin"
+                )
+            ),
+        )
+        q = create_session().query(User)
+        result = q.filter(users.c.id == 10).all()
+        u1 = result[0]
+
+        eq_(u1.__dict__["addresses"], [])
+
     def test_double_with_aggregate(self):
         User, users, orders, Order = (
             self.classes.User,
@@ -1336,7 +1417,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             eq_(u1.id, 8)
 
         self.assert_sql_count(testing.db, go, 2)
-        assert 'addresses' in u1.__dict__
+        assert "addresses" in u1.__dict__
 
     def test_no_query_on_deferred(self):
         User, Address, sess = self._deferred_config_fixture()
@@ -1642,7 +1723,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description "
                 "FROM paperwork WHERE paperwork.person_id "
-                "IN ([EXPANDING_primary_keys]) "
+                "IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.person_id, paperwork.paperwork_id",
                 [{"primary_keys": [1]}],
             ),
@@ -1692,7 +1773,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description "
                 "FROM paperwork WHERE paperwork.person_id "
-                "IN ([EXPANDING_primary_keys]) "
+                "IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.person_id, paperwork.paperwork_id",
                 [{"primary_keys": [1]}],
             ),
@@ -1738,7 +1819,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description "
                 "FROM paperwork WHERE paperwork.person_id "
-                "IN ([EXPANDING_primary_keys]) "
+                "IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.person_id, paperwork.paperwork_id",
                 [{"primary_keys": [1]}],
             ),
@@ -1792,7 +1873,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description "
                 "FROM paperwork WHERE paperwork.person_id "
-                "IN ([EXPANDING_primary_keys]) "
+                "IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.person_id, paperwork.paperwork_id",
                 [{"primary_keys": [1]}],
             ),
@@ -1840,7 +1921,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "paperwork.paperwork_id AS paperwork_paperwork_id, "
                 "paperwork.description AS paperwork_description "
                 "FROM paperwork WHERE paperwork.person_id "
-                "IN ([EXPANDING_primary_keys]) "
+                "IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.person_id, paperwork.paperwork_id",
                 [{"primary_keys": [1]}],
             ),
@@ -2061,7 +2142,7 @@ class TupleTest(fixtures.DeclarativeMappedTest):
             CompiledSQL(
                 "SELECT b.a_id1 AS b_a_id1, b.a_id2 AS b_a_id2, b.id AS b_id "
                 "FROM b WHERE (b.a_id1, b.a_id2) IN "
-                "([EXPANDING_primary_keys]) ORDER BY b.a_id1, b.a_id2, b.id",
+                "([POSTCOMPILE_primary_keys]) ORDER BY b.a_id1, b.a_id2, b.id",
                 [{"primary_keys": [(i, i + 2) for i in range(1, 20)]}],
             ),
         )
@@ -2092,7 +2173,7 @@ class TupleTest(fixtures.DeclarativeMappedTest):
             ),
             CompiledSQL(
                 "SELECT a.id1 AS a_id1, a.id2 AS a_id2 FROM a "
-                "WHERE (a.id1, a.id2) IN ([EXPANDING_primary_keys])",
+                "WHERE (a.id1, a.id2) IN ([POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [(i, i + 2) for i in range(1, 20)]}],
             ),
         )
@@ -2166,19 +2247,19 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
             CompiledSQL(
                 "SELECT b.a_id AS b_a_id, b.id AS b_id "
                 "FROM b WHERE b.a_id IN "
-                "([EXPANDING_primary_keys]) ORDER BY b.a_id, b.id",
+                "([POSTCOMPILE_primary_keys]) ORDER BY b.a_id, b.id",
                 {"primary_keys": list(range(1, 48))},
             ),
             CompiledSQL(
                 "SELECT b.a_id AS b_a_id, b.id AS b_id "
                 "FROM b WHERE b.a_id IN "
-                "([EXPANDING_primary_keys]) ORDER BY b.a_id, b.id",
+                "([POSTCOMPILE_primary_keys]) ORDER BY b.a_id, b.id",
                 {"primary_keys": list(range(48, 95))},
             ),
             CompiledSQL(
                 "SELECT b.a_id AS b_a_id, b.id AS b_id "
                 "FROM b WHERE b.a_id IN "
-                "([EXPANDING_primary_keys]) ORDER BY b.a_id, b.id",
+                "([POSTCOMPILE_primary_keys]) ORDER BY b.a_id, b.id",
                 {"primary_keys": list(range(95, 101))},
             ),
         )
@@ -2242,19 +2323,19 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
             # chunk size is 47.  so first chunk are a 1->47...
             CompiledSQL(
                 "SELECT a.id AS a_id FROM a WHERE a.id IN "
-                "([EXPANDING_primary_keys])",
+                "([POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(1, 48))},
             ),
             # second chunk is a 48-94
             CompiledSQL(
                 "SELECT a.id AS a_id FROM a WHERE a.id IN "
-                "([EXPANDING_primary_keys])",
+                "([POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(48, 95))},
             ),
             # third and final chunk 95-100.
             CompiledSQL(
                 "SELECT a.id AS a_id FROM a WHERE a.id IN "
-                "([EXPANDING_primary_keys])",
+                "([POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(95, 101))},
             ),
         )
@@ -2779,14 +2860,14 @@ class SelfRefInheritanceAliasedTest(
                 "SELECT foo_1.id AS foo_1_id, "
                 "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
                 "FROM foo AS foo_1 "
-                "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
+                "WHERE foo_1.id IN ([POSTCOMPILE_primary_keys])",
                 {"primary_keys": [3]},
             ),
             CompiledSQL(
                 "SELECT foo_1.id AS foo_1_id, "
                 "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
                 "FROM foo AS foo_1 "
-                "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
+                "WHERE foo_1.id IN ([POSTCOMPILE_primary_keys])",
                 {"primary_keys": [1]},
             ),
         )
@@ -2956,7 +3037,7 @@ class SingleInhSubclassTest(
             CompiledSQL(
                 "SELECT role.user_id AS role_user_id, role.id AS role_id "
                 "FROM role WHERE role.user_id "
-                "IN ([EXPANDING_primary_keys]) ORDER BY role.user_id",
+                "IN ([POSTCOMPILE_primary_keys]) ORDER BY role.user_id",
                 {"primary_keys": [1]},
             ),
         )
@@ -3071,7 +3152,7 @@ class M2OWDegradeTest(
             ),
             CompiledSQL(
                 "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
-                "FROM b WHERE b.id IN ([EXPANDING_primary_keys])",
+                "FROM b WHERE b.id IN ([POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 2]}],
             ),
         )
@@ -3106,7 +3187,7 @@ class M2OWDegradeTest(
                 "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
                 "b.y AS b_y "
                 "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
-                "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                "WHERE a_1.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a_1.id",
                 [{"primary_keys": [1, 3]}],
             ),
         )
@@ -3130,7 +3211,7 @@ class M2OWDegradeTest(
             ),
             CompiledSQL(
                 "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
-                "FROM b WHERE b.id IN ([EXPANDING_primary_keys])",
+                "FROM b WHERE b.id IN ([POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 2]}],
             ),
         )
@@ -3165,7 +3246,7 @@ class M2OWDegradeTest(
                 "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
                 "b.y AS b_y "
                 "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
-                "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                "WHERE a_1.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a_1.id",
                 [{"primary_keys": [1, 2, 3, 4, 5]}],
             ),
         )

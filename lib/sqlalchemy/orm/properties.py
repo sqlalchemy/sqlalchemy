@@ -44,7 +44,6 @@ class ColumnProperty(StrategizedProperty):
         "instrument",
         "comparator_factory",
         "descriptor",
-        "extension",
         "active_history",
         "expire_on_flush",
         "info",
@@ -54,17 +53,10 @@ class ColumnProperty(StrategizedProperty):
         "_is_polymorphic_discriminator",
         "_mapped_by_synonym",
         "_deferred_column_loader",
+        "_raise_column_loader",
+        "raiseload",
     )
 
-    @util.deprecated_params(
-        extension=(
-            "0.7",
-            ":class:`.AttributeExtension` is deprecated in favor of the "
-            ":class:`.AttributeEvents` listener interface.  The "
-            ":paramref:`.column_property.extension` parameter will be "
-            "removed in a future release.",
-        )
-    )
     def __init__(self, *columns, **kwargs):
         r"""Provide a column-level property for use with a Mapper.
 
@@ -125,10 +117,16 @@ class ColumnProperty(StrategizedProperty):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
 
-        :param extension:
-            an :class:`.AttributeExtension` instance, or list of extensions,
-            which will be prepended to the list of attribute listeners for the
-            resulting descriptor placed on the class.
+        :param raiseload: if True, indicates the column should raise an error
+            when undeferred, rather than loading the value.  This can be
+            altered at query time by using the :func:`.deferred` option with
+            raiseload=False.
+
+            .. versionadded:: 1.4
+
+            .. seealso::
+
+                :ref:`deferred_raiseload`
 
         """
         super(ColumnProperty, self).__init__()
@@ -143,12 +141,12 @@ class ColumnProperty(StrategizedProperty):
         ]
         self.group = kwargs.pop("group", None)
         self.deferred = kwargs.pop("deferred", False)
+        self.raiseload = kwargs.pop("raiseload", False)
         self.instrument = kwargs.pop("_instrument", True)
         self.comparator_factory = kwargs.pop(
             "comparator_factory", self.__class__.Comparator
         )
         self.descriptor = kwargs.pop("descriptor", None)
-        self.extension = kwargs.pop("extension", None)
         self.active_history = kwargs.pop("active_history", False)
         self.expire_on_flush = kwargs.pop("expire_on_flush", True)
 
@@ -178,12 +176,22 @@ class ColumnProperty(StrategizedProperty):
             ("deferred", self.deferred),
             ("instrument", self.instrument),
         )
+        if self.raiseload:
+            self.strategy_key += (("raiseload", True),)
 
     @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
     def _memoized_attr__deferred_column_loader(self, state, strategies):
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key),
+            self.key,
+        )
+
+    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__raise_column_loader(self, state, strategies):
+        return state.InstanceState._instance_level_callable_processor(
+            self.parent.class_manager,
+            strategies.LoadDeferredColumns(self.key, True),
             self.key,
         )
 
@@ -292,7 +300,7 @@ class ColumnProperty(StrategizedProperty):
 
         def _memoized_method___clause_element__(self):
             if self.adapter:
-                return self.adapter(self.prop.columns[0])
+                return self.adapter(self.prop.columns[0], self.prop.key)
             else:
                 # no adapter, so we aren't aliased
                 # assert self._parententity is self._parentmapper
@@ -300,6 +308,7 @@ class ColumnProperty(StrategizedProperty):
                     {
                         "parententity": self._parententity,
                         "parentmapper": self._parententity,
+                        "orm_key": self.prop.key,
                     }
                 )
 

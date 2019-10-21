@@ -1,3 +1,4 @@
+from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import Integer
@@ -22,6 +23,7 @@ from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.selectable import FromGrouping
 from sqlalchemy.sql.selectable import SelectStatementGrouping
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -200,6 +202,19 @@ class RoleTest(fixtures.TestBase):
                     SelectStatementGrouping(select([t])).subquery()
                 )
             )
+
+    def test_offset_or_limit_role_only_ints_or_clauseelement(self):
+        assert_raises(ValueError, select([t]).limit, "some limit")
+
+        assert_raises(ValueError, select([t]).offset, "some offset")
+
+    def test_offset_or_limit_role_clauseelement(self):
+        bind = bindparam("x")
+        stmt = select([t]).limit(bind)
+        is_(stmt._limit_clause, bind)
+
+        stmt = select([t]).offset(bind)
+        is_(stmt._offset_clause, bind)
 
     def test_from_clause_is_not_a_select(self):
         assert_raises_message(

@@ -37,6 +37,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Or
@@ -2484,6 +2485,63 @@ class OptimizedLoadTest(fixtures.MappedTest):
             ),
         )
 
+    def test_optimized_load_subclass_labels(self):
+        # test for issue #4718, however it may be difficult to maintain
+        # the conditions here:
+        # 1. optimized get is used to load some attributes
+        # 2. the subtable-only statement is generated
+        # 3. the mapper (a subclass mapper) is against a with_polymorphic
+        #    that is using a labeled select
+        #
+        # the optimized loader has to cancel out the polymorphic for the
+        # query (or adapt around it) since optimized get creates a simple
+        # SELECT statement.   Otherwise it often relies on _key_fallback
+        # columns in order to do the lookup.
+        #
+        # note this test can't fail when the fix is missing unless
+        # ResultProxy._key_fallback no longer allows a non-matching column
+        # lookup without warning or raising.
+
+        base, sub = self.tables.base, self.tables.sub
+
+        class Base(fixtures.ComparableEntity):
+            pass
+
+        class Sub(Base):
+            pass
+
+        mapper(
+            Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
+        )
+
+        mapper(
+            Sub,
+            sub,
+            inherits=Base,
+            polymorphic_identity="sub",
+            with_polymorphic=(
+                "*",
+                base.outerjoin(sub).select(use_labels=True).alias("foo"),
+            ),
+        )
+        sess = Session()
+        s1 = Sub(
+            data="s1data", sub="s1sub", subcounter=1, counter=1, subcounter2=1
+        )
+        sess.add(s1)
+        sess.flush()
+        sess.expire(s1, ["sub"])
+
+        def _key_fallback(self, key, raiseerr):
+            raise KeyError(key)
+
+        with mock.patch(
+            "sqlalchemy.engine.result.ResultMetaData._key_fallback",
+            _key_fallback,
+        ):
+
+            eq_(s1.sub, "s1sub")
+
     def test_optimized_passes(self):
         """"test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
@@ -3255,6 +3313,100 @@ class PolymorphicUnionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "FROM t1 UNION ALL SELECT t2.c1, t2.c2, t2.c3, t2.c4, NULL AS c5, "
             "'b' AS q1 FROM t2 UNION ALL SELECT t3.c1, NULL AS c2, t3.c3, "
             "NULL AS c4, t3.c5, 'c' AS q1 FROM t3",
+        )
+
+
+class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
+
+    run_setup_mappers = "once"
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(fixtures.ComparableEntity, Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+
+        class A(fixtures.ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(ForeignKey("parent.id"))
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "a",
+            }
+
+        class B(A):
+            __tablename__ = "b"
+            id = Column(ForeignKey("a.id"), primary_key=True)
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+    @classmethod
+    def insert_data(cls):
+        Parent, A, B = cls.classes("Parent", "A", "B")
+        s = Session()
+
+        p1 = Parent(id=1)
+        p2 = Parent(id=2)
+        s.add_all([p1, p2])
+        s.flush()
+
+        s.add_all(
+            [
+                A(id=1, parent_id=1),
+                B(id=2, parent_id=1),
+                A(id=3, parent_id=1),
+                B(id=4, parent_id=1),
+            ]
+        )
+        s.flush()
+
+        s.query(A).filter(A.id.in_([3, 4])).update(
+            {A.type: None}, synchronize_session=False
+        )
+        s.commit()
+
+    def test_pk_is_null(self):
+        Parent, A = self.classes("Parent", "A")
+
+        sess = Session()
+        q = (
+            sess.query(Parent, A)
+            .select_from(Parent)
+            .outerjoin(A)
+            .filter(Parent.id == 2)
+        )
+        row = q.all()[0]
+
+        eq_(row, (Parent(id=2), None))
+
+    def test_pk_not_null_discriminator_null_from_base(self):
+        A, = self.classes("A")
+
+        sess = Session()
+        q = sess.query(A).filter(A.id == 3)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Row with identity key \(<class '.*A'>, \(3,\), None\) can't be "
+            "loaded into an object; the polymorphic discriminator "
+            "column 'a.type' is NULL",
+            q.all,
+        )
+
+    def test_pk_not_null_discriminator_null_from_sub(self):
+        B, = self.classes("B")
+
+        sess = Session()
+        q = sess.query(B).filter(B.id == 4)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Row with identity key \(<class '.*A'>, \(4,\), None\) can't be "
+            "loaded into an object; the polymorphic discriminator "
+            "column 'a.type' is NULL",
+            q.all,
         )
 
 

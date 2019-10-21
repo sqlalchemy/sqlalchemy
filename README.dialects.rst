@@ -15,14 +15,12 @@ which allows external dialects to be integrated into SQLAlchemy using
 standard setuptools entry points.  As of version 0.8, this system has
 been enhanced, so that a dialect can also be "plugged in" at runtime.
 
-On the testing side, SQLAlchemy as of 0.8 also includes a "dialect
-compliance suite" that is usable by third party libraries.  There is no
-longer a strong need for a new dialect to run through SQLAlchemy's full
-testing suite, as a large portion of these tests do not have
-dialect-sensitive functionality.  The "dialect compliance suite" should
-be viewed as the primary target for new dialects, and as it continues
-to grow and mature it should become a more thorough and efficient system
-of testing new dialects.
+On the testing side, SQLAlchemy includes a "dialect compliance
+suite" that is usable by third party libraries, in the source tree
+at ``lib/sqlalchemy/testing/suite``.   There's no need for a third party
+dialect to run through SQLAlchemy's full testing suite, as a large portion of
+these tests do not have dialect-sensitive functionality.  The "dialect
+compliance suite" should be viewed as the primary target for new dialects.
 
 
 Dialect Layout
@@ -46,24 +44,20 @@ The file structure of a dialect is typically similar to the following::
                                               ...
 
 An example of this structure can be seen in the Access dialect at
-https://bitbucket.org/zzzeek/sqlalchemy-access/.
+https://github.com/sqlalchemy/sqlalchemy-access .
 
 Key aspects of this file layout include:
 
 * setup.py - should specify setuptools entrypoints, allowing the
   dialect to be usable from create_engine(), e.g.::
 
-        entry_points={
+        entry_points = {
          'sqlalchemy.dialects': [
-              'access = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
               'access.pyodbc = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
               ]
         }
 
-  Above, the two entrypoints ``access`` and ``access.pyodbc`` allow URLs to be
-  used such as::
-
-    create_engine("access://user:pw@dsn")
+  Above, the entrypoint ``access.pyodbc`` allow URLs to be used such as::
 
     create_engine("access+pyodbc://user:pw@dsn")
 
@@ -99,16 +93,20 @@ Key aspects of this file layout include:
   The other portion invokes SQLAlchemy's pytest plugin::
 
     from sqlalchemy.dialects import registry
+    import pytest
 
-    registry.register("access", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
     registry.register("access.pyodbc", "sqlalchemy_access.pyodbc", "AccessDialect_pyodbc")
+
+    pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
     from sqlalchemy.testing.plugin.pytestplugin import *
 
   Where above, the ``registry`` module, introduced in SQLAlchemy 0.8, provides
-  an in-Python means of installing the dialect entrypoints without the use
+  an in-Python means of installing the dialect entrypoint(s) without the use
   of setuptools, using the ``registry.register()`` function in a way that
   is similar to the ``entry_points`` directive we placed in our ``setup.py``.
+  (The ``pytest.register_assert_rewrite`` is there just to suppress a spurious
+  warning from pytest.)
 
 * requirements.py - The ``requirements.py`` file is where directives
   regarding database and dialect capabilities are set up.
@@ -136,7 +134,9 @@ Key aspects of this file layout include:
 
       class Requirements(SuiteRequirements):
           @property
-          def table_reflection(self):
+          def nullable_booleans(self):
+              """Target database allows boolean columns to store NULL."""
+              # Access Yes/No doesn't allow null
               return exclusions.closed()
 
           @property
@@ -169,18 +169,18 @@ Key aspects of this file layout include:
   That's all that's needed - the ``sqlalchemy.testing.suite`` package
   contains an ever expanding series of tests, most of which should be
   annotated with specific requirement decorators so that they can be
-  fully controlled. To specifically modify some of the tests, they can
-  be imported by name and subclassed::
+  fully controlled.  In the case that the decorators are not covering
+  a particular test, a test can also be directly modified or bypassed.
+  In the example below, the Access dialect test suite overrides the
+  ``get_huge_int()`` test::
 
       from sqlalchemy.testing.suite import *
 
-      from sqlalchemy.testing.suite import ComponentReflectionTest as _ComponentReflectionTest
+      from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
 
-      class ComponentReflectionTest(_ComponentReflectionTest):
-          @classmethod
-          def define_views(cls, metadata, schema):
-              # bypass the "define_views" section of the
-              # fixture
+      class IntegerTest(_IntegerTest):
+          def test_huge_int(self):
+              # bypass test for feature unsupported by Access ODBC
               return
 
 Going Forward

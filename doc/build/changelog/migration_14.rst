@@ -182,8 +182,80 @@ refined so that it is more compatible with Core.
 :ticket:`4617`
 
 
+New Features - ORM
+==================
+
+.. _change_4826:
+
+Raiseload for Columns
+---------------------
+
+The "raiseload" feature, which raises :class:`.InvalidRequestError` when an
+unloaded attribute is accessed, is now available for column-oriented attributes
+using the :paramref:`.orm.defer.raiseload` parameter of :func:`.defer`. This
+works in the same manner as that of the :func:`.raiseload` option used by
+relationship loading::
+
+    book = session.query(Book).options(defer(Book.summary, raiseload=True)).first()
+
+    # would raise an exception
+    book.summary
+
+To configure column-level raiseload on a mapping, the
+:paramref:`.deferred.raiseload` parameter of :func:`.deferred` may be used.  The
+:func:`.undefer` option may then be used at query time to eagerly load
+the attribute::
+
+    class Book(Base):
+        __tablename__ = 'book'
+
+        book_id = Column(Integer, primary_key=True)
+        title = Column(String(200), nullable=False)
+        summary = deferred(Column(String(2000)), raiseload=True)
+        excerpt = deferred(Column(Text), raiseload=True)
+
+    book_w_excerpt = session.query(Book).options(undefer(Book.excerpt)).first()
+
+It was originally considered that the existing :func:`.raiseload` option that
+works for :func:`.relationship` attributes be expanded to also support column-oriented
+attributes.    However, this would break the "wildcard" behavior of :func:`.raiseload`,
+which is documented as allowing one to prevent all relationships from loading::
+
+    session.query(Order).options(
+        joinedload(Order.items), raiseload('*'))
+
+Above, if we had expanded :func:`.raiseload` to accommodate for columns  as
+well, the wildcard would also prevent columns from loading and thus be  a
+backwards incompatible change; additionally, it's not clear if
+:func:`.raiseload` covered both column expressions and relationships, how one
+would achieve the  effect above of only blocking relationship loads, without
+new API being added.   So to keep things simple, the option for columns
+remains on :func:`.defer`:
+
+    :func:`.raiseload` - query option to raise for relationship loads
+
+    :paramref:`.orm.defer.raiseload` - query option to raise for column expression loads
 
 
+As part of this change, the behavior of "deferred" in conjunction with
+attribute expiration has changed.   Previously, when an object would be marked
+as expired, and then unexpired via the access of one of the expired attributes,
+attributes which were mapped as "deferred" at the mapper level would also load.
+This has been changed such that an attribute that is deferred in the mapping
+will never "unexpire", it only loads when accessed as part of the deferral
+loader.
+
+An attribute that is not mapped as "deferred", however was deferred at query
+time via the :func:`.defer` option, will be reset when the object or attribute
+is expired; that is, the deferred option is removed. This is the same behavior
+as was present previously.
+
+
+.. seealso::
+
+    :ref:`deferred_raiseload`
+
+:ticket:`4826`
 
 Behavioral Changes - ORM
 ========================
@@ -535,6 +607,229 @@ as::
 
 :ticket:`4753`
 
+.. _change_4710_row:
+
+The "RowProxy" is no longer a "proxy", now called ``Row``
+---------------------------------------------------------
+
+Since the beginning of SQLAlchemy, the Core result objects exposed to the
+user are the :class:`.ResultProxy` and ``RowProxy`` objects.   The name
+"proxy" refers to the `GOF Proxy Pattern <https://en.wikipedia.org/wiki/Proxy_pattern>`_,
+emphasizing that these objects are presenting a facade around the DBAPI
+``cursor`` object and the tuple-like objects returned by methods such
+as ``cursor.fetchone()``; as methods on the result and row proxy objects
+are invoked, the underlying methods or data members of the ``cursor`` and
+the tuple-like objects returned are invoked.
+
+In particular, SQLAlchemy's row-processing functions would be invoked
+as a particular column in a row is accessed.  By row-processing functions,
+we refer to functions such as that of the :class:`.Unicode` datatype, which under
+Python 2 would often convert Python string objects to Python unicode
+objects, as well as numeric functions that produce ``Decimal`` objects,
+SQLite datetime functions that produce ``datetime`` objects from string
+representations, as well as any-number of user-defined functions which can
+be created using :class:`.TypeDecorator`.
+
+The rationale for this pattern was performance, where the anticipated use
+case of fetching a row from a legacy database that contained dozens of
+columns would not need to run, for example, a unicode converter on every
+element of each row, if only a few columns in the row were being fetched.
+SQLAlchemy eventually gained C extensions which allowed for additional
+performance gains within this process.
+
+As part of SQLAlchemy 1.4's goal of migrating towards SQLAlchemy 2.0's updated
+usage patterns, row objects will be made to behave more like tuples.  To
+suit this, the "proxy" behavior of :class:`.Row` has been removed and instead
+the row is populated with its final data values upon construction.  This
+in particular allows an operation such as ``obj in row`` to work as that
+of a tuple where it tests for containment of ``obj`` in the row itself,
+rather than considering it to be a key in a mapping as is the case now.
+For the moment, ``obj in row`` still does a key lookup,
+that is, detects if the row has a particular column name as ``obj``, however
+this behavior is deprecated and in 2.0 the :class:`.Row` will behave fully
+as a tuple-like object; lookup of keys will be via the ``._mapping``
+attribute.
+
+The result of removing the proxy behavior from rows is that the C code has been
+simplified and the performance of many operations is improved both with and
+without the C extensions in use.   Modern Python DBAPIs handle unicode
+conversion natively in most cases, and SQLAlchemy's unicode handlers are
+very fast in any case, so the expense of unicode conversion
+is a non-issue.
+
+This change by itself has no behavioral impact on the row, but is part of
+a larger series of changes in :ticket:`4710` which unifies the Core row/result
+facade with that of the ORM.
+
+:ticket:`4710`
+
+
+.. _change_4449:
+
+Improved column labeling for simple column expressions using CAST or similar
+----------------------------------------------------------------------------
+
+A user pointed out that the PostgreSQL database has a convenient behavior when
+using functions like CAST against a named column, in that the result column name
+is named the same as the inner expression::
+
+    test=> SELECT CAST(data AS VARCHAR) FROM foo;
+
+    data
+    ------
+     5
+    (1 row)
+
+This allows one to apply CAST to table columns while not losing the column
+name (above using the name ``"data"``) in the result row.    Compare to
+databases such as MySQL/MariaDB, as well as most others, where the column
+name is taken from the full SQL expression and is not very portable::
+
+    MariaDB [test]> SELECT CAST(data AS CHAR) FROM foo;
+    +--------------------+
+    | CAST(data AS CHAR) |
+    +--------------------+
+    | 5                  |
+    +--------------------+
+    1 row in set (0.003 sec)
+
+
+In SQLAlchemy Core expressions, we never deal with a raw generated name like
+the above, as SQLAlchemy applies auto-labeling to expressions like these, which
+are up until now always a so-called "anonymous" expression::
+
+    >>> print(select([cast(foo.c.data, String)]))
+    SELECT CAST(foo.data AS VARCHAR) AS anon_1     # old behavior
+    FROM foo
+
+These anonymous expressions were necessary as SQLAlchemy's
+:class:`.ResultProxy` made heavy use of result column names in order to match
+up datatypes, such as the :class:`.String` datatype which used to have
+result-row-processing behavior, to the correct column, so most importantly the
+names had to be both easy to determine in a database-agnostic manner as well as
+unique in all cases.    In SQLAlchemy 1.0 as part of :ticket:`918`, this
+reliance on named columns in result rows (specifically the
+``cursor.description`` element of the PEP-249 cursor) was scaled back to not be
+necessary for most Core SELECT constructs; in release 1.4, the system overall
+is becoming more comfortable with SELECT statements that have duplicate column
+or label names such as in :ref:`change_4753`.  So we now emulate PostgreSQL's
+reasonable behavior for simple modifications to a single column, most
+prominently with CAST::
+
+    >>> print(select([cast(foo.c.data, String)]))
+    SELECT CAST(foo.data AS VARCHAR) AS data
+    FROM foo
+
+For CAST against expressions that don't have a name, the previous logic is used
+to generate the usual "anonymous" labels::
+
+    >>> print(select([cast('hi there,' + foo.c.data, String)]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
+    FROM foo
+
+A :func:`.cast` against a :class:`.Label`, despite having to omit the label
+expression as these don't render inside of a CAST, will nonetheless make use of
+the given name::
+
+    >>> print(select([cast(('hi there,' + foo.c.data).label('hello_data'), String)]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    FROM foo
+
+And of course as was always the case, :class:`.Label` can be applied to the
+expression on the outside to apply an "AS <name>" label directly::
+
+    >>> print(select([cast(('hi there,' + foo.c.data), String).label('hello_data')]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    FROM foo
+
+
+:ticket:`4449`
+
+.. _change_4808:
+
+New "post compile" bound parameters used for LIMIT/OFFSET in Oracle, SQL Server
+-------------------------------------------------------------------------------
+
+A major goal of the 1.4 series is to establish that all Core SQL constructs
+are completely cacheable, meaning that a particular :class:`.Compiled`
+structure will produce an identical SQL string regardless of any SQL parameters
+used with it, which notably includes those used to specify the LIMIT and
+OFFSET values, typically used for pagination and "top N" style results.
+
+While SQLAlchemy has used bound parameters for LIMIT/OFFSET schemes for many
+years, a few outliers remained where such parameters were not allowed, including
+a SQL Server "TOP N" statement, such as::
+
+    SELECT TOP 5 mytable.id, mytable.data FROM mytable
+
+as well as with Oracle, where the FIRST_ROWS() hint (which SQLAlchemy will
+use if the ``optimize_limits=True`` parameter is passed to
+:func:`.create_engine` with an Oracle URL) does not allow them,
+but also that using bound parameters with ROWNUM comparisons has been reported
+as producing slower query plans::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS(5) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id, mytable.data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= :param_1
+    ) anon_1 WHERE ora_rn > :param_2
+
+In order to allow for all statements to be unconditionally cacheable at the
+compilation level, a new form of bound parameter called a "post compile"
+parameter has been added, which makes use of the same mechanism as that
+of "expanding IN parameters".  This is a :func:`.bindparam` that behaves
+identically to any other bound parameter except that parameter value will
+be rendered literally into the SQL string before sending it to the DBAPI
+``cursor.execute()`` method.   The new parameter is used internally by the
+SQL Server and Oracle dialects, so that the drivers receive the literal
+rendered value but the rest of SQLAlchemy can still consider this as a
+bound parameter.   The above two statements when stringified using
+``str(statement.compile(dialect=<dialect>))`` now look like::
+
+    SELECT TOP [POSTCOMPILE_param_1] mytable.id, mytable.data FROM mytable
+
+and::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id, mytable.data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= [POSTCOMPILE_param_1]
+    ) anon_1 WHERE ora_rn > [POSTCOMPILE_param_2]
+
+The ``[POSTCOMPILE_<param>]`` format is also what is seen when an
+"expanding IN" is used.
+
+When viewing the SQL logging output, the final form of the statement will
+be seen::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS(5) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id AS id, mytable.data AS data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= 8
+    ) anon_1 WHERE ora_rn > 3
+
+
+The "post compile parameter" feature is exposed as public API through the
+:paramref:`.bindparam.literal_execute` parameter, however is currently not
+intended for general use.   The literal values are rendered using the
+:meth:`.TypeEngine.literal_processor` of the underlying datatype, which in
+SQLAlchemy has **extremely limited** scope, supporting only integers and simple
+string values.
+
+:ticket:`4808`
+
 .. _change_4712:
 
 Connection-level transactions can now be inactive based on subtransaction
@@ -559,3 +854,36 @@ runs operations on a new transaction.   The "test harness" pattern described
 at :ref:`session_external_transaction` is the common place for this to occur.
 
 The new behavior is described in the errors page at :ref:`error_8s2a`.
+
+
+Dialect Changes
+===============
+
+.. _change_4895:
+
+Removed "join rewriting" logic from SQLite dialect; updated imports
+-------------------------------------------------------------------
+
+Dropped support for right-nested join rewriting to support old SQLite
+versions prior to 3.7.16, released in 2013.   It is not expected that
+any modern Python versions rely upon this limitation.
+
+The behavior was first introduced in 0.9 and was part of the larger change of
+allowing for right nested joins as described at :ref:`feature_joins_09`.
+However the SQLite workaround produced many regressions in the 2013-2014
+period due to its complexity. In 2016, the dialect was modified so that the
+join rewriting logic would only occur for SQLite verisons prior to 3.7.16 after
+bisection was used to  identify where SQLite fixed its support for this
+construct, and no further issues were reported against the behavior (even
+though some bugs were found internally).    It is now anticipated that there
+are little to no Python builds for Python 2.7 or 3.4 and above (the supported
+Python versions) which would include a SQLite version prior to 3.7.17, and
+the behavior is only necessary only in more complex ORM joining scenarios.
+A warning is now emitted if the installed SQLite version is older than
+3.7.16.
+
+In related changes, the module imports for SQLite no longer attempt to
+import the "pysqlite2" driver on Python 3 as this driver does not exist
+on Python 3; a very old warning for old pysqlite2 versions is also dropped.
+
+:ticket:`4895`

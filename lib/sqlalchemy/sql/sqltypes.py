@@ -471,7 +471,7 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
 
     def literal_processor(self, dialect):
         def process(value):
-            return str(value)
+            return str(int(value))
 
         return process
 

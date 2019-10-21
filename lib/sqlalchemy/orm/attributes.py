@@ -168,18 +168,18 @@ class QueryableAttribute(
         """
         return inspection.inspect(self._parententity)
 
-    @property
+    @util.memoized_property
     def expression(self):
-        return self.comparator.__clause_element__()
+        return self.comparator.__clause_element__()._annotate(
+            {"orm_key": self.key}
+        )
+
+    @property
+    def _annotations(self):
+        return self.__clause_element__()._annotations
 
     def __clause_element__(self):
-        return self.comparator.__clause_element__()
-
-    def _query_clause_element(self):
-        """like __clause_element__(), but called specifically
-        by :class:`.Query` to allow special behavior."""
-
-        return self.comparator._query_clause_element()
+        return self.expression
 
     def _bulk_update_tuples(self, value):
         """Return setter tuples for a bulk UPDATE."""
@@ -207,7 +207,7 @@ class QueryableAttribute(
         )
 
     def label(self, name):
-        return self._query_clause_element().label(name)
+        return self.__clause_element__().label(name)
 
     def operate(self, op, *other, **kwargs):
         return op(self.comparator, *other, **kwargs)
@@ -328,7 +328,7 @@ def create_proxied_attribute(descriptor):
 
         @util.memoized_property
         def comparator(self):
-            if util.callable(self._comparator):
+            if callable(self._comparator):
                 self._comparator = self._comparator()
             if self._adapt_to_entity:
                 self._comparator = self._comparator.adapt_to_entity(
@@ -465,11 +465,10 @@ class AttributeImpl(object):
         callable_,
         dispatch,
         trackparent=False,
-        extension=None,
         compare_function=None,
         active_history=False,
         parent_token=None,
-        expire_missing=True,
+        load_on_unexpire=True,
         send_modified_events=True,
         accepts_scalar_loader=None,
         **kwargs
@@ -490,19 +489,6 @@ class AttributeImpl(object):
           if True, attempt to track if an instance has a parent attached
           to it via this attribute.
 
-        :param extension:
-          a single or list of AttributeExtension object(s) which will
-          receive set/delete/append/remove/etc. events.
-          The event package is now used.
-
-          .. deprecated::  1.3
-
-            The :paramref:`.AttributeImpl.extension` parameter is deprecated
-            and will be removed in a future release, corresponding to the
-            "extension" parameter on the :class:`.MapperProprty` classes
-            like :func:`.column_property` and :func:`.relationship`  The
-            events system is now used.
-
         :param compare_function:
           a function that compares two values which are normally
           assignable to this attribute.
@@ -517,10 +503,13 @@ class AttributeImpl(object):
           Allows multiple AttributeImpls to all match a single
           owner attribute.
 
-        :param expire_missing:
-          if False, don't add an "expiry" callable to this attribute
-          during state.expire_attributes(None), if no value is present
-          for this key.
+        :param load_on_unexpire:
+          if False, don't include this attribute in a load-on-expired
+          operation, i.e. the "expired_attribute_loader" process.
+          The attribute can still be in the "expired" list and be
+          considered to be "expired".   Previously, this flag was called
+          "expire_missing" and is only used by a deferred column
+          attribute.
 
         :param send_modified_events:
           if False, the InstanceState._modified_event method will have no
@@ -545,17 +534,10 @@ class AttributeImpl(object):
         else:
             self.accepts_scalar_loader = self.default_accepts_scalar_loader
 
-        # TODO: pass in the manager here
-        # instead of doing a lookup
-        attr = manager_of_class(class_)[key]
-
-        for ext in util.to_list(extension or []):
-            ext._adapt_listener(attr, ext)
-
         if active_history:
             self.dispatch._active_history = True
 
-        self.expire_missing = expire_missing
+        self.load_on_unexpire = load_on_unexpire
         self._modified_token = Event(self, OP_MODIFIED)
 
     __slots__ = (
@@ -567,7 +549,7 @@ class AttributeImpl(object):
         "parent_token",
         "send_modified_events",
         "is_equal",
-        "expire_missing",
+        "load_on_unexpire",
         "_modified_token",
         "accepts_scalar_loader",
     )
@@ -702,8 +684,11 @@ class AttributeImpl(object):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
-                if self.accepts_scalar_loader and \
-                        key in state.expired_attributes:
+                if (
+                    self.accepts_scalar_loader
+                    and self.load_on_unexpire
+                    and key in state.expired_attributes
+                ):
                     value = state._load_expired(state, passive)
                 elif key in state.callables:
                     callable_ = state.callables[key]
@@ -1073,7 +1058,6 @@ class CollectionAttributeImpl(AttributeImpl):
         dispatch,
         typecallable=None,
         trackparent=False,
-        extension=None,
         copy_function=None,
         compare_function=None,
         **kwargs
@@ -1084,7 +1068,6 @@ class CollectionAttributeImpl(AttributeImpl):
             callable_,
             dispatch,
             trackparent=trackparent,
-            extension=extension,
             compare_function=compare_function,
             **kwargs
         )

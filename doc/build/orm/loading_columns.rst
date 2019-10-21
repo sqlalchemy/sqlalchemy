@@ -217,6 +217,44 @@ the :class:`.Query` object should raise an informative error message when
 the above calling style is actually required that describes those cases
 where explicit use of :class:`.Load` is needed.
 
+.. _deferred_raiseload:
+
+Raiseload for Deferred Columns
+------------------------------
+
+.. versionadded:: 1.4
+
+The :func:`.deferred` loader option and the corresponding loader strategy also
+support the concept of "raiseload", which is a loader strategy that will raise
+:class:`.InvalidRequestError` if the attribute is accessed such that it would
+need to emit a SQL query in order to be loaded.   This behavior is the
+column-based equivalent of the :func:`.raiseload` feature for relationship
+loading, discussed at :ref:`prevent_lazy_with_raiseload`.    Using the
+:paramref:`.orm.defer.raiseload` parameter on the :func:`.defer` option,
+an exception is raised if the attribute is accessed::
+
+    book = session.query(Book).options(defer(Book.summary, raiseload=True)).first()
+
+    # would raise an exception
+    book.summary
+
+Deferred "raiseload" can be configured at the mapper level via
+:paramref:`.orm.deferred.raiseload` on :func:`.deferred`, so that an explicit
+:func:`.undefer` is required in order for the attribute to be usable::
+
+
+    class Book(Base):
+        __tablename__ = 'book'
+
+        book_id = Column(Integer, primary_key=True)
+        title = Column(String(200), nullable=False)
+        summary = deferred(Column(String(2000)), raiseload=True)
+        excerpt = deferred(Column(Text), raiseload=True)
+
+    book_w_excerpt = session.query(Book).options(undefer(Book.excerpt)).first()
+
+
+
 Column Deferral API
 -------------------
 

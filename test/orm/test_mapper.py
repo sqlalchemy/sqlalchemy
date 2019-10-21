@@ -2256,8 +2256,10 @@ class OptionsTest(_fixtures.FixtureTest):
         # session's identity map)
         r = users.select().order_by(users.c.id).execute()
 
+        ctx = sess.query(User)._compile_context()
+
         def go():
-            result = list(sess.query(User).instances(r))
+            result = list(sess.query(User).instances(r, ctx))
             eq_(result, self.static.user_address_result)
 
         self.sql_count_(4, go)
@@ -2353,8 +2355,10 @@ class OptionsTest(_fixtures.FixtureTest):
         # then assert the data, which will launch 6 more lazy loads
         r = users.select().execute()
 
+        ctx = sess.query(User)._compile_context()
+
         def go():
-            result = list(sess.query(User).instances(r))
+            result = list(sess.query(User).instances(r, ctx))
             eq_(result, self.static.user_all_result)
 
         self.assert_sql_count(testing.db, go, 6)
@@ -3390,6 +3394,87 @@ class RaiseLoadTest(_fixtures.FixtureTest):
                 "'Address.user' is not available due to lazy='raise_on_sql'",
                 lambda: a1.user,
             )
+
+    def test_raiseload_wildcard_all_classes_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, backref="user")),
+        )
+        q = (
+            create_session()
+            .query(User, Address)
+            .join(Address, User.id == Address.user_id)
+        )
+
+        u1, a1 = q.options(sa.orm.raiseload("*")).filter(User.id == 7).first()
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'User.addresses' is not available due to lazy='raise'",
+            lambda: u1.addresses,
+        )
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Address.user' is not available due to lazy='raise'",
+            lambda: a1.user,
+        )
+
+        # columns still work
+        eq_(u1.id, 7)
+        eq_(a1.id, 1)
+
+    def test_raiseload_wildcard_specific_class_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, backref="user")),
+        )
+        q = (
+            create_session()
+            .query(User, Address)
+            .join(Address, User.id == Address.user_id)
+        )
+
+        u1, a1 = (
+            q.options(sa.orm.Load(Address).raiseload("*"))
+            .filter(User.id == 7)
+            .first()
+        )
+
+        # User doesn't raise
+        def go():
+            eq_(u1.addresses, [a1])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        # Address does
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Address.user' is not available due to lazy='raise'",
+            lambda: a1.user,
+        )
+
+        # columns still work
+        eq_(u1.id, 7)
+        eq_(a1.id, 1)
 
 
 class RequirementsTest(fixtures.MappedTest):

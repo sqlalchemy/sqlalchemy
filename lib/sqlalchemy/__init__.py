@@ -19,7 +19,6 @@ from .schema import ForeignKey  # noqa
 from .schema import ForeignKeyConstraint  # noqa
 from .schema import Index  # noqa
 from .schema import MetaData  # noqa
-from .schema import PassiveDefault  # noqa
 from .schema import PrimaryKeyConstraint  # noqa
 from .schema import Sequence  # noqa
 from .schema import Table  # noqa
@@ -118,12 +117,13 @@ from .types import UnicodeText  # noqa
 from .types import VARBINARY  # noqa
 from .types import VARCHAR  # noqa
 
-# these are placed last because there are
-# cross dependencies between sqlalchemy.sql and
-# sqlalchemy.engine that cause import cycles
 from .engine import create_engine  # noqa nosort
 from .engine import engine_from_config  # noqa nosort
 from .engine import create_mock_engine  # noqa nosort
+
+# these are placed last because there are
+# cross dependencies between sqlalchemy.sql and
+# sqlalchemy.engine that cause import cycles
 
 
 __version__ = "1.4.0b1"

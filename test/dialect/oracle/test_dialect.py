@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import re
 
 from sqlalchemy import bindparam
 from sqlalchemy import create_engine
@@ -150,6 +151,19 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
         testing.db.execute(t.insert(), {"100K": 10})
         eq_(testing.db.scalar(t.select()), 10)
 
+    @testing.provide_metadata
+    def test_expanding_quote_roundtrip(self):
+        t = Table("asfd", self.metadata, Column("foo", Integer))
+        t.create()
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                select([t]).where(
+                    t.c.foo.in_(bindparam("uid", expanding=True))
+                ),
+                uid=[1, 2, 3],
+            )
+
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     def _dialect(self, server_version, **kw):
@@ -164,6 +178,8 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect._check_unicode_description = Mock()
         dialect._get_default_schema_name = Mock()
         dialect._detect_decimal_char = Mock()
+        dialect.__check_max_identifier_length = Mock()
+        dialect._get_compat_server_version_info = Mock()
         return dialect
 
     def test_ora8_flags(self):
@@ -218,6 +234,111 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(String(50), "VARCHAR2(50 CHAR)", dialect=dialect)
         self.assert_compile(Unicode(50), "NVARCHAR2(50)", dialect=dialect)
         self.assert_compile(UnicodeText(), "NCLOB", dialect=dialect)
+
+    def test_ident_length_in_13_is_30(self):
+        from sqlalchemy import __version__
+
+        m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", __version__)
+        version = tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
+        if version >= (1, 4):
+            length = 128
+        else:
+            length = 30
+
+        eq_(oracle.OracleDialect.max_identifier_length, length)
+
+        dialect = self._dialect((12, 2, 0))
+        conn = mock.Mock(
+            execute=mock.Mock(return_value=mock.Mock(scalar=lambda: "12.2.0"))
+        )
+        dialect.initialize(conn)
+        eq_(dialect.server_version_info, (12, 2, 0))
+        eq_(
+            dialect._get_effective_compat_server_version_info(conn), (12, 2, 0)
+        )
+        eq_(dialect.max_identifier_length, length)
+
+    def test_max_ident_122(self):
+        dialect = self._dialect((12, 2, 0))
+
+        conn = mock.Mock(
+            execute=mock.Mock(return_value=mock.Mock(scalar=lambda: "12.2.0"))
+        )
+        dialect.initialize(conn)
+        eq_(dialect.server_version_info, (12, 2, 0))
+        eq_(
+            dialect._get_effective_compat_server_version_info(conn), (12, 2, 0)
+        )
+        eq_(
+            dialect.max_identifier_length,
+            oracle.OracleDialect.max_identifier_length,
+        )
+
+    def test_max_ident_112(self):
+        dialect = self._dialect((11, 2, 0))
+
+        conn = mock.Mock(
+            execute=mock.Mock(return_value=mock.Mock(scalar="11.0.0"))
+        )
+        dialect.initialize(conn)
+        eq_(dialect.server_version_info, (11, 2, 0))
+        eq_(
+            dialect._get_effective_compat_server_version_info(conn), (11, 2, 0)
+        )
+        eq_(dialect.max_identifier_length, 30)
+
+    def test_max_ident_122_11compat(self):
+        dialect = self._dialect((12, 2, 0))
+
+        conn = mock.Mock(
+            execute=mock.Mock(return_value=mock.Mock(scalar=lambda: "11.0.0"))
+        )
+        dialect.initialize(conn)
+        eq_(dialect.server_version_info, (12, 2, 0))
+        eq_(
+            dialect._get_effective_compat_server_version_info(conn), (11, 0, 0)
+        )
+        eq_(dialect.max_identifier_length, 30)
+
+    def test_max_ident_122_11compat_vparam_raises(self):
+        dialect = self._dialect((12, 2, 0))
+
+        def c122():
+            raise exc.DBAPIError(
+                "statement", None, "no such table", None, None
+            )
+
+        conn = mock.Mock(
+            execute=mock.Mock(return_value=mock.Mock(scalar=c122))
+        )
+        dialect.initialize(conn)
+        eq_(dialect.server_version_info, (12, 2, 0))
+        eq_(
+            dialect._get_effective_compat_server_version_info(conn), (12, 2, 0)
+        )
+        eq_(
+            dialect.max_identifier_length,
+            oracle.OracleDialect.max_identifier_length,
+        )
+
+    def test_max_ident_122_11compat_vparam_cant_parse(self):
+        dialect = self._dialect((12, 2, 0))
+
+        def c122():
+            return "12.thisiscrap.0"
+
+        conn = mock.Mock(
+            execute=mock.Mock(return_value=mock.Mock(scalar=c122))
+        )
+        dialect.initialize(conn)
+        eq_(dialect.server_version_info, (12, 2, 0))
+        eq_(
+            dialect._get_effective_compat_server_version_info(conn), (12, 2, 0)
+        )
+        eq_(
+            dialect.max_identifier_length,
+            oracle.OracleDialect.max_identifier_length,
+        )
 
 
 class ExecuteTest(fixtures.TestBase):

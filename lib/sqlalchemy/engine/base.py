@@ -14,7 +14,6 @@ from .interfaces import ExceptionContext
 from .util import _distill_params
 from .. import exc
 from .. import inspection
-from .. import interfaces
 from .. import log
 from .. import util
 from ..sql import schema
@@ -233,25 +232,24 @@ class Connection(Connectable):
           specified here.
 
         :param isolation_level: Available on: :class:`.Connection`.
-          Set the transaction isolation level for
-          the lifespan of this :class:`.Connection` object (*not* the
-          underlying DBAPI connection, for which the level is reset
-          to its original setting upon termination of this
-          :class:`.Connection` object).
 
-          Valid values include
-          those string values accepted by the
-          :paramref:`.create_engine.isolation_level`
+          Set the transaction isolation level for the lifespan of this
+          :class:`.Connection` object.    Valid values include those string
+          values accepted by the :paramref:`.create_engine.isolation_level`
           parameter passed to :func:`.create_engine`.  These levels are
           semi-database specific; see individual dialect documentation for
           valid levels.
 
-          Note that this option necessarily affects the underlying
-          DBAPI connection for the lifespan of the originating
-          :class:`.Connection`, and is not per-execution. This
-          setting is not removed until the underlying DBAPI connection
-          is returned to the connection pool, i.e.
-          the :meth:`.Connection.close` method is called.
+          The isolation level option applies the isolation level by emitting
+          statements on the  DBAPI connection, and **necessarily affects the
+          original Connection object overall**, not just the copy that is
+          returned by the call to :meth:`.Connection.execution_options`
+          method.  The isolation level will remain at the given setting until
+          the DBAPI connection itself is returned to the connection pool, i.e.
+          the :meth:`.Connection.close` method on the original
+          :class:`.Connection` is called, where  an event handler will emit
+          additional statements on the DBAPI connection in order to revert the
+          isolation level change.
 
           .. warning::  The ``isolation_level`` execution option should
              **not** be used when a transaction is already established, that
@@ -260,11 +258,6 @@ class Connection(Connectable):
              transaction in progress, and different DBAPIs and/or
              SQLAlchemy dialects may implicitly roll back or commit
              the transaction, or not affect the connection at all.
-
-             .. versionchanged:: 0.9.9 A warning is emitted when the
-                ``isolation_level`` execution option is used after a
-                transaction has been started with :meth:`.Connection.begin`
-                or similar.
 
           .. note:: The ``isolation_level`` execution option is implicitly
              reset if the :class:`.Connection` is invalidated, e.g. via
@@ -1224,7 +1217,10 @@ class Connection(Connectable):
             self.engine.logger.info(statement)
             if not self.engine.hide_parameters:
                 self.engine.logger.info(
-                    "%r", sql_util._repr_params(parameters, batches=10)
+                    "%r",
+                    sql_util._repr_params(
+                        parameters, batches=10, ismulti=context.executemany
+                    ),
                 )
             else:
                 self.engine.logger.info(
@@ -1395,6 +1391,9 @@ class Connection(Connectable):
                     self.dialect.dbapi.Error,
                     hide_parameters=self.engine.hide_parameters,
                     dialect=self.dialect,
+                    ismulti=context.executemany
+                    if context is not None
+                    else None,
                 ),
                 exc_info,
             )
@@ -1417,6 +1416,9 @@ class Connection(Connectable):
                     hide_parameters=self.engine.hide_parameters,
                     connection_invalidated=self._is_disconnect,
                     dialect=self.dialect,
+                    ismulti=context.executemany
+                    if context is not None
+                    else None,
                 )
             else:
                 sqlalchemy_exception = None
@@ -1910,7 +1912,6 @@ class Engine(Connectable, log.Identified):
         url,
         logging_name=None,
         echo=None,
-        proxy=None,
         execution_options=None,
         hide_parameters=False,
     ):
@@ -1922,8 +1923,6 @@ class Engine(Connectable, log.Identified):
         self.echo = echo
         self.hide_parameters = hide_parameters
         log.instance_logger(self, echoflag=echo)
-        if proxy:
-            interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
 

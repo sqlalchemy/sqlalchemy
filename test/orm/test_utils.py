@@ -210,7 +210,24 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(str(alias.x + 1), "point_1.x + :x_1")
         eq_(str(alias.x_alone + 1), "point_1.x + :x_1")
 
-        is_(Point.x_alone.__clause_element__(), Point.x.__clause_element__())
+        point_mapper = inspect(Point)
+
+        eq_(
+            Point.x_alone._annotations,
+            {
+                "parententity": point_mapper,
+                "parentmapper": point_mapper,
+                "orm_key": "x_alone",
+            },
+        )
+        eq_(
+            Point.x._annotations,
+            {
+                "parententity": point_mapper,
+                "parentmapper": point_mapper,
+                "orm_key": "x",
+            },
+        )
 
         eq_(str(alias.x_alone == alias.x), "point_1.x = point_1.x")
 

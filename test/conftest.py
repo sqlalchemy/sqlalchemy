@@ -9,6 +9,10 @@ installs SQLAlchemy's testing plugin into the local environment.
 import os
 import sys
 
+import pytest
+
+pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
+
 
 if not sys.flags.no_user_site:
     # this is needed so that test scenarios like "python setup.py test"

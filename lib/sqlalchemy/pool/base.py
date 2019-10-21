@@ -16,7 +16,6 @@ import weakref
 
 from .. import event
 from .. import exc
-from .. import interfaces
 from .. import log
 from .. import util
 from ..util import threading
@@ -60,15 +59,6 @@ class Pool(log.Identified):
 
     _dialect = _ConnDialect()
 
-    @util.deprecated_params(
-        listeners=(
-            "0.7",
-            ":class:`.PoolListener` is deprecated in favor of the "
-            ":class:`.PoolEvents` listener interface.  The "
-            ":paramref:`.Pool.listeners` parameter will be removed in a "
-            "future release.",
-        )
-    )
     def __init__(
         self,
         creator,
@@ -76,7 +66,6 @@ class Pool(log.Identified):
         echo=None,
         logging_name=None,
         reset_on_return=True,
-        listeners=None,
         events=None,
         dialect=None,
         pre_ping=False,
@@ -155,11 +144,6 @@ class Pool(log.Identified):
          can be assigned via :func:`.create_engine` before dialect-level
          listeners are applied.
 
-        :param listeners: A list of :class:`.PoolListener`-like objects or
-          dictionaries of callables that receive events when DB-API
-          connections are created, checked out and checked in to the
-          pool.
-
         :param dialect: a :class:`.Dialect` that will handle the job
          of calling rollback(), close(), or commit() on DBAPI connections.
          If omitted, a built-in "stub" dialect is used.   Applications that
@@ -211,9 +195,6 @@ class Pool(log.Identified):
         if events:
             for fn, target in events:
                 event.listen(self, target, fn)
-        if listeners:
-            for l in listeners:
-                self.add_listener(l)
 
     @property
     def _creator(self):
@@ -259,22 +240,6 @@ class Pool(log.Identified):
             self.logger.error(
                 "Exception closing connection %r", connection, exc_info=True
             )
-
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Pool.add_listener` method is deprecated and "
-        "will be removed in a future release.  Please use the "
-        ":class:`.PoolEvents` listener interface.",
-    )
-    def add_listener(self, listener):
-        """Add a :class:`.PoolListener`-like object to this pool.
-
-        ``listener`` may be an object that implements some or all of
-        PoolListener, or a dictionary of callables containing implementations
-        of some or all of the named methods in PoolListener.
-
-        """
-        interfaces.PoolListener._adapt_listener(self, listener)
 
     def _create_connection(self):
         """Called by subclasses to create a new ConnectionRecord."""

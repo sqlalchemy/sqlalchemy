@@ -67,7 +67,7 @@ class ConventionDict(object):
         return self._column_X(idx).name
 
     def _key_column_X_label(self, idx):
-        return self._column_X(idx)._label
+        return self._column_X(idx)._ddl_label
 
     def _key_referred_table_name(self):
         fk = self.const.elements[0]

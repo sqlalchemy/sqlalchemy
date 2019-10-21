@@ -16,9 +16,6 @@ documentation for an overview of how this module is used.
 from . import exc  # noqa
 from . import mapper as mapperlib  # noqa
 from . import strategy_options
-from .deprecated_interfaces import AttributeExtension  # noqa
-from .deprecated_interfaces import MapperExtension  # noqa
-from .deprecated_interfaces import SessionExtension  # noqa
 from .descriptor_props import ComparableProperty  # noqa
 from .descriptor_props import CompositeProperty  # noqa
 from .descriptor_props import SynonymProperty  # noqa
@@ -156,6 +153,15 @@ def deferred(*columns, **kw):
     :param \*columns: columns to be mapped.  This is typically a single
      :class:`.Column` object, however a collection is supported in order
      to support multiple columns mapped under the same attribute.
+
+    :param raiseload: boolean, if True, indicates an exception should be raised
+     if the load operation is to take place.
+
+     .. versionadded:: 1.4
+
+     .. seealso::
+
+        :ref:`deferred_raiseload`
 
     :param \**kw: additional keyword arguments passed to
      :class:`.ColumnProperty`.

@@ -1,14 +1,12 @@
 # coding: utf-8
-
-
 from sqlalchemy import and_
 from sqlalchemy import bindparam
-from sqlalchemy import exc
 from sqlalchemy import except_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -18,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import sql
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
@@ -28,7 +27,6 @@ from sqlalchemy.engine import default
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -93,13 +91,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update().values(plain=5), 'UPDATE s SET "plain"=:"plain"'
         )
 
-    def test_bindparam_quote_raise_on_expanding(self):
-        assert_raises_message(
-            exc.CompileError,
-            "Can't use expanding feature with parameter name 'uid' on "
-            "Oracle; it requires quoting which is not supported in this "
-            "context",
-            bindparam("uid", expanding=True).compile,
+    def test_bindparam_quote_works_on_expanding(self):
+        self.assert_compile(
+            bindparam("uid", expanding=True),
+            "([POSTCOMPILE_uid])",
             dialect=cx_oracle.dialect(),
         )
 
@@ -166,13 +161,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "anon_2.col2 AS col2, ROWNUM AS ora_rn FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable) anon_2 WHERE ROWNUM <= "
-            ":param_1 + :param_2) anon_1 WHERE ora_rn > :param_2",
-            checkparams={"param_1": 10, "param_2": 20},
+            "[POSTCOMPILE_param_1]) anon_1 WHERE ora_rn > "
+            "[POSTCOMPILE_param_2]",
+            checkparams={"param_1": 30, "param_2": 20},
         )
 
         c = s.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
         assert t.c.col1 in set(c._create_result_map()["col1"][1])
+
+    def test_limit_one_firstrows(self):
+        t = table("sometable", column("col1"), column("col2"))
+        s = select([t])
+        s = select([t]).limit(10).offset(20)
+        self.assert_compile(
+            s,
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT /*+ FIRST_ROWS([POSTCOMPILE_ora_frow_1]) */ "
+            "anon_2.col1 AS col1, "
+            "anon_2.col2 AS col2, ROWNUM AS ora_rn FROM (SELECT "
+            "sometable.col1 AS col1, sometable.col2 AS "
+            "col2 FROM sometable) anon_2 WHERE ROWNUM <= "
+            "[POSTCOMPILE_param_1]) anon_1 WHERE ora_rn > "
+            "[POSTCOMPILE_param_2]",
+            checkparams={"ora_frow_1": 10, "param_1": 30, "param_2": 20},
+            dialect=oracle.OracleDialect(optimize_limits=True),
+        )
 
     def test_limit_two(self):
         t = table("sometable", column("col1"), column("col2"))
@@ -188,9 +202,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, "
             "sometable.col2 AS col2 FROM sometable) anon_3 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_2 "
-            "WHERE ora_rn > :param_2) anon_1",
-            checkparams={"param_1": 10, "param_2": 20},
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_2 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2]) anon_1",
+            checkparams={"param_1": 30, "param_2": 20},
         )
 
         self.assert_compile(
@@ -202,8 +216,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, "
             "sometable.col2 AS col2 FROM sometable) anon_3 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_2 "
-            "WHERE ora_rn > :param_2) anon_1",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_2 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2]) anon_1",
         )
         c = s2.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
@@ -221,8 +235,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
             "sometable.col2) anon_2 WHERE ROWNUM <= "
-            ":param_1 + :param_2) anon_1 WHERE ora_rn > :param_2",
-            checkparams={"param_1": 10, "param_2": 20},
+            "[POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2]",
+            checkparams={"param_1": 30, "param_2": 20},
         )
         c = s.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
@@ -237,8 +252,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
-            "sometable.col2) anon_1 WHERE ROWNUM <= :param_1 "
+            "sometable.col2) anon_1 WHERE ROWNUM <= [POSTCOMPILE_param_1] "
             "FOR UPDATE",
+            checkparams={"param_1": 10},
+        )
+
+    def test_limit_four_firstrows(self):
+        t = table("sometable", column("col1"), column("col2"))
+
+        s = select([t]).with_for_update().limit(10).order_by(t.c.col2)
+        self.assert_compile(
+            s,
+            "SELECT /*+ FIRST_ROWS([POSTCOMPILE_ora_frow_1]) */ "
+            "anon_1.col1, anon_1.col2 FROM (SELECT "
+            "sometable.col1 AS col1, sometable.col2 AS "
+            "col2 FROM sometable ORDER BY "
+            "sometable.col2) anon_1 WHERE ROWNUM <= [POSTCOMPILE_param_1] "
+            "FOR UPDATE",
+            checkparams={"param_1": 10, "ora_frow_1": 10},
+            dialect=oracle.OracleDialect(optimize_limits=True),
         )
 
     def test_limit_five(self):
@@ -259,8 +291,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "sometable.col1 AS col1, sometable.col2 AS "
             "col2 FROM sometable ORDER BY "
             "sometable.col2) anon_2 WHERE ROWNUM <= "
-            ":param_1 + :param_2) anon_1 WHERE ora_rn > :param_2 FOR "
+            "[POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2] FOR "
             "UPDATE",
+            checkparams={"param_1": 30, "param_2": 20},
+        )
+
+    def test_limit_six(self):
+        t = table("sometable", column("col1"), column("col2"))
+
+        s = (
+            select([t])
+            .limit(10)
+            .offset(literal(10) + literal(20))
+            .order_by(t.c.col2)
+        )
+        self.assert_compile(
+            s,
+            "SELECT anon_1.col1, anon_1.col2 FROM (SELECT anon_2.col1 AS "
+            "col1, anon_2.col2 AS col2, ROWNUM AS ora_rn FROM "
+            "(SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+            "FROM sometable ORDER BY sometable.col2) anon_2 WHERE "
+            "ROWNUM <= :param_1 + :param_2 + :param_3) anon_1 "
+            "WHERE ora_rn > :param_2 + :param_3",
+            checkparams={"param_1": 10, "param_2": 10, "param_3": 20},
         )
 
     def test_limit_special_quoting(self):
@@ -280,7 +334,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'SELECT anon_1."SUM(ABC)" FROM '
             '(SELECT SUM(ABC) AS "SUM(ABC)" '
             "FROM my_table ORDER BY SUM(ABC)) anon_1 "
-            "WHERE ROWNUM <= :param_1",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]",
         )
 
         col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)", True))
@@ -292,7 +346,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'SELECT anon_1."SUM(ABC)" FROM '
             '(SELECT SUM(ABC) AS "SUM(ABC)" '
             "FROM my_table ORDER BY SUM(ABC)) anon_1 "
-            "WHERE ROWNUM <= :param_1",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]",
         )
 
         col = literal_column("SUM(ABC)").label("SUM(ABC)_")
@@ -304,7 +358,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'SELECT anon_1."SUM(ABC)_" FROM '
             '(SELECT SUM(ABC) AS "SUM(ABC)_" '
             "FROM my_table ORDER BY SUM(ABC)) anon_1 "
-            "WHERE ROWNUM <= :param_1",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]",
         )
 
         col = literal_column("SUM(ABC)").label(quoted_name("SUM(ABC)_", True))
@@ -316,7 +370,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             'SELECT anon_1."SUM(ABC)_" FROM '
             '(SELECT SUM(ABC) AS "SUM(ABC)_" '
             "FROM my_table ORDER BY SUM(ABC)) anon_1 "
-            "WHERE ROWNUM <= :param_1",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]",
         )
 
     def test_for_update(self):
@@ -410,7 +464,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT anon_1.myid, anon_1.name FROM "
             "(SELECT mytable.myid AS myid, mytable.name AS name "
             "FROM mytable WHERE mytable.myid = :myid_1) anon_1 "
-            "WHERE ROWNUM <= :param_1 FOR UPDATE OF anon_1.name NOWAIT",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1] "
+            "FOR UPDATE OF anon_1.name NOWAIT",
+            checkparams={"param_1": 10, "myid_1": 7},
         )
 
     def test_for_update_of_w_limit_adaption_col_unpresent(self):
@@ -424,7 +480,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT anon_1.myid FROM "
             "(SELECT mytable.myid AS myid, mytable.name AS name "
             "FROM mytable WHERE mytable.myid = :myid_1) anon_1 "
-            "WHERE ROWNUM <= :param_1 FOR UPDATE OF anon_1.name NOWAIT",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1] "
+            "FOR UPDATE OF anon_1.name NOWAIT",
         )
 
     def test_for_update_of_w_limit_offset_adaption_col_present(self):
@@ -441,9 +498,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ROWNUM AS ora_rn "
             "FROM (SELECT mytable.myid AS myid, mytable.name AS name "
             "FROM mytable WHERE mytable.myid = :myid_1) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2 "
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2] "
             "FOR UPDATE OF anon_1.name NOWAIT",
+            checkparams={"param_1": 60, "param_2": 50, "myid_1": 7},
         )
 
     def test_for_update_of_w_limit_offset_adaption_col_unpresent(self):
@@ -459,9 +517,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ROWNUM AS ora_rn, anon_2.name AS name "
             "FROM (SELECT mytable.myid AS myid, mytable.name AS name "
             "FROM mytable WHERE mytable.myid = :myid_1) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2 "
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2] "
             "FOR UPDATE OF anon_1.name NOWAIT",
+            checkparams={"param_1": 60, "param_2": 50, "myid_1": 7},
         )
 
     def test_for_update_of_w_limit_offset_adaption_partial_col_unpresent(self):
@@ -479,9 +538,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.bar AS bar, "
             "mytable.foo AS foo FROM mytable "
             "WHERE mytable.myid = :myid_1) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2 "
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2] "
             "FOR UPDATE OF anon_1.foo, anon_1.bar NOWAIT",
+            checkparams={"param_1": 60, "param_2": 50, "myid_1": 7},
         )
 
     def test_limit_preserves_typing_information(self):
@@ -495,59 +555,82 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_use_binds_for_limits_disabled_one(self):
         t = table("sometable", column("col1"), column("col2"))
-        dialect = oracle.OracleDialect(use_binds_for_limits=False)
+        with testing.expect_deprecated(
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated."
+        ):
+            dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(
             select([t]).limit(10),
             "SELECT anon_1.col1, anon_1.col2 FROM "
             "(SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable) anon_1 WHERE ROWNUM <= 10",
+            "sometable.col2 AS col2 FROM sometable) anon_1 "
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]",
             dialect=dialect,
         )
 
     def test_use_binds_for_limits_disabled_two(self):
         t = table("sometable", column("col1"), column("col2"))
-        dialect = oracle.OracleDialect(use_binds_for_limits=False)
+        with testing.expect_deprecated(
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated."
+        ):
+            dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(
             select([t]).offset(10),
             "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
             "anon_2.col1 AS col1, anon_2.col2 AS col2, ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable) anon_2) anon_1 WHERE ora_rn > 10",
+            "FROM sometable) anon_2) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_1]",
             dialect=dialect,
         )
 
     def test_use_binds_for_limits_disabled_three(self):
         t = table("sometable", column("col1"), column("col2"))
-        dialect = oracle.OracleDialect(use_binds_for_limits=False)
+        with testing.expect_deprecated(
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated."
+        ):
+            dialect = oracle.OracleDialect(use_binds_for_limits=False)
 
         self.assert_compile(
             select([t]).limit(10).offset(10),
             "SELECT anon_1.col1, anon_1.col2 FROM (SELECT "
             "anon_2.col1 AS col1, anon_2.col2 AS col2, ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable) anon_2 WHERE ROWNUM <= 20) anon_1 "
-            "WHERE ora_rn > 10",
+            "FROM sometable) anon_2 "
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2]",
             dialect=dialect,
         )
 
     def test_use_binds_for_limits_enabled_one(self):
         t = table("sometable", column("col1"), column("col2"))
-        dialect = oracle.OracleDialect(use_binds_for_limits=True)
+        with testing.expect_deprecated(
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated."
+        ):
+            dialect = oracle.OracleDialect(use_binds_for_limits=True)
 
         self.assert_compile(
             select([t]).limit(10),
             "SELECT anon_1.col1, anon_1.col2 FROM "
             "(SELECT sometable.col1 AS col1, "
             "sometable.col2 AS col2 FROM sometable) anon_1 WHERE ROWNUM "
-            "<= :param_1",
+            "<= [POSTCOMPILE_param_1]",
             dialect=dialect,
         )
 
     def test_use_binds_for_limits_enabled_two(self):
         t = table("sometable", column("col1"), column("col2"))
-        dialect = oracle.OracleDialect(use_binds_for_limits=True)
+        with testing.expect_deprecated(
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated."
+        ):
+            dialect = oracle.OracleDialect(use_binds_for_limits=True)
 
         self.assert_compile(
             select([t]).offset(10),
@@ -555,13 +638,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
             "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable) anon_2) anon_1 WHERE ora_rn > :param_1",
+            "FROM sometable) anon_2) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_1]",
             dialect=dialect,
         )
 
     def test_use_binds_for_limits_enabled_three(self):
         t = table("sometable", column("col1"), column("col2"))
-        dialect = oracle.OracleDialect(use_binds_for_limits=True)
+        with testing.expect_deprecated(
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated."
+        ):
+            dialect = oracle.OracleDialect(use_binds_for_limits=True)
 
         self.assert_compile(
             select([t]).limit(10).offset(10),
@@ -570,17 +658,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ROWNUM AS ora_rn "
             "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
             "FROM sometable) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2",
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2]",
             dialect=dialect,
-            checkparams={"param_1": 10, "param_2": 10},
+            checkparams={"param_1": 20, "param_2": 10},
         )
 
-    def test_long_labels(self):
+    def test_long_labels_legacy_ident_length(self):
         dialect = default.DefaultDialect()
         dialect.max_identifier_length = 30
 
-        ora_dialect = oracle.dialect()
+        ora_dialect = oracle.dialect(max_identifier_length=30)
 
         m = MetaData()
         a_table = Table(
@@ -771,9 +859,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "thirdtable.userid(+) = "
             "myothertable.otherid AND mytable.myid = "
             "myothertable.otherid ORDER BY mytable.name) anon_2 "
-            "WHERE ROWNUM <= :param_1 + :param_2) anon_1 "
-            "WHERE ora_rn > :param_2",
-            checkparams={"param_1": 10, "param_2": 5},
+            "WHERE ROWNUM <= [POSTCOMPILE_param_1]) anon_1 "
+            "WHERE ora_rn > [POSTCOMPILE_param_2]",
+            checkparams={"param_1": 15, "param_2": 5},
             dialect=oracle.dialect(use_ansi=False),
         )
 

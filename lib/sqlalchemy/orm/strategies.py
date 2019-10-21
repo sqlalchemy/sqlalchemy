@@ -21,6 +21,7 @@ from . import query
 from . import unitofwork
 from . import util as orm_util
 from .base import _DEFER_FOR_STATE
+from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
@@ -50,8 +51,6 @@ def _register_attribute(
     impl_class=None,
     **kw
 ):
-
-    attribute_ext = list(util.to_list(prop.extension, default=[]))
 
     listen_hooks = []
 
@@ -105,7 +104,6 @@ def _register_attribute(
                 uselist=uselist,
                 compare_function=compare_function,
                 useobject=useobject,
-                extension=attribute_ext,
                 trackparent=useobject
                 and (
                     prop.single_parent
@@ -183,7 +181,6 @@ class ColumnLoader(LoaderStrategy):
         memoized_populators,
         **kwargs
     ):
-
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]
@@ -291,11 +288,14 @@ class ExpressionColumnLoader(ColumnLoader):
 
 @log.class_logger
 @properties.ColumnProperty.strategy_for(deferred=True, instrument=True)
+@properties.ColumnProperty.strategy_for(
+    deferred=True, instrument=True, raiseload=True
+)
 @properties.ColumnProperty.strategy_for(do_nothing=True)
 class DeferredColumnLoader(LoaderStrategy):
     """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
 
-    __slots__ = "columns", "group"
+    __slots__ = "columns", "group", "raiseload"
 
     def __init__(self, parent, strategy_key):
         super(DeferredColumnLoader, self).__init__(parent, strategy_key)
@@ -303,6 +303,7 @@ class DeferredColumnLoader(LoaderStrategy):
             raise NotImplementedError(
                 "Deferred loading for composite " "types not implemented yet"
             )
+        self.raiseload = self.strategy_opts.get("raiseload", False)
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
 
@@ -310,14 +311,23 @@ class DeferredColumnLoader(LoaderStrategy):
         self, context, path, loadopt, mapper, result, adapter, populators
     ):
 
-        # this path currently does not check the result
-        # for the column; this is because in most cases we are
-        # working just with the setup_query() directive which does
-        # not support this, and the behavior here should be consistent.
+        # for a DeferredColumnLoader, this method is only used during a
+        # "row processor only" query; see test_deferred.py ->
+        # tests with "rowproc_only" in their name.  As of the 1.0 series,
+        # loading._instance_processor doesn't use a "row processing" function
+        # to populate columns, instead it uses data in the "populators"
+        # dictionary.  Normally, the DeferredColumnLoader.setup_query()
+        # sets up that data in the "memoized_populators" dictionary
+        # and "create_row_processor()" here is never invoked.
         if not self.is_class_level:
-            set_deferred_for_local_state = (
-                self.parent_property._deferred_column_loader
-            )
+            if self.raiseload:
+                set_deferred_for_local_state = (
+                    self.parent_property._raise_column_loader
+                )
+            else:
+                set_deferred_for_local_state = (
+                    self.parent_property._deferred_column_loader
+                )
             populators["new"].append((self.key, set_deferred_for_local_state))
         else:
             populators["expire"].append((self.key, False))
@@ -331,7 +341,7 @@ class DeferredColumnLoader(LoaderStrategy):
             useobject=False,
             compare_function=self.columns[0].type.compare_values,
             callable_=self._load_for_state,
-            expire_missing=False,
+            load_on_unexpire=False,
         )
 
     def setup_query(
@@ -378,8 +388,10 @@ class DeferredColumnLoader(LoaderStrategy):
             )
         elif self.is_class_level:
             memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
-        else:
+        elif not self.raiseload:
             memoized_populators[self.parent_property] = _DEFER_FOR_STATE
+        else:
+            memoized_populators[self.parent_property] = _RAISE_FOR_STATE
 
     def _load_for_state(self, state, passive):
         if not state.key:
@@ -412,6 +424,9 @@ class DeferredColumnLoader(LoaderStrategy):
                 % (orm_util.state_str(state), self.key)
             )
 
+        if self.raiseload:
+            self._invoke_raise_load(state, passive, "raise")
+
         query = session.query(localparent)
         if (
             loading.load_on_ident(
@@ -423,19 +438,33 @@ class DeferredColumnLoader(LoaderStrategy):
 
         return attributes.ATTR_WAS_SET
 
+    def _invoke_raise_load(self, state, passive, lazy):
+        raise sa_exc.InvalidRequestError(
+            "'%s' is not available due to raiseload=True" % (self,)
+        )
+
 
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
 
-    def __init__(self, key):
+    def __init__(self, key, raiseload=False):
         self.key = key
+        self.raiseload = raiseload
 
     def __call__(self, state, passive=attributes.PASSIVE_OFF):
         key = self.key
 
         localparent = state.manager.mapper
         prop = localparent._props[key]
-        strategy = prop._strategies[DeferredColumnLoader]
+        if self.raiseload:
+            strategy_key = (
+                ("deferred", True),
+                ("instrument", True),
+                ("raiseload", True),
+            )
+        else:
+            strategy_key = (("deferred", True), ("instrument", True))
+        strategy = prop._get_strategy(strategy_key)
         return strategy._load_for_state(state, passive)
 
 
@@ -546,6 +575,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
+        #
+        # TODO: the "not self.uselist" can be taken out entirely; a m2o
+        # load that populates for a list (very unusual, but is possible with
+        # the API) can still set for "None" and the attribute system will
+        # populate as an empty list.
         self.use_get = (
             not self.is_aliased_class
             and not self.uselist
@@ -709,7 +743,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # Query class in use, as it may have special rules for how it
             # does this, including how it decides what the correct
             # identity_token would be for this identity.
-            instance = session.query()._identity_lookup(
+
+            instance = session._identity_lookup(
                 self.entity,
                 primary_key_identity,
                 passive=passive,
@@ -1377,20 +1412,20 @@ class SubqueryLoader(PostLoader):
 
         if self.uselist:
             self._create_collection_loader(
-                context, collections, local_cols, populators
+                context, result, collections, local_cols, populators
             )
         else:
             self._create_scalar_loader(
-                context, collections, local_cols, populators
+                context, result, collections, local_cols, populators
             )
 
     def _create_collection_loader(
-        self, context, collections, local_cols, populators
+        self, context, result, collections, local_cols, populators
     ):
+        tuple_getter = result._tuple_getter(local_cols)
+
         def load_collection_from_subq(state, dict_, row):
-            collection = collections.get(
-                tuple([row[col] for col in local_cols]), ()
-            )
+            collection = collections.get(tuple_getter(row), ())
             state.get_impl(self.key).set_committed_value(
                 state, dict_, collection
             )
@@ -1408,12 +1443,12 @@ class SubqueryLoader(PostLoader):
             populators["eager"].append((self.key, collections.loader))
 
     def _create_scalar_loader(
-        self, context, collections, local_cols, populators
+        self, context, result, collections, local_cols, populators
     ):
+        tuple_getter = result._tuple_getter(local_cols)
+
         def load_scalar_from_subq(state, dict_, row):
-            collection = collections.get(
-                tuple([row[col] for col in local_cols]), (None,)
-            )
+            collection = collections.get(tuple_getter(row), (None,))
             if len(collection) > 1:
                 util.warn(
                     "Multiple rows returned with "
@@ -2268,6 +2303,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         if query_info.load_only_child:
             our_states = collections.defaultdict(list)
+            none_states = []
 
             mapper = self.parent
 
@@ -2288,11 +2324,19 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 if attributes.PASSIVE_NO_RESULT in related_ident:
                     query_info = self._fallback_query_info
                     break
+
+                # organize states into lists keyed to particular foreign
+                # key values.
                 if None not in related_ident:
                     our_states[related_ident].append(
                         (state, state_dict, overwrite)
                     )
+                else:
+                    # For FK values that have None, add them to a
+                    # separate collection that will be populated separately
+                    none_states.append((state, state_dict, overwrite))
 
+        # note the above conditional may have changed query_info
         if not query_info.load_only_child:
             our_states = [
                 (state.key[1], state, state.dict, overwrite)
@@ -2388,11 +2432,13 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 q.add_criteria(_setup_outermost_orderby)
 
         if query_info.load_only_child:
-            self._load_via_child(our_states, query_info, q, context)
+            self._load_via_child(
+                our_states, none_states, query_info, q, context
+            )
         else:
             self._load_via_parent(our_states, query_info, q, context)
 
-    def _load_via_child(self, our_states, query_info, q, context):
+    def _load_via_child(self, our_states, none_states, query_info, q, context):
         uselist = self.uselist
 
         # this sort is really for the benefit of the unit tests
@@ -2400,7 +2446,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         while our_keys:
             chunk = our_keys[0 : self._chunksize]
             our_keys = our_keys[self._chunksize :]
-
             data = {
                 k: v
                 for k, v in q(context.session).params(
@@ -2426,6 +2471,14 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                         dict_,
                         related_obj if not uselist else [related_obj],
                     )
+        # populate none states with empty value / collection
+        for state, dict_, overwrite in none_states:
+            if not overwrite and self.key in dict_:
+                continue
+
+            # note it's OK if this is a uselist=True attribute, the empty
+            # collection will be populated
+            state.get_impl(self.key).set_committed_value(state, dict_, None)
 
     def _load_via_parent(self, our_states, query_info, q, context):
         uselist = self.uselist

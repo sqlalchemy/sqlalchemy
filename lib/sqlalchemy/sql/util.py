@@ -364,23 +364,19 @@ def surface_selectables_only(clause):
             stack.append(elem.table)
 
 
-def surface_column_elements(clause, include_scalar_selects=True):
-    """traverse and yield only outer-exposed column elements, such as would
-    be addressable in the WHERE clause of a SELECT if this element were
-    in the columns clause."""
+def extract_first_column_annotation(column, annotation_name):
+    filter_ = (FromGrouping, SelectBase)
 
-    filter_ = (FromGrouping,)
-    if not include_scalar_selects:
-        filter_ += (SelectBase,)
-
-    stack = deque([clause])
+    stack = deque([column])
     while stack:
         elem = stack.popleft()
-        yield elem
+        if annotation_name in elem._annotations:
+            return elem._annotations[annotation_name]
         for sub in elem.get_children():
             if isinstance(sub, filter_):
                 continue
             stack.append(sub)
+    return None
 
 
 def selectables_overlap(left, right):
@@ -468,31 +464,29 @@ class _repr_params(_repr_base):
 
     """
 
-    __slots__ = "params", "batches"
+    __slots__ = "params", "batches", "ismulti"
 
-    def __init__(self, params, batches, max_chars=300):
+    def __init__(self, params, batches, max_chars=300, ismulti=None):
         self.params = params
+        self.ismulti = ismulti
         self.batches = batches
         self.max_chars = max_chars
 
     def __repr__(self):
+        if self.ismulti is None:
+            return self.trunc(self.params)
+
         if isinstance(self.params, list):
             typ = self._LIST
-            ismulti = self.params and isinstance(
-                self.params[0], (list, dict, tuple)
-            )
+
         elif isinstance(self.params, tuple):
             typ = self._TUPLE
-            ismulti = self.params and isinstance(
-                self.params[0], (list, dict, tuple)
-            )
         elif isinstance(self.params, dict):
             typ = self._DICT
-            ismulti = False
         else:
             return self.trunc(self.params)
 
-        if ismulti and len(self.params) > self.batches:
+        if self.ismulti and len(self.params) > self.batches:
             msg = " ... displaying %i of %i total bound parameter sets ... "
             return " ".join(
                 (
@@ -503,7 +497,7 @@ class _repr_params(_repr_base):
                     self._repr_multi(self.params[-2:], typ)[1:],
                 )
             )
-        elif ismulti:
+        elif self.ismulti:
             return self._repr_multi(self.params, typ)
         else:
             return self._repr_params(self.params, typ)
@@ -802,14 +796,29 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
                 if newcol is not None:
                     return newcol
         if self.adapt_on_names and newcol is None:
-            newcol = self.selectable.c.get(col.name)
+            newcol = self.selectable.exported_columns.get(col.name)
         return newcol
 
     def replace(self, col):
-        if isinstance(col, FromClause) and self.selectable.is_derived_from(
-            col
-        ):
-            return self.selectable
+        if isinstance(col, FromClause):
+            if self.selectable.is_derived_from(col):
+                return self.selectable
+            elif isinstance(col, Alias) and isinstance(
+                col.element, TableClause
+            ):
+                # we are a SELECT statement and not derived from an alias of a
+                # table (which nonetheless may be a table our SELECT derives
+                # from), so return the alias to prevent futher traversal
+                # or
+                # we are an alias of a table and we are not derived from an
+                # alias of a table (which nonetheless may be the same table
+                # as ours) so, same thing
+                return col
+            else:
+                # other cases where we are a selectable and the element
+                # is another join or selectable that contains a table which our
+                # selectable derives from, that we want to process
+                return None
         elif not isinstance(col, ColumnElement):
             return None
         elif self.include_fn and not self.include_fn(col):

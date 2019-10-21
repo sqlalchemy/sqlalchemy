@@ -363,7 +363,9 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             DialectSQL(
                 "INSERT INTO t1 (data) VALUES (:data)", {"data": "somedata"}
             ),
-            CursorSQL("SELECT @@identity AS lastrowid"),
+            CursorSQL(
+                "SELECT @@identity AS lastrowid", consume_statement=False
+            ),
         )
 
     @testing.provide_metadata
@@ -384,8 +386,12 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         # even with pyodbc, we don't embed the scope identity on a
         # DEFAULT VALUES insert
         asserter.assert_(
-            CursorSQL("INSERT INTO t1 DEFAULT VALUES"),
-            CursorSQL("SELECT scope_identity() AS lastrowid"),
+            CursorSQL(
+                "INSERT INTO t1 DEFAULT VALUES", consume_statement=False
+            ),
+            CursorSQL(
+                "SELECT scope_identity() AS lastrowid", consume_statement=False
+            ),
         )
 
     @testing.only_on("mssql+pyodbc")
@@ -410,6 +416,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             CursorSQL(
                 "INSERT INTO t1 (data) VALUES (?); select scope_identity()",
                 ("somedata",),
+                consume_statement=False,
             )
         )
 

@@ -9,7 +9,9 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import util
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_raises_return
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_regex
@@ -38,13 +40,28 @@ class LogParamsTest(fixtures.TestBase):
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.removeHandler(self.buf)
 
-    def test_log_large_dict(self):
+    def test_log_large_list_of_dict(self):
         self.eng.execute(
             "INSERT INTO foo (data) values (:data)",
             [{"data": str(i)} for i in range(100)],
         )
         eq_(
             self.buf.buffer[1].message,
+            "[{'data': '0'}, {'data': '1'}, {'data': '2'}, {'data': '3'}, "
+            "{'data': '4'}, {'data': '5'}, {'data': '6'}, {'data': '7'}"
+            "  ... displaying 10 of 100 total bound "
+            "parameter sets ...  {'data': '98'}, {'data': '99'}]",
+        )
+
+    def test_repr_params_large_list_of_dict(self):
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    [{"data": str(i)} for i in range(100)],
+                    batches=10,
+                    ismulti=True,
+                )
+            ),
             "[{'data': '0'}, {'data': '1'}, {'data': '2'}, {'data': '3'}, "
             "{'data': '4'}, {'data': '5'}, {'data': '6'}, {'data': '7'}"
             "  ... displaying 10 of 100 total bound "
@@ -61,7 +78,7 @@ class LogParamsTest(fixtures.TestBase):
             "[SQL parameters hidden due to hide_parameters=True]",
         )
 
-    def test_log_large_list(self):
+    def test_log_large_list_of_tuple(self):
         self.eng.execute(
             "INSERT INTO foo (data) values (?)",
             [(str(i),) for i in range(100)],
@@ -71,6 +88,119 @@ class LogParamsTest(fixtures.TestBase):
             "[('0',), ('1',), ('2',), ('3',), ('4',), ('5',), "
             "('6',), ('7',)  ... displaying 10 of 100 total "
             "bound parameter sets ...  ('98',), ('99',)]",
+        )
+
+    def test_log_positional_array(self):
+        with self.eng.connect() as conn:
+            exc_info = assert_raises_return(
+                tsa.exc.DBAPIError,
+                conn.execute,
+                tsa.text("SELECT * FROM foo WHERE id IN :foo AND bar=:bar"),
+                {"foo": [1, 2, 3], "bar": "hi"},
+            )
+
+            assert (
+                "[SQL: SELECT * FROM foo WHERE id IN ? AND bar=?]\n"
+                "[parameters: ([1, 2, 3], 'hi')]\n" in str(exc_info)
+            )
+
+            eq_(self.buf.buffer[1].message, "([1, 2, 3], 'hi')")
+
+    def test_repr_params_positional_array(self):
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    [[1, 2, 3], 5], batches=10, ismulti=False
+                )
+            ),
+            "[[1, 2, 3], 5]",
+        )
+
+    def test_repr_params_unknown_list(self):
+        # not known if given multiparams or not.   repr params with
+        # straight truncation
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    [[i for i in range(300)], 5], batches=10, max_chars=80
+                )
+            ),
+            "[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,  ... "
+            "(1315 characters truncated) ... , 293, 294, 295, 296, "
+            "297, 298, 299], 5]",
+        )
+
+    def test_repr_params_positional_list(self):
+        # given non-multi-params in a list.   repr params with
+        # per-element truncation, mostly does the exact same thing
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    [[i for i in range(300)], 5],
+                    batches=10,
+                    max_chars=80,
+                    ismulti=False,
+                )
+            ),
+            "[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 1 ... "
+            "(1310 characters truncated) ...  "
+            "292, 293, 294, 295, 296, 297, 298, 299], 5]",
+        )
+
+    def test_repr_params_named_dict(self):
+        # given non-multi-params in a list.   repr params with
+        # per-element truncation, mostly does the exact same thing
+        params = {"key_%s" % i: i for i in range(10)}
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    params, batches=10, max_chars=80, ismulti=False
+                )
+            ),
+            repr(params),
+        )
+
+    def test_repr_params_ismulti_named_dict(self):
+        # given non-multi-params in a list.   repr params with
+        # per-element truncation, mostly does the exact same thing
+        param = {"key_%s" % i: i for i in range(10)}
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    [param for j in range(50)],
+                    batches=5,
+                    max_chars=80,
+                    ismulti=True,
+                )
+            ),
+            "[%(param)r, %(param)r, %(param)r  ... "
+            "displaying 5 of 50 total bound parameter sets ...  "
+            "%(param)r, %(param)r]" % {"param": param},
+        )
+
+    def test_repr_params_ismulti_list(self):
+        # given multi-params in a list.   repr params with
+        # per-element truncation, mostly does the exact same thing
+        eq_(
+            repr(
+                sql_util._repr_params(
+                    [
+                        [[i for i in range(300)], 5],
+                        [[i for i in range(300)], 5],
+                        [[i for i in range(300)], 5],
+                    ],
+                    batches=10,
+                    max_chars=80,
+                    ismulti=True,
+                )
+            ),
+            "[[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 1 ... "
+            "(1310 characters truncated) ...  292, 293, 294, 295, 296, 297, "
+            "298, 299], 5], [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 1 ... "
+            "(1310 characters truncated) ...  292, 293, 294, 295, 296, 297, "
+            "298, 299], 5], [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 1 ... "
+            "(1310 characters truncated) ...  292, 293, 294, 295, 296, 297, "
+            "298, 299], 5]]",
         )
 
     def test_log_large_parameter_single(self):

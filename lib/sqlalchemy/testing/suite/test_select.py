@@ -1,7 +1,10 @@
+from .. import AssertsCompiledSQL
+from .. import AssertsExecutionResults
 from .. import config
 from .. import fixtures
 from ..assertions import eq_
 from ..assertions import in_
+from ..assertsql import CursorSQL
 from ..schema import Column
 from ..schema import Table
 from ... import bindparam
@@ -14,6 +17,7 @@ from ... import null
 from ... import select
 from ... import String
 from ... import testing
+from ... import text
 from ... import true
 from ... import tuple_
 from ... import union
@@ -233,6 +237,59 @@ class LimitOffsetTest(fixtures.TablesTest):
             params={"l": 2, "o": 1},
         )
 
+    @testing.requires.sql_expression_limit_offset
+    def test_expr_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table])
+            .order_by(table.c.id)
+            .offset(literal_column("1") + literal_column("2")),
+            [(4, 4, 5)],
+        )
+
+    @testing.requires.sql_expression_limit_offset
+    def test_expr_limit(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table])
+            .order_by(table.c.id)
+            .limit(literal_column("1") + literal_column("2")),
+            [(1, 1, 2), (2, 2, 3), (3, 3, 4)],
+        )
+
+    @testing.requires.sql_expression_limit_offset
+    def test_expr_limit_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table])
+            .order_by(table.c.id)
+            .limit(literal_column("1") + literal_column("1"))
+            .offset(literal_column("1") + literal_column("1")),
+            [(3, 3, 4), (4, 4, 5)],
+        )
+
+    @testing.requires.sql_expression_limit_offset
+    def test_simple_limit_expr_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table])
+            .order_by(table.c.id)
+            .limit(2)
+            .offset(literal_column("1") + literal_column("1")),
+            [(3, 3, 4), (4, 4, 5)],
+        )
+
+    @testing.requires.sql_expression_limit_offset
+    def test_expr_limit_simple_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select([table])
+            .order_by(table.c.id)
+            .limit(literal_column("1") + literal_column("1"))
+            .offset(2),
+            [(3, 3, 4), (4, 4, 5)],
+        )
+
 
 class CompoundSelectTest(fixtures.TablesTest):
     __backend__ = True
@@ -372,6 +429,127 @@ class CompoundSelectTest(fixtures.TablesTest):
         )
 
 
+class PostCompileParamsTest(
+    AssertsExecutionResults, AssertsCompiledSQL, fixtures.TablesTest
+):
+    __backend__ = True
+
+    __requires__ = ("standard_cursor_sql",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", String(50)),
+        )
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2, "z": "z1"},
+                {"id": 2, "x": 2, "y": 3, "z": "z2"},
+                {"id": 3, "x": 3, "y": 4, "z": "z3"},
+                {"id": 4, "x": 4, "y": 5, "z": "z4"},
+            ],
+        )
+
+    def test_compile(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x == bindparam("q", literal_execute=True)
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT some_table.id FROM some_table "
+            "WHERE some_table.x = [POSTCOMPILE_q]",
+            {},
+        )
+
+    def test_compile_literal_binds(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x == bindparam("q", 10, literal_execute=True)
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT some_table.id FROM some_table WHERE some_table.x = 10",
+            {},
+            literal_binds=True,
+        )
+
+    def test_execute(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x == bindparam("q", literal_execute=True)
+        )
+
+        with self.sql_execution_asserter() as asserter:
+            with config.db.connect() as conn:
+                conn.execute(stmt, q=10)
+
+        asserter.assert_(
+            CursorSQL(
+                "SELECT some_table.id \nFROM some_table "
+                "\nWHERE some_table.x = 10",
+                () if config.db.dialect.positional else {},
+            )
+        )
+
+    def test_execute_expanding_plus_literal_execute(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            table.c.x.in_(bindparam("q", expanding=True, literal_execute=True))
+        )
+
+        with self.sql_execution_asserter() as asserter:
+            with config.db.connect() as conn:
+                conn.execute(stmt, q=[5, 6, 7])
+
+        asserter.assert_(
+            CursorSQL(
+                "SELECT some_table.id \nFROM some_table "
+                "\nWHERE some_table.x IN (5, 6, 7)",
+                () if config.db.dialect.positional else {},
+            )
+        )
+
+    @testing.requires.tuple_in
+    def test_execute_tuple_expanding_plus_literal_execute(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            tuple_(table.c.x, table.c.y).in_(
+                bindparam("q", expanding=True, literal_execute=True)
+            )
+        )
+
+        with self.sql_execution_asserter() as asserter:
+            with config.db.connect() as conn:
+                conn.execute(stmt, q=[(5, 10), (12, 18)])
+
+        asserter.assert_(
+            CursorSQL(
+                "SELECT some_table.id \nFROM some_table "
+                "\nWHERE (some_table.x, some_table.y) "
+                "IN (%s(5, 10), (12, 18))"
+                % ("VALUES " if config.db.dialect.tuple_in_values else ""),
+                () if config.db.dialect.positional else {},
+            )
+        )
+
+
 class ExpandingBoundInTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -489,6 +667,18 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             )
             .order_by(table.c.id)
         )
+
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={"q": [(2, "z2"), (3, "z3"), (4, "z4")]},
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_text(self):
+        stmt = text(
+            "select id FROM some_table WHERE (x, z) IN :q ORDER BY id"
+        ).bindparams(bindparam("q", expanding=True))
 
         self._assert_result(
             stmt,

@@ -297,7 +297,7 @@ def identity_key(*args, **kwargs):
     * ``identity_key(class, row=row, identity_token=token)``
 
       This form is similar to the class/tuple form, except is passed a
-      database result row as a :class:`.RowProxy` object.
+      database result row as a :class:`.Row` object.
 
       E.g.::
 
@@ -307,7 +307,7 @@ first()
         (<class '__main__.MyClass'>, (1, 2), None)
 
       :param class: mapped class (must be a positional argument)
-      :param row: :class:`.RowProxy` row returned by a :class:`.ResultProxy`
+      :param row: :class:`.Row` row returned by a :class:`.ResultProxy`
        (must be given as a keyword arg)
       :param identity_token: optional identity token
 
@@ -668,10 +668,11 @@ class AliasedInsp(InspectionAttr):
             state["represents_outer_join"],
         )
 
-    def _adapt_element(self, elem):
-        return self._adapter.traverse(elem)._annotate(
-            {"parententity": self, "parentmapper": self.mapper}
-        )
+    def _adapt_element(self, elem, key=None):
+        d = {"parententity": self, "parentmapper": self.mapper}
+        if key:
+            d["orm_key"] = key
+        return self._adapter.traverse(elem)._annotate(d)
 
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers

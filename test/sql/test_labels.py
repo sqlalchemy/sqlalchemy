@@ -1,27 +1,39 @@
 from sqlalchemy import bindparam
+from sqlalchemy import Boolean
+from sqlalchemy import cast
 from sqlalchemy import exc as exceptions
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import type_coerce
 from sqlalchemy.engine import default
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import coercions
 from sqlalchemy.sql import column
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import table
 from sqlalchemy.sql.elements import _truncated_label
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.elements import WrapsColumnExpression
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-
 
 IDENT_LENGTH = 29
 
 
 class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "DefaultDialect"
+    __backend__ = True
 
     table1 = table(
         "some_large_named_table",
@@ -37,7 +49,9 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _length_fixture(self, length=IDENT_LENGTH, positional=False):
         dialect = default.DefaultDialect()
-        dialect.max_identifier_length = length
+        dialect.max_identifier_length = (
+            dialect._user_defined_max_identifier_length
+        ) = length
         if positional:
             dialect.paramstyle = "format"
             dialect.positional = True
@@ -45,8 +59,125 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _engine_fixture(self, length=IDENT_LENGTH):
         eng = engines.testing_engine()
-        eng.dialect.max_identifier_length = length
+        eng.dialect.max_identifier_length = (
+            eng.dialect._user_defined_max_identifier_length
+        ) = length
         return eng
+
+    def test_label_length_raise_too_large(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={"label_length": max_ident_length + 10}
+        )
+        assert_raises_message(
+            exceptions.ArgumentError,
+            "Label length of %d is greater than this dialect's maximum "
+            "identifier length of %d"
+            % (max_ident_length + 10, max_ident_length),
+            eng.connect,
+        )
+
+    def test_label_length_custom_maxlen(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={
+                "label_length": max_ident_length + 10,
+                "max_identifier_length": max_ident_length + 20,
+            }
+        )
+        with eng.connect() as conn:
+            eq_(conn.dialect.max_identifier_length, max_ident_length + 20)
+
+    def test_label_length_custom_maxlen_dialect_only(self):
+        dialect = default.DefaultDialect(max_identifier_length=47)
+        eq_(dialect.max_identifier_length, 47)
+
+    def test_label_length_custom_maxlen_user_set_manually(self):
+        eng = engines.testing_engine()
+        eng.dialect.max_identifier_length = 47
+
+        # assume the dialect has no on-connect change
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=lambda conn: None,
+        ):
+            with eng.connect():
+                pass
+
+        # it was maintained
+        eq_(eng.dialect.max_identifier_length, 47)
+
+    def test_label_length_too_large_custom_maxlen(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={
+                "label_length": max_ident_length - 10,
+                "max_identifier_length": max_ident_length - 20,
+            }
+        )
+        assert_raises_message(
+            exceptions.ArgumentError,
+            "Label length of %d is greater than this dialect's maximum "
+            "identifier length of %d"
+            % (max_ident_length - 10, max_ident_length - 20),
+            eng.connect,
+        )
+
+    def test_custom_max_identifier_length(self):
+        max_ident_length = testing.db.dialect.max_identifier_length
+        eng = engines.testing_engine(
+            options={"max_identifier_length": max_ident_length + 20}
+        )
+        with eng.connect() as conn:
+            eq_(conn.dialect.max_identifier_length, max_ident_length + 20)
+
+    def test_max_identifier_length_onconnect(self):
+        eng = engines.testing_engine()
+
+        def _check_max_identifer_length(conn):
+            return 47
+
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=_check_max_identifer_length,
+        ) as mock_:
+            with eng.connect():
+                eq_(eng.dialect.max_identifier_length, 47)
+        eq_(mock_.mock_calls, [mock.call(mock.ANY)])
+
+    def test_max_identifier_length_onconnect_returns_none(self):
+        eng = engines.testing_engine()
+
+        max_ident_length = eng.dialect.max_identifier_length
+
+        def _check_max_identifer_length(conn):
+            return None
+
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=_check_max_identifer_length,
+        ) as mock_:
+            with eng.connect():
+                eq_(eng.dialect.max_identifier_length, max_ident_length)
+        eq_(mock_.mock_calls, [mock.call(mock.ANY)])
+
+    def test_custom_max_identifier_length_onconnect(self):
+        eng = engines.testing_engine(options={"max_identifier_length": 49})
+
+        def _check_max_identifer_length(conn):
+            return 47
+
+        with mock.patch.object(
+            eng.dialect,
+            "_check_max_identifier_length",
+            side_effect=_check_max_identifer_length,
+        ) as mock_:
+            with eng.connect():
+                eq_(eng.dialect.max_identifier_length, 49)
+        eq_(mock_.mock_calls, [])  # was not called
 
     def test_table_alias_1(self):
         self.assert_compile(
@@ -628,4 +759,185 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             set(compiled._create_result_map()),
             set(["tablename_columnn_1", "tablename_columnn_2"]),
+        )
+
+
+class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
+    """Test the :class:`.WrapsColumnExpression` mixin, which provides
+    auto-labels that match a named expression
+
+    """
+
+    __dialect__ = "default"
+
+    table1 = table("some_table", column("name"), column("value"))
+
+    def _fixture(self):
+        class SomeColThing(WrapsColumnExpression, ColumnElement):
+            def __init__(self, expression):
+                self.clause = coercions.expect(
+                    roles.ExpressionElementRole, expression
+                )
+
+            @property
+            def wrapped_column_expression(self):
+                return self.clause
+
+        @compiles(SomeColThing)
+        def process(element, compiler, **kw):
+            return "SOME_COL_THING(%s)" % compiler.process(
+                element.clause, **kw
+            )
+
+        return SomeColThing
+
+    def test_column_auto_label_dupes(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    table1.c.name,
+                    table1.c.name,
+                    expr(table1.c.name),
+                    expr(table1.c.name),
+                ]
+            ),
+            "SELECT some_table.name, some_table.name, "
+            "SOME_COL_THING(some_table.name) AS name, "
+            "SOME_COL_THING(some_table.name) AS name FROM some_table",
+        )
+
+    def test_anon_expression_fallback(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select([table1.c.name + "foo", expr(table1.c.name + "foo")]),
+            "SELECT some_table.name || :name_1 AS anon_1, "
+            "SOME_COL_THING(some_table.name || :name_2) AS anon_2 "
+            "FROM some_table",
+        )
+
+    def test_anon_expression_fallback_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [table1.c.name + "foo", expr(table1.c.name + "foo")]
+            ).apply_labels(),
+            "SELECT some_table.name || :name_1 AS anon_1, "
+            "SOME_COL_THING(some_table.name || :name_2) AS anon_2 "
+            "FROM some_table",
+        )
+
+    def test_label_auto_label(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    expr(table1.c.name.label("foo")),
+                    table1.c.name.label("bar"),
+                    table1.c.value,
+                ]
+            ),
+            "SELECT SOME_COL_THING(some_table.name) AS foo, "
+            "some_table.name AS bar, some_table.value FROM some_table",
+        )
+
+    def test_cast_auto_label(self):
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    cast(table1.c.name, Integer),
+                    cast(table1.c.name, String),
+                    table1.c.name,
+                ]
+            ),
+            "SELECT CAST(some_table.name AS INTEGER) AS name, "
+            "CAST(some_table.name AS VARCHAR) AS name, "
+            "some_table.name FROM some_table",
+        )
+
+    def test_type_coerce_auto_label(self):
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    type_coerce(table1.c.name, Integer),
+                    type_coerce(table1.c.name, String),
+                    table1.c.name,
+                ]
+            ),
+            # ideally type_coerce wouldn't label at all...
+            "SELECT some_table.name AS name, "
+            "some_table.name AS name, "
+            "some_table.name FROM some_table",
+        )
+
+    def test_boolean_auto_label(self):
+        col = column("value", Boolean)
+
+        self.assert_compile(
+            select([~col, col]),
+            # not sure if this SQL is right but this is what it was
+            # before the new labeling, just different label name
+            "SELECT value = 0 AS value, value",
+        )
+
+    def test_label_auto_label_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    expr(table1.c.name.label("foo")),
+                    table1.c.name.label("bar"),
+                    table1.c.value,
+                ]
+            ).apply_labels(),
+            # the expr around label is treated the same way as plain column
+            # with label
+            "SELECT SOME_COL_THING(some_table.name) AS foo, "
+            "some_table.name AS bar, "
+            "some_table.value AS some_table_value FROM some_table",
+        )
+
+    def test_column_auto_label_dupes_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                [
+                    table1.c.name,
+                    table1.c.name,
+                    expr(table1.c.name),
+                    expr(table1.c.name),
+                ]
+            ).apply_labels(),
+            "SELECT some_table.name AS some_table_name, "
+            "some_table.name AS some_table_name__1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name_1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name_2 "
+            "FROM some_table",
+        )
+
+    def test_column_auto_label_use_labels(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select([table1.c.name, expr(table1.c.value)]).apply_labels(),
+            "SELECT some_table.name AS some_table_name, "
+            "SOME_COL_THING(some_table.value) "
+            "AS some_table_value FROM some_table",
         )

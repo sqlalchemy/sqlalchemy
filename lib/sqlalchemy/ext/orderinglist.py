@@ -119,7 +119,6 @@ start numbering at 1 or some other integer, provide ``count_from=1``.
 
 
 """
-from .. import util
 from ..orm.collections import collection
 from ..orm.collections import collection_adapter
 
@@ -367,7 +366,7 @@ class OrderingList(list):
 
     for func_name, func in list(locals().items()):
         if (
-            util.callable(func)
+            callable(func)
             and func.__name__ == func_name
             and not func.__doc__
             and hasattr(list, func_name)

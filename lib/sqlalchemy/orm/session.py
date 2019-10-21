@@ -25,7 +25,6 @@ from .base import instance_str
 from .base import object_mapper
 from .base import object_state
 from .base import state_str
-from .deprecated_interfaces import SessionExtension
 from .unitofwork import UOWTransaction
 from .. import engine
 from .. import exc as sa_exc
@@ -37,7 +36,7 @@ from ..sql import roles
 from ..sql import util as sql_util
 
 
-__all__ = ["Session", "SessionTransaction", "SessionExtension", "sessionmaker"]
+__all__ = ["Session", "SessionTransaction", "sessionmaker"]
 
 _sessions = weakref.WeakValueDictionary()
 """Weak-referencing dictionary of :class:`.Session` objects.
@@ -660,13 +659,6 @@ class Session(_SessionClassMethods):
             "The :paramref:`.Session._enable_transaction_accounting` "
             "parameter is deprecated and will be removed in a future release.",
         ),
-        extension=(
-            "0.7",
-            ":class:`.SessionExtension` is deprecated in favor of the "
-            ":class:`.SessionEvents` listener interface.  The "
-            ":paramref:`.Session.extension` parameter will be "
-            "removed in a future release.",
-        ),
     )
     def __init__(
         self,
@@ -678,7 +670,6 @@ class Session(_SessionClassMethods):
         twophase=False,
         weak_identity_map=None,
         binds=None,
-        extension=None,
         enable_baked_queries=True,
         info=None,
         query_cls=None,
@@ -789,11 +780,6 @@ class Session(_SessionClassMethods):
            so that all attribute/object access subsequent to a completed
            transaction will load from the most recent database state.
 
-        :param extension: An optional
-           :class:`~.SessionExtension` instance, or a list
-           of such instances, which will receive pre- and post- commit and
-           flush events, as well as a post-rollback event.
-
         :param info: optional dictionary of arbitrary data to be associated
            with this :class:`.Session`.  Is available via the
            :attr:`.Session.info` attribute.  Note the dictionary is copied at
@@ -849,10 +835,6 @@ class Session(_SessionClassMethods):
         self._query_cls = query_cls if query_cls else query.Query
         if info:
             self.info.update(info)
-
-        if extension:
-            for ext in util.to_list(extension):
-                SessionExtension._adapt_listener(self, ext)
 
         if binds is not None:
             for key, bind in binds.items():
@@ -1542,6 +1524,60 @@ class Session(_SessionClassMethods):
 
         return self._query_cls(entities, self, **kwargs)
 
+    def _identity_lookup(
+        self,
+        mapper,
+        primary_key_identity,
+        identity_token=None,
+        passive=attributes.PASSIVE_OFF,
+        lazy_loaded_from=None,
+    ):
+        """Locate an object in the identity map.
+
+        Given a primary key identity, constructs an identity key and then
+        looks in the session's identity map.  If present, the object may
+        be run through unexpiration rules (e.g. load unloaded attributes,
+        check if was deleted).
+
+        e.g.::
+
+            obj = session._identity_lookup(inspect(SomeClass), (1, ))
+
+        :param mapper: mapper in use
+        :param primary_key_identity: the primary key we are searching for, as
+         a tuple.
+        :param identity_token: identity token that should be used to create
+         the identity key.  Used as is, however overriding subclasses can
+         repurpose this in order to interpret the value in a special way,
+         such as if None then look among multiple target tokens.
+        :param passive: passive load flag passed to
+         :func:`.loading.get_from_identity`, which impacts the behavior if
+         the object is found; the object may be validated and/or unexpired
+         if the flag allows for SQL to be emitted.
+        :param lazy_loaded_from: an :class:`.InstanceState` that is
+         specifically asking for this identity as a related identity.  Used
+         for sharding schemes where there is a correspondence between an object
+         and a related object being lazy-loaded (or otherwise
+         relationship-loaded).
+
+        :return: None if the object is not found in the identity map, *or*
+         if the object was unexpired and found to have been deleted.
+         if passive flags disallow SQL and the object is expired, returns
+         PASSIVE_NO_RESULT.   In all other cases the instance is returned.
+
+        .. versionchanged:: 1.4.0 - the :meth:`.Session._identity_lookup`
+           method was moved from :class:`.Query` to
+           :class:`.Session`, to avoid having to instantiate the
+           :class:`.Query` object.
+
+
+        """
+
+        key = mapper.identity_key_from_primary_key(
+            primary_key_identity, identity_token=identity_token
+        )
+        return loading.get_from_identity(self, key, passive)
+
     @property
     @util.contextmanager
     def no_autoflush(self):
@@ -1881,7 +1917,18 @@ class Session(_SessionClassMethods):
                 # there can be an existing state in the identity map
                 # that is replaced when the primary keys of two instances
                 # are swapped; see test/orm/test_naturalpks.py -> test_reverse
-                self.identity_map.replace(state)
+                old = self.identity_map.replace(state)
+                if (
+                    old is not None
+                    and mapper._identity_key_from_state(old) == instance_key
+                    and old.obj() is not None
+                ):
+                    util.warn(
+                        "Identity map already had an identity for %s, "
+                        "replacing it with newly flushed object.   Are there "
+                        "load operations occurring inside of an event handler "
+                        "within the flush?" % (instance_key,)
+                    )
                 state._orphaned_outside_of_session = False
 
         statelib.InstanceState._commit_all_states(

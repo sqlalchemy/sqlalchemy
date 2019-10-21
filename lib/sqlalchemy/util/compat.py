@@ -158,14 +158,8 @@ if py3k:
     def ue(s):
         return s
 
-    if py32:
-        callable = callable  # noqa
-    else:
-
-        def callable(fn):  # noqa
-            return hasattr(fn, "__call__")
-
-
+    # Unused. Kept for backwards compatibility.
+    callable = callable  # noqa
 else:
     import base64
     import ConfigParser as configparser  # noqa

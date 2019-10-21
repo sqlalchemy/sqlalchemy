@@ -22,6 +22,7 @@ from . import operators
 from . import roles
 from . import type_api
 from .annotation import Annotated
+from .annotation import SupportsWrappingAnnotations
 from .base import _clone
 from .base import _generative
 from .base import Executable
@@ -161,7 +162,7 @@ def not_(clause):
 
 
 @inspection._self_inspects
-class ClauseElement(roles.SQLRole, Visitable):
+class ClauseElement(roles.SQLRole, SupportsWrappingAnnotations, Visitable):
     """Base class for elements of a programmatically constructed SQL
     expression.
 
@@ -210,6 +211,15 @@ class ClauseElement(roles.SQLRole, Visitable):
         c._is_clone_of = self
 
         return c
+
+    def _with_binary_element_type(self, type_):
+        """in the context of binary expression, convert the type of this
+        object to the one given.
+
+        applies only to :class:`.ColumnElement` classes.
+
+        """
+        return self
 
     def _cache_key(self, **kw):
         """return an optional cache key.
@@ -266,37 +276,6 @@ class ClauseElement(roles.SQLRole, Visitable):
         d = self.__dict__.copy()
         d.pop("_is_clone_of", None)
         return d
-
-    def _annotate(self, values):
-        """return a copy of this ClauseElement with annotations
-        updated by the given dictionary.
-
-        """
-        return Annotated(self, values)
-
-    def _with_annotations(self, values):
-        """return a copy of this ClauseElement with annotations
-        replaced by the given dictionary.
-
-        """
-        return Annotated(self, values)
-
-    def _deannotate(self, values=None, clone=False):
-        """return a copy of this :class:`.ClauseElement` with annotations
-        removed.
-
-        :param values: optional tuple of individual values
-         to remove.
-
-        """
-        if clone:
-            # clone is used when we are also copying
-            # the expression for a deep deannotation
-            return self._clone()
-        else:
-            # if no clone, since we have no annotations we return
-            # self
-            return self
 
     def _execute_on_connection(self, connection, multiparams, params):
         if self.supports_execution:
@@ -732,6 +711,14 @@ class ColumnElement(
     def type(self):
         return type_api.NULLTYPE
 
+    def _with_binary_element_type(self, type_):
+        cloned = self._clone()
+        cloned._copy_internals(
+            clone=lambda element: element._with_binary_element_type(type_)
+        )
+        cloned.type = type_
+        return cloned
+
     @util.memoized_property
     def comparator(self):
         try:
@@ -891,7 +878,13 @@ class ColumnElement(
         while self._is_clone_of is not None:
             self = self._is_clone_of
 
-        return _anonymous_label("%%(%d %s)s" % (id(self), seed or "anon"))
+        # as of 1.4 anonymous label for ColumnElement uses hash(), not id(),
+        # as the identifier, because a column and its annotated version are
+        # the same thing in a SQL statement
+        if isinstance(seed, _anonymous_label):
+            return _anonymous_label("%s%%(%d %s)s" % (seed, hash(self), ""))
+
+        return _anonymous_label("%%(%d %s)s" % (hash(self), seed or "anon"))
 
     @util.memoized_property
     def anon_label(self):
@@ -912,6 +905,46 @@ class ColumnElement(
     @util.memoized_property
     def _label_anon_label(self):
         return self._anon_label(getattr(self, "_label", None))
+
+    @util.memoized_property
+    def _dedupe_label_anon_label(self):
+        return self._anon_label(getattr(self, "_label", "anon") + "_")
+
+
+class WrapsColumnExpression(object):
+    """Mixin that defines a :class:`.ColumnElement` as a wrapper with special
+    labeling behavior for an expression that already has a name.
+
+    .. versionadded:: 1.4
+
+    .. seealso::
+
+        :ref:`change_4449`
+
+
+    """
+
+    @property
+    def wrapped_column_expression(self):
+        raise NotImplementedError()
+
+    @property
+    def _label(self):
+        wce = self.wrapped_column_expression
+        if hasattr(wce, "_label"):
+            return wce._label
+        else:
+            return None
+
+    @property
+    def anon_label(self):
+        wce = self.wrapped_column_expression
+        if hasattr(wce, "name"):
+            return wce.name
+        elif hasattr(wce, "anon_label"):
+            return wce.anon_label
+        else:
+            return super(WrapsColumnExpression, self).anon_label
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
@@ -950,6 +983,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         callable_=None,
         expanding=False,
         isoutparam=False,
+        literal_execute=False,
         _compared_to_operator=None,
         _compared_to_type=None,
     ):
@@ -1162,6 +1196,30 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
             :func:`.outparam`
 
+        :param literal_execute:
+          if True, the bound parameter will be rendered in the compile phase
+          with a special "POSTCOMPILE" token, and the SQLAlchemy compiler will
+          render the final value of the parameter into the SQL statement at
+          statement execution time, omitting the value from the parameter
+          dictionary / list passed to DBAPI ``cursor.execute()``.  This
+          produces a similar effect as that of using the ``literal_binds``,
+          compilation flag,  however takes place as the statement is sent to
+          the DBAPI ``cursor.execute()`` method, rather than when the statement
+          is compiled.   The primary use of this
+          capability is for rendering LIMIT / OFFSET clauses for database
+          drivers that can't accommodate for bound parameters in these
+          contexts, while allowing SQL constructs to be cacheable at the
+          compilation level.
+
+          .. versionadded:: 1.4 Added "post compile" bound parameters
+
+            .. seealso::
+
+                :ref:`change_4808`.
+
+
+
+
         """
         if isinstance(key, ColumnClause):
             type_ = key.type
@@ -1179,7 +1237,13 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
         if unique:
             self.key = _anonymous_label(
-                "%%(%d %s)s" % (id(self), key or "param")
+                "%%(%d %s)s"
+                % (
+                    id(self),
+                    re.sub(r"[%\(\) \$]+", "_", key).strip("_")
+                    if key is not None
+                    else "param",
+                )
             )
         else:
             self.key = key or _anonymous_label("%%(%d param)s" % id(self))
@@ -1199,6 +1263,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.isoutparam = isoutparam
         self.required = required
         self.expanding = expanding
+        self.literal_execute = literal_execute
 
         if type_ is None:
             if _compared_to_type is not None:
@@ -1607,14 +1672,17 @@ class TextClause(
 
         for bind in binds:
             try:
-                existing = new_params[bind.key]
+                # the regex used for text() currently will not match
+                # a unique/anonymous key in any case, so use the _orig_key
+                # so that a text() construct can support unique parameters
+                existing = new_params[bind._orig_key]
             except KeyError:
                 raise exc.ArgumentError(
                     "This text() construct doesn't define a "
-                    "bound parameter named %r" % bind.key
+                    "bound parameter named %r" % bind._orig_key
                 )
             else:
-                new_params[existing.key] = bind
+                new_params[existing._orig_key] = bind
 
         for key, value in names_to_values.items():
             try:
@@ -2156,7 +2224,8 @@ class Tuple(ClauseList, ColumnElement):
     def __init__(self, *clauses, **kw):
         """Return a :class:`.Tuple`.
 
-        Main usage is to produce a composite IN construct::
+        Main usage is to produce a composite IN construct using
+        :meth:`.ColumnOperators.in_` ::
 
             from sqlalchemy import tuple_
 
@@ -2477,7 +2546,7 @@ def literal_column(text, type_=None):
     return ColumnClause(text, type_=type_, is_literal=True)
 
 
-class Cast(ColumnElement):
+class Cast(WrapsColumnExpression, ColumnElement):
     """Represent a ``CAST`` expression.
 
     :class:`.Cast` is produced using the :func:`.cast` factory function,
@@ -2582,8 +2651,12 @@ class Cast(ColumnElement):
     def _from_objects(self):
         return self.clause._from_objects
 
+    @property
+    def wrapped_column_expression(self):
+        return self.clause
 
-class TypeCoerce(ColumnElement):
+
+class TypeCoerce(WrapsColumnExpression, ColumnElement):
     """Represent a Python-side type-coercion wrapper.
 
     :class:`.TypeCoerce` supplies the :func:`.expression.type_coerce`
@@ -2693,6 +2766,10 @@ class TypeCoerce(ColumnElement):
             return bp
         else:
             return self.clause
+
+    @property
+    def wrapped_column_expression(self):
+        return self.clause
 
 
 class Extract(ColumnElement):
@@ -3162,7 +3239,7 @@ class CollectionAggregate(UnaryExpression):
         )
 
 
-class AsBoolean(UnaryExpression):
+class AsBoolean(WrapsColumnExpression, UnaryExpression):
     def __init__(self, element, operator, negate):
         self.element = element
         self.type = type_api.BOOLEANTYPE
@@ -3171,6 +3248,10 @@ class AsBoolean(UnaryExpression):
         self.modifier = None
         self.wraps_column_expression = True
         self._is_implicitly_boolean = element._is_implicitly_boolean
+
+    @property
+    def wrapped_column_expression(self):
+        return self.element
 
     def self_group(self, against=None):
         # type: (Optional[Any]) -> ClauseElement
@@ -4136,6 +4217,12 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
         self._memoized_property.expire_instance(self)
         self.__dict__["table"] = table
 
+    def get_children(self, column_tables=False, **kw):
+        if column_tables and self.table is not None:
+            return [self.table]
+        else:
+            return []
+
     table = property(_get_table, _set_table)
 
     def _cache_key(self, **kw):
@@ -4176,7 +4263,11 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
     def _render_label_in_columns_clause(self):
         return self.table is not None
 
-    def _gen_label(self, name):
+    @property
+    def _ddl_label(self):
+        return self._gen_label(self.name, dedupe_on_key=False)
+
+    def _gen_label(self, name, dedupe_on_key=True):
         t = self.table
 
         if self.is_literal:
@@ -4200,15 +4291,22 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
                 assert not isinstance(label, quoted_name)
                 label = quoted_name(label, t.name.quote)
 
-            # ensure the label name doesn't conflict with that
-            # of an existing column
-            if label in t.c:
-                _label = label
-                counter = 1
-                while _label in t.c:
-                    _label = label + "_" + str(counter)
-                    counter += 1
-                label = _label
+            if dedupe_on_key:
+                # ensure the label name doesn't conflict with that of an
+                # existing column.   note that this implies that any Column
+                # must **not** set up its _label before its parent table has
+                # all of its other Column objects set up.  There are several
+                # tables in the test suite which will fail otherwise; example:
+                # table "owner" has columns "name" and "owner_name".  Therefore
+                # column owner.name cannot use the label "owner_name", it has
+                # to be "owner_name_1".
+                if label in t.c:
+                    _label = label
+                    counter = 1
+                    while _label in t.c:
+                        _label = label + "_" + str(counter)
+                        counter += 1
+                    label = _label
 
             return coercions.expect(roles.TruncatedLabelRole, label)
 
@@ -4262,7 +4360,6 @@ class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
         c._proxies = [self]
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
-
         return c.key, c
 
 

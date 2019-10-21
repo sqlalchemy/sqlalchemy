@@ -32,13 +32,13 @@ from .interfaces import ExceptionContext  # noqa
 from .interfaces import ExecutionContext  # noqa
 from .interfaces import TypeCompiler  # noqa
 from .mock import create_mock_engine
-from .result import BaseRowProxy  # noqa
+from .result import BaseRow  # noqa
 from .result import BufferedColumnResultProxy  # noqa
 from .result import BufferedColumnRow  # noqa
 from .result import BufferedRowResultProxy  # noqa
 from .result import FullyBufferedResultProxy  # noqa
 from .result import ResultProxy  # noqa
-from .result import RowProxy  # noqa
+from .result import Row  # noqa
 from .util import connection_memoize  # noqa
 from ..sql import ddl  # noqa
 

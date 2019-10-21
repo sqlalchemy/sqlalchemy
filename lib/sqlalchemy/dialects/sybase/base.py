@@ -513,17 +513,12 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     def get_select_precolumns(self, select, **kw):
         s = select._distinct and "DISTINCT " or ""
-        # TODO: don't think Sybase supports
-        # bind params for FIRST / TOP
-        limit = select._limit
-        if limit:
-            # if select._limit == 1:
-            # s += "FIRST "
-            # else:
-            # s += "TOP %s " % (select._limit,)
-            s += "TOP %s " % (limit,)
-        offset = select._offset
-        if offset:
+
+        if select._simple_int_limit and not select._offset:
+            kw["literal_execute"] = True
+            s += "TOP %s " % self.process(select._limit_clause, **kw)
+
+        if select._offset:
             raise NotImplementedError("Sybase ASE does not support OFFSET")
         return s
 

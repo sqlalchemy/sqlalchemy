@@ -38,11 +38,10 @@ class SQLMatchRule(AssertRule):
 
 
 class CursorSQL(SQLMatchRule):
-    consume_statement = False
-
-    def __init__(self, statement, params=None):
+    def __init__(self, statement, params=None, consume_statement=True):
         self.statement = statement
         self.params = params
+        self.consume_statement = consume_statement
 
     def process_statement(self, execute_observed):
         stmt = execute_observed.statements[0]
@@ -171,7 +170,7 @@ class CompiledSQL(SQLMatchRule):
 
     def _all_params(self, context):
         if self.params:
-            if util.callable(self.params):
+            if callable(self.params):
                 params = self.params(context)
             else:
                 params = self.params

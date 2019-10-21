@@ -104,7 +104,17 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
         for item in args:
             if item is not None:
-                item._set_parent_with_dispatch(self)
+                try:
+                    spwd = item._set_parent_with_dispatch
+                except AttributeError:
+                    util.raise_from_cause(
+                        exc.ArgumentError(
+                            "'SchemaItem' object, such as a 'Column' or a "
+                            "'Constraint' expected, got %r" % item
+                        )
+                    )
+                else:
+                    spwd(self)
 
     def get_children(self, **kwargs):
         """used to allow SchemaVisitor access"""
@@ -112,23 +122,6 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
     def __repr__(self):
         return util.generic_repr(self, omit_kwarg=["info"])
-
-    @property
-    @util.deprecated(
-        "0.9",
-        "The :attr:`.SchemaItem.quote` attribute is deprecated and will be "
-        "removed in a future release.  Use the :attr:`.quoted_name.quote` "
-        "attribute on the ``name`` field of the target schema item to retrieve"
-        "quoted status.",
-    )
-    def quote(self):
-        """Return the value of the ``quote`` flag passed
-        to this schema object, for those schema items which
-        have a ``name`` field.
-
-        """
-
-        return self.name.quote
 
     @util.memoized_property
     def info(self):
@@ -432,14 +425,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     __visit_name__ = "table"
 
-    @util.deprecated_params(
-        useexisting=(
-            "0.7",
-            "The :paramref:`.Table.useexisting` parameter is deprecated and "
-            "will be removed in a future release.  Please use "
-            ":paramref:`.Table.extend_existing`.",
-        )
-    )
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this
@@ -457,11 +442,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             schema = None
         keep_existing = kw.pop("keep_existing", False)
         extend_existing = kw.pop("extend_existing", False)
-        if "useexisting" in kw:
-            if extend_existing:
-                msg = "useexisting is synonymous with extend_existing."
-                raise exc.ArgumentError(msg)
-            extend_existing = kw.pop("useexisting", False)
 
         if keep_existing and extend_existing:
             msg = "keep_existing and extend_existing are mutually exclusive."
@@ -495,21 +475,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             except:
                 with util.safe_reraise():
                     metadata._remove_table(name, schema)
-
-    @property
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.SchemaItem.quote` method is deprecated and will be "
-        "removed in a future release.  Use the :attr:`.quoted_name.quote` "
-        "attribute on the ``schema`` field of the target schema item to "
-        "retrieve quoted status.",
-    )
-    def quote_schema(self):
-        """Return the value of the ``quote_schema`` flag passed
-        to this :class:`.Table`.
-        """
-
-        return self.schema.quote
 
     def __init__(self, *args, **kw):
         """Constructor for :class:`~.schema.Table`.
@@ -790,22 +755,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         """
 
         constraint._set_parent_with_dispatch(self)
-
-    @util.deprecated(
-        "0.7",
-        "the :meth:`.Table.append_ddl_listener` method is deprecated and "
-        "will be removed in a future release.  Please refer to "
-        ":class:`.DDLEvents`.",
-    )
-    def append_ddl_listener(self, event_name, listener):
-        """Append a DDL event listener to this ``Table``.
-
-        """
-
-        def adapt_listener(target, connection, **kw):
-            listener(event_name, target, connection)
-
-        event.listen(self, "" + event_name.replace("-", "_"), adapt_listener)
 
     def _set_parent(self, metadata):
         metadata._add_table(self.name, self.schema, self)
@@ -1485,7 +1434,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                     "To create indexes with a specific name, create an "
                     "explicit Index object external to the Table."
                 )
-            Index(None, self, unique=bool(self.unique), _column_flag=True)
+            table.append_constraint(
+                Index(
+                    None, self.key, unique=bool(self.unique), _column_flag=True
+                )
+            )
+
         elif self.unique:
             if isinstance(self.unique, util.string_types):
                 raise exc.ArgumentError(
@@ -2212,13 +2166,13 @@ class ColumnDefault(DefaultGenerator):
             raise exc.ArgumentError(
                 "ColumnDefault may not be a server-side default type."
             )
-        if util.callable(arg):
+        if callable(arg):
             arg = self._maybe_wrap_callable(arg)
         self.arg = arg
 
     @util.memoized_property
     def is_callable(self):
-        return util.callable(self.arg)
+        return callable(self.arg)
 
     @util.memoized_property
     def is_clause_element(self):
@@ -2622,19 +2576,6 @@ class DefaultClause(FetchedValue):
 
     def __repr__(self):
         return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
-
-
-@util.deprecated_cls(
-    "0.6",
-    ":class:`.PassiveDefault` is deprecated and will be removed in a "
-    "future release.  Please refer to :class:`.DefaultClause`.",
-)
-class PassiveDefault(DefaultClause):
-    """A DDL-specified DEFAULT column value.
-    """
-
-    def __init__(self, *arg, **kw):
-        DefaultClause.__init__(self, *arg, **kw)
 
 
 class Constraint(DialectKWArgs, SchemaItem):
@@ -3737,18 +3678,9 @@ class MetaData(SchemaItem):
 
     __visit_name__ = "metadata"
 
-    @util.deprecated_params(
-        reflect=(
-            "0.8",
-            "The :paramref:`.MetaData.reflect` flag is deprecated and will "
-            "be removed in a future release.   Please use the "
-            ":meth:`.MetaData.reflect` method.",
-        )
-    )
     def __init__(
         self,
         bind=None,
-        reflect=False,
         schema=None,
         quote_schema=None,
         naming_convention=None,
@@ -3917,13 +3849,6 @@ class MetaData(SchemaItem):
         self._fk_memos = collections.defaultdict(list)
 
         self.bind = bind
-        if reflect:
-            if not bind:
-                raise exc.ArgumentError(
-                    "A bind must be supplied in conjunction "
-                    "with reflect=True"
-                )
-            self.reflect()
 
     tables = None
     """A dictionary of :class:`.Table` objects keyed to their name or "table key".
@@ -4201,7 +4126,7 @@ class MetaData(SchemaItem):
                     for name, schname in zip(available, available_w_schema)
                     if extend_existing or schname not in current
                 ]
-            elif util.callable(only):
+            elif callable(only):
                 load = [
                     name
                     for name, schname in zip(available, available_w_schema)
@@ -4227,24 +4152,6 @@ class MetaData(SchemaItem):
                     Table(name, self, **reflect_opts)
                 except exc.UnreflectableTableError as uerr:
                     util.warn("Skipping table %s: %s" % (name, uerr))
-
-    @util.deprecated(
-        "0.7",
-        "the :meth:`.MetaData.append_ddl_listener` method is deprecated and "
-        "will be removed in a future release.  Please refer to "
-        ":class:`.DDLEvents`.",
-    )
-    def append_ddl_listener(self, event_name, listener):
-        """Append a DDL event listener to this ``MetaData``.
-
-
-        """
-
-        def adapt_listener(target, connection, **kw):
-            tables = kw["tables"]
-            listener(event, target, connection, tables=tables)
-
-        event.listen(self, "" + event_name.replace("-", "_"), adapt_listener)
 
     def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.

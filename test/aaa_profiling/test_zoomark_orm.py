@@ -142,6 +142,10 @@ class ZooMarkTest(replay_fixture.ReplayFixtureTest):
         )
         self.session.add(lp)
 
+        # ensure we flush the tables in a specific order as the replayable
+        # session assumes this
+        self.session.flush()
+
         # Animals
 
         leopard = Animal(Species="Leopard", Lifespan=73.5)

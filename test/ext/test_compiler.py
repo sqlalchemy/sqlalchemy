@@ -3,6 +3,7 @@ from sqlalchemy import column
 from sqlalchemy import desc
 from sqlalchemy import exc
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import select
@@ -13,11 +14,13 @@ from sqlalchemy.ext.compiler import deregister
 from sqlalchemy.schema import CreateColumn
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.schema import DDLElement
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import BindParameter
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ColumnClause
 from sqlalchemy.sql.expression import FunctionElement
 from sqlalchemy.sql.expression import Select
+from sqlalchemy.sql.sqltypes import NULLTYPE
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -319,7 +322,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=mssql.dialect(),
         )
 
-    def test_subclasses_one(self):
+    def test_function_subclasses_one(self):
         class Base(FunctionElement):
             name = "base"
 
@@ -339,11 +342,11 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([Sub1(), Sub2()]),
-            "SELECT FOOsub1, sub2",
+            "SELECT FOOsub1 AS sub1_1, sub2 AS sub2_1",
             use_default_dialect=True,
         )
 
-    def test_subclasses_two(self):
+    def test_function_subclasses_two(self):
         class Base(FunctionElement):
             name = "base"
 
@@ -362,7 +365,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([Sub1(), Sub2(), SubSub1()]),
-            "SELECT sub1, sub2, subsub1",
+            "SELECT sub1 AS sub1_1, sub2 AS sub2_1, subsub1 AS subsub1_1",
             use_default_dialect=True,
         )
 
@@ -372,9 +375,50 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([Sub1(), Sub2(), SubSub1()]),
-            "SELECT FOOsub1, sub2, FOOsubsub1",
+            "SELECT FOOsub1 AS sub1_1, sub2 AS sub2_1, "
+            "FOOsubsub1 AS subsub1_1",
             use_default_dialect=True,
         )
+
+    def _test_result_map_population(self, expression):
+        lc1 = literal_column("1")
+        lc2 = literal_column("2")
+        stmt = select([lc1, expression, lc2])
+
+        compiled = stmt.compile()
+        eq_(
+            compiled._result_columns,
+            [
+                ("1", "1", (lc1, "1", "1"), NULLTYPE),
+                (None, None, (expression,), NULLTYPE),
+                ("2", "2", (lc2, "2", "2"), NULLTYPE),
+            ],
+        )
+
+    def test_result_map_population_explicit(self):
+        class not_named_max(ColumnElement):
+            name = "not_named_max"
+
+        @compiles(not_named_max)
+        def visit_max(element, compiler, **kw):
+            # explicit add
+            kw["add_to_result_map"](None, None, (element,), NULLTYPE)
+            return "max(a)"
+
+        nnm = not_named_max()
+        self._test_result_map_population(nnm)
+
+    def test_result_map_population_implicit(self):
+        class not_named_max(ColumnElement):
+            name = "not_named_max"
+
+        @compiles(not_named_max)
+        def visit_max(element, compiler, **kw):
+            # we don't add to keymap here; compiler should be doing it
+            return "max(a)"
+
+        nnm = not_named_max()
+        self._test_result_map_population(nnm)
 
 
 class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):

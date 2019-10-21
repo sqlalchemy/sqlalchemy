@@ -15,8 +15,80 @@ from . import operators
 from .. import util
 
 
+class SupportsCloneAnnotations(object):
+    _annotations = util.immutabledict()
+
+    def _annotate(self, values):
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
+
+        """
+        new = self._clone()
+        new._annotations = new._annotations.union(values)
+        return new
+
+    def _with_annotations(self, values):
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
+
+        """
+        new = self._clone()
+        new._annotations = util.immutabledict(values)
+        return new
+
+    def _deannotate(self, values=None, clone=False):
+        """return a copy of this :class:`.ClauseElement` with annotations
+        removed.
+
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        if clone or self._annotations:
+            # clone is used when we are also copying
+            # the expression for a deep deannotation
+            new = self._clone()
+            new._annotations = {}
+            return new
+        else:
+            return self
+
+
+class SupportsWrappingAnnotations(object):
+    def _annotate(self, values):
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
+
+        """
+        return Annotated(self, values)
+
+    def _with_annotations(self, values):
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
+
+        """
+        return Annotated(self, values)
+
+    def _deannotate(self, values=None, clone=False):
+        """return a copy of this :class:`.ClauseElement` with annotations
+        removed.
+
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        if clone:
+            # clone is used when we are also copying
+            # the expression for a deep deannotation
+            return self._clone()
+        else:
+            # if no clone, since we have no annotations we return
+            # self
+            return self
+
+
 class Annotated(object):
-    """clones a ClauseElement and applies an 'annotations' dictionary.
+    """clones a SupportsAnnotated and applies an 'annotations' dictionary.
 
     Unlike regular clones, this clone also mimics __hash__() and
     __cmp__() of the original element so that it takes its place

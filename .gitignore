@@ -1,4 +1,5 @@
 *.pyc
+*.pyd
 *.pyo
 *.egg
 /build/
@@ -8,6 +9,7 @@
 *.orig
 *,cover
 /.tox
+/venv/
 .venv
 *.egg-info
 .coverage
@@ -18,13 +20,13 @@ coverage.xml
 *.patch
 sqlnet.log
 /mapping_setup.py
+/shard?_*.db
+/test.cfg
 /test.py
+/test?.py
 /.cache/
 /.mypy_cache
 *.sw[o,p]
-/test?.py
-/test.py
-/mapping_setup.py
 *.rej
 test/test_schema.db
 *test_schema.db

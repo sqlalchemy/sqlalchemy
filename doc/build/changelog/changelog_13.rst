@@ -11,8 +11,183 @@
         :start-line: 5
 
 .. changelog::
-    :version: 1.3.9
+    :version: 1.3.11
     :include_notes_from: unreleased_13
+
+.. changelog::
+    :version: 1.3.10
+    :released: October 9, 2019
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4857
+
+        Fixed bug in SQL Server dialect with new "max_identifier_length" feature
+        where the mssql dialect already featured this flag, and the implementation
+        did not accommodate for the new initialization hook correctly.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4898, 4857
+
+        Fixed regression in Oracle dialect that was inadvertently using max
+        identifier length of 128 characters on Oracle server 12.2 and greater even
+        though the stated contract for the remainder of the 1.3 series is  that
+        this value stays at 30 until version SQLAlchemy 1.4.  Also repaired issues
+        with the retrieval of the "compatibility" version, and removed the warning
+        emitted when the "v$parameter" view was not accessible as this was  causing
+        user confusion.
+
+.. changelog::
+    :version: 1.3.9
+    :released: October 4, 2019
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 4857
+
+        Added new :func:`.create_engine` parameter
+        :paramref:`.create_engine.max_identifier_length`. This overrides the
+        dialect-coded "max identifier length" in order to accommodate for databases
+        that have recently changed this length and the SQLAlchemy dialect has
+        not yet been adjusted to detect for that version.  This parameter interacts
+        with the existing :paramref:`.create_engine.label_length` parameter in that
+        it establishes the maximum (and default) value for anonymously generated
+        labels.   Additionally, post-connection detection of max identifier lengths
+        has been added to the dialect system.  This feature is first being used
+        by the Oracle dialect.
+
+        .. seealso::
+
+            :ref:`oracle_max_identifier_lengths` - in the Oracle dialect documentation
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 4857
+
+        The Oracle dialect now emits a warning if Oracle version 12.2 or greater is
+        used, and the :paramref:`.create_engine.max_identifier_length` parameter is
+        not set.   The version in this specific case defaults to that of the
+        "compatibility" version set in the Oracle server configuration, not the
+        actual server version.   In version 1.4, the default max_identifier_length
+        for 12.2 or greater will move to 128 characters.  In order to maintain
+        forwards compatibility, applications should set
+        :paramref:`.create_engine.max_identifier_length` to 30 in order to maintain
+        the same length behavior, or to 128 in order to test the upcoming behavior.
+        This length determines among other things how generated constraint names
+        are truncated for statements like ``CREATE CONSTRAINT`` and ``DROP
+        CONSTRAINT``, which means a the new length may produce a name-mismatch
+        against a name that was generated with the old length, impacting database
+        migrations.
+
+        .. seealso::
+
+            :ref:`oracle_max_identifier_lengths` - in the Oracle dialect documentation
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 4863
+
+        Added support for sqlite "URI" connections, which allow for sqlite-specific
+        flags to be passed in the query string such as "read only" for Python
+        sqlite3 drivers that support this.
+
+        .. seealso::
+
+            :ref:`pysqlite_uri_connections`
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 4285
+
+        Fixed unit test regression released in 1.3.8 that would cause failure for
+        Oracle, SQL Server and other non-native ENUM platforms due to new
+        enumeration tests added as part of :ticket:`4285` enum sortability in the
+        unit of work; the enumerations created constraints that were duplicated on
+        name.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4886
+
+        Restored adding cx_Oracle.DATETIME to the setinputsizes() call when a
+        SQLAlchemy :class:`.Date`, :class:`.DateTime` or :class:`.Time` datatype is
+        used, as some complex queries require this to be present.  This was removed
+        in the 1.2 series for arbitrary reasons.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4883
+
+        Added identifier quoting to the schema name applied to the "use" statement
+        which is invoked when a SQL Server multipart schema name is used within  a
+        :class:`.Table` that is being reflected, as well as for :class:`.Inspector`
+        methods such as :meth:`.Inspector.get_table_names`; this accommodates for
+        special characters or spaces in the database name.  Additionally, the "use"
+        statement is not emitted if the current database matches the target owner
+        database name being passed.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4872
+
+        Fixed regression in selectinload loader strategy caused by :ticket:`4775`
+        (released in version 1.3.6) where a many-to-one attribute of None would no
+        longer be populated by the loader.  While this was usually not noticeable
+        due to the lazyloader populating None upon get, it would lead to a detached
+        instance error if the object were detached.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4873
+
+        Passing a plain string expression to :meth:`.Session.query` is deprecated,
+        as all string coercions were removed in :ticket:`4481` and this one should
+        have been included.   The :func:`.literal_column` function may be used to
+        produce a textual column expression.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 4847
+
+        Added an explicit error message for the case when objects passed to
+        :class:`.Table` are not :class:`.SchemaItem` objects, rather than resolving
+        to an attribute error.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4890
+
+        A warning is emitted for a condition in which the :class:`.Session` may
+        implicitly swap an object out of the identity map for another one with the
+        same primary key, detaching the old one, which can be an observed result of
+        load operations which occur within the :meth:`.SessionEvents.after_flush`
+        hook.  The warning is intended to notify the user that some special
+        condition has caused this to happen and that the previous object may not be
+        in the expected state.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4837
+
+        Characters that interfere with "pyformat" or "named" formats in bound
+        parameters, namely ``%, (, )`` and the space character, as well as a few
+        other typically undesirable characters, are stripped early for a
+        :func:`.bindparam` that is using an anonymized name, which is typically
+        generated automatically from a named column which itself includes these
+        characters in its name and does not use a ``.key``, so that they do not
+        interfere either with the SQLAlchemy compiler's use of string formatting or
+        with the driver-level parsing of the parameter, both of which could be
+        demonstrated before the fix.  The change only applies to anonymized
+        parameter names that are generated and consumed internally, not end-user
+        defined names, so the change should have no impact on any existing code.
+        Applies in particular to the psycopg2 driver which does not otherwise quote
+        special parameter names, but also strips leading underscores to suit Oracle
+        (but not yet leading numbers, as some anon parameters are currently
+        entirely numeric/underscore based); Oracle in any case continues to quote
+        parameter names that include special characters.
 
 .. changelog::
     :version: 1.3.8

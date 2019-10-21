@@ -107,15 +107,6 @@ class RelationshipProperty(StrategizedProperty):
 
     _dependency_processor = None
 
-    @util.deprecated_params(
-        extension=(
-            "0.7",
-            ":class:`.AttributeExtension` is deprecated in favor of the "
-            ":class:`.AttributeEvents` listener interface.  The "
-            ":paramref:`.relationship.extension` parameter will be "
-            "removed in a future release.",
-        )
-    )
     def __init__(
         self,
         argument,
@@ -129,7 +120,6 @@ class RelationshipProperty(StrategizedProperty):
         back_populates=None,
         post_update=False,
         cascade=False,
-        extension=None,
         viewonly=False,
         lazy="select",
         collection_class=None,
@@ -414,11 +404,6 @@ class RelationshipProperty(StrategizedProperty):
 
         :param doc:
           docstring which will be applied to the resulting descriptor.
-
-        :param extension:
-          an :class:`.AttributeExtension` instance, or list of extensions,
-          which will be prepended to the list of attribute listeners for
-          the resulting descriptor placed on the class.
 
         :param foreign_keys:
 
@@ -865,7 +850,6 @@ class RelationshipProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.omit_join = omit_join
         self.local_remote_pairs = _local_remote_pairs
-        self.extension = extension
         self.bake_queries = bake_queries
         self.load_on_pending = load_on_pending
         self.comparator_factory = (
@@ -1824,7 +1808,7 @@ class RelationshipProperty(StrategizedProperty):
         class or aliased class tha is referred towards.
 
         """
-        if util.callable(self.argument) and not isinstance(
+        if callable(self.argument) and not isinstance(
             self.argument, (type, mapperlib.Mapper)
         ):
             argument = self.argument()
@@ -1888,7 +1872,7 @@ class RelationshipProperty(StrategizedProperty):
             "remote_side",
         ):
             attr_value = getattr(self, attr)
-            if util.callable(attr_value):
+            if callable(attr_value):
                 setattr(self, attr, attr_value())
 
         # remove "annotations" which are present if mapped class
@@ -2319,11 +2303,11 @@ class JoinCondition(object):
         """
 
         self.primaryjoin = _deep_deannotate(
-            self.primaryjoin, values=("parententity",)
+            self.primaryjoin, values=("parententity", "orm_key")
         )
         if self.secondaryjoin is not None:
             self.secondaryjoin = _deep_deannotate(
-                self.secondaryjoin, values=("parententity",)
+                self.secondaryjoin, values=("parententity", "orm_key")
             )
 
     def _determine_joins(self):

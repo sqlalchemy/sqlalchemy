@@ -449,7 +449,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         manager = attributes.manager_of_class(Foo)
-        manager.deferred_scalar_loader = loader
+        manager.expired_attribute_loader = loader
         attributes.register_attribute(Foo, "a", uselist=False, useobject=False)
         attributes.register_attribute(Foo, "b", uselist=False, useobject=False)
 
@@ -495,7 +495,7 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(MyTest)
         manager = attributes.manager_of_class(MyTest)
-        manager.deferred_scalar_loader = loader
+        manager.expired_attribute_loader = loader
         attributes.register_attribute(
             MyTest, "a", uselist=False, useobject=False
         )
@@ -1088,6 +1088,32 @@ class UtilTest(fixtures.ORMTest):
 
         attributes.del_attribute(f1, "coll")
         assert "coll" not in f1.__dict__
+
+    def test_set_commited_value_none_uselist(self):
+        """test that set_committed_value->None to a uselist generates an
+        empty list """
+
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(
+            Foo, "col_list", uselist=True, useobject=True
+        )
+        attributes.register_attribute(
+            Foo, "col_set", uselist=True, useobject=True, typecallable=set
+        )
+
+        f1 = Foo()
+        attributes.set_committed_value(f1, "col_list", None)
+        eq_(f1.col_list, [])
+
+        attributes.set_committed_value(f1, "col_set", None)
+        eq_(f1.col_set, set())
 
     def test_initiator_arg(self):
         class Foo(object):
@@ -2219,7 +2245,7 @@ class HistoryTest(fixtures.TestBase):
         def scalar_loader(state, toload):
             state.dict["someattr"] = "one"
 
-        state.manager.deferred_scalar_loader = scalar_loader
+        state.manager.expired_attribute_loader = scalar_loader
 
         eq_(self._someattr_history(f), ((), ["one"], ()))
 

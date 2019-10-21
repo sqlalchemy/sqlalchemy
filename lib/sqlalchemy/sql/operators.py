@@ -528,6 +528,12 @@ class ColumnOperators(Operators):
 
             WHERE COL IN (?, ?, ?)
 
+        * A list of tuples may be provided if the comparison is against a
+          :func:`.tuple_` containing multiple expressions::
+
+            from sqlalchemy import tuple_
+            stmt.where(tuple_(col1, col2).in_([(1, 10), (2, 20), (3, 30)]))
+
         * An empty list, e.g.::
 
             stmt.where(column.in_([]))

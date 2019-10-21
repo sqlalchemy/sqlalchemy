@@ -813,6 +813,9 @@ class ReversePKsTest(fixtures.MappedTest):
         session.add(a_editable)
         session.commit()
 
+        # see also much more recent issue #4890 where we add a warning
+        # for almost this same case
+
         # do the switch in both directions -
         # one or the other should raise the error
         # based on platform dictionary ordering

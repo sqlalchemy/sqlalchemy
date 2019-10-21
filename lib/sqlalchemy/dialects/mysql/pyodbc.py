@@ -23,11 +23,23 @@
 """
 
 import re
+import sys
 
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
+from .types import TIME
 from ... import util
 from ...connectors.pyodbc import PyODBCConnector
+from ...sql.sqltypes import Time
+
+
+class _pyodbcTIME(TIME):
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            # pyodbc returns a datetime.time object; no need to convert
+            return value
+
+        return process
 
 
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
@@ -40,15 +52,11 @@ class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
-    supports_unicode_statements = False
+    colspecs = util.update_copy(MySQLDialect.colspecs, {Time: _pyodbcTIME})
+    supports_unicode_statements = True
     execution_ctx_cls = MySQLExecutionContext_pyodbc
 
     pyodbc_driver_name = "MySQL"
-
-    def __init__(self, **kw):
-        # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
-        kw.setdefault("convert_unicode", True)
-        super(MySQLDialect_pyodbc, self).__init__(**kw)
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
@@ -78,6 +86,29 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             return int(c)
         else:
             return None
+
+    def on_connect(self):
+        super_ = super(MySQLDialect_pyodbc, self).on_connect()
+
+        def on_connect(conn):
+            if super_ is not None:
+                super_(conn)
+
+            # declare Unicode encoding for pyodbc as per
+            #   https://github.com/mkleehammer/pyodbc/wiki/Unicode
+            pyodbc_SQL_CHAR = 1  # pyodbc.SQL_CHAR
+            pyodbc_SQL_WCHAR = -8  # pyodbc.SQL_WCHAR
+            if sys.version_info.major > 2:
+                conn.setdecoding(pyodbc_SQL_CHAR, encoding='utf-8')
+                conn.setdecoding(pyodbc_SQL_WCHAR, encoding='utf-8')
+                conn.setencoding(encoding='utf-8')
+            else:
+                conn.setdecoding(pyodbc_SQL_CHAR, encoding='utf-8')
+                conn.setdecoding(pyodbc_SQL_WCHAR, encoding='utf-8')
+                conn.setencoding(str, encoding='utf-8')
+                conn.setencoding(unicode, encoding='utf-8')
+
+        return on_connect
 
 
 dialect = MySQLDialect_pyodbc

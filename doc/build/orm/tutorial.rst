@@ -783,6 +783,13 @@ Here's a rundown of some of the most common operators used in
         session.query(User.name).filter(User.name.like('%ed%'))
     ))
 
+    # use tuple_() for composite (multi-column) queries
+    from sqlalchemy import tuple_
+    query.filter(
+        tuple_(User.name, User.nickname).\
+        in_([('ed', 'edsnickname'), ('wendy', 'windy')])
+    )
+
 * :meth:`NOT IN <.ColumnOperators.notin_>`::
 
     query.filter(~User.name.in_(['ed', 'wendy', 'jack']))
@@ -834,6 +841,8 @@ Here's a rundown of some of the most common operators used in
     or ``CONTAINS`` function; its behavior will vary by backend and is not
     available on some backends such as SQLite.
 
+.. _orm_tutorial_query_returning:
+
 Returning Lists and Scalars
 ---------------------------
 
@@ -856,6 +865,21 @@ database results.  Here's a brief tour:
       ('%ed',)
       {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>,
             <User(name='fred', fullname='Fred Flintstone', nickname='freddy')>]
+
+  .. warning::
+
+        When the :class:`.Query` object returns lists of ORM-mapped objects
+        such as the ``User`` object above, the entries are **deduplicated**
+        based on primary key, as the results are interpreted from the SQL
+        result set.  That is, if SQL query returns a row with ``id=7`` twice,
+        you would only get a single ``User(id=7)`` object back in the result
+        list.  This does not apply to the case when individual columns are
+        queried.
+
+        .. seealso::
+
+            :ref:`faq_query_deduplicating`
+
 
 * :meth:`~.Query.first()` applies a limit of one and returns
   the first result as a scalar:

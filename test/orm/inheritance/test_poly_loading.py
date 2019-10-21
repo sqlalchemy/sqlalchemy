@@ -108,7 +108,7 @@ class BaseAndSubFixture(object):
                         "a.type AS a_type, "
                         "asub.asubdata AS asub_asubdata FROM a JOIN asub "
                         "ON a.id = asub.id "
-                        "WHERE a.id IN ([EXPANDING_primary_keys]) "
+                        "WHERE a.id IN ([POSTCOMPILE_primary_keys]) "
                         "ORDER BY a.id",
                         {"primary_keys": [2]},
                     ),
@@ -121,13 +121,13 @@ class BaseAndSubFixture(object):
                         "SELECT c.a_sub_id AS c_a_sub_id, "
                         "c.id AS c_id "
                         "FROM c WHERE c.a_sub_id "
-                        "IN ([EXPANDING_primary_keys]) ORDER BY c.a_sub_id",
+                        "IN ([POSTCOMPILE_primary_keys]) ORDER BY c.a_sub_id",
                         {"primary_keys": [2]},
                     ),
                 ),
                 CompiledSQL(
                     "SELECT b.a_id AS b_a_id, b.id AS b_id FROM b "
-                    "WHERE b.a_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE b.a_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY b.a_id",
                     {"primary_keys": [1, 2]},
                 ),
@@ -208,7 +208,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                     "engineers.primary_language AS engineers_primary_language "
                     "FROM people JOIN engineers "
                     "ON people.person_id = engineers.person_id "
-                    "WHERE people.person_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE people.person_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY people.person_id",
                     {"primary_keys": [1, 2, 5]},
                 ),
@@ -220,7 +220,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                     "managers.manager_name AS managers_manager_name "
                     "FROM people JOIN managers "
                     "ON people.person_id = managers.person_id "
-                    "WHERE people.person_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE people.person_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY people.person_id",
                     {"primary_keys": [3, 4]},
                 ),
@@ -254,7 +254,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 "people.person_id AS people_person_id, "
                 "people.name AS people_name, people.type AS people_type "
                 "FROM people WHERE people.company_id "
-                "IN ([EXPANDING_primary_keys]) "
+                "IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY people.company_id, people.person_id",
                 {"primary_keys": [1, 2]},
             ),
@@ -268,7 +268,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                     "managers.manager_name AS managers_manager_name "
                     "FROM people JOIN managers "
                     "ON people.person_id = managers.person_id "
-                    "WHERE people.person_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE people.person_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY people.person_id",
                     {"primary_keys": [3, 4]},
                 ),
@@ -282,7 +282,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                     "engineers.primary_language AS engineers_primary_language "
                     "FROM people JOIN engineers "
                     "ON people.person_id = engineers.person_id "
-                    "WHERE people.person_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE people.person_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY people.person_id",
                     {"primary_keys": [1, 2, 5]},
                 ),
@@ -337,7 +337,7 @@ class TestGeometries(GeometryFixtureBase):
                     "c.c_data AS c_c_data, c.e_data AS c_e_data, "
                     "c.d_data AS c_d_data "
                     "FROM a JOIN c ON a.id = c.id "
-                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    "WHERE a.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a.id",
                     [{"primary_keys": [1, 2]}],
                 ),
                 CompiledSQL(
@@ -345,7 +345,7 @@ class TestGeometries(GeometryFixtureBase):
                     "c.c_data AS c_c_data, "
                     "c.d_data AS c_d_data, c.e_data AS c_e_data "
                     "FROM a JOIN c ON a.id = c.id "
-                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    "WHERE a.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a.id",
                     [{"primary_keys": [1, 2]}],
                 ),
             ),
@@ -392,7 +392,7 @@ class TestGeometries(GeometryFixtureBase):
                     "c.c_data AS c_c_data, c.e_data AS c_e_data, "
                     "c.d_data AS c_d_data "
                     "FROM a JOIN c ON a.id = c.id "
-                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    "WHERE a.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a.id",
                     [{"primary_keys": [1, 2]}],
                 ),
                 CompiledSQL(
@@ -400,7 +400,7 @@ class TestGeometries(GeometryFixtureBase):
                     "c.c_data AS c_c_data, c.d_data AS c_d_data, "
                     "c.e_data AS c_e_data "
                     "FROM a JOIN c ON a.id = c.id "
-                    "WHERE a.id IN ([EXPANDING_primary_keys]) ORDER BY a.id",
+                    "WHERE a.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a.id",
                     [{"primary_keys": [1, 2]}],
                 ),
             ),
@@ -468,7 +468,7 @@ class TestGeometries(GeometryFixtureBase):
                     "e.id AS e_id, e.e_data AS e_e_data FROM a JOIN c "
                     "ON a.id = c.id LEFT OUTER JOIN d ON c.id = d.id "
                     "LEFT OUTER JOIN e ON c.id = e.id) AS poly "
-                    "WHERE poly.a_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE poly.a_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY poly.a_id",
                     [{"primary_keys": [1, 2]}],
                 ),
@@ -484,7 +484,7 @@ class TestGeometries(GeometryFixtureBase):
                     "e.e_data AS e_e_data FROM a JOIN c ON a.id = c.id "
                     "LEFT OUTER JOIN d ON c.id = d.id "
                     "LEFT OUTER JOIN e ON c.id = e.id) AS poly "
-                    "WHERE poly.a_id IN ([EXPANDING_primary_keys]) "
+                    "WHERE poly.a_id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY poly.a_id",
                     [{"primary_keys": [1, 2]}],
                 ),
@@ -621,7 +621,7 @@ class LoaderOptionsTest(
                     "child.type AS child_type "
                     "FROM child JOIN child_subclass1 "
                     "ON child.id = child_subclass1.id "
-                    "WHERE child.id IN ([EXPANDING_primary_keys]) "
+                    "WHERE child.id IN ([POSTCOMPILE_primary_keys]) "
                     "ORDER BY child.id",
                     [{"primary_keys": [1]}],
                 ),
@@ -671,7 +671,7 @@ class LoaderOptionsTest(
                 "ON child.id = child_subclass1.id "
                 "LEFT OUTER JOIN other AS other_1 "
                 "ON child_subclass1.id = other_1.child_subclass_id "
-                "WHERE child.id IN ([EXPANDING_primary_keys]) "
+                "WHERE child.id IN ([POSTCOMPILE_primary_keys]) "
                 "ORDER BY child.id",
                 [{"primary_keys": [1]}],
             ),

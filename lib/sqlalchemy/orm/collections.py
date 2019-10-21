@@ -936,7 +936,7 @@ def _locate_roles_and_methods(cls):
 
     for supercls in cls.__mro__:
         for name, method in vars(supercls).items():
-            if not util.callable(method):
+            if not callable(method):
                 continue
 
             # note role declarations

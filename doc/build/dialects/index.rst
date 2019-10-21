@@ -25,7 +25,7 @@ Included Dialects
 Included, but not currently supported dialects
 ----------------------------------------------
 
-The following dialects have implementations wtihin SQLAlchemy however are not
+The following dialects have implementations within SQLAlchemy, but they are not
 part of continuous integration testing nor are they actively developed.
 These dialects may be removed in future major releases.
 
@@ -46,6 +46,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 
 * `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix.
 * `PyHive <https://github.com/dropbox/PyHive#sqlalchemy>`_ - driver for `Apache Hive <https://hive.apache.org/>`_ and `Presto <https://prestodb.github.io/>`_.
+* `pybigquery <https://github.com/mxmzdlv/pybigquery/>`_ - driver for Google BigQuery.
 * `sqlalchemy-redshift <https://pypi.python.org/pypi/sqlalchemy-redshift>`_ - driver for Amazon Redshift, adapts
   the existing PostgreSQL/psycopg2 driver.
 * `sqlalchemy-drill <https://github.com/JohnOmernik/sqlalchemy-drill>`_ - driver for Apache Drill.
@@ -58,3 +59,5 @@ Currently maintained external dialect projects for SQLAlchemy include:
 * `sqlalchemy-tds <https://github.com/m32/sqlalchemy-tds>`_ - driver for MS-SQL,
   on top of `python-tds <https://github.com/denisenkom/pytds>`_.
 * `crate <https://github.com/crate/crate-python>`_ - driver for `CrateDB <https://crate.io/>`_.
+* `sqlalchemy-access <https://pypi.org/project/sqlalchemy-access/>`_ - driver for Microsoft Access,
+  on top of `pyodbc <https://pypi.org/project/pyodbc/>`_.

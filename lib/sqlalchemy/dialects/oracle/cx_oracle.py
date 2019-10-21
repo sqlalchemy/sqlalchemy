@@ -429,9 +429,16 @@ class _OracleDate(sqltypes.Date):
         return process
 
 
+# TODO: the names used across CHAR / VARCHAR / NCHAR / NVARCHAR
+# here are inconsistent and not very good
 class _OracleChar(sqltypes.CHAR):
     def get_dbapi_type(self, dbapi):
         return dbapi.FIXED_CHAR
+
+
+class _OracleNChar(sqltypes.NCHAR):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.FIXED_NCHAR
 
 
 class _OracleUnicodeStringNCHAR(oracle.NVARCHAR2):
@@ -518,13 +525,13 @@ class OracleCompiler_cx_oracle(OracleCompiler):
             quote is True
             or quote is not False
             and self.preparer._bindparam_requires_quotes(name)
+            and not kw.get("post_compile", False)
         ):
-            if kw.get("expanding", False):
-                raise exc.CompileError(
-                    "Can't use expanding feature with parameter name "
-                    "%r on Oracle; it requires quoting which is not supported "
-                    "in this context." % name
-                )
+            # interesting to note about expanding parameters - since the
+            # new parameters take the form <paramname>_<int>, at least if
+            # they are originally formed from reserved words, they no longer
+            # need quoting :).    names that include illegal characters
+            # won't work however.
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
             return OracleCompiler.bindparam_string(self, quoted_name, **kw)
@@ -722,12 +729,12 @@ class OracleDialect_cx_oracle(OracleDialect):
         sqltypes.String: _OracleString,
         sqltypes.UnicodeText: _OracleUnicodeTextCLOB,
         sqltypes.CHAR: _OracleChar,
+        sqltypes.NCHAR: _OracleNChar,
         sqltypes.Enum: _OracleEnum,
         oracle.LONG: _OracleLong,
         oracle.RAW: _OracleRaw,
         sqltypes.Unicode: _OracleUnicodeStringCHAR,
         sqltypes.NVARCHAR: _OracleUnicodeStringNCHAR,
-        sqltypes.NCHAR: _OracleUnicodeStringNCHAR,
         oracle.NCLOB: _OracleUnicodeTextNCLOB,
         oracle.ROWID: _OracleRowid,
     }
@@ -782,6 +789,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 )
 
             self._include_setinputsizes = {
+                cx_Oracle.DATETIME,
                 cx_Oracle.NCLOB,
                 cx_Oracle.CLOB,
                 cx_Oracle.LOB,

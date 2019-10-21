@@ -418,3 +418,86 @@ class ReflectHugeViewTest(fixtures.TestBase):
         inspector = Inspector.from_engine(testing.db)
         view_def = inspector.get_view_definition("huge_named_view")
         eq_(view_def, self.view_str)
+
+
+class OwnerPlusDBTest(fixtures.TestBase):
+    def test_owner_database_pairs_dont_use_for_same_db(self):
+        dialect = mssql.dialect()
+
+        identifier = "my_db.some_schema"
+        schema, owner = base._owner_plus_db(dialect, identifier)
+
+        mock_connection = mock.Mock(
+            dialect=dialect, scalar=mock.Mock(return_value="my_db")
+        )
+        mock_lambda = mock.Mock()
+        base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")
+        eq_(mock_connection.mock_calls, [mock.call.scalar("select db_name()")])
+        eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
+
+    def test_owner_database_pairs_switch_for_different_db(self):
+        dialect = mssql.dialect()
+
+        identifier = "my_other_db.some_schema"
+        schema, owner = base._owner_plus_db(dialect, identifier)
+
+        mock_connection = mock.Mock(
+            dialect=dialect, scalar=mock.Mock(return_value="my_db")
+        )
+        mock_lambda = mock.Mock()
+        base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")
+        eq_(
+            mock_connection.mock_calls,
+            [
+                mock.call.scalar("select db_name()"),
+                mock.call.execute("use my_other_db"),
+                mock.call.execute("use my_db"),
+            ],
+        )
+        eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
+
+    def test_owner_database_pairs(self):
+        dialect = mssql.dialect()
+
+        for identifier, expected_schema, expected_owner, use_stmt in [
+            ("foo", None, "foo", "use foo"),
+            ("foo.bar", "foo", "bar", "use foo"),
+            ("Foo.Bar", "Foo", "Bar", "use [Foo]"),
+            ("[Foo.Bar]", None, "Foo.Bar", "use [Foo].[Bar]"),
+            ("[Foo.Bar].[bat]", "Foo.Bar", "bat", "use [Foo].[Bar]"),
+            (
+                "[foo].]do something; select [foo",
+                "foo",
+                "do something; select foo",
+                "use foo",
+            ),
+            (
+                "something; select [foo].bar",
+                "something; select foo",
+                "bar",
+                "use [something; select foo]",
+            ),
+        ]:
+            schema, owner = base._owner_plus_db(dialect, identifier)
+
+            eq_(owner, expected_owner)
+            eq_(schema, expected_schema)
+
+            mock_connection = mock.Mock(
+                dialect=dialect,
+                scalar=mock.Mock(return_value="Some ] Database"),
+            )
+            mock_lambda = mock.Mock()
+            base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")
+            if schema is None:
+                eq_(mock_connection.mock_calls, [])
+            else:
+                eq_(
+                    mock_connection.mock_calls,
+                    [
+                        mock.call.scalar("select db_name()"),
+                        mock.call.execute(use_stmt),
+                        mock.call.execute("use [Some  Database]"),
+                    ],
+                )
+            eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])

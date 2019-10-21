@@ -21,8 +21,10 @@ from . import exc as orm_exc
 from . import path_registry
 from . import strategy_options
 from .base import _DEFER_FOR_STATE
+from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .util import _none_set
+from .util import aliased
 from .util import state_str
 from .. import exc as sa_exc
 from .. import util
@@ -358,11 +360,6 @@ def _instance_processor(
     # call overhead.  _instance() is the most
     # performance-critical section in the whole ORM.
 
-    pk_cols = mapper.primary_key
-
-    if adapter:
-        pk_cols = [adapter.columns[c] for c in pk_cols]
-
     identity_class = mapper._identity_class
 
     populators = collections.defaultdict(list)
@@ -388,6 +385,8 @@ def _instance_processor(
                 # searching in the result to see if the column might
                 # be present in some unexpected way.
                 populators["expire"].append((prop.key, False))
+            elif col is _RAISE_FOR_STATE:
+                populators["new"].append((prop.key, prop._raise_column_loader))
             else:
                 getter = None
                 # the "adapter" can be here via different paths,
@@ -488,6 +487,12 @@ def _instance_processor(
     else:
         refresh_identity_key = None
 
+        pk_cols = mapper.primary_key
+
+        if adapter:
+            pk_cols = [adapter.columns[c] for c in pk_cols]
+        tuple_getter = result._tuple_getter(pk_cols, True)
+
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
     else:
@@ -507,11 +512,7 @@ def _instance_processor(
         else:
             # look at the row, see if that identity is in the
             # session, or we have to create a new one
-            identitykey = (
-                identity_class,
-                tuple([row[column] for column in pk_cols]),
-                identity_token,
-            )
+            identitykey = (identity_class, tuple_getter(row), identity_token)
 
             instance = session_identity_map.get(identitykey)
 
@@ -633,6 +634,19 @@ def _instance_processor(
     if mapper.polymorphic_map and not _polymorphic_from and not refresh_state:
         # if we are doing polymorphic, dispatch to a different _instance()
         # method specific to the subclass mapper
+        def ensure_no_pk(row):
+            identitykey = (
+                identity_class,
+                tuple([row[column] for column in pk_cols]),
+                identity_token,
+            )
+            if not is_not_primary_key(identitykey[1]):
+                raise sa_exc.InvalidRequestError(
+                    "Row with identity key %s can't be loaded into an "
+                    "object; the polymorphic discriminator column '%s' is "
+                    "NULL" % (identitykey, polymorphic_discriminator)
+                )
+
         _instance = _decorate_polymorphic_switch(
             _instance,
             context,
@@ -641,6 +655,7 @@ def _instance_processor(
             path,
             polymorphic_discriminator,
             adapter,
+            ensure_no_pk,
         )
 
     return _instance
@@ -804,6 +819,7 @@ def _decorate_polymorphic_switch(
     path,
     polymorphic_discriminator,
     adapter,
+    ensure_no_pk,
 ):
     if polymorphic_discriminator is not None:
         polymorphic_on = polymorphic_discriminator
@@ -837,13 +853,19 @@ def _decorate_polymorphic_switch(
 
     polymorphic_instances = util.PopulateDict(configure_subclass_mapper)
 
+    getter = result._getter(polymorphic_on)
+
     def polymorphic_instance(row):
-        discriminator = row[polymorphic_on]
+        discriminator = getter(row)
         if discriminator is not None:
             _instance = polymorphic_instances[discriminator]
             if _instance:
                 return _instance(row)
-        return instance_fn(row)
+            else:
+                return instance_fn(row)
+        else:
+            ensure_no_pk(row)
+            return None
 
     return polymorphic_instance
 
@@ -937,9 +959,10 @@ def load_scalar_attributes(mapper, state, attribute_names):
         # by default
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
+            wp = aliased(mapper, statement)
             result = load_on_ident(
-                session.query(mapper)
-                .options(strategy_options.Load(mapper).undefer("*"))
+                session.query(wp)
+                .options(strategy_options.Load(wp).undefer("*"))
                 .from_statement(statement),
                 None,
                 only_load_props=attribute_names,

@@ -57,7 +57,7 @@ def expect(role, element, **kw):
     else:
         resolved = element
 
-    if issubclass(resolved.__class__, impl._role_class):
+    if impl._role_class in resolved.__class__.__mro__:
         if impl._post_coercion:
             resolved = impl._post_coercion(resolved, **kw)
         return resolved
@@ -102,13 +102,16 @@ class RoleImpl(object):
 
     def _resolve_for_clause_element(self, element, argname=None, **kw):
         original_element = element
-        is_clause_element = False
+        is_clause_element = hasattr(element, "__clause_element__")
 
-        while hasattr(element, "__clause_element__") and not isinstance(
-            element, (elements.ClauseElement, schema.SchemaItem)
-        ):
-            element = element.__clause_element__()
-            is_clause_element = True
+        if is_clause_element:
+            while not isinstance(
+                element, (elements.ClauseElement, schema.SchemaItem)
+            ):
+                try:
+                    element = element.__clause_element__()
+                except AttributeError:
+                    break
 
         if not is_clause_element:
             if self._use_inspection:
@@ -294,11 +297,11 @@ class BinaryElementImpl(
 
     def _post_coercion(self, resolved, expr, **kw):
         if (
-            isinstance(resolved, elements.BindParameter)
+            isinstance(resolved, (elements.Grouping, elements.BindParameter))
             and resolved.type._isnull
+            and not expr.type._isnull
         ):
-            resolved = resolved._clone()
-            resolved.type = expr.type
+            resolved = resolved._with_binary_element_type(expr.type)
         return resolved
 
 
@@ -360,6 +363,7 @@ class InElementImpl(RoleImpl, roles.InElementRole):
                 element = element._with_expanding_in_types(
                     [elem.type for elem in expr]
                 )
+
             return element
         else:
             return element

@@ -62,6 +62,7 @@ from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.sql import column
 from sqlalchemy.sql import ddl
+from sqlalchemy.sql import elements
 from sqlalchemy.sql import null
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
@@ -849,7 +850,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         t.insert().values(data=coerce_fn("d1", MyType)).execute()
 
         eq_(
-            select([t.c.data, coerce_fn(t.c.data, MyType)])
+            select([t.c.data.label("x"), coerce_fn(t.c.data, MyType)])
             .alias()
             .select()
             .execute()
@@ -2363,6 +2364,20 @@ class ExpressionTest(
             ],
         )
 
+    def test_grouped_bind_adapt(self):
+        expr = test_table.c.atimestamp == elements.Grouping(
+            bindparam("thedate")
+        )
+        eq_(expr.right.type._type_affinity, Date)
+        eq_(expr.right.element.type._type_affinity, Date)
+
+        expr = test_table.c.atimestamp == elements.Grouping(
+            elements.Grouping(bindparam("thedate"))
+        )
+        eq_(expr.right.type._type_affinity, Date)
+        eq_(expr.right.element.type._type_affinity, Date)
+        eq_(expr.right.element.element.type._type_affinity, Date)
+
     def test_bind_adapt_update(self):
         bp = bindparam("somevalue")
         stmt = test_table.update().values(avalue=bp)
@@ -2881,6 +2896,18 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row["native_interval"], None)
         eq_(row["native_interval_args"], None)
         eq_(row["non_native_interval"], None)
+
+
+class IntegerTest(fixtures.TestBase):
+    def test_integer_literal_processor(self):
+        typ = Integer()
+        eq_(typ._cached_literal_processor(testing.db.dialect)(5), "5")
+
+        assert_raises(
+            ValueError,
+            typ._cached_literal_processor(testing.db.dialect),
+            "notanint",
+        )
 
 
 class BooleanTest(

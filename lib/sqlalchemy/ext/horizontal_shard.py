@@ -86,40 +86,6 @@ class ShardedQuery(Query):
 
             return ShardedResult(results, rowcount)
 
-    def _identity_lookup(
-        self,
-        mapper,
-        primary_key_identity,
-        identity_token=None,
-        lazy_loaded_from=None,
-        **kw
-    ):
-        """override the default Query._identity_lookup method so that we
-        search for a given non-token primary key identity across all
-        possible identity tokens (e.g. shard ids).
-
-        """
-
-        if identity_token is not None:
-            return super(ShardedQuery, self)._identity_lookup(
-                mapper,
-                primary_key_identity,
-                identity_token=identity_token,
-                **kw
-            )
-        else:
-            q = self.session.query(mapper)
-            if lazy_loaded_from:
-                q = q._set_lazyload_from(lazy_loaded_from)
-            for shard_id in self.id_chooser(q, primary_key_identity):
-                obj = super(ShardedQuery, self)._identity_lookup(
-                    mapper, primary_key_identity, identity_token=shard_id, **kw
-                )
-                if obj is not None:
-                    return obj
-
-            return None
-
     def _get_impl(self, primary_key_identity, db_load_fn, identity_token=None):
         """Override the default Query._get_impl() method so that we emit
         a query to the DB for each possible identity token, if we don't
@@ -217,6 +183,47 @@ class ShardedSession(Session):
         if shards is not None:
             for k in shards:
                 self.bind_shard(k, shards[k])
+
+    def _identity_lookup(
+        self,
+        mapper,
+        primary_key_identity,
+        identity_token=None,
+        lazy_loaded_from=None,
+        **kw
+    ):
+        """override the default :meth:`.Session._identity_lookup` method so that we
+        search for a given non-token primary key identity across all
+        possible identity tokens (e.g. shard ids).
+
+        .. versionchanged:: 1.4  Moved :meth:`.Session._identity_lookup` from
+           the :class:`.Query` object to the :class:`.Session`.
+
+        """
+
+        if identity_token is not None:
+            return super(ShardedSession, self)._identity_lookup(
+                mapper,
+                primary_key_identity,
+                identity_token=identity_token,
+                **kw
+            )
+        else:
+            q = self.query(mapper)
+            if lazy_loaded_from:
+                q = q._set_lazyload_from(lazy_loaded_from)
+            for shard_id in self.id_chooser(q, primary_key_identity):
+                obj = super(ShardedSession, self)._identity_lookup(
+                    mapper,
+                    primary_key_identity,
+                    identity_token=shard_id,
+                    lazy_loaded_from=lazy_loaded_from,
+                    **kw
+                )
+                if obj is not None:
+                    return obj
+
+            return None
 
     def _choose_shard_and_assign(self, mapper, instance, **kw):
         if instance is not None:

@@ -43,13 +43,18 @@ def _from_objects(*elements):
     return itertools.chain(*[element._from_objects for element in elements])
 
 
-@util.decorator
-def _generative(fn, *args, **kw):
-    """Mark a method as generative."""
+def _generative(fn):
+    @util.decorator
+    def _generative(fn, *args, **kw):
+        """Mark a method as generative."""
 
-    self = args[0]._generate()
-    fn(self, *args[1:], **kw)
-    return self
+        self = args[0]._generate()
+        fn(self, *args[1:], **kw)
+        return self
+
+    decorated = _generative(fn)
+    decorated.non_generative = fn
+    return decorated
 
 
 def _clone(element, **kw):

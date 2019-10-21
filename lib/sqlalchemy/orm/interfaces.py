@@ -9,11 +9,9 @@
 
 Contains various base classes used throughout the ORM.
 
-Defines some key base classes prominent within the internals,
-as well as the now-deprecated ORM extension classes.
+Defines some key base classes prominent within the internals.
 
-Other than the deprecated extensions, this module and the
-classes within are mostly private, though some attributes
+This module and the classes within are mostly private, though some attributes
 are exposed when inspecting mappings.
 
 """
@@ -40,11 +38,7 @@ from .. import util
 from ..sql import operators
 
 
-# imported later
-MapperExtension = SessionExtension = AttributeExtension = None
-
 __all__ = (
-    "AttributeExtension",
     "EXT_CONTINUE",
     "EXT_STOP",
     "EXT_SKIP",
@@ -53,11 +47,9 @@ __all__ = (
     "MANYTOONE",
     "NOT_EXTENSION",
     "LoaderStrategy",
-    "MapperExtension",
     "MapperOption",
     "MapperProperty",
     "PropComparator",
-    "SessionExtension",
     "StrategizedProperty",
 )
 
@@ -363,6 +355,7 @@ class PropComparator(operators.ColumnOperators):
     __slots__ = "prop", "property", "_parententity", "_adapt_to_entity"
 
     def __init__(self, prop, parentmapper, adapt_to_entity=None):
+        # type: (MapperProperty, Mapper, Optional(AliasedInsp))
         self.prop = self.property = prop
         self._parententity = adapt_to_entity or parentmapper
         self._adapt_to_entity = adapt_to_entity
@@ -370,10 +363,15 @@ class PropComparator(operators.ColumnOperators):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def _query_clause_element(self):
-        return self.__clause_element__()
-
     def _bulk_update_tuples(self, value):
+        # type: (ColumnOperators) -> List[tuple[ColumnOperators, Any]]
+        """Receive a SQL expression that represents a value in the SET
+        clause of an UPDATE statement.
+
+        Return a tuple that can be passed to a :class:`.Update` construct.
+
+        """
+
         return [(self.__clause_element__(), value)]
 
     def adapt_to_entity(self, adapt_to_entity):
@@ -540,9 +538,10 @@ class StrategizedProperty(MapperProperty):
             return self._strategies[key]
         except KeyError:
             cls = self._strategy_lookup(self, *key)
-            self._strategies[key] = self._strategies[cls] = strategy = cls(
-                self, key
-            )
+            # this previously was setting self._strategies[cls], that's
+            # a bad idea; should use strategy key at all times because every
+            # strategy has multiple keys at this point
+            self._strategies[key] = strategy = cls(self, key)
             return strategy
 
     def setup(self, context, query_entity, path, adapter, **kwargs):

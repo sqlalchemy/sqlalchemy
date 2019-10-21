@@ -25,7 +25,7 @@ which affect the behavior of the dialect regardless of driver in use.
 * ``optimize_limits`` - defaults to ``False``. see the section on
   LIMIT/OFFSET.
 
-* ``use_binds_for_limits`` - defaults to ``True``.  see the section on
+* ``use_binds_for_limits`` - deprecated.  see the section on
   LIMIT/OFFSET.
 
 Auto Increment Behavior
@@ -67,34 +67,132 @@ against data dictionary data received from Oracle, so unless identifier names
 have been truly created as case sensitive (i.e. using quoted names), all
 lowercase names should be used on the SQLAlchemy side.
 
+.. _oracle_max_identifier_lengths:
+
+Max Identifier Lengths
+----------------------
+
+Oracle has changed the default max identifier length as of Oracle Server
+version 12.2.   Prior to this version, the length was 30, and for 12.2 and
+greater it is now 128.   This change impacts SQLAlchemy in the area of
+generated SQL label names as well as the generation of constraint names,
+particularly in the case where the constraint naming convention feature
+described at :ref:`constraint_naming_conventions` is being used.
+
+To assist with this change and others, Oracle includes the concept of a
+"compatibility" version, which is a version number that is independent of the
+actual server version in order to assist with migration of Oracle databases,
+and may be configured within the Oracle server itself. This compatibility
+version is retrieved using the query  ``SELECT value FROM v$parameter WHERE
+name = 'compatible';``.   The SQLAlchemy Oracle dialect, when tasked with
+determining the default max identifier length, will attempt to use this query
+upon first connect in order to determine the effective compatibility version of
+the server, which determines what the maximum allowed identifier length is for
+the server.  If the table is not available, the  server version information is
+used instead.
+
+As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialect
+is 128 characters.  Upon first connect, the compatibility version is detected
+and if it is less than Oracle version 12.2, the max identifier length is
+changed to be 30 characters.  In all cases, setting the
+:paramref:`.create_engine.max_identifier_length` parameter will bypass this
+change and the value given will be used as is::
+
+    engine = create_engine(
+        "oracle+cx_oracle://scott:tiger@oracle122",
+        max_identifier_length=30)
+
+The maximum identifier length comes into play both when generating anonymized
+SQL labels in SELECT statements, but more crucially when generating constraint
+names from a naming convention.  It is this area that has created the need for
+SQLAlchemy to change this default conservatively.   For example, the following
+naming convention produces two very different constraint names based on the
+identifier length::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Index
+    from sqlalchemy import Integer
+    from sqlalchemy import MetaData
+    from sqlalchemy import Table
+    from sqlalchemy.dialects import oracle
+    from sqlalchemy.schema import CreateIndex
+
+    m = MetaData(naming_convention={"ix": "ix_%(column_0N_name)s"})
+
+    t = Table(
+        "t",
+        m,
+        Column("some_column_name_1", Integer),
+        Column("some_column_name_2", Integer),
+        Column("some_column_name_3", Integer),
+    )
+
+    ix = Index(
+        None,
+        t.c.some_column_name_1,
+        t.c.some_column_name_2,
+        t.c.some_column_name_3,
+    )
+
+    oracle_dialect = oracle.dialect(max_identifier_length=30)
+    print(CreateIndex(ix).compile(dialect=oracle_dialect))
+
+With an identifier length of 30, the above CREATE INDEX looks like::
+
+    CREATE INDEX ix_some_column_name_1s_70cd ON t
+    (some_column_name_1, some_column_name_2, some_column_name_3)
+
+However with length=128, it becomes::
+
+    CREATE INDEX ix_some_column_name_1some_column_name_2some_column_name_3 ON t
+    (some_column_name_1, some_column_name_2, some_column_name_3)
+
+Applications which have run versions of SQLAlchemy prior to 1.4 on an  Oracle
+server version 12.2 or greater are therefore subject to the scenario of a
+database migration that wishes to "DROP CONSTRAINT" on a name that was
+previously generated with the shorter length.  This migration will fail when
+the identifier length is changed without the name of the index or constraint
+first being adjusted.  Such applications are strongly advised to make use of
+:paramref:`.create_engine.max_identifier_length` in order to maintain control
+of the generation of truncated names, and to fully review and test all database
+migrations in a staging environment when changing this value to ensure that the
+impact of this change has been mitigated.
+
+.. versionchanged:: 1.4 the default max_identifier_length for Oracle is 128
+   characters, which is adjusted down to 30 upon first connect if an older
+   version of Oracle server (compatibility version < 12.2) is detected.
+
 
 LIMIT/OFFSET Support
 --------------------
 
-Oracle has no support for the LIMIT or OFFSET keywords.  SQLAlchemy uses
-a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology
-is taken from
-http://www.oracle.com/technetwork/issue-archive/2006/06-sep/o56asktom-086197.html .
+Oracle has no direct support for LIMIT and OFFSET until version 12c.
+To achieve this behavior across all widely used versions of Oracle starting
+with the 8 series, SQLAlchemy currently makes use of ROWNUM to achieve
+LIMIT/OFFSET; the exact methodology is taken from
+https://blogs.oracle.com/oraclemagazine/on-rownum-and-limiting-results .
 
-There are two options which affect its behavior:
+There is currently a single option to affect its behavior:
 
-* the "FIRST ROWS()" optimization keyword is not used by default.  To enable
+* the "FIRST_ROWS()" optimization keyword is not used by default.  To enable
   the usage of this optimization directive, specify ``optimize_limits=True``
   to :func:`.create_engine`.
-* the values passed for the limit/offset are sent as bound parameters.   Some
-  users have observed that Oracle produces a poor query plan when the values
-  are sent as binds and not rendered literally.   To render the limit/offset
-  values literally within the SQL statement, specify
-  ``use_binds_for_limits=False`` to :func:`.create_engine`.
 
-Some users have reported better performance when the entirely different
-approach of a window query is used, i.e. ROW_NUMBER() OVER (ORDER BY), to
-provide LIMIT/OFFSET (note that the majority of users don't observe this).
-To suit this case the method used for LIMIT/OFFSET can be replaced entirely.
-See the recipe at
-http://www.sqlalchemy.org/trac/wiki/UsageRecipes/WindowFunctionsByDefault
-which installs a select compiler that overrides the generation of limit/offset
-with a window function.
+.. versionchanged:: 1.4
+    The Oracle dialect renders limit/offset integer values using a "post
+    compile" scheme which renders the integer directly before passing the
+    statement to the cursor for execution.   The ``use_binds_for_limits`` flag
+    no longer has an effect.
+
+    .. seealso::
+
+        :ref:`change_4808`.
+
+Support for changing the row number strategy, which would include one that
+makes use of the ``row_number()`` window function as well as one that makes
+use of the Oracle 12c  "FETCH FIRST N ROW / OFFSET N ROWS" keywords may be
+added in a future release.
+
 
 .. _oracle_returning:
 
@@ -348,6 +446,7 @@ columns for non-unique indexes, all but the last column for unique indexes).
 from itertools import groupby
 import re
 
+from ... import exc
 from ... import schema as sa_schema
 from ... import sql
 from ... import types as sqltypes
@@ -364,6 +463,7 @@ from ...types import CHAR
 from ...types import CLOB
 from ...types import FLOAT
 from ...types import INTEGER
+from ...types import Integer
 from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import TIMESTAMP
@@ -855,17 +955,9 @@ class OracleCompiler(compiler.SQLCompiler):
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
             if limit_clause is not None or offset_clause is not None:
-                # See http://www.oracle.com/technology/oramag/oracle/06-sep/\
-                # o56asktom.html
-                #
-                # Generalized form of an Oracle pagination query:
-                #   select ... from (
-                #     select /*+ FIRST_ROWS(N) */ ...., rownum as ora_rn from
-                #       (  select distinct ... where ... order by ...
-                #     ) where ROWNUM <= :limit+:offset
-                #   ) where ora_rn > :offset
-                # Outer select and "ROWNUM as ora_rn" can be dropped if
-                # limit=0
+                # currently using form at:
+                # https://blogs.oracle.com/oraclemagazine/\
+                # on-rownum-and-limiting-results
 
                 kwargs["select_wraps_for"] = orig_select = select
                 select = select._generate()
@@ -896,8 +988,17 @@ class OracleCompiler(compiler.SQLCompiler):
                     and self.dialect.optimize_limits
                     and select._simple_int_limit
                 ):
+                    param = sql.bindparam(
+                        "_ora_frow",
+                        select._limit,
+                        type_=Integer,
+                        literal_execute=True,
+                        unique=True,
+                    )
                     limitselect = limitselect.prefix_with(
-                        "/*+ FIRST_ROWS(%d) */" % select._limit
+                        expression.text(
+                            "/*+ FIRST_ROWS(:_ora_frow) */"
+                        ).bindparams(param)
                     )
 
                 limitselect._oracle_visit = True
@@ -913,14 +1014,20 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # If needed, add the limiting clause
                 if limit_clause is not None:
-                    if not self.dialect.use_binds_for_limits:
-                        # use simple int limits, will raise an exception
-                        # if the limit isn't specified this way
+                    if select._simple_int_limit and (
+                        offset_clause is None or select._simple_int_offset
+                    ):
                         max_row = select._limit
 
                         if offset_clause is not None:
                             max_row += select._offset
-                        max_row = sql.literal_column("%d" % max_row)
+                        max_row = sql.bindparam(
+                            None,
+                            max_row,
+                            type_=Integer,
+                            literal_execute=True,
+                            unique=True,
+                        )
                     else:
                         max_row = limit_clause
                         if offset_clause is not None:
@@ -969,10 +1076,15 @@ class OracleCompiler(compiler.SQLCompiler):
                             adapter.traverse(elem) for elem in for_update.of
                         ]
 
-                    if not self.dialect.use_binds_for_limits:
-                        offset_clause = sql.literal_column(
-                            "%d" % select._offset
+                    if select._simple_int_offset:
+                        offset_clause = sql.bindparam(
+                            None,
+                            select._offset,
+                            Integer,
+                            literal_execute=True,
+                            unique=True,
                         )
+
                     offsetselect = offsetselect.where(
                         sql.literal_column("ora_rn") > offset_clause
                     )
@@ -1114,7 +1226,7 @@ class OracleDialect(default.DefaultDialect):
     supports_alter = True
     supports_unicode_statements = False
     supports_unicode_binds = False
-    max_identifier_length = 30
+    max_identifier_length = 128
 
     supports_simple_order_by_label = False
     cte_follows_insert = True
@@ -1150,11 +1262,21 @@ class OracleDialect(default.DefaultDialect):
         (sa_schema.Index, {"bitmap": False, "compress": False}),
     ]
 
+    @util.deprecated_params(
+        use_binds_for_limits=(
+            "1.4",
+            "The ``use_binds_for_limits`` Oracle dialect parameter is "
+            "deprecated. The dialect now renders LIMIT /OFFSET integers "
+            "inline in all cases using a post-compilation hook, so that the "
+            "value is still represented by a 'bound parameter' on the Core "
+            "Expression side.",
+        )
+    )
     def __init__(
         self,
         use_ansi=True,
         optimize_limits=False,
-        use_binds_for_limits=True,
+        use_binds_for_limits=None,
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
         **kwargs
@@ -1163,11 +1285,11 @@ class OracleDialect(default.DefaultDialect):
         self._use_nchar_for_unicode = use_nchar_for_unicode
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
-        self.use_binds_for_limits = use_binds_for_limits
         self.exclude_tablespaces = exclude_tablespaces
 
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
+
         self.implicit_returning = self.__dict__.get(
             "implicit_returning", self.server_version_info > (10,)
         )
@@ -1176,6 +1298,27 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs = self.colspecs.copy()
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
+
+    def _get_effective_compat_server_version_info(self, connection):
+        # dialect does not need compat levels below 12.2, so don't query
+        # in those cases
+
+        if self.server_version_info < (12, 2):
+            return self.server_version_info
+        try:
+            compat = connection.execute(
+                "SELECT value FROM v$parameter WHERE name = 'compatible'"
+            ).scalar()
+        except exc.DBAPIError:
+            compat = None
+
+        if compat:
+            try:
+                return tuple(int(x) for x in compat.split("."))
+            except:
+                return self.server_version_info
+        else:
+            return self.server_version_info
 
     @property
     def _is_oracle_8(self):
@@ -1196,6 +1339,16 @@ class OracleDialect(default.DefaultDialect):
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass
+
+    def _check_max_identifier_length(self, connection):
+        if self._get_effective_compat_server_version_info(connection) < (
+            12,
+            2,
+        ):
+            return 30
+        else:
+            # use the default
+            return None
 
     def _check_unicode_returns(self, connection):
         additional_tests = [

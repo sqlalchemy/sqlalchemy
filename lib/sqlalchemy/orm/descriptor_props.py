@@ -36,7 +36,7 @@ class DescriptorProperty(MapperProperty):
 
         class _ProxyImpl(object):
             accepts_scalar_loader = False
-            expire_missing = True
+            load_on_unexpire = True
             collection = False
 
             @property
@@ -97,15 +97,6 @@ class CompositeProperty(DescriptorProperty):
 
     """
 
-    @util.deprecated_params(
-        extension=(
-            "0.7",
-            ":class:`.AttributeExtension` is deprecated in favor of the "
-            ":class:`.AttributeEvents` listener interface.  The "
-            ":paramref:`.composite.extension` parameter will be "
-            "removed in a future release.",
-        )
-    )
     def __init__(self, class_, *attrs, **kwargs):
         r"""Return a composite column-based property for use with a Mapper.
 
@@ -147,12 +138,6 @@ class CompositeProperty(DescriptorProperty):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
-
-        :param extension:
-          an :class:`.AttributeExtension` instance,
-          or list of extensions, which will be prepended to the list of
-          attribute listeners for the resulting descriptor placed on the
-          class.
 
         """
         super(CompositeProperty, self).__init__()
@@ -413,19 +398,26 @@ class CompositeProperty(DescriptorProperty):
 
         __hash__ = None
 
-        @property
+        @util.memoized_property
         def clauses(self):
-            return self.__clause_element__()
-
-        def __clause_element__(self):
             return expression.ClauseList(
                 group=False, *self._comparable_elements
             )
 
-        def _query_clause_element(self):
-            return CompositeProperty.CompositeBundle(
-                self.prop, self.__clause_element__()
+        def __clause_element__(self):
+            return self.expression
+
+        @util.memoized_property
+        def expression(self):
+            clauses = self.clauses._annotate(
+                {
+                    "bundle": True,
+                    "parententity": self._parententity,
+                    "parentmapper": self._parententity,
+                    "orm_key": self.prop.key,
+                }
             )
+            return CompositeProperty.CompositeBundle(self.prop, clauses)
 
         def _bulk_update_tuples(self, value):
             if value is None:

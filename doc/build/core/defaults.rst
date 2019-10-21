@@ -551,8 +551,5 @@ Default Objects API
 .. autoclass:: FetchedValue
 
 
-.. autoclass:: PassiveDefault
-
-
 .. autoclass:: Sequence
     :members:

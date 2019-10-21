@@ -491,7 +491,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {"id": 30, "data": "d1"},
             ),
-            CursorSQL("select nextval('my_seq')"),
+            CursorSQL("select nextval('my_seq')", consume_statement=False),
             DialectSQL(
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {"id": 1, "data": "d2"},

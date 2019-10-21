@@ -41,11 +41,13 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
+from sqlalchemy.util import py2k
 from sqlalchemy.util import u
 
 
@@ -88,7 +90,8 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             (Unicode(), cx_oracle._OracleUnicodeStringCHAR),
             (Text(), cx_oracle._OracleText),
             (UnicodeText(), cx_oracle._OracleUnicodeTextCLOB),
-            (NCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+            (CHAR(), cx_oracle._OracleChar),
+            (NCHAR(), cx_oracle._OracleNChar),
             (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
             (oracle.RAW(50), cx_oracle._OracleRaw),
         ]:
@@ -106,7 +109,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             (Unicode(), cx_oracle._OracleUnicodeStringNCHAR),
             (Text(), cx_oracle._OracleText),
             (UnicodeText(), cx_oracle._OracleUnicodeTextNCLOB),
-            (NCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+            (NCHAR(), cx_oracle._OracleNChar),
             (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
         ]:
             assert isinstance(
@@ -181,39 +184,48 @@ class TypesTest(fixtures.TestBase):
     __dialect__ = oracle.OracleDialect()
     __backend__ = True
 
-    @testing.fails_on("+zxjdbc", "zxjdbc lacks the FIXED_CHAR dbapi type")
     def test_fixed_char(self):
-        m = MetaData(testing.db)
+        self._test_fixed_char(CHAR)
+
+    def test_fixed_nchar(self):
+        self._test_fixed_char(NCHAR)
+
+    @testing.provide_metadata
+    def _test_fixed_char(self, char_type):
+        m = self.metadata
         t = Table(
             "t1",
             m,
             Column("id", Integer, primary_key=True),
-            Column("data", CHAR(30), nullable=False),
+            Column("data", char_type(30), nullable=False),
         )
 
-        t.create()
-        try:
-            t.insert().execute(
-                dict(id=1, data="value 1"),
-                dict(id=2, data="value 2"),
-                dict(id=3, data="value 3"),
+        if py2k and char_type is NCHAR:
+            v1, v2, v3 = u"value 1", u"value 2", u"value 3"
+        else:
+            v1, v2, v3 = "value 1", "value 2", "value 3"
+
+        with testing.db.begin() as conn:
+            t.create(conn)
+            conn.execute(
+                t.insert(),
+                dict(id=1, data=v1),
+                dict(id=2, data=v2),
+                dict(id=3, data=v3),
             )
 
             eq_(
-                t.select().where(t.c.data == "value 2").execute().fetchall(),
+                conn.execute(t.select().where(t.c.data == v2)).fetchall(),
                 [(2, "value 2                       ")],
             )
 
-            m2 = MetaData(testing.db)
-            t2 = Table("t1", m2, autoload=True)
-            assert type(t2.c.data.type) is CHAR
+            m2 = MetaData()
+            t2 = Table("t1", m2, autoload_with=conn)
+            is_(type(t2.c.data.type), char_type)
             eq_(
-                t2.select().where(t2.c.data == "value 2").execute().fetchall(),
+                conn.execute(t2.select().where(t2.c.data == v2)).fetchall(),
                 [(2, "value 2                       ")],
             )
-
-        finally:
-            t.drop()
 
     @testing.requires.returning
     @testing.provide_metadata
@@ -804,7 +816,7 @@ class TypesTest(fixtures.TestBase):
 
             assert isinstance(
                 t2.c.c_data.type.dialect_impl(testing.db.dialect),
-                cx_oracle._OracleUnicodeStringNCHAR,
+                cx_oracle._OracleNChar,
             )
 
         data = u("m’a réveillé.")
@@ -1231,7 +1243,7 @@ class SetInputSizesTest(fixtures.TestBase):
 
     def test_nchar(self):
         self._test_setinputsizes(
-            NCHAR(30), u("test"), testing.db.dialect.dbapi.NCHAR
+            NCHAR(30), u("test"), testing.db.dialect.dbapi.FIXED_NCHAR
         )
 
     def test_long(self):
