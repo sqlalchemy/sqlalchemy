@@ -52,6 +52,7 @@ from .exclusions import skip_if  # noqa
 from .util import adict  # noqa
 from .util import fail  # noqa
 from .util import force_drop_names  # noqa
+from .util import metadata_fixture  # noqa
 from .util import provide_metadata  # noqa
 from .util import rowset  # noqa
 from .util import run_as_contextmanager  # noqa

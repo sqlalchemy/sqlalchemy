@@ -719,7 +719,7 @@ class FixtureFunctions(ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def fixture(self, fn):
+    def fixture(self, *arg, **kw):
         raise NotImplementedError()
 
 

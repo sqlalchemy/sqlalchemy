@@ -37,6 +37,7 @@ from sqlalchemy import SmallInteger
 from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import TEXT
 from sqlalchemy import TIME
 from sqlalchemy import Time
@@ -454,32 +455,32 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             {"param_1": 10},
         )
 
-    def test_varchar_raise(self):
-        for type_ in (
-            String,
-            VARCHAR,
-            String(),
-            VARCHAR(),
-            NVARCHAR(),
-            Unicode,
-            Unicode(),
-        ):
-            type_ = sqltypes.to_instance(type_)
-            assert_raises_message(
-                exc.CompileError,
-                "VARCHAR requires a length on dialect mysql",
-                type_.compile,
-                dialect=mysql.dialect(),
-            )
+    @testing.combinations(
+        (String,),
+        (VARCHAR,),
+        (String(),),
+        (VARCHAR(),),
+        (NVARCHAR(),),
+        (Unicode,),
+        (Unicode(),),
+    )
+    def test_varchar_raise(self, type_):
+        type_ = sqltypes.to_instance(type_)
+        assert_raises_message(
+            exc.CompileError,
+            "VARCHAR requires a length on dialect mysql",
+            type_.compile,
+            dialect=mysql.dialect(),
+        )
 
-            t1 = Table("sometable", MetaData(), Column("somecolumn", type_))
-            assert_raises_message(
-                exc.CompileError,
-                r"\(in table 'sometable', column 'somecolumn'\)\: "
-                r"(?:N)?VARCHAR requires a length on dialect mysql",
-                schema.CreateTable(t1).compile,
-                dialect=mysql.dialect(),
-            )
+        t1 = Table("sometable", MetaData(), Column("somecolumn", type_))
+        assert_raises_message(
+            exc.CompileError,
+            r"\(in table 'sometable', column 'somecolumn'\)\: "
+            r"(?:N)?VARCHAR requires a length on dialect mysql",
+            schema.CreateTable(t1).compile,
+            dialect=mysql.dialect(),
+        )
 
     def test_update_limit(self):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
@@ -513,75 +514,73 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_sysdate(self):
         self.assert_compile(func.sysdate(), "SYSDATE()")
 
-    def test_cast(self):
+    m = mysql
+
+    @testing.combinations(
+        (Integer, "CAST(t.col AS SIGNED INTEGER)"),
+        (INT, "CAST(t.col AS SIGNED INTEGER)"),
+        (m.MSInteger, "CAST(t.col AS SIGNED INTEGER)"),
+        (m.MSInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
+        (SmallInteger, "CAST(t.col AS SIGNED INTEGER)"),
+        (m.MSSmallInteger, "CAST(t.col AS SIGNED INTEGER)"),
+        (m.MSTinyInteger, "CAST(t.col AS SIGNED INTEGER)"),
+        # 'SIGNED INTEGER' is a bigint, so this is ok.
+        (m.MSBigInteger, "CAST(t.col AS SIGNED INTEGER)"),
+        (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
+        (m.MSBigInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
+        # this is kind of sucky.  thank you default arguments!
+        (NUMERIC, "CAST(t.col AS DECIMAL)"),
+        (DECIMAL, "CAST(t.col AS DECIMAL)"),
+        (Numeric, "CAST(t.col AS DECIMAL)"),
+        (m.MSNumeric, "CAST(t.col AS DECIMAL)"),
+        (m.MSDecimal, "CAST(t.col AS DECIMAL)"),
+        (TIMESTAMP, "CAST(t.col AS DATETIME)"),
+        (DATETIME, "CAST(t.col AS DATETIME)"),
+        (DATE, "CAST(t.col AS DATE)"),
+        (TIME, "CAST(t.col AS TIME)"),
+        (DateTime, "CAST(t.col AS DATETIME)"),
+        (Date, "CAST(t.col AS DATE)"),
+        (Time, "CAST(t.col AS TIME)"),
+        (DateTime, "CAST(t.col AS DATETIME)"),
+        (Date, "CAST(t.col AS DATE)"),
+        (m.MSTime, "CAST(t.col AS TIME)"),
+        (m.MSTimeStamp, "CAST(t.col AS DATETIME)"),
+        (String, "CAST(t.col AS CHAR)"),
+        (Unicode, "CAST(t.col AS CHAR)"),
+        (UnicodeText, "CAST(t.col AS CHAR)"),
+        (VARCHAR, "CAST(t.col AS CHAR)"),
+        (NCHAR, "CAST(t.col AS CHAR)"),
+        (CHAR, "CAST(t.col AS CHAR)"),
+        (m.CHAR(charset="utf8"), "CAST(t.col AS CHAR CHARACTER SET utf8)"),
+        (CLOB, "CAST(t.col AS CHAR)"),
+        (TEXT, "CAST(t.col AS CHAR)"),
+        (m.TEXT(charset="utf8"), "CAST(t.col AS CHAR CHARACTER SET utf8)"),
+        (String(32), "CAST(t.col AS CHAR(32))"),
+        (Unicode(32), "CAST(t.col AS CHAR(32))"),
+        (CHAR(32), "CAST(t.col AS CHAR(32))"),
+        (m.MSString, "CAST(t.col AS CHAR)"),
+        (m.MSText, "CAST(t.col AS CHAR)"),
+        (m.MSTinyText, "CAST(t.col AS CHAR)"),
+        (m.MSMediumText, "CAST(t.col AS CHAR)"),
+        (m.MSLongText, "CAST(t.col AS CHAR)"),
+        (m.MSNChar, "CAST(t.col AS CHAR)"),
+        (m.MSNVarChar, "CAST(t.col AS CHAR)"),
+        (LargeBinary, "CAST(t.col AS BINARY)"),
+        (BLOB, "CAST(t.col AS BINARY)"),
+        (m.MSBlob, "CAST(t.col AS BINARY)"),
+        (m.MSBlob(32), "CAST(t.col AS BINARY)"),
+        (m.MSTinyBlob, "CAST(t.col AS BINARY)"),
+        (m.MSMediumBlob, "CAST(t.col AS BINARY)"),
+        (m.MSLongBlob, "CAST(t.col AS BINARY)"),
+        (m.MSBinary, "CAST(t.col AS BINARY)"),
+        (m.MSBinary(32), "CAST(t.col AS BINARY)"),
+        (m.MSVarBinary, "CAST(t.col AS BINARY)"),
+        (m.MSVarBinary(32), "CAST(t.col AS BINARY)"),
+        (Interval, "CAST(t.col AS DATETIME)"),
+    )
+    def test_cast(self, type_, expected):
         t = sql.table("t", sql.column("col"))
-        m = mysql
-
-        specs = [
-            (Integer, "CAST(t.col AS SIGNED INTEGER)"),
-            (INT, "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSInteger, "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
-            (SmallInteger, "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSSmallInteger, "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSTinyInteger, "CAST(t.col AS SIGNED INTEGER)"),
-            # 'SIGNED INTEGER' is a bigint, so this is ok.
-            (m.MSBigInteger, "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSBigInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
-            # this is kind of sucky.  thank you default arguments!
-            (NUMERIC, "CAST(t.col AS DECIMAL)"),
-            (DECIMAL, "CAST(t.col AS DECIMAL)"),
-            (Numeric, "CAST(t.col AS DECIMAL)"),
-            (m.MSNumeric, "CAST(t.col AS DECIMAL)"),
-            (m.MSDecimal, "CAST(t.col AS DECIMAL)"),
-            (TIMESTAMP, "CAST(t.col AS DATETIME)"),
-            (DATETIME, "CAST(t.col AS DATETIME)"),
-            (DATE, "CAST(t.col AS DATE)"),
-            (TIME, "CAST(t.col AS TIME)"),
-            (DateTime, "CAST(t.col AS DATETIME)"),
-            (Date, "CAST(t.col AS DATE)"),
-            (Time, "CAST(t.col AS TIME)"),
-            (DateTime, "CAST(t.col AS DATETIME)"),
-            (Date, "CAST(t.col AS DATE)"),
-            (m.MSTime, "CAST(t.col AS TIME)"),
-            (m.MSTimeStamp, "CAST(t.col AS DATETIME)"),
-            (String, "CAST(t.col AS CHAR)"),
-            (Unicode, "CAST(t.col AS CHAR)"),
-            (UnicodeText, "CAST(t.col AS CHAR)"),
-            (VARCHAR, "CAST(t.col AS CHAR)"),
-            (NCHAR, "CAST(t.col AS CHAR)"),
-            (CHAR, "CAST(t.col AS CHAR)"),
-            (m.CHAR(charset="utf8"), "CAST(t.col AS CHAR CHARACTER SET utf8)"),
-            (CLOB, "CAST(t.col AS CHAR)"),
-            (TEXT, "CAST(t.col AS CHAR)"),
-            (m.TEXT(charset="utf8"), "CAST(t.col AS CHAR CHARACTER SET utf8)"),
-            (String(32), "CAST(t.col AS CHAR(32))"),
-            (Unicode(32), "CAST(t.col AS CHAR(32))"),
-            (CHAR(32), "CAST(t.col AS CHAR(32))"),
-            (m.MSString, "CAST(t.col AS CHAR)"),
-            (m.MSText, "CAST(t.col AS CHAR)"),
-            (m.MSTinyText, "CAST(t.col AS CHAR)"),
-            (m.MSMediumText, "CAST(t.col AS CHAR)"),
-            (m.MSLongText, "CAST(t.col AS CHAR)"),
-            (m.MSNChar, "CAST(t.col AS CHAR)"),
-            (m.MSNVarChar, "CAST(t.col AS CHAR)"),
-            (LargeBinary, "CAST(t.col AS BINARY)"),
-            (BLOB, "CAST(t.col AS BINARY)"),
-            (m.MSBlob, "CAST(t.col AS BINARY)"),
-            (m.MSBlob(32), "CAST(t.col AS BINARY)"),
-            (m.MSTinyBlob, "CAST(t.col AS BINARY)"),
-            (m.MSMediumBlob, "CAST(t.col AS BINARY)"),
-            (m.MSLongBlob, "CAST(t.col AS BINARY)"),
-            (m.MSBinary, "CAST(t.col AS BINARY)"),
-            (m.MSBinary(32), "CAST(t.col AS BINARY)"),
-            (m.MSVarBinary, "CAST(t.col AS BINARY)"),
-            (m.MSVarBinary(32), "CAST(t.col AS BINARY)"),
-            (Interval, "CAST(t.col AS DATETIME)"),
-        ]
-
-        for type_, expected in specs:
-            self.assert_compile(cast(t.c.col, type_), expected)
+        self.assert_compile(cast(t.c.col, type_), expected)
 
     def test_cast_type_decorator(self):
         class MyInteger(sqltypes.TypeDecorator):
@@ -618,33 +617,29 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "(foo + 5)",
             )
 
-    def test_unsupported_casts(self):
+    m = mysql
+
+    @testing.combinations(
+        (m.MSBit, "t.col"),
+        (FLOAT, "t.col"),
+        (Float, "t.col"),
+        (m.MSFloat, "t.col"),
+        (m.MSDouble, "t.col"),
+        (m.MSReal, "t.col"),
+        (m.MSYear, "t.col"),
+        (m.MSYear(2), "t.col"),
+        (Boolean, "t.col"),
+        (BOOLEAN, "t.col"),
+        (m.MSEnum, "t.col"),
+        (m.MSEnum("1", "2"), "t.col"),
+        (m.MSSet, "t.col"),
+        (m.MSSet("1", "2"), "t.col"),
+    )
+    def test_unsupported_casts(self, type_, expected):
 
         t = sql.table("t", sql.column("col"))
-        m = mysql
-
-        specs = [
-            (m.MSBit, "t.col"),
-            (FLOAT, "t.col"),
-            (Float, "t.col"),
-            (m.MSFloat, "t.col"),
-            (m.MSDouble, "t.col"),
-            (m.MSReal, "t.col"),
-            (m.MSYear, "t.col"),
-            (m.MSYear(2), "t.col"),
-            (Boolean, "t.col"),
-            (BOOLEAN, "t.col"),
-            (m.MSEnum, "t.col"),
-            (m.MSEnum("1", "2"), "t.col"),
-            (m.MSSet, "t.col"),
-            (m.MSSet("1", "2"), "t.col"),
-        ]
-
-        for type_, expected in specs:
-            with expect_warnings(
-                "Datatype .* does not support CAST on MySQL;"
-            ):
-                self.assert_compile(cast(t.c.col, type_), expected)
+        with expect_warnings("Datatype .* does not support CAST on MySQL;"):
+            self.assert_compile(cast(t.c.col, type_), expected)
 
     def test_no_cast_pre_4(self):
         self.assert_compile(
