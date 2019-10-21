@@ -380,5 +380,5 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
         ident = parameters[0]
         return pytest.param(*parameters[1:], id=ident)
 
-    def fixture(self, fn):
-        return pytest.fixture(fn)
+    def fixture(self, *arg, **kw):
+        return pytest.fixture(*arg, **kw)

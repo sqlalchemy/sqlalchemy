@@ -33,222 +33,443 @@ from sqlalchemy.testing import is_
 from sqlalchemy.util import u
 
 
-class TypesTest(
-    fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
-):
-    "Test MySQL column types"
+class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mysql.dialect()
+
+    @testing.combinations(
+        # column type, args, kwargs, expected ddl
+        # e.g. Column(Integer(10, unsigned=True)) ==
+        # 'INTEGER(10) UNSIGNED'
+        (mysql.MSNumeric, [], {}, "NUMERIC"),
+        (mysql.MSNumeric, [None], {}, "NUMERIC"),
+        (mysql.MSNumeric, [12], {}, "NUMERIC(12)"),
+        (
+            mysql.MSNumeric,
+            [12, 4],
+            {"unsigned": True},
+            "NUMERIC(12, 4) UNSIGNED",
+        ),
+        (
+            mysql.MSNumeric,
+            [12, 4],
+            {"zerofill": True},
+            "NUMERIC(12, 4) ZEROFILL",
+        ),
+        (
+            mysql.MSNumeric,
+            [12, 4],
+            {"zerofill": True, "unsigned": True},
+            "NUMERIC(12, 4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSDecimal, [], {}, "DECIMAL"),
+        (mysql.MSDecimal, [None], {}, "DECIMAL"),
+        (mysql.MSDecimal, [12], {}, "DECIMAL(12)"),
+        (mysql.MSDecimal, [12, None], {}, "DECIMAL(12)"),
+        (
+            mysql.MSDecimal,
+            [12, 4],
+            {"unsigned": True},
+            "DECIMAL(12, 4) UNSIGNED",
+        ),
+        (
+            mysql.MSDecimal,
+            [12, 4],
+            {"zerofill": True},
+            "DECIMAL(12, 4) ZEROFILL",
+        ),
+        (
+            mysql.MSDecimal,
+            [12, 4],
+            {"zerofill": True, "unsigned": True},
+            "DECIMAL(12, 4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSDouble, [None, None], {}, "DOUBLE"),
+        (
+            mysql.MSDouble,
+            [12, 4],
+            {"unsigned": True},
+            "DOUBLE(12, 4) UNSIGNED",
+        ),
+        (
+            mysql.MSDouble,
+            [12, 4],
+            {"zerofill": True},
+            "DOUBLE(12, 4) ZEROFILL",
+        ),
+        (
+            mysql.MSDouble,
+            [12, 4],
+            {"zerofill": True, "unsigned": True},
+            "DOUBLE(12, 4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSReal, [None, None], {}, "REAL"),
+        (mysql.MSReal, [12, 4], {"unsigned": True}, "REAL(12, 4) UNSIGNED"),
+        (mysql.MSReal, [12, 4], {"zerofill": True}, "REAL(12, 4) ZEROFILL"),
+        (
+            mysql.MSReal,
+            [12, 4],
+            {"zerofill": True, "unsigned": True},
+            "REAL(12, 4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSFloat, [], {}, "FLOAT"),
+        (mysql.MSFloat, [None], {}, "FLOAT"),
+        (mysql.MSFloat, [12], {}, "FLOAT(12)"),
+        (mysql.MSFloat, [12, 4], {}, "FLOAT(12, 4)"),
+        (mysql.MSFloat, [12, 4], {"unsigned": True}, "FLOAT(12, 4) UNSIGNED"),
+        (mysql.MSFloat, [12, 4], {"zerofill": True}, "FLOAT(12, 4) ZEROFILL"),
+        (
+            mysql.MSFloat,
+            [12, 4],
+            {"zerofill": True, "unsigned": True},
+            "FLOAT(12, 4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSInteger, [], {}, "INTEGER"),
+        (mysql.MSInteger, [4], {}, "INTEGER(4)"),
+        (mysql.MSInteger, [4], {"unsigned": True}, "INTEGER(4) UNSIGNED"),
+        (mysql.MSInteger, [4], {"zerofill": True}, "INTEGER(4) ZEROFILL"),
+        (
+            mysql.MSInteger,
+            [4],
+            {"zerofill": True, "unsigned": True},
+            "INTEGER(4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSBigInteger, [], {}, "BIGINT"),
+        (mysql.MSBigInteger, [4], {}, "BIGINT(4)"),
+        (mysql.MSBigInteger, [4], {"unsigned": True}, "BIGINT(4) UNSIGNED"),
+        (mysql.MSBigInteger, [4], {"zerofill": True}, "BIGINT(4) ZEROFILL"),
+        (
+            mysql.MSBigInteger,
+            [4],
+            {"zerofill": True, "unsigned": True},
+            "BIGINT(4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSMediumInteger, [], {}, "MEDIUMINT"),
+        (mysql.MSMediumInteger, [4], {}, "MEDIUMINT(4)"),
+        (
+            mysql.MSMediumInteger,
+            [4],
+            {"unsigned": True},
+            "MEDIUMINT(4) UNSIGNED",
+        ),
+        (
+            mysql.MSMediumInteger,
+            [4],
+            {"zerofill": True},
+            "MEDIUMINT(4) ZEROFILL",
+        ),
+        (
+            mysql.MSMediumInteger,
+            [4],
+            {"zerofill": True, "unsigned": True},
+            "MEDIUMINT(4) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSTinyInteger, [], {}, "TINYINT"),
+        (mysql.MSTinyInteger, [1], {}, "TINYINT(1)"),
+        (mysql.MSTinyInteger, [1], {"unsigned": True}, "TINYINT(1) UNSIGNED"),
+        (mysql.MSTinyInteger, [1], {"zerofill": True}, "TINYINT(1) ZEROFILL"),
+        (
+            mysql.MSTinyInteger,
+            [1],
+            {"zerofill": True, "unsigned": True},
+            "TINYINT(1) UNSIGNED ZEROFILL",
+        ),
+        (mysql.MSSmallInteger, [], {}, "SMALLINT"),
+        (mysql.MSSmallInteger, [4], {}, "SMALLINT(4)"),
+        (
+            mysql.MSSmallInteger,
+            [4],
+            {"unsigned": True},
+            "SMALLINT(4) UNSIGNED",
+        ),
+        (
+            mysql.MSSmallInteger,
+            [4],
+            {"zerofill": True},
+            "SMALLINT(4) ZEROFILL",
+        ),
+        (
+            mysql.MSSmallInteger,
+            [4],
+            {"zerofill": True, "unsigned": True},
+            "SMALLINT(4) UNSIGNED ZEROFILL",
+        ),
+    )
+    def test_numeric(self, type_, args, kw, res):
+        "Exercise type specification and options for numeric types."
+
+        type_inst = type_(*args, **kw)
+        self.assert_compile(type_inst, res)
+        # test that repr() copies out all arguments
+        self.assert_compile(eval("mysql.%r" % type_inst), res)
+
+    @testing.combinations(
+        (mysql.MSChar, [1], {}, "CHAR(1)"),
+        (mysql.NCHAR, [1], {}, "NATIONAL CHAR(1)"),
+        (mysql.MSChar, [1], {"binary": True}, "CHAR(1) BINARY"),
+        (mysql.MSChar, [1], {"ascii": True}, "CHAR(1) ASCII"),
+        (mysql.MSChar, [1], {"unicode": True}, "CHAR(1) UNICODE"),
+        (
+            mysql.MSChar,
+            [1],
+            {"ascii": True, "binary": True},
+            "CHAR(1) ASCII BINARY",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"unicode": True, "binary": True},
+            "CHAR(1) UNICODE BINARY",
+        ),
+        (mysql.MSChar, [1], {"charset": "utf8"}, "CHAR(1) CHARACTER SET utf8"),
+        (
+            mysql.MSChar,
+            [1],
+            {"charset": "utf8", "binary": True},
+            "CHAR(1) CHARACTER SET utf8 BINARY",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"charset": "utf8", "unicode": True},
+            "CHAR(1) CHARACTER SET utf8",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"charset": "utf8", "ascii": True},
+            "CHAR(1) CHARACTER SET utf8",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"collation": "utf8_bin"},
+            "CHAR(1) COLLATE utf8_bin",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"charset": "utf8", "collation": "utf8_bin"},
+            "CHAR(1) CHARACTER SET utf8 COLLATE utf8_bin",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"charset": "utf8", "binary": True},
+            "CHAR(1) CHARACTER SET utf8 BINARY",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"charset": "utf8", "collation": "utf8_bin", "binary": True},
+            "CHAR(1) CHARACTER SET utf8 COLLATE utf8_bin",
+        ),
+        (mysql.MSChar, [1], {"national": True}, "NATIONAL CHAR(1)"),
+        (
+            mysql.MSChar,
+            [1],
+            {"national": True, "charset": "utf8"},
+            "NATIONAL CHAR(1)",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"national": True, "charset": "utf8", "binary": True},
+            "NATIONAL CHAR(1) BINARY",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"national": True, "binary": True, "unicode": True},
+            "NATIONAL CHAR(1) BINARY",
+        ),
+        (
+            mysql.MSChar,
+            [1],
+            {"national": True, "collation": "utf8_bin"},
+            "NATIONAL CHAR(1) COLLATE utf8_bin",
+        ),
+        (
+            mysql.MSString,
+            [1],
+            {"charset": "utf8", "collation": "utf8_bin"},
+            "VARCHAR(1) CHARACTER SET utf8 COLLATE utf8_bin",
+        ),
+        (
+            mysql.MSString,
+            [1],
+            {"national": True, "collation": "utf8_bin"},
+            "NATIONAL VARCHAR(1) COLLATE utf8_bin",
+        ),
+        (
+            mysql.MSTinyText,
+            [],
+            {"charset": "utf8", "collation": "utf8_bin"},
+            "TINYTEXT CHARACTER SET utf8 COLLATE utf8_bin",
+        ),
+        (
+            mysql.MSMediumText,
+            [],
+            {"charset": "utf8", "binary": True},
+            "MEDIUMTEXT CHARACTER SET utf8 BINARY",
+        ),
+        (mysql.MSLongText, [], {"ascii": True}, "LONGTEXT ASCII"),
+        (
+            mysql.ENUM,
+            ["foo", "bar"],
+            {"unicode": True},
+            """ENUM('foo','bar') UNICODE""",
+        ),
+        (String, [20], {"collation": "utf8"}, "VARCHAR(20) COLLATE utf8"),
+    )
+    @testing.exclude("mysql", "<", (4, 1, 1), "no charset support")
+    def test_charset(self, type_, args, kw, res):
+        """Exercise CHARACTER SET and COLLATE-ish options on string types."""
+
+        type_inst = type_(*args, **kw)
+        self.assert_compile(type_inst, res)
+
+    @testing.combinations(
+        (mysql.MSBit(), "BIT"),
+        (mysql.MSBit(1), "BIT(1)"),
+        (mysql.MSBit(63), "BIT(63)"),
+    )
+    def test_bit_50(self, type_, expected):
+        """Exercise BIT types on 5.0+ (not valid for all engine types)"""
+
+        self.assert_compile(type_, expected)
+
+    @testing.combinations(
+        (BOOLEAN(), "BOOL"),
+        (Boolean(), "BOOL"),
+        (mysql.TINYINT(1), "TINYINT(1)"),
+        (mysql.TINYINT(1, unsigned=True), "TINYINT(1) UNSIGNED"),
+    )
+    def test_boolean_compile(self, type_, expected):
+        self.assert_compile(type_, expected)
+
+    def test_timestamp_fsp(self):
+        self.assert_compile(mysql.TIMESTAMP(fsp=5), "TIMESTAMP(5)")
+
+    @testing.combinations(
+        ([TIMESTAMP], {}, "TIMESTAMP NULL"),
+        ([mysql.MSTimeStamp], {}, "TIMESTAMP NULL"),
+        (
+            [
+                mysql.MSTimeStamp(),
+                DefaultClause(sql.text("CURRENT_TIMESTAMP")),
+            ],
+            {},
+            "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
+        ),
+        (
+            [mysql.MSTimeStamp, DefaultClause(sql.text("CURRENT_TIMESTAMP"))],
+            {"nullable": False},
+            "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        ),
+        (
+            [
+                mysql.MSTimeStamp,
+                DefaultClause(sql.text("'1999-09-09 09:09:09'")),
+            ],
+            {"nullable": False},
+            "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09'",
+        ),
+        (
+            [
+                mysql.MSTimeStamp(),
+                DefaultClause(sql.text("'1999-09-09 09:09:09'")),
+            ],
+            {},
+            "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09'",
+        ),
+        (
+            [
+                mysql.MSTimeStamp(),
+                DefaultClause(
+                    sql.text(
+                        "'1999-09-09 09:09:09' " "ON UPDATE CURRENT_TIMESTAMP"
+                    )
+                ),
+            ],
+            {},
+            "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09' "
+            "ON UPDATE CURRENT_TIMESTAMP",
+        ),
+        (
+            [
+                mysql.MSTimeStamp,
+                DefaultClause(
+                    sql.text(
+                        "'1999-09-09 09:09:09' " "ON UPDATE CURRENT_TIMESTAMP"
+                    )
+                ),
+            ],
+            {"nullable": False},
+            "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09' "
+            "ON UPDATE CURRENT_TIMESTAMP",
+        ),
+        (
+            [
+                mysql.MSTimeStamp(),
+                DefaultClause(
+                    sql.text(
+                        "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
+                    )
+                ),
+            ],
+            {},
+            "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP "
+            "ON UPDATE CURRENT_TIMESTAMP",
+        ),
+        (
+            [
+                mysql.MSTimeStamp,
+                DefaultClause(
+                    sql.text(
+                        "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
+                    )
+                ),
+            ],
+            {"nullable": False},
+            "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP "
+            "ON UPDATE CURRENT_TIMESTAMP",
+        ),
+    )
+    def test_timestamp_defaults(self, spec, kw, expected):
+        """Exercise funky TIMESTAMP default syntax when used in columns."""
+
+        c = Column("t", *spec, **kw)
+        Table("t", MetaData(), c)
+        self.assert_compile(schema.CreateColumn(c), "t %s" % expected)
+
+    def test_datetime_generic(self):
+        self.assert_compile(mysql.DATETIME(), "DATETIME")
+
+    def test_datetime_fsp(self):
+        self.assert_compile(mysql.DATETIME(fsp=4), "DATETIME(4)")
+
+    def test_time_generic(self):
+        """"Exercise TIME."""
+
+        self.assert_compile(mysql.TIME(), "TIME")
+
+    def test_time_fsp(self):
+        self.assert_compile(mysql.TIME(fsp=5), "TIME(5)")
+
+    def test_time_result_processor(self):
+        eq_(
+            mysql.TIME().result_processor(None, None)(
+                datetime.timedelta(seconds=35, minutes=517, microseconds=450)
+            ),
+            datetime.time(8, 37, 35, 450),
+        )
+
+
+class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
     __dialect__ = mysql.dialect()
     __only_on__ = "mysql"
     __backend__ = True
-
-    def test_numeric(self):
-        "Exercise type specification and options for numeric types."
-
-        columns = [
-            # column type, args, kwargs, expected ddl
-            # e.g. Column(Integer(10, unsigned=True)) ==
-            # 'INTEGER(10) UNSIGNED'
-            (mysql.MSNumeric, [], {}, "NUMERIC"),
-            (mysql.MSNumeric, [None], {}, "NUMERIC"),
-            (mysql.MSNumeric, [12], {}, "NUMERIC(12)"),
-            (
-                mysql.MSNumeric,
-                [12, 4],
-                {"unsigned": True},
-                "NUMERIC(12, 4) UNSIGNED",
-            ),
-            (
-                mysql.MSNumeric,
-                [12, 4],
-                {"zerofill": True},
-                "NUMERIC(12, 4) ZEROFILL",
-            ),
-            (
-                mysql.MSNumeric,
-                [12, 4],
-                {"zerofill": True, "unsigned": True},
-                "NUMERIC(12, 4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSDecimal, [], {}, "DECIMAL"),
-            (mysql.MSDecimal, [None], {}, "DECIMAL"),
-            (mysql.MSDecimal, [12], {}, "DECIMAL(12)"),
-            (mysql.MSDecimal, [12, None], {}, "DECIMAL(12)"),
-            (
-                mysql.MSDecimal,
-                [12, 4],
-                {"unsigned": True},
-                "DECIMAL(12, 4) UNSIGNED",
-            ),
-            (
-                mysql.MSDecimal,
-                [12, 4],
-                {"zerofill": True},
-                "DECIMAL(12, 4) ZEROFILL",
-            ),
-            (
-                mysql.MSDecimal,
-                [12, 4],
-                {"zerofill": True, "unsigned": True},
-                "DECIMAL(12, 4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSDouble, [None, None], {}, "DOUBLE"),
-            (
-                mysql.MSDouble,
-                [12, 4],
-                {"unsigned": True},
-                "DOUBLE(12, 4) UNSIGNED",
-            ),
-            (
-                mysql.MSDouble,
-                [12, 4],
-                {"zerofill": True},
-                "DOUBLE(12, 4) ZEROFILL",
-            ),
-            (
-                mysql.MSDouble,
-                [12, 4],
-                {"zerofill": True, "unsigned": True},
-                "DOUBLE(12, 4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSReal, [None, None], {}, "REAL"),
-            (
-                mysql.MSReal,
-                [12, 4],
-                {"unsigned": True},
-                "REAL(12, 4) UNSIGNED",
-            ),
-            (
-                mysql.MSReal,
-                [12, 4],
-                {"zerofill": True},
-                "REAL(12, 4) ZEROFILL",
-            ),
-            (
-                mysql.MSReal,
-                [12, 4],
-                {"zerofill": True, "unsigned": True},
-                "REAL(12, 4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSFloat, [], {}, "FLOAT"),
-            (mysql.MSFloat, [None], {}, "FLOAT"),
-            (mysql.MSFloat, [12], {}, "FLOAT(12)"),
-            (mysql.MSFloat, [12, 4], {}, "FLOAT(12, 4)"),
-            (
-                mysql.MSFloat,
-                [12, 4],
-                {"unsigned": True},
-                "FLOAT(12, 4) UNSIGNED",
-            ),
-            (
-                mysql.MSFloat,
-                [12, 4],
-                {"zerofill": True},
-                "FLOAT(12, 4) ZEROFILL",
-            ),
-            (
-                mysql.MSFloat,
-                [12, 4],
-                {"zerofill": True, "unsigned": True},
-                "FLOAT(12, 4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSInteger, [], {}, "INTEGER"),
-            (mysql.MSInteger, [4], {}, "INTEGER(4)"),
-            (mysql.MSInteger, [4], {"unsigned": True}, "INTEGER(4) UNSIGNED"),
-            (mysql.MSInteger, [4], {"zerofill": True}, "INTEGER(4) ZEROFILL"),
-            (
-                mysql.MSInteger,
-                [4],
-                {"zerofill": True, "unsigned": True},
-                "INTEGER(4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSBigInteger, [], {}, "BIGINT"),
-            (mysql.MSBigInteger, [4], {}, "BIGINT(4)"),
-            (
-                mysql.MSBigInteger,
-                [4],
-                {"unsigned": True},
-                "BIGINT(4) UNSIGNED",
-            ),
-            (
-                mysql.MSBigInteger,
-                [4],
-                {"zerofill": True},
-                "BIGINT(4) ZEROFILL",
-            ),
-            (
-                mysql.MSBigInteger,
-                [4],
-                {"zerofill": True, "unsigned": True},
-                "BIGINT(4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSMediumInteger, [], {}, "MEDIUMINT"),
-            (mysql.MSMediumInteger, [4], {}, "MEDIUMINT(4)"),
-            (
-                mysql.MSMediumInteger,
-                [4],
-                {"unsigned": True},
-                "MEDIUMINT(4) UNSIGNED",
-            ),
-            (
-                mysql.MSMediumInteger,
-                [4],
-                {"zerofill": True},
-                "MEDIUMINT(4) ZEROFILL",
-            ),
-            (
-                mysql.MSMediumInteger,
-                [4],
-                {"zerofill": True, "unsigned": True},
-                "MEDIUMINT(4) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSTinyInteger, [], {}, "TINYINT"),
-            (mysql.MSTinyInteger, [1], {}, "TINYINT(1)"),
-            (
-                mysql.MSTinyInteger,
-                [1],
-                {"unsigned": True},
-                "TINYINT(1) UNSIGNED",
-            ),
-            (
-                mysql.MSTinyInteger,
-                [1],
-                {"zerofill": True},
-                "TINYINT(1) ZEROFILL",
-            ),
-            (
-                mysql.MSTinyInteger,
-                [1],
-                {"zerofill": True, "unsigned": True},
-                "TINYINT(1) UNSIGNED ZEROFILL",
-            ),
-            (mysql.MSSmallInteger, [], {}, "SMALLINT"),
-            (mysql.MSSmallInteger, [4], {}, "SMALLINT(4)"),
-            (
-                mysql.MSSmallInteger,
-                [4],
-                {"unsigned": True},
-                "SMALLINT(4) UNSIGNED",
-            ),
-            (
-                mysql.MSSmallInteger,
-                [4],
-                {"zerofill": True},
-                "SMALLINT(4) ZEROFILL",
-            ),
-            (
-                mysql.MSSmallInteger,
-                [4],
-                {"zerofill": True, "unsigned": True},
-                "SMALLINT(4) UNSIGNED ZEROFILL",
-            ),
-        ]
-
-        for type_, args, kw, res in columns:
-            type_inst = type_(*args, **kw)
-            self.assert_compile(type_inst, res)
-            # test that repr() copies out all arguments
-            self.assert_compile(eval("mysql.%r" % type_inst), res)
 
     # fixed in mysql-connector as of 2.0.1,
     # see http://bugs.mysql.com/bug.php?id=73266
@@ -266,157 +487,18 @@ class TypesTest(
                 mysql.DOUBLE(decimal_return_scale=12, asdecimal=True),
             ),
         )
-        t.create(testing.db)
-        testing.db.execute(
-            t.insert(),
-            scale_value=45.768392065789,
-            unscale_value=45.768392065789,
-        )
-        result = testing.db.scalar(select([t.c.scale_value]))
-        eq_(result, decimal.Decimal("45.768392065789"))
-
-        result = testing.db.scalar(select([t.c.unscale_value]))
-        eq_(result, decimal.Decimal("45.768392065789"))
-
-    @testing.exclude("mysql", "<", (4, 1, 1), "no charset support")
-    def test_charset(self):
-        """Exercise CHARACTER SET and COLLATE-ish options on string types."""
-
-        columns = [
-            (mysql.MSChar, [1], {}, "CHAR(1)"),
-            (mysql.NCHAR, [1], {}, "NATIONAL CHAR(1)"),
-            (mysql.MSChar, [1], {"binary": True}, "CHAR(1) BINARY"),
-            (mysql.MSChar, [1], {"ascii": True}, "CHAR(1) ASCII"),
-            (mysql.MSChar, [1], {"unicode": True}, "CHAR(1) UNICODE"),
-            (
-                mysql.MSChar,
-                [1],
-                {"ascii": True, "binary": True},
-                "CHAR(1) ASCII BINARY",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"unicode": True, "binary": True},
-                "CHAR(1) UNICODE BINARY",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8"},
-                "CHAR(1) CHARACTER SET utf8",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8", "binary": True},
-                "CHAR(1) CHARACTER SET utf8 BINARY",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8", "unicode": True},
-                "CHAR(1) CHARACTER SET utf8",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8", "ascii": True},
-                "CHAR(1) CHARACTER SET utf8",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"collation": "utf8_bin"},
-                "CHAR(1) COLLATE utf8_bin",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8", "collation": "utf8_bin"},
-                "CHAR(1) CHARACTER SET utf8 COLLATE utf8_bin",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8", "binary": True},
-                "CHAR(1) CHARACTER SET utf8 BINARY",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"charset": "utf8", "collation": "utf8_bin", "binary": True},
-                "CHAR(1) CHARACTER SET utf8 COLLATE utf8_bin",
-            ),
-            (mysql.MSChar, [1], {"national": True}, "NATIONAL CHAR(1)"),
-            (
-                mysql.MSChar,
-                [1],
-                {"national": True, "charset": "utf8"},
-                "NATIONAL CHAR(1)",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"national": True, "charset": "utf8", "binary": True},
-                "NATIONAL CHAR(1) BINARY",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"national": True, "binary": True, "unicode": True},
-                "NATIONAL CHAR(1) BINARY",
-            ),
-            (
-                mysql.MSChar,
-                [1],
-                {"national": True, "collation": "utf8_bin"},
-                "NATIONAL CHAR(1) COLLATE utf8_bin",
-            ),
-            (
-                mysql.MSString,
-                [1],
-                {"charset": "utf8", "collation": "utf8_bin"},
-                "VARCHAR(1) CHARACTER SET utf8 COLLATE utf8_bin",
-            ),
-            (
-                mysql.MSString,
-                [1],
-                {"national": True, "collation": "utf8_bin"},
-                "NATIONAL VARCHAR(1) COLLATE utf8_bin",
-            ),
-            (
-                mysql.MSTinyText,
-                [],
-                {"charset": "utf8", "collation": "utf8_bin"},
-                "TINYTEXT CHARACTER SET utf8 COLLATE utf8_bin",
-            ),
-            (
-                mysql.MSMediumText,
-                [],
-                {"charset": "utf8", "binary": True},
-                "MEDIUMTEXT CHARACTER SET utf8 BINARY",
-            ),
-            (mysql.MSLongText, [], {"ascii": True}, "LONGTEXT ASCII"),
-            (
-                mysql.ENUM,
-                ["foo", "bar"],
-                {"unicode": True},
-                """ENUM('foo','bar') UNICODE""",
-            ),
-            (String, [20], {"collation": "utf8"}, "VARCHAR(20) COLLATE utf8"),
-        ]
-
-        for type_, args, kw, res in columns:
-            type_inst = type_(*args, **kw)
-            self.assert_compile(type_inst, res)
-            # test that repr() copies out all arguments
-            self.assert_compile(
-                eval("mysql.%r" % type_inst)
-                if type_ is not String
-                else eval("%r" % type_inst),
-                res,
+        with testing.db.connect() as conn:
+            t.create(conn)
+            conn.execute(
+                t.insert(),
+                scale_value=45.768392065789,
+                unscale_value=45.768392065789,
             )
+            result = conn.scalar(select([t.c.scale_value]))
+            eq_(result, decimal.Decimal("45.768392065789"))
+
+            result = conn.scalar(select([t.c.unscale_value]))
+            eq_(result, decimal.Decimal("45.768392065789"))
 
     @testing.only_if("mysql")
     @testing.fails_on("mysql+mysqlconnector", "different unicode behavior")
@@ -446,22 +528,11 @@ class TypesTest(
             testing.db.scalar(select([t.c.data])), util.text_type
         )
 
-    def test_bit_50(self):
-        """Exercise BIT types on 5.0+ (not valid for all engine types)"""
-
-        for type_, expected in [
-            (mysql.MSBit(), "BIT"),
-            (mysql.MSBit(1), "BIT(1)"),
-            (mysql.MSBit(63), "BIT(63)"),
-        ]:
-            self.assert_compile(type_, expected)
-
-    @testing.exclude("mysql", "<", (5, 0, 5), "a 5.0+ feature")
-    @testing.provide_metadata
-    def test_bit_50_roundtrip(self):
+    @testing.metadata_fixture(ddl="class")
+    def bit_table(self, metadata):
         bit_table = Table(
             "mysql_bits",
-            self.metadata,
+            metadata,
             Column("b1", mysql.MSBit),
             Column("b2", mysql.MSBit()),
             Column("b3", mysql.MSBit(), nullable=False),
@@ -471,83 +542,103 @@ class TypesTest(
             Column("b7", mysql.MSBit(63)),
             Column("b8", mysql.MSBit(64)),
         )
-        self.metadata.create_all()
+        return bit_table
+
+    i, j, k, l = 255, 2 ** 32 - 1, 2 ** 63 - 1, 2 ** 64 - 1
+
+    @testing.combinations(
+        (([0] * 8), None),
+        ([None, None, 0, None, None, None, None, None], None),
+        (([1] * 8), None),
+        ([sql.text("b'1'")] * 8, [1] * 8),
+        ([0, 0, 0, 0, i, i, i, i], None),
+        ([0, 0, 0, 0, 0, j, j, j], None),
+        ([0, 0, 0, 0, 0, 0, k, k], None),
+        ([0, 0, 0, 0, 0, 0, 0, l], None),
+        argnames="store, expected",
+    )
+    def test_bit_50_roundtrip(self, bit_table, store, expected):
 
         meta2 = MetaData(testing.db)
         reflected = Table("mysql_bits", meta2, autoload=True)
 
-        for table in bit_table, reflected:
+        with testing.db.connect() as conn:
+            expected = expected or store
+            conn.execute(reflected.insert(store))
+            row = conn.execute(reflected.select()).first()
+            eq_(list(row), expected)
+            conn.execute(reflected.delete())
 
-            def roundtrip(store, expected=None):
-                expected = expected or store
-                table.insert(store).execute()
-                row = table.select().execute().first()
-                try:
-                    self.assert_(list(row) == expected)
-                except Exception:
-                    print("Storing %s" % store)
-                    print("Expected %s" % expected)
-                    print("Found %s" % list(row))
-                    raise
-                table.delete().execute().close()
+    @testing.combinations(
+        (([0] * 8), None),
+        ([None, None, 0, None, None, None, None, None], None),
+        (([1] * 8), None),
+        ([sql.text("b'1'")] * 8, [1] * 8),
+        ([0, 0, 0, 0, i, i, i, i], None),
+        ([0, 0, 0, 0, 0, j, j, j], None),
+        ([0, 0, 0, 0, 0, 0, k, k], None),
+        ([0, 0, 0, 0, 0, 0, 0, l], None),
+        argnames="store, expected",
+    )
+    def test_bit_50_roundtrip_reflected(self, bit_table, store, expected):
+        meta2 = MetaData()
+        bit_table = Table("mysql_bits", meta2, autoload_with=testing.db)
 
-            roundtrip([0] * 8)
-            roundtrip([None, None, 0, None, None, None, None, None])
-            roundtrip([1] * 8)
-            roundtrip([sql.text("b'1'")] * 8, [1] * 8)
+        with testing.db.connect() as conn:
+            expected = expected or store
+            conn.execute(bit_table.insert(store))
+            row = conn.execute(bit_table.select()).first()
+            eq_(list(row), expected)
+            conn.execute(bit_table.delete())
 
-            i = 255
-            roundtrip([0, 0, 0, 0, i, i, i, i])
-            i = 2 ** 32 - 1
-            roundtrip([0, 0, 0, 0, 0, i, i, i])
-            i = 2 ** 63 - 1
-            roundtrip([0, 0, 0, 0, 0, 0, i, i])
-            i = 2 ** 64 - 1
-            roundtrip([0, 0, 0, 0, 0, 0, 0, i])
-
-    def test_boolean(self):
-        for type_, expected in [
-            (BOOLEAN(), "BOOL"),
-            (Boolean(), "BOOL"),
-            (mysql.TINYINT(1), "TINYINT(1)"),
-            (mysql.TINYINT(1, unsigned=True), "TINYINT(1) UNSIGNED"),
-        ]:
-            self.assert_compile(type_, expected)
-
-    @testing.provide_metadata
-    def test_boolean_roundtrip(self):
+    @testing.metadata_fixture(ddl="class")
+    def boolean_table(self, metadata):
         bool_table = Table(
             "mysql_bool",
-            self.metadata,
+            metadata,
             Column("b1", BOOLEAN),
             Column("b2", Boolean),
             Column("b3", mysql.MSTinyInteger(1)),
             Column("b4", mysql.MSTinyInteger(1, unsigned=True)),
             Column("b5", mysql.MSTinyInteger),
         )
-        self.metadata.create_all()
-        table = bool_table
+        return bool_table
 
-        def roundtrip(store, expected=None):
+    @testing.combinations(
+        ([None, None, None, None, None], None),
+        ([True, True, 1, 1, 1], None),
+        ([False, False, 0, 0, 0], None),
+        ([True, True, True, True, True], [True, True, 1, 1, 1]),
+        ([False, False, 0, 0, 0], [False, False, 0, 0, 0]),
+        argnames="store, expected",
+    )
+    def test_boolean_roundtrip(self, boolean_table, store, expected):
+        table = boolean_table
+
+        with testing.db.connect() as conn:
             expected = expected or store
-            table.insert(store).execute()
-            row = table.select().execute().first()
-            self.assert_(list(row) == expected)
+            conn.execute(table.insert(store))
+            row = conn.execute(table.select()).first()
+            eq_(list(row), expected)
             for i, val in enumerate(expected):
                 if isinstance(val, bool):
                     self.assert_(val is row[i])
-            table.delete().execute()
+            conn.execute(table.delete())
 
-        roundtrip([None, None, None, None, None])
-        roundtrip([True, True, 1, 1, 1])
-        roundtrip([False, False, 0, 0, 0])
-        roundtrip([True, True, True, True, True], [True, True, 1, 1, 1])
-        roundtrip([False, False, 0, 0, 0], [False, False, 0, 0, 0])
-
+    @testing.combinations(
+        ([None, None, None, None, None], None),
+        ([True, True, 1, 1, 1], [True, True, True, True, 1]),
+        ([False, False, 0, 0, 0], [False, False, False, False, 0]),
+        ([True, True, True, True, True], [True, True, True, True, 1]),
+        ([False, False, 0, 0, 0], [False, False, False, False, 0]),
+        argnames="store, expected",
+    )
+    def test_boolean_roundtrip_reflected(self, boolean_table, store, expected):
         meta2 = MetaData(testing.db)
         table = Table("mysql_bool", meta2, autoload=True)
         eq_(colspec(table.c.b3), "b3 TINYINT(1)")
         eq_(colspec(table.c.b4), "b4 TINYINT(1) UNSIGNED")
+
         meta2 = MetaData(testing.db)
         table = Table(
             "mysql_bool",
@@ -560,129 +651,26 @@ class TypesTest(
         )
         eq_(colspec(table.c.b3), "b3 BOOL")
         eq_(colspec(table.c.b4), "b4 BOOL")
-        roundtrip([None, None, None, None, None])
-        roundtrip([True, True, 1, 1, 1], [True, True, True, True, 1])
-        roundtrip([False, False, 0, 0, 0], [False, False, False, False, 0])
-        roundtrip([True, True, True, True, True], [True, True, True, True, 1])
-        roundtrip([False, False, 0, 0, 0], [False, False, False, False, 0])
 
-    def test_timestamp_fsp(self):
-        self.assert_compile(mysql.TIMESTAMP(fsp=5), "TIMESTAMP(5)")
+        with testing.db.connect() as conn:
+            expected = expected or store
+            conn.execute(table.insert(store))
+            row = conn.execute(table.select()).first()
+            eq_(list(row), expected)
+            for i, val in enumerate(expected):
+                if isinstance(val, bool):
+                    self.assert_(val is row[i])
+            conn.execute(table.delete())
 
-    def test_timestamp_defaults(self):
-        """Exercise funky TIMESTAMP default syntax when used in columns."""
+    class MyTime(TypeDecorator):
+        impl = TIMESTAMP
 
-        columns = [
-            ([TIMESTAMP], {}, "TIMESTAMP NULL"),
-            ([mysql.MSTimeStamp], {}, "TIMESTAMP NULL"),
-            (
-                [
-                    mysql.MSTimeStamp(),
-                    DefaultClause(sql.text("CURRENT_TIMESTAMP")),
-                ],
-                {},
-                "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp,
-                    DefaultClause(sql.text("CURRENT_TIMESTAMP")),
-                ],
-                {"nullable": False},
-                "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp,
-                    DefaultClause(sql.text("'1999-09-09 09:09:09'")),
-                ],
-                {"nullable": False},
-                "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09'",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp(),
-                    DefaultClause(sql.text("'1999-09-09 09:09:09'")),
-                ],
-                {},
-                "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09'",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp(),
-                    DefaultClause(
-                        sql.text(
-                            "'1999-09-09 09:09:09' "
-                            "ON UPDATE CURRENT_TIMESTAMP"
-                        )
-                    ),
-                ],
-                {},
-                "TIMESTAMP NULL DEFAULT '1999-09-09 09:09:09' "
-                "ON UPDATE CURRENT_TIMESTAMP",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp,
-                    DefaultClause(
-                        sql.text(
-                            "'1999-09-09 09:09:09' "
-                            "ON UPDATE CURRENT_TIMESTAMP"
-                        )
-                    ),
-                ],
-                {"nullable": False},
-                "TIMESTAMP NOT NULL DEFAULT '1999-09-09 09:09:09' "
-                "ON UPDATE CURRENT_TIMESTAMP",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp(),
-                    DefaultClause(
-                        sql.text(
-                            "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
-                        )
-                    ),
-                ],
-                {},
-                "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP "
-                "ON UPDATE CURRENT_TIMESTAMP",
-            ),
-            (
-                [
-                    mysql.MSTimeStamp,
-                    DefaultClause(
-                        sql.text(
-                            "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
-                        )
-                    ),
-                ],
-                {"nullable": False},
-                "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP "
-                "ON UPDATE CURRENT_TIMESTAMP",
-            ),
-        ]
-        for spec, kw, expected in columns:
-            c = Column("t", *spec, **kw)
-            Table("t", MetaData(), c)
-            self.assert_compile(schema.CreateColumn(c), "t %s" % expected)
-
-    def test_timestamp_nullable_plain(self):
-        self._test_timestamp_nullable(TIMESTAMP)
-
-    def test_timestamp_nullable_typedecorator(self):
-        class MyTime(TypeDecorator):
-            impl = TIMESTAMP
-
-        self._test_timestamp_nullable(MyTime())
-
-    def test_timestamp_nullable_variant(self):
-        t = String().with_variant(TIMESTAMP, "mysql")
-        self._test_timestamp_nullable(t)
-
+    @testing.combinations(
+        (TIMESTAMP,), (MyTime(),), (String().with_variant(TIMESTAMP, "mysql"),)
+    )
     @testing.requires.mysql_zero_date
     @testing.provide_metadata
-    def _test_timestamp_nullable(self, type_):
+    def test_timestamp_nullable(self, type_):
         ts_table = Table(
             "mysql_timestamp",
             self.metadata,
@@ -724,35 +712,19 @@ class TypesTest(
                 [(now, now), (None, now), (None, now)],
             )
 
-    def test_datetime_generic(self):
-        self.assert_compile(mysql.DATETIME(), "DATETIME")
-
-    def test_datetime_fsp(self):
-        self.assert_compile(mysql.DATETIME(fsp=4), "DATETIME(4)")
-
-    def test_time_generic(self):
-        """"Exercise TIME."""
-
-        self.assert_compile(mysql.TIME(), "TIME")
-
-    def test_time_fsp(self):
-        self.assert_compile(mysql.TIME(fsp=5), "TIME(5)")
-
-    def test_time_result_processor(self):
-        eq_(
-            mysql.TIME().result_processor(None, None)(
-                datetime.timedelta(seconds=35, minutes=517, microseconds=450)
-            ),
-            datetime.time(8, 37, 35, 450),
-        )
-
     @testing.fails_on("mysql+oursql", "TODO: probable OurSQL bug")
     @testing.provide_metadata
     def test_time_roundtrip(self):
         t = Table("mysql_time", self.metadata, Column("t1", mysql.TIME()))
-        t.create()
-        t.insert().values(t1=datetime.time(8, 37, 35)).execute()
-        eq_(select([t.c.t1]).scalar(), datetime.time(8, 37, 35))
+
+        with testing.db.connect() as conn:
+            t.create(conn)
+
+            conn.execute(t.insert().values(t1=datetime.time(8, 37, 35)))
+            eq_(
+                conn.execute(select([t.c.t1])).scalar(),
+                datetime.time(8, 37, 35),
+            )
 
     @testing.provide_metadata
     def test_year(self):
@@ -773,12 +745,13 @@ class TypesTest(
         reflected = Table("mysql_year", MetaData(testing.db), autoload=True)
 
         for table in year_table, reflected:
-            table.insert(["1950", "50", None, 1950]).execute()
-            row = table.select().execute().first()
-            eq_(list(row), [1950, 2050, None, 1950])
-            table.delete().execute()
-            self.assert_(colspec(table.c.y1).startswith("y1 YEAR"))
-            eq_(colspec(table.c.y5), "y5 YEAR(4)")
+            with testing.db.connect() as conn:
+                conn.execute(table.insert(["1950", "50", None, 1950]))
+                row = conn.execute(table.select()).first()
+                eq_(list(row), [1950, 2050, None, 1950])
+                conn.execute(table.delete())
+                self.assert_(colspec(table.c.y1).startswith("y1 YEAR"))
+                eq_(colspec(table.c.y5), "y5 YEAR(4)")
 
 
 class JSONTest(fixtures.TestBase):

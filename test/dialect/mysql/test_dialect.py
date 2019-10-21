@@ -61,31 +61,28 @@ class DialectTest(fixtures.TestBase):
             },
         )
 
-    def test_normal_arguments_mysqldb(self):
+    @testing.combinations(
+        ("compress", True),
+        ("connect_timeout", 30),
+        ("read_timeout", 30),
+        ("write_timeout", 30),
+        ("client_flag", 1234),
+        ("local_infile", 1234),
+        ("use_unicode", False),
+        ("charset", "hello"),
+    )
+    def test_normal_arguments_mysqldb(self, kwarg, value):
         from sqlalchemy.dialects.mysql import mysqldb
 
         dialect = mysqldb.dialect()
-        self._test_normal_arguments(dialect)
-
-    def _test_normal_arguments(self, dialect):
-        for kwarg, value in [
-            ("compress", True),
-            ("connect_timeout", 30),
-            ("read_timeout", 30),
-            ("write_timeout", 30),
-            ("client_flag", 1234),
-            ("local_infile", 1234),
-            ("use_unicode", False),
-            ("charset", "hello"),
-        ]:
-            connect_args = dialect.create_connect_args(
-                make_url(
-                    "mysql://scott:tiger@localhost:3306/test"
-                    "?%s=%s" % (kwarg, value)
-                )
+        connect_args = dialect.create_connect_args(
+            make_url(
+                "mysql://scott:tiger@localhost:3306/test"
+                "?%s=%s" % (kwarg, value)
             )
+        )
 
-            eq_(connect_args[1][kwarg], value)
+        eq_(connect_args[1][kwarg], value)
 
     def test_mysqlconnector_buffered_arg(self):
         from sqlalchemy.dialects.mysql import mysqlconnector
@@ -191,57 +188,58 @@ class DialectTest(fixtures.TestBase):
 
 
 class ParseVersionTest(fixtures.TestBase):
-    def test_mariadb_normalized_version(self):
-        for expected, raw_version, version, is_mariadb in [
-            ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7, "MariaDB"), True),
-            (
-                (10, 2, 7),
-                "5.6.15.10.2.7-MariaDB",
-                (5, 6, 15, 10, 2, 7, "MariaDB"),
-                True,
-            ),
-            ((10, 2, 10), "10.2.10-MariaDB", (10, 2, 10, "MariaDB"), True),
-            ((5, 7, 20), "5.7.20", (5, 7, 20), False),
-            ((5, 6, 15), "5.6.15", (5, 6, 15), False),
-            (
-                (10, 2, 6),
-                "10.2.6.MariaDB.10.2.6+maria~stretch-log",
-                (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log"),
-                True,
-            ),
-            (
-                (10, 1, 9),
-                "10.1.9-MariaDBV1.0R050D002-20170809-1522",
-                (10, 1, 9, "MariaDB", "V1", "0R050D002", 20170809, 1522),
-                True,
-            ),
-        ]:
-            dialect = mysql.dialect()
-            eq_(dialect._parse_server_version(raw_version), version)
-            dialect.server_version_info = version
-            eq_(dialect._mariadb_normalized_version_info, expected)
-            assert dialect._is_mariadb is is_mariadb
+    @testing.combinations(
+        ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7, "MariaDB"), True),
+        (
+            (10, 2, 7),
+            "5.6.15.10.2.7-MariaDB",
+            (5, 6, 15, 10, 2, 7, "MariaDB"),
+            True,
+        ),
+        ((10, 2, 10), "10.2.10-MariaDB", (10, 2, 10, "MariaDB"), True),
+        ((5, 7, 20), "5.7.20", (5, 7, 20), False),
+        ((5, 6, 15), "5.6.15", (5, 6, 15), False),
+        (
+            (10, 2, 6),
+            "10.2.6.MariaDB.10.2.6+maria~stretch-log",
+            (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log"),
+            True,
+        ),
+        (
+            (10, 1, 9),
+            "10.1.9-MariaDBV1.0R050D002-20170809-1522",
+            (10, 1, 9, "MariaDB", "V1", "0R050D002", 20170809, 1522),
+            True,
+        ),
+    )
+    def test_mariadb_normalized_version(
+        self, expected, raw_version, version, is_mariadb
+    ):
+        dialect = mysql.dialect()
+        eq_(dialect._parse_server_version(raw_version), version)
+        dialect.server_version_info = version
+        eq_(dialect._mariadb_normalized_version_info, expected)
+        assert dialect._is_mariadb is is_mariadb
 
-    def test_mariadb_check_warning(self):
-
-        for expect_, version in [
-            (True, (10, 2, 7, "MariaDB")),
-            (True, (5, 6, 15, 10, 2, 7, "MariaDB")),
-            (False, (10, 2, 10, "MariaDB")),
-            (False, (5, 7, 20)),
-            (False, (5, 6, 15)),
-            (True, (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log")),
-        ]:
-            dialect = mysql.dialect()
-            dialect.server_version_info = version
-            if expect_:
-                with expect_warnings(
-                    ".*before 10.2.9 has known issues regarding "
-                    "CHECK constraints"
-                ):
-                    dialect._warn_for_known_db_issues()
-            else:
+    @testing.combinations(
+        (True, (10, 2, 7, "MariaDB")),
+        (True, (5, 6, 15, 10, 2, 7, "MariaDB")),
+        (False, (10, 2, 10, "MariaDB")),
+        (False, (5, 7, 20)),
+        (False, (5, 6, 15)),
+        (True, (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log")),
+    )
+    def test_mariadb_check_warning(self, expect_, version):
+        dialect = mysql.dialect()
+        dialect.server_version_info = version
+        if expect_:
+            with expect_warnings(
+                ".*before 10.2.9 has known issues regarding "
+                "CHECK constraints"
+            ):
                 dialect._warn_for_known_db_issues()
+        else:
+            dialect._warn_for_known_db_issues()
 
 
 class RemoveUTCTimestampTest(fixtures.TablesTest):
