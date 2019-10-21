@@ -1,9 +1,9 @@
 import collections
 import itertools
 
-from sqlalchemy import util
-from sqlalchemy.sql import visitors
-from sqlalchemy.sql.expression import Select
+from .. import util
+from ..sql import visitors
+from ..sql.expression import Select
 
 
 def _indent(text, indent):
