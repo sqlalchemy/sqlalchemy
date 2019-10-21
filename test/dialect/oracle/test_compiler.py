@@ -31,6 +31,7 @@ from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -1189,9 +1190,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE BITMAP INDEX idx3 ON testtbl (data)",
         )
 
-    def _test_column_computed(self, *args):
+    @combinations(
+        ("no_persisted", "", ...),
+        ("persisted_none", "", None),
+        ("persisted_false", " VIRTUAL", False),
+        id_="iaa",
+    )
+    def test_column_computed(self, text, persisted):
         m = MetaData()
-        kwargs = {"persisted": args[1]} if len(args) == 2 else {}
+        kwargs = {"persisted": persisted} if persisted != ... else {}
         t = Table(
             "t",
             m,
@@ -1201,17 +1208,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
-            "ALWAYS AS (x + 2)%s)" % args[0],
+            "ALWAYS AS (x + 2)%s)" % text,
         )
-
-    def test_column_computed_no_persisted(self):
-        self._test_column_computed("")
-
-    def test_column_computed_persisted_none(self):
-        self._test_column_computed("", None)
-
-    def test_column_computed_persisted_false(self):
-        self._test_column_computed(" VIRTUAL", False)
 
     def test_column_computed_persisted_true(self):
         m = MetaData()

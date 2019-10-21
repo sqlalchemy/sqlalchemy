@@ -1194,9 +1194,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
 
-    def _test_column_computed(self, *args):
+    @testing.combinations(
+        ("no_persisted", "", ...),
+        ("persisted_none", "", None),
+        ("persisted_true", " PERSISTED", True),
+        ("persisted_false", "", False),
+        id_="iaa",
+    )
+    def test_column_computed(self, text, persisted):
         m = MetaData()
-        kwargs = {"persisted": args[1]} if len(args) == 2 else {}
+        kwargs = {"persisted": persisted} if persisted != ... else {}
         t = Table(
             "t",
             m,
@@ -1205,20 +1212,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE t (x INTEGER NULL, y AS (x + 2)%s)" % args[0],
+            "CREATE TABLE t (x INTEGER NULL, y AS (x + 2)%s)" % text,
         )
-
-    def test_column_computed_no_persisted(self):
-        self._test_column_computed("")
-
-    def test_column_computed_persisted_none(self):
-        self._test_column_computed("", None)
-
-    def test_column_computed_persisted_true(self):
-        self._test_column_computed(" PERSISTED", True)
-
-    def test_column_computed_persisted_false(self):
-        self._test_column_computed("", False)
 
 
 class SchemaTest(fixtures.TestBase):

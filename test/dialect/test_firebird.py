@@ -24,6 +24,7 @@ from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -439,9 +440,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(column("_somecol"), '"_somecol"')
         self.assert_compile(column("$somecol"), '"$somecol"')
 
-    def _test_column_computed(self, *args):
+    @combinations(("no_persisted", ...), ("persisted_none", None), id_="ia")
+    def test_column_computed(self, persisted):
         m = MetaData()
-        kwargs = {"persisted": args[0]} if len(args) == 1 else {}
+        kwargs = {"persisted": persisted} if persisted != ... else {}
         t = Table(
             "t",
             m,
@@ -454,13 +456,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALWAYS AS (x + 2))",
         )
 
-    def test_column_computed_no_persisted(self):
-        self._test_column_computed()
-
-    def test_column_computed_persisted_none(self):
-        self._test_column_computed(None)
-
-    def _test_column_computed_persisted(self, persisted):
+    @combinations(
+        ("persisted_true", True), ("persisted_false", False), id_="ia"
+    )
+    def test_column_computed_raises(self, persisted):
         m = MetaData()
         t = Table(
             "t",
@@ -475,12 +474,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t).compile,
             dialect=firebird.dialect(),
         )
-
-    def test_column_computed_persisted_true(self):
-        self._test_column_computed_persisted(True)
-
-    def test_column_computed_persisted_false(self):
-        self._test_column_computed_persisted(False)
 
 
 class TypesTest(fixtures.TestBase):

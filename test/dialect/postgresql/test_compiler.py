@@ -38,6 +38,7 @@ from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
@@ -1542,9 +1543,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             q, "DELETE FROM t1 AS a1 USING t2 WHERE a1.c1 = t2.c1"
         )
 
-    def _test_column_computed(self, *args):
+    @combinations(
+        ("no_persisted", " STORED", ...),
+        ("persisted_none", " STORED", None),
+        ("persisted_true", " STORED", True),
+        id_="iaa",
+    )
+    def test_column_computed(self, text, persisted):
         m = MetaData()
-        kwargs = {"persisted": args[1]} if len(args) == 2 else {}
+        kwargs = {"persisted": persisted} if persisted != ... else {}
         t = Table(
             "t",
             m,
@@ -1554,17 +1561,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
-            "ALWAYS AS (x + 2)%s)" % args[0],
+            "ALWAYS AS (x + 2)%s)" % text,
         )
-
-    def test_column_computed_no_persisted(self):
-        self._test_column_computed(" STORED")
-
-    def test_column_computed_persisted_none(self):
-        self._test_column_computed(" STORED", None)
-
-    def test_column_computed_persisted_true(self):
-        self._test_column_computed(" STORED", True)
 
     def test_column_computed_persisted_false(self):
         m = MetaData()
