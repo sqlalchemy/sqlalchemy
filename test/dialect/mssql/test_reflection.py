@@ -421,6 +421,18 @@ class ReflectHugeViewTest(fixtures.TestBase):
 
 
 class OwnerPlusDBTest(fixtures.TestBase):
+    def test_default_schema_name_not_interpreted_as_tokenized(self):
+        dialect = mssql.dialect()
+        dialect.server_version_info = base.MS_2014_VERSION
+
+        mock_connection = mock.Mock(scalar=lambda sql: "Jonah.The.Whale")
+        schema_name = dialect._get_default_schema_name(mock_connection)
+        eq_(schema_name, "Jonah.The.Whale")
+        eq_(
+            base._owner_plus_db(dialect, schema_name),
+            (None, "Jonah.The.Whale"),
+        )
+
     def test_owner_database_pairs_dont_use_for_same_db(self):
         dialect = mssql.dialect()
 
