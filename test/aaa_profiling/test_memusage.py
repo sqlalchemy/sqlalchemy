@@ -921,7 +921,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
-    @testing.expect_deprecated
+    @testing.uses_deprecated()
     @testing.provide_metadata
     def test_key_fallback_result(self):
         e = self.engine

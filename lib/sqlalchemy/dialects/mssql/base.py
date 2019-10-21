@@ -2441,7 +2441,9 @@ class MSDialect(default.DefaultDialect):
             query = sql.text("SELECT schema_name()")
             default_schema_name = connection.scalar(query)
             if default_schema_name is not None:
-                return util.text_type(default_schema_name)
+                # guard against the case where the default_schema_name is being
+                # fed back into a table reflection function.
+                return quoted_name(default_schema_name, quote=True)
             else:
                 return self.schema_name
 

@@ -656,7 +656,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
     The default string storage format is::
 
-        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(min)02d:%(second)02d.%(microsecond)06d"
+        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
 
     e.g.::
 
@@ -669,7 +669,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
         from sqlalchemy.dialects.sqlite import DATETIME
 
         dt = DATETIME(storage_format="%(year)04d/%(month)02d/%(day)02d "
-                                     "%(hour)02d:%(min)02d:%(second)02d",
+                                     "%(hour)02d:%(minute)02d:%(second)02d",
                       regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)"
         )
 

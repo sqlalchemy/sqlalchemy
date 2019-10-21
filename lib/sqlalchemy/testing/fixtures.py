@@ -377,7 +377,7 @@ class DeclarativeMappedTest(MappedTest):
         class FindFixtureDeclarative(DeclarativeMeta):
             def __init__(cls, classname, bases, dict_):
                 cls_registry[classname] = cls
-                return DeclarativeMeta.__init__(cls, classname, bases, dict_)
+                DeclarativeMeta.__init__(cls, classname, bases, dict_)
 
         class DeclarativeBasic(object):
             __table_cls__ = schema.Table

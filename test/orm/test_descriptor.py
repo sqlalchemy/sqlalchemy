@@ -13,7 +13,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.util import partial
 
 
-class TestDescriptor(descriptor_props.DescriptorProperty):
+class MockDescriptor(descriptor_props.DescriptorProperty):
     def __init__(
         self, cls, key, descriptor=None, doc=None, comparator_factory=None
     ):
@@ -40,7 +40,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
     def test_fixture(self):
         Foo = self._fixture()
 
-        d = TestDescriptor(Foo, "foo")
+        d = MockDescriptor(Foo, "foo")
         d.instrument_class(Foo.__mapper__)
 
         assert Foo.foo
@@ -50,7 +50,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         prop = property(lambda self: None)
         Foo.foo = prop
 
-        d = TestDescriptor(Foo, "foo")
+        d = MockDescriptor(Foo, "foo")
         d.instrument_class(Foo.__mapper__)
 
         assert Foo().foo is None
@@ -68,7 +68,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
         prop = myprop(lambda self: None)
         Foo.foo = prop
 
-        d = TestDescriptor(Foo, "foo")
+        d = MockDescriptor(Foo, "foo")
         d.instrument_class(Foo.__mapper__)
 
         assert Foo().foo is None
@@ -95,7 +95,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
                 return column("foo") == func.upper(other)
 
         Foo = self._fixture()
-        d = TestDescriptor(Foo, "foo", comparator_factory=Comparator)
+        d = MockDescriptor(Foo, "foo", comparator_factory=Comparator)
         d.instrument_class(Foo.__mapper__)
         eq_(Foo.foo.method1(), "method1")
         eq_(Foo.foo.method2("x"), "method2")
@@ -119,7 +119,7 @@ class DescriptorInstrumentationTest(fixtures.ORMTest):
             prop = mapper._props["_name"]
             return Comparator(prop, mapper)
 
-        d = TestDescriptor(Foo, "foo", comparator_factory=comparator_factory)
+        d = MockDescriptor(Foo, "foo", comparator_factory=comparator_factory)
         d.instrument_class(Foo.__mapper__)
 
         eq_(str(Foo.foo == "ed"), "foobar(foo.name) = foobar(:foobar_1)")

@@ -5,6 +5,7 @@ import importlib
 import operator
 import os
 
+import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import ARRAY
 from sqlalchemy import BigInteger
@@ -87,42 +88,83 @@ from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.util import OrderedDict
 
 
-class AdaptTest(fixtures.TestBase):
-    def _all_dialect_modules(self):
-        return [
-            importlib.import_module("sqlalchemy.dialects.%s" % d)
-            for d in dialects.__all__
-            if not d.startswith("_")
-        ]
+def _all_dialect_modules():
+    return [
+        importlib.import_module("sqlalchemy.dialects.%s" % d)
+        for d in dialects.__all__
+        if not d.startswith("_")
+    ]
 
-    def _all_dialects(self):
-        return [d.base.dialect() for d in self._all_dialect_modules()]
 
-    def _types_for_mod(self, mod):
-        for key in dir(mod):
-            typ = getattr(mod, key)
-            if not isinstance(typ, type) or not issubclass(
-                typ, types.TypeEngine
-            ):
+def _all_dialects():
+    return [d.base.dialect() for d in _all_dialect_modules()]
+
+
+def _types_for_mod(mod):
+    for key in dir(mod):
+        typ = getattr(mod, key)
+        if not isinstance(typ, type) or not issubclass(typ, types.TypeEngine):
+            continue
+        yield typ
+
+
+def _all_types(omit_special_types=False):
+    seen = set()
+    for typ in _types_for_mod(types):
+        if omit_special_types and typ in (
+            types.TypeDecorator,
+            types.TypeEngine,
+            types.Variant,
+        ):
+            continue
+
+        if typ in seen:
+            continue
+        seen.add(typ)
+        yield typ
+    for dialect in _all_dialect_modules():
+        for typ in _types_for_mod(dialect):
+            if typ in seen:
                 continue
+            seen.add(typ)
             yield typ
 
-    def _all_types(self):
-        for typ in self._types_for_mod(types):
-            yield typ
-        for dialect in self._all_dialect_modules():
-            for typ in self._types_for_mod(dialect):
-                yield typ
 
-    def test_uppercase_importable(self):
-        import sqlalchemy as sa
+class AdaptTest(fixtures.TestBase):
+    @testing.combinations(((t,) for t in _types_for_mod(types)), id_="n")
+    def test_uppercase_importable(self, typ):
+        if typ.__name__ == typ.__name__.upper():
+            assert getattr(sa, typ.__name__) is typ
+            assert typ.__name__ in types.__all__
 
-        for typ in self._types_for_mod(types):
-            if typ.__name__ == typ.__name__.upper():
-                assert getattr(sa, typ.__name__) is typ
-                assert typ.__name__ in types.__all__
-
-    def test_uppercase_rendering(self):
+    @testing.combinations(
+        ((d.name, d) for d in _all_dialects()), argnames="dialect", id_="ia"
+    )
+    @testing.combinations(
+        (REAL(), "REAL"),
+        (FLOAT(), "FLOAT"),
+        (NUMERIC(), "NUMERIC"),
+        (DECIMAL(), "DECIMAL"),
+        (INTEGER(), "INTEGER"),
+        (SMALLINT(), "SMALLINT"),
+        (TIMESTAMP(), ("TIMESTAMP", "TIMESTAMP WITHOUT TIME ZONE")),
+        (DATETIME(), "DATETIME"),
+        (DATE(), "DATE"),
+        (TIME(), ("TIME", "TIME WITHOUT TIME ZONE")),
+        (CLOB(), "CLOB"),
+        (VARCHAR(10), ("VARCHAR(10)", "VARCHAR(10 CHAR)")),
+        (
+            NVARCHAR(10),
+            ("NVARCHAR(10)", "NATIONAL VARCHAR(10)", "NVARCHAR2(10)"),
+        ),
+        (CHAR(), "CHAR"),
+        (NCHAR(), ("NCHAR", "NATIONAL CHAR")),
+        (BLOB(), ("BLOB", "BLOB SUB_TYPE 0")),
+        (BOOLEAN(), ("BOOLEAN", "BOOL", "INTEGER")),
+        argnames="type_, expected",
+        id_="ra",
+    )
+    def test_uppercase_rendering(self, dialect, type_, expected):
         """Test that uppercase types from types.py always render as their
         type.
 
@@ -133,51 +175,48 @@ class AdaptTest(fixtures.TestBase):
 
         """
 
-        for dialect in self._all_dialects():
-            for type_, expected in (
-                (REAL, "REAL"),
-                (FLOAT, "FLOAT"),
-                (NUMERIC, "NUMERIC"),
-                (DECIMAL, "DECIMAL"),
-                (INTEGER, "INTEGER"),
-                (SMALLINT, "SMALLINT"),
-                (TIMESTAMP, ("TIMESTAMP", "TIMESTAMP WITHOUT TIME ZONE")),
-                (DATETIME, "DATETIME"),
-                (DATE, "DATE"),
-                (TIME, ("TIME", "TIME WITHOUT TIME ZONE")),
-                (CLOB, "CLOB"),
-                (VARCHAR(10), ("VARCHAR(10)", "VARCHAR(10 CHAR)")),
-                (
-                    NVARCHAR(10),
-                    ("NVARCHAR(10)", "NATIONAL VARCHAR(10)", "NVARCHAR2(10)"),
-                ),
-                (CHAR, "CHAR"),
-                (NCHAR, ("NCHAR", "NATIONAL CHAR")),
-                (BLOB, ("BLOB", "BLOB SUB_TYPE 0")),
-                (BOOLEAN, ("BOOLEAN", "BOOL", "INTEGER")),
-            ):
-                if isinstance(expected, str):
-                    expected = (expected,)
+        if isinstance(expected, str):
+            expected = (expected,)
 
-                try:
-                    compiled = types.to_instance(type_).compile(
-                        dialect=dialect
-                    )
-                except NotImplementedError:
-                    continue
+        try:
+            compiled = type_.compile(dialect=dialect)
+        except NotImplementedError:
+            return
 
-                assert compiled in expected, (
-                    "%r matches none of %r for dialect %s"
-                    % (compiled, expected, dialect.name)
-                )
+        assert compiled in expected, "%r matches none of %r for dialect %s" % (
+            compiled,
+            expected,
+            dialect.name,
+        )
 
-                assert str(types.to_instance(type_)) in expected, (
-                    "default str() of type %r not expected, %r"
-                    % (type_, expected)
-                )
+        assert (
+            str(types.to_instance(type_)) in expected
+        ), "default str() of type %r not expected, %r" % (type_, expected)
+
+    def _adaptions():
+        for typ in _all_types(omit_special_types=True):
+
+            # up adapt from LowerCase to UPPERCASE,
+            # as well as to all non-sqltypes
+            up_adaptions = [typ] + typ.__subclasses__()
+            yield "%s.%s" % (
+                typ.__module__,
+                typ.__name__,
+            ), False, typ, up_adaptions
+            for subcl in typ.__subclasses__():
+                if (
+                    subcl is not typ
+                    and typ is not TypeDecorator
+                    and "sqlalchemy" in subcl.__module__
+                ):
+                    yield "%s.%s" % (
+                        subcl.__module__,
+                        subcl.__name__,
+                    ), True, subcl, [typ]
 
     @testing.uses_deprecated(".*Binary.*")
-    def test_adapt_method(self):
+    @testing.combinations(_adaptions(), id_="iaaa")
+    def test_adapt_method(self, is_down_adaption, typ, target_adaptions):
         """ensure all types have a working adapt() method,
         which creates a distinct copy.
 
@@ -190,67 +229,44 @@ class AdaptTest(fixtures.TestBase):
 
         """
 
-        def adaptions():
-            for typ in self._all_types():
-                # up adapt from LowerCase to UPPERCASE,
-                # as well as to all non-sqltypes
-                up_adaptions = [typ] + typ.__subclasses__()
-                yield False, typ, up_adaptions
-                for subcl in typ.__subclasses__():
-                    if (
-                        subcl is not typ
-                        and typ is not TypeDecorator
-                        and "sqlalchemy" in subcl.__module__
-                    ):
-                        yield True, subcl, [typ]
-
-        for is_down_adaption, typ, target_adaptions in adaptions():
-            if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
+        if issubclass(typ, ARRAY):
+            t1 = typ(String)
+        else:
+            t1 = typ()
+        for cls in target_adaptions:
+            if (is_down_adaption and issubclass(typ, sqltypes.Emulated)) or (
+                not is_down_adaption and issubclass(cls, sqltypes.Emulated)
+            ):
                 continue
-            elif issubclass(typ, ARRAY):
-                t1 = typ(String)
-            else:
-                t1 = typ()
-            for cls in target_adaptions:
-                if (
-                    is_down_adaption and issubclass(typ, sqltypes.Emulated)
-                ) or (
-                    not is_down_adaption and issubclass(cls, sqltypes.Emulated)
+
+            # print("ADAPT %s -> %s" % (t1.__class__, cls))
+            t2 = t1.adapt(cls)
+            assert t1 is not t2
+
+            if is_down_adaption:
+                t2, t1 = t1, t2
+
+            for k in t1.__dict__:
+                if k in (
+                    "impl",
+                    "_is_oracle_number",
+                    "_create_events",
+                    "create_constraint",
+                    "inherit_schema",
+                    "schema",
+                    "metadata",
+                    "name",
                 ):
                     continue
+                # assert each value was copied, or that
+                # the adapted type has a more specific
+                # value than the original (i.e. SQL Server
+                # applies precision=24 for REAL)
+                assert (
+                    getattr(t2, k) == t1.__dict__[k] or t1.__dict__[k] is None
+                )
 
-                if cls.__module__.startswith("test"):
-                    continue
-
-                # print("ADAPT %s -> %s" % (t1.__class__, cls))
-                t2 = t1.adapt(cls)
-                assert t1 is not t2
-
-                if is_down_adaption:
-                    t2, t1 = t1, t2
-
-                for k in t1.__dict__:
-                    if k in (
-                        "impl",
-                        "_is_oracle_number",
-                        "_create_events",
-                        "create_constraint",
-                        "inherit_schema",
-                        "schema",
-                        "metadata",
-                        "name",
-                    ):
-                        continue
-                    # assert each value was copied, or that
-                    # the adapted type has a more specific
-                    # value than the original (i.e. SQL Server
-                    # applies precision=24 for REAL)
-                    assert (
-                        getattr(t2, k) == t1.__dict__[k]
-                        or t1.__dict__[k] is None
-                    )
-
-            eq_(t1.evaluates_none().should_evaluate_none, True)
+        eq_(t1.evaluates_none().should_evaluate_none, True)
 
     def test_python_type(self):
         eq_(types.Integer().python_type, int)
@@ -270,15 +286,13 @@ class AdaptTest(fixtures.TestBase):
         )
 
     @testing.uses_deprecated()
-    def test_repr(self):
-        for typ in self._all_types():
-            if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
-                continue
-            elif issubclass(typ, ARRAY):
-                t1 = typ(String)
-            else:
-                t1 = typ()
-            repr(t1)
+    @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
+    def test_repr(self, typ):
+        if issubclass(typ, ARRAY):
+            t1 = typ(String)
+        else:
+            t1 = typ()
+        repr(t1)
 
     def test_adapt_constructor_copy_override_kw(self):
         """test that adapt() can accept kw args that override
@@ -299,27 +313,30 @@ class AdaptTest(fixtures.TestBase):
 
 
 class TypeAffinityTest(fixtures.TestBase):
-    def test_type_affinity(self):
-        for type_, affin in [
-            (String(), String),
-            (VARCHAR(), String),
-            (Date(), Date),
-            (LargeBinary(), types._Binary),
-        ]:
-            eq_(type_._type_affinity, affin)
+    @testing.combinations(
+        (String(), String),
+        (VARCHAR(), String),
+        (Date(), Date),
+        (LargeBinary(), types._Binary),
+        id_="rn",
+    )
+    def test_type_affinity(self, type_, affin):
+        eq_(type_._type_affinity, affin)
 
-        for t1, t2, comp in [
-            (Integer(), SmallInteger(), True),
-            (Integer(), String(), False),
-            (Integer(), Integer(), True),
-            (Text(), String(), True),
-            (Text(), Unicode(), True),
-            (LargeBinary(), Integer(), False),
-            (LargeBinary(), PickleType(), True),
-            (PickleType(), LargeBinary(), True),
-            (PickleType(), PickleType(), True),
-        ]:
-            eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
+    @testing.combinations(
+        (Integer(), SmallInteger(), True),
+        (Integer(), String(), False),
+        (Integer(), Integer(), True),
+        (Text(), String(), True),
+        (Text(), Unicode(), True),
+        (LargeBinary(), Integer(), False),
+        (LargeBinary(), PickleType(), True),
+        (PickleType(), LargeBinary(), True),
+        (PickleType(), PickleType(), True),
+        id_="rra",
+    )
+    def test_compare_type_affinity(self, t1, t2, comp):
+        eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
 
     def test_decorator_doesnt_cache(self):
         from sqlalchemy.dialects import postgresql
@@ -340,30 +357,32 @@ class TypeAffinityTest(fixtures.TestBase):
 
 
 class PickleTypesTest(fixtures.TestBase):
-    def test_pickle_types(self):
+    @testing.combinations(
+        ("Boo", Boolean()),
+        ("Str", String()),
+        ("Tex", Text()),
+        ("Uni", Unicode()),
+        ("Int", Integer()),
+        ("Sma", SmallInteger()),
+        ("Big", BigInteger()),
+        ("Num", Numeric()),
+        ("Flo", Float()),
+        ("Dat", DateTime()),
+        ("Dat", Date()),
+        ("Tim", Time()),
+        ("Lar", LargeBinary()),
+        ("Pic", PickleType()),
+        ("Int", Interval()),
+        id_="ar",
+    )
+    def test_pickle_types(self, name, type_):
+        column_type = Column(name, type_)
+        meta = MetaData()
+        Table("foo", meta, column_type)
+
         for loads, dumps in picklers():
-            column_types = [
-                Column("Boo", Boolean()),
-                Column("Str", String()),
-                Column("Tex", Text()),
-                Column("Uni", Unicode()),
-                Column("Int", Integer()),
-                Column("Sma", SmallInteger()),
-                Column("Big", BigInteger()),
-                Column("Num", Numeric()),
-                Column("Flo", Float()),
-                Column("Dat", DateTime()),
-                Column("Dat", Date()),
-                Column("Tim", Time()),
-                Column("Lar", LargeBinary()),
-                Column("Pic", PickleType()),
-                Column("Int", Interval()),
-            ]
-            for column_type in column_types:
-                meta = MetaData()
-                Table("foo", meta, column_type)
-                loads(dumps(column_type))
-                loads(dumps(meta))
+            loads(dumps(column_type))
+            loads(dumps(meta))
 
 
 class _UserDefinedTypeFixture(object):
@@ -2414,19 +2433,19 @@ class ExpressionTest(
         expr = column("foo", CHAR) == "asdf"
         eq_(expr.right.type.__class__, CHAR)
 
-    def test_actual_literal_adapters(self):
-        for data, expected in [
-            (5, Integer),
-            (2.65, Float),
-            (True, Boolean),
-            (decimal.Decimal("2.65"), Numeric),
-            (datetime.date(2015, 7, 20), Date),
-            (datetime.time(10, 15, 20), Time),
-            (datetime.datetime(2015, 7, 20, 10, 15, 20), DateTime),
-            (datetime.timedelta(seconds=5), Interval),
-            (None, types.NullType),
-        ]:
-            is_(literal(data).type.__class__, expected)
+    @testing.combinations(
+        (5, Integer),
+        (2.65, Float),
+        (True, Boolean),
+        (decimal.Decimal("2.65"), Numeric),
+        (datetime.date(2015, 7, 20), Date),
+        (datetime.time(10, 15, 20), Time),
+        (datetime.datetime(2015, 7, 20, 10, 15, 20), DateTime),
+        (datetime.timedelta(seconds=5), Interval),
+        (None, types.NullType),
+    )
+    def test_actual_literal_adapters(self, data, expected):
+        is_(literal(data).type.__class__, expected)
 
     def test_typedec_operator_adapt(self):
         expr = test_table.c.bvalue + "hi"
@@ -2592,18 +2611,22 @@ class ExpressionTest(
         expr = column("bar", types.Interval) * column("foo", types.Numeric)
         eq_(expr.type._type_affinity, types.Interval)
 
-    def test_numerics_coercion(self):
-
-        for op in (operator.add, operator.mul, operator.truediv, operator.sub):
-            for other in (Numeric(10, 2), Integer):
-                expr = op(
-                    column("bar", types.Numeric(10, 2)), column("foo", other)
-                )
-                assert isinstance(expr.type, types.Numeric)
-                expr = op(
-                    column("foo", other), column("bar", types.Numeric(10, 2))
-                )
-                assert isinstance(expr.type, types.Numeric)
+    @testing.combinations(
+        (operator.add,),
+        (operator.mul,),
+        (operator.truediv,),
+        (operator.sub,),
+        argnames="op",
+        id_="n",
+    )
+    @testing.combinations(
+        (Numeric(10, 2),), (Integer(),), argnames="other", id_="r"
+    )
+    def test_numerics_coercion(self, op, other):
+        expr = op(column("bar", types.Numeric(10, 2)), column("foo", other))
+        assert isinstance(expr.type, types.Numeric)
+        expr = op(column("foo", other), column("bar", types.Numeric(10, 2)))
+        assert isinstance(expr.type, types.Numeric)
 
     def test_asdecimal_int_to_numeric(self):
         expr = column("a", Integer) * column("b", Numeric(asdecimal=False))
