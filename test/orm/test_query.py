@@ -96,32 +96,38 @@ class MiscTest(QueryTest):
 class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):
         User = self.classes.User
-        row = create_session().query(User).only_return_tuples(False).first()
+        query = create_session().query(User).only_return_tuples(False)
+        assert query.is_single_entity is True
+        row = query.first()
         assert isinstance(row, User)
 
     def test_single_entity_true(self):
         User = self.classes.User
-        row = create_session().query(User).only_return_tuples(True).first()
+        query = create_session().query(User).only_return_tuples(True)
+        assert query.is_single_entity is False
+        row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 
     def test_multiple_entity_false(self):
         User = self.classes.User
-        row = (
+        query = (
             create_session()
             .query(User.id, User)
             .only_return_tuples(False)
-            .first()
         )
+        assert query.is_single_entity is False
+        row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 
     def test_multiple_entity_true(self):
         User = self.classes.User
-        row = (
+        query = (
             create_session()
             .query(User.id, User)
             .only_return_tuples(True)
-            .first()
         )
+        assert query.is_single_entity is False
+        row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 
 
