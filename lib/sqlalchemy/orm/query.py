@@ -176,7 +176,7 @@ class Query(Generative):
         self._primary_entity = None
         self._has_mapper_entities = False
 
-        if entities is not ():
+        if entities != ():
             for ent in util.to_list(entities):
                 entity_wrapper(self, ent)
 
