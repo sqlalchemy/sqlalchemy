@@ -648,6 +648,18 @@ class Query(Generative):
         """
         self._only_return_tuples = value
 
+    @property
+    def is_single_entity(self):
+        """Returns True if this query returns a single entity for each instance in its
+        result list, and False if this query returns a tuple of entities for each result.
+
+        """
+        return (
+            not self._only_return_tuples
+            and len(self._entities) == 1
+            and self._entities[0].supports_single_entity
+        )
+
     @_generative
     def enable_eagerloads(self, value):
         """Control whether or not eager joins and subqueries are
