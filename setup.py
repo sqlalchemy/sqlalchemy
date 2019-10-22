@@ -81,37 +81,22 @@ class Distribution(_Distribution):
         return True
 
 
-class PyTest(TestCommand):
-    # from http://pytest.org/latest/goodpractices.html\
-    # #integrating-with-setuptools-python-setup-py-test-pytest-runner
-    # TODO: prefer pytest-runner package at some point, however it was
-    # not working at the time of this comment.
-    user_options = [("pytest-args=", "a", "Arguments to pass to py.test")]
-
-    default_options = ["-n", "4", "-q", "--nomemory"]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = ""
-
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
+class UseTox(TestCommand):
+    RED = 31
+    RESET_SEQ = "\033[0m"
+    BOLD_SEQ = "\033[1m"
+    COLOR_SEQ = "\033[1;%dm"
 
     def run_tests(self):
-        import shlex
-
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-
-        errno = pytest.main(
-            self.default_options + shlex.split(self.pytest_args)
+        sys.stderr.write(
+            "%s%spython setup.py test is deprecated by pypa.  Please invoke "
+            "'tox' with no arguments for a basic test run.\n%s"
+            % (self.COLOR_SEQ % self.RED, self.BOLD_SEQ, self.RESET_SEQ)
         )
-        sys.exit(errno)
+        sys.exit(1)
 
 
-cmdclass["test"] = PyTest
+cmdclass["test"] = UseTox
 
 
 def status_msgs(*msgs):
@@ -156,11 +141,6 @@ def run_setup(with_cext):
         package_dir={"": "lib"},
         license="MIT",
         cmdclass=cmdclass,
-        tests_require=[
-            "pytest>=2.5.2,!=3.9.1,!=3.9.2",
-            "mock",
-            "pytest-xdist",
-        ],
         long_description=readme,
         python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
         classifiers=[
