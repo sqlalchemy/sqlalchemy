@@ -440,10 +440,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(column("_somecol"), '"_somecol"')
         self.assert_compile(column("$somecol"), '"$somecol"')
 
-    @combinations(("no_persisted", ...), ("persisted_none", None), id_="ia")
+    @combinations(
+        ("no_persisted", Ellipsis), ("persisted_none", None), id_="ia"
+    )
     def test_column_computed(self, persisted):
         m = MetaData()
-        kwargs = {"persisted": persisted} if persisted != ... else {}
+        kwargs = {"persisted": persisted} if persisted != Ellipsis else {}
         t = Table(
             "t",
             m,

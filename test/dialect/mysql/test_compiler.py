@@ -388,7 +388,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(sql.delete(a1), "DELETE FROM t1 AS a1")
 
     @combinations(
-        ("no_persisted", "", ...),
+        ("no_persisted", "", Ellipsis),
         ("persisted_none", "", None),
         ("persisted_true", " STORED", True),
         ("persisted_false", " VIRTUAL", False),
@@ -396,7 +396,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     def test_column_computed(self, text, persisted):
         m = MetaData()
-        kwargs = {"persisted": persisted} if persisted != ... else {}
+        kwargs = {"persisted": persisted} if persisted != Ellipsis else {}
         t = Table(
             "t",
             m,

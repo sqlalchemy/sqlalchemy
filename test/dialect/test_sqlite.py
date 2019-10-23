@@ -759,7 +759,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             eq_(d.create_connect_args(url), expected)
 
     @combinations(
-        ("no_persisted", ...),
+        ("no_persisted", Ellipsis),
         ("persisted_none", None),
         ("persisted_true", True),
         ("persisted_false", False),
@@ -767,7 +767,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
     )
     def test_column_computed(self, persisted):
         m = MetaData()
-        kwargs = {"persisted": persisted} if persisted != ... else {}
+        kwargs = {"persisted": persisted} if persisted != Ellipsis else {}
         t = Table(
             "t",
             m,
