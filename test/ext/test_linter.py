@@ -1,7 +1,7 @@
 from sqlalchemy import event, Integer, select, testing
 from sqlalchemy.ext import linter
 from sqlalchemy.ext.linter import find_unmatching_froms
-from sqlalchemy.testing import expect_warnings, fixtures
+from sqlalchemy.testing import expect_warnings, fixtures, eq_
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column, Table
 
@@ -43,12 +43,12 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
             .where(self.b.c.col_b == 5)
         )
         froms, start = find_unmatching_froms(query, self.a)
-        assert start == self.a
-        assert froms == {self.b}
+        eq_(start, self.a)
+        eq_(froms, {self.b})
 
         froms, start = find_unmatching_froms(query, self.b)
-        assert start == self.b
-        assert froms == {self.a}
+        eq_(start, self.b)
+        eq_(froms, {self.a})
 
     def test_disconnect_between_ab_cd(self):
         query = (
@@ -61,12 +61,12 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         )
         for start in self.a, self.b:
             froms, start = find_unmatching_froms(query, start)
-            assert start == start
-            assert froms == {self.c, self.d}
+            eq_(start, start)
+            eq_(froms, {self.c, self.d})
         for start in self.c, self.d:
             froms, start = find_unmatching_froms(query, start)
-            assert start == start
-            assert froms == {self.a, self.b}
+            eq_(start, start)
+            eq_(froms, {self.a, self.b})
 
     def test_c_and_d_both_disconnected(self):
         query = (
@@ -77,16 +77,16 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         )
         for start in self.a, self.b:
             froms, start = find_unmatching_froms(query, start)
-            assert start == start
-            assert froms == {self.c, self.d}
+            eq_(start, start)
+            eq_(froms, {self.c, self.d})
 
         froms, start = find_unmatching_froms(query, self.c)
-        assert start == self.c
-        assert froms == {self.a, self.b, self.d}
+        eq_(start, self.c)
+        eq_(froms, {self.a, self.b, self.d})
 
         froms, start = find_unmatching_froms(query, self.d)
-        assert start == self.d
-        assert froms == {self.a, self.b, self.c}
+        eq_(start, self.d)
+        eq_(froms, {self.a, self.b, self.c})
 
     def test_now_connected(self):
         query = (
@@ -113,12 +113,12 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         stmt = select([self.c]).select_from(subq)
 
         froms, start = find_unmatching_froms(stmt, self.c)
-        assert start == self.c
-        assert froms == {subq}
+        eq_(start, self.c)
+        eq_(froms, {subq})
 
         froms, start = find_unmatching_froms(stmt, subq)
-        assert start == subq
-        assert froms == {self.c}
+        eq_(start, subq)
+        eq_(froms, {self.c})
 
     def test_now_connect_it(self):
         subq = (
@@ -170,12 +170,12 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
 
         for start in self.a, self.b, self.c:
             froms, start = find_unmatching_froms(query, start)
-            assert start == start
-            assert froms == {self.d}
+            eq_(start, start)
+            eq_(froms, {self.d})
 
         froms, start = find_unmatching_froms(query, self.d)
-        assert start == self.d
-        assert froms == {self.a, self.b, self.c}
+        eq_(start, self.d)
+        eq_(froms, {self.a, self.b, self.c})
 
     def test_no_froms(self):
         query = (select([1]))
@@ -206,7 +206,7 @@ class TestLinter(fixtures.TablesTest):
     def test_does_not_modify_query(self):
         with testing.db.connect() as conn:
             [result] = conn.execute(select([1])).fetchone()
-            assert result == 1
+            eq_(result, 1)
 
     def test_integration(self):
         query = (
