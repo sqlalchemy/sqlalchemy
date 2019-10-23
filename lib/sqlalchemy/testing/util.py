@@ -211,6 +211,30 @@ def provide_metadata(fn, *args, **kw):
         self.metadata = prev_meta
 
 
+def metadata_fixture(ddl="function"):
+    """Provide MetaData for a pytest fixture."""
+
+    from . import config
+
+    def decorate(fn):
+        def run_ddl(self):
+            from sqlalchemy import schema
+
+            metadata = self.metadata = schema.MetaData()
+            try:
+                result = fn(self, metadata)
+                metadata.create_all(config.db)
+                # TODO:
+                # somehow get a per-function dml erase fixture here
+                yield result
+            finally:
+                metadata.drop_all(config.db)
+
+        return config.fixture(scope=ddl)(run_ddl)
+
+    return decorate
+
+
 def force_drop_names(*names):
     """Force the given table names to be dropped after test complete,
     isolating for foreign key cycles
