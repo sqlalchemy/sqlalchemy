@@ -9,6 +9,7 @@ from ..schema import Column
 from ..schema import Table
 from ... import bindparam
 from ... import case
+from ... import Computed
 from ... import false
 from ... import func
 from ... import Integer
@@ -858,3 +859,46 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
         self._test(col.contains("b#cd", autoescape=True, escape="#"), {7})
+
+
+class ComputedColumnTest(fixtures.TablesTest):
+    __backend__ = True
+    __unsupported_on__ = ("sqlite",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "square",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("side", Integer),
+            Column("area", Integer, Computed("side * side")),
+            Column("perimeter", Integer, Computed("4 * side")),
+        )
+
+    @classmethod
+    def insert_data(cls):
+        config.db.execute(
+            cls.tables.square.insert(),
+            [{"id": 1, "side": 10}, {"id": 10, "side": 42}],
+        )
+
+    def test_select_all(self):
+        res = config.db.execute(
+            select([text("*")]).select_from(self.tables.square)
+        ).fetchall()
+        assert len(res) == 2
+        for row in res:
+            assert row.area is not None
+            assert row.perimeter is not None
+            assert row.area == row.side ** 2
+            assert row.perimeter == row.side * 4
+
+    def test_select_columns(self):
+        res = config.db.execute(
+            select([self.tables.square.c.area, self.tables.square.c.perimeter])
+        ).fetchall()
+
+        assert len(res) == 2
+        for row in res:
+            assert row.area == row.perimeter ** 2 / 16
