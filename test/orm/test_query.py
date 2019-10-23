@@ -55,7 +55,9 @@ from sqlalchemy.sql import operators
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -97,14 +99,14 @@ class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):
         User = self.classes.User
         query = create_session().query(User).only_return_tuples(False)
-        assert query.is_single_entity is True
+        is_true(query.is_single_entity)
         row = query.first()
         assert isinstance(row, User)
 
     def test_single_entity_true(self):
         User = self.classes.User
         query = create_session().query(User).only_return_tuples(True)
-        assert query.is_single_entity is False
+        is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 
@@ -115,7 +117,7 @@ class OnlyReturnTuplesTest(QueryTest):
             .query(User.id, User)
             .only_return_tuples(False)
         )
-        assert query.is_single_entity is False
+        is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 
@@ -126,7 +128,7 @@ class OnlyReturnTuplesTest(QueryTest):
             .query(User.id, User)
             .only_return_tuples(True)
         )
-        assert query.is_single_entity is False
+        is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 

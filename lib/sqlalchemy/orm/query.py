@@ -645,13 +645,26 @@ class Query(Generative):
 
     .   .. versionadded:: 1.2.5
 
+        .. seealso::
+
+            :meth:`.Query.is_single_entity`
+
         """
         self._only_return_tuples = value
 
     @property
     def is_single_entity(self):
-        """Returns True if this query returns a single entity for each instance in its
-        result list, and False if this query returns a tuple of entities for each result.
+        """Indicates if this :class:`.Query` returns tuples or single entities.
+
+        Returns True if this query returns a single entity for each instance
+        in its result list, and False if this query returns a tuple of entities
+        for each result.
+
+        .. versionadded:: 1.3.11
+
+        .. seealso::
+
+            :meth:`.Query.only_return_tuples`
 
         """
         return (
