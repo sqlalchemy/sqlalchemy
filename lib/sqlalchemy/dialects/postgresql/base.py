@@ -409,7 +409,7 @@ for UPDATE::
 
     The :meth:`.Insert.on_conflict_do_update` method does **not** take into
     account Python-side default UPDATE values or generation functions, e.g.
-    e.g. those specified using :paramref:`.Column.onupdate`.
+    those specified using :paramref:`.Column.onupdate`.
     These values will not be exercised for an ON CONFLICT style of UPDATE,
     unless they are manually specified in the
     :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
