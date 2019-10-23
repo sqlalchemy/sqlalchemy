@@ -30,6 +30,7 @@ from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import u
+from sqlalchemy.util import ue
 
 
 class DialectTest(fixtures.TestBase):
@@ -61,6 +62,200 @@ class DialectTest(fixtures.TestBase):
             lambda self, vers: (5, 3, 1),
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=Mock())
+
+
+class EncodingErrorsTest(fixtures.TestBase):
+    """mock test for encoding_errors.
+
+    While we tried to write a round trip test, I could only reproduce the
+    problem on Python 3 and only for STRING/CHAR.  I couldn't get a CLOB to
+    come back with broken encoding and also under py2k cx_Oracle would always
+    return a bytestring with the correct encoding.    Since the test barely
+    worked, it is not included here to avoid future problems.  It's not clear
+    what other levels of encode/decode are going on such that explicitly
+    selecting for AL16UTF16 is still returning a utf-8 bytestring under py2k or
+    for CLOBs, nor is it really  clear that this flag is useful, however, at
+    least for the Py3K case, cx_Oracle supports the flag and we did have one
+    user reporting that they had a (non-reproducible) database which
+    illustrated the problem so we will pass it in.
+
+    """
+
+    # NOTE: these numbers are arbitrary, they are not the actual
+    # cx_Oracle constants
+    cx_Oracle_NUMBER = 0
+    cx_Oracle_STRING = 1
+    cx_Oracle_FIXED_CHAR = 2
+    cx_Oracle_CLOB = 3
+    cx_Oracle_NCLOB = 4
+
+    @testing.fixture
+    def cx_Oracle(self):
+        return mock.Mock(
+            NUMBER=self.cx_Oracle_NUMBER,
+            STRING=self.cx_Oracle_STRING,
+            FIXED_CHAR=self.cx_Oracle_FIXED_CHAR,
+            CLOB=self.cx_Oracle_CLOB,
+            NCLOB=self.cx_Oracle_NCLOB,
+            version="7.0.1",
+            __future__=mock.Mock(),
+        )
+
+    _oracle_char_combinations = testing.combinations(
+        ("STRING", cx_Oracle_STRING, False),
+        ("FIXED_CHAR", cx_Oracle_FIXED_CHAR, False),
+        ("CLOB", cx_Oracle_CLOB, True),
+        ("NCLOB", cx_Oracle_NCLOB, True),
+        argnames="cx_oracle_type,use_read",
+        id_="iaa",
+    )
+
+    def _assert_errorhandler(self, outconverter, use_read, has_errorhandler):
+        data = ue("\uee2c\u9a66")  # this is u"\uee2c\u9a66"
+
+        utf8_w_errors = data.encode("utf-16")
+
+        if use_read:
+            utf8_w_errors = mock.Mock(
+                read=mock.Mock(return_value=utf8_w_errors)
+            )
+
+        if has_errorhandler:
+
+            eq_(
+                outconverter(utf8_w_errors),
+                data.encode("utf-16").decode("utf-8", "ignore"),
+            )
+        else:
+            assert_raises(UnicodeDecodeError, outconverter, utf8_w_errors)
+
+    @_oracle_char_combinations
+    @testing.requires.python3
+    def test_older_cx_oracle_warning(
+        self, cx_Oracle, cx_oracle_type, use_read
+    ):
+        cx_Oracle.version = "6.3"
+
+        ignore_dialect = cx_oracle.dialect(
+            dbapi=cx_Oracle, encoding_errors="ignore"
+        )
+        ignore_outputhandler = (
+            ignore_dialect._generate_connection_outputtype_handler()
+        )
+
+        cursor = mock.Mock()
+
+        with testing.expect_warnings(
+            r"cx_oracle version \(6, 3\) does not support encodingErrors"
+        ):
+            ignore_outputhandler(
+                cursor, "foo", cx_oracle_type, None, None, None
+            )
+
+    @_oracle_char_combinations
+    @testing.requires.python2
+    def test_encoding_errors_sqla_py2k(
+        self, cx_Oracle, cx_oracle_type, use_read
+    ):
+        ignore_dialect = cx_oracle.dialect(
+            dbapi=cx_Oracle, encoding_errors="ignore"
+        )
+
+        ignore_outputhandler = (
+            ignore_dialect._generate_connection_outputtype_handler()
+        )
+
+        cursor = mock.Mock()
+        ignore_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
+        outconverter = cursor.mock_calls[0][2]["outconverter"]
+        self._assert_errorhandler(outconverter, use_read, True)
+
+    @_oracle_char_combinations
+    @testing.requires.python2
+    def test_no_encoding_errors_sqla_py2k(
+        self, cx_Oracle, cx_oracle_type, use_read
+    ):
+        plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+
+        plain_outputhandler = (
+            plain_dialect._generate_connection_outputtype_handler()
+        )
+
+        cursor = mock.Mock()
+        plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
+        outconverter = cursor.mock_calls[0][2]["outconverter"]
+        self._assert_errorhandler(outconverter, use_read, False)
+
+    @_oracle_char_combinations
+    @testing.requires.python3
+    def test_encoding_errors_cx_oracle_py3k(
+        self, cx_Oracle, cx_oracle_type, use_read
+    ):
+        ignore_dialect = cx_oracle.dialect(
+            dbapi=cx_Oracle, encoding_errors="ignore"
+        )
+
+        ignore_outputhandler = (
+            ignore_dialect._generate_connection_outputtype_handler()
+        )
+
+        cursor = mock.Mock()
+        ignore_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
+
+        if use_read:
+            eq_(
+                cursor.mock_calls,
+                [
+                    mock.call.var(
+                        mock.ANY,
+                        None,
+                        cursor.arraysize,
+                        encodingErrors="ignore",
+                        outconverter=mock.ANY,
+                    )
+                ],
+            )
+        else:
+            eq_(
+                cursor.mock_calls,
+                [
+                    mock.call.var(
+                        mock.ANY,
+                        None,
+                        cursor.arraysize,
+                        encodingErrors="ignore",
+                    )
+                ],
+            )
+
+    @_oracle_char_combinations
+    @testing.requires.python3
+    def test_no_encoding_errors_cx_oracle_py3k(
+        self, cx_Oracle, cx_oracle_type, use_read
+    ):
+        plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
+
+        plain_outputhandler = (
+            plain_dialect._generate_connection_outputtype_handler()
+        )
+
+        cursor = mock.Mock()
+        plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
+
+        if use_read:
+            eq_(
+                cursor.mock_calls,
+                [
+                    mock.call.var(
+                        mock.ANY, None, cursor.arraysize, outconverter=mock.ANY
+                    )
+                ],
+            )
+        else:
+            eq_(
+                cursor.mock_calls,
+                [mock.call.var(mock.ANY, None, cursor.arraysize)],
+            )
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):

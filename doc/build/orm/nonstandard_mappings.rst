@@ -69,6 +69,39 @@ is represented from an ``AddressUser`` object as
 ``(AddressUser.id, AddressUser.address_id)``.
 
 
+.. note::
+
+    A mapping against multiple tables as illustrated above supports
+    persistence, that is, INSERT, UPDATE and DELETE of rows within the targeted
+    tables. However, it does not support an operation that would UPDATE one
+    table and perform INSERT or DELETE on others at the same time for one
+    record. That is, if a record PtoQ is mapped to tables “p” and “q”, where it
+    has a row based on a LEFT OUTER JOIN of “p” and “q”, if an UPDATE proceeds
+    that is to alter data in the “q” table in an existing record, the row in
+    “q” must exist; it won’t emit an INSERT if the primary key identity is
+    already present.  If the row does not exist, for most DBAPI drivers which
+    support reporting the number of rows affected by an UPDATE, the ORM will
+    fail to detect an updated row and raise an error; otherwise, the data
+    would be silently ignored.
+
+    A recipe to allow for an on-the-fly “insert” of the related row might make
+    use of the .MapperEvents.before_update event and look like::
+
+        from sqlalchemy import event
+
+        @event.listens_for(PtoQ, 'before_update')
+        def receive_before_update(mapper, connection, target):
+           if target.some_required_attr_on_q is None:
+                connection.execute(q_table.insert(), {"id": target.id})
+
+    where above, a row is INSERTed into the ``q_table`` table by creating an
+    INSERT construct with :meth:`.Table.insert`, then executing it  using the
+    given :class:`.Connection` which is the same one being used to emit other
+    SQL for the flush process.   The user-supplied logic would have to detect
+    that the LEFT OUTER JOIN from "p" to "q" does not have an entry for the "q"
+    side.
+
+
 Mapping a Class against Arbitrary Selects
 =========================================
 
