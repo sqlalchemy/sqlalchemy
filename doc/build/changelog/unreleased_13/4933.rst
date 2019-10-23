@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 4933
+
+    The :func:`.text` construct now supports "unique" bound parameters, which
+    will dynamically uniquify themselves on compilation thus allowing multiple
+    :func:`.text` constructs with the same bound parameter names to be combined
+    together.
+
