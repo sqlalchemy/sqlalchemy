@@ -6,6 +6,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -190,14 +191,23 @@ class UnicodeSchemaTest(fixtures.TestBase):
             ue("\u6e2c\u8a66"), m, Column(ue("\u6e2c\u8a66_id"), Integer)
         )
 
-        # I hardly understand what's going on with the backslashes in
-        # this one on py2k vs. py3k
-        eq_(
-            repr(t),
-            (
-                "Table('\\u6e2c\\u8a66', MetaData(bind=None), "
-                "Column('\\u6e2c\\u8a66_id', Integer(), "
-                "table=<\u6e2c\u8a66>), "
-                "schema=None)"
-            ),
-        )
+        if util.py2k:
+            eq_(
+                repr(t),
+                (
+                    "Table('\\u6e2c\\u8a66', MetaData(bind=None), "
+                    "Column('\\u6e2c\\u8a66_id', Integer(), "
+                    "table=<\u6e2c\u8a66>), "
+                    "schema=None)"
+                ),
+            )
+        else:
+            eq_(
+                repr(t),
+                (
+                    "Table('測試', MetaData(bind=None), "
+                    "Column('測試_id', Integer(), "
+                    "table=<測試>), "
+                    "schema=None)"
+                ),
+            )

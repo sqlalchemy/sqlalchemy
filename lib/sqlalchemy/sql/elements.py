@@ -4479,10 +4479,13 @@ class quoted_name(util.MemoizedSlots, util.text_type):
             return util.text_type(self).upper()
 
     def __repr__(self):
-        backslashed = self.encode("ascii", "backslashreplace")
-        if not util.py2k:
-            backslashed = backslashed.decode("ascii")
-        return "'%s'" % backslashed
+        if util.py2k:
+            backslashed = self.encode("ascii", "backslashreplace")
+            if not util.py2k:
+                backslashed = backslashed.decode("ascii")
+            return "'%s'" % backslashed
+        else:
+            return str.__repr__(self)
 
 
 def _select_iterables(elements):
