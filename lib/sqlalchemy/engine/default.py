@@ -30,6 +30,7 @@ from .. import util
 from ..sql import compiler
 from ..sql import expression
 from ..sql import schema
+from ..sql.elements import quoted_name
 
 
 AUTOCOMMIT_REGEXP = re.compile(
@@ -590,6 +591,57 @@ class DefaultDialect(interfaces.Dialect):
         # after the initial set of 'isolation_level', if any, so is
         # the configured default of this dialect.
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
+
+    def normalize_name(self, name):
+        if name is None:
+            return None
+        if util.py2k:
+            if isinstance(name, str):
+                name = name.decode(self.encoding)
+
+        name_lower = name.lower()
+        name_upper = name.upper()
+
+        if name_upper == name_lower:
+            # name has no upper/lower conversion, e.g. non-european characters.
+            # return unchanged
+            return name
+        elif name_upper == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name_lower):
+            # name is all uppercase and doesn't require quoting; normalize
+            # to all lower case
+            return name_lower
+        elif name_lower == name:
+            # name is all lower case, which if denormalized means we need to
+            # force quoting on it
+            return quoted_name(name, quote=True)
+        else:
+            # name is mixed case, means it will be quoted in SQL when used
+            # later, no normalizes
+            return name
+
+    def denormalize_name(self, name):
+        if name is None:
+            return None
+
+        name_lower = name.lower()
+        name_upper = name.upper()
+
+        if name_upper == name_lower:
+            # name has no upper/lower conversion, e.g. non-european characters.
+            # return unchanged
+            return name
+        elif name_lower == name and not (
+            self.identifier_preparer._requires_quotes
+        )(name_lower):
+            name = name_upper
+        if util.py2k:
+            if not self.supports_unicode_binds:
+                name = name.encode(self.encoding)
+            else:
+                name = unicode(name)  # noqa
+        return name
 
 
 class StrCompileDialect(DefaultDialect):

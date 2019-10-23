@@ -1,3 +1,5 @@
+#!coding: utf-8
+
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import column
@@ -11,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql.elements import _anonymous_label
@@ -18,6 +21,7 @@ from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.util import picklers
 
 
@@ -249,6 +253,14 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             'FROM "WorstCase1"'
             ') AS "LaLa"',
         )
+
+    def test_repr_unicode(self):
+        name = quoted_name(u"姓名", None)
+
+        if util.py2k:
+            eq_(repr(name), "'\u59d3\u540d'")
+        else:
+            eq_(repr(name), repr(u"姓名"))
 
     def test_lower_case_names(self):
         # Create table with quote defaults
@@ -1008,3 +1020,40 @@ class QuotedIdentTest(fixtures.TestBase):
 
     def _assert_not_quoted(self, value):
         assert not isinstance(value, quoted_name)
+
+
+class NameNormalizeTest(fixtures.TestBase):
+    dialect = default.DefaultDialect()
+
+    @testing.combinations(
+        ("NAME", "name", False),
+        ("NA ME", "NA ME", False),
+        ("NaMe", "NaMe", False),
+        (u"姓名", u"姓名", False),
+        ("name", "name", True),  # an all-lower case name needs quote forced
+    )
+    def test_name_normalize(self, original, normalized, is_quote):
+        orig_norm = self.dialect.normalize_name(original)
+
+        eq_(orig_norm, normalized)
+        if is_quote:
+            is_(orig_norm.quote, True)
+        else:
+            assert not isinstance(orig_norm, quoted_name)
+
+    @testing.combinations(
+        ("name", "NAME", False),
+        ("NA ME", "NA ME", False),
+        ("NaMe", "NaMe", False),
+        (u"姓名", u"姓名", False),
+        (quoted_name("name", quote=True), "name", True),
+    )
+    def test_name_denormalize(self, original, denormalized, is_quote):
+        orig_denorm = self.dialect.denormalize_name(original)
+
+        eq_(orig_denorm, denormalized)
+
+        if is_quote:
+            is_(orig_denorm.quote, True)
+        else:
+            assert not isinstance(orig_denorm, quoted_name)
