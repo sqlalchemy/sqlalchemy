@@ -76,45 +76,45 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_long(self):
         self.assert_compile(oracle.LONG(), "LONG")
 
-    def test_type_adapt(self):
+    @testing.combinations(
+        (Date(), cx_oracle._OracleDate),
+        (oracle.OracleRaw(), cx_oracle._OracleRaw),
+        (String(), String),
+        (VARCHAR(), cx_oracle._OracleString),
+        (DATE(), cx_oracle._OracleDate),
+        (oracle.DATE(), oracle.DATE),
+        (String(50), cx_oracle._OracleString),
+        (Unicode(), cx_oracle._OracleUnicodeStringCHAR),
+        (Text(), cx_oracle._OracleText),
+        (UnicodeText(), cx_oracle._OracleUnicodeTextCLOB),
+        (CHAR(), cx_oracle._OracleChar),
+        (NCHAR(), cx_oracle._OracleNChar),
+        (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+        (oracle.RAW(50), cx_oracle._OracleRaw),
+    )
+    def test_type_adapt(self, start, test):
         dialect = cx_oracle.dialect()
 
-        for start, test in [
-            (Date(), cx_oracle._OracleDate),
-            (oracle.OracleRaw(), cx_oracle._OracleRaw),
-            (String(), String),
-            (VARCHAR(), cx_oracle._OracleString),
-            (DATE(), cx_oracle._OracleDate),
-            (oracle.DATE(), oracle.DATE),
-            (String(50), cx_oracle._OracleString),
-            (Unicode(), cx_oracle._OracleUnicodeStringCHAR),
-            (Text(), cx_oracle._OracleText),
-            (UnicodeText(), cx_oracle._OracleUnicodeTextCLOB),
-            (CHAR(), cx_oracle._OracleChar),
-            (NCHAR(), cx_oracle._OracleNChar),
-            (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
-            (oracle.RAW(50), cx_oracle._OracleRaw),
-        ]:
-            assert isinstance(
-                start.dialect_impl(dialect), test
-            ), "wanted %r got %r" % (test, start.dialect_impl(dialect))
+        assert isinstance(
+            start.dialect_impl(dialect), test
+        ), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
-    def test_type_adapt_nchar(self):
+    @testing.combinations(
+        (String(), String),
+        (VARCHAR(), cx_oracle._OracleString),
+        (String(50), cx_oracle._OracleString),
+        (Unicode(), cx_oracle._OracleUnicodeStringNCHAR),
+        (Text(), cx_oracle._OracleText),
+        (UnicodeText(), cx_oracle._OracleUnicodeTextNCLOB),
+        (NCHAR(), cx_oracle._OracleNChar),
+        (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
+    )
+    def test_type_adapt_nchar(self, start, test):
         dialect = cx_oracle.dialect(use_nchar_for_unicode=True)
 
-        for start, test in [
-            (String(), String),
-            (VARCHAR(), cx_oracle._OracleString),
-            (String(50), cx_oracle._OracleString),
-            (Unicode(), cx_oracle._OracleUnicodeStringNCHAR),
-            (Text(), cx_oracle._OracleText),
-            (UnicodeText(), cx_oracle._OracleUnicodeTextNCLOB),
-            (NCHAR(), cx_oracle._OracleNChar),
-            (NVARCHAR(), cx_oracle._OracleUnicodeStringNCHAR),
-        ]:
-            assert isinstance(
-                start.dialect_impl(dialect), test
-            ), "wanted %r got %r" % (test, start.dialect_impl(dialect))
+        assert isinstance(
+            start.dialect_impl(dialect), test
+        ), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
     def test_raw_compile(self):
         self.assert_compile(oracle.RAW(), "RAW")
@@ -130,53 +130,53 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(NVARCHAR(50), "NVARCHAR2(50)")
         self.assert_compile(CHAR(50), "CHAR(50)")
 
-    def test_varchar_types(self):
+    @testing.combinations(
+        (String(50), "VARCHAR2(50 CHAR)"),
+        (Unicode(50), "VARCHAR2(50 CHAR)"),
+        (NVARCHAR(50), "NVARCHAR2(50)"),
+        (VARCHAR(50), "VARCHAR(50 CHAR)"),
+        (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
+        (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
+        (String(), "VARCHAR2"),
+        (Unicode(), "VARCHAR2"),
+        (NVARCHAR(), "NVARCHAR2"),
+        (VARCHAR(), "VARCHAR"),
+        (oracle.NVARCHAR2(), "NVARCHAR2"),
+        (oracle.VARCHAR2(), "VARCHAR2"),
+    )
+    def test_varchar_types(self, typ, exp):
         dialect = oracle.dialect()
-        for typ, exp in [
-            (String(50), "VARCHAR2(50 CHAR)"),
-            (Unicode(50), "VARCHAR2(50 CHAR)"),
-            (NVARCHAR(50), "NVARCHAR2(50)"),
-            (VARCHAR(50), "VARCHAR(50 CHAR)"),
-            (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
-            (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
-            (String(), "VARCHAR2"),
-            (Unicode(), "VARCHAR2"),
-            (NVARCHAR(), "NVARCHAR2"),
-            (VARCHAR(), "VARCHAR"),
-            (oracle.NVARCHAR2(), "NVARCHAR2"),
-            (oracle.VARCHAR2(), "VARCHAR2"),
-        ]:
-            self.assert_compile(typ, exp, dialect=dialect)
+        self.assert_compile(typ, exp, dialect=dialect)
 
-    def test_varchar_use_nchar_types(self):
+    @testing.combinations(
+        (String(50), "VARCHAR2(50 CHAR)"),
+        (Unicode(50), "NVARCHAR2(50)"),
+        (NVARCHAR(50), "NVARCHAR2(50)"),
+        (VARCHAR(50), "VARCHAR(50 CHAR)"),
+        (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
+        (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
+        (String(), "VARCHAR2"),
+        (Unicode(), "NVARCHAR2"),
+        (NVARCHAR(), "NVARCHAR2"),
+        (VARCHAR(), "VARCHAR"),
+        (oracle.NVARCHAR2(), "NVARCHAR2"),
+        (oracle.VARCHAR2(), "VARCHAR2"),
+    )
+    def test_varchar_use_nchar_types(self, typ, exp):
         dialect = oracle.dialect(use_nchar_for_unicode=True)
-        for typ, exp in [
-            (String(50), "VARCHAR2(50 CHAR)"),
-            (Unicode(50), "NVARCHAR2(50)"),
-            (NVARCHAR(50), "NVARCHAR2(50)"),
-            (VARCHAR(50), "VARCHAR(50 CHAR)"),
-            (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
-            (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
-            (String(), "VARCHAR2"),
-            (Unicode(), "NVARCHAR2"),
-            (NVARCHAR(), "NVARCHAR2"),
-            (VARCHAR(), "VARCHAR"),
-            (oracle.NVARCHAR2(), "NVARCHAR2"),
-            (oracle.VARCHAR2(), "VARCHAR2"),
-        ]:
-            self.assert_compile(typ, exp, dialect=dialect)
+        self.assert_compile(typ, exp, dialect=dialect)
 
-    def test_interval(self):
-        for type_, expected in [
-            (oracle.INTERVAL(), "INTERVAL DAY TO SECOND"),
-            (oracle.INTERVAL(day_precision=3), "INTERVAL DAY(3) TO SECOND"),
-            (oracle.INTERVAL(second_precision=5), "INTERVAL DAY TO SECOND(5)"),
-            (
-                oracle.INTERVAL(day_precision=2, second_precision=5),
-                "INTERVAL DAY(2) TO SECOND(5)",
-            ),
-        ]:
-            self.assert_compile(type_, expected)
+    @testing.combinations(
+        (oracle.INTERVAL(), "INTERVAL DAY TO SECOND"),
+        (oracle.INTERVAL(day_precision=3), "INTERVAL DAY(3) TO SECOND"),
+        (oracle.INTERVAL(second_precision=5), "INTERVAL DAY TO SECOND(5)"),
+        (
+            oracle.INTERVAL(day_precision=2, second_precision=5),
+            "INTERVAL DAY(2) TO SECOND(5)",
+        ),
+    )
+    def test_interval(self, type_, expected):
+        self.assert_compile(type_, expected)
 
 
 class TypesTest(fixtures.TestBase):
@@ -184,14 +184,9 @@ class TypesTest(fixtures.TestBase):
     __dialect__ = oracle.OracleDialect()
     __backend__ = True
 
-    def test_fixed_char(self):
-        self._test_fixed_char(CHAR)
-
-    def test_fixed_nchar(self):
-        self._test_fixed_char(NCHAR)
-
+    @testing.combinations((CHAR,), (NCHAR,))
     @testing.provide_metadata
-    def _test_fixed_char(self, char_type):
+    def test_fixed_char(self, char_type):
         m = self.metadata
         t = Table(
             "t1",
@@ -682,52 +677,46 @@ class TypesTest(fixtures.TestBase):
         value = testing.db.scalar("SELECT 5.66 FROM DUAL")
         assert isinstance(value, decimal.Decimal)
 
+    @testing.combinations(
+        (
+            "Max 32-bit Number",
+            "SELECT CAST(2147483647 AS NUMBER(19,0)) FROM dual",
+        ),
+        (
+            "Min 32-bit Number",
+            "SELECT CAST(-2147483648 AS NUMBER(19,0)) FROM dual",
+        ),
+        (
+            "32-bit Integer Overflow",
+            "SELECT CAST(2147483648 AS NUMBER(19,0)) FROM dual",
+        ),
+        (
+            "32-bit Integer Underflow",
+            "SELECT CAST(-2147483649 AS NUMBER(19,0)) FROM dual",
+        ),
+        (
+            "Max Number with Precision 19",
+            "SELECT CAST(9999999999999999999 AS NUMBER(19,0)) FROM dual",
+        ),
+        (
+            "Min Number with Precision 19",
+            "SELECT CAST(-9999999999999999999 AS NUMBER(19,0)) FROM dual",
+        ),
+    )
     @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
-    def test_raw_numerics(self):
-        query_cases = [
-            (
-                "Max 32-bit Number",
-                "SELECT CAST(2147483647 AS NUMBER(19,0)) FROM dual",
-            ),
-            (
-                "Min 32-bit Number",
-                "SELECT CAST(-2147483648 AS NUMBER(19,0)) FROM dual",
-            ),
-            (
-                "32-bit Integer Overflow",
-                "SELECT CAST(2147483648 AS NUMBER(19,0)) FROM dual",
-            ),
-            (
-                "32-bit Integer Underflow",
-                "SELECT CAST(-2147483649 AS NUMBER(19,0)) FROM dual",
-            ),
-            (
-                "Max Number with Precision 19",
-                "SELECT CAST(9999999999999999999 AS NUMBER(19,0)) FROM dual",
-            ),
-            (
-                "Min Number with Precision 19",
-                "SELECT CAST(-9999999999999999999 AS NUMBER(19,0)) FROM dual",
-            ),
-        ]
-
+    def test_raw_numerics(self, title, stmt):
         with testing.db.connect() as conn:
-            for title, stmt in query_cases:
-                # get a brand new connection that definitely is not
-                # in the pool to avoid any outputtypehandlers
-                cx_oracle_raw = testing.db.pool._creator()
-                cursor = cx_oracle_raw.cursor()
-                cursor.execute(stmt)
-                cx_oracle_result = cursor.fetchone()[0]
-                cursor.close()
+            # get a brand new connection that definitely is not
+            # in the pool to avoid any outputtypehandlers
+            cx_oracle_raw = testing.db.pool._creator()
+            cursor = cx_oracle_raw.cursor()
+            cursor.execute(stmt)
+            cx_oracle_result = cursor.fetchone()[0]
+            cursor.close()
 
-                sqla_result = conn.scalar(stmt)
+            sqla_result = conn.scalar(stmt)
 
-                print(
-                    "%s cx_oracle=%s sqlalchemy=%s"
-                    % (title, cx_oracle_result, sqla_result)
-                )
-                eq_(sqla_result, cx_oracle_result)
+            eq_(sqla_result, cx_oracle_result)
 
     @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
     @testing.fails_if(
@@ -1111,10 +1100,32 @@ class SetInputSizesTest(fixtures.TestBase):
     __only_on__ = "oracle+cx_oracle"
     __backend__ = True
 
+    @testing.combinations(
+        (SmallInteger, 25, int, False),
+        (Integer, 25, int, False),
+        (Numeric(10, 8), decimal.Decimal("25.34534"), None, False),
+        (Float(15), 25.34534, None, False),
+        (oracle.BINARY_DOUBLE, 25.34534, "NATIVE_FLOAT", False),
+        (oracle.BINARY_FLOAT, 25.34534, "NATIVE_FLOAT", False),
+        (oracle.DOUBLE_PRECISION, 25.34534, None, False),
+        (Unicode(30), u("test"), "NCHAR", True),
+        (UnicodeText(), u("test"), "NCLOB", True),
+        (Unicode(30), u("test"), None, False),
+        (UnicodeText(), u("test"), "CLOB", False),
+        (String(30), "test", None, False),
+        (CHAR(30), "test", "FIXED_CHAR", False),
+        (NCHAR(30), u("test"), "FIXED_NCHAR", False),
+        (oracle.LONG(), "test", None, False),
+    )
     @testing.provide_metadata
-    def _test_setinputsizes(
-        self, datatype, value, sis_value, set_nchar_flag=False
+    def test_setinputsizes(
+        self, datatype, value, sis_value_text, set_nchar_flag
     ):
+        if isinstance(sis_value_text, str):
+            sis_value = getattr(testing.db.dialect.dbapi, sis_value_text)
+        else:
+            sis_value = sis_value_text
+
         class TestTypeDec(TypeDecorator):
             impl = NullType()
 
@@ -1176,77 +1187,6 @@ class SetInputSizesTest(fixtures.TestBase):
                         [mock.call.setinputsizes()],
                     )
 
-    def test_smallint_setinputsizes(self):
-        self._test_setinputsizes(SmallInteger, 25, int)
-
-    def test_int_setinputsizes(self):
-        self._test_setinputsizes(Integer, 25, int)
-
-    def test_numeric_setinputsizes(self):
-        self._test_setinputsizes(
-            Numeric(10, 8), decimal.Decimal("25.34534"), None
-        )
-
-    def test_float_setinputsizes(self):
-        self._test_setinputsizes(Float(15), 25.34534, None)
-
-    def test_binary_double_setinputsizes(self):
-        self._test_setinputsizes(
-            oracle.BINARY_DOUBLE,
-            25.34534,
-            testing.db.dialect.dbapi.NATIVE_FLOAT,
-        )
-
-    def test_binary_float_setinputsizes(self):
-        self._test_setinputsizes(
-            oracle.BINARY_FLOAT,
-            25.34534,
-            testing.db.dialect.dbapi.NATIVE_FLOAT,
-        )
-
-    def test_double_precision_setinputsizes(self):
-        self._test_setinputsizes(oracle.DOUBLE_PRECISION, 25.34534, None)
-
-    def test_unicode_nchar_mode(self):
-        self._test_setinputsizes(
-            Unicode(30),
-            u("test"),
-            testing.db.dialect.dbapi.NCHAR,
-            set_nchar_flag=True,
-        )
-
-    def test_unicodetext_nchar_mode(self):
-        self._test_setinputsizes(
-            UnicodeText(),
-            u("test"),
-            testing.db.dialect.dbapi.NCLOB,
-            set_nchar_flag=True,
-        )
-
-    def test_unicode(self):
-        self._test_setinputsizes(Unicode(30), u("test"), None)
-
-    def test_unicodetext(self):
-        self._test_setinputsizes(
-            UnicodeText(), u("test"), testing.db.dialect.dbapi.CLOB
-        )
-
-    def test_string(self):
-        self._test_setinputsizes(String(30), "test", None)
-
-    def test_char(self):
-        self._test_setinputsizes(
-            CHAR(30), "test", testing.db.dialect.dbapi.FIXED_CHAR
-        )
-
-    def test_nchar(self):
-        self._test_setinputsizes(
-            NCHAR(30), u("test"), testing.db.dialect.dbapi.FIXED_NCHAR
-        )
-
-    def test_long(self):
-        self._test_setinputsizes(oracle.LONG(), "test", None)
-
     def test_event_no_native_float(self):
         def _remove_type(inputsizes, cursor, statement, parameters, context):
             for param, dbapitype in list(inputsizes.items()):
@@ -1255,6 +1195,6 @@ class SetInputSizesTest(fixtures.TestBase):
 
         event.listen(testing.db, "do_setinputsizes", _remove_type)
         try:
-            self._test_setinputsizes(oracle.BINARY_FLOAT, 25.34534, None)
+            self.test_setinputsizes(oracle.BINARY_FLOAT, 25.34534, None, False)
         finally:
             event.remove(testing.db, "do_setinputsizes", _remove_type)
