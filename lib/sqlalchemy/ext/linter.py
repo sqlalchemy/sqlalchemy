@@ -96,17 +96,18 @@ def find_unmatching_froms(query, start_with=None):
 def warn_for_unmatching_froms(query):
     # type: (Select) -> None
     froms, start_with = find_unmatching_froms(query)
-    if froms:
-        template = 'Query\n{query}\nhas FROM elements:\n{froms}\nthat ' \
-                   'are not joined up to FROM element\n{start}'''
-        indent = '    '
-        froms_str = '\n'.join('* {elem}'.format(elem=from_) for from_ in froms)
-        message = template.format(
-            query=_indent(str(query), indent),
-            froms=_indent(froms_str, indent),
-            start=_indent('* {elem}'.format(elem=start_with), indent),
-        )
-        util.warn(message)
+    if not froms:
+        return
+    template = 'Query\n{query}\nhas FROM elements:\n{froms}\nthat ' \
+               'are not joined up to FROM element\n{start}'
+    indent = '    '
+    froms_str = '\n'.join('* {elem}'.format(elem=from_) for from_ in froms)
+    message = template.format(
+        query=_indent(str(query), indent),
+        froms=_indent(froms_str, indent),
+        start=_indent('* {elem}'.format(elem=start_with), indent),
+    )
+    util.warn(message)
 
 
 def lint(query):
