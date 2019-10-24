@@ -189,11 +189,7 @@ class Query(object):
         # 4. can't do "if entities" because users make use of undocumented
         #    to_list() behavior here and they pass clause expressions that
         #    can't be evaluated as boolean.  See issue #4269.
-        # 5. the empty tuple is a singleton in cPython, take advantage of this
-        #    so that we can skip for the empty "*entities" case without using
-        #    any Python overloadable operators.
-        #
-        if entities is not ():
+        if entities != ():
             for ent in util.to_list(entities):
                 entity_wrapper(self, ent)
 
