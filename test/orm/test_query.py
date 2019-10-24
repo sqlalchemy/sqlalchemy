@@ -53,7 +53,9 @@ from sqlalchemy.sql import operators
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -93,32 +95,30 @@ class MiscTest(QueryTest):
 class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):
         User = self.classes.User
-        row = create_session().query(User).only_return_tuples(False).first()
+        query = create_session().query(User).only_return_tuples(False)
+        is_true(query.is_single_entity)
+        row = query.first()
         assert isinstance(row, User)
 
     def test_single_entity_true(self):
         User = self.classes.User
-        row = create_session().query(User).only_return_tuples(True).first()
+        query = create_session().query(User).only_return_tuples(True)
+        is_false(query.is_single_entity)
+        row = query.first()
         assert isinstance(row, tuple)
 
     def test_multiple_entity_false(self):
         User = self.classes.User
-        row = (
-            create_session()
-            .query(User.id, User)
-            .only_return_tuples(False)
-            .first()
-        )
+        query = create_session().query(User.id, User).only_return_tuples(False)
+        is_false(query.is_single_entity)
+        row = query.first()
         assert isinstance(row, tuple)
 
     def test_multiple_entity_true(self):
         User = self.classes.User
-        row = (
-            create_session()
-            .query(User.id, User)
-            .only_return_tuples(True)
-            .first()
-        )
+        query = create_session().query(User.id, User).only_return_tuples(True)
+        is_false(query.is_single_entity)
+        row = query.first()
         assert isinstance(row, tuple)
 
 
