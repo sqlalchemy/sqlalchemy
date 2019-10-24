@@ -279,6 +279,19 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_unique_binds(self):
+        # unique binds can be used in text() however they uniquify across
+        # multiple text() constructs only, not within a single text
+
+        t1 = text("select :foo").bindparams(bindparam("foo", 5, unique=True))
+        t2 = text("select :foo").bindparams(bindparam("foo", 10, unique=True))
+        stmt = select([t1, t2])
+        self.assert_compile(
+            stmt,
+            "SELECT select :foo_1, select :foo_2",
+            checkparams={"foo_1": 5, "foo_2": 10},
+        )
+
     def test_binds_compiled_positional(self):
         self.assert_compile(
             text(

@@ -1563,19 +1563,51 @@ class TextClause(Executable, ClauseElement):
                 timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
             )
 
+        The :meth:`.TextClause.bindparams` method also supports the concept of
+        **unique** bound parameters.  These are parameters that are
+        "uniquified" on name at statement compilation time, so that  multiple
+        :func:`.text` constructs may be combined together without the names
+        conflicting.  To use this feature, specify the
+        :paramref:`.BindParameter.unique` flag on each :func:`.bindparam`
+        object::
+
+            stmt1 = text("select id from table where name=:name").bindparams(
+                bindparam("name", value='name1', unique=True)
+            )
+            stmt2 = text("select id from table where name=:name").bindparams(
+                bindparam("name", value='name2', unique=True)
+            )
+
+            union = union_all(
+                stmt1.columns(column("id")),
+                stmt2.columns(column("id"))
+            )
+
+        The above statement will render as::
+
+            select id from table where name=:name_1
+            UNION ALL select id from table where name=:name_2
+
+        .. versionadded:: 1.3.11  Added support for the
+           :paramref:`.BindParameter.unique` flag to work with :func:`.text`
+           constructs.
+
         """
         self._bindparams = new_params = self._bindparams.copy()
 
         for bind in binds:
             try:
-                existing = new_params[bind.key]
+                # the regex used for text() currently will not match
+                # a unique/anonymous key in any case, so use the _orig_key
+                # so that a text() construct can support unique parameters
+                existing = new_params[bind._orig_key]
             except KeyError:
                 raise exc.ArgumentError(
                     "This text() construct doesn't define a "
-                    "bound parameter named %r" % bind.key
+                    "bound parameter named %r" % bind._orig_key
                 )
             else:
-                new_params[existing.key] = bind
+                new_params[existing._orig_key] = bind
 
         for key, value in names_to_values.items():
             try:
