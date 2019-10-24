@@ -465,7 +465,6 @@ from ...sql import compiler
 from ...sql import expression
 from ...sql import util as sql_util
 from ...sql import visitors
-from ...sql.elements import quoted_name
 from ...types import BLOB
 from ...types import CHAR
 from ...types import CLOB
@@ -1356,35 +1355,6 @@ class OracleDialect(default.DefaultDialect):
             schema_name=self.denormalize_name(schema),
         )
         return cursor.first() is not None
-
-    def normalize_name(self, name):
-        if name is None:
-            return None
-        if util.py2k:
-            if isinstance(name, str):
-                name = name.decode(self.encoding)
-        if name.upper() == name and not (
-            self.identifier_preparer._requires_quotes
-        )(name.lower()):
-            return name.lower()
-        elif name.lower() == name:
-            return quoted_name(name, quote=True)
-        else:
-            return name
-
-    def denormalize_name(self, name):
-        if name is None:
-            return None
-        elif name.lower() == name and not (
-            self.identifier_preparer._requires_quotes
-        )(name.lower()):
-            name = name.upper()
-        if util.py2k:
-            if not self.supports_unicode_binds:
-                name = name.encode(self.encoding)
-            else:
-                name = unicode(name)  # noqa
-        return name
 
     def _get_default_schema_name(self, connection):
         return self.normalize_name(

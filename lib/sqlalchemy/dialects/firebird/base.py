@@ -86,7 +86,6 @@ from sqlalchemy.engine import default
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import expression
-from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.types import BIGINT
 from sqlalchemy.types import BLOB
 from sqlalchemy.types import DATE
@@ -658,31 +657,6 @@ class FBDialect(default.DefaultDialect):
         self.implicit_returning = self._version_two and self.__dict__.get(
             "implicit_returning", True
         )
-
-    def normalize_name(self, name):
-        # Remove trailing spaces: FB uses a CHAR() type,
-        # that is padded with spaces
-        name = name and name.rstrip()
-        if name is None:
-            return None
-        elif name.upper() == name and not (
-            self.identifier_preparer._requires_quotes
-        )(name.lower()):
-            return name.lower()
-        elif name.lower() == name:
-            return quoted_name(name, quote=True)
-        else:
-            return name
-
-    def denormalize_name(self, name):
-        if name is None:
-            return None
-        elif name.lower() == name and not (
-            self.identifier_preparer._requires_quotes
-        )(name.lower()):
-            return name.upper()
-        else:
-            return name
 
     def has_table(self, connection, table_name, schema=None):
         """Return ``True`` if the given table exists, ignoring
