@@ -61,4 +61,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 * `crate <https://github.com/crate/crate-python>`_ - driver for `CrateDB <https://crate.io/>`_.
 * `sqlalchemy-access <https://pypi.org/project/sqlalchemy-access/>`_ - driver for Microsoft Access,
   on top of `pyodbc <https://pypi.org/project/pyodbc/>`_.
-* `elasticsearch-dbapi <https://github.com/preset-io/elasticsearch-dbapi/>`_ - readonly driver for Elasticsearc.
+* `elasticsearch-dbapi <https://github.com/preset-io/elasticsearch-dbapi/>`_ - readonly driver for Elasticsearch.
