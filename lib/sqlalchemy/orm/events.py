@@ -2391,12 +2391,31 @@ class QueryEvents(event.Events):
         The event should normally be listened with the ``retval=True``
         parameter set, so that the modified query may be returned.
 
-        .. warning::  If the :meth:`.QueryEvents.before_compile` event is to
-           be applied to :class:`.Query` objects that are used for lazy loading
-           of :func:`.relationships` (as described at :ref:`lazy_loading`),
-           it may be necessary to set :paramref:`.relationship.bake_queries`
-           to ``False``, else the :meth:`.QueryEvents.before_compile` event
-           will not be invoked for each lazy load operation.
+        The :meth:`.QueryEvents.before_compile` event by default
+        will disallow "baked" queries from caching a query, if the event
+        hook returns a new :class:`.Query` object.   This affects both direct
+        use of the baked query extension as well as its operation within
+        lazy loaders and eager loaders for relationships.  In order to
+        re-establish the query being cached, apply the event adding the
+        ``bake_ok`` flag::
+
+            @event.listens_for(
+                Query, "before_compile", retval=True, bake_ok=True)
+            def my_event(query):
+                for desc in query.column_descriptions:
+                    if desc['type'] is User:
+                        entity = desc['entity']
+                        query = query.filter(entity.deleted == False)
+                return query
+
+        When ``bake_ok`` is set to True, the event hook will only be invoked
+        once, and not called for subsequent invocations of a particular query
+        that is being cached.
+
+        .. versionadded:: 1.3.11  - added the "bake_ok" flag to the
+           :meth:`.QueryEvents.before_compile` event and disallowed caching via
+           the "baked" extension from occurring for event handlers that
+           return  a new :class:`.Query` object if this flag is not set.
 
         .. seealso::
 
@@ -2404,6 +2423,7 @@ class QueryEvents(event.Events):
 
             :meth:`.QueryEvents.before_compile_delete`
 
+            :ref:`baked_with_before_compile`
 
         """
 
@@ -2488,7 +2508,7 @@ class QueryEvents(event.Events):
         """
 
     @classmethod
-    def _listen(cls, event_key, retval=False, **kw):
+    def _listen(cls, event_key, retval=False, bake_ok=False, **kw):
         fn = event_key._listen_fn
 
         if not retval:
@@ -2502,5 +2522,13 @@ class QueryEvents(event.Events):
                     return fn(*arg, **kw)
 
             event_key = event_key.with_wrapper(wrap)
+        else:
+            # don't assume we can apply an attribute to the callable
+            def wrap(*arg, **kw):
+                return fn(*arg, **kw)
+
+            event_key = event_key.with_wrapper(wrap)
+
+        wrap._bake_ok = bake_ok
 
         event_key.base_listen(**kw)

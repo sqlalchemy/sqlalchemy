@@ -225,6 +225,7 @@ class BakedQuery(object):
         query = self._as_query(session)
 
         context = query._compile_context()
+
         self._bake_subquery_loaders(session, context)
         context.session = None
         context.query = query = context.query.with_session(None)
@@ -242,7 +243,13 @@ class BakedQuery(object):
             "_joinpoint",
         ):
             query.__dict__.pop(attr, None)
-        self._bakery[self._effective_key(session)] = context
+
+        # if the query is not safe to cache, we still do everything as though
+        # we did cache it, since the receiver of _bake() assumes subqueryload
+        # context was set up, etc.
+        if context.query._bake_ok:
+            self._bakery[self._effective_key(session)] = context
+
         return context
 
     def to_query(self, query_or_session):
@@ -331,6 +338,9 @@ class BakedQuery(object):
         like a Query object.
 
         """
+        if "baked_queries" not in context.attributes:
+            return
+
         for k, cache_key, query in context.attributes["baked_queries"]:
             bk = BakedQuery(
                 self._bakery, lambda sess, q=query: q.with_session(sess)

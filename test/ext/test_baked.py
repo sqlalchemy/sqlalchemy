@@ -2,8 +2,10 @@ import contextlib
 import itertools
 
 from sqlalchemy import bindparam
+from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
+from sqlalchemy import literal_column
 from sqlalchemy import testing
 from sqlalchemy.ext import baked
 from sqlalchemy.orm import aliased
@@ -917,9 +919,76 @@ class ResultTest(BakedTest):
 
         self.assert_sql_count(testing.db, go, 2)
 
+    @testing.fixture()
+    def before_compile_nobake_fixture(self):
+        @event.listens_for(Query, "before_compile", retval=True)
+        def _modify_query(query):
+            query = query.enable_assertions(False)
+            return query
+
+        yield
+        event.remove(Query, "before_compile", _modify_query)
+
+    def test_subqueryload_post_context_w_cancelling_event(
+        self, before_compile_nobake_fixture
+    ):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        assert_result = [
+            User(
+                id=7, addresses=[Address(id=1, email_address="jack@bean.com")]
+            )
+        ]
+
+        self.bakery = baked.bakery(size=3)
+
+        bq = self.bakery(lambda s: s.query(User))
+
+        bq += lambda q: q.options(subqueryload(User.addresses))
+        bq += lambda q: q.order_by(User.id)
+        bq += lambda q: q.filter(User.name == bindparam("name"))
+        sess = Session()
+
+        def set_params(q):
+            return q.params(name="jack")
+
+        # test that the changes we make using with_post_criteria()
+        # are also applied to the subqueryload query.
+        def go():
+            result = bq(sess).with_post_criteria(set_params).all()
+            eq_(assert_result, result)
+
+        self.assert_sql_count(testing.db, go, 2)
+
 
 class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
     run_setup_mappers = "each"
+
+    @testing.fixture
+    def modify_query_fixture(self):
+        def set_event(bake_ok):
+
+            event.listen(
+                Query,
+                "before_compile",
+                _modify_query,
+                retval=True,
+                bake_ok=bake_ok,
+            )
+            return m1
+
+        m1 = mock.Mock()
+
+        def _modify_query(query):
+            m1(query.column_descriptions[0]["entity"])
+            query = query.enable_assertions(False).filter(
+                literal_column("1") == 1
+            )
+            return query
+
+        yield set_event
+        event.remove(Query, "before_compile", _modify_query)
 
     def _o2m_fixture(self, lazy="select", **kw):
         User = self.classes.User
@@ -976,6 +1045,45 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             properties={"user": relationship(User)},
         )
         return User, Address
+
+    def test_no_cache_for_event(self, modify_query_fixture):
+
+        m1 = modify_query_fixture(False)
+
+        User, Address = self._o2m_fixture()
+
+        sess = Session()
+        u1 = sess.query(User).filter(User.id == 7).first()
+
+        u1.addresses
+
+        eq_(m1.mock_calls, [mock.call(User), mock.call(Address)])
+
+        sess.expire(u1, ["addresses"])
+
+        u1.addresses
+        eq_(
+            m1.mock_calls,
+            [mock.call(User), mock.call(Address), mock.call(Address)],
+        )
+
+    def test_cache_ok_for_event(self, modify_query_fixture):
+
+        m1 = modify_query_fixture(True)
+
+        User, Address = self._o2m_fixture()
+
+        sess = Session()
+        u1 = sess.query(User).filter(User.id == 7).first()
+
+        u1.addresses
+
+        eq_(m1.mock_calls, [mock.call(User), mock.call(Address)])
+
+        sess.expire(u1, ["addresses"])
+
+        u1.addresses
+        eq_(m1.mock_calls, [mock.call(User), mock.call(Address)])
 
     def test_unsafe_unbound_option_cancels_bake(self):
         User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")

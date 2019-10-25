@@ -2431,6 +2431,21 @@ class QueryEventsTest(
             checkparams={"id_2": 10, "id_1": 7},
         )
 
+    def test_before_compile_no_retval(self):
+        counter = [0]
+
+        @event.listens_for(query.Query, "before_compile")
+        def count(query):
+            counter[0] += 1
+
+        User = self.classes.User
+        s = Session()
+
+        q = s.query(User).filter_by(id=7)
+        str(q)
+        str(q)
+        eq_(counter, [2])
+
     def test_alters_entities(self):
         User = self.classes.User
 
