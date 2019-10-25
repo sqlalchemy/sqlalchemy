@@ -188,7 +188,7 @@ class EnsureZeroed(fixtures.ORMTest):
 
 class MemUsageTest(EnsureZeroed):
     __tags__ = ("memory_intensive",)
-    __requires__ = ("cpython",)
+    __requires__ = ("cpython", "no_windows")
 
     def test_type_compile(self):
         from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect

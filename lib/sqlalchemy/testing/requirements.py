@@ -15,6 +15,7 @@ to provide specific inclusion/exclusions.
 
 """
 
+import platform
 import sys
 
 from . import exclusions
@@ -949,6 +950,16 @@ class SuiteRequirements(Requirements):
         """
         return exclusions.skip_if(
             lambda config: config.options.low_connections
+        )
+
+    @property
+    def no_windows(self):
+        return exclusions.skip_if(self._running_on_windows())
+
+    def _running_on_windows(self):
+        return exclusions.LambdaPredicate(
+            lambda: platform.system() == "Windows",
+            description="running on Windows",
         )
 
     @property
