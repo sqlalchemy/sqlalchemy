@@ -2339,6 +2339,13 @@ class QueryEvents(event.Events):
         The event should normally be listened with the ``retval=True``
         parameter set, so that the modified query may be returned.
 
+        .. warning::  If the :meth:`.QueryEvents.before_compile` event is to
+           be applied to :class:`.Query` objects that are used for lazy loading
+           of :func:`.relationships` (as described at :ref:`lazy_loading`),
+           it may be necessary to set :paramref:`.relationship.bake_queries`
+           to ``False``, else the :meth:`.QueryEvents.before_compile` event
+           will not be invoked for each lazy load operation.
+
         .. seealso::
 
             :meth:`.QueryEvents.before_compile_update`
