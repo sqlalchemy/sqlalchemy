@@ -5,6 +5,7 @@
 
 import sys
 
+from sqlalchemy import exc
 from sqlalchemy import util
 from sqlalchemy.testing import exclusions
 from sqlalchemy.testing.exclusions import against
@@ -809,9 +810,25 @@ class DefaultRequirements(SuiteRequirements):
                     )
                 ),
                 "postgresql >= 9.3",
-                "sqlite >= 3.9",
+                self._sqlite_json,
             ]
         )
+
+    def _sqlite_json(self, config):
+        if not against(config, "sqlite >= 3.9"):
+            return False
+        else:
+            with config.db.connect() as conn:
+                try:
+                    return (
+                        conn.scalar(
+                            """select json_extract('{"foo": "bar"}', """
+                            """'$."foo"')"""
+                        )
+                        == "bar"
+                    )
+                except exc.DBAPIError:
+                    return False
 
     @property
     def reflects_json_type(self):
