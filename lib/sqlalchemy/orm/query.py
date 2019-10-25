@@ -127,6 +127,7 @@ class Query(Generative):
     _orm_only_from_obj_alias = True
     _current_path = _path_registry
     _has_mapper_entities = False
+    _bake_ok = True
 
     lazy_loaded_from = None
     """An :class:`.InstanceState` that is using this :class:`.Query` for a
@@ -3812,8 +3813,10 @@ class Query(Generative):
         if self.dispatch.before_compile:
             for fn in self.dispatch.before_compile:
                 new_query = fn(self)
-                if new_query is not None:
+                if new_query is not None and new_query is not self:
                     self = new_query
+                    if not fn._bake_ok:
+                        self._bake_ok = False
 
         context = QueryContext(self)
 
