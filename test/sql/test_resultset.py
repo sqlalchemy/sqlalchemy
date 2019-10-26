@@ -1970,3 +1970,17 @@ class AlternateResultProxyTest(fixtures.TablesTest):
                     if idx in (16, 70, 150, 250):
                         eq_(result._bufsize, 27)
                     le_(len(result._BufferedRowResultProxy__rowbuffer), 27)
+
+    def test_max_row_buffer_option_greater_1000(self):
+        with self._proxy_fixture(_result.BufferedRowResultProxy):
+            with self.engine.connect() as conn:
+                conn.execute(
+                    self.table.insert(),
+                    [{"x": i, "y": "t_%d" % i} for i in range(15, 3000)],
+                )
+                result = conn.execution_options(max_row_buffer=2000).execute(self.table.select())
+                checks = {0: 5, 1: 10, 9: 20, 135: 250, 274: 500, 1351: 2000}
+                for idx, row in enumerate(result, 0):
+                    if idx in checks:
+                        eq_(result._bufsize, checks[idx])
+                    le_(len(result._BufferedRowResultProxy__rowbuffer), 2000)
