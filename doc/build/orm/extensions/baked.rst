@@ -394,6 +394,40 @@ of the baked query::
 
 .. versionadded:: 1.3
 
+.. _baked_with_before_compile:
+
+Using the before_compile event
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As of SQLAlchemy 1.3.11, the use of the :meth:`.QueryEvents.before_compile`
+event against a particular :class:`.Query` will disallow the baked query
+system from caching the query, if the event hook returns a new :class:`.Query`
+object that is different from the one passed in.  This is so that the
+:meth:`.QueryEvents.before_compile` hook may be invoked against a particular
+:class:`.Query` every time it is used, to accommodate for hooks that
+alter the query differently each time.    To allow a
+:meth:`.QueryEvents.before_compile` to alter a :meth:`.Query` object, but
+still to allow the result to be cached, the event can be registered
+passing the ``bake_ok=True`` flag::
+
+    @event.listens_for(
+        Query, "before_compile", retval=True, bake_ok=True)
+    def my_event(query):
+        for desc in query.column_descriptions:
+            if desc['type'] is User:
+                entity = desc['entity']
+                query = query.filter(entity.deleted == False)
+        return query
+
+The above strategy is appropriate for an event that will modify a
+given :class:`.Query` in exactly the same way every time, not dependent
+on specific parameters or external state that changes.
+
+.. versionadded:: 1.3.11  - added the "bake_ok" flag to the
+   :meth:`.QueryEvents.before_compile` event and disallowed caching via
+   the "baked" extension from occurring for event handlers that
+   return  a new :class:`.Query` object if this flag is not set.
+
 
 Disabling Baked Queries Session-wide
 ------------------------------------
