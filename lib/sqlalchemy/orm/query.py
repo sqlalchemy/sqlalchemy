@@ -1044,7 +1044,9 @@ class Query(object):
 
         is_dict = isinstance(primary_key_identity, dict)
         if not is_dict:
-            primary_key_identity = util.to_list(primary_key_identity)
+            primary_key_identity = util.to_list(
+                primary_key_identity, default=(None,)
+            )
 
         if len(primary_key_identity) != len(mapper.primary_key):
             raise sa_exc.InvalidRequestError(
