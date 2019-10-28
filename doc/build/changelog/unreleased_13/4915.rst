@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4915
+
+    A warning is emitted if a primary key value is passed to :meth:`.Query.get`
+    that consists of None for all primary key column positions.   Previously,
+    passing a single None outside of a tuple would raise a ``TypeError`` and
+    passing a composite None (tuple of None values) would silently pass
+    through.   The fix now coerces the single None into a tuple where it is
+    handled consistently with the other None conditions.  Thanks to Lev
+    Izraelit for the help with this.
+
