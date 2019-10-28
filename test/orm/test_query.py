@@ -780,13 +780,6 @@ class GetTest(QueryTest):
 
         s = users.outerjoin(addresses)
 
-    def test_get_none_pk(self):
-        User = self.classes.User
-
-        s = Session()
-        q = s.query(User.id)
-        assert_raises(sa_exc.InvalidRequestError, q.get, None)
-
         class UserThing(fixtures.ComparableEntity):
             pass
 
@@ -801,6 +794,13 @@ class GetTest(QueryTest):
         sess = create_session()
         u10 = sess.query(UserThing).get((10, None))
         eq_(u10, UserThing(id=10))
+
+    def test_get_none_pk(self):
+        User = self.classes.User
+
+        s = Session()
+        q = s.query(User.id)
+        assert_raises(sa_exc.InvalidRequestError, q.get, None)
 
     def test_no_criterion(self):
         """test that get()/load() does not use preexisting filter/etc.
