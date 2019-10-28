@@ -137,7 +137,8 @@ The following DBAPI-specific options are respected when used with
   interpreted by the :class:`.BufferedRowResultProxy`, and if omitted the
   buffer will grow to ultimately store 1000 rows at a time.
 
-  .. versionadded:: 1.0.6
+  .. versionchanged:: 1.4  The ``max_row_buffer`` size can now be greater than
+     1000, and the buffer will grow to that size.
 
 .. _psycopg2_executemany_mode:
 
