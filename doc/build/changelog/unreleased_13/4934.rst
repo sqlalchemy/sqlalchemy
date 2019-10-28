@@ -1,0 +1,11 @@
+.. change::
+    :tags: orm, usecase
+    :tickets: 4934
+
+    Added accessor :meth:`.Query.is_single_entity` to :class:`.Query`, which
+    will indicate if the results returned by this :class:`.Query` will be a
+    list of ORM entities, or a tuple of entities or column expressions.
+    SQLAlchemy hopes to improve upon the behavior of single entity / tuples in
+    future releases such that the behavior would be explicit up front, however
+    this attribute should be helpful with the current behavior.  Pull request
+    courtesy Patrick Hayes.

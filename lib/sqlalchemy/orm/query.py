@@ -641,13 +641,39 @@ class Query(Generative):
 
     @_generative
     def only_return_tuples(self, value):
-        """When set to True, the query results will always be a tuple,
-        specifically for single element queries. The default is False.
+        """When set to True, the query results will always be a tuple.
 
-    .   .. versionadded:: 1.2.5
+        This is specifically for single element queries. The default is False.
+
+        .. versionadded:: 1.2.5
+
+        .. seealso::
+
+            :meth:`.Query.is_single_entity`
 
         """
         self._only_return_tuples = value
+
+    @property
+    def is_single_entity(self):
+        """Indicates if this :class:`.Query` returns tuples or single entities.
+
+        Returns True if this query returns a single entity for each instance
+        in its result list, and False if this query returns a tuple of entities
+        for each result.
+
+        .. versionadded:: 1.3.11
+
+        .. seealso::
+
+            :meth:`.Query.only_return_tuples`
+
+        """
+        return (
+            not self._only_return_tuples
+            and len(self._entities) == 1
+            and self._entities[0].supports_single_entity
+        )
 
     @_generative
     def enable_eagerloads(self, value):
