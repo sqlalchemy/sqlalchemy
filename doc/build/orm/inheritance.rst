@@ -58,7 +58,9 @@ Above, an additional column ``type`` is established to act as the
 **discriminator**, configured as such using the :paramref:`.mapper.polymorphic_on`
 parameter.  This column will store a value which indicates the type of object
 represented within the row. The column may be of any datatype, though string
-and integer are the most common.
+and integer are the most common.  The actual data value to be applied to this
+column for a particular row in the database is specified using the
+:paramref:`.mapper.polymorphic_identity` parameter, described below.
 
 While a polymorphic discriminator expression is not strictly necessary, it is
 required if polymorphic loading is desired.   Establishing a simple column on
@@ -96,11 +98,34 @@ columns), as well as a foreign key reference to the parent table::
             'polymorphic_identity':'manager',
         }
 
-It is most common that the foreign key constraint is established on the same
-column or columns as the primary key itself, however this is not required; a
-column distinct from the primary key may also be made to refer to the parent
-via foreign key.  The way that a JOIN is constructed from the base table to
-subclasses is also directly customizable, however this is rarely necessary.
+In the above example, each mapping specifies the
+:paramref:`.mapper.polymorphic_identity` parameter within its mapper arguments.
+This value populates the column designated by the
+:paramref:`.mapper.polymorphic_on` parameter established on the base  mapper.
+The :paramref:`.mapper.polymorphic_identity`  parameter should be unique to
+each mapped class across the whole hierarchy, and there should only be one
+"identity" per mapped class; as noted above,  "cascading" identities where some
+subclasses introduce a second identity are not supported.
+
+The ORM uses the value set up by :paramref:`.mapper.polymorphic_identity` in
+order to determine which class a row belongs towards when loading rows
+polymorphically.  In the example above, every row which represents an
+``Employee`` will have the value ``'employee'`` in its ``type`` row; similarly,
+every ``Engineer`` will get the value ``'engineer'``, and each ``Manager`` will
+get the value ``'manager'``. Regardless of whether the inheritance mapping uses
+distinct joined tables for subclasses as in joined table inheritance, or all
+one table as in single table inheritance, this value is expected to be
+persisted and available to the ORM when querying. The
+:paramref:`.mapper.polymorphic_identity` parameter also applies to concrete
+table inheritance, but is not actually persisted; see the later section at
+:ref:`concrete_inheritance` for details.
+
+In a polymorphic setup, it is most common that the foreign key constraint is
+established on the same column or columns as the primary key itself, however
+this is not required; a column distinct from the primary key may also be made
+to refer to the parent via foreign key.  The way that a JOIN is constructed
+from the base table to subclasses is also directly customizable, however this
+is rarely necessary.
 
 .. topic:: Joined inheritance primary keys
 
