@@ -97,11 +97,22 @@ columns), as well as a foreign key reference to the parent table::
             'polymorphic_identity':'manager',
         }
 
-It is most common that the foreign key constraint is established on the same
-column or columns as the primary key itself, however this is not required; a
-column distinct from the primary key may also be made to refer to the parent
-via foreign key.  The way that a JOIN is constructed from the base table to
-subclasses is also directly customizable, however this is rarely necessary.
+Note how a value called ``polymorphic_identity`` has been sepecified for each
+class. This value is closesly related to ``polymorphic_on``; in particular, the
+value of ``polymorphic_identity`` populates the row designated by
+``polymorphic_on``. Each class or subclass gets its own value for
+``polymorphic_identity``. This value should be unique; it is how SQLAlchemy
+tells which class a row belongs to in a polymorphic setup. For instance, in this
+example, every row which represents an ``Employee`` will have the value
+``'employee'`` in its ``type`` row; likewise, every ``Engineer`` will get the
+value ``'engineer'``, and each ``Manager`` will get the value ``'manager'``.
+
+In a polymorphic setup, it is most common that the foreign key constraint is
+established on the same column or columns as the primary key itself, however
+this is not required; a column distinct from the primary key may also be made
+to refer to the parent via foreign key.  The way that a JOIN is constructed
+from the base table to subclasses is also directly customizable, however this
+is rarely necessary.
 
 .. topic:: Joined inheritance primary keys
 
