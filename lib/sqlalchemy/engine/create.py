@@ -504,8 +504,6 @@ def create_engine(url, **kwargs):
     else:
         if isinstance(pool, poollib.dbapi_proxy._DBProxy):
             pool = pool.get_pool(*cargs, **cparams)
-        else:
-            pool = pool
 
         pool._dialect = dialect
 
