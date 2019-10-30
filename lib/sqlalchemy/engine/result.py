@@ -1486,10 +1486,8 @@ class BufferedRowResultProxy(ResultProxy):
 
     The pre-fetching behavior fetches only one row initially, and then
     grows its buffer size by a fixed amount with each successive need
-    for additional rows up to a size of 1000.
-
-    The size argument is configurable using the ``max_row_buffer``
-    execution option::
+    for additional rows up the ``max_row_buffer`` size, which defaults
+    to 1000::
 
         with psycopg2_engine.connect() as conn:
 
@@ -1497,7 +1495,7 @@ class BufferedRowResultProxy(ResultProxy):
                 stream_results=True, max_row_buffer=50
                 ).execute("select * from table")
 
-    .. versionadded:: 1.0.6 Added the ``max_row_buffer`` option.
+    .. versionadded:: 1.4 ``max_row_buffer`` may now exceed 1000 rows.
 
     .. seealso::
 
@@ -1506,34 +1504,21 @@ class BufferedRowResultProxy(ResultProxy):
 
     def _init_metadata(self):
         self._max_row_buffer = self.context.execution_options.get(
-            "max_row_buffer", None
+            "max_row_buffer", 1000
         )
+        self._growth_factor = 5
         self.__buffer_rows()
         super(BufferedRowResultProxy, self)._init_metadata()
-
-    # this is a "growth chart" for the buffering of rows.
-    # each successive __buffer_rows call will use the next
-    # value in the list for the buffer size until the max
-    # is reached
-    size_growth = {
-        1: 5,
-        5: 10,
-        10: 20,
-        20: 50,
-        50: 100,
-        100: 250,
-        250: 500,
-        500: 1000,
-    }
 
     def __buffer_rows(self):
         if self.cursor is None:
             return
         size = getattr(self, "_bufsize", 1)
         self.__rowbuffer = collections.deque(self.cursor.fetchmany(size))
-        self._bufsize = self.size_growth.get(size, size)
-        if self._max_row_buffer is not None:
-            self._bufsize = min(self._max_row_buffer, self._bufsize)
+        if size < self._max_row_buffer:
+            self._bufsize = min(
+                self._max_row_buffer, size * self._growth_factor
+            )
 
     def _soft_close(self, **kw):
         self.__rowbuffer.clear()

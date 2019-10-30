@@ -1942,31 +1942,47 @@ class AlternateResultProxyTest(fixtures.TablesTest):
                     r = conn.execute(stmt)
                     eq_(r.scalar(), "HI THERE")
 
-    def test_buffered_row_growth(self):
+    @testing.fixture
+    def row_growth_fixture(self):
         with self._proxy_fixture(_result.BufferedRowResultProxy):
             with self.engine.connect() as conn:
                 conn.execute(
                     self.table.insert(),
-                    [{"x": i, "y": "t_%d" % i} for i in range(15, 1200)],
+                    [{"x": i, "y": "t_%d" % i} for i in range(15, 3000)],
                 )
-                result = conn.execute(self.table.select())
-                checks = {0: 5, 1: 10, 9: 20, 135: 250, 274: 500, 1351: 1000}
-                for idx, row in enumerate(result, 0):
-                    if idx in checks:
-                        eq_(result._bufsize, checks[idx])
-                    le_(len(result._BufferedRowResultProxy__rowbuffer), 1000)
+                yield conn
 
-    def test_max_row_buffer_option(self):
-        with self._proxy_fixture(_result.BufferedRowResultProxy):
-            with self.engine.connect() as conn:
-                conn.execute(
-                    self.table.insert(),
-                    [{"x": i, "y": "t_%d" % i} for i in range(15, 1200)],
-                )
-                result = conn.execution_options(max_row_buffer=27).execute(
-                    self.table.select()
-                )
-                for idx, row in enumerate(result, 0):
-                    if idx in (16, 70, 150, 250):
-                        eq_(result._bufsize, 27)
-                    le_(len(result._BufferedRowResultProxy__rowbuffer), 27)
+    @testing.combinations(
+        ("no option", None, {0: 5, 1: 25, 9: 125, 135: 625, 274: 1000}),
+        ("lt 1000", 27, {0: 5, 16: 27, 70: 27, 150: 27, 250: 27}),
+        (
+            "gt 1000",
+            1500,
+            {0: 5, 1: 25, 9: 125, 135: 625, 274: 1500, 1351: 1500},
+        ),
+        (
+            "gt 1500",
+            2000,
+            {0: 5, 1: 25, 9: 125, 135: 625, 274: 2000, 1351: 2000},
+        ),
+        id_="iaa",
+        argnames="max_row_buffer,checks",
+    )
+    def test_buffered_row_growth(
+        self, row_growth_fixture, max_row_buffer, checks
+    ):
+        if max_row_buffer:
+            result = row_growth_fixture.execution_options(
+                max_row_buffer=max_row_buffer
+            ).execute(self.table.select())
+        else:
+            result = row_growth_fixture.execute(self.table.select())
+
+        assertion = {}
+        max_size = max(checks.values())
+        for idx, row in enumerate(result, 0):
+            if idx in checks:
+                assertion[idx] = result._bufsize
+            le_(len(result._BufferedRowResultProxy__rowbuffer), max_size)
+
+        eq_(checks, assertion)
