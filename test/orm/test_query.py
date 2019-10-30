@@ -112,22 +112,14 @@ class OnlyReturnTuplesTest(QueryTest):
 
     def test_multiple_entity_false(self):
         User = self.classes.User
-        query = (
-            create_session()
-            .query(User.id, User)
-            .only_return_tuples(False)
-        )
+        query = create_session().query(User.id, User).only_return_tuples(False)
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
 
     def test_multiple_entity_true(self):
         User = self.classes.User
-        query = (
-            create_session()
-            .query(User.id, User)
-            .only_return_tuples(True)
-        )
+        query = create_session().query(User.id, User).only_return_tuples(True)
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
@@ -780,10 +772,8 @@ class GetTest(QueryTest):
         q = s.query(User.id)
         assert_raises(sa_exc.InvalidRequestError, q.get, (5,))
 
-    def test_get_null_pk(self):
-        """test that a mapping which can have None in a
-        PK (i.e. map to an outerjoin) works with get()."""
-
+    @testing.fixture
+    def outerjoin_mapping(self):
         users, addresses = self.tables.users, self.tables.addresses
 
         s = users.outerjoin(addresses)
@@ -799,9 +789,43 @@ class GetTest(QueryTest):
                 "address_id": addresses.c.id,
             },
         )
+        return UserThing
+
+    def test_get_null_pk(self, outerjoin_mapping):
+        """test that a mapping which can have None in a
+        PK (i.e. map to an outerjoin) works with get()."""
+
+        UserThing = outerjoin_mapping
         sess = create_session()
         u10 = sess.query(UserThing).get((10, None))
         eq_(u10, UserThing(id=10))
+
+    def test_get_fully_null_pk(self):
+        User = self.classes.User
+
+        s = Session()
+        q = s.query(User)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            r"fully NULL primary key identity cannot load any object.  "
+            "This condition may raise an error in a future release.",
+            q.get,
+            None,
+        )
+
+    def test_get_fully_null_composite_pk(self, outerjoin_mapping):
+        UserThing = outerjoin_mapping
+
+        s = Session()
+        q = s.query(UserThing)
+
+        assert_raises_message(
+            sa_exc.SAWarning,
+            r"fully NULL primary key identity cannot load any object.  "
+            "This condition may raise an error in a future release.",
+            q.get,
+            (None, None),
+        )
 
     def test_no_criterion(self):
         """test that get()/load() does not use preexisting filter/etc.

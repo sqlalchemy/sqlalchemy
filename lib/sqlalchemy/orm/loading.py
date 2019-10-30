@@ -243,6 +243,12 @@ def load_on_pk_identity(
             )
             _get_clause = sql_util.adapt_criterion_to_null(_get_clause, nones)
 
+            if len(nones) == len(primary_key_identity):
+                util.warn(
+                    "fully NULL primary key identity cannot load any "
+                    "object.  This condition may raise an error in a future "
+                    "release."
+                )
         _get_clause = q._adapt_clause(_get_clause, True, False)
         q._criterion = _get_clause
 
