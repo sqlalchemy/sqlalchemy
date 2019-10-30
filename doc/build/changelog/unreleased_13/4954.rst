@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4954
+
+    The :paramref:`.relationship.omit_join` flag was not intended to be
+    manually set to True, and will now emit a warning when this occurs.  The
+    omit_join optimization is detected automatically, and the ``omit_join``
+    flag was only intended to disable the optimization in the hypothetical case
+    that the optimization may have interfered with correct results, which has
+    not been observed with the modern version of this feature.   Setting the
+    flag to True when it is not automatically detected may cause the selectin
+    load feature to not work correctly when a non-default primary join
+    condition is in use.
+
