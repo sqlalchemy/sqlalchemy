@@ -232,6 +232,17 @@ class MaterializedViewReflectionTest(
             set(["test_mview"]),
         )
 
+    def test_get_view_names_reflection_cache_ok(self):
+        insp = inspect(testing.db)
+        eq_(
+            set(insp.get_view_names(include=("plain",))), set(["test_regview"])
+        )
+        eq_(
+            set(insp.get_view_names(include=("materialized",))),
+            set(["test_mview"]),
+        )
+        eq_(set(insp.get_view_names()), set(["test_regview", "test_mview"]))
+
     def test_get_view_names_empty(self):
         insp = inspect(testing.db)
         assert_raises(ValueError, insp.get_view_names, include=())
