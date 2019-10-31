@@ -21,8 +21,11 @@ detailed in `ConnectionStrings <https://code.google.com/p/pyodbc/wiki/Connection
 DSN Connections
 ^^^^^^^^^^^^^^^
 
-A DSN-based connection is **preferred** overall when using ODBC.  A
-basic DSN-based connection looks like::
+A DSN connection in ODBC means that a pre-existing ODBC datasource is
+configured on the client machine.   The application then specifies the name
+of this datasource, which encompasses details such as the specific ODBC driver
+in use as well as the network address of the database.   Assuming a datasource
+is configured on the client, a basic DSN-based connection looks like::
 
     engine = create_engine("mssql+pyodbc://scott:tiger@some_dsn")
 
@@ -36,15 +39,16 @@ the ``Trusted_Connection=yes`` directive to the ODBC string.
 Hostname Connections
 ^^^^^^^^^^^^^^^^^^^^
 
-Hostname-based connections are **not preferred**, however are supported.
-The ODBC driver name must be explicitly specified::
+Hostname-based connections are also supported by pyodbc.  These are often
+easier to use than a DSN and have the additional advantage that the specific
+database name to connect towards may be specified locally in the URL, rather
+than it being fixed as part of a datasource configuration.
+
+When using a hostname connection, the driver name must also be specified in the
+query parameters of the URL.  As these names usually have spaces in them, the
+name must be URL encoded which means using plus signs for spaces::
 
     engine = create_engine("mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=SQL+Server+Native+Client+10.0")
-
-.. versionchanged:: 1.0.0 Hostname-based PyODBC connections now require the
-   SQL Server driver name specified explicitly.  SQLAlchemy cannot
-   choose an optimal default here as it varies based on platform
-   and installed drivers.
 
 Other keywords interpreted by the Pyodbc dialect to be passed to
 ``pyodbc.connect()`` in both the DSN and hostname cases include:
@@ -53,10 +57,11 @@ Other keywords interpreted by the Pyodbc dialect to be passed to
 Pass through exact Pyodbc string
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A PyODBC connection string can also be sent exactly as specified in
-`ConnectionStrings <https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_
-into the driver using the parameter ``odbc_connect``.  The delimeters must be
-URL escaped, however, as illustrated below using ``urllib.parse.quote_plus``::
+A PyODBC connection string can also be sent in pyodbc's format directly, as
+specified in `ConnectionStrings
+<https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_ into the driver
+using the parameter ``odbc_connect``.  The delimeters must be URL encoded, as
+illustrated below using ``urllib.parse.quote_plus``::
 
     import urllib
     params = urllib.parse.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
