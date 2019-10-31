@@ -3108,6 +3108,7 @@ class M2OWDegradeTest(
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey("b.id"))
             b = relationship("B")
+            b_no_omit_join = relationship("B", omit_join=False)
             q = Column(Integer)
 
         class B(fixtures.ComparableEntity, Base):
@@ -3132,6 +3133,13 @@ class M2OWDegradeTest(
             ]
         )
         s.commit()
+
+    def test_omit_join_warn_on_true(self):
+        with testing.expect_warnings(
+            "setting omit_join to True is not supported; selectin "
+            "loading of this relationship"
+        ):
+            relationship("B", omit_join=True)
 
     def test_use_join_parent_criteria(self):
         A, B = self.classes("A", "B")
@@ -3225,6 +3233,38 @@ class M2OWDegradeTest(
                 A(id=3, b=b2),
                 A(id=4, b=None),
                 A(id=5, b=b1),
+            ],
+        )
+
+    def test_use_join_omit_join_false(self):
+        A, B = self.classes("A", "B")
+        s = Session()
+        q = s.query(A).options(selectinload(A.b_no_omit_join)).order_by(A.id)
+        results = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.b_id AS a_b_id, a.q AS a_q "
+                "FROM a ORDER BY a.id",
+                [{}],
+            ),
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
+                "b.y AS b_y FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                [{"primary_keys": [1, 2, 3, 4, 5]}],
+            ),
+        )
+
+        b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
+        eq_(
+            results,
+            [
+                A(id=1, b_no_omit_join=b1),
+                A(id=2, b_no_omit_join=b2),
+                A(id=3, b_no_omit_join=b2),
+                A(id=4, b_no_omit_join=None),
+                A(id=5, b_no_omit_join=b1),
             ],
         )
 

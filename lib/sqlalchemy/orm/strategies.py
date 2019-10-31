@@ -2112,6 +2112,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                     use_proxies=True,
                     equivalents=self.parent._equivalent_columns,
                 )
+
         if self.omit_join:
             if is_m2o:
                 self._query_info = self._init_for_omit_join_m2o()
