@@ -2,35 +2,34 @@
 SQLALCHEMY UNIT TESTS
 =====================
 
-Updated for 1.1, 1.2
-
 Basic Test Running
 ==================
 
-A test target exists within the setup.py script.  For basic test runs::
+Tox is used to run the test suite fully.   For basic test runs against
+a single Python interpreter::
 
-    python setup.py test
+    tox
 
 
-Running with Tox
-================
+Advanced Tox Options
+====================
 
 For more elaborate CI-style test running, the tox script provided will
 run against various Python / database targets.   For a basic run against
 Python 2.7 using an in-memory SQLite database::
 
-    tox -e py27-sqlite
+    tox -e py38-sqlite
 
 The tox runner contains a series of target combinations that can run
 against various combinations of databases.  The test suite can be
 run against SQLite with "backend" tests also running against a PostgreSQL
 database::
 
-    tox -e py36-sqlite-postgresql
+    tox -e py38-sqlite-postgresql
 
-Or to run just "backend" tests against a MySQL database::
+Or to run just "backend" tests against a MySQL databases::
 
-    tox -e py36-mysql-backendonly
+    tox -e py38-mysql-backendonly
 
 Running against backends other than SQLite requires that a database of that
 vendor be available at a specific URL.  See "Setting Up Databases" below
@@ -39,12 +38,12 @@ for details.
 The py.test Engine
 ==================
 
-Both the tox runner and the setup.py runner are using py.test to invoke
-the test suite.   Within the realm of py.test, SQLAlchemy itself is adding
-a large series of option and customizations to the py.test runner using
-plugin points, to allow for SQLAlchemy's multiple database support,
-database setup/teardown and connectivity, multi process support, as well as
-lots of skip / database selection rules.
+The tox runner is using py.test to invoke the test suite.   Within the realm of
+py.test, SQLAlchemy itself is adding a large series of option and
+customizations to the py.test runner using plugin points, to allow for
+SQLAlchemy's multiple database support, database setup/teardown and
+connectivity, multi process support, as well as lots of skip / database
+selection rules.
 
 Running tests with py.test directly grants more immediate control over
 database options and test selection.
@@ -66,11 +65,12 @@ Above will run the tests in the test/sql/test_query.py file (a pretty good
 file for basic "does this database work at all?" to start with) against a
 running PostgreSQL database at the given URL.
 
-The py.test frontend can also run tests against multiple kinds of databases
-at once - a large subset of tests are marked as "backend" tests, which will
-be run against each available backend, and additionally lots of tests are targeted
-at specific backends only, which only run if a matching backend is made available.
-For example, to run the test suite against both PostgreSQL and MySQL at the same time::
+The py.test frontend can also run tests against multiple kinds of databases at
+once - a large subset of tests are marked as "backend" tests, which will be run
+against each available backend, and additionally lots of tests are targeted at
+specific backends only, which only run if a matching backend is made available.
+For example, to run the test suite against both PostgreSQL and MySQL at the
+same time::
 
     py.test -n4 --db postgresql --db mysql
 
@@ -85,7 +85,7 @@ a pre-set URL.  These can be seen using --dbs::
     Available --db options (use --dburi to override)
                  default    sqlite:///:memory:
                 firebird    firebird://sysdba:masterkey@localhost//Users/classic/foo.fdb
-                   mssql    mssql+pyodbc://scott:tiger@ms_2008
+                   mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008
                    mysql    mysql://scott:tiger@127.0.0.1:3306/test?charset=utf8
                   oracle    oracle://scott:tiger@127.0.0.1:1521
@@ -96,6 +96,11 @@ a pre-set URL.  These can be seen using --dbs::
                  pymysql    mysql+pymysql://scott:tiger@127.0.0.1:3306/test?charset=utf8
                   sqlite    sqlite:///:memory:
              sqlite_file    sqlite:///querytest.db
+
+Note that a pyodbc URL **must be against a hostname / database name
+combination, not a DSN name** when using the multiprocessing option; this is
+because the test suite needs to generate new URLs to refer to per-process
+databases that are created on the fly.
 
 What those mean is that if you have a database running that can be accessed
 by the above URL, you can run the test suite against it using ``--db <name>``.
@@ -124,15 +129,30 @@ of the fixed one in setup.cfg.
 Database Configuration
 ======================
 
+Step one, the **database chosen for tests must be entirely empty**.  A lot
+of what SQLAlchemy tests is creating and dropping lots of tables
+as well as running database introspection to see what is there.  If there
+are pre-existing tables or other objects in the target database already,
+these will get in the way.   A failed test run can also be followed by
+ a run that includes the "--dropfirst" option, which will try to drop
+all existing tables in the target database.
+
+The above paragraph changes somewhat when the multiprocessing option
+is used, in that separate databases will be created instead, however
+in the case of Postgresql, the starting database is used as a template,
+so the starting database must still be empty.
+
 The test runner will by default create and drop tables within the default
-database that's in the database URL, *unless* the multiprocessing option
-is in use via the py.test "-n" flag, which invokes pytest-xdist.   The
-multiprocessing option is **enabled by default** for both the tox runner
-and the setup.py frontend.   When multiprocessing is used, the SQLAlchemy
-testing framework will create a new database for each process, and then
-tear it down after the test run is complete.    So it will be necessary
-for the database user to have access to CREATE DATABASE in order for this
-to work.
+database that's in the database URL, *unless* the multiprocessing option is in
+use via the py.test "-n" flag, which invokes pytest-xdist.   The
+multiprocessing option is **enabled by default** when using the tox runner.
+When multiprocessing is used, the SQLAlchemy testing framework will create a
+new database for each process, and then tear it down after the test run is
+complete.    So it will be necessary for the database user to have access to
+CREATE DATABASE in order for this to work.   Additionally, as mentioned
+earlier, the database URL must be formatted such that it can be rewritten on
+the fly to refer to these other databases, which means for pyodbc it must refer
+to a hostname/database name combination, not a DSN name.
 
 Several tests require alternate usernames or schemas to be present, which
 are used to test dotted-name access scenarios.  On some databases such
