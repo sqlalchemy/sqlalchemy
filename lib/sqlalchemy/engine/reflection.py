@@ -45,11 +45,7 @@ def cache(fn, self, con, *args, **kw):
     key = (
         fn.__name__,
         tuple(a for a in args if isinstance(a, util.string_types)),
-        tuple(
-            (k, v)
-            for k, v in kw.items()
-            if isinstance(v, util.string_types + util.int_types + (float,))
-        ),
+        tuple((k, v) for k, v in kw.items() if k != "info_cache"),
     )
     ret = info_cache.get(key)
     if ret is None:

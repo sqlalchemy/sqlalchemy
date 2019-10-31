@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, engine, postgresql
+    :tickets: 4955
+
+    Fixed bug in :class:`.Inspector` where the cache key generation did not
+    take into account arguments passed in the form of tuples, such as the tuple
+    of view name styles to return for the PostgreSQL dialect. This would lead
+    the inspector to cache too generally for a more specific set of criteria.
+    The logic has been adjusted to include every keyword element in the cache,
+    as every argument is expected to be appropriate for a cache else the
+    caching decorator should be bypassed by the dialect.
+
