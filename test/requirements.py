@@ -760,7 +760,8 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def nullsordering(self):
         """Target backends that support nulls ordering."""
-        return fails_on_everything_except("postgresql", "oracle", "firebird")
+        return fails_on_everything_except("postgresql", "oracle", "firebird",
+                                          "sqlite >= 3.30.0")
 
     @property
     def reflects_pk_names(self):
@@ -775,7 +776,7 @@ class DefaultRequirements(SuiteRequirements):
         """target database can select an aggregate from a subquery that's
         also using an aggregate"""
 
-        return skip_if(["mssql"])
+        return skip_if(["mssql", "sqlite"])
 
     @property
     def array_type(self):
