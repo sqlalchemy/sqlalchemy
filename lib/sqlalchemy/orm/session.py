@@ -3025,7 +3025,7 @@ class Session(_SessionClassMethods):
         "partial rollback" state.
 
         From all the above, it follows that the only purpose to this flag is
-        for application frameworks that wish to detect is a "rollback" is
+        for application frameworks that wish to detect if a "rollback" is
         necessary within a generic error handling routine, for
         :class:`.Session` objects that would otherwise be in
         "partial rollback" mode.  In a typical integration case, this is also
