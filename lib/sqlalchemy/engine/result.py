@@ -863,6 +863,9 @@ class ResultProxy(object):
             self.connection._echo and context.engine._should_log_debug()
         )
         self._init_metadata()
+        self._arraysize = self.context.execution_options.get(
+            "arraysize", 1
+        )
 
     def _getter(self, key, raiseerr=True):
         try:
@@ -1097,11 +1100,18 @@ class ResultProxy(object):
         """Implement iteration protocol."""
 
         while True:
-            row = self.fetchone()
-            if row is None:
-                return
-            else:
-                yield row
+            if self._arraysize == 1:
+                row = self.fetchone()
+                if row is None:
+                    return
+                else:
+                    yield row
+            elif self._arraysize > 1:
+                chunk = self.fetchmany(self._arraysize)
+                if len(chunk) == 0:
+                    return
+                else:
+                    yield chunk
 
     def __next__(self):
         """Implement the next() protocol.
@@ -1109,11 +1119,18 @@ class ResultProxy(object):
         .. versionadded:: 1.2
 
         """
-        row = self.fetchone()
-        if row is None:
-            raise StopIteration()
-        else:
-            return row
+        if self._arraysize == 1:
+            row = self.fetchone()
+            if row is None:
+                raise StopIteration()
+            else:
+                return row
+        elif self._arraysize > 1:
+            chunk = self.fetchmany(self._arraysize)
+            if len(chunk)==0:
+                raise StopIteration()
+            else:
+                return chunk
 
     next = __next__
 

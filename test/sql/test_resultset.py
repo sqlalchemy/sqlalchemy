@@ -86,27 +86,48 @@ class ResultProxyTest(fixtures.TablesTest):
             test_needs_acid=True,
         )
 
-    def test_row_iteration(self):
+    def test_iteration_row(self):
         users = self.tables.users
 
         users.insert().execute(
             {"user_id": 7, "user_name": "jack"},
             {"user_id": 8, "user_name": "ed"},
             {"user_id": 9, "user_name": "fred"},
+            {"user_id": 10, "user_name": "barney"},
+            {"user_id": 11, "user_name": "bob"},
         )
         r = users.select().execute()
         rows = []
         for row in r:
             rows.append(row)
-        eq_(len(rows), 3)
+        eq_(len(rows), 5)
 
-    def test_row_next(self):
+    def test_iteration_chunk(self):
         users = self.tables.users
 
         users.insert().execute(
             {"user_id": 7, "user_name": "jack"},
             {"user_id": 8, "user_name": "ed"},
             {"user_id": 9, "user_name": "fred"},
+            {"user_id": 10, "user_name": "barney"},
+            {"user_id": 11, "user_name": "bob"},
+        )
+        r = users.select().execution_options(arraysize=3).execute()
+        rows = []
+        for chunk in r:
+            for row in chunk:
+                rows.append(row)
+        eq_(len(rows), 5)
+
+    def test_next_row(self):
+        users = self.tables.users
+
+        users.insert().execute(
+            {"user_id": 7, "user_name": "jack"},
+            {"user_id": 8, "user_name": "ed"},
+            {"user_id": 9, "user_name": "fred"},
+            {"user_id": 10, "user_name": "barney"},
+            {"user_id": 11, "user_name": "bob"},
         )
         r = users.select().execute()
         rows = []
@@ -115,7 +136,27 @@ class ResultProxyTest(fixtures.TablesTest):
             if row == "foo":
                 break
             rows.append(row)
-        eq_(len(rows), 3)
+        eq_(len(rows), 5)
+
+    def test_next_chunk(self):
+        users = self.tables.users
+
+        users.insert().execute(
+            {"user_id": 7, "user_name": "jack"},
+            {"user_id": 8, "user_name": "ed"},
+            {"user_id": 9, "user_name": "fred"},
+            {"user_id": 10, "user_name": "barney"},
+            {"user_id": 11, "user_name": "bob"},
+        )
+        r = users.select().execution_options(arraysize=3).execute()
+        rows = []
+        while True:
+            chunk = next(r, "foo")
+            if chunk == "foo":
+                break
+            for row in chunk:
+                rows.append(row)
+        eq_(len(rows), 5)
 
     @testing.requires.subqueries
     def test_anonymous_rows(self):
