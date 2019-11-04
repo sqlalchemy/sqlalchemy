@@ -1,13 +1,15 @@
 # coding: utf-8
-from sqlalchemy import Column, Computed, Integer, MetaData, Table
+from sqlalchemy import Column
+from sqlalchemy import Computed
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.schema import CreateTable
-from sqlalchemy.testing import (
-    AssertsCompiledSQL,
-    combinations,
-    fixtures,
-    assert_raises_message,
-)
+from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import combinations
+from sqlalchemy.testing import fixtures
 
 
 class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):

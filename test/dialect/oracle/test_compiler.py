@@ -1,9 +1,9 @@
 # coding: utf-8
 from sqlalchemy import and_
 from sqlalchemy import bindparam
-from sqlalchemy import except_
 from sqlalchemy import Computed
 from sqlalchemy import exc
+from sqlalchemy import except_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
@@ -29,8 +29,8 @@ from sqlalchemy.engine import default
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
-from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
