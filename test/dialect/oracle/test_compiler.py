@@ -1191,14 +1191,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @combinations(
-        ("no_persisted", "", Ellipsis),
+        ("no_persisted", "", "ignore"),
         ("persisted_none", "", None),
         ("persisted_false", " VIRTUAL", False),
         id_="iaa",
     )
     def test_column_computed(self, text, persisted):
         m = MetaData()
-        kwargs = {"persisted": persisted} if persisted != Ellipsis else {}
+        kwargs = {"persisted": persisted} if persisted != "ignore" else {}
         t = Table(
             "t",
             m,
