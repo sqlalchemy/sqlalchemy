@@ -536,8 +536,104 @@ including the default schema, if any.
 
     :ref:`oracle_returning` - in the Oracle dialect documentation
 
+.. _computed_ddl:
+
+Computed (GENERATED ALWAYS AS) Columns
+--------------------------------------
+
+.. versionadded:: 1.3.11
+
+The :class:`.Computed` construct allows a :class:`.Column` to be declared in
+DDL as a "GENERATED ALWAYS AS" column, that is, one which has a value that is
+computed by the database server.    The construct accepts a SQL expression
+typically declared textually using a string or the :func:`.text` construct, in
+a similar manner as that of :class:`.CheckConstraint`.   The SQL expression is
+then interpreted by the database server in order to determine the value for the
+column within a row.
+
+Example::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, Computed
+
+    metadata = MetaData()
+
+    square = Table(
+        "square",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("side", Integer),
+        Column("area", Integer, Computed("side * side")),
+        Column("perimeter", Integer, Computed("4 * side")),
+    )
+
+The DDL for the ``square`` table when run on a PostgreSQL 12 backend will look
+like::
+
+    CREATE TABLE square (
+        id SERIAL NOT NULL,
+        side INTEGER,
+        area INTEGER GENERATED ALWAYS AS (side * side) STORED,
+        perimeter INTEGER GENERATED ALWAYS AS (4 * side) STORED,
+        PRIMARY KEY (id)
+    )
+
+Whether the value is persisted upon INSERT and UPDATE, or if it is calculated
+on fetch, is an implementation detail of the database; the former is known as
+"stored" and the latter is known as "virtual".  Some database implementations
+support both, but some only support one or the other.  The optional
+:paramref:`.Computed.persisted` flag may be specified as ``True`` or ``False``
+to indicate if the "STORED" or "VIRTUAL" keyword should be rendered in DDL,
+however this will raise an error if the keyword is not supported by the target
+backend; leaving it unset will use  a working default for the target backend.
+
+The :class:`.Computed` construct is a subclass of the :class:`.FetchedValue`
+object, and will set itself up as both the "server default" and "server
+onupdate" generator for the target :class:`.Column`, meaning it will be treated
+as a default generating column when INSERT and UPDATE statements are generated,
+as well as that it will be fetched as a generating column when using the ORM.
+This includes that it will be part of the RETURNING clause of the database
+for databases which support RETURNING and the generated values are to be
+eagerly fetched.
+
+.. note:: A :class:`.Column` that is defined with the :class:`.Computed`
+   construct may not store any value outside of that which the server applies
+   to it;  SQLAlchemy's behavior when a value is passed for such a column
+   to be written in INSERT or UPDATE is currently that the value will be
+   ignored.
+
+"GENERATED ALWAYS AS" is currently known to be supported by:
+
+* MySQL version 5.7 and onwards
+
+* MariaDB 10.x series and onwards
+
+* PostgreSQL as of version 12
+
+* Oracle - with the caveat that RETURNING does not work correctly with UPDATE
+  (a warning will be emitted to this effect when the UPDATE..RETURNING that
+  includes a computed column is rendered)
+
+* Microsoft SQL Server
+
+* Firebird
+
+When :class:`.Computed` is used with an unsupported backend, if the target
+dialect does not support it, a :class:`.CompileError` is raised when attempting
+to render the construct.  Otherwise, if the dialect supports it but the
+particular database server version in use does not, then a subclass of
+:class:`.DBAPIError`, usually :class:`.OperationalError`, is raised when the
+DDL is emitted to the database.
+
+.. seealso::
+
+    :class:`.Computed`
+
 Default Objects API
 -------------------
+
+.. autoclass:: Computed
+    :members:
+
 
 .. autoclass:: ColumnDefault
 

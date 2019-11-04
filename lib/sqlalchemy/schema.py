@@ -41,6 +41,7 @@ from .sql.schema import Column  # noqa
 from .sql.schema import ColumnCollectionConstraint  # noqa
 from .sql.schema import ColumnCollectionMixin  # noqa
 from .sql.schema import ColumnDefault  # noqa
+from .sql.schema import Computed  # noqa
 from .sql.schema import Constraint  # noqa
 from .sql.schema import DefaultClause  # noqa
 from .sql.schema import DefaultGenerator  # noqa

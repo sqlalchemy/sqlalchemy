@@ -1873,6 +1873,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             if default is not None:
                 colspec += " DEFAULT " + default
 
+        if column.computed is not None:
+            colspec += " " + self.process(column.computed)
+
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
@@ -2042,6 +2045,18 @@ class PGDDLCompiler(compiler.DDLCompiler):
             )
 
         return "".join(table_opts)
+
+    def visit_computed_column(self, generated):
+        if generated.persisted is False:
+            raise exc.CompileError(
+                "PostrgreSQL computed columns do not support 'virtual' "
+                "persistence; set the 'persisted' flag to None or True for "
+                "PostgreSQL support."
+            )
+
+        return "GENERATED ALWAYS AS (%s) STORED" % self.sql_compiler.process(
+            generated.sqltext, include_table=False, literal_binds=True
+        )
 
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):

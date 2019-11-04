@@ -1913,13 +1913,15 @@ class MSSQLStrictCompiler(MSSQLCompiler):
 
 class MSDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
-        colspec = (
-            self.preparer.format_column(column)
-            + " "
-            + self.dialect.type_compiler.process(
+        colspec = self.preparer.format_column(column)
+
+        # type is not accepted in a computed column
+        if column.computed is not None:
+            colspec += " " + self.process(column.computed)
+        else:
+            colspec += " " + self.dialect.type_compiler.process(
                 column.type, type_expression=column
             )
-        )
 
         if column.nullable is not None:
             if (
@@ -1929,7 +1931,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
                 or column.autoincrement is True
             ):
                 colspec += " NOT NULL"
-            else:
+            elif column.computed is None:
+                # don't specify "NULL" for computed columns
                 colspec += " NULL"
 
         if column.table is None:
@@ -2079,6 +2082,15 @@ class MSDDLCompiler(compiler.DDLCompiler):
             self.preparer.quote(c.name) for c in constraint
         )
         text += self.define_constraint_deferrability(constraint)
+        return text
+
+    def visit_computed_column(self, generated):
+        text = "AS (%s)" % self.sql_compiler.process(
+            generated.sqltext, include_table=False, literal_binds=True
+        )
+        # explicitly check for True|False since None means server default
+        if generated.persisted is True:
+            text += " PERSISTED"
         return text
 
 
