@@ -1543,6 +1543,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             q, "DELETE FROM t1 AS a1 USING t2 WHERE a1.c1 = t2.c1"
         )
 
+    @testing.requires.computed_columns
     @combinations(
         ("no_persisted", " STORED", "ignore"),
         ("persisted_none", " STORED", None),
@@ -1564,6 +1565,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALWAYS AS (x + 2)%s)" % text,
         )
 
+    @testing.requires.computed_columns
     def test_column_computed_persisted_false(self):
         m = MetaData()
         t = Table(

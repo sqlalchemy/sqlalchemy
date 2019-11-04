@@ -1420,3 +1420,7 @@ class DefaultRequirements(SuiteRequirements):
             lambda config: against(config, "oracle+cx_oracle")
             and config.db.dialect.cx_oracle_ver < (6,)
         )
+
+    @property
+    def computed_columns(self):
+        return skip_if(["postgresql < 12", "sqlite"])
