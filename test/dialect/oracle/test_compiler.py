@@ -1221,7 +1221,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         assert_raises_message(
             exc.CompileError,
-            r"oracle does not support persited \(stored\) computed columns."
+            r"oracle does not support persisted \(stored\) computed columns."
             " Remove 'persisted' or set it to False",
             schema.CreateTable(t).compile,
             dialect=oracle.dialect(),

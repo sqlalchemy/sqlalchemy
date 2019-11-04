@@ -1194,7 +1194,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         # explicitly check for True|False since None means server default
         if generated.persisted is True:
             raise exc.CompileError(
-                "oracle does not support persited (stored) computed "
+                "oracle does not support persisted (stored) computed "
                 "columns. Remove 'persisted' or set it to False"
             )
         elif generated.persisted is False:
