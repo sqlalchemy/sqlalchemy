@@ -17,6 +17,7 @@ from .schema import DefaultClause  # noqa
 from .schema import FetchedValue  # noqa
 from .schema import ForeignKey  # noqa
 from .schema import ForeignKeyConstraint  # noqa
+from .schema import Computed  # noqa
 from .schema import Index  # noqa
 from .schema import MetaData  # noqa
 from .schema import PrimaryKeyConstraint  # noqa

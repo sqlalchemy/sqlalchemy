@@ -1028,9 +1028,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
           :class:`.SchemaItem` derived constructs which will be applied
           as options to the column.  These include instances of
           :class:`.Constraint`, :class:`.ForeignKey`, :class:`.ColumnDefault`,
-          and :class:`.Sequence`.  In some cases an equivalent keyword
-          argument is available such as ``server_default``, ``default``
-          and ``unique``.
+          :class:`.Sequence`, :class:`.Computed`.  In some cases an
+          equivalent keyword argument is available such as ``server_default``,
+          ``default`` and ``unique``.
 
         :param autoincrement: Set up "auto increment" semantics for an integer
           primary key column.  The default value is the string ``"auto"``
@@ -1296,6 +1296,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         self.constraints = set()
         self.foreign_keys = set()
         self.comment = kwargs.pop("comment", None)
+        self.computed = None
 
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
@@ -1502,6 +1503,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             c.copy(**kw) for c in self.constraints if not c._type_bound
         ] + [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
+        server_default = self.server_default
+        server_onupdate = self.server_onupdate
+        if isinstance(server_default, Computed):
+            server_default = server_onupdate = None
+            args.append(self.server_default.copy(**kw))
+
         type_ = self.type
         if isinstance(type_, SchemaEventTarget):
             type_ = type_.copy(**kw)
@@ -1518,9 +1525,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             index=self.index,
             autoincrement=self.autoincrement,
             default=self.default,
-            server_default=self.server_default,
+            server_default=server_default,
             onupdate=self.onupdate,
-            server_onupdate=self.server_onupdate,
+            server_onupdate=server_onupdate,
             doc=self.doc,
             comment=self.comment,
             *args
@@ -4348,3 +4355,89 @@ class _SchemaTranslateMap(object):
 
 _default_schema_map = _SchemaTranslateMap(None)
 _schema_getter = _SchemaTranslateMap._schema_getter
+
+
+class Computed(FetchedValue, SchemaItem):
+    """Defines a generated column, i.e. "GENERATED ALWAYS AS" syntax.
+
+    The :class:`.Computed` construct is an inline construct added to the
+    argument list of a :class:`.Column` object::
+
+        from sqlalchemy import Computed
+
+        Table('square', meta,
+            Column('side', Float, nullable=False),
+            Column('area', Float, Computed('side * side'))
+        )
+
+    See the linked documentation below for complete details.
+
+    .. versionadded:: 1.3.11
+
+    .. seealso::
+
+        :ref:`computed_ddl`
+
+    """
+
+    __visit_name__ = "computed_column"
+
+    @_document_text_coercion(
+        "sqltext", ":class:`.Computed`", ":paramref:`.Computed.sqltext`"
+    )
+    def __init__(self, sqltext, persisted=None):
+        """Construct a GENERATED ALWAYS AS DDL construct to accompany a
+        :class:`.Column`.
+
+        :param sqltext:
+          A string containing the column generation expression, which will be
+          used verbatim, or a SQL expression construct, such as a :func:`.text`
+          object.   If given as a string, the object is converted to a
+          :func:`.text` object.
+
+        :param persisted:
+          Optional, controls how this column should be persisted by the
+          database.   Possible values are:
+
+          * None, the default, it will use the default persistence defined
+            by the database.
+          * True, will render ``GENERATED ALWAYS AS ... STORED``, or the
+            equivalent for the target database if supported
+          * False, will render ``GENERATED ALWAYS AS ... VIRTUAL``, or the
+            equivalent for the target database if supported.
+
+          Specifying ``True`` or ``False`` may raise an error when the DDL
+          is emitted to the target database if the databse does not support
+          that persistence option.   Leaving this parameter at its default
+          of ``None`` is guaranteed to succeed for all databases that support
+          ``GENERATED ALWAYS AS``.
+
+        """
+        self.sqltext = coercions.expect(roles.DDLExpressionRole, sqltext)
+        self.persisted = persisted
+        self.column = None
+
+    def _set_parent(self, parent):
+        if not isinstance(
+            parent.server_default, (type(None), Computed)
+        ) or not isinstance(parent.server_onupdate, (type(None), Computed)):
+            raise exc.ArgumentError(
+                "A generated column cannot specify a server_default or a "
+                "server_onupdate argument"
+            )
+        self.column = parent
+        parent.computed = self
+        self.column.server_onupdate = self
+        self.column.server_default = self
+
+    def _as_for_update(self, for_update):
+        return self
+
+    def copy(self, target_table=None, **kw):
+        if target_table is not None:
+            sqltext = _copy_expression(self.sqltext, self.table, target_table)
+        else:
+            sqltext = self.sqltext
+        g = Computed(sqltext, persisted=self.persisted)
+
+        return self._schema_item_copy(g)

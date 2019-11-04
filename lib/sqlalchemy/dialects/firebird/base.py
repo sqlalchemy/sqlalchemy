@@ -581,6 +581,17 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
                 drop.element
             )
 
+    def visit_computed_column(self, generated):
+        if generated.persisted is not None:
+            raise exc.CompileError(
+                "Firebird computed columns do not support a persistence "
+                "method setting; set the 'persisted' flag to None for "
+                "Firebird support."
+            )
+        return "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
+            generated.sqltext, include_table=False, literal_binds=True
+        )
+
 
 class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     """Install Firebird specific reserved words."""

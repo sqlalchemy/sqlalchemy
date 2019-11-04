@@ -446,6 +446,7 @@ columns for non-unique indexes, all but the last column for unique indexes).
 from itertools import groupby
 import re
 
+from ... import Computed
 from ... import exc
 from ... import schema as sa_schema
 from ... import sql
@@ -905,6 +906,16 @@ class OracleCompiler(compiler.SQLCompiler):
         for i, column in enumerate(
             expression._select_iterables(returning_cols)
         ):
+            if self.isupdate and isinstance(column.server_default, Computed):
+                util.warn(
+                    "Computed columns don't work with Oracle UPDATE "
+                    "statements that use RETURNING; the value of the column "
+                    "*before* the UPDATE takes place is returned.   It is "
+                    "advised to not use RETURNING with an Oracle computed "
+                    "column.  Consider setting implicit_returning to False on "
+                    "the Table object in order to avoid implicit RETURNING "
+                    "clauses from being generated for this Table."
+                )
             if column.type._has_column_expression:
                 col_expr = column.type.column_expression(column)
             else:
@@ -1185,6 +1196,19 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 table_opts.append("\n COMPRESS FOR %s" % (opts["compress"]))
 
         return "".join(table_opts)
+
+    def visit_computed_column(self, generated):
+        text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
+            generated.sqltext, include_table=False, literal_binds=True
+        )
+        if generated.persisted is True:
+            raise exc.CompileError(
+                "Oracle computed columns do not support 'stored' persistence; "
+                "set the 'persisted' flag to None or False for Oracle support."
+            )
+        elif generated.persisted is False:
+            text += " VIRTUAL"
+        return text
 
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):

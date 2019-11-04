@@ -1503,6 +1503,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             ),
         ]
 
+        if column.computed is not None:
+            colspec.append(self.process(column.computed))
+
         is_timestamp = isinstance(
             column.type._unwrapped_dialect_impl(self.dialect),
             sqltypes.TIMESTAMP,

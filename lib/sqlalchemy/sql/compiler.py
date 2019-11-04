@@ -3173,6 +3173,9 @@ class DDLCompiler(Compiled):
         if default is not None:
             colspec += " DEFAULT " + default
 
+        if column.computed is not None:
+            colspec += " " + self.process(column.computed)
+
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
@@ -3312,6 +3315,16 @@ class DDLCompiler(Compiled):
         text = ""
         if constraint.match is not None:
             text += " MATCH %s" % constraint.match
+        return text
+
+    def visit_computed_column(self, generated):
+        text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
+            generated.sqltext, include_table=False, literal_binds=True
+        )
+        if generated.persisted is True:
+            text += " STORED"
+        elif generated.persisted is False:
+            text += " VIRTUAL"
         return text
 
 

@@ -1,4 +1,5 @@
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import func
@@ -437,6 +438,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_quoting_initial_chars(self):
         self.assert_compile(column("_somecol"), '"_somecol"')
         self.assert_compile(column("$somecol"), '"$somecol"')
+
+    @testing.combinations(
+        ("no_persisted", "ignore"), ("persisted_none", None), id_="ia"
+    )
+    def test_column_computed(self, persisted):
+        m = MetaData()
+        kwargs = {"persisted": persisted} if persisted != "ignore" else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+            "ALWAYS AS (x + 2))",
+        )
+
+    @testing.combinations(
+        ("persisted_true", True), ("persisted_false", False), id_="ia"
+    )
+    def test_column_computed_raises(self, persisted):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", persisted=persisted)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Firebird computed columns do not support a persistence method",
+            schema.CreateTable(t).compile,
+            dialect=firebird.dialect(),
+        )
 
 
 class TypesTest(fixtures.TestBase):
