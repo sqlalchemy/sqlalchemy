@@ -50,6 +50,7 @@ from .elements import ColumnElement
 from .elements import quoted_name
 from .elements import TextClause
 from .selectable import TableClause
+from .visitors import InternalTraversal
 from .. import event
 from .. import exc
 from .. import inspection
@@ -425,6 +426,21 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     __visit_name__ = "table"
 
+    _traverse_internals = TableClause._traverse_internals + [
+        ("schema", InternalTraversal.dp_string)
+    ]
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        return (self,)
+
+    @util.deprecated_params(
+        useexisting=(
+            "0.7",
+            "The :paramref:`.Table.useexisting` parameter is deprecated and "
+            "will be removed in a future release.  Please use "
+            ":paramref:`.Table.extend_existing`.",
+        )
+    )
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this
@@ -763,6 +779,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     def get_children(
         self, column_collections=True, schema_visitor=False, **kw
     ):
+        # TODO: consider that we probably don't need column_collections=True
+        # at all, it does not seem to impact anything
         if not schema_visitor:
             return TableClause.get_children(
                 self, column_collections=column_collections, **kw

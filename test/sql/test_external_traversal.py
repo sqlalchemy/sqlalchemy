@@ -55,6 +55,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         # identity semantics.
         class A(ClauseElement):
             __visit_name__ = "a"
+            _traverse_internals = []
 
             def __init__(self, expr):
                 self.expr = expr

@@ -14,6 +14,7 @@ import itertools
 import operator
 import re
 
+from .traversals import HasCacheKey  # noqa
 from .visitors import ClauseVisitor
 from .. import exc
 from .. import util
@@ -38,18 +39,41 @@ class Immutable(object):
     def _clone(self):
         return self
 
+    def _copy_internals(self, **kw):
+        pass
+
+
+class HasMemoized(object):
+    def _reset_memoizations(self):
+        self._memoized_property.expire_instance(self)
+
+    def _reset_exported(self):
+        self._memoized_property.expire_instance(self)
+
+    def _copy_internals(self, **kw):
+        super(HasMemoized, self)._copy_internals(**kw)
+        self._reset_memoizations()
+
 
 def _from_objects(*elements):
     return itertools.chain(*[element._from_objects for element in elements])
 
 
 def _generative(fn):
+    """non-caching _generative() decorator.
+
+    This is basically the legacy decorator that copies the object and
+    runs a method on the new copy.
+
+    """
+
     @util.decorator
-    def _generative(fn, *args, **kw):
+    def _generative(fn, self, *args, **kw):
         """Mark a method as generative."""
 
-        self = args[0]._generate()
-        fn(self, *args[1:], **kw)
+        self = self._generate()
+        x = fn(self, *args, **kw)
+        assert x is None, "generative methods must have no return value"
         return self
 
     decorated = _generative(fn)
@@ -357,10 +381,8 @@ class DialectKWArgs(object):
 
 
 class Generative(object):
-    """Allow a ClauseElement to generate itself via the
-    @_generative decorator.
-
-    """
+    """Provide a method-chaining pattern in conjunction with the
+    @_generative decorator."""
 
     def _generate(self):
         s = self.__class__.__new__(self.__class__)

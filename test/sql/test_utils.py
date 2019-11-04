@@ -7,6 +7,6 @@ from sqlalchemy.testing import fixtures
 class MiscTest(fixtures.TestBase):
     def test_column_element_no_visit(self):
         class MyElement(ColumnElement):
-            pass
+            _traverse_internals = []
 
         eq_(sql_util.find_tables(MyElement(), check_columns=True), [])

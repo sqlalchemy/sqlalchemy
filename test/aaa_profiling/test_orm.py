@@ -934,7 +934,7 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         configure_mappers()
 
-    def test_generate_cache_key_unbound_branching(self):
+    def test_generate_path_cache_key_unbound_branching(self):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
 
         base = joinedload(A.bs)
@@ -950,11 +950,11 @@ class BranchedOptionTest(fixtures.MappedTest):
         @profiling.function_call_count()
         def go():
             for opt in opts:
-                opt._generate_cache_key(cache_path)
+                opt._generate_path_cache_key(cache_path)
 
         go()
 
-    def test_generate_cache_key_bound_branching(self):
+    def test_generate_path_cache_key_bound_branching(self):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
 
         base = Load(A).joinedload(A.bs)
@@ -970,7 +970,7 @@ class BranchedOptionTest(fixtures.MappedTest):
         @profiling.function_call_count()
         def go():
             for opt in opts:
-                opt._generate_cache_key(cache_path)
+                opt._generate_path_cache_key(cache_path)
 
         go()
 

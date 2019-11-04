@@ -455,7 +455,7 @@ def deregister(class_):
 
     if hasattr(class_, "_compiler_dispatcher"):
         # regenerate default _compiler_dispatch
-        visitors._generate_dispatch(class_)
+        visitors._generate_compiler_dispatch(class_)
         # remove custom directive
         del class_._compiler_dispatcher
 

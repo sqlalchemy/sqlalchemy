@@ -1658,23 +1658,20 @@ class PGCompiler(compiler.SQLCompiler):
         return "ONLY " + sqltext
 
     def get_select_precolumns(self, select, **kw):
-        if select._distinct is not False:
-            if select._distinct is True:
-                return "DISTINCT "
-            elif isinstance(select._distinct, (list, tuple)):
+        if select._distinct or select._distinct_on:
+            if select._distinct_on:
                 return (
                     "DISTINCT ON ("
                     + ", ".join(
-                        [self.process(col, **kw) for col in select._distinct]
+                        [
+                            self.process(col, **kw)
+                            for col in select._distinct_on
+                        ]
                     )
                     + ") "
                 )
             else:
-                return (
-                    "DISTINCT ON ("
-                    + self.process(select._distinct, **kw)
-                    + ") "
-                )
+                return "DISTINCT "
         else:
             return ""
 

@@ -32,6 +32,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import True_
 from sqlalchemy.sql import type_coerce
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.base import HasCacheKey
 from sqlalchemy.sql.elements import _label_reference
 from sqlalchemy.sql.elements import _textual_label_reference
 from sqlalchemy.sql.elements import Annotated
@@ -46,13 +47,13 @@ from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
 from sqlalchemy.sql.selectable import _OffsetLimitParam
+from sqlalchemy.sql.selectable import AliasedReturnsRows
 from sqlalchemy.sql.selectable import FromGrouping
 from sqlalchemy.sql.selectable import Selectable
 from sqlalchemy.sql.selectable import SelectStatementGrouping
-from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
@@ -63,7 +64,16 @@ meta = MetaData()
 meta2 = MetaData()
 
 table_a = Table("a", meta, Column("a", Integer), Column("b", String))
+table_b_like_a = Table("b2", meta, Column("a", Integer), Column("b", String))
+
 table_a_2 = Table("a", meta2, Column("a", Integer), Column("b", String))
+
+table_a_2_fs = Table(
+    "a", meta2, Column("a", Integer), Column("b", String), schema="fs"
+)
+table_a_2_bs = Table(
+    "a", meta2, Column("a", Integer), Column("b", String), schema="bs"
+)
 
 table_b = Table("b", meta, Column("a", Integer), Column("b", Integer))
 
@@ -72,8 +82,18 @@ table_c = Table("c", meta, Column("x", Integer), Column("y", Integer))
 table_d = Table("d", meta, Column("y", Integer), Column("z", Integer))
 
 
-class CompareAndCopyTest(fixtures.TestBase):
+class MyEntity(HasCacheKey):
+    def __init__(self, name, element):
+        self.name = name
+        self.element = element
 
+    _cache_key_traversal = [
+        ("name", InternalTraversal.dp_string),
+        ("element", InternalTraversal.dp_clauseelement),
+    ]
+
+
+class CoreFixtures(object):
     # lambdas which return a tuple of ColumnElement objects.
     # must return at least two objects that should compare differently.
     # to test more varieties of "difference" additional objects can be added.
@@ -100,11 +120,47 @@ class CompareAndCopyTest(fixtures.TestBase):
             text("select a, b, c from table").columns(
                 a=Integer, b=String, c=Integer
             ),
+            text("select a, b, c from table where foo=:bar").bindparams(
+                bindparam("bar", Integer)
+            ),
+            text("select a, b, c from table where foo=:foo").bindparams(
+                bindparam("foo", Integer)
+            ),
+            text("select a, b, c from table where foo=:bar").bindparams(
+                bindparam("bar", String)
+            ),
         ),
         lambda: (
             column("q") == column("x"),
             column("q") == column("y"),
             column("z") == column("x"),
+            column("z") + column("x"),
+            column("z") - column("x"),
+            column("x") - column("z"),
+            column("z") > column("x"),
+            # note these two are mathematically equivalent but for now they
+            # are considered to be different
+            column("z") >= column("x"),
+            column("x") <= column("z"),
+            column("q").between(5, 6),
+            column("q").between(5, 6, symmetric=True),
+            column("q").like("somstr"),
+            column("q").like("somstr", escape="\\"),
+            column("q").like("somstr", escape="X"),
+        ),
+        lambda: (
+            table_a.c.a,
+            table_a.c.a._annotate({"orm": True}),
+            table_a.c.a._annotate({"orm": True})._annotate({"bar": False}),
+            table_a.c.a._annotate(
+                {"orm": True, "parententity": MyEntity("a", table_a)}
+            ),
+            table_a.c.a._annotate(
+                {"orm": True, "parententity": MyEntity("b", table_a)}
+            ),
+            table_a.c.a._annotate(
+                {"orm": True, "parententity": MyEntity("b", select([table_a]))}
+            ),
         ),
         lambda: (
             cast(column("q"), Integer),
@@ -226,6 +282,58 @@ class CompareAndCopyTest(fixtures.TestBase):
             .correlate_except(table_b),
         ),
         lambda: (
+            select([table_a.c.a]).cte(),
+            select([table_a.c.a]).cte(recursive=True),
+            select([table_a.c.a]).cte(name="some_cte", recursive=True),
+            select([table_a.c.a]).cte(name="some_cte"),
+            select([table_a.c.a]).cte(name="some_cte").alias("other_cte"),
+            select([table_a.c.a])
+            .cte(name="some_cte")
+            .union_all(select([table_a.c.a])),
+            select([table_a.c.a])
+            .cte(name="some_cte")
+            .union_all(select([table_a.c.b])),
+            select([table_a.c.a]).lateral(),
+            select([table_a.c.a]).lateral(name="bar"),
+            table_a.tablesample(func.bernoulli(1)),
+            table_a.tablesample(func.bernoulli(1), seed=func.random()),
+            table_a.tablesample(func.bernoulli(1), seed=func.other_random()),
+            table_a.tablesample(func.hoho(1)),
+            table_a.tablesample(func.bernoulli(1), name="bar"),
+            table_a.tablesample(
+                func.bernoulli(1), name="bar", seed=func.random()
+            ),
+        ),
+        lambda: (
+            select([table_a.c.a]),
+            select([table_a.c.a]).prefix_with("foo"),
+            select([table_a.c.a]).prefix_with("foo", dialect="mysql"),
+            select([table_a.c.a]).prefix_with("foo", dialect="postgresql"),
+            select([table_a.c.a]).prefix_with("bar"),
+            select([table_a.c.a]).suffix_with("bar"),
+        ),
+        lambda: (
+            select([table_a_2.c.a]),
+            select([table_a_2_fs.c.a]),
+            select([table_a_2_bs.c.a]),
+        ),
+        lambda: (
+            select([table_a.c.a]),
+            select([table_a.c.a]).with_hint(None, "some hint"),
+            select([table_a.c.a]).with_hint(None, "some other hint"),
+            select([table_a.c.a]).with_hint(table_a, "some hint"),
+            select([table_a.c.a])
+            .with_hint(table_a, "some hint")
+            .with_hint(None, "some other hint"),
+            select([table_a.c.a]).with_hint(table_a, "some other hint"),
+            select([table_a.c.a]).with_hint(
+                table_a, "some hint", dialect_name="mysql"
+            ),
+            select([table_a.c.a]).with_hint(
+                table_a, "some hint", dialect_name="postgresql"
+            ),
+        ),
+        lambda: (
             table_a.join(table_b, table_a.c.a == table_b.c.a),
             table_a.join(
                 table_b, and_(table_a.c.a == table_b.c.a, table_a.c.b == 1)
@@ -273,12 +381,202 @@ class CompareAndCopyTest(fixtures.TestBase):
             table("a", column("x"), column("y", Integer)),
             table("a", column("q"), column("y", Integer)),
         ),
-        lambda: (
-            Table("a", MetaData(), Column("q", Integer), Column("b", String)),
-            Table("b", MetaData(), Column("q", Integer), Column("b", String)),
-        ),
+        lambda: (table_a, table_b),
     ]
 
+    def _complex_fixtures():
+        def one():
+            a1 = table_a.alias()
+            a2 = table_b_like_a.alias()
+
+            stmt = (
+                select([table_a.c.a, a1.c.b, a2.c.b])
+                .where(table_a.c.b == a1.c.b)
+                .where(a1.c.b == a2.c.b)
+                .where(a1.c.a == 5)
+            )
+
+            return stmt
+
+        def one_diff():
+            a1 = table_b_like_a.alias()
+            a2 = table_a.alias()
+
+            stmt = (
+                select([table_a.c.a, a1.c.b, a2.c.b])
+                .where(table_a.c.b == a1.c.b)
+                .where(a1.c.b == a2.c.b)
+                .where(a1.c.a == 5)
+            )
+
+            return stmt
+
+        def two():
+            inner = one().subquery()
+
+            stmt = select([table_b.c.a, inner.c.a, inner.c.b]).select_from(
+                table_b.join(inner, table_b.c.b == inner.c.b)
+            )
+
+            return stmt
+
+        def three():
+
+            a1 = table_a.alias()
+            a2 = table_a.alias()
+            ex = exists().where(table_b.c.b == a1.c.a)
+
+            stmt = (
+                select([a1.c.a, a2.c.a])
+                .select_from(a1.join(a2, a1.c.b == a2.c.b))
+                .where(ex)
+            )
+            return stmt
+
+        return [one(), one_diff(), two(), three()]
+
+    fixtures.append(_complex_fixtures)
+
+
+class CacheKeyFixture(object):
+    def _run_cache_key_fixture(self, fixture):
+        case_a = fixture()
+        case_b = fixture()
+
+        for a, b in itertools.combinations_with_replacement(
+            range(len(case_a)), 2
+        ):
+            if a == b:
+                a_key = case_a[a]._generate_cache_key()
+                b_key = case_b[b]._generate_cache_key()
+                eq_(a_key.key, b_key.key)
+
+                for a_param, b_param in zip(
+                    a_key.bindparams, b_key.bindparams
+                ):
+                    assert a_param.compare(b_param, compare_values=False)
+            else:
+                a_key = case_a[a]._generate_cache_key()
+                b_key = case_b[b]._generate_cache_key()
+
+                if a_key.key == b_key.key:
+                    for a_param, b_param in zip(
+                        a_key.bindparams, b_key.bindparams
+                    ):
+                        if not a_param.compare(b_param, compare_values=True):
+                            break
+                    else:
+                        # this fails unconditionally since we could not
+                        # find bound parameter values that differed.
+                        # Usually we intended to get two distinct keys here
+                        # so the failure will be more descriptive using the
+                        # ne_() assertion.
+                        ne_(a_key.key, b_key.key)
+                else:
+                    ne_(a_key.key, b_key.key)
+
+            # ClauseElement-specific test to ensure the cache key
+            # collected all the bound parameters
+            if isinstance(case_a[a], ClauseElement) and isinstance(
+                case_b[b], ClauseElement
+            ):
+                assert_a_params = []
+                assert_b_params = []
+                visitors.traverse_depthfirst(
+                    case_a[a], {}, {"bindparam": assert_a_params.append}
+                )
+                visitors.traverse_depthfirst(
+                    case_b[b], {}, {"bindparam": assert_b_params.append}
+                )
+
+                # note we're asserting the order of the params as well as
+                # if there are dupes or not.  ordering has to be deterministic
+                # and matches what a traversal would provide.
+                # regular traverse_depthfirst does produce dupes in cases like
+                # select([some_alias]).
+                #    select_from(join(some_alias, other_table))
+                # where a bound parameter is inside of some_alias.  the
+                # cache key case is more minimalistic
+                eq_(
+                    sorted(a_key.bindparams, key=lambda b: b.key),
+                    sorted(
+                        util.unique_list(assert_a_params), key=lambda b: b.key
+                    ),
+                )
+                eq_(
+                    sorted(b_key.bindparams, key=lambda b: b.key),
+                    sorted(
+                        util.unique_list(assert_b_params), key=lambda b: b.key
+                    ),
+                )
+
+
+class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
+    def test_cache_key(self):
+        for fixture in self.fixtures:
+            self._run_cache_key_fixture(fixture)
+
+    def test_cache_key_unknown_traverse(self):
+        class Foobar1(ClauseElement):
+            _traverse_internals = [
+                ("key", InternalTraversal.dp_anon_name),
+                ("type_", InternalTraversal.dp_unknown_structure),
+            ]
+
+            def __init__(self, key, type_):
+                self.key = key
+                self.type_ = type_
+
+        f1 = Foobar1("foo", String())
+        eq_(f1._generate_cache_key(), None)
+
+    def test_cache_key_no_method(self):
+        class Foobar1(ClauseElement):
+            pass
+
+        class Foobar2(ColumnElement):
+            pass
+
+        # the None for cache key will prevent objects
+        # which contain these elements from being cached.
+        f1 = Foobar1()
+        eq_(f1._generate_cache_key(), None)
+
+        f2 = Foobar2()
+        eq_(f2._generate_cache_key(), None)
+
+        s1 = select([column("q"), Foobar2()])
+
+        eq_(s1._generate_cache_key(), None)
+
+    def test_get_children_no_method(self):
+        class Foobar1(ClauseElement):
+            pass
+
+        class Foobar2(ColumnElement):
+            pass
+
+        f1 = Foobar1()
+        eq_(f1.get_children(), [])
+
+        f2 = Foobar2()
+        eq_(f2.get_children(), [])
+
+    def test_copy_internals_no_method(self):
+        class Foobar1(ClauseElement):
+            pass
+
+        class Foobar2(ColumnElement):
+            pass
+
+        f1 = Foobar1()
+        f2 = Foobar2()
+
+        f1._copy_internals()
+        f2._copy_internals()
+
+
+class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         # TODO: we need to get dialects here somehow, perhaps in test_suite?
@@ -293,7 +591,10 @@ class CompareAndCopyTest(fixtures.TestBase):
             cls
             for cls in class_hierarchy(ClauseElement)
             if issubclass(cls, (ColumnElement, Selectable))
-            and "__init__" in cls.__dict__
+            and (
+                "__init__" in cls.__dict__
+                or issubclass(cls, AliasedReturnsRows)
+            )
             and not issubclass(cls, (Annotated))
             and "orm" not in cls.__module__
             and "compiler" not in cls.__module__
@@ -318,122 +619,15 @@ class CompareAndCopyTest(fixtures.TestBase):
             ):
                 if a == b:
                     is_true(
-                        case_a[a].compare(
-                            case_b[b], arbitrary_expression=True
-                        ),
+                        case_a[a].compare(case_b[b], compare_annotations=True),
                         "%r != %r" % (case_a[a], case_b[b]),
                     )
 
                 else:
                     is_false(
-                        case_a[a].compare(
-                            case_b[b], arbitrary_expression=True
-                        ),
+                        case_a[a].compare(case_b[b], compare_annotations=True),
                         "%r == %r" % (case_a[a], case_b[b]),
                     )
-
-    def test_cache_key(self):
-        def assert_params_append(assert_params):
-            def append(param):
-                if param._value_required_for_cache:
-                    assert_params.append(param)
-                else:
-                    is_(param.value, None)
-
-            return append
-
-        for fixture in self.fixtures:
-            case_a = fixture()
-            case_b = fixture()
-
-            for a, b in itertools.combinations_with_replacement(
-                range(len(case_a)), 2
-            ):
-
-                assert_a_params = []
-                assert_b_params = []
-
-                visitors.traverse_depthfirst(
-                    case_a[a],
-                    {},
-                    {"bindparam": assert_params_append(assert_a_params)},
-                )
-                visitors.traverse_depthfirst(
-                    case_b[b],
-                    {},
-                    {"bindparam": assert_params_append(assert_b_params)},
-                )
-                if assert_a_params:
-                    assert_raises_message(
-                        NotImplementedError,
-                        "bindparams collection argument required ",
-                        case_a[a]._cache_key,
-                    )
-                if assert_b_params:
-                    assert_raises_message(
-                        NotImplementedError,
-                        "bindparams collection argument required ",
-                        case_b[b]._cache_key,
-                    )
-
-                if not assert_a_params and not assert_b_params:
-                    if a == b:
-                        eq_(case_a[a]._cache_key(), case_b[b]._cache_key())
-                    else:
-                        ne_(case_a[a]._cache_key(), case_b[b]._cache_key())
-
-    def test_cache_key_gather_bindparams(self):
-        for fixture in self.fixtures:
-            case_a = fixture()
-            case_b = fixture()
-
-            # in the "bindparams" case, the cache keys for bound parameters
-            # with only different values will be the same, but the params
-            # themselves are gathered into a collection.
-            for a, b in itertools.combinations_with_replacement(
-                range(len(case_a)), 2
-            ):
-                a_params = {"bindparams": []}
-                b_params = {"bindparams": []}
-                if a == b:
-                    a_key = case_a[a]._cache_key(**a_params)
-                    b_key = case_b[b]._cache_key(**b_params)
-                    eq_(a_key, b_key)
-
-                    if a_params["bindparams"]:
-                        for a_param, b_param in zip(
-                            a_params["bindparams"], b_params["bindparams"]
-                        ):
-                            assert a_param.compare(b_param)
-                else:
-                    a_key = case_a[a]._cache_key(**a_params)
-                    b_key = case_b[b]._cache_key(**b_params)
-
-                    if a_key == b_key:
-                        for a_param, b_param in zip(
-                            a_params["bindparams"], b_params["bindparams"]
-                        ):
-                            if not a_param.compare(b_param):
-                                break
-                        else:
-                            assert False, "Bound parameters are all the same"
-                    else:
-                        ne_(a_key, b_key)
-
-                assert_a_params = []
-                assert_b_params = []
-                visitors.traverse_depthfirst(
-                    case_a[a], {}, {"bindparam": assert_a_params.append}
-                )
-                visitors.traverse_depthfirst(
-                    case_b[b], {}, {"bindparam": assert_b_params.append}
-                )
-
-                # note we're asserting the order of the params as well as
-                # if there are dupes or not.  ordering has to be deterministic
-                # and matches what a traversal would provide.
-                eq_(a_params["bindparams"], assert_a_params)
-                eq_(b_params["bindparams"], assert_b_params)
 
     def test_compare_col_identity(self):
         stmt1 = (
@@ -473,8 +667,9 @@ class CompareAndCopyTest(fixtures.TestBase):
 
             assert case_a[0].compare(case_b[0])
 
-            clone = case_a[0]._clone()
-            clone._copy_internals()
+            clone = visitors.replacement_traverse(
+                case_a[0], {}, lambda elem: None
+            )
 
             assert clone.compare(case_b[0])
 
@@ -511,6 +706,37 @@ class CompareAndCopyTest(fixtures.TestBase):
 
 
 class CompareClausesTest(fixtures.TestBase):
+    def test_compare_metadata_tables(self):
+        # metadata Table objects cache on their own identity, not their
+        # structure.   This is mainly to reduce the size of cache keys
+        # as well as reduce computational overhead, as Table objects have
+        # very large internal state and they are also generally global
+        # objects.
+
+        t1 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
+        t2 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
+
+        ne_(t1._generate_cache_key(), t2._generate_cache_key())
+
+        eq_(t1._generate_cache_key().key, (t1,))
+
+    def test_compare_adhoc_tables(self):
+        # non-metadata tables compare on their structure.  these objects are
+        # not commonly used.
+
+        # note this test is a bit redundant as we have a similar test
+        # via the fixtures also
+        t1 = table("a", Column("q", Integer), Column("p", Integer))
+        t2 = table("a", Column("q", Integer), Column("p", Integer))
+        t3 = table("b", Column("q", Integer), Column("p", Integer))
+        t4 = table("a", Column("q", Integer), Column("x", Integer))
+
+        eq_(t1._generate_cache_key(), t2._generate_cache_key())
+
+        ne_(t1._generate_cache_key(), t3._generate_cache_key())
+        ne_(t1._generate_cache_key(), t4._generate_cache_key())
+        ne_(t3._generate_cache_key(), t4._generate_cache_key())
+
     def test_compare_comparison_associative(self):
 
         l1 = table_c.c.x == table_d.c.y
@@ -519,6 +745,15 @@ class CompareClausesTest(fixtures.TestBase):
 
         is_true(l1.compare(l1))
         is_true(l1.compare(l2))
+        is_false(l1.compare(l3))
+
+    def test_compare_comparison_non_commutative_inverses(self):
+        l1 = table_c.c.x >= table_d.c.y
+        l2 = table_d.c.y < table_c.c.x
+        l3 = table_d.c.y <= table_c.c.x
+
+        # we're not doing this kind of commutativity right now.
+        is_false(l1.compare(l2))
         is_false(l1.compare(l3))
 
     def test_compare_clauselist_associative(self):
@@ -624,3 +859,45 @@ class CompareClausesTest(fixtures.TestBase):
                 use_proxies=True,
             )
         )
+
+    def test_compare_annotated_clears_mapping(self):
+        t = table("t", column("x"), column("y"))
+        x_a = t.c.x._annotate({"foo": True})
+        x_b = t.c.x._annotate({"foo": True})
+
+        is_true(x_a.compare(x_b, compare_annotations=True))
+        is_false(
+            x_a.compare(x_b._annotate({"bar": True}), compare_annotations=True)
+        )
+
+        s1 = select([t.c.x])._annotate({"foo": True})
+        s2 = select([t.c.x])._annotate({"foo": True})
+
+        is_true(s1.compare(s2, compare_annotations=True))
+
+        is_false(
+            s1.compare(s2._annotate({"bar": True}), compare_annotations=True)
+        )
+
+    def test_compare_annotated_wo_annotations(self):
+        t = table("t", column("x"), column("y"))
+        x_a = t.c.x._annotate({})
+        x_b = t.c.x._annotate({"foo": True})
+
+        is_true(t.c.x.compare(x_a))
+        is_true(x_b.compare(x_a))
+
+        is_true(x_a.compare(t.c.x))
+        is_false(x_a.compare(t.c.y))
+        is_false(t.c.y.compare(x_a))
+        is_true((t.c.x == 5).compare(x_a == 5))
+        is_false((t.c.y == 5).compare(x_a == 5))
+
+        s = select([t]).subquery()
+        x_p = s.c.x
+        is_false(x_a.compare(x_p))
+        is_false(t.c.x.compare(x_p))
+        x_p_a = x_p._annotate({})
+        is_true(x_p_a.compare(x_p))
+        is_true(x_p.compare(x_p_a))
+        is_false(x_p_a.compare(x_a))

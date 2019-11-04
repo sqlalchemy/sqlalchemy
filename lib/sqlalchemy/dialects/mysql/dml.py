@@ -103,7 +103,6 @@ class Insert(StandardInsert):
 
         inserted_alias = getattr(self, "inserted_alias", None)
         self._post_values_clause = OnDuplicateClause(inserted_alias, values)
-        return self
 
 
 insert = public_factory(Insert, ".dialects.mysql.insert")

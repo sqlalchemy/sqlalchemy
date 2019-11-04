@@ -47,6 +47,8 @@ from .base import state_str
 from .. import event
 from .. import inspection
 from .. import util
+from ..sql import base as sql_base
+from ..sql import visitors
 
 
 @inspection._self_inspects
@@ -54,6 +56,7 @@ class QueryableAttribute(
     interfaces._MappedAttribute,
     interfaces.InspectionAttr,
     interfaces.PropComparator,
+    sql_base.HasCacheKey,
 ):
     """Base class for :term:`descriptor` objects that intercept
     attribute events on behalf of a :class:`.MapperProperty`
@@ -101,6 +104,13 @@ class QueryableAttribute(
                     self.dispatch._update(base[key].dispatch)
                     if base[key].dispatch._active_history:
                         self.dispatch._active_history = True
+
+    _cache_key_traversal = [
+        # ("class_", visitors.ExtendedInternalTraversal.dp_plain_obj),
+        ("key", visitors.ExtendedInternalTraversal.dp_string),
+        ("_parententity", visitors.ExtendedInternalTraversal.dp_multi),
+        ("_of_type", visitors.ExtendedInternalTraversal.dp_multi),
+    ]
 
     @util.memoized_property
     def _supports_population(self):

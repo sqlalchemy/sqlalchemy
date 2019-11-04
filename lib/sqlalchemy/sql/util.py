@@ -734,7 +734,7 @@ def criterion_as_pairs(
     return pairs
 
 
-class ClauseAdapter(visitors.ReplacingCloningVisitor):
+class ClauseAdapter(visitors.ReplacingExternalTraversal):
     """Clones and modifies clauses based on column correspondence.
 
     E.g.::

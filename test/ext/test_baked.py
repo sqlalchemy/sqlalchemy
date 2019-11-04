@@ -1533,7 +1533,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
                 if query._current_path:
                     query._cache_key = "user7_addresses"
 
-            def _generate_cache_key(self, path):
+            def _generate_path_cache_key(self, path):
                 return None
 
         return RelationshipCache()

@@ -1790,7 +1790,7 @@ class SubOptionsTest(PathTest, QueryTest):
         )
 
 
-class CacheKeyTest(PathTest, QueryTest):
+class PathedCacheKeyTest(PathTest, QueryTest):
 
     run_create_tables = False
     run_inserts = None
@@ -1805,7 +1805,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = joinedload(User.orders).joinedload(Order.items)
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (((Order, "items", Item, ("lazy", "joined")),)),
         )
 
@@ -1821,12 +1821,12 @@ class CacheKeyTest(PathTest, QueryTest):
         opt2 = base.joinedload(Order.address)
 
         eq_(
-            opt1._generate_cache_key(query_path),
+            opt1._generate_path_cache_key(query_path),
             (((Order, "items", Item, ("lazy", "joined")),)),
         )
 
         eq_(
-            opt2._generate_cache_key(query_path),
+            opt2._generate_path_cache_key(query_path),
             (((Order, "address", Address, ("lazy", "joined")),)),
         )
 
@@ -1842,12 +1842,12 @@ class CacheKeyTest(PathTest, QueryTest):
         opt2 = base.joinedload(Order.address)
 
         eq_(
-            opt1._generate_cache_key(query_path),
+            opt1._generate_path_cache_key(query_path),
             (((Order, "items", Item, ("lazy", "joined")),)),
         )
 
         eq_(
-            opt2._generate_cache_key(query_path),
+            opt2._generate_path_cache_key(query_path),
             (((Order, "address", Address, ("lazy", "joined")),)),
         )
 
@@ -1860,7 +1860,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = Load(User).joinedload(User.orders).joinedload(Order.items)
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (((Order, "items", Item, ("lazy", "joined")),)),
         )
 
@@ -1872,7 +1872,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([User, "addresses"])
 
         opt = joinedload(User.orders).joinedload(Order.items)
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_bound_cache_key_excluded_on_other(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -1882,7 +1882,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([User, "addresses"])
 
         opt = Load(User).joinedload(User.orders).joinedload(Order.items)
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_unbound_cache_key_excluded_on_aliased(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -1901,7 +1901,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([User, "orders"])
 
         opt = joinedload(aliased(User).orders).joinedload(Order.items)
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_bound_cache_key_wildcard_one(self):
         # do not change this test, it is testing
@@ -1911,7 +1911,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([User, "addresses"])
 
         opt = Load(User).lazyload("*")
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_unbound_cache_key_wildcard_one(self):
         User, Address = self.classes("User", "Address")
@@ -1920,7 +1920,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = lazyload("*")
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (("relationship:_sa_default", ("lazy", "select")),),
         )
 
@@ -1933,7 +1933,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = Load(User).lazyload("orders").lazyload("*")
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 ("orders", Order, ("lazy", "select")),
                 ("orders", Order, "relationship:*", ("lazy", "select")),
@@ -1949,7 +1949,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = lazyload("orders").lazyload("*")
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 ("orders", Order, ("lazy", "select")),
                 ("orders", Order, "relationship:*", ("lazy", "select")),
@@ -1968,7 +1968,7 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (SubItem, ("lazy", "subquery")),
                 ("extra_keywords", Keyword, ("lazy", "subquery")),
@@ -1987,7 +1987,7 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (SubItem, ("lazy", "subquery")),
                 ("extra_keywords", Keyword, ("lazy", "subquery")),
@@ -2008,7 +2008,7 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (SubItem, ("lazy", "subquery")),
                 ("extra_keywords", Keyword, ("lazy", "subquery")),
@@ -2029,7 +2029,7 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (SubItem, ("lazy", "subquery")),
                 ("extra_keywords", Keyword, ("lazy", "subquery")),
@@ -2056,7 +2056,7 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = subqueryload(User.orders).subqueryload(
             Order.items.of_type(SubItem)
         )
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_unbound_cache_key_excluded_of_type_unsafe(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2078,7 +2078,7 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = subqueryload(User.orders).subqueryload(
             Order.items.of_type(aliased(SubItem))
         )
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_bound_cache_key_excluded_of_type_safe(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2102,7 +2102,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .subqueryload(User.orders)
             .subqueryload(Order.items.of_type(SubItem))
         )
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_bound_cache_key_excluded_of_type_unsafe(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2126,7 +2126,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .subqueryload(User.orders)
             .subqueryload(Order.items.of_type(aliased(SubItem)))
         )
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_unbound_cache_key_included_of_type_safe(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2137,7 +2137,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = joinedload(User.orders).joinedload(Order.items.of_type(SubItem))
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             ((Order, "items", SubItem, ("lazy", "joined")),),
         )
 
@@ -2155,7 +2155,7 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             ((Order, "items", SubItem, ("lazy", "joined")),),
         )
 
@@ -2169,7 +2169,7 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = joinedload(User.orders).joinedload(
             Order.items.of_type(aliased(SubItem))
         )
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_unbound_cache_key_included_unsafe_option_two(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2181,7 +2181,7 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = joinedload(User.orders).joinedload(
             Order.items.of_type(aliased(SubItem))
         )
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_unbound_cache_key_included_unsafe_option_three(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2193,7 +2193,7 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = joinedload(User.orders).joinedload(
             Order.items.of_type(aliased(SubItem))
         )
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_unbound_cache_key_included_unsafe_query(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2204,7 +2204,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([inspect(au), "orders"])
 
         opt = joinedload(au.orders).joinedload(Order.items)
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_unbound_cache_key_included_safe_w_deferred(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2219,7 +2219,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .defer(Address.user_id)
         )
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (
                     Address,
@@ -2247,12 +2247,12 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt1._generate_cache_key(query_path),
+            opt1._generate_path_cache_key(query_path),
             ((Order, "items", Item, ("lazy", "joined")),),
         )
 
         eq_(
-            opt2._generate_cache_key(query_path),
+            opt2._generate_path_cache_key(query_path),
             (
                 (Order, "address", Address, ("lazy", "joined")),
                 (
@@ -2288,7 +2288,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .defer(Address.user_id)
         )
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (
                     Address,
@@ -2316,12 +2316,12 @@ class CacheKeyTest(PathTest, QueryTest):
         )
 
         eq_(
-            opt1._generate_cache_key(query_path),
+            opt1._generate_path_cache_key(query_path),
             ((Order, "items", Item, ("lazy", "joined")),),
         )
 
         eq_(
-            opt2._generate_cache_key(query_path),
+            opt2._generate_path_cache_key(query_path),
             (
                 (Order, "address", Address, ("lazy", "joined")),
                 (
@@ -2356,7 +2356,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([User, "orders"])
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (
                     Order,
@@ -2385,7 +2385,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         au = aliased(User)
         opt = Load(au).joinedload(au.orders).joinedload(Order.items)
-        eq_(opt._generate_cache_key(query_path), None)
+        eq_(opt._generate_path_cache_key(query_path), None)
 
     def test_bound_cache_key_included_unsafe_option_one(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2399,7 +2399,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .joinedload(User.orders)
             .joinedload(Order.items.of_type(aliased(SubItem)))
         )
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_bound_cache_key_included_unsafe_option_two(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2413,7 +2413,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .joinedload(User.orders)
             .joinedload(Order.items.of_type(aliased(SubItem)))
         )
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_bound_cache_key_included_unsafe_option_three(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2427,7 +2427,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .joinedload(User.orders)
             .joinedload(Order.items.of_type(aliased(SubItem)))
         )
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_bound_cache_key_included_unsafe_query(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2438,7 +2438,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([inspect(au), "orders"])
 
         opt = Load(au).joinedload(au.orders).joinedload(Order.items)
-        eq_(opt._generate_cache_key(query_path), False)
+        eq_(opt._generate_path_cache_key(query_path), False)
 
     def test_bound_cache_key_included_safe_w_option(self):
         User, Address, Order, Item, SubItem = self.classes(
@@ -2454,7 +2454,7 @@ class CacheKeyTest(PathTest, QueryTest):
         query_path = self._make_path_registry([User, "orders"])
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (
                     Order,
@@ -2483,7 +2483,7 @@ class CacheKeyTest(PathTest, QueryTest):
 
         opt = defaultload(User.addresses).load_only("id", "email_address")
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (Address, "id", ("deferred", False), ("instrument", True)),
                 (
@@ -2513,7 +2513,7 @@ class CacheKeyTest(PathTest, QueryTest):
             Address.id, Address.email_address
         )
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (Address, "id", ("deferred", False), ("instrument", True)),
                 (
@@ -2545,7 +2545,7 @@ class CacheKeyTest(PathTest, QueryTest):
             .load_only("id", "email_address")
         )
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             (
                 (Address, "id", ("deferred", False), ("instrument", True)),
                 (
@@ -2572,7 +2572,7 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = defaultload(User.addresses).undefer_group("xyz")
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             ((Address, "column:*", ("undefer_group_xyz", True)),),
         )
 
@@ -2584,6 +2584,6 @@ class CacheKeyTest(PathTest, QueryTest):
         opt = Load(User).defaultload(User.addresses).undefer_group("xyz")
 
         eq_(
-            opt._generate_cache_key(query_path),
+            opt._generate_path_cache_key(query_path),
             ((Address, "column:*", ("undefer_group_xyz", True)),),
         )
