@@ -863,7 +863,7 @@ class LikeFunctionsTest(fixtures.TablesTest):
 
 class ComputedColumnTest(fixtures.TablesTest):
     __backend__ = True
-    __unsupported_on__ = ("sqlite",)
+    __unsupported_on__ = ("sqlite", "postgresql < 12")
 
     @classmethod
     def define_tables(cls, metadata):
