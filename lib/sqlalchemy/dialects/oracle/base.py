@@ -1290,7 +1290,7 @@ class OracleDialect(default.DefaultDialect):
         super(OracleDialect, self).initialize(connection)
 
         self.implicit_returning = self.__dict__.get(
-            "implicit_returning", self.server_version_info > (10,)
+            "implicit_returning", self.server_version_info and self.server_version_info > (10,)
         )
 
         if self._is_oracle_8:
@@ -1302,7 +1302,7 @@ class OracleDialect(default.DefaultDialect):
         # dialect does not need compat levels below 12.2, so don't query
         # in those cases
 
-        if self.server_version_info < (12, 2):
+        if self.server_version_info and self.server_version_info < (12, 2):
             return self.server_version_info
         try:
             compat = connection.execute(
@@ -1315,9 +1315,9 @@ class OracleDialect(default.DefaultDialect):
             try:
                 return tuple(int(x) for x in compat.split("."))
             except:
-                return self.server_version_info
+                return self.server_version_info if self.server_version_info else ()
         else:
-            return self.server_version_info
+            return self.server_version_info if self.server_version_info else ()
 
     @property
     def _is_oracle_8(self):
