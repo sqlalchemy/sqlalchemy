@@ -62,3 +62,5 @@ Currently maintained external dialect projects for SQLAlchemy include:
 * `sqlalchemy-access <https://pypi.org/project/sqlalchemy-access/>`_ - driver for Microsoft Access,
   on top of `pyodbc <https://pypi.org/project/pyodbc/>`_.
 * `elasticsearch-dbapi <https://github.com/preset-io/elasticsearch-dbapi/>`_ - readonly driver for Elasticsearch.
+* `pydruid <https://github.com/druid-io/pydruid>`_ - driver for Apache Druid.
+* `gsheets <https://github.com/betodealmeida/gsheets-db-api>`_ - driver for Google Sheets.
