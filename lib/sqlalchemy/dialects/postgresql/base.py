@@ -1557,13 +1557,36 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(element.stop, **kw),
         )
 
-    def visit_json_getitem_op_binary(self, binary, operator, **kw):
-        kw["eager_grouping"] = True
-        return self._generate_generic_binary(binary, " -> ", **kw)
+    def visit_json_getitem_op_binary(
+        self, binary, operator, _cast_applied=False, **kw
+    ):
+        if (
+            not _cast_applied
+            and binary.type._type_affinity is not sqltypes.JSON
+        ):
+            kw["_cast_applied"] = True
+            return self.process(sql.cast(binary, binary.type), **kw)
 
-    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
         kw["eager_grouping"] = True
-        return self._generate_generic_binary(binary, " #> ", **kw)
+
+        return self._generate_generic_binary(
+            binary, " -> " if not _cast_applied else " ->> ", **kw
+        )
+
+    def visit_json_path_getitem_op_binary(
+        self, binary, operator, _cast_applied=False, **kw
+    ):
+        if (
+            not _cast_applied
+            and binary.type._type_affinity is not sqltypes.JSON
+        ):
+            kw["_cast_applied"] = True
+            return self.process(sql.cast(binary, binary.type), **kw)
+
+        kw["eager_grouping"] = True
+        return self._generate_generic_binary(
+            binary, " #> " if not _cast_applied else " #>> ", **kw
+        )
 
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (

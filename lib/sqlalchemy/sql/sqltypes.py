@@ -1960,7 +1960,9 @@ class JSON(Indexable, TypeEngine):
                 data = {"key1": "value1", "key2": "value2"}
             )
 
-    The base :class:`.types.JSON` provides these operations:
+    **JSON-Specific Expression Operators**
+
+    The :class:`.types.JSON` datatype provides these additional SQL operations:
 
     * Keyed index operations::
 
@@ -1974,63 +1976,70 @@ class JSON(Indexable, TypeEngine):
 
         data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')]
 
-    Additional operations are available from the dialect-specific versions
+    * Data casters for specific JSON element types, subsequent to an index
+      or path operation being invoked::
+
+        data_table.c.data["some key"].as_integer()
+
+      .. versionadded:: 1.3.11
+
+    Additional operations may be available from the dialect-specific versions
     of :class:`.types.JSON`, such as :class:`.postgresql.JSON` and
-    :class:`.postgresql.JSONB`, each of which offer more operators than
-    just the basic type.
+    :class:`.postgresql.JSONB` which both offer additional PostgreSQL-specific
+    operations.
 
-    Index operations return an expression object whose type defaults to
-    :class:`.JSON` by default, so that further JSON-oriented instructions may
-    be called upon the result type.   Note that there are backend-specific
-    idiosyncrasies here, including that the PostgreSQL database does not
-    generally compare a "json" to a "json" structure without type casts.  These
-    idiosyncrasies can be accommodated in a backend-neutral way by making
-    explicit use of the :func:`.cast` and :func:`.type_coerce` constructs.
-    Comparison of specific index elements of a :class:`.JSON` object to other
-    objects works best if the **left hand side is CAST to a string** and the
-    **right hand side is rendered as a JSON string**; a future SQLAlchemy
-    feature such as a generic "astext" modifier may simplify this at some
-    point:
+    **Casting JSON Elements to Other Types**
 
-    * **Compare an element of a JSON structure to a string**::
+    Index operations, i.e. those invoked by calling upon the expression using
+    the Python bracket operator as in ``some_column['some key']``, return an
+    expression object whose type defaults to :class:`.JSON` by default, so that
+    further JSON-oriented instructions may be called upon the result type.
+    However, it is likely more common that an index operation is expected
+    to return a specific scalar element, such as a string or integer.  In
+    order to provide access to these elements in a backend-agnostic way,
+    a series of data casters are provided:
 
-        from sqlalchemy import cast, type_coerce
-        from sqlalchemy import String, JSON
+    * :meth:`.JSON.Comparator.as_string` - return the element as a string
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == '"some_value"'
+    * :meth:`.JSON.Comparator.as_boolean` - return the element as a boolean
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == type_coerce("some_value", JSON)
+    * :meth:`.JSON.Comparator.as_float` - return the element as a float
 
-    * **Compare an element of a JSON structure to an integer**::
+    * :meth:`.JSON.Comparator.as_integer` - return the element as an integer
 
-        from sqlalchemy import cast, type_coerce
-        from sqlalchemy import String, JSON
+    These data casters are implemented by supporting dialects in order to
+    assure that comparisons to the above types will work as expected, such as::
 
-        cast(data_table.c.data['some_key'], String) == '55'
+        # integer comparison
+        data_table.c.data["some_integer_key"].as_integer() == 5
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == type_coerce(55, JSON)
+        # boolean comparison
+        data_table.c.data["some_boolean"].as_boolean() == True
 
-    * **Compare an element of a JSON structure to some other JSON structure**
-      - note that Python dictionaries are typically not ordered so care should
-      be taken here to assert that the JSON structures are identical::
+    .. versionadded:: 1.3.11 Added type-specific casters for the basic JSON
+       data element types.
 
-        from sqlalchemy import cast, type_coerce
-        from sqlalchemy import String, JSON
-        import json
+    .. note::
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == json.dumps({"foo": "bar"})
+        The data caster functions are new in version 1.3.11, and supersede
+        the previous documented approaches of using CAST; for reference,
+        this looked like::
 
-        cast(
-            data_table.c.data['some_key'], String
-        ) == type_coerce({"foo": "bar"}, JSON)
+           from sqlalchemy import cast, type_coerce
+           from sqlalchemy import String, JSON
+           cast(
+               data_table.c.data['some_key'], String
+           ) == type_coerce(55, JSON)
+
+        The above case now works directly as::
+
+            data_table.c.data['some_key'].as_integer() == 5
+
+        For details on the previous comparison approach within the 1.3.x
+        series, see the documentation for SQLAlchemy 1.2 or the included HTML
+        files in the doc/ directory of the version's distribution.
+
+    **Detecting Changes in JSON columns when using the ORM**
 
     The :class:`.JSON` type, when used with the SQLAlchemy ORM, does not
     detect in-place mutations to the structure.  In order to detect these, the
@@ -2038,6 +2047,8 @@ class JSON(Indexable, TypeEngine):
     allow "in-place" changes to the datastructure to produce events which
     will be detected by the unit of work.  See the example at :class:`.HSTORE`
     for a simple example involving a dictionary.
+
+    **Support for JSON null vs. SQL NULL**
 
     When working with NULL values, the :class:`.JSON` type recommends the
     use of two specific constants in order to differentiate between a column
@@ -2062,6 +2073,8 @@ class JSON(Indexable, TypeEngine):
     :attr:`.JSON.NULL` and :func:`.null` in order to indicate NULL
     values, but care must be taken as to the value of the
     :paramref:`.JSON.none_as_null` in these cases.
+
+    **Customizing the JSON Serializer**
 
     The JSON serializer and deserializer used by :class:`.JSON` defaults to
     Python's ``json.dumps`` and ``json.loads`` functions; in the case of the
@@ -2090,6 +2103,8 @@ class JSON(Indexable, TypeEngine):
         :class:`.postgresql.JSONB`
 
         :class:`.mysql.JSON`
+
+        :class:`.sqlite.JSON`
 
     .. versionadded:: 1.1
 
@@ -2245,6 +2260,101 @@ class JSON(Indexable, TypeEngine):
                 operator = operators.json_getitem_op
 
             return operator, index, self.type
+
+        def as_boolean(self):
+            """Cast an indexed value as boolean.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_boolean()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_boolean() == True
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self._binary_w_type(Boolean(), "as_boolean")
+
+        def as_string(self):
+            """Cast an indexed value as string.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_string()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_string() ==
+                    'some string'
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self._binary_w_type(String(), "as_string")
+
+        def as_integer(self):
+            """Cast an indexed value as integer.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_integer()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_integer() == 5
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self._binary_w_type(Integer(), "as_integer")
+
+        def as_float(self):
+            """Cast an indexed value as float.
+
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_float()
+                ]).where(
+                    mytable.c.json_column['some_data'].as_float() == 29.75
+                )
+
+            .. versionadded:: 1.3.11
+
+            """
+            # note there's no Numeric or Decimal support here yet
+            return self._binary_w_type(Float(), "as_float")
+
+        def as_json(self):
+            """Cast an indexed value as JSON.
+
+            This is the default behavior of indexed elements in any case.
+
+            Note that comparison of full JSON structures may not be
+            supported by all backends.
+
+            .. versionadded:: 1.3.11
+
+            """
+            return self.expr
+
+        def _binary_w_type(self, typ, method_name):
+            if not isinstance(
+                self.expr, elements.BinaryExpression
+            ) or self.expr.operator not in (
+                operators.json_getitem_op,
+                operators.json_path_getitem_op,
+            ):
+                raise exc.InvalidRequestError(
+                    "The JSON cast operator JSON.%s() only works with a JSON "
+                    "index expression e.g. col['q'].%s()"
+                    % (method_name, method_name)
+                )
+            expr = self.expr._clone()
+            expr.type = typ
+            return expr
 
     comparator_factory = Comparator
 

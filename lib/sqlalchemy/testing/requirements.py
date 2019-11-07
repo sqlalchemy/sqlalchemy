@@ -653,6 +653,10 @@ class SuiteRequirements(Requirements):
         return self.json_type
 
     @property
+    def json_index_supplementary_unicode_element(self):
+        return exclusions.open()
+
+    @property
     def precision_numerics_general(self):
         """target backend has general support for moderately high-precision
         numerics."""

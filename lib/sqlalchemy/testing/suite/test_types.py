@@ -9,6 +9,7 @@ from .. import engines
 from .. import fixtures
 from .. import mock
 from ..assertions import eq_
+from ..assertions import is_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
@@ -710,31 +711,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
     datatype = JSON
 
-    data1 = {"key1": "value1", "key2": "value2"}
-
-    data2 = {
-        "Key 'One'": "value1",
-        "key two": "value2",
-        "key three": "value ' three '",
-    }
-
-    data3 = {
-        "key1": [1, 2, 3],
-        "key2": ["one", "two", "three"],
-        "key3": [{"four": "five"}, {"six": "seven"}],
-    }
-
-    data4 = ["one", "two", "three"]
-
-    data5 = {
-        "nested": {
-            "elem1": [{"a": "b", "c": "d"}, {"e": "f", "g": "h"}],
-            "elem2": {"elem3": {"elem4": "elem5"}},
-        }
-    }
-
-    data6 = {"a": 5, "b": "some value", "c": {"foo": "bar"}}
-
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -747,7 +723,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
     def test_round_trip_data1(self):
-        self._test_round_trip(self.data1)
+        self._test_round_trip({"key1": "value1", "key2": "value2"})
 
     def _test_round_trip(self, data_element):
         data_table = self.tables.data_table
@@ -759,6 +735,97 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         row = config.db.execute(select([data_table.c.data])).first()
 
         eq_(row, (data_element,))
+
+    def _index_fixtures(fn):
+        fn = testing.combinations(
+            ("boolean", True),
+            ("boolean", False),
+            ("boolean", None),
+            ("string", "some string"),
+            ("string", None),
+            ("string", util.u("réve illé")),
+            (
+                "string",
+                util.u("réve🐍 illé"),
+                testing.requires.json_index_supplementary_unicode_element,
+            ),
+            ("integer", 15),
+            ("integer", 1),
+            ("integer", 0),
+            ("integer", None),
+            ("float", 28.5),
+            ("float", None),
+            # TODO: how to test for comaprison
+            #        ("json", {"foo": "bar"}),
+            id_="sa",
+        )(fn)
+        return fn
+
+    @_index_fixtures
+    def test_index_typed_access(self, datatype, value):
+        data_table = self.tables.data_table
+        data_element = {"key1": value}
+        with config.db.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                {
+                    "name": "row1",
+                    "data": data_element,
+                    "nulldata": data_element,
+                },
+            )
+
+            expr = data_table.c.data["key1"]
+            expr = getattr(expr, "as_%s" % datatype)()
+
+            roundtrip = conn.scalar(select([expr]))
+            eq_(roundtrip, value)
+            if util.py3k:  # skip py2k to avoid comparing unicode to str etc.
+                is_(type(roundtrip), type(value))
+
+    @_index_fixtures
+    def test_index_typed_comparison(self, datatype, value):
+        data_table = self.tables.data_table
+        data_element = {"key1": value}
+        with config.db.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                {
+                    "name": "row1",
+                    "data": data_element,
+                    "nulldata": data_element,
+                },
+            )
+
+            expr = data_table.c.data["key1"]
+            expr = getattr(expr, "as_%s" % datatype)()
+
+            row = conn.execute(select([expr]).where(expr == value)).first()
+
+            # make sure we get a row even if value is None
+            eq_(row, (value,))
+
+    @_index_fixtures
+    def test_path_typed_comparison(self, datatype, value):
+        data_table = self.tables.data_table
+        data_element = {"key1": {"subkey1": value}}
+        with config.db.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                {
+                    "name": "row1",
+                    "data": data_element,
+                    "nulldata": data_element,
+                },
+            )
+
+            expr = data_table.c.data[("key1", "subkey1")]
+            expr = getattr(expr, "as_%s" % datatype)()
+
+            row = conn.execute(select([expr]).where(expr == value)).first()
+
+            # make sure we get a row even if value is None
+            eq_(row, (value,))
 
     def test_round_trip_custom_json(self):
         data_table = self.tables.data_table
@@ -840,116 +907,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             eq_(conn.scalar(select([col])), None)
 
-    def _criteria_fixture(self):
-        config.db.execute(
-            self.tables.data_table.insert(),
-            [
-                {"name": "r1", "data": self.data1},
-                {"name": "r2", "data": self.data2},
-                {"name": "r3", "data": self.data3},
-                {"name": "r4", "data": self.data4},
-                {"name": "r5", "data": self.data5},
-                {"name": "r6", "data": self.data6},
-            ],
-        )
-
-    def _test_index_criteria(self, crit, expected, test_literal=True):
-        self._criteria_fixture()
-        with config.db.connect() as conn:
-            stmt = select([self.tables.data_table.c.name]).where(crit)
-
-            eq_(conn.scalar(stmt), expected)
-
-            if test_literal:
-                literal_sql = str(
-                    stmt.compile(
-                        config.db, compile_kwargs={"literal_binds": True}
-                    )
-                )
-
-                eq_(conn.scalar(literal_sql), expected)
-
-    def test_crit_spaces_in_key(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        # limit the rows here to avoid PG error
-        # "cannot extract field from a non-object", which is
-        # fixed in 9.4 but may exist in 9.3
-        self._test_index_criteria(
-            and_(
-                name.in_(["r1", "r2", "r3"]),
-                cast(col["key two"], String) == '"value2"',
-            ),
-            "r2",
-        )
-
-    @config.requirements.json_array_indexes
-    def test_crit_simple_int(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        # limit the rows here to avoid PG error
-        # "cannot extract array element from a non-array", which is
-        # fixed in 9.4 but may exist in 9.3
-        self._test_index_criteria(
-            and_(name == "r4", cast(col[1], String) == '"two"'), "r4"
-        )
-
-    def test_crit_mixed_path(self):
-        col = self.tables.data_table.c["data"]
-        self._test_index_criteria(
-            cast(col[("key3", 1, "six")], String) == '"seven"', "r3"
-        )
-
-    def test_crit_string_path(self):
-        col = self.tables.data_table.c["data"]
-        self._test_index_criteria(
-            cast(col[("nested", "elem2", "elem3", "elem4")], String)
-            == '"elem5"',
-            "r5",
-        )
-
-    def test_crit_against_string_basic(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(name == "r6", cast(col["b"], String) == '"some value"'), "r6"
-        )
-
-    def test_crit_against_string_coerce_type(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(
-                name == "r6",
-                cast(col["b"], String) == type_coerce("some value", JSON),
-            ),
-            "r6",
-            test_literal=False,
-        )
-
-    def test_crit_against_int_basic(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(name == "r6", cast(col["a"], String) == "5"), "r6"
-        )
-
-    def test_crit_against_int_coerce_type(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(name == "r6", cast(col["a"], String) == type_coerce(5, JSON)),
-            "r6",
-            test_literal=False,
-        )
-
     def test_unicode_round_trip(self):
+        # note we include Unicode supplementary characters as well
         with config.db.connect() as conn:
             conn.execute(
                 self.tables.data_table.insert(),
@@ -1006,10 +965,169 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
 
+class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    """test JSON index access with "cast to string", which we have documented
+    for a long time as how to compare JSON values, but is ultimately not
+    reliable in all cases.
+
+    """
+
+    __requires__ = ("json_type",)
+    __backend__ = True
+
+    datatype = JSON
+
+    data1 = {"key1": "value1", "key2": "value2"}
+
+    data2 = {
+        "Key 'One'": "value1",
+        "key two": "value2",
+        "key three": "value ' three '",
+    }
+
+    data3 = {
+        "key1": [1, 2, 3],
+        "key2": ["one", "two", "three"],
+        "key3": [{"four": "five"}, {"six": "seven"}],
+    }
+
+    data4 = ["one", "two", "three"]
+
+    data5 = {
+        "nested": {
+            "elem1": [{"a": "b", "c": "d"}, {"e": "f", "g": "h"}],
+            "elem2": {"elem3": {"elem4": "elem5"}},
+        }
+    }
+
+    data6 = {"a": 5, "b": "some value", "c": {"foo": "bar"}}
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "data_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30), nullable=False),
+            Column("data", cls.datatype),
+            Column("nulldata", cls.datatype(none_as_null=True)),
+        )
+
+    def _criteria_fixture(self):
+        config.db.execute(
+            self.tables.data_table.insert(),
+            [
+                {"name": "r1", "data": self.data1},
+                {"name": "r2", "data": self.data2},
+                {"name": "r3", "data": self.data3},
+                {"name": "r4", "data": self.data4},
+                {"name": "r5", "data": self.data5},
+                {"name": "r6", "data": self.data6},
+            ],
+        )
+
+    def _test_index_criteria(self, crit, expected, test_literal=True):
+        self._criteria_fixture()
+        with config.db.connect() as conn:
+            stmt = select([self.tables.data_table.c.name]).where(crit)
+
+            eq_(conn.scalar(stmt), expected)
+
+            if test_literal:
+                literal_sql = str(
+                    stmt.compile(
+                        config.db, compile_kwargs={"literal_binds": True}
+                    )
+                )
+
+                eq_(conn.scalar(literal_sql), expected)
+
+    def test_string_cast_crit_spaces_in_key(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        # limit the rows here to avoid PG error
+        # "cannot extract field from a non-object", which is
+        # fixed in 9.4 but may exist in 9.3
+        self._test_index_criteria(
+            and_(
+                name.in_(["r1", "r2", "r3"]),
+                cast(col["key two"], String) == '"value2"',
+            ),
+            "r2",
+        )
+
+    @config.requirements.json_array_indexes
+    def test_string_cast_crit_simple_int(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        # limit the rows here to avoid PG error
+        # "cannot extract array element from a non-array", which is
+        # fixed in 9.4 but may exist in 9.3
+        self._test_index_criteria(
+            and_(name == "r4", cast(col[1], String) == '"two"'), "r4"
+        )
+
+    def test_string_cast_crit_mixed_path(self):
+        col = self.tables.data_table.c["data"]
+        self._test_index_criteria(
+            cast(col[("key3", 1, "six")], String) == '"seven"', "r3"
+        )
+
+    def test_string_cast_crit_string_path(self):
+        col = self.tables.data_table.c["data"]
+        self._test_index_criteria(
+            cast(col[("nested", "elem2", "elem3", "elem4")], String)
+            == '"elem5"',
+            "r5",
+        )
+
+    def test_string_cast_crit_against_string_basic(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        self._test_index_criteria(
+            and_(name == "r6", cast(col["b"], String) == '"some value"'), "r6"
+        )
+
+    def test_crit_against_string_coerce_type(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        self._test_index_criteria(
+            and_(
+                name == "r6",
+                cast(col["b"], String) == type_coerce("some value", JSON),
+            ),
+            "r6",
+            test_literal=False,
+        )
+
+    def test_crit_against_int_basic(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        self._test_index_criteria(
+            and_(name == "r6", cast(col["a"], String) == "5"), "r6"
+        )
+
+    def test_crit_against_int_coerce_type(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        self._test_index_criteria(
+            and_(name == "r6", cast(col["a"], String) == type_coerce(5, JSON)),
+            "r6",
+            test_literal=False,
+        )
+
+
 __all__ = (
     "UnicodeVarcharTest",
     "UnicodeTextTest",
     "JSONTest",
+    "JSONStringCastIndexTest",
     "DateTest",
     "DateTimeTest",
     "TextTest",
