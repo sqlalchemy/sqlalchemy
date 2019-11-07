@@ -827,6 +827,17 @@ class DefaultRequirements(SuiteRequirements):
             ]
         )
 
+    @property
+    def json_index_supplementary_unicode_element(self):
+        # for sqlite see https://bugs.python.org/issue38749
+        return skip_if(
+            [
+                lambda config: against(config, "mysql")
+                and config.db.dialect._is_mariadb,
+                "sqlite",
+            ]
+        )
+
     def _sqlite_json(self, config):
         if not against(config, "sqlite >= 3.9"):
             return False

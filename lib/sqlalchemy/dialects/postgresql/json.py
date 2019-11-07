@@ -123,10 +123,16 @@ class JSON(sqltypes.JSON):
 
         data_table.c.data['some key'].astext == 'some value'
 
+      Note that equivalent functionality is available via the
+      :attr:`.JSON.Comparator.as_string` accessor.
+
     * Index operations with CAST
       (equivalent to ``CAST(col ->> ['some key'] AS <type>)``)::
 
         data_table.c.data['some key'].astext.cast(Integer) == 5
+
+      Note that equivalent functionality is available via the
+      :attr:`.JSON.Comparator.as_integer` and similar accessors.
 
     * Path index operations (the ``#>`` operator)::
 
@@ -214,7 +220,6 @@ class JSON(sqltypes.JSON):
                 :meth:`.ColumnElement.cast`
 
             """
-
             if isinstance(self.expr.right.type, sqltypes.JSON.JSONPathType):
                 return self.expr.left.operate(
                     JSONPATH_ASTEXT,

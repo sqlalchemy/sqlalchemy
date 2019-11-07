@@ -8,6 +8,7 @@ from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal_column
 from sqlalchemy import not_
+from sqlalchemy import Numeric
 from sqlalchemy import or_
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -711,6 +712,47 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         col = Column("x", MyOtherType())
         self.assert_compile(col[5], "x $$> :x_1", checkparams={"x_1": 5})
+
+    def _caster_combinations(fn):
+        return testing.combinations(
+            ("integer", Integer),
+            ("boolean", Boolean),
+            ("float", Numeric),
+            ("string", String),
+        )(fn)
+
+    @_caster_combinations
+    def test_cast_ops(self, caster, expected_type):
+        expr = Column("x", JSON)["foo"]
+
+        expr = getattr(expr, "as_%s" % caster)()
+        is_(expr.type._type_affinity, expected_type)
+
+    @_caster_combinations
+    def test_cast_ops_unsupported_on_non_binary(self, caster, expected_type):
+        expr = Column("x", JSON)
+
+        meth = getattr(expr, "as_%s" % caster)
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"The JSON cast operator JSON.as_%s\(\) only works" % caster,
+            meth,
+        )
+
+    @_caster_combinations
+    def test_cast_ops_unsupported_on_non_json_binary(
+        self, caster, expected_type
+    ):
+        expr = Column("x", JSON) + {"foo": "bar"}
+
+        meth = getattr(expr, "as_%s" % caster)
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"The JSON cast operator JSON.as_%s\(\) only works" % caster,
+            meth,
+        )
 
 
 class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
