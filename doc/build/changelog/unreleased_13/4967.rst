@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, installation, windows
+    :tickets: 4967
+
+    Added a workaround for a setuptools-related failure that has been observed
+    as occurring on Windows installations, where setuptools is not correctly
+    reporting a build error when the MSVC build dependencies are not installed
+    and therefore not allowing graceful degradation into non C extensions
+    builds.

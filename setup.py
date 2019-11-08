@@ -38,7 +38,8 @@ ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 if sys.platform == "win32":
     # 2.6's distutils.msvc9compiler can raise an IOError when failing to
     # find the compiler
-    ext_errors += (IOError,)
+    # for TypeError, see https://github.com/pypa/setuptools/issues/1902
+    ext_errors += (IOError, TypeError)
 
 
 class BuildFailed(Exception):
