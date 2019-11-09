@@ -8,6 +8,7 @@ from sqlalchemy import Index
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import literal
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
@@ -781,6 +782,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             c = s.compile(dialect=mssql.dialect())
             eq_(len(c._result_columns), 2)
             assert t.c.x in set(c._create_result_map()["x"][1])
+
+    def test_simple_limit_expression_offset_using_window(self):
+        t = table("t", column("x", Integer), column("y", Integer))
+
+        s = (
+            select([t])
+            .where(t.c.x == 5)
+            .order_by(t.c.y)
+            .limit(10)
+            .offset(literal_column("20"))
+        )
+
+        self.assert_compile(
+            s,
+            "SELECT anon_1.x, anon_1.y "
+            "FROM (SELECT t.x AS x, t.y AS y, "
+            "ROW_NUMBER() OVER (ORDER BY t.y) AS mssql_rn "
+            "FROM t "
+            "WHERE t.x = :x_1) AS anon_1 "
+            "WHERE mssql_rn > 20 AND mssql_rn <= :param_1 + 20",
+            checkparams={"param_1": 10, "x_1": 5},
+        )
 
     def test_limit_offset_using_window(self):
         t = table("t", column("x", Integer), column("y", Integer))

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 4973
+
+    Fixed issue in MSSQL dialect where an expression-based OFFSET value in a
+    SELECT would be rejected, even though the dialect can render this
+    expression inside of a ROW NUMBER-oriented LIMIT/OFFSET construct.
+

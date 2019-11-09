@@ -613,7 +613,7 @@ class DefaultRequirements(SuiteRequirements):
     def sql_expression_limit_offset(self):
         return (
             fails_if(
-                ["mysql", "mssql"],
+                ["mysql"],
                 "Target backend can't accommodate full expressions in "
                 "OFFSET or LIMIT",
             )
