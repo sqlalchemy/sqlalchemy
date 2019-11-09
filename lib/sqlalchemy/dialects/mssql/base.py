@@ -1612,7 +1612,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if select._distinct:
             s += "DISTINCT "
 
-        if select._simple_int_limit and not select._offset:
+        if select._simple_int_limit and (
+            select._offset_clause is None
+            or (select._simple_int_offset and select._offset == 0)
+        ):
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
             # so have to use literal here.
