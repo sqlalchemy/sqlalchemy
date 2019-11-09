@@ -207,6 +207,24 @@ The ``length(self, value)`` method is now called upon set::
     >>> i1.end
     17
 
+.. note:: When defining an setter for a hybrid property or method, the
+   expression method **must** retain the name of the original hybrid, else
+   the new hybrid with the additional state will be attached to the object
+   with the non-matching name. To use the example above::
+
+    class Interval(object):
+        # ...
+
+        @hybrid_property
+        def radius(self):
+            return self.length / 2
+
+        # WRONG - the non-matching name will cause this function to be
+        # ignored
+        @radius.setter
+        def radius_setter(self, radius):
+            self.length = radius * 2
+
 .. _hybrid_bulk_update:
 
 Allowing Bulk ORM Update
