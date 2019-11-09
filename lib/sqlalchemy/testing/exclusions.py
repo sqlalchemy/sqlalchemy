@@ -141,19 +141,18 @@ class compound(object):
     def _expect_success(self, config, name="block"):
         if not self.fails:
             return
+
         for fail in self.fails:
-            if not fail(config):
-                break
-        else:
-            raise AssertionError(
-                "Unexpected success for '%s' (%s)"
-                % (
-                    name,
-                    " and ".join(
-                        fail._as_string(config) for fail in self.fails
-                    ),
+            if fail(config):
+                raise AssertionError(
+                    "Unexpected success for '%s' (%s)"
+                    % (
+                        name,
+                        " and ".join(
+                            fail._as_string(config) for fail in self.fails
+                        ),
+                    )
                 )
-            )
 
 
 def requires_tag(tagname):

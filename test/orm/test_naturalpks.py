@@ -536,7 +536,6 @@ class NaturalPKTest(fixtures.MappedTest):
         self._test_manytomany(True)
 
     @testing.requires.non_updating_cascade
-    @testing.requires.sane_multi_rowcount.not_()
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 

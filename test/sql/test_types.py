@@ -763,6 +763,8 @@ class UserDefinedTest(
 
 
 class TypeCoerceCastTest(fixtures.TablesTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
         class MyType(types.TypeDecorator):
@@ -778,10 +780,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         Table("t", metadata, Column("data", String(50)))
 
-    @testing.fails_on(
-        "oracle", "oracle doesn't like CAST in the VALUES of an INSERT"
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_insert_round_trip_cast(self):
         self._test_insert_round_trip(cast)
 
@@ -799,12 +797,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [("BIND_INd1BIND_OUT",)],
         )
 
-    @testing.fails_on(
-        "oracle",
-        "ORA-00906: missing left parenthesis - "
-        "seems to be CAST(:param AS type)",
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_coerce_from_nulltype_cast(self):
         self._test_coerce_from_nulltype(cast)
 
@@ -829,10 +821,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [("BIND_INTHISISMYOBJBIND_OUT",)],
         )
 
-    @testing.fails_on(
-        "oracle", "oracle doesn't like CAST in the VALUES of an INSERT"
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_cast(self):
         self._test_vs_non_coerced(cast)
 
@@ -852,10 +840,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [("BIND_INd1", "BIND_INd1BIND_OUT")],
         )
 
-    @testing.fails_on(
-        "oracle", "oracle doesn't like CAST in the VALUES of an INSERT"
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_alias_cast(self):
         self._test_vs_non_coerced_alias(cast)
 
@@ -877,10 +861,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [("BIND_INd1", "BIND_INd1BIND_OUT")],
         )
 
-    @testing.fails_on(
-        "oracle", "oracle doesn't like CAST in the VALUES of an INSERT"
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_vs_non_coerced_where_cast(self):
         self._test_vs_non_coerced_where(cast)
 
@@ -911,10 +891,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [("BIND_INd1", "BIND_INd1BIND_OUT")],
         )
 
-    @testing.fails_on(
-        "oracle", "oracle doesn't like CAST in the VALUES of an INSERT"
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_coerce_none_cast(self):
         self._test_coerce_none(cast)
 
@@ -942,10 +918,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             [],
         )
 
-    @testing.fails_on(
-        "oracle", "oracle doesn't like CAST in the VALUES of an INSERT"
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_resolve_clause_element_cast(self):
         self._test_resolve_clause_element(cast)
 
@@ -1037,12 +1009,6 @@ class TypeCoerceCastTest(fixtures.TablesTest):
             else [("x", "xBIND_OUT")],
         )
 
-    @testing.fails_on(
-        "oracle",
-        "ORA-00906: missing left parenthesis - "
-        "seems to be CAST(:param AS type)",
-    )
-    @testing.fails_on("mysql", "mysql dialect warns on skipped CAST")
     def test_cast_existing_typed(self):
         MyType = self.MyType
         coerce_fn = cast
@@ -1523,11 +1489,6 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             [("footwo",), ("footwo",), ("fooone",)],
         )
 
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
-        "but expression is of type character varying",
-    )
     def test_round_trip(self):
         enum_table = self.tables["enum_table"]
 
@@ -2815,6 +2776,8 @@ class NumericRawSQLTest(fixtures.TestBase):
 
     """
 
+    __backend__ = True
+
     def _fixture(self, metadata, type_, data):
         t = Table("t", metadata, Column("val", type_))
         metadata.create_all()
@@ -2864,6 +2827,9 @@ interval_table = metadata = None
 
 
 class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
+
+    __backend__ = True
+
     @classmethod
     def setup_class(cls):
         global interval_table, metadata
@@ -2891,6 +2857,7 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.fails_on("oracle", "See issue #4971")
     def test_non_native_adapt(self):
         interval = Interval(native=False)
         adapted = interval.dialect_impl(testing.db.dialect)
@@ -2898,6 +2865,10 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         assert adapted.native is False
         eq_(str(adapted), "DATETIME")
 
+    @testing.fails_on(
+        "oracle",
+        "ORA-01873: the leading precision of the interval is too small",
+    )
     def test_roundtrip(self):
         small_delta = datetime.timedelta(days=15, seconds=5874)
         delta = datetime.timedelta(414)
@@ -2911,6 +2882,9 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row["native_interval_args"], delta)
         eq_(row["non_native_interval"], delta)
 
+    @testing.fails_on(
+        "oracle", "ORA-00932: inconsistent datatypes: expected NUMBER got DATE"
+    )
     def test_null(self):
         interval_table.insert().execute(
             id=1, native_inverval=None, non_native_interval=None
@@ -2922,6 +2896,8 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
 
 
 class IntegerTest(fixtures.TestBase):
+    __backend__ = True
+
     def test_integer_literal_processor(self):
         typ = Integer()
         eq_(typ._cached_literal_processor(testing.db.dialect)(5), "5")
@@ -2941,6 +2917,8 @@ class BooleanTest(
     is now in testing/suite/test_types.py
 
     """
+
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
