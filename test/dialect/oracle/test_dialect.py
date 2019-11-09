@@ -3,6 +3,7 @@
 import re
 
 from sqlalchemy import bindparam
+from sqlalchemy import Computed
 from sqlalchemy import create_engine
 from sqlalchemy import exc
 from sqlalchemy import Float
@@ -256,6 +257,72 @@ class EncodingErrorsTest(fixtures.TestBase):
                 cursor.mock_calls,
                 [mock.call.var(mock.ANY, None, cursor.arraysize)],
             )
+
+
+class ComputedReturningTest(fixtures.TablesTest):
+    __only_on__ = "oracle"
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, Computed("foo + 42")),
+        )
+
+        Table(
+            "test_no_returning",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, Computed("foo + 42")),
+            implicit_returning=False,
+        )
+
+    def test_computed_insert(self):
+        test = self.tables.test
+        with testing.db.connect() as conn:
+            result = conn.execute(
+                test.insert().return_defaults(), {"id": 1, "foo": 5}
+            )
+
+            eq_(result.returned_defaults, (47,))
+
+            eq_(conn.scalar(select([test.c.bar])), 47)
+
+    def test_computed_update_warning(self):
+        test = self.tables.test
+        with testing.db.connect() as conn:
+            conn.execute(test.insert(), {"id": 1, "foo": 5})
+
+            with testing.expect_warnings(
+                "Computed columns don't work with Oracle UPDATE"
+            ):
+                result = conn.execute(
+                    test.update().values(foo=10).return_defaults()
+                )
+
+                # returns the *old* value
+                eq_(result.returned_defaults, (47,))
+
+            eq_(conn.scalar(select([test.c.bar])), 52)
+
+    def test_computed_update_no_warning(self):
+        test = self.tables.test_no_returning
+        with testing.db.connect() as conn:
+            conn.execute(test.insert(), {"id": 1, "foo": 5})
+
+            result = conn.execute(
+                test.update().values(foo=10).return_defaults()
+            )
+
+            # no returning
+            eq_(result.returned_defaults, None)
+
+            eq_(conn.scalar(select([test.c.bar])), 52)
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):

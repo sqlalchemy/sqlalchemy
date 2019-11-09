@@ -6,6 +6,7 @@ from ..schema import Column
 from ..schema import Table
 from ... import bindparam
 from ... import case
+from ... import Computed
 from ... import false
 from ... import func
 from ... import Integer
@@ -14,6 +15,7 @@ from ... import null
 from ... import select
 from ... import String
 from ... import testing
+from ... import text
 from ... import true
 from ... import tuple_
 from ... import union
@@ -656,3 +658,47 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
         self._test(col.contains("b#cd", autoescape=True, escape="#"), {7})
+
+
+class ComputedColumnTest(fixtures.TablesTest):
+    __backend__ = True
+    __requires__ = ("computed_columns",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "square",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("side", Integer),
+            Column("area", Integer, Computed("side * side")),
+            Column("perimeter", Integer, Computed("4 * side")),
+        )
+
+    @classmethod
+    def insert_data(cls):
+        with config.db.begin() as conn:
+            conn.execute(
+                cls.tables.square.insert(),
+                [{"id": 1, "side": 10}, {"id": 10, "side": 42}],
+            )
+
+    def test_select_all(self):
+        with config.db.connect() as conn:
+            res = conn.execute(
+                select([text("*")])
+                .select_from(self.tables.square)
+                .order_by(self.tables.square.c.id)
+            ).fetchall()
+            eq_(res, [(1, 10, 100, 40), (10, 42, 1764, 168)])
+
+    def test_select_columns(self):
+        with config.db.connect() as conn:
+            res = conn.execute(
+                select(
+                    [self.tables.square.c.area, self.tables.square.c.perimeter]
+                )
+                .select_from(self.tables.square)
+                .order_by(self.tables.square.c.id)
+            ).fetchall()
+            eq_(res, [(100, 40), (1764, 168)])

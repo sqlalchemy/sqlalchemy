@@ -1,0 +1,15 @@
+.. change::
+    :tags: usecase, schema
+    :tickets: 4894
+
+    Added DDL support for "computed columns"; these are DDL column
+    specifications for columns that have a server-computed value, either upon
+    SELECT (known as "virtual") or at the point of which they are INSERTed or
+    UPDATEd (known as "stored").  Support is established for Postgresql, MySQL,
+    Oracle SQL Server and Firebird. Thanks to Federico Caselli for lots of work
+    on this one.
+
+    .. seealso::
+
+        :ref:`computed_ddl`
+

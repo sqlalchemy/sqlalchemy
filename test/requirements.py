@@ -359,6 +359,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_if([self.returning, self.sqlite])
 
     @property
+    def computed_columns_on_update_returning(self):
+        return self.computed_columns + skip_if("oracle")
+
+    @property
     def correlated_outer_joins(self):
         """Target must support an outer join to a subquery which
         correlates to the parent."""
@@ -760,8 +764,9 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def nullsordering(self):
         """Target backends that support nulls ordering."""
-        return fails_on_everything_except("postgresql", "oracle", "firebird",
-                                          "sqlite >= 3.30.0")
+        return fails_on_everything_except(
+            "postgresql", "oracle", "firebird", "sqlite >= 3.30.0"
+        )
 
     @property
     def reflects_pk_names(self):
@@ -1402,3 +1407,7 @@ class DefaultRequirements(SuiteRequirements):
             lambda config: against(config, "oracle+cx_oracle")
             and config.db.dialect.cx_oracle_ver < (6,)
         )
+
+    @property
+    def computed_columns(self):
+        return skip_if(["postgresql < 12", "sqlite", "mysql < 5.7"])

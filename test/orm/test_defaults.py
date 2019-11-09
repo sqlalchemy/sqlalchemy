@@ -1,11 +1,16 @@
 import sqlalchemy as sa
+from sqlalchemy import Computed
 from sqlalchemy import event
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import assert_engine
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -170,3 +175,173 @@ class ExcludedDefaultsTest(fixtures.MappedTest):
         sess.add(f1)
         sess.flush()
         eq_(dt.select().execute().fetchall(), [(1, "hello")])
+
+
+class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
+    """test that computed columns are recognized as server
+    oninsert/onupdate defaults."""
+
+    __backend__ = True
+    __requires__ = ("computed_columns",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, Computed("foo + 42")),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+        class ThingNoEager(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test, eager_defaults=True)
+
+        ThingNoEager = cls.classes.ThingNoEager
+        mapper(ThingNoEager, cls.tables.test, eager_defaults=False)
+
+    @testing.combinations(("eager", True), ("noneager", False), id_="ia")
+    def test_insert_computed(self, eager):
+        if eager:
+            Thing = self.classes.Thing
+        else:
+            Thing = self.classes.ThingNoEager
+
+        s = Session()
+
+        t1, t2 = (Thing(id=1, foo=5), Thing(id=2, foo=10))
+
+        s.add_all([t1, t2])
+
+        with assert_engine(testing.db) as asserter:
+            s.flush()
+            eq_(t1.bar, 5 + 42)
+            eq_(t2.bar, 10 + 42)
+
+        if eager and testing.db.dialect.implicit_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (%(id)s, %(foo)s) "
+                    "RETURNING test.bar",
+                    [{"foo": 5, "id": 1}],
+                    dialect="postgresql",
+                ),
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (%(id)s, %(foo)s) "
+                    "RETURNING test.bar",
+                    [{"foo": 10, "id": 2}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO test (id, foo) VALUES (:id, :foo)",
+                    [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 2}],
+                ),
+            )
+
+    @testing.requires.computed_columns_on_update_returning
+    def test_update_computed_eager(self):
+        self._test_update_computed(True)
+
+    def test_update_computed_noneager(self):
+        self._test_update_computed(False)
+
+    def _test_update_computed(self, eager):
+        if eager:
+            Thing = self.classes.Thing
+        else:
+            Thing = self.classes.ThingNoEager
+
+        s = Session()
+
+        t1, t2 = (Thing(id=1, foo=1), Thing(id=2, foo=2))
+
+        s.add_all([t1, t2])
+        s.flush()
+
+        t1.foo = 5
+        t2.foo = 6
+
+        with assert_engine(testing.db) as asserter:
+            s.flush()
+            eq_(t1.bar, 5 + 42)
+            eq_(t2.bar, 6 + 42)
+
+        if eager and testing.db.dialect.implicit_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE test SET foo=%(foo)s "
+                    "WHERE test.id = %(test_id)s "
+                    "RETURNING test.bar",
+                    [{"foo": 5, "test_id": 1}],
+                    dialect="postgresql",
+                ),
+                CompiledSQL(
+                    "UPDATE test SET foo=%(foo)s "
+                    "WHERE test.id = %(test_id)s "
+                    "RETURNING test.bar",
+                    [{"foo": 6, "test_id": 2}],
+                    dialect="postgresql",
+                ),
+            )
+        elif eager:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE test SET foo=:foo WHERE test.id = :test_id",
+                    [{"foo": 5, "test_id": 1}],
+                ),
+                CompiledSQL(
+                    "UPDATE test SET foo=:foo WHERE test.id = :test_id",
+                    [{"foo": 6, "test_id": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 2}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE test SET foo=:foo WHERE test.id = :test_id",
+                    [{"foo": 5, "test_id": 1}, {"foo": 6, "test_id": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT test.bar AS test_bar FROM test "
+                    "WHERE test.id = :param_1",
+                    [{"param_1": 2}],
+                ),
+            )
