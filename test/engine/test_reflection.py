@@ -1796,8 +1796,6 @@ class SchemaTest(fixtures.TestBase):
             )
 
     @testing.requires.schemas
-    @testing.fails_on("sqlite", "FIXME: unknown")
-    @testing.fails_on("sybase", "FIXME: unknown")
     def test_explicit_default_schema(self):
         engine = testing.db
         engine.connect().close()
