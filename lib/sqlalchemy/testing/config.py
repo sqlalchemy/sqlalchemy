@@ -44,7 +44,7 @@ def combinations(*comb, **kw):
      well as if it is included in the tokens used to create the id of the
      parameter set.
 
-     If omitted, the argment combinations are passed to parametrize as is.  If
+     If omitted, the argument combinations are passed to parametrize as is.  If
      passed, each argument combination is turned into a pytest.param() object,
      mapping the elements of the argument tuple to produce an id based on a
      character value in the same position within the string template using the
@@ -59,8 +59,11 @@ def combinations(*comb, **kw):
         r - the given argument should be passed and it should be added to the
             id by calling repr()
 
-        s-  the given argument should be passed and it should be added to the
+        s - the given argument should be passed and it should be added to the
             id by calling str()
+
+        a - (argument) the given argument should be passed and it should not
+            be used to generated the id
 
      e.g.::
 

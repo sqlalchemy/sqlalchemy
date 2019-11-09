@@ -3,6 +3,7 @@
 from sqlalchemy import and_
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import delete
 from sqlalchemy import Enum
 from sqlalchemy import exc
@@ -1539,6 +1540,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = delete(a1).where(a1.c.c1 == t2.c.c1)
         self.assert_compile(
             q, "DELETE FROM t1 AS a1 USING t2 WHERE a1.c1 = t2.c1"
+        )
+
+    @testing.combinations(
+        ("no_persisted", " STORED", "ignore"),
+        ("persisted_none", " STORED", None),
+        ("persisted_true", " STORED", True),
+        id_="iaa",
+    )
+    def test_column_computed(self, text, persisted):
+        m = MetaData()
+        kwargs = {"persisted": persisted} if persisted != "ignore" else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+            "ALWAYS AS (x + 2)%s)" % text,
+        )
+
+    def test_column_computed_persisted_false(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", persisted=False)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "PostrgreSQL computed columns do not support 'virtual'",
+            schema.CreateTable(t).compile,
+            dialect=postgresql.dialect(),
         )
 
 

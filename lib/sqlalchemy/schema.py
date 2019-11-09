@@ -47,6 +47,7 @@ from .sql.schema import DefaultGenerator  # noqa
 from .sql.schema import FetchedValue  # noqa
 from .sql.schema import ForeignKey  # noqa
 from .sql.schema import ForeignKeyConstraint  # noqa
+from .sql.schema import Computed  # noqa
 from .sql.schema import Index  # noqa
 from .sql.schema import MetaData  # noqa
 from .sql.schema import PrimaryKeyConstraint  # noqa

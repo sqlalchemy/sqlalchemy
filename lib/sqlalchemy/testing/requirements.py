@@ -1064,3 +1064,7 @@ class SuiteRequirements(Requirements):
             return True
         except ImportError:
             return False
+
+    @property
+    def computed_columns(self):
+        return exclusions.closed()

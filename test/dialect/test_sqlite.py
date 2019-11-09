@@ -10,6 +10,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import Computed
 from sqlalchemy import create_engine
 from sqlalchemy import DefaultClause
 from sqlalchemy import event
@@ -755,6 +756,29 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         ]:
             url = make_url(url)
             eq_(d.create_connect_args(url), expected)
+
+    @testing.combinations(
+        ("no_persisted", "ignore"),
+        ("persisted_none", None),
+        ("persisted_true", True),
+        ("persisted_false", False),
+        id_="ia",
+    )
+    def test_column_computed(self, persisted):
+        m = MetaData()
+        kwargs = {"persisted": persisted} if persisted != "ignore" else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "SQLite does not support computed columns",
+            schema.CreateTable(t).compile,
+            dialect=sqlite.dialect(),
+        )
 
 
 class AttachedDBTest(fixtures.TestBase):

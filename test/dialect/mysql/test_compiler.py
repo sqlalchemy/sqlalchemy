@@ -8,6 +8,7 @@ from sqlalchemy import CHAR
 from sqlalchemy import CheckConstraint
 from sqlalchemy import CLOB
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DATETIME
@@ -385,6 +386,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             q, "DELETE FROM a1 USING t1 AS a1, t2 WHERE a1.c1 = t2.c1"
         )
         self.assert_compile(sql.delete(a1), "DELETE FROM t1 AS a1")
+
+    @testing.combinations(
+        ("no_persisted", "", "ignore"),
+        ("persisted_none", "", None),
+        ("persisted_true", " STORED", True),
+        ("persisted_false", " VIRTUAL", False),
+        id_="iaa",
+    )
+    def test_column_computed(self, text, persisted):
+        m = MetaData()
+        kwargs = {"persisted": persisted} if persisted != "ignore" else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+            "ALWAYS AS (x + 2)%s)" % text,
+        )
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):

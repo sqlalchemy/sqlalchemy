@@ -1,6 +1,8 @@
 # coding: utf-8
 from sqlalchemy import and_
 from sqlalchemy import bindparam
+from sqlalchemy import Computed
+from sqlalchemy import exc
 from sqlalchemy import except_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -27,6 +29,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1088,6 +1091,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "t1.c2, t1.c3 INTO :ret_0, :ret_1",
         )
 
+    def test_returning_insert_computed(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, Computed("foo + 42")),
+        )
+
+        self.assert_compile(
+            t1.insert().values(id=1, foo=5).returning(t1.c.bar),
+            "INSERT INTO t1 (id, foo) VALUES (:id, :foo) "
+            "RETURNING t1.bar INTO :ret_0",
+        )
+
+    def test_returning_update_computed_warning(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer),
+            Column("bar", Integer, Computed("foo + 42")),
+        )
+
+        with testing.expect_warnings(
+            "Computed columns don't work with Oracle UPDATE"
+        ):
+            self.assert_compile(
+                t1.update().values(id=1, foo=5).returning(t1.c.bar),
+                "UPDATE t1 SET id=:id, foo=:foo RETURNING t1.bar INTO :ret_0",
+            )
+
     def test_compound(self):
         t1 = table("t1", column("c1"), column("c2"), column("c3"))
         t2 = table("t2", column("c1"), column("c2"), column("c3"))
@@ -1184,6 +1221,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx3),
             "CREATE BITMAP INDEX idx3 ON testtbl (data)",
+        )
+
+    @testing.combinations(
+        ("no_persisted", "", "ignore"),
+        ("persisted_none", "", None),
+        ("persisted_false", " VIRTUAL", False),
+        id_="iaa",
+    )
+    def test_column_computed(self, text, persisted):
+        m = MetaData()
+        kwargs = {"persisted": persisted} if persisted != "ignore" else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", **kwargs)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+            "ALWAYS AS (x + 2)%s)" % text,
+        )
+
+    def test_column_computed_persisted_true(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2", persisted=True)),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            r".*Oracle computed columns do not support 'stored' ",
+            schema.CreateTable(t).compile,
+            dialect=oracle.dialect(),
         )
 
 

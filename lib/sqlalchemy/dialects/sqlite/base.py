@@ -1032,6 +1032,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
+        if column.computed is not None:
+            raise exc.CompileError("SQLite does not support computed columns")
+
         coltype = self.dialect.type_compiler.process(
             column.type, type_expression=column
         )
