@@ -35,9 +35,19 @@ class compound(object):
         self.fails = set()
         self.skips = set()
         self.tags = set()
+        self.combinations = {}
 
     def __add__(self, other):
         return self.add(other)
+
+    def with_combination(self, **kw):
+        copy = compound()
+        copy.fails.update(self.fails)
+        copy.skips.update(self.skips)
+        copy.tags.update(self.tags)
+        copy.combinations.update((f, kw) for f in copy.fails)
+        copy.combinations.update((s, kw) for s in copy.skips)
+        return copy
 
     def add(self, *others):
         copy = compound()
@@ -85,6 +95,7 @@ class compound(object):
         self.skips.update(other.skips)
         self.fails.update(other.fails)
         self.tags.update(other.tags)
+        self.combinations.update(other.combinations)
 
     def __call__(self, fn):
         if hasattr(fn, "_sa_exclusion_extend"):
@@ -107,43 +118,63 @@ class compound(object):
         try:
             yield
         except Exception as ex:
-            all_fails._expect_failure(config._current, ex)
+            all_fails._expect_failure(config._current, ex, None)
         else:
-            all_fails._expect_success(config._current)
+            all_fails._expect_success(config._current, None)
+
+    def _check_combinations(self, combination, predicate):
+        if predicate in self.combinations:
+            for k, v in combination:
+                if (
+                    k in self.combinations[predicate]
+                    and self.combinations[predicate][k] != v
+                ):
+                    return False
+        return True
 
     def _do(self, cfg, fn, *args, **kw):
+        if len(args) > 1:
+            insp = inspect_getfullargspec(fn)
+            combination = list(zip(insp.args[1:], args[1:]))
+        else:
+            combination = None
+
         for skip in self.skips:
-            if skip(cfg):
+            if self._check_combinations(combination, skip) and skip(cfg):
                 msg = "'%s' : %s" % (fn.__name__, skip._as_string(cfg))
                 config.skip_test(msg)
 
         try:
             return_value = fn(*args, **kw)
         except Exception as ex:
-            self._expect_failure(cfg, ex, name=fn.__name__)
+            self._expect_failure(cfg, ex, combination, name=fn.__name__)
         else:
-            self._expect_success(cfg, name=fn.__name__)
+            self._expect_success(cfg, combination, name=fn.__name__)
             return return_value
 
-    def _expect_failure(self, config, ex, name="block"):
+    def _expect_failure(self, config, ex, combination, name="block"):
         for fail in self.fails:
-            if fail(config):
+            if self._check_combinations(combination, fail) and fail(config):
+                if util.py2k:
+                    str_ex = unicode(ex).encode("utf-8", errors="ignore")
+                else:
+                    str_ex = str(ex)
                 print(
                     (
                         "%s failed as expected (%s): %s "
-                        % (name, fail._as_string(config), str(ex))
+                        % (name, fail._as_string(config), str_ex)
                     )
                 )
                 break
         else:
             util.raise_from_cause(ex)
 
-    def _expect_success(self, config, name="block"):
+    def _expect_success(self, config, combination, name="block"):
         if not self.fails:
             return
 
         for fail in self.fails:
-            if fail(config):
+            if self._check_combinations(combination, fail) and fail(config):
                 raise AssertionError(
                     "Unexpected success for '%s' (%s)"
                     % (

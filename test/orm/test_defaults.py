@@ -262,14 +262,10 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                 ),
             )
 
-    @testing.requires.computed_columns_on_update_returning
-    def test_update_computed_eager(self):
-        self._test_update_computed(True)
-
-    def test_update_computed_noneager(self):
-        self._test_update_computed(False)
-
-    def _test_update_computed(self, eager):
+    @testing.combinations(
+        (True, testing.requires.computed_columns_on_update_returning), (False,)
+    )
+    def test_update_computed(self, eager):
         if eager:
             Thing = self.classes.Thing
         else:
