@@ -3117,7 +3117,6 @@ class JoinCondition(object):
         criterion, equivalent column sets, etc.
 
         """
-
         # place a barrier on the destination such that
         # replacement traversals won't ever dig into it.
         # its internal structure remains fixed
@@ -3146,17 +3145,22 @@ class JoinCondition(object):
         if aliased:
             if secondary is not None:
                 secondary = secondary._anonymous_fromclause(flat=True)
-                primary_aliasizer = ClauseAdapter(secondary)
+                primary_aliasizer = ClauseAdapter(
+                    secondary, exclude_fn=_ColInAnnotations("local")
+                )
                 secondary_aliasizer = ClauseAdapter(
                     dest_selectable, equivalents=self.child_equivalents
                 ).chain(primary_aliasizer)
                 if source_selectable is not None:
-                    primary_aliasizer = ClauseAdapter(secondary).chain(
+                    primary_aliasizer = ClauseAdapter(
+                        secondary, exclude_fn=_ColInAnnotations("local")
+                    ).chain(
                         ClauseAdapter(
                             source_selectable,
                             equivalents=self.parent_equivalents,
                         )
                     )
+
                 secondaryjoin = secondary_aliasizer.traverse(secondaryjoin)
             else:
                 primary_aliasizer = ClauseAdapter(

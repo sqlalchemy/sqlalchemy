@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4974
+
+    Fixed ORM bug where a "secondary" table that referred to a selectable which
+    in some way would refer to the local primary table would apply aliasing to
+    both sides of the join condition when a relationship-related join, either
+    via :meth:`.Query.join` or by :func:`.joinedload`, were generated.  The
+    "local" side is now excluded.
