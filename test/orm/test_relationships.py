@@ -27,6 +27,7 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
@@ -41,6 +42,8 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import startswith_
+from sqlalchemy.testing.assertsql import assert_engine
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -4205,7 +4208,6 @@ class SecondaryNestedJoinTest(
         )
 
     def test_render_lazyload(self):
-        from sqlalchemy.testing.assertsql import CompiledSQL
 
         A = self.classes.A
         sess = Session()
@@ -5474,3 +5476,157 @@ class RelationDeprecationTest(fixtures.MappedTest):
         session.query(User).filter(
             User.addresses.any(Address.email_address == "ed@foo.bar")
         ).one()
+
+
+class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("b_ids", String(50)),
+        )
+
+        Table("b", metadata, Column("id", String(10), primary_key=True))
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Comparable):
+            pass
+
+        class B(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B = cls.classes("A", "B")
+        a, b = cls.tables("a", "b")
+
+        secondary = (
+            select([a.c.id.label("aid"), b])
+            .select_from(a.join(b, a.c.b_ids.like("%" + b.c.id + "%")))
+            .alias()
+        )
+
+        mapper(
+            A,
+            a,
+            properties=dict(
+                bs=relationship(
+                    B,
+                    secondary=secondary,
+                    primaryjoin=a.c.id == secondary.c.aid,
+                    secondaryjoin=b.c.id == secondary.c.id,
+                )
+            ),
+        )
+        mapper(B, b)
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+
+        s = Session()
+        s.add_all(
+            [
+                A(id=1, b_ids="1"),
+                A(id=2, b_ids="2 3"),
+                B(id="1"),
+                B(id="2"),
+                B(id="3"),
+            ]
+        )
+        s.commit()
+
+    def test_query_join(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+
+        with assert_engine(testing.db) as asserter_:
+            rows = s.query(A.id, B.id).join(A.bs).order_by(A.id, B.id).all()
+
+            eq_(rows, [(1, "1"), (2, "2"), (2, "3")])
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, b.id AS b_id FROM a JOIN "
+                "(SELECT a.id AS "
+                "aid, b.id AS id FROM a JOIN b ON a.b_ids LIKE :id_1 || "
+                "b.id || :param_1) AS anon_1 ON a.id = anon_1.aid "
+                "JOIN b ON b.id = anon_1.id ORDER BY a.id, b.id"
+            )
+        )
+
+    def test_eager_join(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+
+        with assert_engine(testing.db) as asserter_:
+            a2 = (
+                s.query(A).options(joinedload(A.bs)).filter(A.id == 2).all()[0]
+            )
+
+            eq_({b.id for b in a2.bs}, {"2", "3"})
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.b_ids AS a_b_ids, b_1.id AS b_1_id "
+                "FROM a LEFT OUTER JOIN ((SELECT a.id AS aid, b.id AS id "
+                "FROM a JOIN b ON a.b_ids LIKE :id_1 || b.id || :param_1) "
+                "AS anon_1 JOIN b AS b_1 ON b_1.id = anon_1.id) "
+                "ON a.id = anon_1.aid WHERE a.id = :id_2",
+                params=[{"id_1": "%", "param_1": "%", "id_2": 2}],
+            )
+        )
+
+    def test_exists(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+
+        with assert_engine(testing.db) as asserter_:
+            eq_(set(id_ for id_, in s.query(A.id).filter(A.bs.any())), {1, 2})
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id FROM a WHERE "
+                "EXISTS (SELECT 1 FROM (SELECT a.id AS aid, b.id AS id "
+                "FROM a JOIN b ON a.b_ids LIKE :id_1 || b.id || :param_1) "
+                "AS anon_1, b WHERE a.id = anon_1.aid AND b.id = anon_1.id)",
+                params=[],
+            )
+        )
+
+    def test_eager_selectin(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+
+        with assert_engine(testing.db) as asserter_:
+            a2 = (
+                s.query(A)
+                .options(selectinload(A.bs))
+                .filter(A.id == 2)
+                .all()[0]
+            )
+
+            eq_({b.id for b in a2.bs}, {"2", "3"})
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.b_ids AS a_b_ids "
+                "FROM a WHERE a.id = :id_1",
+                params=[{"id_1": 2}],
+            ),
+            CompiledSQL(
+                "SELECT a_1.id AS a_1_id, b.id AS b_id FROM a AS a_1 JOIN "
+                "(SELECT a.id AS aid, b.id AS id FROM a JOIN b ON a.b_ids "
+                "LIKE :id_1 || b.id || :param_1) AS anon_1 "
+                "ON a_1.id = anon_1.aid JOIN b ON b.id = anon_1.id "
+                "WHERE a_1.id IN ([EXPANDING_primary_keys]) ORDER BY a_1.id",
+                params=[{"id_1": "%", "param_1": "%", "primary_keys": [2]}],
+            ),
+        )
