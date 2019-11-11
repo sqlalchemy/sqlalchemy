@@ -67,7 +67,10 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         ):
             return True
         elif isinstance(e, self.dbapi.Error):
-            return "Already closed" in str(e)
+            str_e = str(e).lower()
+            return (
+                "already closed" in str_e or "connection was killed" in str_e
+            )
         else:
             return False
 
