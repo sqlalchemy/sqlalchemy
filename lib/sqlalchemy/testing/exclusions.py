@@ -141,7 +141,10 @@ class compound(object):
 
         for skip in self.skips:
             if self._check_combinations(combination, skip) and skip(cfg):
-                msg = "'%s' : %s" % (fn.__name__, skip._as_string(cfg))
+                msg = "'%s' : %s" % (
+                    config.get_current_test_name(),
+                    skip._as_string(cfg),
+                )
                 config.skip_test(msg)
 
         try:
