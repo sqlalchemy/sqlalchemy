@@ -12,7 +12,285 @@
 
 .. changelog::
     :version: 1.3.11
-    :include_notes_from: unreleased_13
+    :released: November 11, 2019
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4973
+
+        Fixed issue in MSSQL dialect where an expression-based OFFSET value in a
+        SELECT would be rejected, even though the dialect can render this
+        expression inside of a ROW NUMBER-oriented LIMIT/OFFSET construct.
+
+
+    .. change::
+        :tags: orm, usecase
+        :tickets: 4934
+
+        Added accessor :meth:`.Query.is_single_entity` to :class:`.Query`, which
+        will indicate if the results returned by this :class:`.Query` will be a
+        list of ORM entities, or a tuple of entities or column expressions.
+        SQLAlchemy hopes to improve upon the behavior of single entity / tuples in
+        future releases such that the behavior would be explicit up front, however
+        this attribute should be helpful with the current behavior.  Pull request
+        courtesy Patrick Hayes.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 4945
+
+        Added "Connection was killed" message interpreted from the base
+        pymysql.Error class in order to detect closed connection, based on reports
+        that this message is arriving via a pymysql.InternalError() object which
+        indicates pymysql is not handling it correctly.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4954
+
+        The :paramref:`.relationship.omit_join` flag was not intended to be
+        manually set to True, and will now emit a warning when this occurs.  The
+        omit_join optimization is detected automatically, and the ``omit_join``
+        flag was only intended to disable the optimization in the hypothetical case
+        that the optimization may have interfered with correct results, which has
+        not been observed with the modern version of this feature.   Setting the
+        flag to True when it is not automatically detected may cause the selectin
+        load feature to not work correctly when a non-default primary join
+        condition is in use.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4915
+
+        A warning is emitted if a primary key value is passed to :meth:`.Query.get`
+        that consists of None for all primary key column positions.   Previously,
+        passing a single None outside of a tuple would raise a ``TypeError`` and
+        passing a composite None (tuple of None values) would silently pass
+        through.   The fix now coerces the single None into a tuple where it is
+        handled consistently with the other None conditions.  Thanks to Lev
+        Izraelit for the help with this.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4947
+
+        The :class:`.BakedQuery` will not cache a query that was modified by a
+        :meth:`.QueryEvents.before_compile` event, so that compilation hooks that
+        may be applying ad-hoc modifications to queries will take effect on each
+        run.  In particular this is helpful for events that modify queries used in
+        lazy loading as well as eager loading such as "select in" loading.  In
+        order to re-enable caching for a query modified by this event, a new
+        flag ``bake_ok`` is added; see :ref:`baked_with_before_compile` for
+        details.
+
+        A longer term plan to provide a new form of SQL caching should solve this
+        kind of issue more comprehensively.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 4920
+
+        Fixed test failures which would occur with newer SQLite as of version 3.30
+        or greater, due to their addition of nulls ordering syntax as well as new
+        restrictions on aggregate functions.  Pull request courtesy Nils Philippsen.
+
+
+
+    .. change::
+        :tags: bug, installation, windows
+        :tickets: 4967
+
+        Added a workaround for a setuptools-related failure that has been observed
+        as occurring on Windows installations, where setuptools is not correctly
+        reporting a build error when the MSVC build dependencies are not installed
+        and therefore not allowing graceful degradation into non C extensions
+        builds.
+
+    .. change::
+        :tags: bug, sql, py3k
+        :tickets: 4931
+
+        Changed the ``repr()`` of the :class:`.quoted_name` construct to use
+        regular string repr() under Python 3, rather than running it through
+        "backslashreplace" escaping, which can be misleading.
+
+    .. change::
+        :tags: bug, oracle, firebird
+        :tickets: 4931
+
+        Modified the approach of "name normalization" for the Oracle and Firebird
+        dialects, which converts from the UPPERCASE-as-case-insensitive convention
+        of these dialects into lowercase-as-case-insensitive for SQLAlchemy, to not
+        automatically apply the :class:`.quoted_name` construct to a name that
+        matches itself under upper or lower case conversion, as is the case for
+        many non-european characters.   All names used within metadata structures
+        are converted to :class:`.quoted_name` objects in any case; the change
+        here would only affect the output of some inspection functions.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 4911
+
+        Fixed bug where a table that would have a column label overlap with a plain
+        column name, such as "foo.id AS foo_id" vs. "foo.foo_id", would prematurely
+        generate the ``._label`` attribute for a column before this overlap could
+        be detected due to the use of the ``index=True`` or ``unique=True`` flag on
+        the column in conjunction with the default naming convention of
+        ``"column_0_label"``.  This would then lead to failures when ``._label``
+        were used later to generate a bound parameter name, in particular those
+        used by the ORM when generating the WHERE clause for an UPDATE statement.
+        The issue has been fixed by using an alternate ``._label`` accessor for DDL
+        generation that does not affect the state of the :class:`.Column`.   The
+        accessor also bypasses the key-deduplication step as it is not necessary
+        for DDL, the naming is now consistently ``"<tablename>_<columnname>"``
+        without any subsequent numeric symbols when used in DDL.
+
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 4902
+
+        Fixed bug where parameter repr as used in logging and error reporting needs
+        additional context in order to distinguish between a list of parameters for
+        a single statement and a list of parameter lists, as the "list of lists"
+        structure could also indicate a single parameter list where the first
+        parameter itself is a list, such as for an array parameter.   The
+        engine/connection now passes in an additional boolean indicating how the
+        parameters should be considered.  The only SQLAlchemy backend that expects
+        arrays as parameters is that of  psycopg2 which uses pyformat parameters,
+        so this issue has not been too apparent, however as other drivers that use
+        positional gain more features it is important that this be supported. It
+        also eliminates the need for the parameter repr function to guess based on
+        the parameter structure passed.
+
+    .. change::
+        :tags: usecase, schema
+        :tickets: 4894
+
+        Added DDL support for "computed columns"; these are DDL column
+        specifications for columns that have a server-computed value, either upon
+        SELECT (known as "virtual") or at the point of which they are INSERTed or
+        UPDATEd (known as "stored").  Support is established for Postgresql, MySQL,
+        Oracle SQL Server and Firebird. Thanks to Federico Caselli for lots of work
+        on this one.
+
+        .. seealso::
+
+            :ref:`computed_ddl`
+
+
+    .. change::
+        :tags: bug, engine, postgresql
+        :tickets: 4955
+
+        Fixed bug in :class:`.Inspector` where the cache key generation did not
+        take into account arguments passed in the form of tuples, such as the tuple
+        of view name styles to return for the PostgreSQL dialect. This would lead
+        the inspector to cache too generally for a more specific set of criteria.
+        The logic has been adjusted to include every keyword element in the cache,
+        as every argument is expected to be appropriate for a cache else the
+        caching decorator should be bypassed by the dialect.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4923
+
+        Fixed an issue in the :meth:`.Engine.table_names` method where it would
+        feed the dialect's default schema name back into the dialect level table
+        function, which in the case of SQL Server would interpret it as a
+        dot-tokenized schema name as viewed by the mssql dialect, which would
+        cause the method to fail in the case where the database username actually
+        had a dot inside of it.  In 1.3, this method is still used by the
+        :meth:`.MetaData.reflect` function so is a prominent codepath. In 1.4,
+        which is the current master development branch, this issue doesn't exist,
+        both because :meth:`.MetaData.reflect` isn't using this method nor does the
+        method pass the default schema name explicitly.  The fix nonetheless
+        guards against the default server name value returned by the dialect from
+        being interpreted as dot-tokenized name under any circumstances by
+        wrapping it in quoted_name().
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4974
+
+        Fixed ORM bug where a "secondary" table that referred to a selectable which
+        in some way would refer to the local primary table would apply aliasing to
+        both sides of the join condition when a relationship-related join, either
+        via :meth:`.Query.join` or by :func:`.joinedload`, were generated.  The
+        "local" side is now excluded.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 4276
+
+        Added new accessors to expressions of type :class:`.JSON` to allow for
+        specific datatype access and comparison, covering strings, integers,
+        numeric, boolean elements.   This revises the documented approach of
+        CASTing to string when comparing values, instead adding specific
+        functionality into the PostgreSQL, SQlite, MySQL dialects to reliably
+        deliver these basic types in all cases.
+
+        .. seealso::
+
+            :class:`.JSON`
+
+            :meth:`.JSON.Comparator.as_string`
+
+            :meth:`.JSON.Comparator.as_boolean`
+
+            :meth:`.JSON.Comparator.as_float`
+
+            :meth:`.JSON.Comparator.as_integer`
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 4799
+
+        Added dialect-level flag ``encoding_errors`` to the cx_Oracle dialect,
+        which can be specified as part of :func:`.create_engine`.   This is passed
+        to SQLAlchemy's unicode decoding converter under Python 2, and to
+        cx_Oracle's ``cursor.var()`` object as the ``encodingErrors`` parameter
+        under Python 3, for the very unusual case that broken encodings are present
+        in the target database which cannot be fetched unless error handling is
+        relaxed.  The value is ultimately one of the Python "encoding errors"
+        parameters passed to ``decode()``.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 4933
+
+        The :func:`.text` construct now supports "unique" bound parameters, which
+        will dynamically uniquify themselves on compilation thus allowing multiple
+        :func:`.text` constructs with the same bound parameter names to be combined
+        together.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 4913
+
+        The :class:`.sqltypes.NCHAR` datatype will now bind to the
+        ``cx_Oracle.FIXED_NCHAR`` DBAPI data bindings when used in a bound
+        parameter, which supplies proper comparison behavior against a
+        variable-length string.  Previously, the :class:`.sqltypes.NCHAR` datatype
+        would bind to ``cx_oracle.NCHAR`` which is not fixed length; the
+        :class:`.sqltypes.CHAR` datatype already binds to ``cx_Oracle.FIXED_CHAR``
+        so it is now consistent that :class:`.sqltypes.NCHAR` binds to
+        ``cx_Oracle.FIXED_NCHAR``.
+
+
+
+    .. change::
+        :tags: bug, firebird
+        :tickets: 4903
+
+        Added additional "disconnect" message "Error writing data to the
+        connection" to Firebird disconnection detection.  Pull request courtesy
+        lukens.
 
 .. changelog::
     :version: 1.3.10

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 4945
-
-    Added "Connection was killed" message interpreted from the base
-    pymysql.Error class in order to detect closed connection, based on reports
-    that this message is arriving via a pymysql.InternalError() object which
-    indicates pymysql is not handling it correctly.
