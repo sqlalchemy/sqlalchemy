@@ -730,6 +730,9 @@ class FixtureFunctions(ABC):
     def fixture(self, *arg, **kw):
         raise NotImplementedError()
 
+    def get_current_test_name(self):
+        raise NotImplementedError()
+
 
 _fixture_fn_class = None
 

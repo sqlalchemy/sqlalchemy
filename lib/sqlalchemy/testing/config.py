@@ -89,6 +89,10 @@ def fixture(*arg, **kw):
     return _fixture_functions.fixture(*arg, **kw)
 
 
+def get_current_test_name():
+    return _fixture_functions.get_current_test_name()
+
+
 class Config(object):
     def __init__(self, db, db_opts, options, file_config):
         self._set_name(db)
