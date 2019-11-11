@@ -183,10 +183,13 @@ class CompiledSQL(SQLMatchRule):
 
     def _failure_message(self, expected_params):
         return (
-            "Testing for compiled statement %r partial params %r, "
+            "Testing for compiled statement %r partial params %s, "
             "received %%(received_statement)r with params "
             "%%(received_parameters)r"
-            % (self.statement.replace("%", "%%"), expected_params)
+            % (
+                self.statement.replace("%", "%%"),
+                repr(expected_params).replace("%", "%%"),
+            )
         )
 
 
@@ -200,9 +203,13 @@ class RegexSQL(CompiledSQL):
 
     def _failure_message(self, expected_params):
         return (
-            "Testing for compiled statement ~%r partial params %r, "
+            "Testing for compiled statement ~%r partial params %s, "
             "received %%(received_statement)r with params "
-            "%%(received_parameters)r" % (self.orig_regex, expected_params)
+            "%%(received_parameters)r"
+            % (
+                self.orig_regex.replace("%", "%%"),
+                repr(expected_params).replace("%", "%%"),
+            )
         )
 
     def _compare_sql(self, execute_observed, received_statement):
