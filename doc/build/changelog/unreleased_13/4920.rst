@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, tests
-    :tickets: 4920
-
-    Fixed test failures which would occur with newer SQLite as of version 3.30
-    or greater, due to their addition of nulls ordering syntax as well as new
-    restrictions on aggregate functions.  Pull request courtesy Nils Philippsen.
-
-
