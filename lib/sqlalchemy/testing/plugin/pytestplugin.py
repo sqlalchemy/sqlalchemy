@@ -414,3 +414,6 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
 
     def fixture(self, *arg, **kw):
         return pytest.fixture(*arg, **kw)
+
+    def get_current_test_name(self):
+        return os.environ.get("PYTEST_CURRENT_TEST")
