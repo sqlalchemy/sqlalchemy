@@ -16,12 +16,40 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from ...engine import test_execute
 
 
 class DialectTest(fixtures.TestBase):
     __backend__ = True
     __only_on__ = "mysql"
+
+    @testing.combinations(
+        (None, "cONnection was kILLEd", "InternalError", "pymysql", True),
+        (None, "cONnection aLREady closed", "InternalError", "pymysql", True),
+        (None, "something broke", "InternalError", "pymysql", False),
+        (2006, "foo", "OperationalError", "mysqldb", True),
+        (2006, "foo", "OperationalError", "pymysql", True),
+        (2007, "foo", "OperationalError", "mysqldb", False),
+        (2007, "foo", "OperationalError", "pymysql", False),
+    )
+    def test_is_disconnect(
+        self, arg0, message, exc_cls_name, dialect_name, is_disconnect
+    ):
+        class Error(Exception):
+            pass
+
+        dbapi = mock.Mock()
+        dbapi.Error = Error
+        dbapi.ProgrammingError = type("ProgrammingError", (Error,), {})
+        dbapi.OperationalError = type("OperationalError", (Error,), {})
+        dbapi.InterfaceError = type("InterfaceError", (Error,), {})
+        dbapi.InternalError = type("InternalError", (Error,), {})
+
+        dialect = getattr(mysql, dialect_name).dialect(dbapi=dbapi)
+
+        error = getattr(dbapi, exc_cls_name)(arg0, message)
+        eq_(dialect.is_disconnect(error, None, None), is_disconnect)
 
     def test_ssl_arguments_mysqldb(self):
         from sqlalchemy.dialects.mysql import mysqldb
