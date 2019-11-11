@@ -1012,13 +1012,23 @@ class SQLiteCompiler(compiler.SQLCompiler):
         )
 
     def visit_json_getitem_op_binary(self, binary, operator, **kw):
-        return "JSON_QUOTE(JSON_EXTRACT(%s, %s))" % (
+        if binary.type._type_affinity is sqltypes.JSON:
+            expr = "JSON_QUOTE(JSON_EXTRACT(%s, %s))"
+        else:
+            expr = "JSON_EXTRACT(%s, %s)"
+
+        return expr % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
 
     def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
-        return "JSON_QUOTE(JSON_EXTRACT(%s, %s))" % (
+        if binary.type._type_affinity is sqltypes.JSON:
+            expr = "JSON_QUOTE(JSON_EXTRACT(%s, %s))"
+        else:
+            expr = "JSON_EXTRACT(%s, %s)"
+
+        return expr % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )

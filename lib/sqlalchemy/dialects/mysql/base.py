@@ -1207,17 +1207,63 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_sysdate_func(self, fn, **kw):
         return "SYSDATE()"
 
-    def visit_json_getitem_op_binary(self, binary, operator, **kw):
-        return "JSON_EXTRACT(%s, %s)" % (
+    def _render_json_extract_from_binary(self, binary, operator, **kw):
+        # note we are intentionally calling upon the process() calls in the
+        # order in which they appear in the SQL String as this is used
+        # by positional parameter rendering
+
+        if binary.type._type_affinity is sqltypes.JSON:
+            return "JSON_EXTRACT(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+
+        # for non-JSON, MySQL doesn't handle JSON null at all so it has to
+        # be explicit
+        case_expression = "CASE JSON_EXTRACT(%s, %s) WHEN 'null' THEN NULL" % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
 
+        if binary.type._type_affinity is sqltypes.Integer:
+            type_expression = (
+                "ELSE CAST(JSON_EXTRACT(%s, %s) AS SIGNED INTEGER)"
+                % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **kw),
+                )
+            )
+        elif binary.type._type_affinity is sqltypes.Numeric:
+            # FLOAT / REAL not added in MySQL til 8.0.17
+            type_expression = (
+                "ELSE CAST(JSON_EXTRACT(%s, %s) AS DECIMAL(10, 6))"
+                % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **kw),
+                )
+            )
+        elif binary.type._type_affinity is sqltypes.Boolean:
+            # the NULL handling is particularly weird with boolean, so
+            # explicitly return true/false constants
+            type_expression = "WHEN true THEN true ELSE false"
+        elif binary.type._type_affinity is sqltypes.String:
+            # this fails with a JSON value that's a four byte unicode
+            # string.  SQLite has the same problem at the moment
+            type_expression = "ELSE JSON_UNQUOTE(JSON_EXTRACT(%s, %s))" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+        else:
+            # other affinity....this is not expected right now
+            type_expression = "ELSE JSON_EXTRACT(%s, %s)"
+
+        return case_expression + " " + type_expression + " END"
+
+    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
     def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
-        return "JSON_EXTRACT(%s, %s)" % (
-            self.process(binary.left, **kw),
-            self.process(binary.right, **kw),
-        )
+        return self._render_json_extract_from_binary(binary, operator, **kw)
 
     def visit_on_duplicate_key_update(self, on_duplicate, **kw):
         if on_duplicate._parameter_ordering:

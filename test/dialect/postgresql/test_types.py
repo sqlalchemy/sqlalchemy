@@ -57,6 +57,7 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import ComparesTables
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
+from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
 
 
@@ -3223,3 +3224,15 @@ class JSONBRoundTripTest(JSONRoundTripTest):
     @testing.requires.postgresql_utf8_server_encoding
     def test_unicode_round_trip_native(self):
         super(JSONBRoundTripTest, self).test_unicode_round_trip_native()
+
+
+class JSONBSuiteTest(suite.JSONTest):
+    __requires__ = ("postgresql_jsonb",)
+
+    datatype = JSONB
+
+
+class JSONBCastSuiteTest(suite.JSONStringCastIndexTest):
+    __requires__ = ("postgresql_jsonb",)
+
+    datatype = JSONB
