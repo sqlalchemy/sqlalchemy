@@ -450,12 +450,12 @@ from ... import Computed
 from ... import exc
 from ... import schema as sa_schema
 from ... import sql
-from ... import types as sqltypes
 from ... import util
 from ...engine import default
 from ...engine import reflection
 from ...sql import compiler
 from ...sql import expression
+from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
 from ...types import BLOB
@@ -567,7 +567,7 @@ class DATE(sqltypes.DateTime):
         return other._type_affinity in (sqltypes.DateTime, sqltypes.Date)
 
 
-class INTERVAL(sqltypes.TypeEngine):
+class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     __visit_name__ = "INTERVAL"
 
     def __init__(self, day_precision=None, second_precision=None):

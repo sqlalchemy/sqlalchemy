@@ -2857,7 +2857,6 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on("oracle", "See issue #4971")
     def test_non_native_adapt(self):
         interval = Interval(native=False)
         adapted = interval.dialect_impl(testing.db.dialect)
@@ -2865,31 +2864,30 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         assert adapted.native is False
         eq_(str(adapted), "DATETIME")
 
-    @testing.fails_on(
-        "oracle",
-        "ORA-01873: the leading precision of the interval is too small",
-    )
     def test_roundtrip(self):
         small_delta = datetime.timedelta(days=15, seconds=5874)
-        delta = datetime.timedelta(414)
-        interval_table.insert().execute(
-            native_interval=small_delta,
-            native_interval_args=delta,
-            non_native_interval=delta,
-        )
-        row = interval_table.select().execute().first()
+        delta = datetime.timedelta(14)
+        with testing.db.begin() as conn:
+            conn.execute(
+                interval_table.insert(),
+                native_interval=small_delta,
+                native_interval_args=delta,
+                non_native_interval=delta,
+            )
+            row = conn.execute(interval_table.select()).first()
         eq_(row["native_interval"], small_delta)
         eq_(row["native_interval_args"], delta)
         eq_(row["non_native_interval"], delta)
 
-    @testing.fails_on(
-        "oracle", "ORA-00932: inconsistent datatypes: expected NUMBER got DATE"
-    )
     def test_null(self):
-        interval_table.insert().execute(
-            id=1, native_inverval=None, non_native_interval=None
-        )
-        row = interval_table.select().execute().first()
+        with testing.db.begin() as conn:
+            conn.execute(
+                interval_table.insert(),
+                id=1,
+                native_inverval=None,
+                non_native_interval=None,
+            )
+            row = conn.execute(interval_table.select()).first()
         eq_(row["native_interval"], None)
         eq_(row["native_interval_args"], None)
         eq_(row["non_native_interval"], None)
