@@ -128,6 +128,42 @@ many decimal places.   Here's a recipe that rounds them down::
                 value = value.quantize(self.quantize)
             return value
 
+Store Timezone Aware Timestamps as Timezone Naive UTC
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Timestamps in databases should always be stored in a timezone-agnostic way. For
+most databases, this means ensuring a timestamp is first in the UTC timezone
+before it is stored, then storing it as timezone-naive (that is, without any
+timezone associated with it; UTC is assumed to be the "implicit" timezone).
+Alternatively,  database-specific types like PostgreSQLs "TIMESTAMP WITH
+TIMEZONE" are often preferred for their richer functionality; however, storing
+as plain UTC will work on all databases and drivers.   When a
+timezone-intelligent database type is not an option or is not preferred,  the
+:class:`.TypeDecorator` can be used to create a datatype that convert timezone
+aware timestamps into timezone naive and back again.   Below, Python's
+built-in ``datetime.timezone.utc`` timezone is used to normalize and
+denormalize::
+
+    import datetime
+
+    class TZDateTime(TypeDecorator):
+        impl = DateTime
+
+        def process_bind_param(self, value, dialect):
+            if value is not None:
+                if not value.tzinfo:
+                    raise TypeError("tzinfo is required")
+                value = value.astimezone(datetime.timezone.utc).replace(
+                    tzinfo=None
+                )
+            return value
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                value = value.replace(tzinfo=datetime.timezone.utc)
+            return value
+
+
 .. _custom_guid_type:
 
 Backend-agnostic GUID Type
