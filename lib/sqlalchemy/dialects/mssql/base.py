@@ -1019,11 +1019,11 @@ class DATETIME2(_DateTimeBase, sqltypes.DateTime):
         self.precision = precision
 
 
-# TODO: is this not an Interval ?
-class DATETIMEOFFSET(sqltypes.TypeEngine):
+class DATETIMEOFFSET(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = "DATETIMEOFFSET"
 
-    def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kw):
+        super(DATETIMEOFFSET, self).__init__(**kw)
         self.precision = precision
 
 
