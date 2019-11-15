@@ -32,3 +32,4 @@ test/test_schema.db
 *test_schema.db
 .idea
 /Pipfile*
+/db_idents.txt
