@@ -1761,6 +1761,14 @@ class EngineEventsTest(fixtures.TestBase):
             implicit_returning=False,
         )
         self.metadata.create_all(engine)
+
+        try:
+            if engine.dialect._is_mariadb:
+                # bypass test per discussion in #4976
+                return
+        except:
+            pass
+
         with engine.begin() as conn:
             event.listen(
                 conn, "before_cursor_execute", tracker("cursor_execute")
