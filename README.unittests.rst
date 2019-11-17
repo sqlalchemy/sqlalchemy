@@ -81,19 +81,19 @@ Setting Up Databases
 The test suite identifies several built-in database tags that run against
 a pre-set URL.  These can be seen using --dbs::
 
-    $ py.test --dbs=.
+    $ py.test --dbs
     Available --db options (use --dburi to override)
                  default    sqlite:///:memory:
                 firebird    firebird://sysdba:masterkey@localhost//Users/classic/foo.fdb
                    mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008
-                   mysql    mysql://scott:tiger@127.0.0.1:3306/test?charset=utf8
+                   mysql    mysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
                   oracle    oracle://scott:tiger@127.0.0.1:1521
                  oracle8    oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
                   pg8000    postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
               postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
     postgresql_psycopg2cffi postgresql+psycopg2cffi://scott:tiger@127.0.0.1:5432/test
-                 pymysql    mysql+pymysql://scott:tiger@127.0.0.1:3306/test?charset=utf8
+                 pymysql    mysql+pymysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
                   sqlite    sqlite:///:memory:
              sqlite_file    sqlite:///querytest.db
 
