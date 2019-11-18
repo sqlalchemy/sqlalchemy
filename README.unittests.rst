@@ -46,7 +46,8 @@ connectivity, multi process support, as well as lots of skip / database
 selection rules.
 
 Running tests with py.test directly grants more immediate control over
-database options and test selection. To run py.test directly, install it::
+database options and test selection. To run py.test directly, first
+install it::
 
     pip install pytest pytest-xdist
 
