@@ -600,7 +600,10 @@ Composite "Secondary" Joins
 
 .. note::
 
-    This section features some new and experimental features of SQLAlchemy.
+    This section features far edge cases that are somewhat supported
+    by SQLAlchemy, however it is recommended to solve problems like these
+    in simpler ways whenever possible, by using reasonable relational
+    layouts and / or :ref:`in-Python attributes <mapper_hybrids>`.
 
 Sometimes, when one seeks to build a :func:`.relationship` between two tables
 there is a need for more than just two or three tables to be involved in
@@ -625,7 +628,8 @@ join condition (requires version 0.9.2 at least to function as is)::
                                 "join(C, C.d_id == D.id)",
                     primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
                     secondaryjoin="D.id == B.d_id",
-                    uselist=False
+                    uselist=False,
+                    viewonly=True
                     )
 
     class B(Base):
@@ -667,11 +671,10 @@ tables while still keeping things "simple" for :func:`.relationship`, in that
 there's just "one" table on both the "left" and the "right" side; the
 complexity is kept within the middle.
 
-.. versionadded:: 0.9.2  Support is improved for allowing a :func:`.join()`
-   construct to be used directly as the target of the :paramref:`~.relationship.secondary`
-   argument, including support for joins, eager joins and lazy loading,
-   as well as support within declarative to specify complex conditions such
-   as joins involving class names as targets.
+.. warning:: A relationship like the above is typically marked as
+   ``viewonly=True`` and should be considered as read-only.  While there are
+   sometimes ways to make relationships like the above writable, this is
+   generally complicated and error prone.
 
 .. _relationship_aliased_class:
 
@@ -822,6 +825,7 @@ Such a mapping would ordinarily also include a "plain" relationship
 from "A" to "B", for persistence operations as well as when the full
 set of "B" objects per "A" is desired.
 
+.. _query_enabled_properties:
 
 Building Query-Enabled Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -840,7 +844,14 @@ conjunction with :class:`.Query` as follows:
         __tablename__ = 'user'
         id = Column(Integer, primary_key=True)
 
-        def _get_addresses(self):
+        @property
+        def addresses(self):
             return object_session(self).query(Address).with_parent(self).filter(...).all()
-        addresses = property(_get_addresses)
 
+In other cases, the descriptor can be built to make use of existing in-Python
+data.  See the section on :ref:`mapper_hybrids` for more general discussion
+of special Python attributes.
+
+.. seealso::
+
+    :ref:`mapper_hybrids`
