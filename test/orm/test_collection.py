@@ -1,3 +1,4 @@
+import contextlib
 from operator import and_
 
 from sqlalchemy import event
@@ -28,6 +29,15 @@ class Canary(object):
         self.data = set()
         self.added = set()
         self.removed = set()
+        self.dupe_check = True
+
+    @contextlib.contextmanager
+    def defer_dupe_check(self):
+        self.dupe_check = False
+        try:
+            yield
+        finally:
+            self.dupe_check = True
 
     def listen(self, attr):
         event.listen(attr, "append", self.append)
@@ -35,15 +45,17 @@ class Canary(object):
         event.listen(attr, "set", self.set)
 
     def append(self, obj, value, initiator):
-        assert value not in self.added
+        if self.dupe_check:
+            assert value not in self.added
+            self.added.add(value)
         self.data.add(value)
-        self.added.add(value)
         return value
 
     def remove(self, obj, value, initiator):
-        assert value not in self.removed
+        if self.dupe_check:
+            assert value not in self.removed
+            self.removed.add(value)
         self.data.remove(value)
-        self.removed.add(value)
 
     def set(self, obj, value, oldvalue, initiator):
         if isinstance(value, str):
@@ -258,6 +270,22 @@ class CollectionsTest(fixtures.ORMTest):
             direct[:] = values
             control[:] = values
             assert_eq()
+
+            # test slice assignment where we slice assign to self,
+            # currently a no-op, issue #4990
+            # note that in py2k, the bug does not exist but it recreates
+            # the collection which breaks our fixtures here
+            with canary.defer_dupe_check():
+                direct[:] = direct
+                control[:] = control
+            assert_eq()
+
+            # we dont handle assignment of self to slices, as this
+            # implies duplicate entries.  behavior here is not well defined
+            # and perhaps should emit a warning
+            # direct[0:1] = list(direct)
+            # control[0:1] = list(control)
+            # assert_eq()
 
             # test slice assignment where
             # slice size goes over the number of items
