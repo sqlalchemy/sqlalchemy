@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4993
+
+    Setting persistence-related flags on :func:`.relationship` while also
+    setting viewonly=True will now emit a regular warning, as these flags do
+    not make sense for a viewonly=True relationship.   In particular, the
+    "cascade" settings have their own warning that is generated based on the
+    individual values, such as "delete, delete-orphan", that should not apply
+    to a viewonly relationship.   Note however that in the case of "cascade",
+    these settings are still erroneously taking effect even though the
+    relationship is set up as "viewonly".   In 1.4, all persistence-related
+    cascade settings will be disallowed on a viewonly=True relationship in
+    order to resolve this issue.
