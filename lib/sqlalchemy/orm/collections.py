@@ -1201,6 +1201,8 @@ def _list_decorators():
                     stop += len(self)
 
                 if step == 1:
+                    if value is self:
+                        return
                     for i in range(start, stop, step):
                         if len(self) > start:
                             del self[start]
