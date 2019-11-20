@@ -118,7 +118,7 @@ in order to use this flag::
 
 """  # noqa
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 import decimal
 import re
 import struct
@@ -370,13 +370,15 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
 
             # output converter function for datetimeoffset
             def _handle_datetimeoffset(dto_value):
-                # ref: https://github.com/mkleehammer/pyodbc/issues/134#issuecomment-281739794
-                tup = struct.unpack("<6hI2h", dto_value)  # e.g., (2017, 3, 16, 10, 35, 18, 0, -6, 0)
-                return datetime(tup[0], tup[1], tup[2], tup[3], tup[4], tup[5], tup[6] // 1000,
-                                timezone(timedelta(hours=tup[7], minutes=tup[8])))
+                tup = struct.unpack("<6hI2h", dto_value)
+                return datetime(tup[0], tup[1], tup[2],
+                                tup[3], tup[4], tup[5], tup[6] // 1000,
+                                timezone(timedelta(hours=tup[7],
+                                                   minutes=tup[8])))
 
             odbc_SQL_SS_TIMESTAMPOFFSET = -155  # as defined in SQLNCLI.h
-            conn.add_output_converter(odbc_SQL_SS_TIMESTAMPOFFSET, _handle_datetimeoffset)
+            conn.add_output_converter(odbc_SQL_SS_TIMESTAMPOFFSET,
+                                      _handle_datetimeoffset)
 
         return on_connect
 
