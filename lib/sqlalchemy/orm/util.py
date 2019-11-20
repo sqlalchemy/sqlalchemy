@@ -56,6 +56,8 @@ class CascadeOptions(frozenset):
     )
     _allowed_cascades = all_cascades
 
+    _viewonly_cascades = ["expunge", "all", "none", "refresh-expire"]
+
     __slots__ = (
         "save_update",
         "delete",

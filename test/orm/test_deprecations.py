@@ -20,6 +20,7 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import EXT_CONTINUE
+from sqlalchemy.orm import foreign
 from sqlalchemy.orm import identity
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
@@ -41,7 +42,9 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import not_in_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -2499,6 +2502,291 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
             .with_parent(user, property="open_orders")
             .all(),
         )
+
+
+class ViewonlyFlagWarningTest(fixtures.MappedTest):
+    """test for #4993.
+
+    In 1.4, this moves to test/orm/test_cascade, deprecation warnings
+    become errors, will then be for #4994.
+
+    """
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30)),
+        )
+        Table(
+            "orders",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("user_id", Integer),
+            Column("description", String(30)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Order(cls.Comparable):
+            pass
+
+    @testing.combinations(
+        ("passive_deletes", True),
+        ("passive_updates", False),
+        ("enable_typechecks", False),
+        ("active_history", True),
+        ("cascade_backrefs", False),
+    )
+    def test_viewonly_warning(self, flag, value):
+        Order = self.classes.Order
+
+        with testing.expect_warnings(
+            r"Setting %s on relationship\(\) while also setting "
+            "viewonly=True does not make sense" % flag
+        ):
+            kw = {
+                "viewonly": True,
+                "primaryjoin": self.tables.users.c.id
+                == foreign(self.tables.orders.c.user_id),
+            }
+            kw[flag] = value
+            rel = relationship(Order, **kw)
+
+            if flag == "cascade":
+                eq_(set(rel.cascade), {"delete", "delete-orphan"})
+            else:
+                eq_(getattr(rel, flag), value)
+
+    @testing.combinations(
+        ({"delete"}, {"delete"}),
+        (
+            {"all, delete-orphan"},
+            {"delete", "delete-orphan", "merge", "save-update"},
+        ),
+        ({"save-update, expunge"}, {"save-update"}),
+    )
+    def test_write_cascades(self, setting, settings_that_warn):
+        Order = self.classes.Order
+
+        with testing.expect_warnings(
+            r"Cascade settings \"%s\" should not be combined"
+            % (", ".join(sorted(settings_that_warn)))
+        ):
+            relationship(
+                Order,
+                primaryjoin=(
+                    self.tables.users.c.id
+                    == foreign(self.tables.orders.c.user_id)
+                ),
+                cascade=", ".join(sorted(setting)),
+                viewonly=True,
+            )
+
+    def test_expunge_cascade(self):
+        User, Order, orders, users = (
+            self.classes.User,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.users,
+        )
+
+        mapper(Order, orders)
+        mapper(
+            User,
+            users,
+            properties={
+                "orders": relationship(
+                    Order,
+                    primaryjoin=(
+                        self.tables.users.c.id
+                        == foreign(self.tables.orders.c.user_id)
+                    ),
+                    cascade="expunge",
+                    viewonly=True,
+                )
+            },
+        )
+
+        sess = Session()
+        u = User(id=1, name="jack")
+        sess.add(u)
+        sess.add_all(
+            [
+                Order(id=1, user_id=1, description="someorder"),
+                Order(id=2, user_id=1, description="someotherorder"),
+            ]
+        )
+        sess.commit()
+
+        u1 = sess.query(User).first()
+        orders = u1.orders
+        eq_(len(orders), 2)
+
+        in_(orders[0], sess)
+        in_(orders[1], sess)
+
+        sess.expunge(u1)
+
+        not_in_(orders[0], sess)
+        not_in_(orders[1], sess)
+
+    def test_default_save_update_cascade(self):
+        User, Order, orders, users = (
+            self.classes.User,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.users,
+        )
+
+        mapper(Order, orders)
+        mapper(
+            User,
+            users,
+            properties={
+                "orders": relationship(
+                    Order,
+                    primaryjoin=(
+                        self.tables.users.c.id
+                        == foreign(self.tables.orders.c.user_id)
+                    ),
+                    viewonly=True,
+                )
+            },
+        )
+
+        sess = Session()
+        u1 = User(id=1, name="jack")
+        sess.add(u1)
+
+        o1, o2 = (
+            Order(id=1, user_id=1, description="someorder"),
+            Order(id=2, user_id=1, description="someotherorder"),
+        )
+
+        u1.orders.append(o1)
+        u1.orders.append(o2)
+
+        # in 1.4, this becomes "not_in_"
+        in_(o1, sess)
+        in_(o2, sess)
+
+    def test_default_merge_cascade(self):
+        User, Order, orders, users = (
+            self.classes.User,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.users,
+        )
+
+        mapper(Order, orders)
+        mapper(
+            User,
+            users,
+            properties={
+                "orders": relationship(
+                    Order,
+                    primaryjoin=(
+                        self.tables.users.c.id
+                        == foreign(self.tables.orders.c.user_id)
+                    ),
+                    viewonly=True,
+                )
+            },
+        )
+
+        sess = Session()
+        u1 = User(id=1, name="jack")
+
+        o1, o2 = (
+            Order(id=1, user_id=1, description="someorder"),
+            Order(id=2, user_id=1, description="someotherorder"),
+        )
+
+        u1.orders.append(o1)
+        u1.orders.append(o2)
+
+        u1 = sess.merge(u1)
+
+        # in 1.4, this becomes "assert not u1.orders", merge does not occur
+        o1, o2 = u1.orders
+
+    def test_default_cascade_didnt_change_yet(self):
+        User, Order, orders, users = (
+            self.classes.User,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.users,
+        )
+
+        mapper(Order, orders)
+        umapper = mapper(
+            User,
+            users,
+            properties={
+                "orders": relationship(
+                    Order,
+                    primaryjoin=(
+                        self.tables.users.c.id
+                        == foreign(self.tables.orders.c.user_id)
+                    ),
+                    viewonly=True,
+                )
+            },
+        )
+
+        # in 1.4 this becomes {}
+        eq_(umapper.attrs["orders"].cascade, {"save-update", "merge"})
+
+    def test_write_cascade_still_works_w_viewonly(self):
+        """should be no longer possible in 1.4"""
+
+        User, Order, orders, users = (
+            self.classes.User,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.users,
+        )
+
+        mapper(Order, orders)
+        with testing.expect_warnings(r"Cascade settings"):
+            mapper(
+                User,
+                users,
+                properties={
+                    "orders": relationship(
+                        Order,
+                        primaryjoin=(
+                            self.tables.users.c.id
+                            == foreign(self.tables.orders.c.user_id)
+                        ),
+                        cascade="all, delete, delete-orphan",
+                        viewonly=True,
+                    )
+                },
+            )
+
+        sess = Session()
+        u = User(id=1, name="jack")
+        sess.add(u)
+        sess.add_all(
+            [
+                Order(id=1, user_id=1, description="someorder"),
+                Order(id=2, user_id=1, description="someotherorder"),
+            ]
+        )
+        sess.commit()
+        eq_(sess.query(Order).count(), 2)
+
+        sess.delete(u)
+        sess.commit()
+
+        eq_(sess.query(Order).count(), 0)
 
 
 class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):

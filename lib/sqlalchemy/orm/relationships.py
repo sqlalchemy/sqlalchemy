@@ -103,6 +103,14 @@ class RelationshipProperty(StrategizedProperty):
 
     strategy_wildcard_key = "relationship"
 
+    _persistence_only = dict(
+        passive_deletes=False,
+        passive_updates=True,
+        enable_typechecks=True,
+        active_history=False,
+        cascade_backrefs=True,
+    )
+
     _dependency_processor = None
 
     @util.deprecated_params(
@@ -131,18 +139,18 @@ class RelationshipProperty(StrategizedProperty):
         viewonly=False,
         lazy="select",
         collection_class=None,
-        passive_deletes=False,
-        passive_updates=True,
+        passive_deletes=_persistence_only["passive_deletes"],
+        passive_updates=_persistence_only["passive_updates"],
         remote_side=None,
-        enable_typechecks=True,
+        enable_typechecks=_persistence_only["enable_typechecks"],
         join_depth=None,
         comparator_factory=None,
         single_parent=False,
         innerjoin=False,
         distinct_target_key=None,
         doc=None,
-        active_history=False,
-        cascade_backrefs=True,
+        active_history=_persistence_only["active_history"],
+        cascade_backrefs=_persistence_only["cascade_backrefs"],
         load_on_pending=False,
         bake_queries=True,
         _local_remote_pairs=None,
@@ -855,6 +863,14 @@ class RelationshipProperty(StrategizedProperty):
         self.post_update = post_update
         self.direction = None
         self.viewonly = viewonly
+        if viewonly:
+            self._warn_for_persistence_only_flags(
+                passive_deletes=passive_deletes,
+                passive_updates=passive_updates,
+                enable_typechecks=enable_typechecks,
+                active_history=active_history,
+                cascade_backrefs=cascade_backrefs,
+            )
         self.lazy = lazy
         self.single_parent = single_parent
         self._user_defined_foreign_keys = foreign_keys
@@ -897,9 +913,10 @@ class RelationshipProperty(StrategizedProperty):
 
         self._reverse_property = set()
 
-        self.cascade = (
-            cascade if cascade is not False else "save-update, merge"
-        )
+        if cascade is not False:
+            self.cascade = cascade
+        else:
+            self._set_cascade("save-update, merge", warn=False)
 
         self.order_by = order_by
 
@@ -914,6 +931,24 @@ class RelationshipProperty(StrategizedProperty):
             self.backref = None
         else:
             self.backref = backref
+
+    def _warn_for_persistence_only_flags(self, **kw):
+        for k, v in kw.items():
+            if v != self._persistence_only[k]:
+                # we are warning here rather than warn deprecated as this is a
+                # configuration mistake, and Python shows regular warnings more
+                # aggressively than deprecation warnings by default. Unlike the
+                # case of setting viewonly with cascade, the settings being
+                # warned about here are not actively doing the wrong thing
+                # against viewonly=True, so it is not as urgent to have these
+                # raise an error.
+                util.warn(
+                    "Setting %s on relationship() while also "
+                    "setting viewonly=True does not make sense, as a "
+                    "viewonly=True relationship does not perform persistence "
+                    "operations. This configuration may raise an error "
+                    "in a future release." % (k,)
+                )
 
     def instrument_class(self, mapper):
         attributes.register_descriptor(
@@ -1988,22 +2023,47 @@ class RelationshipProperty(StrategizedProperty):
                 )
             )
 
-    def _get_cascade(self):
+    @property
+    def cascade(self):
         """Return the current cascade setting for this
         :class:`.RelationshipProperty`.
         """
         return self._cascade
 
-    def _set_cascade(self, cascade):
+    @cascade.setter
+    def cascade(self, cascade):
+        self._set_cascade(cascade)
+
+    def _set_cascade(self, cascade, warn=True):
         cascade = CascadeOptions(cascade)
+
+        if warn and self.viewonly:
+            non_viewonly = set(cascade).difference(
+                CascadeOptions._viewonly_cascades
+            )
+            if non_viewonly:
+                # we are warning here rather than warn deprecated as this
+                # setting actively does the wrong thing and Python shows
+                # regular warnings more aggressively than deprecation warnings
+                # by default. There's no other guard against setting active
+                # persistence cascades under viewonly=True so this will raise
+                # in 1.4.
+                util.warn(
+                    'Cascade settings "%s" should not be combined with a '
+                    "viewonly=True relationship.   This configuration will "
+                    "raise an error in version 1.4.  Note that in versions "
+                    "prior to 1.4, "
+                    "these cascade settings may still produce a mutating "
+                    "effect even though this relationship is marked as "
+                    "viewonly=True." % (", ".join(sorted(non_viewonly)))
+                )
+
         if "mapper" in self.__dict__:
             self._check_cascade_settings(cascade)
         self._cascade = cascade
 
         if self._dependency_processor:
             self._dependency_processor.cascade = cascade
-
-    cascade = property(_get_cascade, _set_cascade)
 
     def _check_cascade_settings(self, cascade):
         if (
