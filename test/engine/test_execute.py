@@ -1761,16 +1761,23 @@ class EngineEventsTest(fixtures.TestBase):
             implicit_returning=False,
         )
         self.metadata.create_all(engine)
+
         with engine.begin() as conn:
             event.listen(
                 conn, "before_cursor_execute", tracker("cursor_execute")
             )
             conn.execute(t.insert())
-        # we see the sequence pre-executed in the first call
-        assert "t_id_seq" in canary[0][0]
-        assert "INSERT" in canary[1][0]
-        # same context
-        is_(canary[0][1], canary[1][1])
+
+        if testing.requires.supports_lastrowid.enabled:
+            # new MariaDB 10.3 supports sequences + lastrowid; only
+            # one statement
+            assert "INSERT" in canary[0][0]
+        else:
+            # we see the sequence pre-executed in the first call
+            assert "t_id_seq" in canary[0][0]
+            assert "INSERT" in canary[1][0]
+            # same context
+            is_(canary[0][1], canary[1][1])
 
     def test_transactional(self):
         canary = []

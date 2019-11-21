@@ -2281,6 +2281,8 @@ class Sequence(roles.StatementRole, DefaultGenerator):
 
     .. seealso::
 
+        :ref:`defaults_sequences`
+
         :class:`.CreateSequence`
 
         :class:`.DropSequence`

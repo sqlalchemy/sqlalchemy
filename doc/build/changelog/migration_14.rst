@@ -887,3 +887,48 @@ import the "pysqlite2" driver on Python 3 as this driver does not exist
 on Python 3; a very old warning for old pysqlite2 versions is also dropped.
 
 :ticket:`4895`
+
+
+.. _change_4976:
+
+Added Sequence support for MariaDB 10.3
+----------------------------------------
+
+The MariaDB database as of 10.3 supports sequences.   SQLAlchemy's MySQL
+dialect now implements support for the :class:`.Sequence` object against this
+database, meaning "CREATE SEQUENCE" DDL will be emitted for a
+:class:`.Sequence` that is present in a :class:`.Table` or :class:`.MetaData`
+collection in the same way as it works for backends such as PostgreSQL, Oracle,
+when the dialect's server version check has confirmed the database is MariaDB
+10.3 or greater.    Additionally, the :class:`.Sequence` will act as a
+column default and primary key generation object when used in these ways.
+
+Since this change will impact the assumptions both for DDL as well as the
+behavior of INSERT statements for an application that is currently deployed
+against MariaDB 10.3 which also happens to make explicit use the
+:class:`.Sequence` construct within its table definitions, it is important to
+note that :class:`.Sequence` supports a flag :paramref:`.Sequence.optional`
+which is used to limit the scenarios in which the :class:`.Sequence` to take
+effect. When "optional" is used on a :class:`.Sequence` that is present in the
+integer primary key column of a table::
+
+    Table(
+        "some_table", metadata,
+        Column("id", Integer, Sequence("some_seq", optional=True), primary_key=True)
+    )
+
+The above :class:`.Sequence` is only used for DDL and INSERT statements if the
+target database does not support any other means of generating integer primary
+key values for the column.  That is, the Oracle database above would use the
+sequence, however the PostgreSQL and MariaDB 10.3 databases would not. This may
+be important for an existing application that is upgrading to SQLAlchemy 1.4
+which may not have emitted DDL for this :class:`.Sequence` against its backing
+database, as an INSERT statement will fail if it seeks to use a sequence that
+was not created.
+
+
+.. seealso::
+
+    :ref:`defaults_sequences`
+
+:ticket:`4976`

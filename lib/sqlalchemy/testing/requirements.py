@@ -431,6 +431,13 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def no_sequences(self):
+        """the oppopsite of "sequences", DB does not support sequences at
+        all."""
+
+        return exclusions.NotPredicate(self.sequences)
+
+    @property
     def sequences_optional(self):
         """Target database supports sequences, but also optionally
         as a means of generating new PK values."""
@@ -442,6 +449,24 @@ class SuiteRequirements(Requirements):
             ],
             "no sequence support, or sequences not optional",
         )
+
+    @property
+    def supports_lastrowid(self):
+        """target database / driver supports cursor.lastrowid as a means
+        of retrieving the last inserted primary key value.
+
+        note that if the target DB supports sequences also, this is still
+        assumed to work.  This is a new use case brought on by MariaDB 10.3.
+
+        """
+        return exclusions.only_if(
+            [lambda config: config.db.dialect.postfetch_lastrowid]
+        )
+
+    @property
+    def no_lastrowid_support(self):
+        """the opposite of supports_lastrowid"""
+        return exclusions.NotPredicate(self.supports_lastrowid)
 
     @property
     def reflects_pk_names(self):

@@ -534,13 +534,21 @@ def _append_param_insert_pk(compiler, stmt, c, values, kw):
     no value passed in either; raise an exception.
 
     """
+
     if (
         # column has a Python-side default
         c.default is not None
         and (
-            # and it won't be a Sequence
+            # and it either is not a sequence, or it is and we support
+            # sequences and want to invoke it
             not c.default.is_sequence
-            or compiler.dialect.supports_sequences
+            or (
+                compiler.dialect.supports_sequences
+                and (
+                    not c.default.optional
+                    or not compiler.dialect.sequences_optional
+                )
+            )
         )
     ) or (
         # column is the "autoincrement column"
