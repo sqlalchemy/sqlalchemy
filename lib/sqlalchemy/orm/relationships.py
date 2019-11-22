@@ -901,8 +901,10 @@ class RelationshipProperty(StrategizedProperty):
 
         if cascade is not False:
             self.cascade = cascade
+        elif self.viewonly:
+            self.cascade = "none"
         else:
-            self._set_cascade("save-update, merge", warn=False)
+            self.cascade = "save-update, merge"
 
         self.order_by = order_by
 
@@ -2029,28 +2031,18 @@ class RelationshipProperty(StrategizedProperty):
     def cascade(self, cascade):
         self._set_cascade(cascade)
 
-    def _set_cascade(self, cascade, warn=True):
+    def _set_cascade(self, cascade):
         cascade = CascadeOptions(cascade)
 
-        if warn and self.viewonly:
+        if self.viewonly:
             non_viewonly = set(cascade).difference(
                 CascadeOptions._viewonly_cascades
             )
             if non_viewonly:
-                # we are warning here rather than warn deprecated as this
-                # setting actively does the wrong thing and Python shows
-                # regular warnings more aggressively than deprecation warnings
-                # by default. There's no other guard against setting active
-                # persistence cascades under viewonly=True so this will raise
-                # in 1.4.
-                util.warn(
-                    'Cascade settings "%s" should not be combined with a '
-                    "viewonly=True relationship.   This configuration will "
-                    "raise an error in version 1.4.  Note that in versions "
-                    "prior to 1.4, "
-                    "these cascade settings may still produce a mutating "
-                    "effect even though this relationship is marked as "
-                    "viewonly=True." % (", ".join(sorted(non_viewonly)))
+                raise sa_exc.ArgumentError(
+                    'Cascade settings "%s" apply to persistence operations '
+                    "and should not be combined with a viewonly=True "
+                    "relationship." % (", ".join(sorted(non_viewonly)))
                 )
 
         if "mapper" in self.__dict__:

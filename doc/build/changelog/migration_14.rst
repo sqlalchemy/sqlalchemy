@@ -523,6 +523,49 @@ configured to raise an exception using the Python warnings filter.
 
 :ticket:`4662`
 
+.. _change_4994:
+
+Persistence-related cascade operations disallowed with viewonly=True
+---------------------------------------------------------------------
+
+When a :func:`.relationship` is set as ``viewonly=True`` using the
+:paramref:`.relationship.viewonly` flag, it indicates this relationship should
+only be used to load data from the database, and should not be mutated
+or involved in a persistence operation.   In order to ensure this contract
+works successfully, the relationship can no longer specify
+:paramref:`.relationship.cascade` settings that make no sense in terms of
+"viewonly".
+
+The primary targets here are the "delete, delete-orphan"  cascades, which
+through 1.3 continued to impact persistence even if viewonly were True, which
+is a bug; even if viewonly were True, an object would still cascade these
+two operations onto the related object if the parent were deleted or the
+object were detached.   Rather than modify the cascade operations to check
+for viewonly, the configuration of both of these together is simply
+disallowed::
+
+    class User(Base):
+        # ...
+
+        # this is now an error
+        addresses = relationship(
+            "Address", viewonly=True, cascade="all, delete-orphan")
+
+The above will raise::
+
+    sqlalchemy.exc.ArgumentError: Cascade settings
+    "delete, delete-orphan, merge, save-update" apply to persistence
+    operations and should not be combined with a viewonly=True relationship.
+
+Applications that have this issue should be emitting a warning as of
+SQLAlchemy 1.3.12, and for the above error the solution is to remove
+the cascade settings for a viewonly relationship.
+
+
+:ticket:`4993`
+:ticket:`4994`
+
+
 
 Behavior Changes - Core
 ========================
