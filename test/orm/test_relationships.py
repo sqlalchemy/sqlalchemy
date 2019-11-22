@@ -5355,6 +5355,17 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
 
         s.commit()
 
+        eq_(s.query(Address).count(), 1)
+        eq_(s.query(User).count(), 1)
+
+        # test for issue #4997
+        # delete of Address should proceed, as User object does not
+        # need to be loaded
+        s.delete(a1)
+        s.commit()
+        eq_(s.query(Address).count(), 0)
+        eq_(s.query(User).count(), 1)
+
 
 class RelationDeprecationTest(fixtures.MappedTest):
 

@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4997
+
+    Fixed issue involving ``lazy="raise"`` strategy where an ORM delete of an
+    object would raise for a simple "use-get" style many-to-one relationship
+    that had lazy="raise" configured.  This is inconsistent vs. the change
+    introduced in 1.3 as part of :ticket:`4353`, where it was established that
+    a history operation that does not expect emit SQL should bypass the
+    ``lazy="raise"`` check, and instead effectively treat it as
+    ``lazy="raise_on_sql"`` for this case.  The fix adjusts the lazy loader
+    strategy to not raise for the case where the lazy load was instructed that
+    it should not emit SQL if the object were not present.
