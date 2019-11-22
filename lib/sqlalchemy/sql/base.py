@@ -822,14 +822,14 @@ class ColumnCollection(object):
 
 
 class DedupeColumnCollection(ColumnCollection):
-    """A :class:`.ColumnCollection that maintains deduplicating behavior.
+    """A :class:`.ColumnCollection` that maintains deduplicating behavior.
 
     This is useful by schema level objects such as :class:`.Table` and
     :class:`.PrimaryKeyConstraint`.    The collection includes more
     sophisticated mutator methods as well to suit schema objects which
     require mutable column collections.
 
-    .. versionadded: 1.4
+    .. versionadded:: 1.4
 
     """
 
