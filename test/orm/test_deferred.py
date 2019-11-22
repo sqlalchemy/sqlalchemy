@@ -923,7 +923,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         eq_(item.description, "item 4")
 
     def test_path_entity(self):
-        """test the legacy *addl_attrs argument."""
+        r"""test the legacy \*addl_attrs argument."""
 
         User = self.classes.User
         Order = self.classes.Order

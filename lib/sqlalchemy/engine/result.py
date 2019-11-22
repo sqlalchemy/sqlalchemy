@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Define result set constructs including :class:`.ResultProxy`
-and :class:`.RowProxy."""
+and :class:`.RowProxy`."""
 
 
 import collections
