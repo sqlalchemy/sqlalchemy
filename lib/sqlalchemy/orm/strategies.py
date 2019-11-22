@@ -532,9 +532,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         self.is_aliased_class = inspect(self.entity).is_aliased_class
 
         join_condition = self.parent_property._join_condition
-        self._lazywhere, self._bind_to_col, self._equated_columns = (
-            join_condition.create_lazy_clause()
-        )
+        (
+            self._lazywhere,
+            self._bind_to_col,
+            self._equated_columns,
+        ) = join_condition.create_lazy_clause()
 
         (
             self._rev_lazywhere,
@@ -679,7 +681,22 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         ):
             return attributes.PASSIVE_NO_RESULT
 
-        if self._raise_always and not passive & attributes.NO_RAISE:
+        if (
+            # we were given lazy="raise"
+            self._raise_always
+            # the no_raise history-related flag was not passed
+            and not passive & attributes.NO_RAISE
+            and (
+                # if we are use_get and related_object_ok is disabled,
+                # which means we are at most looking in the identity map
+                # for history purposes or otherwise returning
+                # PASSIVE_NO_RESULT, don't raise.  This is also a
+                # history-related flag
+                not self.use_get
+                or passive & attributes.RELATED_OBJECT_OK
+            )
+        ):
+
             self._invoke_raise_load(state, passive, "raise")
 
         session = _state_session(state)
