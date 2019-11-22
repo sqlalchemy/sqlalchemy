@@ -5083,7 +5083,177 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
 class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    def _run_test(self, detached, raiseload, backref, active_history, delete):
+    @testing.flag_combinations(
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=False,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=False,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=False,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=False,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=True,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=True,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=True,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=True,
+            delete=False,
+            active_history=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=False,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=False,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=False,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=False,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=True,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=True,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=True,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=True,
+            delete=False,
+            active_history=True,
+        ),
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=False,
+            delete=True,
+            active_history=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=False,
+            delete=True,
+            active_history=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=False,
+            delete=True,
+            active_history=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=False,
+            delete=True,
+            active_history=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=False,
+            delete=True,
+            active_history=True,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=False,
+            delete=True,
+            active_history=True,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=False,
+            delete=True,
+            active_history=True,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=False,
+            delete=True,
+            active_history=True,
+        ),
+    )
+    def test_m2o(self, detached, raiseload, backref, active_history, delete):
 
         if delete:
             assert not backref, "delete and backref are mutually exclusive"
@@ -5185,222 +5355,6 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             s.add(a1)
 
         s.commit()
-
-    def test_replace_m2o(self):
-        self._run_test(
-            detached=False,
-            raiseload=False,
-            backref=False,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_detached(self):
-        self._run_test(
-            detached=True,
-            raiseload=False,
-            backref=False,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_raiseload(self):
-        self._run_test(
-            detached=False,
-            raiseload=True,
-            backref=False,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_detached_raiseload(self):
-        self._run_test(
-            detached=True,
-            raiseload=True,
-            backref=False,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_backref(self):
-        self._run_test(
-            detached=False,
-            raiseload=False,
-            backref=True,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_detached_backref(self):
-        self._run_test(
-            detached=True,
-            raiseload=False,
-            backref=True,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_raiseload_backref(self):
-        self._run_test(
-            detached=False,
-            raiseload=True,
-            backref=True,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_detached_raiseload_backref(self):
-        self._run_test(
-            detached=True,
-            raiseload=True,
-            backref=True,
-            delete=False,
-            active_history=False,
-        )
-
-    def test_replace_m2o_activehistory(self):
-        self._run_test(
-            detached=False,
-            raiseload=False,
-            backref=False,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_detached_activehistory(self):
-        self._run_test(
-            detached=True,
-            raiseload=False,
-            backref=False,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_raiseload_activehistory(self):
-        self._run_test(
-            detached=False,
-            raiseload=True,
-            backref=False,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_detached_raiseload_activehistory(self):
-        self._run_test(
-            detached=True,
-            raiseload=True,
-            backref=False,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_backref_activehistory(self):
-        self._run_test(
-            detached=False,
-            raiseload=False,
-            backref=True,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_detached_backref_activehistory(self):
-        self._run_test(
-            detached=True,
-            raiseload=False,
-            backref=True,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_raiseload_backref_activehistory(self):
-        self._run_test(
-            detached=False,
-            raiseload=True,
-            backref=True,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_replace_m2o_detached_raiseload_backref_activehistory(self):
-        self._run_test(
-            detached=True,
-            raiseload=True,
-            backref=True,
-            delete=False,
-            active_history=True,
-        )
-
-    def test_delete_m2o(self):
-        self._run_test(
-            detached=False,
-            raiseload=False,
-            backref=False,
-            delete=True,
-            active_history=False,
-        )
-
-    def test_delete_m2o_detached(self):
-        self._run_test(
-            detached=True,
-            raiseload=False,
-            backref=False,
-            delete=True,
-            active_history=False,
-        )
-
-    def test_delete_m2o_raiseload(self):
-        self._run_test(
-            detached=False,
-            raiseload=True,
-            backref=False,
-            delete=True,
-            active_history=False,
-        )
-
-    def test_delete_m2o_detached_raiseload(self):
-        self._run_test(
-            detached=True,
-            raiseload=True,
-            backref=False,
-            delete=True,
-            active_history=False,
-        )
-
-    def test_delete_m2o_activehistory(self):
-        self._run_test(
-            detached=False,
-            raiseload=False,
-            backref=False,
-            delete=True,
-            active_history=True,
-        )
-
-    def test_delete_m2o_detached_activehistory(self):
-        self._run_test(
-            detached=True,
-            raiseload=False,
-            backref=False,
-            delete=True,
-            active_history=True,
-        )
-
-    def test_delete_m2o_raiseload_activehistory(self):
-        self._run_test(
-            detached=False,
-            raiseload=True,
-            backref=False,
-            delete=True,
-            active_history=True,
-        )
-
-    def test_delete_m2o_detached_raiseload_activehistory(self):
-        self._run_test(
-            detached=True,
-            raiseload=True,
-            backref=False,
-            delete=True,
-            active_history=True,
-        )
 
 
 class RelationDeprecationTest(fixtures.MappedTest):
