@@ -31,6 +31,8 @@ class DescriptorProperty(MapperProperty):
 
     doc = None
 
+    uses_objects = False
+
     def instrument_class(self, mapper):
         prop = self
 
@@ -41,7 +43,7 @@ class DescriptorProperty(MapperProperty):
 
             @property
             def uses_objects(self):
-                return getattr(mapper.class_, prop.name).impl.uses_objects
+                return prop.uses_objects
 
             def __init__(self, key):
                 self.key = key
@@ -644,6 +646,10 @@ class SynonymProperty(DescriptorProperty):
             self.info = info
 
         util.set_creation_order(self)
+
+    @property
+    def uses_objects(self):
+        return getattr(self.parent.class_, self.name).impl.uses_objects
 
     # TODO: when initialized, check _proxied_property,
     # emit a warning if its not a column-based property

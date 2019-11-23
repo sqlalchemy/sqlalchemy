@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5000
+
+    Fixed regression introduced in 1.3.0 related to the association proxy
+    refactor in :ticket:`4351` that prevented :func:`.composite` attributes
+    from working in terms of an association proxy that references them.

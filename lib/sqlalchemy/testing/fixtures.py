@@ -388,7 +388,10 @@ class DeclarativeMappedTest(MappedTest):
             cls=DeclarativeBasic,
         )
         cls.DeclarativeBasic = _DeclBase
-        fn()
+
+        # sets up cls.Basic which is helpful for things like composite
+        # classes
+        super(DeclarativeMappedTest, cls)._with_register_classes(fn)
 
         if cls.metadata.tables and cls.run_create_tables:
             cls.metadata.create_all(config.db)
