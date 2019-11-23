@@ -18,6 +18,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
+from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
@@ -2330,6 +2331,74 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
         )
 
 
+class CompositeAccessTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        class Point(cls.Basic):
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+            def __composite_values__(self):
+                return [self.x, self.y]
+
+            __hash__ = None
+
+            def __eq__(self, other):
+                return (
+                    isinstance(other, Point)
+                    and other.x == self.x
+                    and other.y == self.y
+                )
+
+            def __ne__(self, other):
+                return not isinstance(other, Point) or not self.__eq__(other)
+
+        class Graph(cls.DeclarativeBasic):
+            __tablename__ = "graph"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(30))
+
+            point_data = relationship("PointData")
+
+            points = association_proxy(
+                "point_data",
+                "point",
+                creator=lambda point: PointData(point=point),
+            )
+
+        class PointData(fixtures.ComparableEntity, cls.DeclarativeBasic):
+            __tablename__ = "point"
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            graph_id = Column(ForeignKey("graph.id"))
+
+            x1 = Column(Integer)
+            y1 = Column(Integer)
+
+            point = composite(Point, x1, y1)
+
+        return Point, Graph, PointData
+
+    def test_append(self):
+        Point, Graph, PointData = self.classes("Point", "Graph", "PointData")
+
+        g1 = Graph()
+        g1.points.append(Point(3, 5))
+        eq_(g1.point_data, [PointData(point=Point(3, 5))])
+
+    def test_access(self):
+        Point, Graph, PointData = self.classes("Point", "Graph", "PointData")
+        g1 = Graph()
+        g1.point_data.append(PointData(point=Point(3, 5)))
+        g1.point_data.append(PointData(point=Point(10, 7)))
+        eq_(g1.points, [Point(3, 5), Point(10, 7)])
+
+
 class AttributeAccessTest(fixtures.TestBase):
     def teardown(self):
         clear_mappers()
@@ -3080,7 +3149,7 @@ class MultiOwnerTest(
         is_(association_proxy_object.for_class(D, d2), inst2)
 
     def test_col_expressions_not_available(self):
-        D, = self.classes("D")
+        (D,) = self.classes("D")
 
         self._assert_raises_ambiguous(lambda: D.c_data == 5)
 
@@ -3269,7 +3338,7 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         )
 
     def test_explicit_expr(self):
-        C, = self.classes("C")
+        (C,) = self.classes("C")
 
         s = Session()
         self.assert_compile(
