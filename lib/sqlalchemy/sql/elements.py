@@ -3246,7 +3246,7 @@ class BinaryExpression(ColumnElement):
         # refer to BinaryExpression directly and pass strings
         if isinstance(operator, util.string_types):
             operator = operators.custom_op(operator)
-        self._orig = (left, right)
+        self._orig = (hash(left), hash(right))
         self.left = left.self_group(against=operator)
         self.right = right.self_group(against=operator)
         self.operator = operator
@@ -3261,7 +3261,7 @@ class BinaryExpression(ColumnElement):
 
     def __bool__(self):
         if self.operator in (operator.eq, operator.ne):
-            return self.operator(hash(self._orig[0]), hash(self._orig[1]))
+            return self.operator(self._orig[0], self._orig[1])
         else:
             raise TypeError("Boolean value of this clause is not defined")
 
@@ -3946,7 +3946,12 @@ class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
         return key, e
 
 
-class ColumnClause(roles.LabeledColumnExprRole, Immutable, ColumnElement):
+class ColumnClause(
+    roles.DDLReferredColumnRole,
+    roles.LabeledColumnExprRole,
+    Immutable,
+    ColumnElement,
+):
     """Represents a column expression from any textual string.
 
     The :class:`.ColumnClause`, a lightweight analogue to the

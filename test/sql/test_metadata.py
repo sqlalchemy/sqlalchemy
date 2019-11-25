@@ -35,6 +35,7 @@ from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import naming
+from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import _NONE_NAME
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -340,7 +341,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         not_a_col = bindparam("x")
         assert_raises_message(
             exc.ArgumentError,
-            "String, Column, or Column-bound argument expected, got Bind",
+            "String column name or Column object for DDL foreign "
+            "key constraint expected, got .*Bind",
             ForeignKey,
             not_a_col,
         )
@@ -352,7 +354,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
         assert_raises_message(
             exc.ArgumentError,
-            "String, Column, or Column-bound argument expected, got Bind",
+            "String column name or Column object for DDL foreign "
+            "key constraint expected, got .*Foo",
             ForeignKey,
             Foo(),
         )
@@ -2656,7 +2659,7 @@ class ConstraintTest(fixtures.TestBase):
 
         idx = Index("bar", MyThing(), t.c.y)
 
-        is_(idx.expressions[0], expr1)
+        is_true(idx.expressions[0].compare(expr1))
         is_(idx.expressions[1], t.c.y)
 
     def test_table_references(self):
@@ -3415,12 +3418,86 @@ class ConstraintTest(fixtures.TestBase):
 
         assert_raises_message(
             exc.ArgumentError,
-            r"String column name or column object for DDL constraint "
+            r"String column name or column expression for DDL constraint "
             r"expected, got .*SomeClass",
             Index,
             "foo",
             SomeClass(),
         )
+
+    @testing.fixture
+    def no_pickle_annotated(self):
+        class NoPickle(object):
+            def __reduce__(self):
+                raise NotImplementedError()
+
+        class ClauseElement(operators.ColumnOperators):
+            def __init__(self, col):
+                self.col = col._annotate({"bar": NoPickle()})
+
+            def __clause_element__(self):
+                return self.col
+
+            def operate(self, op, *other, **kwargs):
+                return self.col.operate(op, *other, **kwargs)
+
+        m = MetaData()
+        t = Table("t", m, Column("q", Integer))
+        return t, ClauseElement(t.c.q)
+
+    def test_pickle_fk_annotated_col(self, no_pickle_annotated):
+
+        t, q_col = no_pickle_annotated
+
+        t2 = Table("t2", t.metadata, Column("p", ForeignKey(q_col)))
+        assert t2.c.p.references(t.c.q)
+
+        m2 = pickle.loads(pickle.dumps(t.metadata))
+
+        m2_t, m2_t2 = m2.tables["t"], m2.tables["t2"]
+
+        is_true(m2_t2.c.p.references(m2_t.c.q))
+
+    def test_pickle_uq_annotated_col(self, no_pickle_annotated):
+        t, q_col = no_pickle_annotated
+
+        t.append_constraint(UniqueConstraint(q_col))
+
+        m2 = pickle.loads(pickle.dumps(t.metadata))
+
+        const = [
+            c
+            for c in m2.tables["t"].constraints
+            if isinstance(c, UniqueConstraint)
+        ][0]
+
+        is_true(const.columns[0].compare(t.c.q))
+
+    def test_pickle_idx_expr_annotated_col(self, no_pickle_annotated):
+        t, q_col = no_pickle_annotated
+
+        expr = q_col > 5
+        t.append_constraint(Index("conditional_index", expr))
+
+        m2 = pickle.loads(pickle.dumps(t.metadata))
+
+        const = list(m2.tables["t"].indexes)[0]
+
+        is_true(const.expressions[0].compare(expr))
+
+    def test_pickle_ck_binary_annotated_col(self, no_pickle_annotated):
+        t, q_col = no_pickle_annotated
+
+        ck = CheckConstraint(q_col > 5)
+        t.append_constraint(ck)
+
+        m2 = pickle.loads(pickle.dumps(t.metadata))
+        const = [
+            c
+            for c in m2.tables["t"].constraints
+            if isinstance(c, CheckConstraint)
+        ][0]
+        is_true(const.sqltext.compare(ck.sqltext))
 
 
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):

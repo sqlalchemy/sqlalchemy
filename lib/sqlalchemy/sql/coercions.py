@@ -147,6 +147,13 @@ class RoleImpl(object):
         raise exc.ArgumentError(msg, code=code)
 
 
+class _Deannotate(object):
+    def _post_coercion(self, resolved, **kw):
+        from .util import _deep_deannotate
+
+        return _deep_deannotate(resolved)
+
+
 class _StringOnly(object):
     def _resolve_for_clause_element(self, element, argname=None, **kw):
         return self._literal_coercion(element, **kw)
@@ -461,7 +468,9 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl, roles.TruncatedLabelRole):
             return elements._truncated_label(element)
 
 
-class DDLExpressionImpl(_CoerceLiterals, RoleImpl, roles.DDLExpressionRole):
+class DDLExpressionImpl(
+    _Deannotate, _CoerceLiterals, RoleImpl, roles.DDLExpressionRole
+):
 
     _coerce_consts = True
 
@@ -470,8 +479,12 @@ class DDLExpressionImpl(_CoerceLiterals, RoleImpl, roles.DDLExpressionRole):
 
 
 class DDLConstraintColumnImpl(
-    _ReturnsStringKey, RoleImpl, roles.DDLConstraintColumnRole
+    _Deannotate, _ReturnsStringKey, RoleImpl, roles.DDLConstraintColumnRole
 ):
+    pass
+
+
+class DDLReferredColumnImpl(DDLConstraintColumnImpl):
     pass
 
 

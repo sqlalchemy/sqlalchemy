@@ -1721,21 +1721,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
-        self._colspec = column
+        self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
+
         if isinstance(self._colspec, util.string_types):
             self._table_column = None
         else:
-            if hasattr(self._colspec, "__clause_element__"):
-                self._table_column = self._colspec.__clause_element__()
-            else:
-                self._table_column = self._colspec
+            self._table_column = self._colspec
 
-            if not isinstance(self._table_column, ColumnClause):
-                raise exc.ArgumentError(
-                    "String, Column, or Column-bound argument "
-                    "expected, got %r" % self._table_column
-                )
-            elif not isinstance(
+            if not isinstance(
                 self._table_column.table, (util.NoneType, TableClause)
             ):
                 raise exc.ArgumentError(
@@ -2690,25 +2683,6 @@ class Constraint(DialectKWArgs, SchemaItem):
         raise NotImplementedError()
 
 
-def _to_schema_column(element):
-    if hasattr(element, "__clause_element__"):
-        element = element.__clause_element__()
-    if not isinstance(element, Column):
-        raise exc.ArgumentError("schema.Column object expected")
-    return element
-
-
-def _to_schema_column_or_string(element):
-    if element is None:
-        return element
-    elif hasattr(element, "__clause_element__"):
-        element = element.__clause_element__()
-    if not isinstance(element, util.string_types + (ColumnElement,)):
-        msg = "Element %r is not a string name or column element"
-        raise exc.ArgumentError(msg % element)
-    return element
-
-
 class ColumnCollectionMixin(object):
 
     columns = None
@@ -2725,9 +2699,26 @@ class ColumnCollectionMixin(object):
         _autoattach = kw.pop("_autoattach", True)
         self._column_flag = kw.pop("_column_flag", False)
         self.columns = DedupeColumnCollection()
-        self._pending_colargs = [
-            _to_schema_column_or_string(c) for c in columns
-        ]
+
+        processed_expressions = kw.pop("_gather_expressions", None)
+        if processed_expressions is not None:
+            self._pending_colargs = []
+            for (
+                expr,
+                column,
+                strname,
+                add_element,
+            ) in coercions.expect_col_expression_collection(
+                roles.DDLConstraintColumnRole, columns
+            ):
+                self._pending_colargs.append(add_element)
+                processed_expressions.append(expr)
+        else:
+            self._pending_colargs = [
+                coercions.expect(roles.DDLConstraintColumnRole, column)
+                for column in columns
+            ]
+
         if _autoattach and self._pending_colargs:
             self._check_attach()
 
@@ -2915,7 +2906,6 @@ class CheckConstraint(ColumnCollectionConstraint):
         """
 
         self.sqltext = coercions.expect(roles.DDLExpressionRole, sqltext)
-
         columns = []
         visitors.traverse(self.sqltext, {}, {"column": columns.append})
 
@@ -3574,20 +3564,6 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """
         self.table = table = None
 
-        columns = []
-        processed_expressions = []
-        for (
-            expr,
-            column,
-            strname,
-            add_element,
-        ) in coercions.expect_col_expression_collection(
-            roles.DDLConstraintColumnRole, expressions
-        ):
-            columns.append(add_element)
-            processed_expressions.append(expr)
-
-        self.expressions = processed_expressions
         self.name = quoted_name(name, kw.pop("quote", None))
         self.unique = kw.pop("unique", False)
         _column_flag = kw.pop("_column_flag", False)
@@ -3601,10 +3577,14 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         self._validate_dialect_kwargs(kw)
 
+        self.expressions = []
         # will call _set_parent() if table-bound column
         # objects are present
         ColumnCollectionMixin.__init__(
-            self, *columns, _column_flag=_column_flag
+            self,
+            *expressions,
+            _column_flag=_column_flag,
+            _gather_expressions=self.expressions
         )
 
         if table is not None:
