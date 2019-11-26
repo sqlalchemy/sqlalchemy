@@ -1192,6 +1192,15 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
         else:
             raise NotImplementedError()
 
+    def fire_sequence(self, seq, type_):
+        return self._execute_scalar(
+            (
+                "select nextval(%s)"
+                % self.dialect.identifier_preparer.format_sequence(seq)
+            ),
+            type_,
+        )
+
 
 class MySQLCompiler(compiler.SQLCompiler):
 
@@ -1203,6 +1212,9 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def visit_random_func(self, fn, **kw):
         return "rand%s" % self.function_argspec(fn)
+
+    def visit_sequence(self, seq, **kw):
+        return "nextval(%s)" % self.preparer.format_sequence(seq)
 
     def visit_sysdate_func(self, fn, **kw):
         return "SYSDATE()"
@@ -2146,6 +2158,11 @@ class MySQLDialect(default.DefaultDialect):
 
     supports_native_enum = True
 
+    supports_sequences = False  # default for MySQL ...
+    # ... may be updated to True for MariaDB 10.3+ in initialize()
+
+    sequences_optional = True
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_multivalues_insert = True
@@ -2421,6 +2438,22 @@ class MySQLDialect(default.DefaultDialect):
             if rs:
                 rs.close()
 
+    def has_sequence(self, connection, sequence_name, schema=None):
+        if not schema:
+            schema = self.default_schema_name
+        # MariaDB implements sequences as a special type of table
+        #
+        cursor = connection.execute(
+            sql.text(
+                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES "
+                "WHERE TABLE_NAME=:name AND "
+                "TABLE_SCHEMA=:schema_name"
+            ),
+            name=sequence_name,
+            schema_name=schema,
+        )
+        return cursor.first() is not None
+
     def initialize(self, connection):
         self._connection_charset = self._detect_charset(connection)
         self._detect_sql_mode(connection)
@@ -2434,6 +2467,10 @@ class MySQLDialect(default.DefaultDialect):
             )
 
         default.DefaultDialect.initialize(self, connection)
+
+        self.supports_sequences = (
+            self._is_mariadb and self.server_version_info >= (10, 3)
+        )
 
         self._needs_correct_for_88718_96365 = (
             not self._is_mariadb and self.server_version_info >= (8,)

@@ -1147,34 +1147,67 @@ class AutoIncrementTest(fixtures.TablesTest):
         with expect_warnings(".*has no Python-side or server-side default.*"):
             go()
 
-    def test_col_w_sequence_non_autoinc_no_firing(self):
-        metadata = self.metadata
+    @testing.metadata_fixture(ddl="function")
+    def dataset_no_autoinc(self, metadata):
         # plain autoincrement/PK table in the actual schema
         Table("x", metadata, Column("set_id", Integer, primary_key=True))
-        metadata.create_all()
 
         # for the INSERT use a table with a Sequence
         # and autoincrement=False.  Using a ForeignKey
         # would have the same effect
+
+        some_seq = Sequence("some_seq")
+
         dataset_no_autoinc = Table(
             "x",
             MetaData(),
             Column(
                 "set_id",
                 Integer,
-                Sequence("some_seq"),
+                some_seq,
                 primary_key=True,
                 autoincrement=False,
             ),
         )
+        return dataset_no_autoinc
 
-        testing.db.execute(dataset_no_autoinc.insert())
-        eq_(
-            testing.db.scalar(
-                select([func.count("*")]).select_from(dataset_no_autoinc)
-            ),
-            1,
-        )
+    def test_col_w_optional_sequence_non_autoinc_no_firing(
+        self, dataset_no_autoinc
+    ):
+        """this is testing that a Table which includes a Sequence, when
+        run against a DB that does not support sequences, the Sequence
+        does not get in the way.
+
+        """
+        dataset_no_autoinc.c.set_id.default.optional = True
+
+        with testing.db.connect() as conn:
+            conn.execute(dataset_no_autoinc.insert())
+            eq_(
+                conn.scalar(
+                    select([func.count("*")]).select_from(dataset_no_autoinc)
+                ),
+                1,
+            )
+
+    @testing.fails_if(testing.requires.sequences)
+    def test_col_w_nonoptional_sequence_non_autoinc_no_firing(
+        self, dataset_no_autoinc
+    ):
+        """When the sequence is not optional and sequences are supported,
+        the test fails because we didn't create the sequence.
+
+        """
+        dataset_no_autoinc.c.set_id.default.optional = False
+
+        with testing.db.connect() as conn:
+            conn.execute(dataset_no_autoinc.insert())
+            eq_(
+                conn.scalar(
+                    select([func.count("*")]).select_from(dataset_no_autoinc)
+                ),
+                1,
+            )
 
 
 class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -1336,8 +1369,24 @@ class SequenceExecTest(fixtures.TestBase):
         testing.db.execute(t1.insert().values(x=s.next_value()))
         self._assert_seq_result(testing.db.scalar(t1.select()))
 
+    @testing.requires.supports_lastrowid
     @testing.provide_metadata
-    def test_inserted_pk_no_returning(self):
+    def test_inserted_pk_no_returning_w_lastrowid(self):
+        """test inserted_primary_key contains the pk when
+        pk_col=next_value(), lastrowid is supported."""
+
+        metadata = self.metadata
+        e = engines.testing_engine(options={"implicit_returning": False})
+        s = Sequence("my_sequence")
+        metadata.bind = e
+        t1 = Table("t", metadata, Column("x", Integer, primary_key=True))
+        t1.create()
+        r = e.execute(t1.insert().values(x=s.next_value()))
+        self._assert_seq_result(r.inserted_primary_key[0])
+
+    @testing.requires.no_lastrowid_support
+    @testing.provide_metadata
+    def test_inserted_pk_no_returning_no_lastrowid(self):
         """test inserted_primary_key contains [None] when
         pk_col=next_value(), implicit returning is not used."""
 
@@ -1397,6 +1446,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         for s in (Sequence("my_seq"), Sequence("my_seq", optional=True)):
             assert str(s.next_value().compile(dialect=testing.db.dialect)) in (
                 "nextval('my_seq')",
+                "nextval(my_seq)",
                 "gen_id(my_seq, 1)",
                 "my_seq.nextval",
             )

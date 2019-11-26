@@ -316,16 +316,17 @@ For details on using :class:`.FetchedValue` with the ORM, see
 
     :ref:`orm_server_defaults`
 
+.. _defaults_sequences:
 
 Defining Sequences
 ------------------
 
 SQLAlchemy represents database sequences using the
 :class:`~sqlalchemy.schema.Sequence` object, which is considered to be a
-special case of "column default". It only has an effect on databases which
-have explicit support for sequences, which currently includes PostgreSQL,
-Oracle, and Firebird. The :class:`~sqlalchemy.schema.Sequence` object is
-otherwise ignored.
+special case of "column default". It only has an effect on databases which have
+explicit support for sequences, which currently includes PostgreSQL, Oracle,
+MariaDB 10.3 or greater, and Firebird. The :class:`~sqlalchemy.schema.Sequence`
+object is otherwise ignored.
 
 The :class:`~sqlalchemy.schema.Sequence` may be placed on any column as a
 "default" generator to be used during INSERT operations, and can also be
