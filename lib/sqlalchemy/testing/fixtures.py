@@ -120,16 +120,11 @@ class TablesTest(TestBase):
 
     def _setup_each_tables(self):
         if self.run_define_tables == "each":
-            self.tables.clear()
-            if self.run_create_tables == "each":
-                drop_all_tables(self.metadata, self.bind)
-            self.metadata.clear()
             self.define_tables(self.metadata)
             if self.run_create_tables == "each":
                 self.metadata.create_all(self.bind)
             self.tables.update(self.metadata.tables)
         elif self.run_create_tables == "each":
-            drop_all_tables(self.metadata, self.bind)
             self.metadata.create_all(self.bind)
 
     def _setup_each_inserts(self):
@@ -138,6 +133,14 @@ class TablesTest(TestBase):
             self.insert_data()
 
     def _teardown_each_tables(self):
+        if self.run_define_tables == "each":
+            self.tables.clear()
+            if self.run_create_tables == "each":
+                drop_all_tables(self.metadata, self.bind)
+            self.metadata.clear()
+        elif self.run_create_tables == "each":
+            drop_all_tables(self.metadata, self.bind)
+
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != "each" and self.run_deletes == "each":
             with self.bind.connect() as conn:
