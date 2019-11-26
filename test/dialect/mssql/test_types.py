@@ -36,6 +36,7 @@ from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
 from sqlalchemy.dialects.mssql.base import _MSDate
+from sqlalchemy.dialects.mssql.base import DATETIMEOFFSET
 from sqlalchemy.dialects.mssql.base import MS_2005_VERSION
 from sqlalchemy.dialects.mssql.base import MS_2008_VERSION
 from sqlalchemy.dialects.mssql.base import TIME
@@ -721,34 +722,55 @@ class TypeRoundTripTest(
             Column("adate", Date),
             Column("atime", Time),
             Column("adatetime", DateTime),
+            Column("adatetimeoffset", DATETIMEOFFSET),
         )
         metadata.create_all()
         d1 = datetime.date(2007, 10, 30)
         t1 = datetime.time(11, 2, 32)
         d2 = datetime.datetime(2007, 10, 30, 11, 2, 32)
-        t.insert().execute(adate=d1, adatetime=d2, atime=t1)
+        dto = datetime.datetime(
+            2007,
+            10,
+            30,
+            11,
+            2,
+            32,
+            0,
+            util.timezone(datetime.timedelta(hours=1)),
+        )
+        t.insert().execute(
+            adate=d1, adatetime=d2, atime=t1, adatetimeoffset=dto
+        )
 
         # NOTE: this previously passed 'd2' for "adate" even though
         # "adate" is a date column; we asserted that it truncated w/o issue.
         # As of pyodbc 4.0.22, this is no longer accepted, was accepted
         # in 4.0.21.  See also the new pyodbc assertions regarding numeric
         # precision.
-        t.insert().execute(adate=d1, adatetime=d2, atime=d2)
+        t.insert().execute(
+            adate=d1, adatetime=d2, atime=d2, adatetimeoffset=dto
+        )
 
         x = t.select().execute().fetchall()[0]
         self.assert_(x.adate.__class__ == datetime.date)
         self.assert_(x.atime.__class__ == datetime.time)
         self.assert_(x.adatetime.__class__ == datetime.datetime)
+        self.assert_(x.adatetimeoffset.__class__ == datetime.datetime)
 
         t.delete().execute()
 
-        t.insert().execute(adate=d1, adatetime=d2, atime=t1)
+        t.insert().execute(
+            adate=d1, adatetime=d2, atime=t1, adatetimeoffset=dto
+        )
 
         eq_(
-            select([t.c.adate, t.c.atime, t.c.adatetime], t.c.adate == d1)
+            select(
+                [t.c.adate, t.c.atime, t.c.adatetime, t.c.adatetimeoffset],
+                t.c.adate == d1,
+            )
             .execute()
             .fetchall(),
-            [(d1, t1, d2)],
+            [(d1, t1, d2, dto)],
         )
 
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
