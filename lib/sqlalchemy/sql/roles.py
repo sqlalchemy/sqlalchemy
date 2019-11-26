@@ -186,4 +186,10 @@ class DDLExpressionRole(StructuralRole):
 
 
 class DDLConstraintColumnRole(SQLRole):
-    _role_name = "String column name or column object for DDL constraint"
+    _role_name = "String column name or column expression for DDL constraint"
+
+
+class DDLReferredColumnRole(DDLConstraintColumnRole):
+    _role_name = (
+        "String column name or Column object for DDL foreign key constraint"
+    )
