@@ -2057,6 +2057,40 @@ class ForUpdateArg(ClauseElement):
             self.of = None
 
 
+class Values(FromClause):
+    """represent a ``VALUES`` construct that can be used in a
+    :class:`.FromClause` element.
+    """
+    named_with_column = True
+    __visit_name__ = "values"
+
+    _traverse_internals = [
+        (
+            "_column_args",
+            InternalTraversal.dp_fromclause_canonical_column_collection,
+        ),
+        (
+            "list",
+            InternalTraversal.dp_clauseelement_tuples,
+        ),
+        ("alias_name", InternalTraversal.dp_string),
+    ]
+
+    def __init__(self, columns, *args, **kw):
+        super(Values, self).__init__()
+        self._column_args = columns
+        self.list = args
+        self.alias_name = self.name = kw.pop("alias_name", None)
+
+    def _populate_column_collection(self):
+        for c in self._column_args:
+            self._columns.add(c)
+
+    @property
+    def _from_objects(self):
+        return [self]
+
+
 class SelectBase(
     roles.SelectStatementRole,
     roles.DMLSelectRole,

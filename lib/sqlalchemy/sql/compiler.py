@@ -1957,6 +1957,27 @@ class SQLCompiler(Compiled):
 
         return text
 
+    def visit_values(self, element, asfrom=False, **kw):
+        columns = element.columns
+        v = "VALUES %s" % ", ".join(
+            "(%s)"
+            % ", ".join(
+                self.render_literal_value(elem, column.type)
+                for elem, column in zip(tup, columns)
+            )
+            for tup in element.list
+        )
+        if asfrom:
+            if element.alias_name:
+                v = "(%s) AS %s (%s)" % (
+                    v,
+                    element.alias_name,
+                    (", ".join(c.name for c in element.columns)),
+                )
+            else:
+                v = "(%s)" % v
+        return v
+
     def get_render_as_alias_suffix(self, alias_name_text):
         return " AS " + alias_name_text
 

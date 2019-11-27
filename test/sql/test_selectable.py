@@ -28,7 +28,7 @@ from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import util
-from sqlalchemy.sql import Alias
+from sqlalchemy.sql import Alias, Values
 from sqlalchemy.sql import base
 from sqlalchemy.sql import column
 from sqlalchemy.sql import elements
@@ -1136,6 +1136,26 @@ class SelectableTest(
         # actively swaps out whereclause and others
         assert s3._whereclause.left.table is not s1
         assert s3._whereclause.left.table in s3._froms
+
+    def test_values(self):
+        v = Values(
+            [
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+            ],
+            (1, "textA", 99),
+            (2, "textB", 88),
+            alias_name="myvalues",
+        )
+        assert str(v) == "VALUES (1, 'textA', 99), (2, 'textB', 88)"
+        s = select([v])
+        expected = (
+            "SELECT mykey, mytext, myint \n"
+            "FROM (VALUES (1, 'textA', 99), (2, 'textB', 88)) "
+            "AS myvalues (mykey, mytext, myint)"
+        )
+        assert str(s) == expected
 
 
 class RefreshForNewColTest(fixtures.TestBase):

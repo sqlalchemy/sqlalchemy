@@ -156,6 +156,7 @@ from .selectable import TableClause  # noqa
 from .selectable import TableSample  # noqa
 from .selectable import TextAsFrom  # noqa
 from .selectable import TextualSelect  # noqa
+from .selectable import Values  # noqa
 from .visitors import Visitable  # noqa
 from ..util.langhelpers import public_factory  # noqa
 
