@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 5014
+
+    Fixed issue to workaround SQLite's behavior of assigning "numeric" affinity
+    to JSON datatypes, first described at :ref:`change_3850`, which returns
+    scalar numeric JSON values as a number and not as a string that can be JSON
+    deserialized.  The SQLite-specific JSON deserializer now gracefully
+    degrades for this case as an exception and bypasses deserialization for
+    single numeric values, as from a JSON perspective they are already
+    deserialized.
+
+
