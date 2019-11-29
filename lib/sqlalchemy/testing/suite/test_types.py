@@ -827,6 +827,38 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             # make sure we get a row even if value is None
             eq_(row, (value,))
 
+    @testing.combinations(
+        (True,),
+        (False,),
+        (None,),
+        (15,),
+        (0,),
+        (-1,),
+        (-1.0,),
+        (15.052,),
+        ("a string",),
+        (util.u("réve illé"),),
+        (util.u("réve🐍 illé"),),
+    )
+    def test_single_element_round_trip(self, element):
+        data_table = self.tables.data_table
+        data_element = element
+        with config.db.connect() as conn:
+            conn.execute(
+                data_table.insert(),
+                {
+                    "name": "row1",
+                    "data": data_element,
+                    "nulldata": data_element,
+                },
+            )
+
+            row = conn.execute(
+                select([data_table.c.data, data_table.c.nulldata])
+            ).first()
+
+            eq_(row, (data_element, data_element))
+
     def test_round_trip_custom_json(self):
         data_table = self.tables.data_table
         data_element = {"key1": "data1"}

@@ -570,6 +570,7 @@ When using the per-:class:`.Engine` execution option, note that
 """  # noqa
 
 import datetime
+import numbers
 import re
 
 from .json import JSON
@@ -597,6 +598,24 @@ from ...types import SMALLINT  # noqa
 from ...types import TEXT  # noqa
 from ...types import TIMESTAMP  # noqa
 from ...types import VARCHAR  # noqa
+
+
+class _SQliteJson(JSON):
+    def result_processor(self, dialect, coltype):
+        default_processor = super(_SQliteJson, self).result_processor(
+            dialect, coltype
+        )
+
+        def process(value):
+            try:
+                return default_processor(value)
+            except TypeError:
+                if isinstance(value, numbers.Number):
+                    return value
+                else:
+                    raise
+
+        return process
 
 
 class _DateTimeMixin(object):
@@ -899,7 +918,7 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 colspecs = {
     sqltypes.Date: DATE,
     sqltypes.DateTime: DATETIME,
-    sqltypes.JSON: JSON,
+    sqltypes.JSON: _SQliteJson,
     sqltypes.JSON.JSONIndexType: JSONIndexType,
     sqltypes.JSON.JSONPathType: JSONPathType,
     sqltypes.Time: TIME,
