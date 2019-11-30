@@ -118,10 +118,13 @@ in order to use this flag::
 
 """  # noqa
 
+import datetime
 import decimal
 import re
+import struct
 
 from .base import BINARY
+from .base import DATETIMEOFFSET
 from .base import MSDialect
 from .base import MSExecutionContext
 from .base import VARBINARY
@@ -226,6 +229,17 @@ class _ms_binary_pyodbc(object):
         return process
 
 
+class _ODBCDateTimeOffset(DATETIMEOFFSET):
+    def bind_processor(self, dialect):
+        def process(value):
+            """Convert to string format required by T-SQL."""
+            dto_string = value.strftime("%Y-%m-%d %H:%M:%S %z")
+            # offset needs a colon, e.g., -0700 -> -07:00
+            return dto_string[:23] + ":" + dto_string[23:]
+
+        return process
+
+
 class _VARBINARY_pyodbc(_ms_binary_pyodbc, VARBINARY):
     pass
 
@@ -294,6 +308,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             sqltypes.Numeric: _MSNumeric_pyodbc,
             sqltypes.Float: _MSFloat_pyodbc,
             BINARY: _BINARY_pyodbc,
+            DATETIMEOFFSET: _ODBCDateTimeOffset,
             # SQL Server dialect has a VARBINARY that is just to support
             # "deprecate_large_types" w/ VARBINARY(max), but also we must
             # handle the usual SQL standard VARBINARY
@@ -344,6 +359,39 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 except ValueError:
                     pass
             return tuple(version)
+
+    def on_connect(self):
+        super_ = super(MSDialect_pyodbc, self).on_connect()
+
+        def on_connect(conn):
+            if super_ is not None:
+                super_(conn)
+
+            self._setup_timestampoffset_type(conn)
+
+        return on_connect
+
+    def _setup_timestampoffset_type(self, connection):
+        # output converter function for datetimeoffset
+        def _handle_datetimeoffset(dto_value):
+            tup = struct.unpack("<6hI2h", dto_value)
+            return datetime.datetime(
+                tup[0],
+                tup[1],
+                tup[2],
+                tup[3],
+                tup[4],
+                tup[5],
+                tup[6] // 1000,
+                util.timezone(
+                    datetime.timedelta(hours=tup[7], minutes=tup[8])
+                ),
+            )
+
+        odbc_SQL_SS_TIMESTAMPOFFSET = -155  # as defined in SQLNCLI.h
+        connection.add_output_converter(
+            odbc_SQL_SS_TIMESTAMPOFFSET, _handle_datetimeoffset
+        )
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         if self.fast_executemany:

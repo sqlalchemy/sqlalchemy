@@ -1,6 +1,7 @@
 #! coding: utf-8
 
 import copy
+import datetime
 import inspect
 import sys
 
@@ -28,6 +29,7 @@ from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
 from sqlalchemy.util import get_callable_argspec
 from sqlalchemy.util import langhelpers
+from sqlalchemy.util import timezone
 from sqlalchemy.util import WeakSequence
 
 
@@ -3124,4 +3126,64 @@ class BackslashReplaceTest(fixtures.TestBase):
         eq_(
             compat.decode_backslashreplace(message, "cp1251"),
             util.u("some message П"),
+        )
+
+
+class TimezoneTest(fixtures.TestBase):
+    """test the python 2 backport of the "timezone" class.
+
+    Note under python 3, these tests work against the builtin timezone,
+    thereby providing confirmation that the tests are correct.
+
+    """
+
+    @testing.combinations(
+        (datetime.timedelta(0), "UTC"),
+        (datetime.timedelta(hours=5), "UTC+05:00"),
+        (datetime.timedelta(hours=5, minutes=10), "UTC+05:10"),
+        (datetime.timedelta(hours=5, minutes=10, seconds=27), "UTC+05:10:27"),
+        (datetime.timedelta(hours=-3, minutes=10), "UTC-02:50"),
+        (
+            datetime.timedelta(
+                hours=5, minutes=10, seconds=27, microseconds=550
+            ),
+            "UTC+05:10:27.000550",
+        ),
+    )
+    def test_tzname(self, td, expected):
+        eq_(timezone(td).tzname(None), expected)
+
+    def test_utcoffset(self):
+        eq_(
+            timezone(datetime.timedelta(hours=5)).utcoffset(None),
+            datetime.timedelta(hours=5),
+        )
+
+    def test_fromutc(self):
+        tzinfo = timezone(datetime.timedelta(hours=5))
+        dt = datetime.datetime(2017, 10, 5, 12, 55, 38, tzinfo=tzinfo)
+        eq_(
+            dt.astimezone(timezone.utc),
+            datetime.datetime(2017, 10, 5, 7, 55, 38, tzinfo=timezone.utc),
+        )
+
+        # this is the same as hours=-3
+        del_ = datetime.timedelta(days=-1, seconds=75600)
+        eq_(
+            dt.astimezone(timezone(datetime.timedelta(hours=-3))),
+            datetime.datetime(2017, 10, 5, 4, 55, 38, tzinfo=timezone(del_)),
+        )
+
+    @testing.requires.python3
+    def test_repr_py3k(self):
+        eq_(
+            repr(timezone(datetime.timedelta(hours=5))),
+            "datetime.timezone(%r)" % (datetime.timedelta(hours=5)),
+        )
+
+    @testing.requires.python2
+    def test_repr_py2k(self):
+        eq_(
+            repr(timezone(datetime.timedelta(hours=5))),
+            "sqlalchemy.util.timezone(%r)" % (datetime.timedelta(hours=5)),
         )
