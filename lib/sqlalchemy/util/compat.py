@@ -417,3 +417,106 @@ def with_metaclass(meta, *bases):
             return meta(name, bases, d)
 
     return metaclass("temporary_class", None, {})
+
+
+if py3k:
+    from datetime import timezone
+else:
+    from datetime import datetime
+    from datetime import timedelta
+    from datetime import tzinfo
+
+    class timezone(tzinfo):
+        """Minimal port of python 3 timezone object"""
+
+        __slots__ = "_offset"
+
+        def __init__(self, offset):
+            if not isinstance(offset, timedelta):
+                raise TypeError("offset must be a timedelta")
+            if not self._minoffset <= offset <= self._maxoffset:
+                raise ValueError(
+                    "offset must be a timedelta "
+                    "strictly between -timedelta(hours=24) and "
+                    "timedelta(hours=24)."
+                )
+            self._offset = offset
+
+        def __eq__(self, other):
+            if type(other) != timezone:
+                return False
+            return self._offset == other._offset
+
+        def __hash__(self):
+            return hash(self._offset)
+
+        def __repr__(self):
+            return "sqlalchemy.util.%s(%r)" % (
+                self.__class__.__name__,
+                self._offset,
+            )
+
+        def __str__(self):
+            return self.tzname(None)
+
+        def utcoffset(self, dt):
+            return self._offset
+
+        def tzname(self, dt):
+            return self._name_from_offset(self._offset)
+
+        def dst(self, dt):
+            return None
+
+        def fromutc(self, dt):
+            if isinstance(dt, datetime):
+                if dt.tzinfo is not self:
+                    raise ValueError("fromutc: dt.tzinfo " "is not self")
+                return dt + self._offset
+            raise TypeError(
+                "fromutc() argument must be a datetime instance" " or None"
+            )
+
+        @staticmethod
+        def _timedelta_to_microseconds(timedelta):
+            """backport of timedelta._to_microseconds()"""
+            return (
+                timedelta.days * (24 * 3600) + timedelta.seconds
+            ) * 1000000 + timedelta.microseconds
+
+        @staticmethod
+        def _divmod_timedeltas(a, b):
+            """backport of timedelta.__divmod__"""
+
+            q, r = divmod(
+                timezone._timedelta_to_microseconds(a),
+                timezone._timedelta_to_microseconds(b),
+            )
+            return q, timedelta(0, 0, r)
+
+        @staticmethod
+        def _name_from_offset(delta):
+            if not delta:
+                return "UTC"
+            if delta < timedelta(0):
+                sign = "-"
+                delta = -delta
+            else:
+                sign = "+"
+            hours, rest = timezone._divmod_timedeltas(
+                delta, timedelta(hours=1)
+            )
+            minutes, rest = timezone._divmod_timedeltas(
+                rest, timedelta(minutes=1)
+            )
+            result = "UTC%s%02d:%02d" % (sign, hours, minutes)
+            if rest.seconds:
+                result += ":%02d" % (rest.seconds,)
+            if rest.microseconds:
+                result += ".%06d" % (rest.microseconds,)
+            return result
+
+        _maxoffset = timedelta(hours=23, minutes=59)
+        _minoffset = -_maxoffset
+
+    timezone.utc = timezone(timedelta(0))
