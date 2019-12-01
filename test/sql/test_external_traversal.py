@@ -17,6 +17,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import tuple_
 from sqlalchemy import union
+from sqlalchemy.future import select as future_select
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.sql import column
 from sqlalchemy.sql import operators
@@ -754,6 +755,59 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             ":col1_1) AS anon_1",
         )
 
+    def test_this_thing_using_setup_joins_one(self):
+        s = (
+            future_select(t1)
+            .join_from(t1, t2, t1.c.col1 == t2.c.col2)
+            .subquery()
+        )
+        s2 = future_select(s.c.col1).join_from(t3, s, t3.c.col2 == s.c.col1)
+
+        self.assert_compile(
+            s2,
+            "SELECT anon_1.col1 FROM table3 JOIN (SELECT table1.col1 AS "
+            "col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2) AS anon_1 "
+            "ON table3.col2 = anon_1.col1",
+        )
+        t1a = t1.alias()
+        s2 = sql_util.ClauseAdapter(t1a).traverse(s2)
+        self.assert_compile(
+            s2,
+            "SELECT anon_1.col1 FROM table3 JOIN (SELECT table1_1.col1 AS "
+            "col1, table1_1.col2 AS col2, table1_1.col3 AS col3 "
+            "FROM table1 AS table1_1 JOIN table2 ON table1_1.col1 = "
+            "table2.col2) AS anon_1 ON table3.col2 = anon_1.col1",
+        )
+
+    def test_this_thing_using_setup_joins_two(self):
+        s = (
+            future_select(t1.c.col1)
+            .join(t2, t1.c.col1 == t2.c.col2)
+            .subquery()
+        )
+        s2 = future_select(s.c.col1)
+
+        self.assert_compile(
+            s2,
+            "SELECT anon_1.col1 FROM (SELECT table1.col1 AS col1 "
+            "FROM table1 JOIN table2 ON table1.col1 = table2.col2) AS anon_1",
+        )
+
+        t1alias = t1.alias("t1alias")
+        j = t1.join(t1alias, t1.c.col1 == t1alias.c.col2)
+
+        vis = sql_util.ClauseAdapter(j)
+
+        s2 = vis.traverse(s2)
+        self.assert_compile(
+            s2,
+            "SELECT anon_1.col1 FROM (SELECT table1.col1 AS col1 "
+            "FROM table1 JOIN table1 AS t1alias "
+            "ON table1.col1 = t1alias.col2 "
+            "JOIN table2 ON table1.col1 = table2.col2) AS anon_1",
+        )
+
     def test_select_fromtwice_one(self):
         t1a = t1.alias()
 
@@ -801,6 +855,77 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             "table1.col3 AS col3 FROM table1 "
             "WHERE table1.col1 = :col1_1) "
             "AS anon_1 WHERE table1.col1 = anon_1.col1)",
+        )
+
+    def test_select_setup_joins_adapt_element_one(self):
+        s = future_select(t1).join(t2, t1.c.col1 == t2.c.col2)
+
+        t1a = t1.alias()
+
+        s2 = sql_util.ClauseAdapter(t1a).traverse(s)
+
+        self.assert_compile(
+            s,
+            "SELECT table1.col1, table1.col2, table1.col3 "
+            "FROM table1 JOIN table2 ON table1.col1 = table2.col2",
+        )
+        self.assert_compile(
+            s2,
+            "SELECT table1_1.col1, table1_1.col2, table1_1.col3 "
+            "FROM table1 AS table1_1 JOIN table2 "
+            "ON table1_1.col1 = table2.col2",
+        )
+
+    def test_select_setup_joins_adapt_element_two(self):
+        s = future_select(literal_column("1")).join_from(
+            t1, t2, t1.c.col1 == t2.c.col2
+        )
+
+        t1a = t1.alias()
+
+        s2 = sql_util.ClauseAdapter(t1a).traverse(s)
+
+        self.assert_compile(
+            s, "SELECT 1 FROM table1 JOIN table2 ON table1.col1 = table2.col2"
+        )
+        self.assert_compile(
+            s2,
+            "SELECT 1 FROM table1 AS table1_1 "
+            "JOIN table2 ON table1_1.col1 = table2.col2",
+        )
+
+    def test_select_setup_joins_adapt_element_three(self):
+        s = future_select(literal_column("1")).join_from(
+            t1, t2, t1.c.col1 == t2.c.col2
+        )
+
+        t2a = t2.alias()
+
+        s2 = sql_util.ClauseAdapter(t2a).traverse(s)
+
+        self.assert_compile(
+            s, "SELECT 1 FROM table1 JOIN table2 ON table1.col1 = table2.col2"
+        )
+        self.assert_compile(
+            s2,
+            "SELECT 1 FROM table1 "
+            "JOIN table2 AS table2_1 ON table1.col1 = table2_1.col2",
+        )
+
+    def test_select_setup_joins_straight_clone(self):
+        s = future_select(t1).join(t2, t1.c.col1 == t2.c.col2)
+
+        s2 = CloningVisitor().traverse(s)
+
+        self.assert_compile(
+            s,
+            "SELECT table1.col1, table1.col2, table1.col3 "
+            "FROM table1 JOIN table2 ON table1.col1 = table2.col2",
+        )
+        self.assert_compile(
+            s2,
+            "SELECT table1.col1, table1.col2, table1.col3 "
+            "FROM table1 JOIN table2 ON table1.col1 = table2.col2",
         )
 
 

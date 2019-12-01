@@ -24,7 +24,6 @@ from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .util import _none_set
-from .util import aliased
 from .util import state_str
 from .. import exc as sa_exc
 from .. import util
@@ -43,21 +42,23 @@ def instances(query, cursor, context):
     context.runid = _new_runid()
     context.post_load_paths = {}
 
+    compile_state = context.compile_state
+    filtered = compile_state._has_mapper_entities
     single_entity = context.is_single_entity
 
     try:
         (process, labels, extra) = list(
             zip(
                 *[
-                    query_entity.row_processor(query, context, cursor)
-                    for query_entity in query._entities
+                    query_entity.row_processor(context, cursor)
+                    for query_entity in context.compile_state._entities
                 ]
             )
         )
 
-        if query._yield_per and (
-            context.loaders_require_buffering
-            or context.loaders_require_uniquing
+        if context.yield_per and (
+            context.compile_state.loaders_require_buffering
+            or context.compile_state.loaders_require_uniquing
         ):
             raise sa_exc.InvalidRequestError(
                 "Can't use yield_per with eager loaders that require uniquing "
@@ -74,7 +75,8 @@ def instances(query, cursor, context):
         labels,
         extra,
         _unique_filters=[
-            id if ent.use_id_for_hash else None for ent in query._entities
+            id if ent.use_id_for_hash else None
+            for ent in context.compile_state._entities
         ],
     )
 
@@ -86,6 +88,7 @@ def instances(query, cursor, context):
 
             if yield_per:
                 fetch = cursor.fetchmany(yield_per)
+
                 if not fetch:
                     break
             else:
@@ -110,13 +113,13 @@ def instances(query, cursor, context):
     result = ChunkedIteratorResult(
         row_metadata, chunks, source_supports_scalars=single_entity
     )
-    if query._yield_per:
-        result.yield_per(query._yield_per)
+    if context.yield_per:
+        result.yield_per(context.yield_per)
 
     if single_entity:
         result = result.scalars()
 
-    filtered = query._has_mapper_entities
+    filtered = context.compile_state._has_mapper_entities
 
     if filtered:
         result = result.unique()
@@ -124,10 +127,10 @@ def instances(query, cursor, context):
     return result
 
 
-@util.preload_module("sqlalchemy.orm.query")
+@util.preload_module("sqlalchemy.orm.context")
 def merge_result(query, iterator, load=True):
-    """Merge a result into this :class:`_query.Query` object's Session."""
-    querylib = util.preloaded.orm_query
+    """Merge a result into this :class:`.Query` object's Session."""
+    querycontext = util.preloaded.orm_context
 
     session = query.session
     if load:
@@ -142,12 +145,17 @@ def merge_result(query, iterator, load=True):
     else:
         frozen_result = None
 
+    ctx = querycontext.QueryCompileState._create_for_legacy_query(
+        query, entities_only=True
+    )
+
     autoflush = session.autoflush
     try:
         session.autoflush = False
-        single_entity = not frozen_result and len(query._entities) == 1
+        single_entity = not frozen_result and len(ctx._entities) == 1
+
         if single_entity:
-            if isinstance(query._entities[0], querylib._MapperEntity):
+            if isinstance(ctx._entities[0], querycontext._MapperEntity):
                 result = [
                     session._merge(
                         attributes.instance_state(instance),
@@ -163,14 +171,16 @@ def merge_result(query, iterator, load=True):
         else:
             mapped_entities = [
                 i
-                for i, e in enumerate(query._entities)
-                if isinstance(e, querylib._MapperEntity)
+                for i, e in enumerate(ctx._entities)
+                if isinstance(e, querycontext._MapperEntity)
             ]
             result = []
-            keys = [ent._label_name for ent in query._entities]
+            keys = [ent._label_name for ent in ctx._entities]
+
             keyed_tuple = result_tuple(
-                keys, [tuple(ent.entities) for ent in query._entities]
+                keys, [ent._extra_entities for ent in ctx._entities]
             )
+
             for row in iterator:
                 newrow = list(row)
                 for i in mapped_entities:
@@ -270,7 +280,7 @@ def load_on_pk_identity(
         q = query._clone()
 
     if primary_key_identity is not None:
-        mapper = query._mapper_zero()
+        mapper = query._only_full_mapper_zero("load_on_pk_identity")
 
         (_get_clause, _get_params) = mapper._get_clause
 
@@ -286,6 +296,7 @@ def load_on_pk_identity(
                     if value is None
                 ]
             )
+
             _get_clause = sql_util.adapt_criterion_to_null(_get_clause, nones)
 
             if len(nones) == len(primary_key_identity):
@@ -294,8 +305,11 @@ def load_on_pk_identity(
                     "object.  This condition may raise an error in a future "
                     "release."
                 )
-        _get_clause = q._adapt_clause(_get_clause, True, False)
-        q._criterion = _get_clause
+
+        # TODO: can mapper._get_clause be pre-adapted?
+        q._where_criteria = (
+            sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
+        )
 
         params = dict(
             [
@@ -306,7 +320,7 @@ def load_on_pk_identity(
             ]
         )
 
-        q._params = params
+        q.load_options += {"_params": params}
 
     # with_for_update needs to be query.LockmodeArg()
     if with_for_update is not None:
@@ -319,8 +333,9 @@ def load_on_pk_identity(
         version_check = False
 
     if refresh_state and refresh_state.load_options:
+        # if refresh_state.load_path.parent:
         q = q._with_current_path(refresh_state.load_path.parent)
-        q = q._conditional_options(refresh_state.load_options)
+        q = q.options(refresh_state.load_options)
 
     q._get_options(
         populate_existing=bool(refresh_state),
@@ -338,7 +353,7 @@ def load_on_pk_identity(
 
 
 def _setup_entity_query(
-    context,
+    compile_state,
     mapper,
     query_entity,
     path,
@@ -359,19 +374,27 @@ def _setup_entity_query(
 
     quick_populators = {}
 
-    path.set(context.attributes, "memoized_setups", quick_populators)
+    path.set(compile_state.attributes, "memoized_setups", quick_populators)
+
+    # for the lead entities in the path, e.g. not eager loads, and
+    # assuming a user-passed aliased class, e.g. not a from_self() or any
+    # implicit aliasing, don't add columns to the SELECT that aren't
+    # in the thing that's aliased.
+    check_for_adapt = adapter and len(path) == 1 and path[-1].is_aliased_class
 
     for value in poly_properties:
         if only_load_props and value.key not in only_load_props:
             continue
+
         value.setup(
-            context,
+            compile_state,
             query_entity,
             path,
             adapter,
             only_load_props=only_load_props,
             column_collection=column_collection,
             memoized_populators=quick_populators,
+            check_for_adapt=check_for_adapt,
             **kw
         )
 
@@ -448,21 +471,6 @@ def _instance_processor(
                 populators["new"].append((prop.key, prop._raise_column_loader))
             else:
                 getter = None
-                # the "adapter" can be here via different paths,
-                # e.g. via adapter present at setup_query or adapter
-                # applied to the query afterwards via eager load subquery.
-                # If the column here
-                # were already a product of this adapter, sending it through
-                # the adapter again can return a totally new expression that
-                # won't be recognized in the result, and the ColumnAdapter
-                # currently does not accommodate for this.   OTOH, if the
-                # column were never applied through this adapter, we may get
-                # None back, in which case we still won't get our "getter".
-                # so try both against result._getter().  See issue #4048
-                if adapter:
-                    adapted_col = adapter.columns[col]
-                    if adapted_col is not None:
-                        getter = result._getter(adapted_col, False)
                 if not getter:
                     getter = result._getter(col, False)
                 if getter:
@@ -481,8 +489,8 @@ def _instance_processor(
 
     propagate_options = context.propagate_options
     load_path = (
-        context.query._current_path + path
-        if context.query._current_path.path
+        context.compile_state.current_path + path
+        if context.compile_state.current_path.path
         else path
     )
 
@@ -764,7 +772,7 @@ def _load_subclass_via_in(context, path, entity):
             cache_path=path,
         )
 
-        if orig_query._populate_existing:
+        if context.populate_existing:
             q2.add_criteria(lambda q: q.populate_existing())
 
         q2(context.session).params(
@@ -1065,10 +1073,16 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
         # by default
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
-            wp = aliased(mapper, statement)
+            # this was previously aliased(mapper, statement), however,
+            # statement is a select() and Query's coercion now raises for this
+            # since you can't "select" from a "SELECT" statement.  only
+            # from_statement() allows this.
+            # note: using from_statement() here means there is an adaption
+            # with adapt_on_names set up.  the other option is to make the
+            # aliased() against a subquery which affects the SQL.
             result = load_on_ident(
-                session.query(wp)
-                .options(strategy_options.Load(wp).undefer("*"))
+                session.query(mapper)
+                .options(strategy_options.Load(mapper).undefer("*"))
                 .from_statement(statement),
                 None,
                 only_load_props=attribute_names,

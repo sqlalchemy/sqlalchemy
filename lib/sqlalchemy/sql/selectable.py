@@ -28,6 +28,7 @@ from .base import _expand_cloned
 from .base import _from_objects
 from .base import _generative
 from .base import _select_iterables
+from .base import CacheableOptions
 from .base import ColumnCollection
 from .base import ColumnSet
 from .base import CompileState
@@ -42,6 +43,7 @@ from .coercions import _document_text_coercion
 from .elements import _anonymous_label
 from .elements import and_
 from .elements import BindParameter
+from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import ClauseList
 from .elements import ColumnClause
@@ -339,6 +341,90 @@ class HasSuffixes(object):
         )
 
 
+class HasHints(object):
+    _hints = util.immutabledict()
+    _statement_hints = ()
+
+    _has_hints_traverse_internals = [
+        ("_statement_hints", InternalTraversal.dp_statement_hint_list),
+        ("_hints", InternalTraversal.dp_table_hint_list),
+    ]
+
+    def with_statement_hint(self, text, dialect_name="*"):
+        """add a statement hint to this :class:`_expression.Select` or
+        other selectable object.
+
+        This method is similar to :meth:`_expression.Select.with_hint`
+        except that
+        it does not require an individual table, and instead applies to the
+        statement as a whole.
+
+        Hints here are specific to the backend database and may include
+        directives such as isolation levels, file directives, fetch directives,
+        etc.
+
+        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :meth:`_expression.Select.with_hint`
+
+            :meth:.`.Select.prefix_with` - generic SELECT prefixing which also
+            can suit some database-specific HINT syntaxes such as MySQL
+            optimizer hints
+
+        """
+        return self.with_hint(None, text, dialect_name)
+
+    @_generative
+    def with_hint(self, selectable, text, dialect_name="*"):
+        r"""Add an indexing or other executional context hint for the given
+        selectable to this :class:`_expression.Select` or other selectable
+        object.
+
+        The text of the hint is rendered in the appropriate
+        location for the database backend in use, relative
+        to the given :class:`_schema.Table` or :class:`_expression.Alias`
+        passed as the
+        ``selectable`` argument. The dialect implementation
+        typically uses Python string substitution syntax
+        with the token ``%(name)s`` to render the name of
+        the table or alias. E.g. when using Oracle, the
+        following::
+
+            select([mytable]).\
+                with_hint(mytable, "index(%(name)s ix_mytable)")
+
+        Would render SQL as::
+
+            select /*+ index(mytable ix_mytable) */ ... from mytable
+
+        The ``dialect_name`` option will limit the rendering of a particular
+        hint to a particular backend. Such as, to add hints for both Oracle
+        and Sybase simultaneously::
+
+            select([mytable]).\
+                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
+                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
+
+        .. seealso::
+
+            :meth:`_expression.Select.with_statement_hint`
+
+        """
+        if selectable is None:
+            self._statement_hints += ((dialect_name, text),)
+        else:
+            self._hints = self._hints.union(
+                {
+                    (
+                        coercions.expect(roles.FromClauseRole, selectable),
+                        dialect_name,
+                    ): text
+                }
+            )
+
+
 class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
@@ -597,6 +683,22 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             self._populate_column_collection()
         return self._columns.as_immutable()
 
+    @property
+    def entity_namespace(self):
+        """Return a namespace used for name-based access in SQL expressions.
+
+        This is the namespace that is used to resolve "filter_by()" type
+        expressions, such as::
+
+            stmt.filter_by(address='some address')
+
+        It defaults to the .c collection, however internally it can
+        be overridden using the "entity_namespace" annotation to deliver
+        alternative results.
+
+        """
+        return self.columns
+
     @util.memoized_property
     def primary_key(self):
         """Return the collection of Column objects which comprise the
@@ -727,13 +829,21 @@ class Join(FromClause):
         :class:`_expression.FromClause` object.
 
         """
-        self.left = coercions.expect(roles.FromClauseRole, left)
-        self.right = coercions.expect(roles.FromClauseRole, right).self_group()
+        self.left = coercions.expect(
+            roles.FromClauseRole, left, deannotate=True
+        )
+        self.right = coercions.expect(
+            roles.FromClauseRole, right, deannotate=True
+        ).self_group()
 
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
         else:
-            self.onclause = onclause.self_group(against=operators._asbool)
+            # note: taken from If91f61527236fd4d7ae3cad1f24c38be921c90ba
+            # not merged yet
+            self.onclause = coercions.expect(
+                roles.WhereHavingRole, onclause
+            ).self_group(against=operators._asbool)
 
         self.isouter = isouter
         self.full = full
@@ -1963,6 +2073,12 @@ class TableClause(Immutable, FromClause):
         if kw:
             raise exc.ArgumentError("Unsupported argument(s): %s" % list(kw))
 
+    def __str__(self):
+        if self.schema is not None:
+            return self.schema + "." + self.name
+        else:
+            return self.name
+
     def _refresh_for_new_column(self, column):
         pass
 
@@ -2905,7 +3021,8 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             self._group_by_clauses = ()
         else:
             self._group_by_clauses += tuple(
-                coercions.expect(roles.ByOfRole, clause) for clause in clauses
+                coercions.expect(roles.GroupByRole, clause)
+                for clause in clauses
             )
 
 
@@ -3309,8 +3426,16 @@ class DeprecatedSelectGenerations(object):
 
 
 class SelectState(CompileState):
+    class default_select_compile_options(CacheableOptions):
+        _cache_key_traversal = []
+
     def __init__(self, statement, compiler, **kw):
         self.statement = statement
+        self.from_clauses = statement._from_obj
+
+        if statement._setup_joins:
+            self._setup_joins(statement._setup_joins)
+
         self.froms = self._get_froms(statement)
 
         self.columns_plus_names = statement._generate_columns_plus_names(True)
@@ -3319,7 +3444,18 @@ class SelectState(CompileState):
         froms = []
         seen = set()
 
-        for item in statement._iterate_from_elements():
+        for item in itertools.chain(
+            itertools.chain.from_iterable(
+                [element._from_objects for element in statement._raw_columns]
+            ),
+            itertools.chain.from_iterable(
+                [
+                    element._from_objects
+                    for element in statement._where_criteria
+                ]
+            ),
+            self.from_clauses,
+        ):
             if item._is_subquery and item.element is statement:
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
@@ -3341,6 +3477,7 @@ class SelectState(CompileState):
         correlating.
 
         """
+
         froms = self.froms
 
         toremove = set(
@@ -3425,10 +3562,162 @@ class SelectState(CompileState):
 
         return with_cols, only_froms, only_cols
 
+    @classmethod
+    def determine_last_joined_entity(cls, stmt):
+        if stmt._setup_joins:
+            return stmt._setup_joins[-1][0]
+        else:
+            return None
+
+    def _setup_joins(self, args):
+        for (right, onclause, left, flags) in args:
+            isouter = flags["isouter"]
+            full = flags["full"]
+
+            if left is None:
+                (
+                    left,
+                    replace_from_obj_index,
+                ) = self._join_determine_implicit_left_side(
+                    left, right, onclause
+                )
+            else:
+                (replace_from_obj_index) = self._join_place_explicit_left_side(
+                    left
+                )
+
+            if replace_from_obj_index is not None:
+                # splice into an existing element in the
+                # self._from_obj list
+                left_clause = self.from_clauses[replace_from_obj_index]
+
+                self.from_clauses = (
+                    self.from_clauses[:replace_from_obj_index]
+                    + (
+                        Join(
+                            left_clause,
+                            right,
+                            onclause,
+                            isouter=isouter,
+                            full=full,
+                        ),
+                    )
+                    + self.from_clauses[replace_from_obj_index + 1 :]
+                )
+            else:
+
+                self.from_clauses = self.from_clauses + (
+                    Join(left, right, onclause, isouter=isouter, full=full,),
+                )
+
+    @util.preload_module("sqlalchemy.sql.util")
+    def _join_determine_implicit_left_side(self, left, right, onclause):
+        """When join conditions don't express the left side explicitly,
+        determine if an existing FROM or entity in this query
+        can serve as the left hand side.
+
+        """
+
+        sql_util = util.preloaded.sql_util
+
+        replace_from_obj_index = None
+
+        from_clauses = self.statement._from_obj
+
+        if from_clauses:
+
+            indexes = sql_util.find_left_clause_to_join_from(
+                from_clauses, right, onclause
+            )
+
+            if len(indexes) == 1:
+                replace_from_obj_index = indexes[0]
+                left = from_clauses[replace_from_obj_index]
+        else:
+            potential = {}
+            statement = self.statement
+
+            for from_clause in itertools.chain(
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._raw_columns
+                    ]
+                ),
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._where_criteria
+                    ]
+                ),
+            ):
+
+                potential[from_clause] = ()
+
+            all_clauses = list(potential.keys())
+            indexes = sql_util.find_left_clause_to_join_from(
+                all_clauses, right, onclause
+            )
+
+            if len(indexes) == 1:
+                left = all_clauses[indexes[0]]
+
+        if len(indexes) > 1:
+            raise exc.InvalidRequestError(
+                "Can't determine which FROM clause to join "
+                "from, there are multiple FROMS which can "
+                "join to this entity. Please use the .select_from() "
+                "method to establish an explicit left side, as well as "
+                "providing an explcit ON clause if not present already to "
+                "help resolve the ambiguity."
+            )
+        elif not indexes:
+            raise exc.InvalidRequestError(
+                "Don't know how to join to %r. "
+                "Please use the .select_from() "
+                "method to establish an explicit left side, as well as "
+                "providing an explcit ON clause if not present already to "
+                "help resolve the ambiguity." % (right,)
+            )
+        return left, replace_from_obj_index
+
+    @util.preload_module("sqlalchemy.sql.util")
+    def _join_place_explicit_left_side(self, left):
+        replace_from_obj_index = None
+
+        sql_util = util.preloaded.sql_util
+
+        from_clauses = list(self.statement._iterate_from_elements())
+
+        if from_clauses:
+            indexes = sql_util.find_left_clause_that_matches_given(
+                self.from_clauses, left
+            )
+        else:
+            indexes = []
+
+        if len(indexes) > 1:
+            raise exc.InvalidRequestError(
+                "Can't identify which entity in which to assign the "
+                "left side of this join.   Please use a more specific "
+                "ON clause."
+            )
+
+        # have an index, means the left side is already present in
+        # an existing FROM in the self._from_obj tuple
+        if indexes:
+            replace_from_obj_index = indexes[0]
+
+        # no index, means we need to add a new element to the
+        # self._from_obj tuple
+
+        return replace_from_obj_index
+
 
 class Select(
     HasPrefixes,
     HasSuffixes,
+    HasHints,
     HasCompileState,
     DeprecatedSelectGenerations,
     GenerativeSelect,
@@ -3440,9 +3729,10 @@ class Select(
     __visit_name__ = "select"
 
     _compile_state_factory = SelectState._create
+    _is_future = False
+    _setup_joins = ()
+    _legacy_setup_joins = ()
 
-    _hints = util.immutabledict()
-    _statement_hints = ()
     _distinct = False
     _distinct_on = ()
     _correlate = ()
@@ -3452,6 +3742,8 @@ class Select(
     _from_obj = ()
     _auto_correlate = True
 
+    compile_options = SelectState.default_select_compile_options
+
     _traverse_internals = (
         [
             ("_raw_columns", InternalTraversal.dp_clauseelement_list),
@@ -3460,58 +3752,33 @@ class Select(
             ("_having_criteria", InternalTraversal.dp_clauseelement_list),
             ("_order_by_clauses", InternalTraversal.dp_clauseelement_list,),
             ("_group_by_clauses", InternalTraversal.dp_clauseelement_list,),
+            ("_setup_joins", InternalTraversal.dp_setup_join_tuple,),
+            ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple,),
             ("_correlate", InternalTraversal.dp_clauseelement_unordered_set),
             (
                 "_correlate_except",
                 InternalTraversal.dp_clauseelement_unordered_set,
             ),
             ("_for_update_arg", InternalTraversal.dp_clauseelement),
-            ("_statement_hints", InternalTraversal.dp_statement_hint_list),
-            ("_hints", InternalTraversal.dp_table_hint_list),
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_list),
             ("_label_style", InternalTraversal.dp_plain_obj),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
+        + HasHints._has_hints_traverse_internals
         + SupportsCloneAnnotations._clone_annotations_traverse_internals
+        + Executable._executable_traverse_internals
     )
+
+    _cache_key_traversal = _traverse_internals + [
+        ("compile_options", InternalTraversal.dp_has_cache_key)
+    ]
 
     @classmethod
     def _create_select(cls, *entities):
-        r"""Construct a new :class:`_expression.Select` using the 2.
-        x style API.
-
-        .. versionadded:: 2.0 - the :func:`_future.select` construct is
-           the same construct as the one returned by
-           :func:`_expression.select`, except that the function only
-           accepts the "columns clause" entities up front; the rest of the
-           state of the SELECT should be built up using generative methods.
-
-        Similar functionality is also available via the
-        :meth:`_expression.FromClause.select` method on any
-        :class:`_expression.FromClause`.
-
-        .. seealso::
-
-            :ref:`coretutorial_selecting` - Core Tutorial description of
-            :func:`_expression.select`.
-
-        :param \*entities:
-          Entities to SELECT from.  For Core usage, this is typically a series
-          of :class:`_expression.ColumnElement` and / or
-          :class:`_expression.FromClause`
-          objects which will form the columns clause of the resulting
-          statement.   For those objects that are instances of
-          :class:`_expression.FromClause` (typically :class:`_schema.Table`
-          or :class:`_expression.Alias`
-          objects), the :attr:`_expression.FromClause.c`
-          collection is extracted
-          to form a collection of :class:`_expression.ColumnElement` objects.
-
-          This parameter will also accept :class:`_expression.TextClause`
-          constructs as
-          given, as well as ORM-mapped classes.
+        r"""Construct an old style :class:`_expression.Select` using the
+        the 2.x style constructor.
 
         """
 
@@ -3779,7 +4046,10 @@ class Select(
 
         if cols_present:
             self._raw_columns = [
-                coercions.expect(roles.ColumnsClauseRole, c,) for c in columns
+                coercions.expect(
+                    roles.ColumnsClauseRole, c, apply_plugins=self
+                )
+                for c in columns
             ]
         else:
             self._raw_columns = []
@@ -3820,71 +4090,6 @@ class Select(
 
         return self._compile_state_factory(self, None)._get_display_froms()
 
-    def with_statement_hint(self, text, dialect_name="*"):
-        """add a statement hint to this :class:`_expression.Select`.
-
-        This method is similar to :meth:`_expression.Select.with_hint`
-        except that
-        it does not require an individual table, and instead applies to the
-        statement as a whole.
-
-        Hints here are specific to the backend database and may include
-        directives such as isolation levels, file directives, fetch directives,
-        etc.
-
-        .. versionadded:: 1.0.0
-
-        .. seealso::
-
-            :meth:`_expression.Select.with_hint`
-
-            :meth:`.Select.prefix_with` - generic SELECT prefixing which also
-            can suit some database-specific HINT syntaxes such as MySQL
-            optimizer hints
-
-        """
-        return self.with_hint(None, text, dialect_name)
-
-    @_generative
-    def with_hint(self, selectable, text, dialect_name="*"):
-        r"""Add an indexing or other executional context hint for the given
-        selectable to this :class:`_expression.Select`.
-
-        The text of the hint is rendered in the appropriate
-        location for the database backend in use, relative
-        to the given :class:`_schema.Table` or :class:`_expression.Alias`
-        passed as the
-        ``selectable`` argument. The dialect implementation
-        typically uses Python string substitution syntax
-        with the token ``%(name)s`` to render the name of
-        the table or alias. E.g. when using Oracle, the
-        following::
-
-            select([mytable]).\
-                with_hint(mytable, "index(%(name)s ix_mytable)")
-
-        Would render SQL as::
-
-            select /*+ index(mytable ix_mytable) */ ... from mytable
-
-        The ``dialect_name`` option will limit the rendering of a particular
-        hint to a particular backend. Such as, to add hints for both Oracle
-        and Sybase simultaneously::
-
-            select([mytable]).\
-                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
-                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
-
-        .. seealso::
-
-            :meth:`_expression.Select.with_statement_hint`
-
-        """
-        if selectable is None:
-            self._statement_hints += ((dialect_name, text),)
-        else:
-            self._hints = self._hints.union({(selectable, dialect_name): text})
-
     @property
     def inner_columns(self):
         """an iterator of all ColumnElement expressions which would
@@ -3921,9 +4126,16 @@ class Select(
                 _from_objects(*self._where_criteria),
             )
         )
+
+        # do a clone for the froms we've gathered.  what is important here
+        # is if any of the things we are selecting from, like tables,
+        # were converted into Join objects.   if so, these need to be
+        # added to _from_obj explicitly, because otherwise they won't be
+        # part of the new state, as they don't associate themselves with
+        # their columns.
         new_froms = {f: clone(f, **kw) for f in all_the_froms}
 
-        # 2. copy FROM collections.
+        # 2. copy FROM collections, adding in joins that we've created.
         self._from_obj = tuple(clone(f, **kw) for f in self._from_obj) + tuple(
             f for f in new_froms.values() if isinstance(f, Join)
         )
@@ -3937,6 +4149,10 @@ class Select(
 
         kw["replace"] = replace
 
+        # copy everything else.   for table-ish things like correlate,
+        # correlate_except, setup_joins, these clone normally.  For
+        # column-expression oriented things like raw_columns, where_criteria,
+        # order by, we get this from the new froms.
         super(Select, self)._copy_internals(
             clone=clone, omit_attrs=("_from_obj",), **kw
         )
@@ -3975,8 +4191,16 @@ class Select(
         self._assert_no_memoizations()
 
         self._raw_columns = self._raw_columns + [
-            coercions.expect(roles.ColumnsClauseRole, column,)
+            coercions.expect(
+                roles.ColumnsClauseRole, column, apply_plugins=self
+            )
             for column in columns
+        ]
+
+    def _set_entities(self, entities):
+        self._raw_columns = [
+            coercions.expect(roles.ColumnsClauseRole, ent, apply_plugins=self)
+            for ent in util.to_list(entities)
         ]
 
     @util.deprecated(
@@ -4111,6 +4335,7 @@ class Select(
         rc = []
         for c in columns:
             c = coercions.expect(roles.ColumnsClauseRole, c,)
+            # TODO: why are we doing this here?
             if isinstance(c, ScalarSelect):
                 c = c.self_group(against=operators.comma_op)
             rc.append(c)
@@ -4121,7 +4346,9 @@ class Select(
         """Legacy, return the WHERE clause as a """
         """:class:`_expression.BooleanClauseList`"""
 
-        return and_(*self._where_criteria)
+        return BooleanClauseList._construct_for_whereclause(
+            self._where_criteria
+        )
 
     @_generative
     def where(self, whereclause):
@@ -4202,7 +4429,9 @@ class Select(
         """
 
         self._from_obj += tuple(
-            coercions.expect(roles.FromClauseRole, fromclause)
+            coercions.expect(
+                roles.FromClauseRole, fromclause, apply_plugins=self
+            )
             for fromclause in froms
         )
 

@@ -225,6 +225,9 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     dp_has_cache_key = symbol("HC")
     """Visit a :class:`.HasCacheKey` object."""
 
+    dp_has_cache_key_list = symbol("HL")
+    """Visit a list of :class:`.HasCacheKey` objects."""
+
     dp_clauseelement = symbol("CE")
     """Visit a :class:`_expression.ClauseElement` object."""
 
@@ -372,6 +375,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     """
 
+    dp_setup_join_tuple = symbol("SJ")
+
     dp_statement_hint_list = symbol("SH")
     """Visit the ``_statement_hints`` collection of a
     :class:`_expression.Select`
@@ -436,9 +441,6 @@ class ExtendedInternalTraversal(InternalTraversal):
     objects.
 
     """
-
-    dp_has_cache_key_list = symbol("HL")
-    """Visit a list of :class:`.HasCacheKey` objects."""
 
     dp_inspectable_list = symbol("IL")
     """Visit a list of inspectable objects which upon inspection are

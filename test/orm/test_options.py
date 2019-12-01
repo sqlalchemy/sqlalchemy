@@ -77,20 +77,23 @@ class PathTest(object):
         return orm_util.PathRegistry.coerce(self._make_path(path))
 
     def _assert_path_result(self, opt, q, paths):
-        q._attributes = dict(q._attributes)
         attr = {}
 
         if isinstance(opt, strategy_options._UnboundLoad):
             for val in opt._to_bind:
                 val._bind_loader(
-                    [ent.entity_zero for ent in q._mapper_entities],
-                    q._current_path,
+                    [
+                        ent.entity_zero
+                        for ent in q._compile_state()._mapper_entities
+                    ],
+                    q.compile_options._current_path,
                     attr,
                     False,
                 )
         else:
-            opt._process(q, True)
-            attr = q._attributes
+            compile_state = q._compile_state()
+            compile_state.attributes = attr = {}
+            opt._process(compile_state, True)
 
         assert_paths = [k[1] for k in attr]
         eq_(
@@ -1216,16 +1219,23 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def _assert_option(self, entity_list, option):
         Item = self.classes.Item
 
-        q = create_session().query(*entity_list).options(joinedload(option))
+        context = (
+            create_session()
+            .query(*entity_list)
+            .options(joinedload(option))
+            ._compile_state()
+        )
         key = ("loader", (inspect(Item), inspect(Item).attrs.keywords))
-        assert key in q._attributes
+        assert key in context.attributes
 
     def _assert_loader_strategy_exception(self, entity_list, options, message):
         assert_raises_message(
             orm_exc.LoaderStrategyException,
             message,
-            create_session().query(*entity_list).options,
-            *options
+            create_session()
+            .query(*entity_list)
+            .options(*options)
+            ._compile_state,
         )
 
     def _assert_eager_with_entity_exception(
@@ -1234,8 +1244,10 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             message,
-            create_session().query(*entity_list).options,
-            *options
+            create_session()
+            .query(*entity_list)
+            .options(*options)
+            ._compile_state,
         )
 
     def _assert_eager_with_just_column_exception(
@@ -1244,8 +1256,10 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             message,
-            create_session().query(column).options,
-            joinedload(eager_option),
+            create_session()
+            .query(column)
+            .options(joinedload(eager_option))
+            ._compile_state,
         )
 
 
@@ -1260,8 +1274,7 @@ class OptionsNoPropTestInh(_Polymorphic):
             r'Mapped attribute "Manager.status" does not apply to any of '
             r"the root entities in this query, e.g. "
             r"with_polymorphic\(Person, \[Manager\]\).",
-            s.query(wp).options,
-            load_only(Manager.status),
+            s.query(wp).options(load_only(Manager.status))._compile_state,
         )
 
     def test_missing_attr_of_type_subclass(self):
@@ -1271,10 +1284,13 @@ class OptionsNoPropTestInh(_Polymorphic):
             sa.exc.ArgumentError,
             r'Attribute "Manager.manager_name" does not link from element '
             r'"with_polymorphic\(Person, \[Engineer\]\)".$',
-            s.query(Company).options,
-            joinedload(Company.employees.of_type(Engineer)).load_only(
-                Manager.manager_name
-            ),
+            s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(Engineer)).load_only(
+                    Manager.manager_name
+                )
+            )
+            ._compile_state,
         )
 
     def test_missing_attr_of_type_subclass_name_matches(self):
@@ -1286,10 +1302,13 @@ class OptionsNoPropTestInh(_Polymorphic):
             sa.exc.ArgumentError,
             r'Attribute "Manager.status" does not link from element '
             r'"with_polymorphic\(Person, \[Engineer\]\)".$',
-            s.query(Company).options,
-            joinedload(Company.employees.of_type(Engineer)).load_only(
-                Manager.status
-            ),
+            s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(Engineer)).load_only(
+                    Manager.status
+                )
+            )
+            ._compile_state,
         )
 
     def test_missing_str_attr_of_type_subclass(self):
@@ -1299,10 +1318,13 @@ class OptionsNoPropTestInh(_Polymorphic):
             sa.exc.ArgumentError,
             r'Can\'t find property named "manager_name" on '
             r"mapped class Engineer->engineers in this Query.$",
-            s.query(Company).options,
-            joinedload(Company.employees.of_type(Engineer)).load_only(
-                "manager_name"
-            ),
+            s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(Engineer)).load_only(
+                    "manager_name"
+                )
+            )
+            ._compile_state,
         )
 
     def test_missing_attr_of_type_wpoly_subclass(self):
@@ -1314,10 +1336,13 @@ class OptionsNoPropTestInh(_Polymorphic):
             sa.exc.ArgumentError,
             r'Attribute "Manager.manager_name" does not link from '
             r'element "with_polymorphic\(Person, \[Manager\]\)".$',
-            s.query(Company).options,
-            joinedload(Company.employees.of_type(wp)).load_only(
-                Manager.manager_name
-            ),
+            s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(wp)).load_only(
+                    Manager.manager_name
+                )
+            )
+            ._compile_state,
         )
 
     def test_missing_attr_is_missing_of_type_for_alias(self):
@@ -1330,8 +1355,9 @@ class OptionsNoPropTestInh(_Polymorphic):
             r'Attribute "AliasedClass_Person.name" does not link from '
             r'element "mapped class Person->people".  Did you mean to use '
             r"Company.employees.of_type\(AliasedClass_Person\)\?",
-            s.query(Company).options,
-            joinedload(Company.employees).load_only(pa.name),
+            s.query(Company)
+            .options(joinedload(Company.employees).load_only(pa.name))
+            ._compile_state,
         )
 
         q = s.query(Company).options(
@@ -1341,7 +1367,7 @@ class OptionsNoPropTestInh(_Polymorphic):
             Company.employees.property
         ][inspect(pa)][pa.name.property]
         key = ("loader", orig_path.natural_path)
-        loader = q._attributes[key]
+        loader = q._compile_state().attributes[key]
         eq_(loader.path, orig_path)
 
 
@@ -1403,8 +1429,11 @@ class PickleTest(PathTest, QueryTest):
         query = create_session().query(User)
         attr = {}
         load = opt._bind_loader(
-            [ent.entity_zero for ent in query._mapper_entities],
-            query._current_path,
+            [
+                ent.entity_zero
+                for ent in query._compile_state()._mapper_entities
+            ],
+            query.compile_options._current_path,
             attr,
             False,
         )
@@ -1437,8 +1466,11 @@ class PickleTest(PathTest, QueryTest):
         query = create_session().query(User)
         attr = {}
         load = opt._bind_loader(
-            [ent.entity_zero for ent in query._mapper_entities],
-            query._current_path,
+            [
+                ent.entity_zero
+                for ent in query._compile_state()._mapper_entities
+            ],
+            query.compile_options._current_path,
             attr,
             False,
         )
@@ -1479,10 +1511,11 @@ class LocalOptsTest(PathTest, QueryTest):
 
         for opt in opts:
             if isinstance(opt, strategy_options._UnboundLoad):
+                ctx = query._compile_state()
                 for tb in opt._to_bind:
                     tb._bind_loader(
-                        [ent.entity_zero for ent in query._mapper_entities],
-                        query._current_path,
+                        [ent.entity_zero for ent in ctx._mapper_entities],
+                        query.compile_options._current_path,
                         attr,
                         False,
                     )
@@ -1568,27 +1601,29 @@ class SubOptionsTest(PathTest, QueryTest):
     run_deletes = None
 
     def _assert_opts(self, q, sub_opt, non_sub_opts):
-        existing_attributes = q._attributes
-        q._attributes = dict(q._attributes)
         attr_a = {}
 
         for val in sub_opt._to_bind:
             val._bind_loader(
-                [ent.entity_zero for ent in q._mapper_entities],
-                q._current_path,
+                [
+                    ent.entity_zero
+                    for ent in q._compile_state()._mapper_entities
+                ],
+                q.compile_options._current_path,
                 attr_a,
                 False,
             )
-
-        q._attributes = dict(existing_attributes)
 
         attr_b = {}
 
         for opt in non_sub_opts:
             for val in opt._to_bind:
                 val._bind_loader(
-                    [ent.entity_zero for ent in q._mapper_entities],
-                    q._current_path,
+                    [
+                        ent.entity_zero
+                        for ent in q._compile_state()._mapper_entities
+                    ],
+                    q.compile_options._current_path,
                     attr_b,
                     False,
                 )

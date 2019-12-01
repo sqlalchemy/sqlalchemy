@@ -346,13 +346,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         q = create_session().query(Item).order_by(Item.id)
 
         def go():
+            ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (
-                    q.join("keywords", aliased=True).filter(
-                        Keyword.name == "red"
-                    )
-                ).all(),
+                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -2700,8 +2697,11 @@ class CyclicalInheritingEagerTestTwo(
         ctx = s.query(Director).options(subqueryload("*"))._compile_context()
 
         q = ctx.attributes[
-            ("subquery", (inspect(Director), inspect(Director).attrs.movies))
-        ]
+            (
+                "subqueryload_data",
+                (inspect(Director), inspect(Director).attrs.movies),
+            )
+        ]["query"]
         self.assert_compile(
             q,
             "SELECT movie.id AS movie_id, "
@@ -2830,8 +2830,11 @@ class SubqueryloadDistinctTest(
         ctx = q._compile_context()
 
         q2 = ctx.attributes[
-            ("subquery", (inspect(Movie), inspect(Movie).attrs.director))
-        ]
+            (
+                "subqueryload_data",
+                (inspect(Movie), inspect(Movie).attrs.director),
+            )
+        ]["query"]
         self.assert_compile(
             q2,
             "SELECT director.id AS director_id, "
@@ -2853,8 +2856,11 @@ class SubqueryloadDistinctTest(
             eq_(rows, [(1, "Woody Allen", 1), (1, "Woody Allen", 1)])
 
         q3 = ctx2.attributes[
-            ("subquery", (inspect(Director), inspect(Director).attrs.photos))
-        ]
+            (
+                "subqueryload_data",
+                (inspect(Director), inspect(Director).attrs.photos),
+            )
+        ]["query"]
 
         self.assert_compile(
             q3,
@@ -2914,12 +2920,12 @@ class SubqueryloadDistinctTest(
         ctx = q._compile_context()
 
         q2 = ctx.attributes[
-            ("subquery", (inspect(Credit), Credit.movie.property))
-        ]
+            ("subqueryload_data", (inspect(Credit), Credit.movie.property))
+        ]["query"]
         ctx2 = q2._compile_context()
         q3 = ctx2.attributes[
-            ("subquery", (inspect(Movie), Movie.director.property))
-        ]
+            ("subqueryload_data", (inspect(Movie), Movie.director.property))
+        ]["query"]
 
         result = s.execute(q3)
         eq_(result.fetchall(), [(1, "Woody Allen", 1), (1, "Woody Allen", 1)])

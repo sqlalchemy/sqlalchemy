@@ -930,6 +930,8 @@ class HasMemoized(object):
 
     """
 
+    __slots__ = ()
+
     _memoized_keys = frozenset()
 
     def _reset_memoizations(self):
@@ -1273,12 +1275,17 @@ class hybridmethod(object):
 
     def __init__(self, func):
         self.func = func
+        self.clslevel = func
 
     def __get__(self, instance, owner):
         if instance is None:
-            return self.func.__get__(owner, owner.__class__)
+            return self.clslevel.__get__(owner, owner.__class__)
         else:
             return self.func.__get__(instance, owner)
+
+    def classlevel(self, func):
+        self.clslevel = func
+        return self
 
 
 class _symbol(int):

@@ -19,7 +19,7 @@ class SQLRole(object):
 
 
 class UsesInspection(object):
-    pass
+    _post_inspect = None
 
 
 class ColumnArgumentRole(SQLRole):
@@ -52,6 +52,14 @@ class LimitOffsetRole(SQLRole):
 
 class ByOfRole(ColumnListRole):
     _role_name = "GROUP BY / OF / etc. expression"
+
+
+class GroupByRole(UsesInspection, ByOfRole):
+    # note there's a special case right now where you can pass a whole
+    # ORM entity to group_by() and it splits out.   we may not want to keep
+    # this around
+
+    _role_name = "GROUP BY expression"
 
 
 class OrderByRole(ByOfRole):
@@ -92,7 +100,14 @@ class InElementRole(SQLRole):
     )
 
 
-class FromClauseRole(ColumnsClauseRole):
+class JoinTargetRole(UsesInspection, StructuralRole):
+    _role_name = (
+        "Join target, typically a FROM expression, or ORM "
+        "relationship attribute"
+    )
+
+
+class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
     _role_name = "FROM expression, such as a Table or alias() object"
 
     _is_subquery = False

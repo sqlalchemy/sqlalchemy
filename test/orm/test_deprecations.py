@@ -1,9 +1,12 @@
 import sqlalchemy as sa
 from sqlalchemy import and_
+from sqlalchemy import cast
 from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -747,8 +750,10 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             message,
-            create_session().query(*entity_list).options,
-            *options
+            create_session()
+            .query(*entity_list)
+            .options(*options)
+            ._compile_context,
         )
 
     def test_defer_addtl_attrs(self):
@@ -1296,6 +1301,10 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
 
 class InstancesTest(QueryTest, AssertsCompiledSQL):
+    @testing.fails(
+        "ORM refactor not allowing this yet, "
+        "we may just abandon this use case"
+    )
     def test_from_alias_one(self):
         User, addresses, users = (
             self.classes.User,
@@ -1327,6 +1336,41 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                     q.options(
                         contains_alias("ulist"), contains_eager("addresses")
                     ).instances(query.execute())
+                )
+            assert self.static.user_address_result == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_from_alias_two_old_way(self):
+        User, addresses, users = (
+            self.classes.User,
+            self.tables.addresses,
+            self.tables.users,
+        )
+
+        query = (
+            users.select(users.c.id == 7)
+            .union(users.select(users.c.id > 7))
+            .alias("ulist")
+            .outerjoin(addresses)
+            .select(
+                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
+            )
+        )
+        sess = create_session()
+        q = sess.query(User)
+
+        def go():
+            with testing.expect_deprecated(
+                "The AliasOption is not necessary for entities to be "
+                "matched up to a query"
+            ):
+                result = (
+                    q.options(
+                        contains_alias("ulist"), contains_eager("addresses")
+                    )
+                    .from_statement(query)
+                    .all()
                 )
             assert self.static.user_address_result == result
 
@@ -1672,3 +1716,238 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.after_bulk_delete_legacy.mock_calls,
             [call(sess, upd.query, upd.context, upd.result)],
         )
+
+
+class ImmediateTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        Address, addresses, users, User = (
+            cls.classes.Address,
+            cls.tables.addresses,
+            cls.tables.users,
+            cls.classes.User,
+        )
+
+        mapper(Address, addresses)
+
+        mapper(User, users, properties=dict(addresses=relationship(Address)))
+
+    def test_value(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        with testing.expect_deprecated(r"Query.value\(\) is deprecated"):
+            eq_(sess.query(User).filter_by(id=7).value(User.id), 7)
+        with testing.expect_deprecated(r"Query.value\(\) is deprecated"):
+            eq_(
+                sess.query(User.id, User.name).filter_by(id=7).value(User.id),
+                7,
+            )
+        with testing.expect_deprecated(r"Query.value\(\) is deprecated"):
+            eq_(sess.query(User).filter_by(id=0).value(User.id), None)
+
+        sess.bind = testing.db
+        with testing.expect_deprecated(r"Query.value\(\) is deprecated"):
+            eq_(sess.query().value(sa.literal_column("1").label("x")), 1)
+
+    def test_value_cancels_loader_opts(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        q = (
+            sess.query(User)
+            .filter(User.name == "ed")
+            .options(joinedload(User.addresses))
+        )
+
+        with testing.expect_deprecated(r"Query.value\(\) is deprecated"):
+            q = q.value(func.count(literal_column("*")))
+
+
+class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_values(self):
+        Address, users, User = (
+            self.classes.Address,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            assert list(sess.query(User).values()) == list()
+
+        sel = users.select(User.id.in_([7, 8])).alias()
+        q = sess.query(User)
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = q.select_entity_from(sel).values(User.name)
+        eq_(list(q2), [("jack",), ("ed",)])
+
+        q = sess.query(User)
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = q.order_by(User.id).values(
+                User.name, User.name + " " + cast(User.id, String(50))
+            )
+        eq_(
+            list(q2),
+            [
+                ("jack", "jack 7"),
+                ("ed", "ed 8"),
+                ("fred", "fred 9"),
+                ("chuck", "chuck 10"),
+            ],
+        )
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.join("addresses")
+                .filter(User.name.like("%e%"))
+                .order_by(User.id, Address.id)
+                .values(User.name, Address.email_address)
+            )
+        eq_(
+            list(q2),
+            [
+                ("ed", "ed@wood.com"),
+                ("ed", "ed@bettyboop.com"),
+                ("ed", "ed@lala.com"),
+                ("fred", "fred@fred.com"),
+            ],
+        )
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.join("addresses")
+                .filter(User.name.like("%e%"))
+                .order_by(desc(Address.email_address))
+                .slice(1, 3)
+                .values(User.name, Address.email_address)
+            )
+        eq_(list(q2), [("ed", "ed@wood.com"), ("ed", "ed@lala.com")])
+
+        adalias = aliased(Address)
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.join(adalias, "addresses")
+                .filter(User.name.like("%e%"))
+                .order_by(adalias.email_address)
+                .values(User.name, adalias.email_address)
+            )
+        eq_(
+            list(q2),
+            [
+                ("ed", "ed@bettyboop.com"),
+                ("ed", "ed@lala.com"),
+                ("ed", "ed@wood.com"),
+                ("fred", "fred@fred.com"),
+            ],
+        )
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = q.values(func.count(User.name))
+        assert next(q2) == (4,)
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.select_entity_from(sel)
+                .filter(User.id == 8)
+                .values(User.name, sel.c.name, User.name)
+            )
+        eq_(list(q2), [("ed", "ed", "ed")])
+
+        # using User.xxx is alised against "sel", so this query returns nothing
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.select_entity_from(sel)
+                .filter(User.id == 8)
+                .filter(User.id > sel.c.id)
+                .values(User.name, sel.c.name, User.name)
+            )
+        eq_(list(q2), [])
+
+        # whereas this uses users.c.xxx, is not aliased and creates a new join
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.select_entity_from(sel)
+                .filter(users.c.id == 8)
+                .filter(users.c.id > sel.c.id)
+                .values(users.c.name, sel.c.name, User.name)
+            )
+            eq_(list(q2), [("ed", "jack", "jack")])
+
+    @testing.fails_on("mssql", "FIXME: unknown")
+    def test_values_specific_order_by(self):
+        users, User = self.tables.users, self.classes.User
+
+        sess = create_session()
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            assert list(sess.query(User).values()) == list()
+
+        sel = users.select(User.id.in_([7, 8])).alias()
+        q = sess.query(User)
+        u2 = aliased(User)
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.select_entity_from(sel)
+                .filter(u2.id > 1)
+                .filter(or_(u2.id == User.id, u2.id != User.id))
+                .order_by(User.id, sel.c.id, u2.id)
+                .values(User.name, sel.c.name, u2.name)
+            )
+        eq_(
+            list(q2),
+            [
+                ("jack", "jack", "jack"),
+                ("jack", "jack", "ed"),
+                ("jack", "jack", "fred"),
+                ("jack", "jack", "chuck"),
+                ("ed", "ed", "jack"),
+                ("ed", "ed", "ed"),
+                ("ed", "ed", "fred"),
+                ("ed", "ed", "chuck"),
+            ],
+        )
+
+    @testing.fails_on("mssql", "FIXME: unknown")
+    @testing.fails_on(
+        "oracle", "Oracle doesn't support boolean expressions as " "columns"
+    )
+    @testing.fails_on(
+        "postgresql+pg8000",
+        "pg8000 parses the SQL itself before passing on "
+        "to PG, doesn't parse this",
+    )
+    @testing.fails_on("firebird", "unknown")
+    def test_values_with_boolean_selects(self):
+        """Tests a values clause that works with select boolean
+        evaluations"""
+
+        User = self.classes.User
+
+        sess = create_session()
+
+        q = sess.query(User)
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = (
+                q.group_by(User.name.like("%j%"))
+                .order_by(desc(User.name.like("%j%")))
+                .values(
+                    User.name.like("%j%"), func.count(User.name.like("%j%"))
+                )
+            )
+        eq_(list(q2), [(True, 1), (False, 3)])
+
+        with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
+            q2 = q.order_by(desc(User.name.like("%j%"))).values(
+                User.name.like("%j%")
+            )
+        eq_(list(q2), [(True,), (False,), (False,), (False,)])

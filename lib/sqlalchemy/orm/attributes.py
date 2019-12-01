@@ -49,6 +49,7 @@ from .. import event
 from .. import inspection
 from .. import util
 from ..sql import base as sql_base
+from ..sql import roles
 from ..sql import visitors
 
 
@@ -57,7 +58,8 @@ class QueryableAttribute(
     interfaces._MappedAttribute,
     interfaces.InspectionAttr,
     interfaces.PropComparator,
-    sql_base.HasCacheKey,
+    roles.JoinTargetRole,
+    sql_base.MemoizedHasCacheKey,
 ):
     """Base class for :term:`descriptor` objects that intercept
     attribute events on behalf of a :class:`.MapperProperty`
@@ -107,11 +109,23 @@ class QueryableAttribute(
                         self.dispatch._active_history = True
 
     _cache_key_traversal = [
-        # ("class_", visitors.ExtendedInternalTraversal.dp_plain_obj),
         ("key", visitors.ExtendedInternalTraversal.dp_string),
         ("_parententity", visitors.ExtendedInternalTraversal.dp_multi),
         ("_of_type", visitors.ExtendedInternalTraversal.dp_multi),
     ]
+
+    def __reduce__(self):
+        # this method is only used in terms of the
+        # sqlalchemy.ext.serializer extension
+        return (
+            _queryable_attribute_unreduce,
+            (
+                self.key,
+                self._parententity.mapper.class_,
+                self._parententity,
+                self._parententity.entity,
+            ),
+        )
 
     @util.memoized_property
     def _supports_population(self):
@@ -208,14 +222,14 @@ class QueryableAttribute(
             parententity=adapt_to_entity,
         )
 
-    def of_type(self, cls):
+    def of_type(self, entity):
         return QueryableAttribute(
             self.class_,
             self.key,
             self.impl,
-            self.comparator.of_type(cls),
+            self.comparator.of_type(entity),
             self._parententity,
-            of_type=cls,
+            of_type=inspection.inspect(entity),
         )
 
     def label(self, name):
@@ -263,6 +277,15 @@ class QueryableAttribute(
 
         """
         return self.comparator.property
+
+
+def _queryable_attribute_unreduce(key, mapped_class, parententity, entity):
+    # this method is only used in terms of the
+    # sqlalchemy.ext.serializer extension
+    if parententity.is_aliased_class:
+        return entity._get_from_serialized(key, mapped_class, parententity)
+    else:
+        return getattr(entity, key)
 
 
 class InstrumentedAttribute(QueryableAttribute):

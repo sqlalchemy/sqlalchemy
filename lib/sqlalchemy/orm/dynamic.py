@@ -279,10 +279,21 @@ class AppenderMixin(object):
             # doesn't fail, and secondary is then in _from_obj[1].
             self._from_obj = (prop.mapper.selectable, prop.secondary)
 
-        self._criterion = prop._with_parent(instance, alias_secondary=False)
+        self._where_criteria += (
+            prop._with_parent(instance, alias_secondary=False),
+        )
 
         if self.attr.order_by:
-            self._order_by = self.attr.order_by
+
+            if (
+                self._order_by_clauses is False
+                or self._order_by_clauses is None
+            ):
+                self._order_by_clauses = tuple(self.attr.order_by)
+            else:
+                self._order_by_clauses = self._order_by_clauses + tuple(
+                    self.attr.order_by
+                )
 
     def session(self):
         sess = object_session(self.instance)
@@ -354,9 +365,9 @@ class AppenderMixin(object):
         else:
             query = sess.query(self.attr.target_mapper)
 
-        query._criterion = self._criterion
+        query._where_criteria = self._where_criteria
         query._from_obj = self._from_obj
-        query._order_by = self._order_by
+        query._order_by_clauses = self._order_by_clauses
 
         return query
 

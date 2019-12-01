@@ -12,7 +12,7 @@ as actively in the load/persist ORM loop.
 """
 
 from . import attributes
-from . import query
+from . import util as orm_util
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .util import _none_set
@@ -362,7 +362,7 @@ class CompositeProperty(DescriptorProperty):
     def _comparator_factory(self, mapper):
         return self.comparator_factory(self, mapper)
 
-    class CompositeBundle(query.Bundle):
+    class CompositeBundle(orm_util.Bundle):
         def __init__(self, property_, expr):
             self.property = property_
             super(CompositeProperty.CompositeBundle, self).__init__(

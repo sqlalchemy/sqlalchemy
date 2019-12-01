@@ -14,7 +14,7 @@ from .base import _class_to_mapper
 from .base import _is_aliased_class
 from .base import _is_mapped_class
 from .base import InspectionAttr
-from .interfaces import MapperOption
+from .interfaces import LoaderOption
 from .interfaces import PropComparator
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _WILDCARD_TOKEN
@@ -29,10 +29,9 @@ from ..sql import roles
 from ..sql import visitors
 from ..sql.base import _generative
 from ..sql.base import Generative
-from ..sql.traversals import HasCacheKey
 
 
-class Load(HasCacheKey, Generative, MapperOption):
+class Load(Generative, LoaderOption):
     """Represents loader options which modify the state of a
     :class:`_query.Query` in order to affect how various mapped attributes are
     loaded.
@@ -196,21 +195,23 @@ class Load(HasCacheKey, Generative, MapperOption):
     propagate_to_loaders = False
     _of_type = None
 
-    def process_query(self, query):
-        self._process(query, True)
+    def process_compile_state(self, compile_state):
+        if not compile_state.compile_options._enable_eagerloads:
+            return
 
-    def process_query_conditionally(self, query):
-        self._process(query, False)
+        self._process(compile_state, not bool(compile_state.current_path))
 
-    def _process(self, query, raiseerr):
-        current_path = query._current_path
+    def _process(self, compile_state, raiseerr):
+        current_path = compile_state.current_path
         if current_path:
             for (token, start_path), loader in self.context.items():
                 chopped_start_path = self._chop_path(start_path, current_path)
                 if chopped_start_path is not None:
-                    query._attributes[(token, chopped_start_path)] = loader
+                    compile_state.attributes[
+                        (token, chopped_start_path)
+                    ] = loader
         else:
-            query._attributes.update(self.context)
+            compile_state.attributes.update(self.context)
 
     def _generate_path(
         self, path, attr, for_strategy, wildcard_key, raiseerr=True
@@ -423,7 +424,6 @@ class Load(HasCacheKey, Generative, MapperOption):
     @_generative
     def set_column_strategy(self, attrs, strategy, opts=None, opts_only=False):
         strategy = self._coerce_strat(strategy)
-
         self.is_class_strategy = False
         for attr in attrs:
             cloned = self._clone_for_bind_strategy(
@@ -434,7 +434,6 @@ class Load(HasCacheKey, Generative, MapperOption):
     @_generative
     def set_generic_strategy(self, attrs, strategy):
         strategy = self._coerce_strat(strategy)
-
         for attr in attrs:
             cloned = self._clone_for_bind_strategy(attr, strategy, None)
             cloned.propagate_to_loaders = True
@@ -685,15 +684,18 @@ class _UnboundLoad(Load):
         state["path"] = tuple(ret)
         self.__dict__ = state
 
-    def _process(self, query, raiseerr):
-        dedupes = query._attributes["_unbound_load_dedupes"]
+    def _process(self, compile_state, raiseerr):
+        dedupes = compile_state.attributes["_unbound_load_dedupes"]
         for val in self._to_bind:
             if val not in dedupes:
                 dedupes.add(val)
                 val._bind_loader(
-                    [ent.entity_zero for ent in query._mapper_entities],
-                    query._current_path,
-                    query._attributes,
+                    [
+                        ent.entity_zero
+                        for ent in compile_state._mapper_entities
+                    ],
+                    compile_state.current_path,
+                    compile_state.attributes,
                     raiseerr,
                 )
 
@@ -767,7 +769,11 @@ class _UnboundLoad(Load):
                     ret.append((token._parentmapper.class_, token.key, None))
                 else:
                     ret.append(
-                        (token._parentmapper.class_, token.key, token._of_type)
+                        (
+                            token._parentmapper.class_,
+                            token.key,
+                            token._of_type.entity if token._of_type else None,
+                        )
                     )
             elif isinstance(token, PropComparator):
                 ret.append((token._parentmapper.class_, token.key, None))

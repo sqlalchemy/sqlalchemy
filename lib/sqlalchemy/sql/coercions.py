@@ -57,7 +57,7 @@ def expect(role, element, **kw):
 
     if not isinstance(
         element,
-        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue),
+        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue,),
     ):
         resolved = impl._resolve_for_clause_element(element, **kw)
     else:
@@ -106,7 +106,9 @@ class RoleImpl(object):
         self.name = role_class._role_name
         self._use_inspection = issubclass(role_class, roles.UsesInspection)
 
-    def _resolve_for_clause_element(self, element, argname=None, **kw):
+    def _resolve_for_clause_element(
+        self, element, argname=None, apply_plugins=None, **kw
+    ):
         original_element = element
 
         is_clause_element = False
@@ -115,18 +117,39 @@ class RoleImpl(object):
             if not getattr(element, "is_clause_element", False):
                 element = element.__clause_element__()
             else:
-                return element
+                break
+
+        should_apply_plugins = (
+            apply_plugins is not None
+            and apply_plugins._compile_state_plugin is None
+        )
 
         if is_clause_element:
+            if (
+                should_apply_plugins
+                and "compile_state_plugin" in element._annotations
+            ):
+                apply_plugins._compile_state_plugin = element._annotations[
+                    "compile_state_plugin"
+                ]
             return element
 
         if self._use_inspection:
             insp = inspection.inspect(element, raiseerr=False)
             if insp is not None:
+                insp._post_inspect
                 try:
-                    return insp.__clause_element__()
+                    element = insp.__clause_element__()
                 except AttributeError:
                     self._raise_for_expected(original_element, argname)
+                else:
+                    if (
+                        should_apply_plugins
+                        and "compile_state_plugin" in element._annotations
+                    ):
+                        plugin = element._annotations["compile_state_plugin"]
+                        apply_plugins._compile_state_plugin = plugin
+                    return element
 
         return self._literal_coercion(element, argname=argname, **kw)
 
@@ -287,7 +310,7 @@ class _SelectIsNotFrom(object):
             advice = (
                 "To create a "
                 "FROM clause from a %s object, use the .subquery() method."
-                % (element.__class__)
+                % (element.__class__,)
             )
             code = "89ve"
         else:
@@ -449,6 +472,18 @@ class OrderByImpl(ByOfImpl, RoleImpl):
             and resolved._order_by_label_element is not None
         ):
             return elements._label_reference(resolved)
+        else:
+            return resolved
+
+
+class GroupByImpl(ByOfImpl, RoleImpl):
+    __slots__ = ()
+
+    def _implicit_coercions(
+        self, original_element, resolved, argname=None, **kw
+    ):
+        if isinstance(resolved, roles.StrictFromClauseRole):
+            return elements.ClauseList(*resolved.c)
         else:
             return resolved
 
@@ -618,6 +653,37 @@ class HasCTEImpl(ReturnsRowsImpl, roles.HasCTERole):
     pass
 
 
+class JoinTargetImpl(RoleImpl):
+    __slots__ = ()
+
+    def _literal_coercion(self, element, legacy=False, **kw):
+        if isinstance(element, str):
+            return element
+
+    def _implicit_coercions(
+        self, original_element, resolved, argname=None, legacy=False, **kw
+    ):
+        if isinstance(original_element, roles.JoinTargetRole):
+            return original_element
+        elif legacy and isinstance(resolved, (str, roles.WhereHavingRole)):
+            return resolved
+        elif legacy and resolved._is_select_statement:
+            util.warn_deprecated(
+                "Implicit coercion of SELECT and textual SELECT "
+                "constructs into FROM clauses is deprecated; please call "
+                ".subquery() on any Core select or ORM Query object in "
+                "order to produce a subquery object.",
+                version="1.4",
+            )
+            # TODO: doing _implicit_subquery here causes tests to fail,
+            # how was this working before?  probably that ORM
+            # join logic treated it as a select and subquery would happen
+            # in _ORMJoin->Join
+            return resolved
+        else:
+            self._raise_for_expected(original_element, argname, resolved)
+
+
 class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
     __slots__ = ()
 
@@ -646,6 +712,12 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
             return resolved
         else:
             self._raise_for_expected(original_element, argname, resolved)
+
+    def _post_coercion(self, element, deannotate=False, **kw):
+        if deannotate:
+            return element._deannotate()
+        else:
+            return element
 
 
 class StrictFromClauseImpl(FromClauseImpl):

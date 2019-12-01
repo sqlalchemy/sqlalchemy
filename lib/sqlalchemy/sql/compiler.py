@@ -653,6 +653,12 @@ class SQLCompiler(Compiled):
 
     """
 
+    compile_state_factories = util.immutabledict()
+    """Dictionary of alternate :class:`.CompileState` factories for given
+    classes, identified by their visit_name.
+
+    """
+
     def __init__(
         self,
         dialect,
@@ -661,6 +667,7 @@ class SQLCompiler(Compiled):
         column_keys=None,
         inline=False,
         linting=NO_LINTING,
+        compile_state_factories=None,
         **kwargs
     ):
         """Construct a new :class:`.SQLCompiler` object.
@@ -726,6 +733,9 @@ class SQLCompiler(Compiled):
         # a map which tracks "truncated" names based on
         # dialect.label_length or dialect.max_identifier_length
         self.truncated_names = {}
+
+        if compile_state_factories:
+            self.compile_state_factories = compile_state_factories
 
         Compiled.__init__(self, dialect, statement, **kwargs)
 

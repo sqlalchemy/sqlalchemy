@@ -86,17 +86,12 @@ class GenerativeQueryTest(fixtures.MappedTest):
         assert sess.query(func.max(foo.c.bar)).filter(
             foo.c.bar < 30
         ).one() == (29,)
-        assert (
-            next(query.filter(foo.c.bar < 30).values(sa.func.max(foo.c.bar)))[
-                0
-            ]
-            == 29
-        )
-        assert (
-            next(query.filter(foo.c.bar < 30).values(sa.func.max(foo.c.bar)))[
-                0
-            ]
-            == 29
+
+        eq_(
+            query.filter(foo.c.bar < 30)
+            .with_entities(sa.func.max(foo.c.bar))
+            .scalar(),
+            29,
         )
 
     @testing.fails_if(
@@ -131,15 +126,19 @@ class GenerativeQueryTest(fixtures.MappedTest):
 
         query = create_session().query(Foo)
 
-        avg_f = next(
-            query.filter(foo.c.bar < 30).values(sa.func.avg(foo.c.bar))
-        )[0]
-        assert float(round(avg_f, 1)) == 14.5
+        avg_f = (
+            query.filter(foo.c.bar < 30)
+            .with_entities(sa.func.avg(foo.c.bar))
+            .scalar()
+        )
+        eq_(float(round(avg_f, 1)), 14.5)
 
-        avg_o = next(
-            query.filter(foo.c.bar < 30).values(sa.func.avg(foo.c.bar))
-        )[0]
-        assert float(round(avg_o, 1)) == 14.5
+        avg_o = (
+            query.filter(foo.c.bar < 30)
+            .with_entities(sa.func.avg(foo.c.bar))
+            .scalar()
+        )
+        eq_(float(round(avg_o, 1)), 14.5)
 
     def test_filter(self):
         Foo = self.classes.Foo

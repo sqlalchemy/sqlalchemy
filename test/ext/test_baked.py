@@ -1298,14 +1298,14 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
 
         # I would think Mock can do this but apparently
         # it cannot (wrap / autospec don't work together)
-        real_compile_context = Query._compile_context
+        real_compile_state = Query._compile_state
 
-        def _my_compile_context(*arg, **kw):
+        def _my_compile_state(*arg, **kw):
             if arg[0].column_descriptions[0]["entity"] is Address:
                 canary()
-            return real_compile_context(*arg, **kw)
+            return real_compile_state(*arg, **kw)
 
-        with mock.patch.object(Query, "_compile_context", _my_compile_context):
+        with mock.patch.object(Query, "_compile_state", _my_compile_state):
             u1.addresses
 
             sess.expire(u1)
@@ -1340,8 +1340,8 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             for cond1, cond2 in itertools.product(
                 *[(False, True) for j in range(2)]
             ):
-                bq = base_bq._clone()
 
+                bq = base_bq._clone()
                 sess = Session()
 
                 if cond1:
@@ -1587,17 +1587,17 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
             # the scope of ORM /execute() integration so that people
             # don't have to subclass this anymore.
 
-            def _execute_and_instances(self, context):
+            def _execute_and_instances(self, context, **kw):
                 super_ = super(CachingQuery, self)
 
                 if hasattr(self, "_cache_key"):
                     return self.get_value(
                         createfunc=lambda: super_._execute_and_instances(
-                            context
+                            context, **kw
                         )
                     )
                 else:
-                    return super_._execute_and_instances(context)
+                    return super_._execute_and_instances(context, **kw)
 
             def get_value(self, createfunc):
                 if self._cache_key in self.cache:

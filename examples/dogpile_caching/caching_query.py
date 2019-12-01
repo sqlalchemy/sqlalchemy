@@ -48,8 +48,20 @@ class CachingQuery(Query):
     # NOTE: as of 1.4 don't override __iter__() anymore, the result object
     # cannot be cached at that level.
 
-    def _execute_and_instances(self, context):
-        """override _execute_and_instances to pull results from dogpile.
+    def _execute_and_instances(self, context, **kw):
+        """override _execute_and_instances to pull results from dogpile
+            if the query is invoked directly from an external context.
+
+           This method is necessary in order to maintain compatibility
+           with the "baked query" system now used by default in some
+           relationship loader scenarios.   Note also the
+           RelationshipCache._generate_cache_key method which enables
+           the baked query to be used within lazy loads.
+
+           .. versionadded:: 1.2.7
+
+           .. versionchanged:: 1.4  Added ``**kw`` arguments to the signature.
+
         """
         super_ = super(CachingQuery, self)
 
@@ -58,11 +70,11 @@ class CachingQuery(Query):
             # method is called directly from the baked query
             return self.get_value(
                 createfunc=lambda: super_._execute_and_instances(
-                    context
+                    context, **kw
                 ).freeze()
             )
         else:
-            return super_._execute_and_instances(context)
+            return super_._execute_and_instances(context, **kw)
 
     def _get_cache_plus_key(self):
         """Return a cache region plus key."""

@@ -21,6 +21,14 @@ Following is the full interface for the :class:`_query.Query` object.
 .. autoclass:: sqlalchemy.orm.query.Query
    :members:
 
+   .. automethod:: sqlalchemy.orm.query.Query.prefix_with
+
+   .. automethod:: sqlalchemy.orm.query.Query.suffix_with
+
+   .. automethod:: sqlalchemy.orm.query.Query.with_hint
+
+   .. automethod:: sqlalchemy.orm.query.Query.with_statement_hint
+
 ORM-Specific Query Constructs
 =============================
 
@@ -30,7 +38,7 @@ ORM-Specific Query Constructs
 
 .. autoclass:: sqlalchemy.orm.util.AliasedInsp
 
-.. autoclass:: sqlalchemy.orm.query.Bundle
+.. autoclass:: sqlalchemy.orm.util.Bundle
     :members:
 
 .. autoclass:: sqlalchemy.orm.strategy_options.Load

@@ -37,6 +37,8 @@ from .interfaces import _MappedAttribute
 from .interfaces import EXT_SKIP
 from .interfaces import InspectionAttr
 from .interfaces import MapperProperty
+from .interfaces import ORMEntityColumnsClauseRole
+from .interfaces import ORMFromClauseRole
 from .path_registry import PathRegistry
 from .. import event
 from .. import exc as sa_exc
@@ -70,7 +72,12 @@ _CONFIGURE_MUTEX = util.threading.RLock()
 
 @inspection._self_inspects
 @log.class_logger
-class Mapper(sql_base.HasCacheKey, InspectionAttr):
+class Mapper(
+    ORMFromClauseRole,
+    ORMEntityColumnsClauseRole,
+    sql_base.MemoizedHasCacheKey,
+    InspectionAttr,
+):
     """Define the correlation of class attributes to database table
     columns.
 
@@ -2085,6 +2092,20 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         return self._mappers_from_spec(*self.with_polymorphic)
 
     @HasMemoized.memoized_attribute
+    def _post_inspect(self):
+        """This hook is invoked by attribute inspection.
+
+        E.g. when Query calls:
+
+            coercions.expect(roles.ColumnsClauseRole, ent, keep_inspect=True)
+
+        This allows the inspection process run a configure mappers hook.
+
+        """
+        if Mapper._new_mappers:
+            configure_mappers()
+
+    @HasMemoized.memoized_attribute
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
             return self.persist_selectable
@@ -2207,12 +2228,16 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, columns in self._cols_by_table.items()
         )
 
-    # temporarily commented out until we fix an issue in the serializer
-    #    @_memoized_configured_property.method
+    @HasMemoized.memoized_instancemethod
     def __clause_element__(self):
-        return self.selectable  # ._annotate(
-        # {"parententity": self, "parentmapper": self}
-        # )
+        return self.selectable._annotate(
+            {
+                "entity_namespace": self,
+                "parententity": self,
+                "parentmapper": self,
+                "compile_state_plugin": "orm",
+            }
+        )
 
     @property
     def selectable(self):
@@ -2385,6 +2410,10 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         descriptor_props = util.preloaded.orm_descriptor_props
 
         return self._filter_properties(descriptor_props.SynonymProperty)
+
+    @property
+    def entity_namespace(self):
+        return self.class_
 
     @HasMemoized.memoized_attribute
     def column_attrs(self):
@@ -2961,18 +2990,24 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     (prop.key,), {"do_nothing": True}
                 )
 
-        if len(self.primary_key) > 1:
-            in_expr = sql.tuple_(*self.primary_key)
+        primary_key = [
+            sql_util._deep_annotate(pk, {"_orm_adapt": True})
+            for pk in self.primary_key
+        ]
+
+        if len(primary_key) > 1:
+            in_expr = sql.tuple_(*primary_key)
         else:
-            in_expr = self.primary_key[0]
+            in_expr = primary_key[0]
 
         if entity.is_aliased_class:
             assert entity.mapper is self
+
             q = baked.BakedQuery(
                 self._compiled_cache,
-                lambda session: session.query(entity)
-                .select_entity_from(entity.selectable)
-                ._adapt_all_clauses(),
+                lambda session: session.query(entity).select_entity_from(
+                    entity.selectable
+                ),
                 (self,),
             )
             q.spoil()
@@ -2985,7 +3020,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         q += lambda q: q.filter(
             in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-        ).order_by(*self.primary_key)
+        ).order_by(*primary_key)
 
         return q, enable_opt, disable_opt
 

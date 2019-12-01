@@ -1634,8 +1634,7 @@ class InheritanceTest(_Polymorphic):
             'Mapped attribute "Manager.status" does not apply to any of the '
             "root entities in this query, e.g. "
             r"with_polymorphic\(Person, \[Manager\]\).",
-            s.query(wp).options,
-            load_only(Manager.status),
+            s.query(wp).options(load_only(Manager.status))._compile_context,
         )
 
         q = s.query(wp).options(load_only(wp.Manager.status))
@@ -1661,18 +1660,24 @@ class InheritanceTest(_Polymorphic):
             sa.exc.ArgumentError,
             r'Can\'t find property named "status" on '
             r"with_polymorphic\(Person, \[Manager\]\) in this Query.",
-            s.query(Company).options,
-            joinedload(Company.employees.of_type(wp)).load_only("status"),
+            s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(wp)).load_only("status")
+            )
+            ._compile_context,
         )
 
         assert_raises_message(
             sa.exc.ArgumentError,
             'Attribute "Manager.status" does not link from element '
             r'"with_polymorphic\(Person, \[Manager\]\)"',
-            s.query(Company).options,
-            joinedload(Company.employees.of_type(wp)).load_only(
-                Manager.status
-            ),
+            s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(wp)).load_only(
+                    Manager.status
+                )
+            )
+            ._compile_context,
         )
 
         self.assert_compile(

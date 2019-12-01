@@ -1250,8 +1250,6 @@ and ``A.b.a`` from our event:
 Relationship Loader API
 -----------------------
 
-.. autofunction:: contains_alias
-
 .. autofunction:: contains_eager
 
 .. autofunction:: defaultload

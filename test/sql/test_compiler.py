@@ -29,6 +29,7 @@ from sqlalchemy import exc
 from sqlalchemy import except_
 from sqlalchemy import exists
 from sqlalchemy import Float
+from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import intersect
@@ -85,7 +86,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.util import u
 
-
 table1 = table(
     "mytable",
     column("myid", Integer),
@@ -123,6 +123,13 @@ table5 = Table(
     schema="dbo.remote_owner",
 )
 
+parent = Table("parent", metadata, Column("id", Integer, primary_key=True))
+child = Table(
+    "child",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("parent_id", ForeignKey("parent.id")),
+)
 users = table(
     "users", column("user_id"), column("user_name"), column("password")
 )
@@ -5218,7 +5225,14 @@ class ResultMapTest(fixtures.TestBase):
         eq_(len(stmt.subquery().c), 7)
 
         # will render 7 as well
-        eq_(len(stmt._compile_state_factory(stmt, None).columns_plus_names), 7)
+        eq_(
+            len(
+                stmt._compile_state_factory(
+                    stmt, stmt.compile()
+                ).columns_plus_names
+            ),
+            7,
+        )
 
         wrapped = stmt._generate()
         wrapped = wrapped.add_columns(

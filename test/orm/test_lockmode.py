@@ -31,7 +31,7 @@ class ForUpdateTest(_fixtures.FixtureTest):
         q = s.query(User).with_for_update(
             read=read, nowait=nowait, of=of, key_share=key_share
         )
-        sel = q._compile_context().statement
+        sel = q._compile_state().statement
 
         assert q._for_update_arg.read is read
         assert sel._for_update_arg.read is read

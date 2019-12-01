@@ -50,7 +50,8 @@ class EnumTest(fixtures.TestBase):
 
 
 class CacheKeyTest(fixtures.TestBase):
-    __requires__ = ("cpython", "python_profiling_backend")
+    # python3 is just to have less variability in test counts
+    __requires__ = ("cpython", "python_profiling_backend", "python3")
 
     @testing.fixture(scope="class")
     def mapping_fixture(self):

@@ -36,6 +36,7 @@ from .. import inspect
 from .. import inspection
 from .. import util
 from ..sql import operators
+from ..sql import roles
 from ..sql import visitors
 from ..sql.traversals import HasCacheKey
 
@@ -56,10 +57,23 @@ __all__ = (
     "NOT_EXTENSION",
     "LoaderStrategy",
     "MapperOption",
+    "LoaderOption",
     "MapperProperty",
     "PropComparator",
     "StrategizedProperty",
 )
+
+
+class ORMColumnsClauseRole(roles.ColumnsClauseRole):
+    _role_name = "ORM mapped entity, aliased entity, or Column expression"
+
+
+class ORMEntityColumnsClauseRole(ORMColumnsClauseRole):
+    _role_name = "ORM mapped or aliased entity"
+
+
+class ORMFromClauseRole(roles.StrictFromClauseRole):
+    _role_name = "ORM mapped entity, aliased entity, or FROM expression"
 
 
 class MapperProperty(
@@ -620,6 +634,8 @@ class StrategizedProperty(MapperProperty):
 
     @classmethod
     def _strategy_lookup(cls, requesting_property, *key):
+        requesting_property.parent._with_polymorphic_mappers
+
         for prop_cls in cls.__mro__:
             if prop_cls in cls._all_strategies:
                 strategies = cls._all_strategies[prop_cls]
@@ -646,8 +662,52 @@ class StrategizedProperty(MapperProperty):
         )
 
 
+class LoaderOption(HasCacheKey):
+    """Describe a modification to an ORM statement at compilation time.
+
+    .. versionadded:: 1.4
+
+    """
+
+    __slots__ = ()
+
+    _is_legacy_option = False
+
+    propagate_to_loaders = False
+    """if True, indicate this option should be carried along
+    to "secondary" Query objects produced during lazy loads
+    or refresh operations.
+
+    """
+
+    def process_compile_state(self, compile_state):
+        """Apply a modification to a given :class:`.CompileState`."""
+
+    def _generate_path_cache_key(self, path):
+        """Used by the "baked lazy loader" to see if this option can be cached.
+
+        .. deprecated:: 2.0 this method is to suit the baked extension which
+           is itself not part of 2.0.
+
+        """
+        return False
+
+
+@util.deprecated_cls(
+    "1.4",
+    "The :class:`.MapperOption class is deprecated and will be removed "
+    "in a future release.  ORM options now run within the compilation "
+    "phase and are based on the :class:`.LoaderOption` class which is "
+    "intended for internal consumption only.  For "
+    "modifications to queries on a per-execution basis, the "
+    ":meth:`.before_execute` hook will now intercept ORM :class:`.Query` "
+    "objects before they are invoked",
+    constructor=None,
+)
 class MapperOption(object):
-    """Describe a modification to a Query."""
+    """Describe a modification to a Query"""
+
+    _is_legacy_option = True
 
     propagate_to_loaders = False
     """if True, indicate this option should be carried along
@@ -663,7 +723,7 @@ class MapperOption(object):
         """same as process_query(), except that this option may not
         apply to the given query.
 
-        This is typically used during a lazy load or scalar refresh
+        This is typically applied during a lazy load or scalar refresh
         operation to propagate options stated in the original Query to the
         new Query being used for the load.  It occurs for those options that
         specify propagate_to_loaders=True.
@@ -770,7 +830,7 @@ class LoaderStrategy(object):
         pass
 
     def setup_query(
-        self, context, query_entity, path, loadopt, adapter, **kwargs
+        self, compile_state, query_entity, path, loadopt, adapter, **kwargs
     ):
         """Establish column and other state for a given QueryContext.
 

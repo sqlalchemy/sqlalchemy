@@ -624,10 +624,10 @@ class RelationshipFromSingleTest(
         )
         subq = context.attributes[
             (
-                "subquery",
+                "subqueryload_data",
                 (class_mapper(Manager), class_mapper(Manager).attrs.stuff),
             )
-        ]
+        ]["query"]
 
         self.assert_compile(
             subq,

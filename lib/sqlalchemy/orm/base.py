@@ -479,6 +479,9 @@ class InspectionAttr(object):
     is_mapper = False
     """True if this object is an instance of :class:`_orm.Mapper`."""
 
+    is_bundle = False
+    """True if this object is an instance of :class:`.Bundle`."""
+
     is_property = False
     """True if this object is an instance of :class:`.MapperProperty`."""
 

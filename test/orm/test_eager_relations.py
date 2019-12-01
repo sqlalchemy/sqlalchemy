@@ -631,13 +631,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
         def go():
+            ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (
-                    q.join("keywords", aliased=True).filter(
-                        Keyword.name == "red"
-                    )
-                ).all(),
+                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 1)
@@ -5489,7 +5486,7 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
             a = relationship(A, primaryjoin=a_id == A.id)
             ld = relationship(LD, primaryjoin=ld_id == LD.id)
 
-    def test_multi_path_load(self):
+    def test_multi_path_load_legacy_join_style(self):
         User, LD, A, LDA = self.classes("User", "LD", "A", "LDA")
 
         s = Session()

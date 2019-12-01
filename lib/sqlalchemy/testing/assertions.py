@@ -398,9 +398,11 @@ class AssertsCompiledSQL(object):
         from sqlalchemy import orm
 
         if isinstance(clause, orm.Query):
-            context = clause._compile_context()
-            context.statement._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
-            clause = context.statement
+            compile_state = clause._compile_state()
+            compile_state.statement._label_style = (
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
+            clause = compile_state.statement
         elif isinstance(clause, orm.persistence.BulkUD):
             with mock.patch.object(clause, "_execute_stmt") as stmt_mock:
                 clause.exec_()

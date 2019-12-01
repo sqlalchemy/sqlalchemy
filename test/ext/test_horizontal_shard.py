@@ -117,8 +117,8 @@ class ShardTest(object):
                             for value in binary.right.value:
                                 ids.append(shard_lookup[value])
 
-            if query._criterion is not None:
-                FindContinent().traverse(query._criterion)
+            if query.whereclause is not None:
+                FindContinent().traverse(query.whereclause)
             if len(ids) == 0:
                 return ["north_america", "asia", "europe", "south_america"]
             else:

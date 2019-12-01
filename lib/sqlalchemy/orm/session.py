@@ -1258,9 +1258,9 @@ class Session(_SessionClassMethods):
         if bind is None:
             bind = self.get_bind(mapper, clause=clause, **kw)
 
-        return self._connection_for_bind(bind, close_with_result=True).execute(
-            clause, params or {}
-        )
+        return self._connection_for_bind(
+            bind, close_with_result=True
+        )._execute_20(clause, params,)
 
     def scalar(self, clause, params=None, mapper=None, bind=None, **kw):
         """Like :meth:`~.Session.execute` but return a scalar result."""

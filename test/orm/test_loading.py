@@ -75,7 +75,7 @@ class InstancesTest(_fixtures.FixtureTest):
 
         ctx = q._compile_context()
         cursor = mock.Mock()
-        q._entities = [
+        ctx.compile_state._entities = [
             mock.Mock(row_processor=mock.Mock(side_effect=Exception("boom")))
         ]
         assert_raises(Exception, loading.instances, q, cursor, ctx)

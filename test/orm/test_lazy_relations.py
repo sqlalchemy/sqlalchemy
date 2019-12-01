@@ -439,7 +439,9 @@ class LazyTest(_fixtures.FixtureTest):
             def process_query_conditionally(self, query):
                 """process query during a lazyload"""
                 canary()
-                query._params = query._params.union(dict(name=self.crit))
+                params = dict(query.load_options._params)
+                query.load_options += {"_params": params}
+                query.load_options._params.update(dict(name=self.crit))
 
         s = Session()
         ed = s.query(User).options(MyOption("ed")).filter_by(name="ed").one()

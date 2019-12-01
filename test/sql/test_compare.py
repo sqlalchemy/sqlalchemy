@@ -28,6 +28,7 @@ from sqlalchemy import util
 from sqlalchemy import values
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.future import select as future_select
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
@@ -89,6 +90,18 @@ table_b = Table("b", meta, Column("a", Integer), Column("b", Integer))
 table_c = Table("c", meta, Column("x", Integer), Column("y", Integer))
 
 table_d = Table("d", meta, Column("y", Integer), Column("z", Integer))
+
+
+def opt1(ctx):
+    pass
+
+
+def opt2(ctx):
+    pass
+
+
+def opt3(ctx):
+    pass
 
 
 class MyEntity(HasCacheKey):
@@ -324,6 +337,28 @@ class CoreFixtures(object):
             select([table_a.c.a])
             .where(table_a.c.b == 5)
             .correlate_except(table_b),
+        ),
+        lambda: (
+            future_select(table_a.c.a),
+            future_select(table_a.c.a).join(
+                table_b, table_a.c.a == table_b.c.a
+            ),
+            future_select(table_a.c.a).join_from(
+                table_a, table_b, table_a.c.a == table_b.c.a
+            ),
+            future_select(table_a.c.a).join_from(table_a, table_b),
+            future_select(table_a.c.a).join_from(table_c, table_b),
+            future_select(table_a.c.a)
+            .join(table_b, table_a.c.a == table_b.c.a)
+            .join(table_c, table_b.c.b == table_c.c.x),
+            future_select(table_a.c.a).join(table_b),
+            future_select(table_a.c.a).join(table_c),
+            future_select(table_a.c.a).join(
+                table_b, table_a.c.a == table_b.c.b
+            ),
+            future_select(table_a.c.a).join(
+                table_c, table_a.c.a == table_c.c.x
+            ),
         ),
         lambda: (
             select([table_a.c.a]).cte(),
@@ -609,6 +644,22 @@ class CoreFixtures(object):
         return [one(), one_diff(), two(), three()]
 
     fixtures.append(_complex_fixtures)
+
+    def _statements_w_context_options_fixtures():
+
+        return [
+            select([table_a])._add_context_option(opt1, True),
+            select([table_a])._add_context_option(opt1, 5),
+            select([table_a])
+            ._add_context_option(opt1, True)
+            ._add_context_option(opt2, True),
+            select([table_a])
+            ._add_context_option(opt1, True)
+            ._add_context_option(opt2, 5),
+            select([table_a])._add_context_option(opt3, True),
+        ]
+
+    fixtures.append(_statements_w_context_options_fixtures)
 
 
 class CacheKeyFixture(object):
@@ -986,29 +1037,33 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
 
 
 class CompareClausesTest(fixtures.TestBase):
-    def test_compare_metadata_tables(self):
-        # metadata Table objects cache on their own identity, not their
-        # structure.   This is mainly to reduce the size of cache keys
-        # as well as reduce computational overhead, as Table objects have
-        # very large internal state and they are also generally global
-        # objects.
+    def test_compare_metadata_tables_annotations_one(self):
+        # test that cache keys from annotated version of tables refresh
+        # properly
 
         t1 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
         t2 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
 
         ne_(t1._generate_cache_key(), t2._generate_cache_key())
 
-        eq_(t1._generate_cache_key().key, (t1, "_annotations", ()))
+        eq_(t1._generate_cache_key().key, (t1,))
 
-    def test_compare_metadata_tables_annotations(self):
-        # metadata Table objects cache on their own identity, not their
-        # structure.   This is mainly to reduce the size of cache keys
-        # as well as reduce computational overhead, as Table objects have
-        # very large internal state and they are also generally global
-        # objects.
+        t2 = t1._annotate({"foo": "bar"})
+        eq_(
+            t2._generate_cache_key().key,
+            (t1, "_annotations", (("foo", "bar"),)),
+        )
+        eq_(
+            t2._annotate({"bat": "bar"})._generate_cache_key().key,
+            (t1, "_annotations", (("bat", "bar"), ("foo", "bar"))),
+        )
+
+    def test_compare_metadata_tables_annotations_two(self):
 
         t1 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
         t2 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
+
+        eq_(t2._generate_cache_key().key, (t2,))
 
         t1 = t1._annotate({"orm": True})
         t2 = t2._annotate({"orm": True})

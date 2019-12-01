@@ -343,13 +343,16 @@ class ColumnProperty(StrategizedProperty):
             if self.adapter:
                 return self.adapter(self.prop.columns[0], self.prop.key)
             else:
+                pe = self._parententity
                 # no adapter, so we aren't aliased
                 # assert self._parententity is self._parentmapper
                 return self.prop.columns[0]._annotate(
                     {
-                        "parententity": self._parententity,
-                        "parentmapper": self._parententity,
+                        "entity_namespace": pe,
+                        "parententity": pe,
+                        "parentmapper": pe,
                         "orm_key": self.prop.key,
+                        "compile_state_plugin": "orm",
                     }
                 )
 
@@ -383,6 +386,7 @@ class ColumnProperty(StrategizedProperty):
                             "parententity": self._parententity,
                             "parentmapper": self._parententity,
                             "orm_key": self.prop.key,
+                            "compile_state_plugin": "orm",
                         }
                     )
                     for col in self.prop.columns

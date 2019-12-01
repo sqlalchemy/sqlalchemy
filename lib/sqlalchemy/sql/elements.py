@@ -26,7 +26,6 @@ from .annotation import SupportsWrappingAnnotations
 from .base import _clone
 from .base import _generative
 from .base import Executable
-from .base import HasCacheKey
 from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
@@ -35,6 +34,7 @@ from .base import SingletonConstant
 from .coercions import _document_text_coercion
 from .traversals import _copy_internals
 from .traversals import _get_children
+from .traversals import MemoizedHasCacheKey
 from .traversals import NO_CACHE
 from .visitors import cloned_traverse
 from .visitors import InternalTraversal
@@ -179,7 +179,10 @@ def not_(clause):
 
 @inspection._self_inspects
 class ClauseElement(
-    roles.SQLRole, SupportsWrappingAnnotations, HasCacheKey, Traversible,
+    roles.SQLRole,
+    SupportsWrappingAnnotations,
+    MemoizedHasCacheKey,
+    Traversible,
 ):
     """Base class for elements of a programmatically constructed SQL
     expression.
@@ -206,6 +209,7 @@ class ClauseElement(
     _is_select_container = False
     _is_select_statement = False
     _is_bind_parameter = False
+    _is_clause_list = False
 
     _order_by_label_element = None
 
@@ -300,7 +304,7 @@ class ClauseElement(
         used.
 
         """
-        return self._params(True, optionaldict, kwargs)
+        return self._replace_params(True, optionaldict, kwargs)
 
     def params(self, *optionaldict, **kwargs):
         """Return a copy with :func:`bindparam()` elements replaced.
@@ -315,9 +319,9 @@ class ClauseElement(
           {'foo':7}
 
         """
-        return self._params(False, optionaldict, kwargs)
+        return self._replace_params(False, optionaldict, kwargs)
 
-    def _params(self, unique, optionaldict, kwargs):
+    def _replace_params(self, unique, optionaldict, kwargs):
         if len(optionaldict) == 1:
             kwargs.update(optionaldict[0])
         elif len(optionaldict) > 1:
@@ -371,7 +375,7 @@ class ClauseElement(
                 continue
 
             if obj is not None:
-                result = meth(self, obj, **kw)
+                result = meth(self, attrname, obj, **kw)
                 if result is not None:
                     setattr(self, attrname, result)
 
@@ -2070,6 +2074,8 @@ class ClauseList(
 
     __visit_name__ = "clauselist"
 
+    _is_clause_list = True
+
     _traverse_internals = [
         ("clauses", InternalTraversal.dp_clauseelement_list),
         ("operator", InternalTraversal.dp_operator),
@@ -2079,6 +2085,8 @@ class ClauseList(
         self.operator = kwargs.pop("operator", operators.comma_op)
         self.group = kwargs.pop("group", True)
         self.group_contents = kwargs.pop("group_contents", True)
+        if kwargs.pop("_flatten_sub_clauses", False):
+            clauses = util.flatten_iterator(clauses)
         self._tuple_values = kwargs.pop("_tuple_values", False)
         self._text_converter_role = text_converter_role = kwargs.pop(
             "_literal_as_text_role", roles.WhereHavingRole
@@ -2116,7 +2124,9 @@ class ClauseList(
 
     @property
     def _select_iterable(self):
-        return iter(self)
+        return itertools.chain.from_iterable(
+            [elem._select_iterable for elem in self.clauses]
+        )
 
     def append(self, clause):
         if self.group_contents:
@@ -2222,6 +2232,32 @@ class BooleanClauseList(ClauseList, ColumnElement):
                 version="1.4",
             )
             return cls._construct_raw(operator)
+
+    @classmethod
+    def _construct_for_whereclause(cls, clauses):
+        operator, continue_on, skip_on = (
+            operators.and_,
+            True_._singleton,
+            False_._singleton,
+        )
+
+        lcc, convert_clauses = cls._process_clauses_for_boolean(
+            operator,
+            continue_on,
+            skip_on,
+            clauses,  # these are assumed to be coerced already
+        )
+
+        if lcc > 1:
+            # multiple elements.  Return regular BooleanClauseList
+            # which will link elements against the operator.
+            return cls._construct_raw(operator, convert_clauses)
+        elif lcc == 1:
+            # just one element.  return it as a single boolean element,
+            # not a list and discard the operator.
+            return convert_clauses[0]
+        else:
+            return None
 
     @classmethod
     def _construct_raw(cls, operator, clauses=None):

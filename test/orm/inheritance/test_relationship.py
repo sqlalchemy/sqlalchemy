@@ -151,10 +151,11 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
         sess.add(e1)
         sess.flush()
         sess.expunge_all()
+        pa = aliased(Person)
         eq_(
             sess.query(Engineer)
-            .join("reports_to", aliased=True)
-            .filter(Person.name == "dogbert")
+            .join(pa, "reports_to")
+            .filter(pa.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
         )
@@ -261,10 +262,12 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
+        ma = aliased(Manager)
+
         eq_(
             sess.query(Engineer)
-            .join("reports_to", aliased=True)
-            .filter(Manager.name == "dogbert")
+            .join(ma, "reports_to")
+            .filter(ma.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
         )
@@ -438,22 +441,24 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
             [Engineer(name="e1")],
         )
 
-    def test_join_aliased_flag_one(self):
+    def test_join_aliased_one(self):
         sess = self._two_obj_fixture()
+        ea = aliased(Engineer)
         eq_(
             sess.query(Engineer)
-            .join("reports_to", aliased=True)
-            .filter(Engineer.name == "wally")
+            .join(ea, "reports_to")
+            .filter(ea.name == "wally")
             .first(),
             Engineer(name="dilbert"),
         )
 
-    def test_join_aliased_flag_two(self):
+    def test_join_aliased_two(self):
         sess = self._five_obj_fixture()
+        ea = aliased(Engineer)
         eq_(
             sess.query(Engineer)
-            .join(Engineer.engineers, aliased=True)
-            .filter(Engineer.name == "e4")
+            .join(ea, Engineer.engineers)
+            .filter(ea.name == "e4")
             .all(),
             [Engineer(name="e2")],
         )
@@ -463,26 +468,27 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
         e1 = sess.query(Engineer).filter_by(name="e1").one()
         e2 = sess.query(Engineer).filter_by(name="e2").one()
 
+        ea = aliased(Engineer)
         eq_(
             sess.query(Engineer)
-            .join(Engineer.engineers, aliased=True)
-            .filter(Engineer.reports_to == None)
+            .join(ea, Engineer.engineers)
+            .filter(ea.reports_to == None)
             .all(),  # noqa
             [],
         )
 
         eq_(
             sess.query(Engineer)
-            .join(Engineer.engineers, aliased=True)
-            .filter(Engineer.reports_to == e1)
+            .join(ea, Engineer.engineers)
+            .filter(ea.reports_to == e1)
             .all(),
             [e1],
         )
 
         eq_(
             sess.query(Engineer)
-            .join(Engineer.engineers, aliased=True)
-            .filter(Engineer.reports_to != None)
+            .join(ea, Engineer.engineers)
+            .filter(ea.reports_to != None)
             .all(),  # noqa
             [e1, e2],
         )
@@ -2496,9 +2502,9 @@ class MultipleAdaptUsesEntityOverTableTest(
 
     def test_two_joins_adaption(self):
         a, c, d = self.tables.a, self.tables.c, self.tables.d
-        q = self._two_join_fixture()
+        q = self._two_join_fixture()._compile_state()
 
-        btoc = q._from_obj[0].left
+        btoc = q.from_clauses[0].left
 
         ac_adapted = btoc.right.element.left
         c_adapted = btoc.right.element.right
@@ -2506,7 +2512,7 @@ class MultipleAdaptUsesEntityOverTableTest(
         is_(ac_adapted.element, a)
         is_(c_adapted.element, c)
 
-        ctod = q._from_obj[0].right
+        ctod = q.from_clauses[0].right
         ad_adapted = ctod.element.left
         d_adapted = ctod.element.right
         is_(ad_adapted.element, a)
@@ -2514,9 +2520,10 @@ class MultipleAdaptUsesEntityOverTableTest(
 
         bname, cname, dname = q._entities
 
-        b_name_adapted = q._adapt_clause(bname.column, False, True)
-        c_name_adapted = q._adapt_clause(cname.column, False, True)
-        d_name_adapted = q._adapt_clause(dname.column, False, True)
+        adapter = q._get_current_adapter()
+        b_name_adapted = adapter(bname.column, False)
+        c_name_adapted = adapter(cname.column, False)
+        d_name_adapted = adapter(dname.column, False)
 
         assert bool(b_name_adapted == a.c.name)
         assert bool(c_name_adapted == ac_adapted.c.name)

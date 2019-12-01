@@ -30,7 +30,6 @@ from .mapper import reconstructor  # noqa
 from .mapper import validates  # noqa
 from .properties import ColumnProperty  # noqa
 from .query import AliasOption  # noqa
-from .query import Bundle  # noqa
 from .query import Query  # noqa
 from .relationships import foreign  # noqa
 from .relationships import RelationshipProperty  # noqa
@@ -44,6 +43,7 @@ from .session import Session  # noqa
 from .session import sessionmaker  # noqa
 from .strategy_options import Load  # noqa
 from .util import aliased  # noqa
+from .util import Bundle  # noqa
 from .util import join  # noqa
 from .util import object_mapper  # noqa
 from .util import outerjoin  # noqa

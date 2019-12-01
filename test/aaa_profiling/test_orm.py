@@ -681,6 +681,10 @@ class SelectInEagerLoadTest(fixtures.MappedTest):
 
         q = sess.query(A).options(selectinload(A.bs).selectinload(B.cs))
 
+        # note this value went up when we removed query._attributes;
+        # this is because the test was previously making use of the same
+        # loader option state repeatedly without rebuilding it.
+
         @profiling.function_call_count()
         def go():
             for i in range(100):
@@ -839,13 +843,14 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
         )
 
         context = q._compile_context()
-        attributes = dict(context.attributes)
+        compile_state = context.compile_state
+        orig_attributes = dict(compile_state.attributes)
 
         @profiling.function_call_count()
         def go():
             for i in range(100):
                 # make sure these get reset each time
-                context.attributes = attributes.copy()
+                context.attributes = orig_attributes.copy()
                 obj = q._execute_and_instances(context)
                 list(obj)
                 sess.close()
@@ -1113,9 +1118,17 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         q = Session().query(A)
 
+        context = q._compile_state()
+
         @profiling.function_call_count(warmup=1)
         def go():
-            q.options(*opts)
+            q2 = q.options(opts)
+            context.query = q2
+            context.attributes = q2._attributes = {
+                "_unbound_load_dedupes": set()
+            }
+            for opt in q2._with_options:
+                opt.process_compile_state(context)
 
         go()
 
@@ -1132,9 +1145,17 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         q = Session().query(A)
 
+        context = q._compile_state()
+
         @profiling.function_call_count(warmup=1)
         def go():
-            q.options(*opts)
+            q2 = q.options(opts)
+            context.query = q2
+            context.attributes = q2._attributes = {
+                "_unbound_load_dedupes": set()
+            }
+            for opt in q2._with_options:
+                opt.process_compile_state(context)
 
         go()
 

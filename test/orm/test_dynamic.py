@@ -85,6 +85,16 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
         eq_(self.static.user_address_result, q.all())
 
+        eq_(
+            [
+                User(
+                    id=7,
+                    addresses=[Address(id=1, email_address="jack@bean.com")],
+                )
+            ],
+            q.filter_by(id=7).all(),
+        )
+
     def test_statement(self):
         """test that the .statement accessor returns the actual statement that
         would render, without any _clones called."""

@@ -24,6 +24,9 @@ from .base import state_attribute_str  # noqa
 from .base import state_class_str  # noqa
 from .base import state_str  # noqa
 from .interfaces import MapperProperty  # noqa
+from .interfaces import ORMColumnsClauseRole
+from .interfaces import ORMEntityColumnsClauseRole
+from .interfaces import ORMFromClauseRole
 from .interfaces import PropComparator  # noqa
 from .path_registry import PathRegistry  # noqa
 from .. import event
@@ -31,12 +34,14 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import sql
 from .. import util
+from ..engine.result import result_tuple
 from ..sql import base as sql_base
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql.base import ColumnCollection
 
 
 all_cascades = frozenset(
@@ -497,6 +502,13 @@ class AliasedClass(object):
 
         self.__name__ = "AliasedClass_%s" % mapper.class_.__name__
 
+    @classmethod
+    def _reconstitute_from_aliased_insp(cls, aliased_insp):
+        obj = cls.__new__(cls)
+        obj.__name__ = "AliasedClass_%s" % aliased_insp.mapper.class_.__name__
+        obj._aliased_insp = aliased_insp
+        return obj
+
     def __getattr__(self, key):
         try:
             _aliased_insp = self.__dict__["_aliased_insp"]
@@ -526,6 +538,27 @@ class AliasedClass(object):
 
         return attr
 
+    def _get_from_serialized(self, key, mapped_class, aliased_insp):
+        # this method is only used in terms of the
+        # sqlalchemy.ext.serializer extension
+        attr = getattr(mapped_class, key)
+        if hasattr(attr, "__call__") and hasattr(attr, "__self__"):
+            return types.MethodType(attr.__func__, self)
+
+        # attribute is a descriptor, that will be invoked against a
+        # "self"; so invoke the descriptor against this self
+        if hasattr(attr, "__get__"):
+            attr = attr.__get__(None, self)
+
+        # attributes within the QueryableAttribute system will want this
+        # to be invoked so the object can be adapted
+        if hasattr(attr, "adapt_to_entity"):
+            aliased_insp._weak_entity = weakref.ref(self)
+            attr = attr.adapt_to_entity(aliased_insp)
+            setattr(self, key, attr)
+
+        return attr
+
     def __repr__(self):
         return "<AliasedClass at 0x%x; %s>" % (
             id(self),
@@ -536,7 +569,12 @@ class AliasedClass(object):
         return str(self._aliased_insp)
 
 
-class AliasedInsp(sql_base.HasCacheKey, InspectionAttr):
+class AliasedInsp(
+    ORMEntityColumnsClauseRole,
+    ORMFromClauseRole,
+    sql_base.MemoizedHasCacheKey,
+    InspectionAttr,
+):
     """Provide an inspection interface for an
     :class:`.AliasedClass` object.
 
@@ -632,13 +670,35 @@ class AliasedInsp(sql_base.HasCacheKey, InspectionAttr):
 
     @property
     def entity(self):
-        return self._weak_entity()
+        # to eliminate reference cycles, the AliasedClass is held weakly.
+        # this produces some situations where the AliasedClass gets lost,
+        # particularly when one is created internally and only the AliasedInsp
+        # is passed around.
+        # to work around this case, we just generate a new one when we need
+        # it, as it is a simple class with very little initial state on it.
+        ent = self._weak_entity()
+        if ent is None:
+            ent = AliasedClass._reconstitute_from_aliased_insp(self)
+            self._weak_entity = weakref.ref(ent)
+        return ent
 
     is_aliased_class = True
     "always returns True"
 
+    @util.memoized_instancemethod
     def __clause_element__(self):
-        return self.selectable
+        return self.selectable._annotate(
+            {
+                "parentmapper": self.mapper,
+                "parententity": self,
+                "entity_namespace": self,
+                "compile_state_plugin": "orm",
+            }
+        )
+
+    @property
+    def entity_namespace(self):
+        return self.entity
 
     _cache_key_traversal = [
         ("name", visitors.ExtendedInternalTraversal.dp_string),
@@ -976,6 +1036,150 @@ def with_polymorphic(
     )
 
 
+@inspection._self_inspects
+class Bundle(ORMColumnsClauseRole, InspectionAttr):
+    """A grouping of SQL expressions that are returned by a :class:`.Query`
+    under one namespace.
+
+    The :class:`.Bundle` essentially allows nesting of the tuple-based
+    results returned by a column-oriented :class:`_query.Query` object.
+    It also
+    is extensible via simple subclassing, where the primary capability
+    to override is that of how the set of expressions should be returned,
+    allowing post-processing as well as custom return types, without
+    involving ORM identity-mapped classes.
+
+    .. versionadded:: 0.9.0
+
+    .. seealso::
+
+        :ref:`bundles`
+
+
+    """
+
+    single_entity = False
+    """If True, queries for a single Bundle will be returned as a single
+    entity, rather than an element within a keyed tuple."""
+
+    is_clause_element = False
+
+    is_mapper = False
+
+    is_aliased_class = False
+
+    is_bundle = True
+
+    def __init__(self, name, *exprs, **kw):
+        r"""Construct a new :class:`.Bundle`.
+
+        e.g.::
+
+            bn = Bundle("mybundle", MyClass.x, MyClass.y)
+
+            for row in session.query(bn).filter(
+                    bn.c.x == 5).filter(bn.c.y == 4):
+                print(row.mybundle.x, row.mybundle.y)
+
+        :param name: name of the bundle.
+        :param \*exprs: columns or SQL expressions comprising the bundle.
+        :param single_entity=False: if True, rows for this :class:`.Bundle`
+         can be returned as a "single entity" outside of any enclosing tuple
+         in the same manner as a mapped entity.
+
+        """
+        self.name = self._label = name
+        self.exprs = exprs = [
+            coercions.expect(roles.ColumnsClauseRole, expr) for expr in exprs
+        ]
+
+        self.c = self.columns = ColumnCollection(
+            (getattr(col, "key", col._label), col)
+            for col in [e._annotations.get("bundle", e) for e in exprs]
+        )
+        self.single_entity = kw.pop("single_entity", self.single_entity)
+
+    @property
+    def mapper(self):
+        return self.exprs[0]._annotations.get("parentmapper", None)
+
+    @property
+    def entity(self):
+        return self.exprs[0]._annotations.get("parententity", None)
+
+    @property
+    def entity_namespace(self):
+        return self.c
+
+    columns = None
+    """A namespace of SQL expressions referred to by this :class:`.Bundle`.
+
+        e.g.::
+
+            bn = Bundle("mybundle", MyClass.x, MyClass.y)
+
+            q = sess.query(bn).filter(bn.c.x == 5)
+
+        Nesting of bundles is also supported::
+
+            b1 = Bundle("b1",
+                    Bundle('b2', MyClass.a, MyClass.b),
+                    Bundle('b3', MyClass.x, MyClass.y)
+                )
+
+            q = sess.query(b1).filter(
+                b1.c.b2.c.a == 5).filter(b1.c.b3.c.y == 9)
+
+    .. seealso::
+
+        :attr:`.Bundle.c`
+
+    """
+
+    c = None
+    """An alias for :attr:`.Bundle.columns`."""
+
+    def _clone(self):
+        cloned = self.__class__.__new__(self.__class__)
+        cloned.__dict__.update(self.__dict__)
+        return cloned
+
+    def __clause_element__(self):
+        return expression.ClauseList(
+            _literal_as_text_role=roles.ColumnsClauseRole,
+            group=False,
+            *[e._annotations.get("bundle", e) for e in self.exprs]
+        )._annotate({"bundle": self, "entity_namespace": self})
+
+    @property
+    def clauses(self):
+        return self.__clause_element__().clauses
+
+    def label(self, name):
+        """Provide a copy of this :class:`.Bundle` passing a new label."""
+
+        cloned = self._clone()
+        cloned.name = name
+        return cloned
+
+    def create_row_processor(self, query, procs, labels):
+        """Produce the "row processing" function for this :class:`.Bundle`.
+
+        May be overridden by subclasses.
+
+        .. seealso::
+
+            :ref:`bundles` - includes an example of subclassing.
+
+        """
+        keyed_tuple = result_tuple(labels, [() for l in labels])
+
+        def proc(row):
+            return keyed_tuple([proc(row) for proc in procs])
+
+        return proc
+
+
 def _orm_annotate(element, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the
     "_orm_adapt" flag.
@@ -1020,33 +1224,39 @@ class _ORMJoin(expression.Join):
         _right_memo=None,
     ):
         left_info = inspection.inspect(left)
-        left_orm_info = getattr(left, "_joined_from_info", left_info)
 
         right_info = inspection.inspect(right)
         adapt_to = right_info.selectable
 
-        self._joined_from_info = right_info
-
+        # used by joined eager loader
         self._left_memo = _left_memo
         self._right_memo = _right_memo
 
+        # legacy, for string attr name ON clause.  if that's removed
+        # then the "_joined_from_info" concept can go
+        left_orm_info = getattr(left, "_joined_from_info", left_info)
+        self._joined_from_info = right_info
         if isinstance(onclause, util.string_types):
             onclause = getattr(left_orm_info.entity, onclause)
+        # ####
 
         if isinstance(onclause, attributes.QueryableAttribute):
             on_selectable = onclause.comparator._source_selectable()
             prop = onclause.property
         elif isinstance(onclause, MapperProperty):
+            # used internally by joined eager loader...possibly not ideal
             prop = onclause
             on_selectable = prop.parent.selectable
         else:
             prop = None
 
         if prop:
-            if sql_util.clause_is_present(on_selectable, left_info.selectable):
+            left_selectable = left_info.selectable
+
+            if sql_util.clause_is_present(on_selectable, left_selectable):
                 adapt_from = on_selectable
             else:
-                adapt_from = left_info.selectable
+                adapt_from = left_selectable
 
             (
                 pj,

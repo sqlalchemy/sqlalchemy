@@ -43,7 +43,10 @@ class ShardedQuery(Query):
         q._shard_id = shard_id
         return q
 
-    def _execute_and_instances(self, context):
+    def _execute_and_instances(self, context, params=None):
+        if params is None:
+            params = self.load_options._params
+
         def iter_for_shard(shard_id):
             # shallow copy, so that each context may be used by
             # ORM load events and similar.
@@ -54,8 +57,11 @@ class ShardedQuery(Query):
                 "shard_id"
             ] = copied_context.identity_token = shard_id
             result_ = self._connection_from_session(
-                mapper=self._bind_mapper(), shard_id=shard_id
-            ).execute(copied_context.statement, self._params)
+                mapper=context.compile_state._bind_mapper(), shard_id=shard_id
+            ).execute(
+                copied_context.compile_state.statement,
+                self.load_options._params,
+            )
             return self.instances(result_, copied_context)
 
         if context.identity_token is not None:
@@ -78,7 +84,7 @@ class ShardedQuery(Query):
                 clause=stmt,
                 close_with_result=True,
             )
-            result = conn.execute(stmt, self._params)
+            result = conn.execute(stmt, self.load_options._params)
             return result
 
         if self._shard_id is not None:

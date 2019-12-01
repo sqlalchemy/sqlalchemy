@@ -1149,6 +1149,7 @@ class Connection(Connectable):
             # ensure we don't retain a link to the view object for keys()
             # which links to the values, which we don't want to cache
             keys = list(distilled_params[0].keys())
+
         else:
             keys = []
 
@@ -1184,6 +1185,9 @@ class Connection(Connectable):
                     schema_translate_map=schema_translate_map,
                     linting=self.dialect.compiler_linting
                     | compiler.WARN_LINTING,
+                    compile_state_factories=exec_opts.get(
+                        "compile_state_factories", None
+                    ),
                 )
                 cache[key] = compiled_sql
 
@@ -1195,6 +1199,9 @@ class Connection(Connectable):
                 inline=len(distilled_params) > 1,
                 schema_translate_map=schema_translate_map,
                 linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
+                compile_state_factories=exec_opts.get(
+                    "compile_state_factories", None
+                ),
             )
 
         ret = self._execute_context(

@@ -586,6 +586,24 @@ class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def test_foo(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        # test overlapping paths.   User->orders is used by both joins, but
+        # rendered once.
+        self.assert_compile(
+            sess.query(User).join("orders", "items").join("orders", "address"),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "JOIN orders "
+            "ON users.id = orders.user_id "
+            "JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id JOIN addresses "
+            "ON addresses.id = orders.address_id",
+        )
+
     def test_single_name(self):
         User = self.classes.User
 
@@ -598,7 +616,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
         assert_raises(
-            sa_exc.InvalidRequestError, sess.query(User).join, "user"
+            sa_exc.InvalidRequestError,
+            sess.query(User).join("user")._compile_context,
         )
 
         self.assert_compile(
@@ -621,6 +640,23 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON orders.id = order_items_1.order_id "
             "JOIN items ON items.id = order_items_1.item_id JOIN addresses "
             "ON addresses.id = orders.address_id",
+        )
+
+    def test_filter_by_from_full_join(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = create_session()
+
+        q = (
+            sess.query(User)
+            .join(Address, User.addresses)
+            .filter_by(email_address="foo")
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "WHERE addresses.email_address = :email_address_1",
         )
 
     def test_invalid_kwarg_join(self):
@@ -670,8 +706,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa_exc.InvalidRequestError,
             r"No entities to join from; please use select_from\(\) to "
             r"establish the left entity/selectable of this join",
-            sess.query().join,
-            Address,
+            sess.query().join(Address)._compile_context,
         )
 
     def test_isouter_flag(self):
@@ -692,11 +727,36 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "FROM users FULL OUTER JOIN orders ON users.id = orders.user_id",
         )
 
-    def test_multi_tuple_form(self):
+    def test_multi_tuple_form_legacy_one(self):
         """test the 'tuple' form of join, now superseded
         by the two-element join() form.
 
-        Not deprecating this style as of yet.
+
+        """
+
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        q = (
+            sess.query(User)
+            .join((Order, User.id == Order.user_id))
+            .filter_by(description="foo")
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_two(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
 
         """
 
@@ -708,34 +768,96 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         sess = create_session()
 
-        # assert_raises(
-        #    sa.exc.SADeprecationWarning,
-        #    sess.query(User).join, (Order, User.id==Order.user_id)
-        # )
-
-        self.assert_compile(
-            sess.query(User).join((Order, User.id == Order.user_id)),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id",
+        q = (
+            sess.query(User)
+            .join((Order, User.id == Order.user_id), (Item, Order.items))
+            .filter_by(description="foo")
         )
-
         self.assert_compile(
-            sess.query(User).join(
-                (Order, User.id == Order.user_id), (Item, Order.items)
-            ),
+            q,
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id "
             "JOIN order_items AS order_items_1 ON orders.id = "
             "order_items_1.order_id JOIN items ON items.id = "
-            "order_items_1.item_id",
+            "order_items_1.item_id WHERE items.description = :description_1",
         )
 
-        # the old "backwards" form
-        self.assert_compile(
-            sess.query(User).join(("orders", Order)),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id",
+    def test_multi_tuple_form_legacy_three(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
+
+        """
+
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
         )
+
+        sess = create_session()
+
+        # the old "backwards" form
+        q = (
+            sess.query(User)
+            .join(("orders", Order))
+            .filter_by(description="foo")
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_three_point_five(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
+
+        """
+
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        q = sess.query(User).join(Order, "orders").filter_by(description="foo")
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_four(self):
+        User, Order, Item, Keyword = self.classes(
+            "User", "Order", "Item", "Keyword"
+        )
+
+        sess = create_session()
+
+        # ensure when the tokens are broken up that from_joinpoint
+        # is set between them
+
+        expected = (
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id JOIN items ON items.id = "
+            "order_items_1.item_id JOIN item_keywords AS item_keywords_1 "
+            "ON items.id = item_keywords_1.item_id "
+            "JOIN keywords ON keywords.id = item_keywords_1.keyword_id"
+        )
+
+        q = sess.query(User).join(
+            (Order, "orders"), (Item, "items"), (Keyword, "keywords")
+        )
+        self.assert_compile(q, expected)
+
+        q = sess.query(User).join("orders", "items", "keywords")
+        self.assert_compile(q, expected)
 
     def test_single_prop_1(self):
         User = self.classes.User
@@ -995,19 +1117,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
         assert [User(id=7, name="jack")] == result
 
-    def test_raises_on_dupe_target_rel(self):
-        User = self.classes.User
-
-        assert_raises_message(
-            sa.exc.SAWarning,
-            "Pathed join target Order.items has already been joined to; "
-            "skipping",
-            lambda: create_session()
-            .query(User)
-            .outerjoin("orders", "items")
-            .outerjoin("orders", "items"),
-        )
-
     def test_from_joinpoint(self):
         Item, User, Order = (
             self.classes.Item,
@@ -1108,18 +1217,14 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # before the error raise was added, this would silently work.....
         assert_raises(
             sa_exc.InvalidRequestError,
-            sess.query(User).join,
-            Address,
-            Address.user,
+            sess.query(User).join(Address, Address.user)._compile_context,
         )
 
         # but this one would silently fail
         adalias = aliased(Address)
         assert_raises(
             sa_exc.InvalidRequestError,
-            sess.query(User).join,
-            adalias,
-            Address.user,
+            sess.query(User).join(adalias, Address.user)._compile_context,
         )
 
     def test_multiple_with_aliases(self):
@@ -1341,8 +1446,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Don't know how to join to .*Item.*. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            q.join,
-            Item,
+            q.join(Item)._compile_context,
         )
 
     def test_invalid_join_entity_from_no_from_clause(self):
@@ -1356,8 +1460,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Don't know how to join to .*Item.*. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            q.join,
-            Item,
+            q.join(Item)._compile_context,
         )
 
     def test_invalid_join_entity_from_multiple_from_clause(self):
@@ -1378,8 +1481,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Don't know how to join to .*Item.*. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            q.join,
-            Item,
+            q.join(Item)._compile_context,
         )
 
     def test_join_explicit_left_multiple_from_clause(self):
@@ -1438,8 +1540,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa_exc.InvalidRequestError,
             "Can't identify which entity in which to assign the "
             "left side of this join.",
-            sess.query(u1, u2).select_from(u1, u2).join,
-            User.addresses,
+            sess.query(u1, u2)
+            .select_from(u1, u2)
+            .join(User.addresses)
+            ._compile_context,
         )
 
         # more specific ON clause
@@ -1475,8 +1579,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "multiple FROMS which can join to this entity. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            q.join,
-            a1,
+            q.join(a1)._compile_context,
         )
 
         # to resolve, add an ON clause
@@ -1532,8 +1635,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "multiple FROMS which can join to this entity. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            q.join,
-            a1,
+            q.join(a1)._compile_context,
         )
 
         # to resolve, add an ON clause
@@ -1584,8 +1686,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "multiple FROMS which can join to this entity. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            q.outerjoin,
-            a1,
+            q.outerjoin(a1)._compile_context,
         )
 
         # the condition which occurs here is: Query._from_obj contains both
@@ -2374,8 +2475,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Don't know how to join to .*User.*. "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            sess.query(users.c.id).join,
-            User,
+            sess.query(users.c.id).join(User)._compile_context,
         )
 
         assert_raises_message(
@@ -2383,8 +2483,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Don't know how to join to .*User.* "
             r"Please use the .select_from\(\) "
             "method to establish an explicit left side, as well as",
-            sess.query(users.c.id).select_from(users).join,
-            User,
+            sess.query(users.c.id)
+            .select_from(users)
+            .join(User)
+            ._compile_context,
         )
 
     def test_on_clause_no_right_side(self):
@@ -2395,8 +2497,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert_raises_message(
             sa_exc.ArgumentError,
             "Expected mapped entity or selectable/table as join target",
-            sess.query(User).join,
-            User.id == Address.user_id,
+            sess.query(User).join(User.id == Address.user_id)._compile_context,
         )
 
     def test_select_from(self):
@@ -2686,10 +2787,9 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
             r"The aliased=True parameter on query.join\(\) only works with "
             "an ORM entity, not a plain selectable, as the target.",
             # this doesn't work, so have it raise an error
-            sess.query(T1.id).join,
-            subq,
-            subq.c.t1_id == T1.id,
-            aliased=True,
+            sess.query(T1.id)
+            .join(subq, subq.c.t1_id == T1.id, aliased=True)
+            ._compile_context,
         )
 
 
@@ -3193,6 +3293,56 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         node = q.first()
         eq_(node.data, "n122")
 
+    def test_join_4_explicit_join(self):
+        Node = self.classes.Node
+        sess = create_session()
+
+        na = aliased(Node)
+        na2 = aliased(Node)
+
+        # this one is a great example of how to show how the API changes;
+        # while it requires the explicitness of aliased(Node), the whole
+        # guesswork of joinpoint / aliased goes away and the whole thing
+        # is simpler
+        #
+        #  .join("parent", aliased=True)
+        #  .filter(Node.data == "n12")
+        #  .join("parent", aliased=True, from_joinpoint=True)
+        #  .filter(Node.data == "n1")
+        #
+        #  becomes:
+        #
+        #   na = aliased(Node)
+        #   na2 = aliased(Node)
+        #
+        #   ...
+        #   .join(na, Node.parent)
+        #   .filter(na.data == "n12")
+        #   .join(na2, na.parent)
+        #   .filter(na2.data == "n1")
+        #
+        q = (
+            sess.query(Node)
+            .filter(Node.data == "n122")
+            .join(na, Node.parent)
+            .filter(na.data == "n12")
+            .join(na2, na.parent)
+            .filter(na2.data == "n1")
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
+            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
+            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
+        )
+
+        node = q.first()
+        eq_(node.data, "n122")
+
     def test_join_4_filter(self):
         Node = self.classes.Node
         sess = create_session()
@@ -3390,8 +3540,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             sa.exc.InvalidRequestError,
             "Can't construct a join from mapped class Node->nodes to mapped "
             "class Node->nodes, they are the same entity",
-            s.query(Node).join,
-            Node.children,
+            s.query(Node).join(Node.children)._compile_context,
         )
 
     def test_explicit_join_1(self):
@@ -3539,7 +3688,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
                         Node.data == "n122", n1.data == "n12", n2.data == "n1"
                     )
                 )
-                .values(Node.data, n1.data, n2.data)
+                .with_entities(Node.data, n1.data, n2.data)
             ),
             [("n122", "n12", "n1")],
         )

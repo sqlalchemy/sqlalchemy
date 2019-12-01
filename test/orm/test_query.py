@@ -200,10 +200,21 @@ class RowTupleTest(QueryTest):
         cte = sess.query(User.id).cte()
         ex = sess.query(User).exists()
 
-        is_(sess.query(subq1)._deep_entity_zero(), inspect(User))
-        is_(sess.query(subq2)._deep_entity_zero(), inspect(User))
-        is_(sess.query(cte)._deep_entity_zero(), inspect(User))
-        is_(sess.query(ex)._deep_entity_zero(), inspect(User))
+        is_(
+            sess.query(subq1)._compile_state()._deep_entity_zero(),
+            inspect(User),
+        )
+        is_(
+            sess.query(subq2)._compile_state()._deep_entity_zero(),
+            inspect(User),
+        )
+        is_(
+            sess.query(cte)._compile_state()._deep_entity_zero(),
+            inspect(User),
+        )
+        is_(
+            sess.query(ex)._compile_state()._deep_entity_zero(), inspect(User),
+        )
 
     @testing.combinations(
         lambda sess, User: (
@@ -942,6 +953,7 @@ class GetTest(QueryTest):
         assert a in u2.addresses
 
         s.query(User).populate_existing().get(7)
+
         assert u2 not in s.dirty
         assert u2.name == "jack"
         assert a not in u2.addresses
@@ -1138,37 +1150,37 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         q = s.query(User, Address)
         assert_raises(sa_exc.InvalidRequestError, q.get, 5)
 
-    def test_entity_or_mapper_zero(self):
+    def test_entity_or_mapper_zero_from_context(self):
         User, Address = self.classes.User, self.classes.Address
         s = create_session()
 
-        q = s.query(User, Address)
+        q = s.query(User, Address)._compile_state()
         is_(q._mapper_zero(), inspect(User))
         is_(q._entity_zero(), inspect(User))
 
         u1 = aliased(User)
-        q = s.query(u1, Address)
+        q = s.query(u1, Address)._compile_state()
         is_(q._mapper_zero(), inspect(User))
         is_(q._entity_zero(), inspect(u1))
 
-        q = s.query(User).select_from(Address)
+        q = s.query(User).select_from(Address)._compile_state()
         is_(q._mapper_zero(), inspect(User))
         is_(q._entity_zero(), inspect(Address))
 
-        q = s.query(User.name, Address)
+        q = s.query(User.name, Address)._compile_state()
         is_(q._mapper_zero(), inspect(User))
         is_(q._entity_zero(), inspect(User))
 
-        q = s.query(u1.name, Address)
+        q = s.query(u1.name, Address)._compile_state()
         is_(q._mapper_zero(), inspect(User))
         is_(q._entity_zero(), inspect(u1))
 
         q1 = s.query(User).exists()
-        q = s.query(q1)
+        q = s.query(q1)._compile_state()
         is_(q._mapper_zero(), None)
         is_(q._entity_zero(), None)
 
-        q1 = s.query(Bundle("b1", User.id, User.name))
+        q1 = s.query(Bundle("b1", User.id, User.name))._compile_state()
         is_(q1._mapper_zero(), inspect(User))
         is_(q1._entity_zero(), inspect(User))
 
@@ -1266,8 +1278,10 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             sess = Session()
             lead = sess.query(entity)
             context = lead._compile_context()
-            context.statement._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
-            lead = context.statement.compile(dialect=dialect)
+            context.compile_state.statement._label_style = (
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
+            lead = context.compile_state.statement.compile(dialect=dialect)
             expected = (str(lead) + " WHERE " + expected).replace("\n", "")
             clause = sess.query(entity).filter(clause)
         self.assert_compile(clause, expected, checkparams=checkparams)
@@ -1312,6 +1326,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         lhs = testing.resolve_lambda(lhs, User=User)
         rhs = testing.resolve_lambda(rhs, User=User)
+
         create_session().query(User)
         self._test(py_op(lhs, rhs), res % sql_op)
 
@@ -1393,60 +1408,6 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             ~(None == Address.user), "addresses.user_id IS NOT NULL"  # noqa
         )
 
-    def test_o2m_compare_to_null_orm_adapt(self):
-        User, Address = self.classes.User, self.classes.Address
-        self._test_filter_aliases(
-            User.id == None,  # noqa
-            "users_1.id IS NULL",
-            Address,
-            Address.user,
-        ),
-        self._test_filter_aliases(
-            User.id != None,  # noqa
-            "users_1.id IS NOT NULL",
-            Address,
-            Address.user,
-        ),
-        self._test_filter_aliases(
-            ~(User.id == None),  # noqa
-            "users_1.id IS NOT NULL",
-            Address,
-            Address.user,
-        ),
-        self._test_filter_aliases(
-            ~(User.id != None),  # noqa
-            "users_1.id IS NULL",
-            Address,
-            Address.user,
-        ),
-
-    def test_m2o_compare_to_null_orm_adapt(self):
-        User, Address = self.classes.User, self.classes.Address
-        self._test_filter_aliases(
-            Address.user == None,  # noqa
-            "addresses_1.user_id IS NULL",
-            User,
-            User.addresses,
-        ),
-        self._test_filter_aliases(
-            Address.user != None,  # noqa
-            "addresses_1.user_id IS NOT NULL",
-            User,
-            User.addresses,
-        ),
-        self._test_filter_aliases(
-            ~(Address.user == None),  # noqa
-            "addresses_1.user_id IS NOT NULL",
-            User,
-            User.addresses,
-        ),
-        self._test_filter_aliases(
-            ~(Address.user != None),  # noqa
-            "addresses_1.user_id IS NULL",
-            User,
-            User.addresses,
-        ),
-
     def test_o2m_compare_to_null_aliased(self):
         User = self.classes.User
         u1 = aliased(User)
@@ -1496,16 +1457,6 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             entity=u1,
         )
 
-    def test_o2m_any_orm_adapt(self):
-        User, Address = self.classes.User, self.classes.Address
-        self._test_filter_aliases(
-            User.addresses.any(Address.id == 17),
-            "EXISTS (SELECT 1 FROM addresses "
-            "WHERE users_1.id = addresses.user_id AND addresses.id = :id_1)",
-            Address,
-            Address.user,
-        )
-
     def test_m2o_compare_instance(self):
         User, Address = self.classes.User, self.classes.Address
         u7 = User(id=5)
@@ -1526,92 +1477,18 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             checkparams={"user_id_1": 7},
         )
 
-    def test_m2o_compare_instance_orm_adapt(self):
-        User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=5)
-        attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
-        u7.id = 7
-
-        self._test_filter_aliases(
-            Address.user == u7,
-            ":param_1 = addresses_1.user_id",
-            User,
-            User.addresses,
-            checkparams={"param_1": 7},
-        )
-
     def test_m2o_compare_instance_negated_warn_on_none(self):
         User, Address = self.classes.User, self.classes.Address
 
         u7_transient = User(id=None)
 
         with expect_warnings("Got None for value of column users.id; "):
-            self._test_filter_aliases(
+            self._test(
                 Address.user != u7_transient,
-                "addresses_1.user_id != :user_id_1 "
-                "OR addresses_1.user_id IS NULL",
-                User,
-                User.addresses,
+                "addresses.user_id != :user_id_1 "
+                "OR addresses.user_id IS NULL",
                 checkparams={"user_id_1": None},
             )
-
-    def test_m2o_compare_instance_negated_orm_adapt(self):
-        User, Address = self.classes.User, self.classes.Address
-        u7 = User(id=5)
-        attributes.instance_state(u7)._commit_all(attributes.instance_dict(u7))
-        u7.id = 7
-
-        u7_transient = User(id=7)
-
-        self._test_filter_aliases(
-            Address.user != u7,
-            "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL",
-            User,
-            User.addresses,
-            checkparams={"user_id_1": 7},
-        )
-
-        self._test_filter_aliases(
-            ~(Address.user == u7),
-            ":param_1 != addresses_1.user_id",
-            User,
-            User.addresses,
-            checkparams={"param_1": 7},
-        )
-
-        self._test_filter_aliases(
-            ~(Address.user != u7),
-            "NOT (addresses_1.user_id != :user_id_1 "
-            "OR addresses_1.user_id IS NULL)",
-            User,
-            User.addresses,
-            checkparams={"user_id_1": 7},
-        )
-
-        self._test_filter_aliases(
-            Address.user != u7_transient,
-            "addresses_1.user_id != :user_id_1 OR addresses_1.user_id IS NULL",
-            User,
-            User.addresses,
-            checkparams={"user_id_1": 7},
-        )
-
-        self._test_filter_aliases(
-            ~(Address.user == u7_transient),
-            ":param_1 != addresses_1.user_id",
-            User,
-            User.addresses,
-            checkparams={"param_1": 7},
-        )
-
-        self._test_filter_aliases(
-            ~(Address.user != u7_transient),
-            "NOT (addresses_1.user_id != :user_id_1 "
-            "OR addresses_1.user_id IS NULL)",
-            User,
-            User.addresses,
-            checkparams={"user_id_1": 7},
-        )
 
     def test_m2o_compare_instance_aliased(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1953,7 +1830,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         q = session.query(Address).filter(Address.user_id == q)
 
-        assert isinstance(q._criterion.right, expression.ColumnElement)
+        assert isinstance(q.whereclause.right, expression.ColumnElement)
         self.assert_compile(
             q,
             "SELECT addresses.id AS addresses_id, addresses.user_id "
@@ -2976,10 +2853,11 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         ).all()
 
         # test that the contents are not adapted by the aliased join
+        ua = aliased(Address)
         assert (
             [User(id=7), User(id=8)]
             == sess.query(User)
-            .join("addresses", aliased=True)
+            .join(ua, "addresses")
             .filter(
                 ~User.addresses.any(Address.email_address == "fred@fred.com")
             )
@@ -2987,7 +2865,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         )
 
         assert [User(id=10)] == sess.query(User).outerjoin(
-            "addresses", aliased=True
+            ua, "addresses"
         ).filter(~User.addresses.any()).all()
 
     def test_any_doesnt_overcorrelate(self):
@@ -3049,10 +2927,11 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         )
 
         # test has() doesn't get subquery contents adapted by aliased join
+        ua = aliased(User)
         assert (
             [Address(id=2), Address(id=3), Address(id=4)]
             == sess.query(Address)
-            .join("user", aliased=True)
+            .join(ua, "user")
             .filter(Address.user.has(User.name.like("%ed%"), id=8))
             .order_by(Address.id)
             .all()
@@ -3236,7 +3115,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Entity 'addresses' has no property 'name'",
+            'Entity namespace for "addresses" has no property "name"',
             sess.query(addresses).filter_by,
             name="ed",
         )
@@ -3350,9 +3229,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         e = sa.func.count(123)
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            r"Can't use filter_by when the first entity 'count\(:count_1\)' of"
-            " a query is not a mapped class. Please use the filter method "
-            "instead, or change the order of the entities in the query",
+            r'Entity namespace for "count\(\:count_1\)" has no property "col"',
             s.query(e).filter_by,
             col=42,
         )
@@ -3474,8 +3351,9 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         B, C = self.classes("B", "C")
         s = Session()
 
+        ca = aliased(C)
         self.assert_compile(
-            s.query(B).join(B.c, aliased=True).filter(B.c.has(C.id == 1)),
+            s.query(B).join(ca, B.c).filter(B.c.has(C.id == 1)),
             "SELECT b.id AS b_id, b.c_id AS b_c_id "
             "FROM b JOIN c AS c_1 ON c_1.id = b.c_id "
             "WHERE EXISTS "
@@ -3486,8 +3364,9 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         B, D = self.classes("B", "D")
         s = Session()
 
+        da = aliased(D)
         self.assert_compile(
-            s.query(B).join(B.d, aliased=True).filter(B.d.any(D.id == 1)),
+            s.query(B).join(da, B.d).filter(B.d.any(D.id == 1)),
             "SELECT b.id AS b_id, b.c_id AS b_c_id "
             "FROM b JOIN b_d AS b_d_1 ON b.id = b_d_1.bid "
             "JOIN d AS d_1 ON d_1.id = b_d_1.did "
@@ -3504,7 +3383,7 @@ class HasMapperEntitiesTest(QueryTest):
 
         q = s.query(User)
 
-        assert q._has_mapper_entities
+        assert q._compile_state()._has_mapper_entities
 
     def test_cols(self):
         User = self.classes.User
@@ -3512,7 +3391,7 @@ class HasMapperEntitiesTest(QueryTest):
 
         q = s.query(User.id)
 
-        assert not q._has_mapper_entities
+        assert not q._compile_state()._has_mapper_entities
 
     def test_cols_set_entities(self):
         User = self.classes.User
@@ -3521,7 +3400,7 @@ class HasMapperEntitiesTest(QueryTest):
         q = s.query(User.id)
 
         q._set_entities(User)
-        assert q._has_mapper_entities
+        assert q._compile_state()._has_mapper_entities
 
     def test_entity_set_entities(self):
         User = self.classes.User
@@ -3530,7 +3409,7 @@ class HasMapperEntitiesTest(QueryTest):
         q = s.query(User)
 
         q._set_entities(User.id)
-        assert not q._has_mapper_entities
+        assert not q._compile_state()._has_mapper_entities
 
 
 class SetOpsTest(QueryTest, AssertsCompiledSQL):
@@ -3764,10 +3643,11 @@ class AggregateTest(QueryTest):
         sess = create_session()
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         eq_(
-            next(orders.values(func.sum(Order.user_id * Order.address_id))),
-            (79,),
+            orders.with_entities(
+                func.sum(Order.user_id * Order.address_id)
+            ).scalar(),
+            79,
         )
-        eq_(orders.value(func.sum(Order.user_id * Order.address_id)), 79)
 
     def test_apply(self):
         Order = self.classes.Order
@@ -4264,12 +4144,20 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         )
 
 
-class PrefixWithTest(QueryTest, AssertsCompiledSQL):
+class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
     def test_one_prefix(self):
         User = self.classes.User
         sess = create_session()
         query = sess.query(User.name).prefix_with("PREFIX_1")
         expected = "SELECT PREFIX_1 " "users.name AS users_name FROM users"
+        self.assert_compile(query, expected, dialect=default.DefaultDialect())
+
+    def test_one_suffix(self):
+        User = self.classes.User
+        sess = create_session()
+        query = sess.query(User.name).suffix_with("SUFFIX_1")
+        # trailing space for some reason
+        expected = "SELECT users.name AS users_name FROM users SUFFIX_1 "
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
     def test_many_prefixes(self):
@@ -4350,7 +4238,7 @@ class YieldTest(_fixtures.FixtureTest):
         sess = create_session()
         q = sess.query(User).yield_per(15)
         q = q.execution_options(foo="bar")
-        assert q._yield_per
+        assert q.load_options._yield_per
         eq_(
             q._execution_options,
             {"stream_results": True, "foo": "bar", "max_row_buffer": 15},
@@ -5642,18 +5530,19 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
         User, Order = self.classes.User, self.classes.Order
 
         for j in (
-            ["orders", "items"],
-            ["orders_syn", "items"],
+            [User.orders, Order.items],
             [User.orders_syn, Order.items],
-            ["orders_syn_2", "items"],
-            [User.orders_syn_2, "items"],
-            ["orders", "items_syn"],
-            ["orders_syn", "items_syn"],
-            ["orders_syn_2", "items_syn"],
+            [User.orders_syn, Order.items],
+            [User.orders_syn_2, Order.items],
+            [User.orders, Order.items_syn],
+            [User.orders_syn, Order.items_syn],
+            [User.orders_syn_2, Order.items_syn],
         ):
-            result = (
-                create_session().query(User).join(*j).filter_by(id=3).all()
-            )
+            q = create_session().query(User)
+            for path in j:
+                q = q.join(path)
+            q = q.filter_by(id=3)
+            result = q.all()
             assert [User(id=7, name="jack"), User(id=9, name="fred")] == result
 
     def test_with_parent(self):
@@ -5894,18 +5783,6 @@ class ImmediateTest(_fixtures.FixtureTest):
             sa.orm.exc.MultipleResultsFound,
             sess.query(User.id, User.name).scalar,
         )
-
-    def test_value(self):
-        User = self.classes.User
-
-        sess = create_session()
-
-        eq_(sess.query(User).filter_by(id=7).value(User.id), 7)
-        eq_(sess.query(User.id, User.name).filter_by(id=7).value(User.id), 7)
-        eq_(sess.query(User).filter_by(id=0).value(User.id), None)
-
-        sess.bind = testing.db
-        eq_(sess.query().value(sa.literal_column("1").label("x")), 1)
 
 
 class ExecutionOptionsTest(QueryTest):

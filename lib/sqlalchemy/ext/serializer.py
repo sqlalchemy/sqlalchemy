@@ -59,7 +59,6 @@ from .. import Column
 from .. import Table
 from ..engine import Engine
 from ..orm import class_mapper
-from ..orm.attributes import QueryableAttribute
 from ..orm.interfaces import MapperProperty
 from ..orm.mapper import Mapper
 from ..orm.session import Session
@@ -78,11 +77,7 @@ def Serializer(*args, **kw):
 
     def persistent_id(obj):
         # print "serializing:", repr(obj)
-        if isinstance(obj, QueryableAttribute):
-            cls = obj.impl.class_
-            key = obj.impl.key
-            id_ = "attribute:" + key + ":" + b64encode(pickle.dumps(cls))
-        elif isinstance(obj, Mapper) and not obj.non_primary:
+        if isinstance(obj, Mapper) and not obj.non_primary:
             id_ = "mapper:" + b64encode(pickle.dumps(obj.class_))
         elif isinstance(obj, MapperProperty) and not obj.parent.non_primary:
             id_ = (
@@ -92,7 +87,12 @@ def Serializer(*args, **kw):
                 + obj.key
             )
         elif isinstance(obj, Table):
-            id_ = "table:" + text_type(obj.key)
+            if "parententity" in obj._annotations:
+                id_ = "mapper_selectable:" + b64encode(
+                    pickle.dumps(obj._annotations["parententity"].class_)
+                )
+            else:
+                id_ = "table:" + text_type(obj.key)
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
             id_ = (
                 "column:" + text_type(obj.table.key) + ":" + text_type(obj.key)
@@ -110,7 +110,8 @@ def Serializer(*args, **kw):
 
 
 our_ids = re.compile(
-    r"(mapperprop|mapper|table|column|session|attribute|engine):(.*)"
+    r"(mapperprop|mapper|mapper_selectable|table|column|"
+    r"session|attribute|engine):(.*)"
 )
 
 
@@ -140,6 +141,9 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             elif type_ == "mapper":
                 cls = pickle.loads(b64decode(args))
                 return class_mapper(cls)
+            elif type_ == "mapper_selectable":
+                cls = pickle.loads(b64decode(args))
+                return class_mapper(cls).__clause_element__()
             elif type_ == "mapperprop":
                 mapper, keyname = args.split(":")
                 cls = pickle.loads(b64decode(mapper))

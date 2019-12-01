@@ -2568,8 +2568,9 @@ class DeepOptionsTest(_fixtures.FixtureTest):
             "root entities in this query, e.g. mapped class User->users. "
             "Please specify the full path from one of the root entities "
             "to the target attribute.",
-            sess.query(User).options,
-            sa.orm.joinedload(Order.items),
+            sess.query(User)
+            .options(sa.orm.joinedload(Order.items))
+            ._compile_context,
         )
 
         # joinedload "keywords" on items.  it will lazy load "orders", then

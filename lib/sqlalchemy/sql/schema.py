@@ -477,7 +477,10 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     ]
 
     def _gen_cache_key(self, anon_map, bindparams):
-        return (self,) + self._annotations_cache_key
+        if self._annotations:
+            return (self,) + self._annotations_cache_key
+        else:
+            return (self,)
 
     def __new__(cls, *args, **kw):
         if not args:

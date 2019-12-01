@@ -348,13 +348,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         q = create_session().query(Item).order_by(Item.id)
 
         def go():
+            ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (
-                    q.join("keywords", aliased=True).filter(
-                        Keyword.name == "red"
-                    )
-                ).all(),
+                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)

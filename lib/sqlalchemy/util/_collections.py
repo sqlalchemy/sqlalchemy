@@ -103,6 +103,12 @@ class FacadeDict(ImmutableContainer, dict):
     def __init__(self, *args):
         pass
 
+    # note that currently, "copy()" is used as a way to get a plain dict
+    # from an immutabledict, while also allowing the method to work if the
+    # dictionary is already a plain dict.
+    # def copy(self):
+    #    return immutabledict.__new__(immutabledict, self)
+
     def __reduce__(self):
         return FacadeDict, (dict(self),)
 

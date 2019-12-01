@@ -31,7 +31,10 @@ class SupportsAnnotations(object):
                     if isinstance(value, HasCacheKey)
                     else value,
                 )
-                for key, value in self._annotations.items()
+                for key, value in [
+                    (key, self._annotations[key])
+                    for key in sorted(self._annotations)
+                ]
             ),
         )
 
@@ -51,6 +54,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         new = self._clone()
         new._annotations = new._annotations.union(values)
         new.__dict__.pop("_annotations_cache_key", None)
+        new.__dict__.pop("_generate_cache_key", None)
         return new
 
     def _with_annotations(self, values):
@@ -61,6 +65,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         new = self._clone()
         new._annotations = util.immutabledict(values)
         new.__dict__.pop("_annotations_cache_key", None)
+        new.__dict__.pop("_generate_cache_key", None)
         return new
 
     def _deannotate(self, values=None, clone=False):
@@ -76,7 +81,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
             # clone is used when we are also copying
             # the expression for a deep deannotation
             new = self._clone()
-            new._annotations = {}
+            new._annotations = util.immutabledict()
             new.__dict__.pop("_annotations_cache_key", None)
             return new
         else:
@@ -156,6 +161,7 @@ class Annotated(object):
     def __init__(self, element, values):
         self.__dict__ = element.__dict__.copy()
         self.__dict__.pop("_annotations_cache_key", None)
+        self.__dict__.pop("_generate_cache_key", None)
         self.__element = element
         self._annotations = values
         self._hash = hash(element)
@@ -169,6 +175,7 @@ class Annotated(object):
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
         clone.__dict__.pop("_annotations_cache_key", None)
+        clone.__dict__.pop("_generate_cache_key", None)
         clone._annotations = values
         return clone
 
@@ -210,6 +217,13 @@ class Annotated(object):
             return self.__element.__class__.__eq__(self, other)
         else:
             return hash(other) == hash(self)
+
+    @property
+    def entity_namespace(self):
+        if "entity_namespace" in self._annotations:
+            return self._annotations["entity_namespace"].entity_namespace
+        else:
+            return self.__element.entity_namespace
 
 
 # hard-generate Annotated subclasses.  this technique

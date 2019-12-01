@@ -9,6 +9,7 @@ import operator
 
 from .. import inspect
 from .. import util
+from ..sql import and_
 from ..sql import operators
 
 
@@ -55,7 +56,12 @@ class EvaluatorCompiler(object):
     def __init__(self, target_cls=None):
         self.target_cls = target_cls
 
-    def process(self, clause):
+    def process(self, *clauses):
+        if len(clauses) > 1:
+            clause = and_(*clauses)
+        elif clauses:
+            clause = clauses[0]
+
         meth = getattr(self, "visit_%s" % clause.__visit_name__, None)
         if not meth:
             raise UnevaluatableError(

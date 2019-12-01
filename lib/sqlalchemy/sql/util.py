@@ -37,6 +37,7 @@ from .selectable import Join
 from .selectable import ScalarSelect
 from .selectable import SelectBase
 from .selectable import TableClause
+from .traversals import HasCacheKey  # noqa
 from .. import exc
 from .. import util
 
@@ -921,6 +922,14 @@ class ColumnAdapter(ClauseAdapter):
     adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process
 
+    def adapt_check_present(self, col):
+        newcol = self.columns[col]
+
+        if newcol is col and self._corresponding_column(col, True) is None:
+            return None
+
+        return newcol
+
     def _locate_col(self, col):
 
         c = ClauseAdapter.traverse(self, col)
@@ -945,3 +954,25 @@ class ColumnAdapter(ClauseAdapter):
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.columns = util.WeakPopulateDict(self._locate_col)
+
+
+def _entity_namespace_key(entity, key):
+    """Return an entry from an entity_namespace.
+
+
+    Raises :class:`_exc.InvalidRequestError` rather than attribute error
+    on not found.
+
+    """
+
+    ns = entity.entity_namespace
+    try:
+        return getattr(ns, key)
+    except AttributeError as err:
+        util.raise_(
+            exc.InvalidRequestError(
+                'Entity namespace for "%s" has no property "%s"'
+                % (entity, key)
+            ),
+            replace_context=err,
+        )

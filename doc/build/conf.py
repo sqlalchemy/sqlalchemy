@@ -109,6 +109,8 @@ autodocmods_convert_modname = {
     "sqlalchemy.util._collections": "sqlalchemy.util",
     "sqlalchemy.orm.relationships": "sqlalchemy.orm",
     "sqlalchemy.orm.interfaces": "sqlalchemy.orm",
+    "sqlalchemy.orm.query": "sqlalchemy.orm",
+    "sqlalchemy.orm.util": "sqlalchemy.orm",
 }
 
 autodocmods_convert_modname_w_class = {
