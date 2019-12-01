@@ -58,7 +58,7 @@ class PyODBCConnector(Connector):
                     token = "'%s'" % token
                 return token
 
-            keys = dict((k, check_quote(v)) for k, v in keys.items())
+            keys = dict((k.lower(), check_quote(v)) for k, v in keys.items())
 
             dsn_connection = "dsn" in keys or (
                 "host" in keys and "database" not in keys

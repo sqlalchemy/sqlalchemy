@@ -47,7 +47,7 @@ class ParseConnectTest(fixtures.TestBase):
         )
         connection = dialect.create_connect_args(u)
         dsn_string = connection[0][0]
-        assert ";LANGUAGE=us_english" in dsn_string
+        assert ";language=us_english" in dsn_string
         assert ";foo=bar" in dsn_string
 
     def test_pyodbc_hostname(self):
@@ -85,6 +85,27 @@ class ParseConnectTest(fixtures.TestBase):
         eq_(
             [
                 [
+                    "Server=hostspec;Database=database;UI"
+                    "D=username;PWD=password"
+                ],
+                {},
+            ],
+            connection,
+        )
+
+    def test_pyodbc_uppercase_driver_keyword_no_warn(self):
+        dialect = pyodbc.dialect()
+        u = url.make_url("mssql://username:password@hostspec/database"
+                         "?DRIVER=ODBC Driver 17 for SQL Server")
+
+        # without assert_warnings (as in test_pyodbc_host_no_driver, above)
+        #   this test will fail here if a warning is issued
+        connection = dialect.create_connect_args(u)
+
+        eq_(
+            [
+                [
+                    "DRIVER={ODBC Driver 17 for SQL Server};"
                     "Server=hostspec;Database=database;UI"
                     "D=username;PWD=password"
                 ],
@@ -141,9 +162,9 @@ class ParseConnectTest(fixtures.TestBase):
             connection[0][0]
             in (
                 "DRIVER={SQL Server};Server=hostspec;Database=database;"
-                "UID=username;PWD=password;foo=bar;LANGUAGE=us_english",
+                "UID=username;PWD=password;foo=bar;language=us_english",
                 "DRIVER={SQL Server};Server=hostspec;Database=database;UID="
-                "username;PWD=password;LANGUAGE=us_english;foo=bar",
+                "username;PWD=password;language=us_english;foo=bar",
             ),
             True,
         )
