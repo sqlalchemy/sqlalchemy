@@ -2782,13 +2782,18 @@ class TimezoneTest(fixtures.TestBase):
         (datetime.timedelta(0), "UTC"),
         (datetime.timedelta(hours=5), "UTC+05:00"),
         (datetime.timedelta(hours=5, minutes=10), "UTC+05:10"),
-        (datetime.timedelta(hours=5, minutes=10, seconds=27), "UTC+05:10:27"),
+        (
+            datetime.timedelta(hours=5, minutes=10, seconds=27),
+            "UTC+05:10:27",
+            testing.requires.granular_timezone,
+        ),
         (datetime.timedelta(hours=-3, minutes=10), "UTC-02:50"),
         (
             datetime.timedelta(
                 hours=5, minutes=10, seconds=27, microseconds=550
             ),
             "UTC+05:10:27.000550",
+            testing.requires.granular_timezone,
         ),
     )
     def test_tzname(self, td, expected):

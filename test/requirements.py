@@ -1303,6 +1303,19 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def granular_timezone(self):
+        """the datetime.timezone class, or SQLAlchemy's port, supports
+        seconds and microseconds.
+
+        SQLAlchemy ported the Python 3.7 version for Python 2, so
+        it passes on that.  For Python 3.6 and earlier, it is not supported.
+
+        """
+        return exclusions.skip_if(
+            lambda: sys.version_info >= (3,) and sys.version_info < (3, 7)
+        )
+
+    @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
         return skip_if(
