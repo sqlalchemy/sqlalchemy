@@ -51,6 +51,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
   the existing PostgreSQL/psycopg2 driver.
 * `sqlalchemy-drill <https://github.com/JohnOmernik/sqlalchemy-drill>`_ - driver for Apache Drill.
 * `sqlalchemy-hana <https://github.com/SAP/sqlalchemy-hana>`_ - driver for SAP Hana.
+* `sqlalchemy-solr <https://github.com/aadel/sqlalchemy-solr>`_ - driver for Apache Solr.
 * `sqlalchemy_exasol <https://github.com/blue-yonder/sqlalchemy_exasol>`_ - driver for EXASolution.
 * `sqlalchemy-sqlany <https://github.com/sqlanywhere/sqlalchemy-sqlany>`_ - driver for SAP Sybase SQL
   Anywhere, developed by SAP.
