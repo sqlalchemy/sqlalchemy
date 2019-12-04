@@ -14,11 +14,16 @@
     :connectstring: mysql+pyodbc://<username>:<password>@<dsnname>
     :url: http://pypi.python.org/pypi/pyodbc/
 
-    .. note:: The PyODBC for MySQL dialect is not well supported, and
-       is subject to unresolved character encoding issues
-       which exist within the current ODBC drivers available.
-       (see http://code.google.com/p/pyodbc/issues/detail?id=25).
-       Other dialects for MySQL are recommended.
+.. note::
+
+    The PyODBC for MySQL dialect is **not tested as part of
+    SQLAlchemy's continuous integration**.
+    The recommended MySQL dialects are mysqlclient and PyMySQL.
+    However, if you want to use the mysql+pyodbc dialect and require
+    full support for ``utf8mb4`` characters (including supplementary
+    characters like emoji) be sure to use a current release of
+    MySQL Connector/ODBC and specify the "ANSI" (**not** "Unicode")
+    version of the driver in your DSN or connection string.
 
 """
 
