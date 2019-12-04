@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
+r"""
 
 
 .. dialect:: mysql+pyodbc
@@ -20,7 +20,22 @@
        (see http://code.google.com/p/pyodbc/issues/detail?id=25).
        Other dialects for MySQL are recommended.
 
-"""
+Pass through exact pyodbc connection string::
+
+    import urllib
+    connection_string = (
+        'DRIVER=MySQL ODBC 8.0 ANSI Driver;'
+        'SERVER=localhost;'
+        'PORT=3307;'
+        'DATABASE=mydb;'
+        'UID=root;'
+        'PWD=(whatever);'
+        'charset=utf8mb4;'
+    )
+    params = urllib.parse.quote_plus(connection_string)
+    connection_uri = "mysql+pyodbc:///?odbc_connect=%s" % params
+
+"""  # noqa
 
 import re
 
