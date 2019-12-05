@@ -261,6 +261,21 @@ def flag_combinations(*combinations):
     )
 
 
+def resolve_lambda(__fn, **kw):
+    """Given a no-arg lambda and a namespace, return a new lambda that
+    has all the values filled in.
+
+    This is used so that we can have module-level fixtures that
+    refer to instance-level variables using lambdas.
+
+    """
+
+    glb = dict(__fn.__globals__)
+    glb.update(kw)
+    new_fn = types.FunctionType(__fn.__code__, glb)
+    return new_fn()
+
+
 def metadata_fixture(ddl="function"):
     """Provide MetaData for a pytest fixture."""
 

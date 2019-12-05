@@ -56,6 +56,7 @@ from .util import flag_combinations  # noqa
 from .util import force_drop_names  # noqa
 from .util import metadata_fixture  # noqa
 from .util import provide_metadata  # noqa
+from .util import resolve_lambda  # noqa
 from .util import rowset  # noqa
 from .util import run_as_contextmanager  # noqa
 from .util import teardown_events  # noqa
