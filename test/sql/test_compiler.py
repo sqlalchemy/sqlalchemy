@@ -2073,7 +2073,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # to check the special thing CompoundSelect does with labels
         assert_raises_message(
             exc.CompileError,
-            "Can't resolve label reference for ORDER BY / GROUP BY. Textual "
+            "Can't resolve label reference for ORDER BY / GROUP BY / "
+            "DISTINCT etc. Textual "
             "SQL expression 'noname'",
             union(
                 select([table1.c.myid, table1.c.name]),

@@ -678,14 +678,16 @@ class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):
 class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def _test_exception(self, stmt, offending_clause):
+    def _test_exception(self, stmt, offending_clause, dialect=None):
         assert_raises_message(
             exc.CompileError,
-            r"Can't resolve label reference for ORDER BY / GROUP BY. "
+            r"Can't resolve label reference for ORDER BY / GROUP BY / "
+            "DISTINCT etc. "
             "Textual SQL "
             "expression %r should be explicitly "
             r"declared as text\(%r\)" % (offending_clause, offending_clause),
             stmt.compile,
+            dialect=dialect,
         )
 
     def test_order_by_label(self):
@@ -735,6 +737,21 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_unresolvable_warning_order_by(self):
         stmt = select([table1.c.myid]).order_by("foobar")
         self._test_exception(stmt, "foobar")
+
+    def test_distinct_label(self):
+
+        stmt = select([table1.c.myid.label("foo")]).distinct("foo")
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT ON (foo) mytable.myid AS foo FROM mytable",
+            dialect="postgresql",
+        )
+
+    def test_unresolvable_distinct_label(self):
+        from sqlalchemy.dialects import postgresql
+
+        stmt = select([table1.c.myid.label("foo")]).distinct("not a label")
+        self._test_exception(stmt, "not a label", dialect=postgresql.dialect())
 
     def test_group_by_label(self):
         stmt = select([table1.c.myid.label("foo")]).group_by("foo")
@@ -890,7 +907,8 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.CompileError,
-            r"Can't resolve label reference for ORDER BY / GROUP BY. "
+            r"Can't resolve label reference for ORDER BY / GROUP BY / "
+            "DISTINCT etc. "
             "Textual SQL "
             "expression 't1name' should be explicitly "
             r"declared as text\('t1name'\)",

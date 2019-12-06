@@ -811,7 +811,10 @@ class SQLCompiler(Compiled):
         except KeyError:
             coercions._no_text_coercion(
                 element.element,
-                extra="Can't resolve label reference for ORDER BY / GROUP BY.",
+                extra=(
+                    "Can't resolve label reference for ORDER BY / "
+                    "GROUP BY / DISTINCT etc."
+                ),
                 exc_cls=exc.CompileError,
             )
         else:
