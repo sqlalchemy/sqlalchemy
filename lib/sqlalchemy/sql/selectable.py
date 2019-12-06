@@ -2957,7 +2957,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 self._distinct = True
             else:
                 self._distinct = [
-                    _literal_as_text(e) for e in util.to_list(distinct)
+                    _literal_as_label_reference(e)
+                    for e in util.to_list(distinct)
                 ]
 
         if from_obj is not None:
