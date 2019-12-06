@@ -3388,7 +3388,7 @@ class Select(
             if not isinstance(distinct, bool):
                 self._distinct_on = tuple(
                     [
-                        coercions.expect(roles.WhereHavingRole, e)
+                        coercions.expect(roles.ByOfRole, e)
                         for e in util.to_list(distinct)
                     ]
                 )

@@ -747,6 +747,15 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_distinct_label_keyword(self):
+
+        stmt = select([table1.c.myid.label("foo")], distinct="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT ON (foo) mytable.myid AS foo FROM mytable",
+            dialect="postgresql",
+        )
+
     def test_unresolvable_distinct_label(self):
         from sqlalchemy.dialects import postgresql
 

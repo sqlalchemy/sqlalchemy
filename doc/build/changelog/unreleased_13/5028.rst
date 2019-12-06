@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5028
+
+    Fixed bug where "distinct" keyword passed to :func:`.select` would not
+    treat a string value as a "label reference" in the same way that the
+    :meth:`.select.distinct` does; it would instead raise unconditionally. This
+    keyword argument and the others passed to :func:`.select` will ultimately
+    be deprecated for SQLAlchemy 2.0.
+
