@@ -3878,6 +3878,45 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_columns_augmented_sql_three_using_label_reference(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(User.id, User.name.label("foo"), Address.id)
+            .distinct("name")
+            .order_by(User.id, User.name, Address.email_address)
+        )
+
+        # no columns are added when DISTINCT ON is used
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT ON (users.name) users.id AS users_id, "
+            "users.name AS foo, addresses.id AS addresses_id FROM users, "
+            "addresses ORDER BY users.id, users.name, addresses.email_address",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_sql_illegal_label_reference(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = sess.query(User.id, User.name.label("foo"), Address.id).distinct(
+            "not a label"
+        )
+
+        from sqlalchemy.dialects import postgresql
+
+        assert_raises_message(
+            sa_exc.CompileError,
+            "Can't resolve label reference for ORDER BY / "
+            "GROUP BY / DISTINCT etc.",
+            q.with_labels().statement.compile,
+            dialect=postgresql.dialect(),
+        )
+
     def test_columns_augmented_sql_four(self):
         User, Address = self.classes.User, self.classes.Address
 

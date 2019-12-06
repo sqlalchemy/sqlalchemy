@@ -778,7 +778,8 @@ class SQLCompiler(Compiled):
             elements._no_text_coercion(
                 element.element,
                 exc.CompileError,
-                "Can't resolve label reference for ORDER BY / GROUP BY.",
+                "Can't resolve label reference for ORDER BY / "
+                "GROUP BY / DISTINCT etc.",
             )
         else:
             kwargs["render_label_as_label"] = col
