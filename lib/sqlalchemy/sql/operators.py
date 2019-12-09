@@ -538,17 +538,15 @@ class ColumnOperators(Operators):
 
             stmt.where(column.in_([]))
 
-          In this calling form, the expression renders a "false" expression,
-          e.g.::
+          In this calling form, the expression renders an "empty set"
+          expression.  These expressions are tailored to individual backends
+          and are generaly trying to get an empty SELECT statement as a
+          subuqery.  Such as on SQLite, the expression is::
 
-            WHERE 1 != 1
+            WHERE col IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
 
-          This "false" expression has historically had different behaviors
-          in older SQLAlchemy versions, see
-          :paramref:`.create_engine.empty_in_strategy` for behavioral options.
-
-          .. versionchanged:: 1.2 simplified the behavior of "empty in"
-             expressions
+          .. versionchanged:: 1.4  empty IN expressions now use an
+             execution-time generated SELECT subquery in all cases.
 
         * A bound parameter, e.g. :func:`.bindparam`, may be used if it
           includes the :paramref:`.bindparam.expanding` flag::
@@ -1341,16 +1339,6 @@ def comma_op(a, b):
     raise NotImplementedError()
 
 
-@comparison_op
-def empty_in_op(a, b):
-    raise NotImplementedError()
-
-
-@comparison_op
-def empty_notin_op(a, b):
-    raise NotImplementedError()
-
-
 def filter_op(a, b):
     raise NotImplementedError()
 
@@ -1473,8 +1461,6 @@ _PRECEDENCE = {
     ne: 5,
     is_distinct_from: 5,
     isnot_distinct_from: 5,
-    empty_in_op: 5,
-    empty_notin_op: 5,
     gt: 5,
     lt: 5,
     ge: 5,

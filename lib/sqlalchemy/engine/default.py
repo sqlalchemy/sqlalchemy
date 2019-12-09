@@ -192,7 +192,16 @@ class DefaultDialect(interfaces.Dialect):
             "and corresponding dialect-level parameters are deprecated, "
             "and will be removed in a future release.  Modern DBAPIs support "
             "Python Unicode natively and this parameter is unnecessary.",
-        )
+        ),
+        empty_in_strategy=(
+            "1.4",
+            "The :paramref:`.create_engine.empty_in_strategy` keyword is "
+            "deprecated, and no longer has any effect.  All IN expressions "
+            "are now rendered using "
+            'the "expanding parameter" strategy which renders a set of bound'
+            'expressions, or an "empty set" SELECT, at statement execution'
+            "time.",
+        ),
     )
     def __init__(
         self,
@@ -203,7 +212,6 @@ class DefaultDialect(interfaces.Dialect):
         implicit_returning=None,
         case_sensitive=True,
         supports_native_boolean=None,
-        empty_in_strategy="static",
         max_identifier_length=None,
         label_length=None,
         **kwargs
@@ -234,18 +242,6 @@ class DefaultDialect(interfaces.Dialect):
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive
-
-        self.empty_in_strategy = empty_in_strategy
-        if empty_in_strategy == "static":
-            self._use_static_in = True
-        elif empty_in_strategy in ("dynamic", "dynamic_warn"):
-            self._use_static_in = False
-            self._warn_on_empty_in = empty_in_strategy == "dynamic_warn"
-        else:
-            raise exc.ArgumentError(
-                "empty_in_strategy may be 'static', "
-                "'dynamic', or 'dynamic_warn'"
-            )
 
         self._user_defined_max_identifier_length = max_identifier_length
         if self._user_defined_max_identifier_length:
@@ -732,18 +728,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             compiled._loose_column_name_matching,
         )
 
-        self.unicode_statement = util.text_type(compiled)
-        if not dialect.supports_unicode_statements:
-            self.statement = self.unicode_statement.encode(
-                self.dialect.encoding
-            )
-        else:
-            self.statement = self.unicode_statement
-
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
         self.is_text = compiled.isplaintext
+
+        if self.isinsert or self.isupdate or self.isdelete:
+            self.is_crud = True
+            self._is_explicit_returning = bool(compiled.statement._returning)
+            self._is_implicit_returning = bool(
+                compiled.returning and not compiled.statement._returning
+            )
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]
@@ -755,14 +750,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
             self.executemany = len(parameters) > 1
 
-        self.cursor = self.create_cursor()
+        # this must occur before create_cursor() since the statement
+        # has to be regexed in some cases for server side cursor
+        self.unicode_statement = util.text_type(compiled)
 
-        if self.isinsert or self.isupdate or self.isdelete:
-            self.is_crud = True
-            self._is_explicit_returning = bool(compiled.statement._returning)
-            self._is_implicit_returning = bool(
-                compiled.returning and not compiled.statement._returning
-            )
+        self.cursor = self.create_cursor()
 
         if self.compiled.insert_prefetch or self.compiled.update_prefetch:
             if self.executemany:
@@ -772,14 +764,37 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         processors = compiled._bind_processors
 
-        if compiled.literal_execute_params:
-            # copy processors for this case as they will be mutated
-            processors = dict(processors)
-            positiontup = self._literal_execute_parameters(
-                compiled, processors
+        if compiled.literal_execute_params or compiled.post_compile_params:
+            if self.executemany:
+                raise exc.InvalidRequestError(
+                    "'literal_execute' or 'expanding' parameters can't be "
+                    "used with executemany()"
+                )
+
+            expanded_state = compiled._process_parameters_for_postcompile(
+                self.compiled_parameters[0]
             )
+
+            # re-assign self.unicode_statement
+            self.unicode_statement = expanded_state.statement
+
+            # used by set_input_sizes() which is needed for Oracle
+            self._expanded_parameters = expanded_state.parameter_expansion
+
+            processors = dict(processors)
+            processors.update(expanded_state.processors)
+            positiontup = expanded_state.positiontup
         elif compiled.positional:
             positiontup = self.compiled.positiontup
+
+        # final self.unicode_statement is now assigned, encode if needed
+        # by dialect
+        if not dialect.supports_unicode_statements:
+            self.statement = self.unicode_statement.encode(
+                self.dialect.encoding
+            )
+        else:
+            self.statement = self.unicode_statement
 
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
@@ -824,105 +839,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.parameters = dialect.execute_sequence_format(parameters)
 
         return self
-
-    def _literal_execute_parameters(self, compiled, processors):
-        """handle special post compile parameters.
-
-        These include:
-
-        * "expanding" parameters -typically IN tuples that are rendered
-          on a per-parameter basis for an otherwise fixed SQL statement string.
-
-        * literal_binds compiled with the literal_execute flag.  Used for
-          things like SQL Server "TOP N" where the driver does not accommodate
-          N as a bound parameter.
-
-        """
-        if self.executemany:
-            raise exc.InvalidRequestError(
-                "'literal_execute' or 'expanding' parameters can't be "
-                "used with executemany()"
-            )
-
-        if compiled.positional and compiled._numeric_binds:
-            # I'm not familiar with any DBAPI that uses 'numeric'.
-            # strategy would likely be to make use of numbers greater than
-            # the highest number present; then for expanding parameters,
-            # append them to the end of the parameter list.   that way
-            # we avoid having to renumber all the existing parameters.
-            raise NotImplementedError(
-                "'post-compile' bind parameters are not supported with "
-                "the 'numeric' paramstyle at this time."
-            )
-
-        self._expanded_parameters = {}
-
-        compiled_params = self.compiled_parameters[0]
-        if compiled.positional:
-            positiontup = []
-        else:
-            positiontup = None
-
-        replacement_expressions = {}
-        to_update_sets = {}
-
-        for name in (
-            compiled.positiontup
-            if compiled.positional
-            else compiled.bind_names.values()
-        ):
-            parameter = compiled.binds[name]
-            if parameter in compiled.literal_execute_params:
-
-                if not parameter.expanding:
-                    value = compiled_params.pop(name)
-                    replacement_expressions[
-                        name
-                    ] = compiled.render_literal_bindparam(
-                        parameter, render_literal_value=value
-                    )
-                    continue
-
-                if name in replacement_expressions:
-                    to_update = to_update_sets[name]
-                else:
-                    # we are removing the parameter from compiled_params
-                    # because it is a list value, which is not expected by
-                    # TypeEngine objects that would otherwise be asked to
-                    # process it. the single name is being replaced with
-                    # individual numbered parameters for each value in the
-                    # param.
-                    values = compiled_params.pop(name)
-
-                    leep = compiled._literal_execute_expanding_parameter
-                    to_update, replacement_expr = leep(name, parameter, values)
-
-                    to_update_sets[name] = to_update
-                    replacement_expressions[name] = replacement_expr
-
-                if not parameter.literal_execute:
-                    compiled_params.update(to_update)
-
-                    processors.update(
-                        (key, processors[name])
-                        for key, value in to_update
-                        if name in processors
-                    )
-                    if compiled.positional:
-                        positiontup.extend(name for name, value in to_update)
-                    self._expanded_parameters[name] = [
-                        expand_key for expand_key, value in to_update
-                    ]
-            elif compiled.positional:
-                positiontup.append(name)
-
-        def process_expanding(m):
-            return replacement_expressions[m.group(1)]
-
-        self.statement = re.sub(
-            r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.statement
-        )
-        return positiontup
 
     @classmethod
     def _init_statement(
@@ -1084,8 +1000,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                                 self.compiled.statement, expression.TextClause
                             )
                         )
-                        and self.statement
-                        and SERVER_SIDE_CURSOR_RE.match(self.statement)
+                        and self.unicode_statement
+                        and SERVER_SIDE_CURSOR_RE.match(self.unicode_statement)
                     )
                 )
             )

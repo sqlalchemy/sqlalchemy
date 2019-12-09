@@ -304,7 +304,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     #            ""
     #        )
 
-    def test_strict_binds(self):
+    @testing.combinations(
+        (
+            lambda: select([literal("x"), literal("y")]),
+            "SELECT [POSTCOMPILE_param_1] AS anon_1, "
+            "[POSTCOMPILE_param_2] AS anon_2",
+            {
+                "check_literal_execute": {"param_1": "x", "param_2": "y"},
+                "check_post_param": {},
+            },
+        ),
+        (
+            lambda: select([t]).where(t.c.foo.in_(["x", "y", "z"])),
+            "SELECT sometable.foo FROM sometable WHERE sometable.foo "
+            "IN ([POSTCOMPILE_foo_1])",
+            {
+                "check_literal_execute": {"foo_1": ["x", "y", "z"]},
+                "check_post_param": {},
+            },
+        ),
+        (lambda: t.c.foo.in_([None]), "sometable.foo IN (NULL)", {}),
+    )
+    def test_strict_binds(self, expr, compiled, kw):
         """test the 'strict' compiler binds."""
 
         from sqlalchemy.dialects.mssql.base import MSSQLStrictCompiler
@@ -314,19 +335,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t = table("sometable", column("foo"))
 
-        for expr, compiled in [
-            (
-                select([literal("x"), literal("y")]),
-                "SELECT 'x' AS anon_1, 'y' AS anon_2",
-            ),
-            (
-                select([t]).where(t.c.foo.in_(["x", "y", "z"])),
-                "SELECT sometable.foo FROM sometable WHERE sometable.foo "
-                "IN ('x', 'y', 'z')",
-            ),
-            (t.c.foo.in_([None]), "sometable.foo IN (NULL)"),
-        ]:
-            self.assert_compile(expr, compiled, dialect=mxodbc_dialect)
+        expr = testing.resolve_lambda(expr, t=t)
+        self.assert_compile(expr, compiled, dialect=mxodbc_dialect, **kw)
 
     def test_in_with_subqueries(self):
         """Test removal of legacy behavior that converted "x==subquery"
@@ -598,19 +608,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             u,
             "SELECT t1.col3 AS col3, t1.col4 AS col4 "
-            "FROM t1 WHERE t1.col2 IN (:col2_1, "
-            ":col2_2) UNION SELECT t2.col3 AS col3, "
+            "FROM t1 WHERE t1.col2 IN ([POSTCOMPILE_col2_1]) "
+            "UNION SELECT t2.col3 AS col3, "
             "t2.col4 AS col4 FROM t2 WHERE t2.col2 IN "
-            "(:col2_3, :col2_4) ORDER BY col3, col4",
+            "([POSTCOMPILE_col2_2]) ORDER BY col3, col4",
+            checkparams={
+                "col2_1": ["t1col2r1", "t1col2r2"],
+                "col2_2": ["t2col2r2", "t2col2r3"],
+            },
         )
         self.assert_compile(
             u.alias("bar").select(),
             "SELECT bar.col3, bar.col4 FROM (SELECT "
             "t1.col3 AS col3, t1.col4 AS col4 FROM t1 "
-            "WHERE t1.col2 IN (:col2_1, :col2_2) UNION "
+            "WHERE t1.col2 IN ([POSTCOMPILE_col2_1]) UNION "
             "SELECT t2.col3 AS col3, t2.col4 AS col4 "
-            "FROM t2 WHERE t2.col2 IN (:col2_3, "
-            ":col2_4)) AS bar",
+            "FROM t2 WHERE t2.col2 IN ([POSTCOMPILE_col2_2])) AS bar",
+            checkparams={
+                "col2_1": ["t1col2r1", "t1col2r2"],
+                "col2_2": ["t2col2r2", "t2col2r3"],
+            },
         )
 
     def test_function(self):

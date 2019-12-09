@@ -1113,9 +1113,27 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_in_tuple(self):
-        self.assert_compile(
-            tuple_(column("q"), column("p")).in_([(1, 2), (3, 4)]),
-            "(q, p) IN (VALUES (?, ?), (?, ?))",
+        compiled = (
+            tuple_(column("q"), column("p"))
+            .in_([(1, 2), (3, 4)])
+            .compile(dialect=sqlite.dialect())
+        )
+        eq_(str(compiled), "(q, p) IN ([POSTCOMPILE_param_1])")
+        eq_(
+            compiled._literal_execute_expanding_parameter(
+                "param_1",
+                compiled.binds["param_1"],
+                compiled.binds["param_1"].value,
+            ),
+            (
+                [
+                    ("param_1_1_1", 1),
+                    ("param_1_1_2", 2),
+                    ("param_1_2_1", 3),
+                    ("param_1_2_2", 4),
+                ],
+                "VALUES (?, ?), (?, ?)",
+            ),
         )
 
 

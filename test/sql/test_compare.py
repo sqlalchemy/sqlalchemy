@@ -391,18 +391,17 @@ class CoreFixtures(object):
 
     dont_compare_values_fixtures = [
         lambda: (
-            # same number of params each time, so compare for IN
-            # with legacy behavior of bind for each value works
+            # note the in_(...) all have different column names becuase
+            # otherwise all IN expressions would compare as equivalent
             column("x").in_(random_choices(range(10), k=3)),
-            # expanding IN places the whole list into a single parameter
-            # so it can be of arbitrary length as well
-            column("x").in_(
+            column("y").in_(
                 bindparam(
                     "q",
                     random_choices(range(10), k=random.randint(0, 7)),
                     expanding=True,
                 )
             ),
+            column("z").in_(random_choices(range(10), k=random.randint(0, 7))),
             column("x") == random.randint(1, 10),
         )
     ]

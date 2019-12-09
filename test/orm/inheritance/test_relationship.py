@@ -1913,7 +1913,7 @@ class JoinedloadOverWPolyAliased(
             joinedload(cls.links).joinedload(Link.child).joinedload(cls.links)
         )
         if cls is self.classes.Sub1:
-            extra = " WHERE parent.type IN (:type_1)"
+            extra = " WHERE parent.type IN ([POSTCOMPILE_type_1])"
         else:
             extra = ""
 
@@ -1943,7 +1943,7 @@ class JoinedloadOverWPolyAliased(
         )
 
         if Link.child.property.mapper.class_ is self.classes.Sub1:
-            extra = "AND parent_1.type IN (:type_1) "
+            extra = "AND parent_1.type IN ([POSTCOMPILE_type_1]) "
         else:
             extra = ""
 

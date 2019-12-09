@@ -3031,8 +3031,8 @@ class SingleInhSubclassTest(
             q.all,
             CompiledSQL(
                 'SELECT "user".id AS user_id, "user".type AS user_type '
-                'FROM "user" WHERE "user".type IN (:type_1)',
-                {"type_1": "employer"},
+                'FROM "user" WHERE "user".type IN ([POSTCOMPILE_type_1])',
+                {"type_1": ["employer"]},
             ),
             CompiledSQL(
                 "SELECT role.user_id AS role_user_id, role.id AS role_id "
@@ -3155,8 +3155,8 @@ class M2OWDegradeTest(
             q.all,
             CompiledSQL(
                 "SELECT a.id AS a_id, a.b_id AS a_b_id, a.q AS a_q "
-                "FROM a WHERE a.id IN (:id_1, :id_2) ORDER BY a.id",
-                [{"id_1": 1, "id_2": 3}],
+                "FROM a WHERE a.id IN ([POSTCOMPILE_id_1]) ORDER BY a.id",
+                [{"id_1": [1, 3]}],
             ),
             CompiledSQL(
                 "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
@@ -3184,8 +3184,8 @@ class M2OWDegradeTest(
             q.all,
             CompiledSQL(
                 "SELECT a.id AS a_id, a.q AS a_q "
-                "FROM a WHERE a.id IN (:id_1, :id_2) ORDER BY a.id",
-                [{"id_1": 1, "id_2": 3}],
+                "FROM a WHERE a.id IN ([POSTCOMPILE_id_1]) ORDER BY a.id",
+                [{"id_1": [1, 3]}],
             ),
             # in the very unlikely case that the the FK col on parent is
             # deferred, we degrade to the JOIN version so that we don't need to

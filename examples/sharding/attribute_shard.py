@@ -17,11 +17,8 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import visitors
 
 
-# db1 is used for id generation. The "pool_threadlocal"
-# causes the id_generator() to use the same connection as that
-# of an ongoing transaction within db1.
 echo = True
-db1 = create_engine("sqlite://", echo=echo, pool_threadlocal=True)
+db1 = create_engine("sqlite://", echo=echo)
 db2 = create_engine("sqlite://", echo=echo)
 db3 = create_engine("sqlite://", echo=echo)
 db4 = create_engine("sqlite://", echo=echo)
@@ -220,20 +217,7 @@ def _get_query_comparisons(query):
         clauses.add(column)
 
     def visit_binary(binary):
-        # special handling for "col IN (params)"
-        if (
-            binary.left in clauses
-            and binary.operator == operators.in_op
-            and hasattr(binary.right, "clauses")
-        ):
-            comparisons.append(
-                (
-                    binary.left,
-                    binary.operator,
-                    tuple(binds[bind] for bind in binary.right.clauses),
-                )
-            )
-        elif binary.left in clauses and binary.right in binds:
+        if binary.left in clauses and binary.right in binds:
             comparisons.append(
                 (binary.left, binary.operator, binds[binary.right])
             )

@@ -759,7 +759,7 @@ class ColumnElement(
     def reverse_operate(self, op, other, **kwargs):
         return op(other, self.comparator, **kwargs)
 
-    def _bind_param(self, operator, obj, type_=None):
+    def _bind_param(self, operator, obj, type_=None, expanding=False):
         return BindParameter(
             None,
             obj,
@@ -767,6 +767,7 @@ class ColumnElement(
             type_=type_,
             _compared_to_type=self.type,
             unique=True,
+            expanding=expanding,
         )
 
     @property
@@ -1281,7 +1282,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.required = required
         self.expanding = expanding
         self.literal_execute = literal_execute
-
         if type_ is None:
             if _compared_to_type is not None:
                 self.type = _compared_to_type.coerce_compared_value(
@@ -2282,20 +2282,29 @@ class Tuple(ClauseList, ColumnElement):
     def _select_iterable(self):
         return (self,)
 
-    def _bind_param(self, operator, obj, type_=None):
-        return Tuple(
-            *[
-                BindParameter(
-                    None,
-                    o,
-                    _compared_to_operator=operator,
-                    _compared_to_type=compared_to_type,
-                    unique=True,
-                    type_=type_,
-                )
-                for o, compared_to_type in zip(obj, self._type_tuple)
-            ]
-        ).self_group()
+    def _bind_param(self, operator, obj, type_=None, expanding=False):
+        if expanding:
+            return BindParameter(
+                None,
+                value=obj,
+                _compared_to_operator=operator,
+                unique=True,
+                expanding=True,
+            )._with_expanding_in_types(self._type_tuple)
+        else:
+            return Tuple(
+                *[
+                    BindParameter(
+                        None,
+                        o,
+                        _compared_to_operator=operator,
+                        _compared_to_type=compared_to_type,
+                        unique=True,
+                        type_=type_,
+                    )
+                    for o, compared_to_type in zip(obj, self._type_tuple)
+                ]
+            ).self_group()
 
 
 class Case(ColumnElement):
@@ -4240,7 +4249,7 @@ class ColumnClause(
         else:
             return name
 
-    def _bind_param(self, operator, obj, type_=None):
+    def _bind_param(self, operator, obj, type_=None, expanding=False):
         return BindParameter(
             self.key,
             obj,
@@ -4248,6 +4257,7 @@ class ColumnClause(
             _compared_to_type=self.type,
             type_=type_,
             unique=True,
+            expanding=expanding,
         )
 
     def _make_proxy(

@@ -331,20 +331,29 @@ class InElementImpl(RoleImpl, roles.InElementRole):
         if isinstance(element, collections_abc.Iterable) and not isinstance(
             element, util.string_types
         ):
-            args = []
+            non_literal_expressions = {}
+            element = list(element)
             for o in element:
                 if not _is_literal(o):
                     if not isinstance(o, operators.ColumnOperators):
                         self._raise_for_expected(element, **kw)
+                    else:
+                        non_literal_expressions[o] = o
                 elif o is None:
-                    o = elements.Null()
-                else:
-                    o = expr._bind_param(operator, o)
-                args.append(o)
+                    non_literal_expressions[o] = elements.Null()
 
-            return elements.ClauseList(
-                _tuple_values=isinstance(expr, elements.Tuple), *args
-            )
+            if non_literal_expressions:
+                return elements.ClauseList(
+                    _tuple_values=isinstance(expr, elements.Tuple),
+                    *[
+                        non_literal_expressions[o]
+                        if o in non_literal_expressions
+                        else expr._bind_param(operator, o)
+                        for o in element
+                    ]
+                )
+            else:
+                return expr._bind_param(operator, element, expanding=True)
 
         else:
             self._raise_for_expected(element, **kw)
@@ -353,17 +362,8 @@ class InElementImpl(RoleImpl, roles.InElementRole):
         if element._is_select_statement:
             return element.scalar_subquery()
         elif isinstance(element, elements.ClauseList):
-            if len(element.clauses) == 0:
-                op, negate_op = (
-                    (operators.empty_in_op, operators.empty_notin_op)
-                    if operator is operators.in_op
-                    else (operators.empty_notin_op, operators.empty_in_op)
-                )
-                return element.self_group(against=op)._annotate(
-                    dict(in_ops=(op, negate_op))
-                )
-            else:
-                return element.self_group(against=operator)
+            assert not len(element.clauses) == 0
+            return element.self_group(against=operator)
 
         elif isinstance(element, elements.BindParameter) and element.expanding:
             if isinstance(expr, elements.Tuple):

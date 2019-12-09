@@ -23,7 +23,16 @@ from .. import util
         ":func:`.create_mock_engine` going forward.  For general "
         "customization of create_engine which may have been accomplished "
         "using strategies, see :class:`.CreateEnginePlugin`.",
-    )
+    ),
+    empty_in_strategy=(
+        "1.4",
+        "The :paramref:`.create_engine.empty_in_strategy` keyword is "
+        "deprecated, and no longer has any effect.  All IN expressions "
+        "are now rendered using "
+        'the "expanding parameter" strategy which renders a set of bound'
+        'expressions, or an "empty set" SELECT, at statement execution'
+        "time.",
+    ),
 )
 def create_engine(url, **kwargs):
     """Create a new :class:`.Engine` instance.
@@ -130,23 +139,8 @@ def create_engine(url, **kwargs):
             logging.
 
 
-    :param empty_in_strategy:  The SQL compilation strategy to use when
-        rendering an IN or NOT IN expression for :meth:`.ColumnOperators.in_`
-        where the right-hand side
-        is an empty set.   This is a string value that may be one of
-        ``static``, ``dynamic``, or ``dynamic_warn``.   The ``static``
-        strategy is the default, and an IN comparison to an empty set
-        will generate a simple false expression "1 != 1".   The ``dynamic``
-        strategy behaves like that of SQLAlchemy 1.1 and earlier, emitting
-        a false expression of the form "expr != expr", which has the effect
-        of evaluting to NULL in the case of a null expression.
-        ``dynamic_warn`` is the same as ``dynamic``, however also emits a
-        warning when an empty set is encountered; this because the "dynamic"
-        comparison is typically poorly performing on most databases.
-
-        .. versionadded:: 1.2  Added the ``empty_in_strategy`` setting and
-           additionally defaulted the behavior for empty-set IN comparisons
-           to a static boolean expression.
+    :param empty_in_strategy:   No longer used; SQLAlchemy now uses
+        "empty set" behavior for IN in all cases.
 
     :param encoding: Defaults to ``utf-8``.  This is the string
         encoding used by SQLAlchemy for string encode/decode
@@ -411,6 +405,8 @@ def create_engine(url, **kwargs):
             return create_mock_engine(url, **kwargs)
         else:
             raise exc.ArgumentError("unknown strategy: %r" % strat)
+
+    kwargs.pop("empty_in_strategy", None)
 
     # create url.URL object
     u = _url.make_url(url)

@@ -340,12 +340,15 @@ class AssertsCompiledSQL(object):
         result,
         params=None,
         checkparams=None,
+        check_literal_execute=None,
+        check_post_param=None,
         dialect=None,
         checkpositional=None,
         check_prefetch=None,
         use_default_dialect=False,
         allow_dialect_select=False,
         literal_binds=False,
+        render_postcompile=False,
         schema_translate_map=None,
     ):
         if use_default_dialect:
@@ -376,6 +379,9 @@ class AssertsCompiledSQL(object):
 
         if literal_binds:
             compile_kwargs["literal_binds"] = True
+
+        if render_postcompile:
+            compile_kwargs["render_postcompile"] = True
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()
@@ -418,6 +424,22 @@ class AssertsCompiledSQL(object):
             eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
         if check_prefetch is not None:
             eq_(c.prefetch, check_prefetch)
+        if check_literal_execute is not None:
+            eq_(
+                {
+                    c.bind_names[b]: b.effective_value
+                    for b in c.literal_execute_params
+                },
+                check_literal_execute,
+            )
+        if check_post_param is not None:
+            eq_(
+                {
+                    c.bind_names[b]: b.effective_value
+                    for b in c.post_compile_params
+                },
+                check_post_param,
+            )
 
 
 class ComparesTables(object):

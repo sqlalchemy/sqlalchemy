@@ -113,8 +113,8 @@ class ShardTest(object):
                         if binary.operator == operators.eq:
                             ids.append(shard_lookup[binary.right.value])
                         elif binary.operator == operators.in_op:
-                            for bind in binary.right.clauses:
-                                ids.append(shard_lookup[bind.value])
+                            for value in binary.right.value:
+                                ids.append(shard_lookup[value])
 
             if query._criterion is not None:
                 FindContinent().traverse(query._criterion)

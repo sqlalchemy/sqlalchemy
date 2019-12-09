@@ -267,7 +267,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "employees.engineer_info AS "
             "employees_engineer_info, employees.type "
             "AS employees_type FROM employees WHERE "
-            "employees.type IN (:type_1, :type_2)) AS "
+            "employees.type IN ([POSTCOMPILE_type_1])) AS "
             "anon_1",
             use_default_dialect=True,
         )
@@ -282,13 +282,13 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             sess.query(a1.employee_id).select_from(a1),
             "SELECT employees_1.employee_id AS employees_1_employee_id "
             "FROM employees AS employees_1 WHERE employees_1.type "
-            "IN (:type_1, :type_2)",
+            "IN ([POSTCOMPILE_type_1])",
         )
 
         self.assert_compile(
             sess.query(literal("1")).select_from(a1),
             "SELECT :param_1 AS anon_1 FROM employees AS employees_1 "
-            "WHERE employees_1.type IN (:type_1, :type_2)",
+            "WHERE employees_1.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_union_modifiers(self):
@@ -311,7 +311,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "employees.engineer_info AS employees_engineer_info, "
             "employees.type AS employees_type FROM employees "
             "WHERE employees.engineer_info = :engineer_info_1 "
-            "AND employees.type IN (:type_1, :type_2) "
+            "AND employees.type IN ([POSTCOMPILE_type_1]) "
             "%(token)s "
             "SELECT employees.employee_id AS employees_employee_id, "
             "employees.name AS employees_name, "
@@ -319,7 +319,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "employees.engineer_info AS employees_engineer_info, "
             "employees.type AS employees_type FROM employees "
             "WHERE employees.manager_data = :manager_data_1 "
-            "AND employees.type IN (:type_3)) AS anon_1"
+            "AND employees.type IN ([POSTCOMPILE_type_2])) AS anon_1"
         )
 
         for meth, token in [
@@ -334,11 +334,10 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
                 meth(q2),
                 assert_sql % {"token": token},
                 checkparams={
-                    "manager_data_1": "bar",
-                    "type_2": "juniorengineer",
-                    "type_3": "manager",
                     "engineer_info_1": "foo",
-                    "type_1": "engineer",
+                    "type_1": ["engineer", "juniorengineer"],
+                    "manager_data_1": "bar",
+                    "type_2": ["manager"],
                 },
             )
 
@@ -352,7 +351,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "SELECT count(*) AS count_1 "
             "FROM (SELECT employees.employee_id AS employees_employee_id "
             "FROM employees "
-            "WHERE employees.type IN (:type_1, :type_2)) AS anon_1",
+            "WHERE employees.type IN ([POSTCOMPILE_type_1])) AS anon_1",
             use_default_dialect=True,
         )
 
@@ -422,7 +421,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             ),
             "SELECT EXISTS (SELECT 1 FROM employees WHERE "
             "employees.name = :name_1 AND employees.type "
-            "IN (:type_1, :type_2)) AS anon_1",
+            "IN ([POSTCOMPILE_type_1])) AS anon_1",
         )
 
     def test_type_filtering(self):
@@ -566,7 +565,7 @@ class RelationshipFromSingleTest(
             "employee_stuff_name, anon_1.employee_id "
             "AS anon_1_employee_id FROM (SELECT "
             "employee.id AS employee_id FROM employee "
-            "WHERE employee.type IN (:type_1)) AS anon_1 "
+            "WHERE employee.type IN ([POSTCOMPILE_type_1])) AS anon_1 "
             "JOIN employee_stuff ON anon_1.employee_id "
             "= employee_stuff.employee_id ORDER BY "
             "anon_1.employee_id",
@@ -713,7 +712,7 @@ class RelationshipToSingleTest(
             "companies.name AS companies_name FROM companies "
             "LEFT OUTER JOIN employees AS employees_1 ON "
             "companies.company_id = employees_1.company_id "
-            "AND employees_1.type IN (:type_1)",
+            "AND employees_1.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_join_explicit_onclause_no_discriminator(self):
@@ -768,7 +767,8 @@ class RelationshipToSingleTest(
             "companies.name AS companies_name, "
             "employees.name AS employees_name "
             "FROM companies LEFT OUTER JOIN employees ON companies.company_id "
-            "= employees.company_id AND employees.type IN (:type_1)",
+            "= employees.company_id "
+            "AND employees.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_outer_join_prop_alias(self):
@@ -797,7 +797,8 @@ class RelationshipToSingleTest(
             "companies.name AS companies_name, employees_1.name AS "
             "employees_1_name FROM companies LEFT OUTER "
             "JOIN employees AS employees_1 ON companies.company_id "
-            "= employees_1.company_id AND employees_1.type IN (:type_1)",
+            "= employees_1.company_id "
+            "AND employees_1.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_outer_join_literal_onclause(self):
@@ -831,7 +832,7 @@ class RelationshipToSingleTest(
             "employees.company_id AS employees_company_id FROM companies "
             "LEFT OUTER JOIN employees ON "
             "companies.company_id = employees.company_id "
-            "AND employees.type IN (:type_1)",
+            "AND employees.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_outer_join_literal_onclause_alias(self):
@@ -866,7 +867,7 @@ class RelationshipToSingleTest(
             "employees_1.company_id AS employees_1_company_id "
             "FROM companies LEFT OUTER JOIN employees AS employees_1 ON "
             "companies.company_id = employees_1.company_id "
-            "AND employees_1.type IN (:type_1)",
+            "AND employees_1.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_outer_join_no_onclause(self):
@@ -898,7 +899,7 @@ class RelationshipToSingleTest(
             "employees.company_id AS employees_company_id "
             "FROM companies LEFT OUTER JOIN employees ON "
             "companies.company_id = employees.company_id "
-            "AND employees.type IN (:type_1)",
+            "AND employees.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_outer_join_no_onclause_alias(self):
@@ -931,7 +932,7 @@ class RelationshipToSingleTest(
             "employees_1.company_id AS employees_1_company_id "
             "FROM companies LEFT OUTER JOIN employees AS employees_1 ON "
             "companies.company_id = employees_1.company_id "
-            "AND employees_1.type IN (:type_1)",
+            "AND employees_1.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_correlated_column_select(self):
@@ -965,7 +966,8 @@ class RelationshipToSingleTest(
             "SELECT companies.company_id AS companies_company_id, "
             "(SELECT count(employees.employee_id) AS count_1 "
             "FROM employees WHERE employees.company_id = "
-            "companies.company_id AND employees.type IN (:type_1)) AS anon_1 "
+            "companies.company_id "
+            "AND employees.type IN ([POSTCOMPILE_type_1])) AS anon_1 "
             "FROM companies",
         )
 
@@ -1041,8 +1043,8 @@ class RelationshipToSingleTest(
                 "ON companies.company_id = employees.company_id "
                 "JOIN employees "
                 "ON companies.company_id = employees.company_id "
-                "AND employees.type IN (:type_1) "
-                "WHERE employees.type IN (:type_2)",
+                "AND employees.type IN ([POSTCOMPILE_type_1]) "
+                "WHERE employees.type IN ([POSTCOMPILE_type_2])",
             )
 
     def test_relationship_to_subclass(self):
@@ -1307,7 +1309,7 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
             "child.name AS child_name "
             "FROM parent LEFT OUTER JOIN (m2m AS m2m_1 "
             "JOIN child ON child.id = m2m_1.child_id "
-            "AND child.discriminator IN (:discriminator_1)) "
+            "AND child.discriminator IN ([POSTCOMPILE_discriminator_1])) "
             "ON parent.id = m2m_1.parent_id",
         )
 
@@ -1324,7 +1326,8 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
             "FROM parent LEFT OUTER JOIN "
             "(m2m AS m2m_1 JOIN child AS child_1 "
             "ON child_1.id = m2m_1.child_id AND child_1.discriminator "
-            "IN (:discriminator_1)) ON parent.id = m2m_1.parent_id",
+            "IN ([POSTCOMPILE_discriminator_1])) "
+            "ON parent.id = m2m_1.parent_id",
         )
 
 
@@ -1536,7 +1539,7 @@ class SingleFromPolySelectableTest(
             "engineer.manager_id AS engineer_manager_id "
             "FROM employee JOIN engineer ON employee.id = engineer.id) "
             "AS anon_1 "
-            "WHERE anon_1.employee_type IN (:type_1)",
+            "WHERE anon_1.employee_type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_query_wpoly_single_inh_subclass(self):
@@ -1563,7 +1566,7 @@ class SingleFromPolySelectableTest(
             "engineer.engineer_info AS engineer_engineer_info, "
             "engineer.manager_id AS engineer_manager_id "
             "FROM employee JOIN engineer ON employee.id = engineer.id) "
-            "AS anon_1 WHERE anon_1.employee_type IN (:type_1)",
+            "AS anon_1 WHERE anon_1.employee_type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_single_inh_subclass_join_joined_inh_subclass(self):
@@ -1582,7 +1585,7 @@ class SingleFromPolySelectableTest(
             "JOIN (employee AS employee_1 JOIN engineer AS engineer_1 "
             "ON employee_1.id = engineer_1.id) "
             "ON engineer_1.manager_id = manager.id "
-            "WHERE employee.type IN (:type_1)",
+            "WHERE employee.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_single_inh_subclass_join_wpoly_joined_inh_subclass(self):
@@ -1619,7 +1622,7 @@ class SingleFromPolySelectableTest(
             "FROM employee "
             "JOIN engineer ON employee.id = engineer.id) AS anon_1 "
             "ON anon_1.manager_id = manager.id "
-            "WHERE employee.type IN (:type_1)",
+            "WHERE employee.type IN ([POSTCOMPILE_type_1])",
         )
 
     def test_joined_inh_subclass_join_single_inh_subclass(self):
@@ -1639,7 +1642,7 @@ class SingleFromPolySelectableTest(
             "JOIN (employee AS employee_1 JOIN manager AS manager_1 "
             "ON employee_1.id = manager_1.id) "
             "ON engineer.manager_id = manager_1.id "
-            "AND employee_1.type IN (:type_1)",
+            "AND employee_1.type IN ([POSTCOMPILE_type_1])",
         )
 
 

@@ -212,6 +212,113 @@ refined so that it is more compatible with Core.
 
 :ticket:`4617`
 
+.. _change_4645:
+
+All IN expressions render parameters for each value in the list on the fly (e.g. expanding parameters)
+------------------------------------------------------------------------------------------------------
+
+The "expanding IN" feature, first introduced in :ref:`change_3953`, has matured
+enough such that it is clearly superior to the previous method of rendering IN
+expressions.  As the approach was improved to handle empty lists of values, it
+is now the only means that Core / ORM will use to render lists of IN
+parameters.
+
+The previous approach which has been present in SQLAlchemy since its first
+release was that when a list of values were passed to the
+:meth:`.ColumnOperators.in_` method, the list would be expanded into a series
+of individual :class:`.BindParameter` objects at statement construction time.
+This suffered from the limitation that it was not possible to vary the
+parameter list at statement execution time based on the parameter dictionary,
+which meant that string SQL statements could not be cached independently of
+their parameters, nor could the parameter dictionary be fully used for
+statements that included IN expressions generally.
+
+In order to service the "baked query" feature described at
+:ref:`baked_toplevel`, a cacheable version of IN was needed, which is what
+brought about the "expanding IN" feature.  In contrast to the existing behavior
+whereby the parameter list is expanded at statement construction time into
+individual :class:`.BindParameter` objects, the feature instead uses a single
+:class:`.BindParameter` that stores the list of values at once; when the
+statement is executed by the :class:`.Engine`, it is "expanded" on the fly into
+individual bound parameter positions based on the parameters passed to the call
+to :meth:`.Connection.execute`, and the existing SQL string which may have been
+retrieved from a previous execution is modified using a regular expression to
+suit the current parameter set.   This allows for the same :class:`.Compiled`
+object, which stores the rendered string statement, to be invoked multiple
+times against different parameter sets that modify the list contents passed to
+IN expressions, while still maintaining the behavior of individual scalar
+parameters being passed to the DBAPI.  While some DBAPIs do support this
+functionality directly, it is not generally available; the "expanding IN"
+feature now supports the behavior consistently for all backends.
+
+As a major focus of 1.4 is to allow for true statement caching in Core and ORM
+without the awkwardness of the "baked" system, and since the "expanding IN"
+feature represents a simpler approach to building expressions in any case,
+it's now invoked automatically whenever a list of values is passed to
+an IN expression::
+
+    stmt = select([A.id, A.data]).where(A.id.in_([1, 2, 3]))
+
+The pre-execution string representation is::
+
+    >>> print(stmt)
+    SELECT a.id, a.data
+    FROM a
+    WHERE a.id IN ([POSTCOMPILE_id_1])
+
+To render the values directly, use ``literal_binds`` as was the case previously::
+
+    >>> print(stmt.compile(compile_kwargs={"literal_binds": True}))
+    SELECT a.id, a.data
+    FROM a
+    WHERE a.id IN (1, 2, 3)
+
+A new flag, "render_postcompile", is added as a helper to allow the current
+bound value to be rendered as it would be passed to the database::
+
+    >>> print(stmt.compile(compile_kwargs={"render_postcompile": True}))
+    SELECT a.id, a.data
+    FROM a
+    WHERE a.id IN (:id_1_1, :id_1_2, :id_1_3)
+
+Engine logging output shows the ultimate rendered statement as well::
+
+    INFO sqlalchemy.engine.base.Engine SELECT a.id, a.data
+    FROM a
+    WHERE a.id IN (?, ?, ?)
+    INFO sqlalchemy.engine.base.Engine (1, 2, 3)
+
+As part of this change, the behavior of "empty IN" expressions, where the list
+parameter is empty, is now standardized on use of the IN operator against a
+so-called "empty set".  As there is no standard SQL syntax for empty sets, a
+SELECT that returns no rows is used, tailored in specific ways for each backend
+so that the database treats it as an empty set; this feature was first
+introduced in version 1.3 and is described at :ref:`change_4271`.  The
+:paramref:`.create_engine.empty_in_strategy` parameter, introduced in version
+1.2 as a means for migrating for how this case was treated for the previous IN
+system, is now deprecated and this flag no longer has an effect; as described
+in :ref:`change_3907`, this flag allowed a dialect to switch between the
+original system of comparing a column against itself, which turned out to be a
+huge performance issue, and a newer system of comparing "1 != 1" in
+order to produce a "false" expression. The 1.3 introduced behavior which
+now takes place in all cases is more correct than both approaches as the IN
+operator is still used, and does not have the performance issue of the original
+system.
+
+In addition, the "expanding" parameter system has been generalized so that it
+also services other dialect-specific use cases where a parameter cannot be
+accommodated by the DBAPI or backing database; see :ref:`change_4808` for
+details.
+
+.. seealso::
+
+    :ref:`change_4808`
+
+    :ref:`change_4271`
+
+    :class:`.BindParameter`
+
+:ticket:`4645`
 
 New Features - ORM
 ==================

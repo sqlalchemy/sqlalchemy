@@ -813,7 +813,7 @@ class QueryTest(fixtures.TestBase):
         users.insert().execute(user_id=8, user_name="fred")
         users.insert().execute(user_id=9, user_name=None)
 
-        u = bindparam("search_key")
+        u = bindparam("search_key", type_=String)
 
         s = users.select(not_(u.in_([])))
         r = s.execute(search_key="john").fetchall()
@@ -821,7 +821,6 @@ class QueryTest(fixtures.TestBase):
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 3
 
-    @testing.emits_warning(".*empty sequence.*")
     def test_literal_in(self):
         """similar to test_bind_in but use a bind with a value."""
 
@@ -860,40 +859,6 @@ class QueryTest(fixtures.TestBase):
             s = users.select(users.c.user_name.in_([]) == None)  # noqa
             r = conn.execute(s).fetchall()
             assert len(r) == 0
-
-    @testing.requires.boolean_col_expressions
-    def test_empty_in_filtering_dynamic(self):
-        """test the behavior of the in_() function when
-        comparing against an empty collection, specifically
-        that a proper boolean value is generated.
-
-        """
-
-        engine = engines.testing_engine(
-            options={"empty_in_strategy": "dynamic"}
-        )
-
-        with engine.connect() as conn:
-            users.create(engine, checkfirst=True)
-
-            conn.execute(
-                users.insert(),
-                [
-                    {"user_id": 7, "user_name": "jack"},
-                    {"user_id": 8, "user_name": "ed"},
-                    {"user_id": 9, "user_name": None},
-                ],
-            )
-
-            s = users.select(users.c.user_name.in_([]) == True)  # noqa
-            r = conn.execute(s).fetchall()
-            assert len(r) == 0
-            s = users.select(users.c.user_name.in_([]) == False)  # noqa
-            r = conn.execute(s).fetchall()
-            assert len(r) == 2
-            s = users.select(users.c.user_name.in_([]) == None)  # noqa
-            r = conn.execute(s).fetchall()
-            assert len(r) == 1
 
 
 class RequiredBindTest(fixtures.TablesTest):

@@ -1129,8 +1129,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         expected = [
             (
                 "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users WHERE users.id IN (:id_1, :id_2)",
-                {"id_2": 8, "id_1": 7},
+                "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])",
+                {"id_1": [7, 8]},
             ),
             (
                 "SELECT addresses.id AS addresses_id, "

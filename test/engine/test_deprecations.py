@@ -59,6 +59,18 @@ class CreateEngineTest(fixtures.TestBase):
                 strategy="threadlocal",
             )
 
+    def test_empty_in_keyword(self):
+        with testing.expect_deprecated(
+            "The create_engine.empty_in_strategy keyword is deprecated, "
+            "and no longer has any effect."
+        ):
+            create_engine(
+                "postgresql://",
+                empty_in_strategy="static",
+                module=Mock(),
+                _initialize=False,
+            )
+
 
 class TransactionTest(fixtures.TestBase):
     __backend__ = True

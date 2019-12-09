@@ -45,7 +45,6 @@ from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.expression import Grouping
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.expression import tuple_
 from sqlalchemy.sql.expression import UnaryExpression
@@ -161,12 +160,8 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         assert left.comparator.operate(operators.in_op, [1, 2, 3]).compare(
             BinaryExpression(
                 left,
-                Grouping(
-                    ClauseList(
-                        BindParameter("left", value=1, unique=True),
-                        BindParameter("left", value=2, unique=True),
-                        BindParameter("left", value=3, unique=True),
-                    )
+                BindParameter(
+                    "left", value=[1, 2, 3], unique=True, expanding=True
                 ),
                 operators.in_op,
             )
@@ -178,12 +173,8 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         assert left.comparator.operate(operators.notin_op, [1, 2, 3]).compare(
             BinaryExpression(
                 left,
-                Grouping(
-                    ClauseList(
-                        BindParameter("left", value=1, unique=True),
-                        BindParameter("left", value=2, unique=True),
-                        BindParameter("left", value=3, unique=True),
-                    )
+                BindParameter(
+                    "left", value=[1, 2, 3], unique=True, expanding=True
                 ),
                 operators.notin_op,
             )
@@ -1204,14 +1195,14 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             self.table2.select(5 + self.table2.c.field.in_([5, 6])),
             "SELECT op.field FROM op WHERE :param_1 + "
-            "(op.field IN (:field_1, :field_2))",
+            "(op.field IN ([POSTCOMPILE_field_1]))",
         )
 
     def test_operator_precedence_6(self):
         self.assert_compile(
             self.table2.select((5 + self.table2.c.field).in_([5, 6])),
             "SELECT op.field FROM op WHERE :field_1 + op.field "
-            "IN (:param_1, :param_2)",
+            "IN ([POSTCOMPILE_param_1])",
         )
 
     def test_operator_precedence_7(self):
@@ -1548,29 +1539,32 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         "myothertable", column("otherid", Integer), column("othername", String)
     )
 
-    def _dialect(self, empty_in_strategy="static"):
-        return default.DefaultDialect(empty_in_strategy=empty_in_strategy)
-
     def test_in_1(self):
         self.assert_compile(
-            self.table1.c.myid.in_(["a"]), "mytable.myid IN (:myid_1)"
+            self.table1.c.myid.in_(["a"]),
+            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": ["a"]},
         )
 
     def test_in_2(self):
         self.assert_compile(
-            ~self.table1.c.myid.in_(["a"]), "mytable.myid NOT IN (:myid_1)"
+            ~self.table1.c.myid.in_(["a"]),
+            "mytable.myid NOT IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": ["a"]},
         )
 
     def test_in_3(self):
         self.assert_compile(
             self.table1.c.myid.in_(["a", "b"]),
-            "mytable.myid IN (:myid_1, :myid_2)",
+            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": ["a", "b"]},
         )
 
     def test_in_4(self):
         self.assert_compile(
             self.table1.c.myid.in_(iter(["a", "b"])),
-            "mytable.myid IN (:myid_1, :myid_2)",
+            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": ["a", "b"]},
         )
 
     def test_in_5(self):
@@ -1604,6 +1598,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_in_10(self):
+        # when non-literal expressions are present we still need to do the
+        # old way where we render up front
         self.assert_compile(
             self.table1.c.myid.in_([literal("a") + "a", "b"]),
             "mytable.myid IN (:param_1 || :param_2, :myid_1)",
@@ -1662,7 +1658,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_19(self):
         self.assert_compile(
             self.table1.c.myid.in_([1, 2, 3]),
-            "mytable.myid IN (:myid_1, :myid_2, :myid_3)",
+            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": [1, 2, 3]},
         )
 
     def test_in_20(self):
@@ -1757,10 +1754,26 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table1.c.myid.in_([None]), "mytable.myid IN (NULL)"
         )
 
-    def test_in_set(self):
+    def test_in_29(self):
+        a, b, c = (
+            column("a", Integer),
+            column("b", String),
+            column("c", LargeBinary),
+        )
+        t1 = tuple_(a, b, c)
+        expr = t1.in_([(3, "hi", "there"), (4, "Q", "P")])
         self.assert_compile(
-            self.table1.c.myid.in_({1, 2, 3}),
-            "mytable.myid IN (:myid_1, :myid_2, :myid_3)",
+            expr,
+            "(a, b, c) IN ([POSTCOMPILE_param_1])",
+            checkparams={"param_1": [(3, "hi", "there"), (4, "Q", "P")]},
+        )
+
+    def test_in_set(self):
+        s = {1, 2, 3}
+        self.assert_compile(
+            self.table1.c.myid.in_(s),
+            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": list(s)},
         )
 
     def test_in_arbitrary_sequence(self):
@@ -1777,68 +1790,9 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         seq = MySeq([1, 2, 3])
         self.assert_compile(
             self.table1.c.myid.in_(seq),
-            "mytable.myid IN (:myid_1, :myid_2, :myid_3)",
+            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            checkparams={"myid_1": [1, 2, 3]},
         )
-
-    def test_empty_in_dynamic_1(self):
-        self.assert_compile(
-            self.table1.c.myid.in_([]),
-            "mytable.myid != mytable.myid",
-            dialect=self._dialect("dynamic"),
-        )
-
-    def test_empty_in_dynamic_2(self):
-        self.assert_compile(
-            self.table1.c.myid.notin_([]),
-            "mytable.myid = mytable.myid",
-            dialect=self._dialect("dynamic"),
-        )
-
-    def test_empty_in_dynamic_3(self):
-        self.assert_compile(
-            ~self.table1.c.myid.in_([]),
-            "mytable.myid = mytable.myid",
-            dialect=self._dialect("dynamic"),
-        )
-
-    def test_empty_in_dynamic_warn_1(self):
-        with testing.expect_warnings(
-            "The IN-predicate was invoked with an empty sequence."
-        ):
-            self.assert_compile(
-                self.table1.c.myid.in_([]),
-                "mytable.myid != mytable.myid",
-                dialect=self._dialect("dynamic_warn"),
-            )
-
-    def test_empty_in_dynamic_warn_2(self):
-        with testing.expect_warnings(
-            "The IN-predicate was invoked with an empty sequence."
-        ):
-            self.assert_compile(
-                self.table1.c.myid.notin_([]),
-                "mytable.myid = mytable.myid",
-                dialect=self._dialect("dynamic_warn"),
-            )
-
-    def test_empty_in_dynamic_warn_3(self):
-        with testing.expect_warnings(
-            "The IN-predicate was invoked with an empty sequence."
-        ):
-            self.assert_compile(
-                ~self.table1.c.myid.in_([]),
-                "mytable.myid = mytable.myid",
-                dialect=self._dialect("dynamic_warn"),
-            )
-
-    def test_empty_in_static_1(self):
-        self.assert_compile(self.table1.c.myid.in_([]), "1 != 1")
-
-    def test_empty_in_static_2(self):
-        self.assert_compile(self.table1.c.myid.notin_([]), "1 = 1")
-
-    def test_empty_in_static_3(self):
-        self.assert_compile(~self.table1.c.myid.in_([]), "1 = 1")
 
 
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -2709,9 +2663,9 @@ class CustomOpTest(fixtures.TestBase):
 
 class TupleTypingTest(fixtures.TestBase):
     def _assert_types(self, expr):
-        eq_(expr.clauses[0].type._type_affinity, Integer)
-        eq_(expr.clauses[1].type._type_affinity, String)
-        eq_(expr.clauses[2].type._type_affinity, LargeBinary()._type_affinity)
+        eq_(expr[0]._type_affinity, Integer)
+        eq_(expr[1]._type_affinity, String)
+        eq_(expr[2]._type_affinity, LargeBinary()._type_affinity)
 
     def test_type_coercion_on_eq(self):
         a, b, c = (
@@ -2721,7 +2675,7 @@ class TupleTypingTest(fixtures.TestBase):
         )
         t1 = tuple_(a, b, c)
         expr = t1 == (3, "hi", "there")
-        self._assert_types(expr.right)
+        self._assert_types([bind.type for bind in expr.right.element.clauses])
 
     def test_type_coercion_on_in(self):
         a, b, c = (
@@ -2731,9 +2685,9 @@ class TupleTypingTest(fixtures.TestBase):
         )
         t1 = tuple_(a, b, c)
         expr = t1.in_([(3, "hi", "there"), (4, "Q", "P")])
-        eq_(len(expr.right.clauses), 2)
-        for elem in expr.right.clauses:
-            self._assert_types(elem)
+
+        eq_(len(expr.right.value), 2)
+        self._assert_types(expr.right._expanding_in_types)
 
 
 class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):

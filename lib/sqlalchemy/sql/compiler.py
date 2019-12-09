@@ -23,6 +23,7 @@ To generate user-defined SQL strings, see
 
 """
 
+import collections
 import contextlib
 import itertools
 import re
@@ -255,6 +256,18 @@ RM_RENDERED_NAME = 0
 RM_NAME = 1
 RM_OBJECTS = 2
 RM_TYPE = 3
+
+
+ExpandedState = collections.namedtuple(
+    "ExpandedState",
+    [
+        "statement",
+        "additional_parameters",
+        "processors",
+        "positiontup",
+        "parameter_expansion",
+    ],
+)
 
 
 class Compiled(object):
@@ -525,6 +538,12 @@ class SQLCompiler(Compiled):
 
     """
 
+    _render_postcompile = False
+    """
+    whether to render out POSTCOMPILE params during the compile phase.
+
+    """
+
     insert_single_values_expr = None
     """When an INSERT is compiled with a single set of parameters inside
     a VALUES expression, the string is assigned here, where it can be
@@ -535,6 +554,16 @@ class SQLCompiler(Compiled):
     """
 
     literal_execute_params = frozenset()
+    """bindparameter objects that are rendered as literal values at statement
+    execution time.
+
+    """
+
+    post_compile_params = frozenset()
+    """bindparameter objects that are rendered as bound parameter placeholders
+    at statement execution time.
+
+    """
 
     insert_prefetch = update_prefetch = ()
 
@@ -610,6 +639,9 @@ class SQLCompiler(Compiled):
         if self.positional and self._numeric_binds:
             self._apply_numbered_params()
 
+        if self._render_postcompile:
+            self._process_parameters_for_postcompile(_populate_self=True)
+
     @property
     def prefetch(self):
         return list(self.insert_prefetch + self.update_prefetch)
@@ -665,7 +697,12 @@ class SQLCompiler(Compiled):
             for key, value in (
                 (
                     self.bind_names[bindparam],
-                    bindparam.type._cached_bind_processor(self.dialect),
+                    bindparam.type._cached_bind_processor(self.dialect)
+                    if not bindparam._expanding_in_types
+                    else tuple(
+                        elem_type._cached_bind_processor(self.dialect)
+                        for elem_type in bindparam._expanding_in_types
+                    ),
                 )
                 for bindparam in self.bind_names
             )
@@ -740,6 +777,141 @@ class SQLCompiler(Compiled):
         """Return the bind param dictionary embedded into this
         compiled object, for those values that are present."""
         return self.construct_params(_check=False)
+
+    def _process_parameters_for_postcompile(
+        self, parameters=None, _populate_self=False
+    ):
+        """handle special post compile parameters.
+
+        These include:
+
+        * "expanding" parameters -typically IN tuples that are rendered
+          on a per-parameter basis for an otherwise fixed SQL statement string.
+
+        * literal_binds compiled with the literal_execute flag.  Used for
+          things like SQL Server "TOP N" where the driver does not accommodate
+          N as a bound parameter.
+
+        """
+
+        if parameters is None:
+            parameters = self.construct_params()
+
+        expanded_parameters = {}
+        if self.positional:
+            positiontup = []
+        else:
+            positiontup = None
+
+        processors = self._bind_processors
+
+        new_processors = {}
+
+        if self.positional and self._numeric_binds:
+            # I'm not familiar with any DBAPI that uses 'numeric'.
+            # strategy would likely be to make use of numbers greater than
+            # the highest number present; then for expanding parameters,
+            # append them to the end of the parameter list.   that way
+            # we avoid having to renumber all the existing parameters.
+            raise NotImplementedError(
+                "'post-compile' bind parameters are not supported with "
+                "the 'numeric' paramstyle at this time."
+            )
+
+        replacement_expressions = {}
+        to_update_sets = {}
+
+        for name in (
+            self.positiontup if self.positional else self.bind_names.values()
+        ):
+            parameter = self.binds[name]
+            if parameter in self.literal_execute_params:
+                value = parameters.pop(name)
+                replacement_expressions[name] = self.render_literal_bindparam(
+                    parameter, render_literal_value=value
+                )
+                continue
+
+            if parameter in self.post_compile_params:
+                if name in replacement_expressions:
+                    to_update = to_update_sets[name]
+                else:
+                    # we are removing the parameter from parameters
+                    # because it is a list value, which is not expected by
+                    # TypeEngine objects that would otherwise be asked to
+                    # process it. the single name is being replaced with
+                    # individual numbered parameters for each value in the
+                    # param.
+                    values = parameters.pop(name)
+
+                    leep = self._literal_execute_expanding_parameter
+                    to_update, replacement_expr = leep(name, parameter, values)
+
+                    to_update_sets[name] = to_update
+                    replacement_expressions[name] = replacement_expr
+
+                if not parameter.literal_execute:
+                    parameters.update(to_update)
+                    if parameter._expanding_in_types:
+                        new_processors.update(
+                            (
+                                "%s_%s_%s" % (name, i, j),
+                                processors[name][j - 1],
+                            )
+                            for i, tuple_element in enumerate(values, 1)
+                            for j, value in enumerate(tuple_element, 1)
+                            if name in processors
+                            and processors[name][j - 1] is not None
+                        )
+                    else:
+                        new_processors.update(
+                            (key, processors[name])
+                            for key, value in to_update
+                            if name in processors
+                        )
+                    if self.positional:
+                        positiontup.extend(name for name, value in to_update)
+                    expanded_parameters[name] = [
+                        expand_key for expand_key, value in to_update
+                    ]
+            elif self.positional:
+                positiontup.append(name)
+
+        def process_expanding(m):
+            return replacement_expressions[m.group(1)]
+
+        statement = re.sub(
+            r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.string
+        )
+
+        expanded_state = ExpandedState(
+            statement,
+            parameters,
+            new_processors,
+            positiontup,
+            expanded_parameters,
+        )
+
+        if _populate_self:
+            # this is for the "render_postcompile" flag, which is not
+            # otherwise used internally and is for end-user debugging and
+            # special use cases.
+            self.string = expanded_state.statement
+            self._bind_processors.update(expanded_state.processors)
+            self.positiontup = expanded_state.positiontup
+            self.post_compile_params = frozenset()
+            for key in expanded_state.parameter_expansion:
+                bind = self.binds.pop(key)
+                self.bind_names.pop(bind)
+                for value, expanded_key in zip(
+                    bind.value, expanded_state.parameter_expansion[key]
+                ):
+                    self.binds[expanded_key] = new_param = bind._with_value(
+                        value
+                    )
+                    self.bind_names[new_param] = expanded_key
+
+        return expanded_state
 
     @util.dependencies("sqlalchemy.engine.result")
     def _create_result_map(self, result):
@@ -1291,31 +1463,6 @@ class SQLCompiler(Compiled):
             binary, override_operator=operators.match_op
         )
 
-    def _emit_empty_in_warning(self):
-        util.warn(
-            "The IN-predicate was invoked with an "
-            "empty sequence. This results in a "
-            "contradiction, which nonetheless can be "
-            "expensive to evaluate.  Consider alternative "
-            "strategies for improved performance."
-        )
-
-    def visit_empty_in_op_binary(self, binary, operator, **kw):
-        if self.dialect._use_static_in:
-            return "1 != 1"
-        else:
-            if self.dialect._warn_on_empty_in:
-                self._emit_empty_in_warning()
-            return self.process(binary.left != binary.left)
-
-    def visit_empty_notin_op_binary(self, binary, operator, **kw):
-        if self.dialect._use_static_in:
-            return "1 = 1"
-        else:
-            if self.dialect._warn_on_empty_in:
-                self._emit_empty_in_warning()
-            return self.process(binary.left == binary.left)
-
     def visit_empty_set_expr(self, element_types):
         raise NotImplementedError(
             "Dialect '%s' does not support empty set expression."
@@ -1407,7 +1554,7 @@ class SQLCompiler(Compiled):
             and isinstance(binary.left, elements.BindParameter)
             and isinstance(binary.right, elements.BindParameter)
         ):
-            kw["literal_binds"] = True
+            kw["literal_execute"] = True
 
         operator_ = override_operator or binary.operator
         disp = self._get_operator_dispatch(operator_, "binary", None)
@@ -1588,6 +1735,7 @@ class SQLCompiler(Compiled):
         literal_binds=False,
         skip_bind_expression=False,
         literal_execute=False,
+        render_postcompile=False,
         **kwargs
     ):
 
@@ -1605,17 +1753,16 @@ class SQLCompiler(Compiled):
                 )
 
         if not literal_binds:
-            post_compile = (
+            literal_execute = (
                 literal_execute
                 or bindparam.literal_execute
-                or bindparam.expanding
+                or (within_columns_clause and self.ansi_bind_rules)
             )
+            post_compile = literal_execute or bindparam.expanding
         else:
             post_compile = False
 
-        if not literal_execute and (
-            literal_binds or (within_columns_clause and self.ansi_bind_rules)
-        ):
+        if not literal_execute and (literal_binds):
             ret = self.render_literal_bindparam(
                 bindparam, within_columns_clause=True, **kwargs
             )
@@ -1650,7 +1797,13 @@ class SQLCompiler(Compiled):
         self.binds[bindparam.key] = self.binds[name] = bindparam
 
         if post_compile:
-            self.literal_execute_params |= {bindparam}
+            if render_postcompile:
+                self._render_postcompile = True
+
+            if literal_execute:
+                self.literal_execute_params |= {bindparam}
+            else:
+                self.post_compile_params |= {bindparam}
 
         ret = self.bindparam_string(
             name,
@@ -2896,6 +3049,9 @@ class StrSQLCompiler(SQLCompiler):
             t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
             for t in extra_froms
         )
+
+    def visit_empty_set_expr(self, type_):
+        return "SELECT 1 WHERE 1!=1"
 
 
 class DDLCompiler(Compiled):

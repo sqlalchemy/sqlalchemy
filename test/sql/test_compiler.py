@@ -3327,22 +3327,77 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             _group_number=2,
         )
 
-    def test_tuple(self):
+    def test_tuple_expanding_in_no_values(self):
+        expr = tuple_(table1.c.myid, table1.c.name).in_(
+            [(1, "foo"), (5, "bar")]
+        )
         self.assert_compile(
-            tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN "
-            "((:param_1, :param_2), (:param_3, :param_4))",
+            expr,
+            "(mytable.myid, mytable.name) IN " "([POSTCOMPILE_param_1])",
+            checkparams={"param_1": [(1, "foo"), (5, "bar")]},
+            check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
+            check_literal_execute={},
         )
 
+        compiled = expr.compile()
+        (
+            to_update,
+            replacement_expr,
+        ) = compiled._literal_execute_expanding_parameter(
+            "param_1", expr.right, [(1, "foo"), (5, "bar")]
+        )
+        eq_(
+            to_update,
+            [
+                ("param_1_1_1", 1),
+                ("param_1_1_2", "foo"),
+                ("param_1_2_1", 5),
+                ("param_1_2_2", "bar"),
+            ],
+        )
+        eq_(
+            replacement_expr,
+            "(:param_1_1_1, :param_1_1_2), (:param_1_2_1, :param_1_2_2)",
+        )
+
+    def test_tuple_expanding_in_values(self):
+        expr = tuple_(table1.c.myid, table1.c.name).in_(
+            [(1, "foo"), (5, "bar")]
+        )
         dialect = default.DefaultDialect()
         dialect.tuple_in_values = True
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN "
-            "(VALUES (:param_1, :param_2), (:param_3, :param_4))",
+            "(mytable.myid, mytable.name) IN " "([POSTCOMPILE_param_1])",
             dialect=dialect,
+            checkparams={"param_1": [(1, "foo"), (5, "bar")]},
+            check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
+            check_literal_execute={},
         )
 
+        compiled = expr.compile(dialect=dialect)
+        (
+            to_update,
+            replacement_expr,
+        ) = compiled._literal_execute_expanding_parameter(
+            "param_1", expr.right, [(1, "foo"), (5, "bar")]
+        )
+        eq_(
+            to_update,
+            [
+                ("param_1_1_1", 1),
+                ("param_1_1_2", "foo"),
+                ("param_1_2_1", 5),
+                ("param_1_2_2", "bar"),
+            ],
+        )
+        eq_(
+            replacement_expr,
+            "VALUES (:param_1_1_1, :param_1_1_2), "
+            "(:param_1_2_1, :param_1_2_2)",
+        )
+
+    def test_tuple_clauselist_in(self):
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_(
                 [tuple_(table2.c.otherid, table2.c.othername)]
@@ -3410,69 +3465,87 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "OR mytable.myid = :myid_2 OR mytable.myid = :myid_3",
         )
 
-    def test_render_binds_as_literal(self):
-        """test a compiler that renders binds inline into
-        SQL in the columns clause."""
-
+    @testing.fixture
+    def ansi_compiler_fixture(self):
         dialect = default.DefaultDialect()
 
-        class Compiler(dialect.statement_compiler):
+        class Compiler(compiler.StrSQLCompiler):
             ansi_bind_rules = True
 
         dialect.statement_compiler = Compiler
 
-        self.assert_compile(
+        return dialect
+
+    @testing.combinations(
+        (
+            "one",
             select([literal("someliteral")]),
-            "SELECT 'someliteral' AS anon_1",
-            dialect=dialect,
-        )
-
-        self.assert_compile(
+            "SELECT [POSTCOMPILE_param_1] AS anon_1",
+            dict(
+                check_literal_execute={"param_1": "someliteral"},
+                check_post_param={},
+            ),
+        ),
+        (
+            "two",
             select([table1.c.myid + 3]),
-            "SELECT mytable.myid + 3 AS anon_1 FROM mytable",
-            dialect=dialect,
-        )
-
-        self.assert_compile(
+            "SELECT mytable.myid + [POSTCOMPILE_myid_1] "
+            "AS anon_1 FROM mytable",
+            dict(check_literal_execute={"myid_1": 3}, check_post_param={}),
+        ),
+        (
+            "three",
             select([table1.c.myid.in_([4, 5, 6])]),
-            "SELECT mytable.myid IN (4, 5, 6) AS anon_1 FROM mytable",
-            dialect=dialect,
-        )
-
-        self.assert_compile(
+            "SELECT mytable.myid IN ([POSTCOMPILE_myid_1]) "
+            "AS anon_1 FROM mytable",
+            dict(
+                check_literal_execute={"myid_1": [4, 5, 6]},
+                check_post_param={},
+            ),
+        ),
+        (
+            "four",
             select([func.mod(table1.c.myid, 5)]),
-            "SELECT mod(mytable.myid, 5) AS mod_1 FROM mytable",
-            dialect=dialect,
-        )
-
-        self.assert_compile(
+            "SELECT mod(mytable.myid, [POSTCOMPILE_mod_2]) "
+            "AS mod_1 FROM mytable",
+            dict(check_literal_execute={"mod_2": 5}, check_post_param={}),
+        ),
+        (
+            "five",
             select([literal("foo").in_([])]),
-            "SELECT 1 != 1 AS anon_1",
-            dialect=dialect,
-        )
-
-        self.assert_compile(
+            "SELECT [POSTCOMPILE_param_1] IN ([POSTCOMPILE_param_2]) "
+            "AS anon_1",
+            dict(
+                check_literal_execute={"param_1": "foo", "param_2": []},
+                check_post_param={},
+            ),
+        ),
+        (
+            "six",
             select([literal(util.b("foo"))]),
-            "SELECT 'foo' AS anon_1",
-            dialect=dialect,
-        )
-
-        # test callable
-        self.assert_compile(
+            "SELECT [POSTCOMPILE_param_1] AS anon_1",
+            dict(
+                check_literal_execute={"param_1": util.b("foo")},
+                check_post_param={},
+            ),
+        ),
+        (
+            "seven",
             select([table1.c.myid == bindparam("foo", callable_=lambda: 5)]),
-            "SELECT mytable.myid = 5 AS anon_1 FROM mytable",
-            dialect=dialect,
-        )
+            "SELECT mytable.myid = [POSTCOMPILE_foo] AS anon_1 FROM mytable",
+            dict(check_literal_execute={"foo": 5}, check_post_param={}),
+        ),
+        argnames="stmt, expected, kw",
+        id_="iaaa",
+    )
+    def test_render_binds_as_literal(
+        self, ansi_compiler_fixture, stmt, expected, kw
+    ):
+        """test a compiler that renders binds inline into
+        SQL in the columns clause."""
 
-        empty_in_dialect = default.DefaultDialect(empty_in_strategy="dynamic")
-        empty_in_dialect.statement_compiler = Compiler
-
-        assert_raises_message(
-            exc.CompileError,
-            "Bind parameter 'foo' without a "
-            "renderable value not allowed here.",
-            bindparam("foo").in_([]).compile,
-            dialect=empty_in_dialect,
+        self.assert_compile(
+            stmt, expected, dialect=ansi_compiler_fixture, **kw
         )
 
     def test_render_literal_execute_parameter(self):
@@ -3493,6 +3566,15 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             literal_binds=True,
         )
 
+    def test_render_literal_execute_parameter_render_postcompile(self):
+        self.assert_compile(
+            select([table1.c.myid]).where(
+                table1.c.myid == bindparam("foo", 5, literal_execute=True)
+            ),
+            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            render_postcompile=True,
+        )
+
     def test_render_expanding_parameter(self):
         self.assert_compile(
             select([table1.c.myid]).where(
@@ -3510,6 +3592,20 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "SELECT mytable.myid FROM mytable "
             "WHERE mytable.myid IN (1, 2, 3)",
             literal_binds=True,
+        )
+
+    def test_render_expanding_parameter_render_postcompile(self):
+        # renders the IN the old way, essentially, but creates the bound
+        # parameters on the fly.
+
+        self.assert_compile(
+            select([table1.c.myid]).where(
+                table1.c.myid.in_(bindparam("foo", [1, 2, 3], expanding=True))
+            ),
+            "SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid IN (:foo_1, :foo_2, :foo_3)",
+            render_postcompile=True,
+            checkparams={"foo_1": 1, "foo_2": 2, "foo_3": 3},
         )
 
 

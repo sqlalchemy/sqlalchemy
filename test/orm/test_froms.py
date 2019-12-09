@@ -2479,7 +2479,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             sess.query(User).join(sel, User.id > sel.c.id),
             "SELECT users.id AS users_id, users.name AS users_name FROM "
             "users JOIN (SELECT users.id AS id, users.name AS name FROM users "
-            "WHERE users.id IN (:id_1, :id_2)) "
+            "WHERE users.id IN ([POSTCOMPILE_id_1])) "
             "AS anon_1 ON users.id > anon_1.id",
         )
 
@@ -2490,8 +2490,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM users AS users_1, ("
             "SELECT users.id AS id, users.name AS name FROM users "
-            "WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
+            "WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
             "WHERE users_1.id > anon_1.id",
+            check_post_param={"id_1": [7, 8]},
         )
 
         self.assert_compile(
@@ -2500,8 +2501,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             .join(ualias, ualias.id > sel.c.id),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM (SELECT users.id AS id, users.name AS name "
-            "FROM users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
+            "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
             "JOIN users AS users_1 ON users_1.id > anon_1.id",
+            check_post_param={"id_1": [7, 8]},
         )
 
         self.assert_compile(
@@ -2510,8 +2512,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             .join(ualias, ualias.id > User.id),
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
             "FROM (SELECT users.id AS id, users.name AS name FROM "
-            "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
+            "users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
             "JOIN users AS users_1 ON users_1.id > anon_1.id",
+            check_post_param={"id_1": [7, 8]},
         )
 
         salias = aliased(User, sel)
@@ -2519,8 +2522,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             sess.query(salias).join(ualias, ualias.id > salias.id),
             "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name FROM "
             "(SELECT users.id AS id, users.name AS name "
-            "FROM users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
+            "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
             "JOIN users AS users_1 ON users_1.id > anon_1.id",
+            check_post_param={"id_1": [7, 8]},
         )
 
         self.assert_compile(
@@ -2531,8 +2535,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "FROM "
             "(SELECT users.id AS id, users.name AS name "
             "FROM users WHERE users.id "
-            "IN (:id_1, :id_2)) AS anon_1 "
+            "IN ([POSTCOMPILE_id_1])) AS anon_1 "
             "JOIN users AS users_1 ON users_1.id > anon_1.id",
+            check_post_param={"id_1": [7, 8]},
         )
 
     def test_aliased_class_vs_nonaliased(self):

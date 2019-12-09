@@ -1909,14 +1909,14 @@ class MSSQLStrictCompiler(MSSQLCompiler):
     ansi_bind_rules = True
 
     def visit_in_op_binary(self, binary, operator, **kw):
-        kw["literal_binds"] = True
+        kw["literal_execute"] = True
         return "%s IN %s" % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
 
     def visit_notin_op_binary(self, binary, operator, **kw):
-        kw["literal_binds"] = True
+        kw["literal_execute"] = True
         return "%s NOT IN %s" % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
