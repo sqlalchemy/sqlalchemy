@@ -11,13 +11,13 @@ from .schema import BLANK_SCHEMA  # noqa
 from .schema import CheckConstraint  # noqa
 from .schema import Column  # noqa
 from .schema import ColumnDefault  # noqa
+from .schema import Computed  # noqa
 from .schema import Constraint  # noqa
 from .schema import DDL  # noqa
 from .schema import DefaultClause  # noqa
 from .schema import FetchedValue  # noqa
 from .schema import ForeignKey  # noqa
 from .schema import ForeignKeyConstraint  # noqa
-from .schema import Computed  # noqa
 from .schema import Index  # noqa
 from .schema import MetaData  # noqa
 from .schema import PrimaryKeyConstraint  # noqa
@@ -73,6 +73,7 @@ from .sql import type_coerce  # noqa
 from .sql import union  # noqa
 from .sql import union_all  # noqa
 from .sql import update  # noqa
+from .sql import values  # noqa
 from .sql import within_group  # noqa
 from .types import ARRAY  # noqa
 from .types import BIGINT  # noqa

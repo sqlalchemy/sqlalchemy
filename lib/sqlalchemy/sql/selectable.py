@@ -45,6 +45,7 @@ from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
 from .elements import True_
+from .elements import Tuple
 from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
@@ -2061,6 +2062,7 @@ class Values(FromClause):
     """represent a ``VALUES`` construct that can be used in a
     :class:`.FromClause` element.
     """
+
     named_with_column = True
     __visit_name__ = "values"
 
@@ -2069,17 +2071,15 @@ class Values(FromClause):
             "_column_args",
             InternalTraversal.dp_fromclause_canonical_column_collection,
         ),
-        (
-            "list",
-            InternalTraversal.dp_clauseelement_tuples,
-        ),
+        ("list", InternalTraversal.dp_clauseelement_list),
         ("alias_name", InternalTraversal.dp_string),
     ]
 
     def __init__(self, columns, *args, **kw):
         super(Values, self).__init__()
         self._column_args = columns
-        self.list = args
+        self.list = [Tuple(*row).self_group() for row in args]
+        # MARKMARK
         self.alias_name = self.name = kw.pop("alias_name", None)
 
     def _populate_column_collection(self):

@@ -1958,14 +1958,8 @@ class SQLCompiler(Compiled):
         return text
 
     def visit_values(self, element, asfrom=False, **kw):
-        columns = element.columns
         v = "VALUES %s" % ", ".join(
-            "(%s)"
-            % ", ".join(
-                self.render_literal_value(elem, column.type)
-                for elem, column in zip(tup, columns)
-            )
-            for tup in element.list
+            self.process(elem, literal_binds=True) for elem in element.list
         )
         if asfrom:
             if element.alias_name:

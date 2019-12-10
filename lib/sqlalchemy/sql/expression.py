@@ -32,6 +32,7 @@ __all__ = [
     "Selectable",
     "TableClause",
     "Update",
+    "Values",
     "alias",
     "and_",
     "asc",
@@ -80,6 +81,7 @@ __all__ = [
     "Subquery",
     "TableSample",
     "tablesample",
+    "values",
 ]
 
 
@@ -183,6 +185,7 @@ label = public_factory(Label, ".expression.label")
 case = public_factory(Case, ".expression.case")
 cast = public_factory(Cast, ".expression.cast")
 cte = public_factory(CTE._factory, ".expression.cte")
+values = public_factory(Values, ".expression.values")
 extract = public_factory(Extract, ".exp  # noqaression.extract")
 tuple_ = public_factory(Tuple, ".expression.tuple_")
 except_ = public_factory(CompoundSelect._create_except, ".expression.except_")

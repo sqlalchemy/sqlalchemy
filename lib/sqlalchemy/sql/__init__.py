@@ -74,6 +74,7 @@ from .expression import union_all  # noqa
 from .expression import Update  # noqa
 from .expression import update  # noqa
 from .expression import Values  # noqa
+from .expression import values  # noqa
 from .expression import within_group  # noqa
 from .visitors import ClauseVisitor  # noqa
 
