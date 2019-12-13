@@ -415,6 +415,7 @@ class SessionTransaction(object):
                 )
             return self._connections[bind][0]
 
+        local_connect = False
         if self._parent:
             conn = self._parent._connection_for_bind(bind, execution_options)
             if not self.nested:
@@ -429,24 +430,32 @@ class SessionTransaction(object):
                     )
             else:
                 conn = bind._contextual_connect()
+                local_connect = True
 
-        if execution_options:
-            conn = conn.execution_options(**execution_options)
+        try:
+            if execution_options:
+                conn = conn.execution_options(**execution_options)
 
-        if self.session.twophase and self._parent is None:
-            transaction = conn.begin_twophase()
-        elif self.nested:
-            transaction = conn.begin_nested()
+            if self.session.twophase and self._parent is None:
+                transaction = conn.begin_twophase()
+            elif self.nested:
+                transaction = conn.begin_nested()
+            else:
+                transaction = conn.begin()
+        except:
+            # connection will not not be associated with this Session;
+            # close it immediately so that it isn't closed under GC
+            if local_connect:
+                conn.close()
+            raise
         else:
-            transaction = conn.begin()
-
-        self._connections[conn] = self._connections[conn.engine] = (
-            conn,
-            transaction,
-            conn is not bind,
-        )
-        self.session.dispatch.after_begin(self.session, self, conn)
-        return conn
+            self._connections[conn] = self._connections[conn.engine] = (
+                conn,
+                transaction,
+                conn is not bind,
+            )
+            self.session.dispatch.after_begin(self.session, self, conn)
+            return conn
 
     def prepare(self):
         if self._parent is not None or not self.session.twophase:

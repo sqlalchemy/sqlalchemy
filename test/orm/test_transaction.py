@@ -405,6 +405,58 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         eq_(len(sess.query(User).all()), 1)
 
+    def test_begin_fails_connection_is_closed(self):
+        eng = engines.testing_engine()
+
+        state = []
+
+        @event.listens_for(eng, "begin")
+        def do_begin(conn):
+            state.append((conn, conn.connection))
+            raise Exception("failure")
+
+        s1 = Session(eng)
+
+        assert_raises_message(Exception, "failure", s1.execute, "select 1")
+
+        conn, fairy = state[0]
+        assert not fairy.is_valid
+        assert conn.closed
+        assert not conn.invalidated
+
+        s1.close()
+
+        # close does not occur because references were not saved, however
+        # the underlying DBAPI connection was closed
+        assert not fairy.is_valid
+        assert conn.closed
+        assert not conn.invalidated
+
+    def test_begin_savepoint_fails_connection_is_not_closed(self):
+        eng = engines.testing_engine()
+
+        state = []
+
+        @event.listens_for(eng, "savepoint")
+        def do_begin(conn, name):
+            state.append((conn, conn.connection))
+            raise Exception("failure")
+
+        s1 = Session(eng)
+
+        s1.begin_nested()
+        assert_raises_message(Exception, "failure", s1.execute, "select 1")
+
+        conn, fairy = state[0]
+        assert fairy.is_valid
+        assert not conn.closed
+        assert not conn.invalidated
+
+        s1.close()
+
+        assert conn.closed
+        assert not fairy.is_valid
+
     def test_continue_flushing_on_commit(self):
         """test that post-flush actions get flushed also if
         we're in commit()"""
