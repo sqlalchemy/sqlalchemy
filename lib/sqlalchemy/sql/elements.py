@@ -3263,7 +3263,15 @@ class BinaryExpression(ColumnElement):
             ("right", self.right._gen_cache_key(anon_map, bindparams)),
             ("operator", self.operator),
             ("negate", self.negate),
-            ("modifiers", self.modifiers),
+            (
+                "modifiers",
+                tuple(
+                    (key, self.modifiers[key])
+                    for key in sorted(self.modifiers)
+                )
+                if self.modifiers
+                else None,
+            ),
         )
 
     def __init__(

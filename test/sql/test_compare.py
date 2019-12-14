@@ -450,6 +450,7 @@ class CacheKeyFixture(object):
                 a_key = case_a[a]._generate_cache_key()
                 b_key = case_b[b]._generate_cache_key()
                 eq_(a_key.key, b_key.key)
+                eq_(hash(a_key), hash(b_key))
 
                 for a_param, b_param in zip(
                     a_key.bindparams, b_key.bindparams
