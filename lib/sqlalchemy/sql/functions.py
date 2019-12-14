@@ -404,6 +404,9 @@ class FunctionAsBinary(BinaryExpression):
         ("modifiers", InternalTraversal.dp_plain_dict),
     ]
 
+    def _gen_cache_key(self, anon_map, bindparams):
+        return ColumnElement._gen_cache_key(self, anon_map, bindparams)
+
     def __init__(self, fn, left_index, right_index):
         self.sql_function = fn
         self.left_index = left_index

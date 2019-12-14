@@ -198,12 +198,7 @@ class ClauseElement(
 
     _order_by_label_element = None
 
-    @property
-    def _cache_key_traversal(self):
-        try:
-            return self._traverse_internals
-        except AttributeError:
-            return NO_CACHE
+    _cache_key_traversal = None
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -1344,16 +1339,21 @@ class BindParameter(roles.InElementRole, ColumnElement):
         return c
 
     def _gen_cache_key(self, anon_map, bindparams):
-        if self in anon_map:
-            return (anon_map[self], self.__class__)
+        idself = id(self)
+        if idself in anon_map:
+            return (anon_map[idself], self.__class__)
+        else:
+            # inline of
+            # id_ = anon_map[idself]
+            anon_map[idself] = id_ = str(anon_map.index)
+            anon_map.index += 1
 
-        id_ = anon_map[self]
         bindparams.append(self)
 
         return (
             id_,
             self.__class__,
-            self.type._gen_cache_key,
+            self.type._static_cache_key,
             traversals._resolve_name_for_compare(self, self.key, anon_map),
         )
 
@@ -3238,6 +3238,33 @@ class BinaryExpression(ColumnElement):
     even if the database does not have an explicit boolean datatype.
 
     """
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        # inlined for performance
+
+        idself = id(self)
+
+        if idself in anon_map:
+            return (anon_map[idself], self.__class__)
+        else:
+            # inline of
+            # id_ = anon_map[idself]
+            anon_map[idself] = id_ = str(anon_map.index)
+            anon_map.index += 1
+
+        if self._cache_key_traversal is NO_CACHE:
+            anon_map[NO_CACHE] = True
+            return None
+
+        result = (id_, self.__class__)
+
+        return result + (
+            ("left", self.left._gen_cache_key(anon_map, bindparams)),
+            ("right", self.right._gen_cache_key(anon_map, bindparams)),
+            ("operator", self.operator),
+            ("negate", self.negate),
+            ("modifiers", self.modifiers),
+        )
 
     def __init__(
         self, left, right, operator, type_=None, negate=None, modifiers=None

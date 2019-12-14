@@ -216,11 +216,19 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
         try:
             dispatcher = target.__class__.__dict__[generate_dispatcher_name]
         except KeyError:
-            dispatcher = _generate_dispatcher(
-                self, internal_dispatch, generate_dispatcher_name
+            dispatcher = self.generate_dispatch(
+                target, internal_dispatch, generate_dispatcher_name
             )
-            setattr(target.__class__, generate_dispatcher_name, dispatcher)
         return dispatcher(target, self)
+
+    def generate_dispatch(
+        self, target, internal_dispatch, generate_dispatcher_name
+    ):
+        dispatcher = _generate_dispatcher(
+            self, internal_dispatch, generate_dispatcher_name
+        )
+        setattr(target.__class__, generate_dispatcher_name, dispatcher)
+        return dispatcher
 
     dp_has_cache_key = symbol("HC")
     """Visit a :class:`.HasCacheKey` object."""
@@ -328,11 +336,6 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     The value should be immutable and hashable, such as an integer.
     The value is considered to be significant for cache key generation.
-
-    """
-
-    dp_annotations_state = symbol("A")
-    """Visit the state of the :class:`.Annotatated` version of an object.
 
     """
 

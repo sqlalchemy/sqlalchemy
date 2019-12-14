@@ -2209,8 +2209,12 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, columns in self._cols_by_table.items()
         )
 
+    # temporarily commented out until we fix an issue in the serializer
+    #    @_memoized_configured_property.method
     def __clause_element__(self):
-        return self.selectable
+        return self.selectable  # ._annotate(
+        # {"parententity": self, "parentmapper": self}
+        # )
 
     @property
     def selectable(self):

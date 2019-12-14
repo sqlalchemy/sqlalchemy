@@ -535,7 +535,7 @@ class TypeEngine(Traversible):
         return dialect.type_descriptor(self)
 
     @util.memoized_property
-    def _gen_cache_key(self):
+    def _static_cache_key(self):
         names = util.get_cls_kwargs(self.__class__)
         return (self.__class__,) + tuple(
             (k, self.__dict__[k])

@@ -3148,8 +3148,14 @@ class Select(
             ("_raw_columns", InternalTraversal.dp_clauseelement_list),
             ("_whereclause", InternalTraversal.dp_clauseelement),
             ("_having", InternalTraversal.dp_clauseelement),
-            ("_order_by_clause", InternalTraversal.dp_clauseelement_list),
-            ("_group_by_clause", InternalTraversal.dp_clauseelement_list),
+            (
+                "_order_by_clause.clauses",
+                InternalTraversal.dp_clauseelement_list,
+            ),
+            (
+                "_group_by_clause.clauses",
+                InternalTraversal.dp_clauseelement_list,
+            ),
             ("_correlate", InternalTraversal.dp_clauseelement_unordered_set),
             (
                 "_correlate_except",

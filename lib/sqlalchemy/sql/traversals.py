@@ -1,5 +1,6 @@
 from collections import deque
 from collections import namedtuple
+import operator
 
 from . import operators
 from .visitors import ExtendedInternalTraversal
@@ -11,6 +12,9 @@ SKIP_TRAVERSE = util.symbol("skip_traverse")
 COMPARE_FAILED = False
 COMPARE_SUCCEEDED = True
 NO_CACHE = util.symbol("no_cache")
+CACHE_IN_PLACE = util.symbol("cache_in_place")
+CALL_GEN_CACHE_KEY = util.symbol("call_gen_cache_key")
+STATIC_CACHE_KEY = util.symbol("static_cache_key")
 
 
 def compare(obj1, obj2, **kw):
@@ -46,22 +50,82 @@ class HasCacheKey(object):
 
         """
 
-        if self in anon_map:
-            return (anon_map[self], self.__class__)
+        idself = id(self)
 
-        id_ = anon_map[self]
+        if anon_map is not None:
+            if idself in anon_map:
+                return (anon_map[idself], self.__class__)
+            else:
+                # inline of
+                # id_ = anon_map[idself]
+                anon_map[idself] = id_ = str(anon_map.index)
+                anon_map.index += 1
+        else:
+            id_ = None
 
-        if self._cache_key_traversal is NO_CACHE:
-            anon_map[NO_CACHE] = True
+        _cache_key_traversal = self._cache_key_traversal
+        if _cache_key_traversal is None:
+            try:
+                _cache_key_traversal = self._traverse_internals
+            except AttributeError:
+                _cache_key_traversal = NO_CACHE
+
+        if _cache_key_traversal is NO_CACHE:
+            if anon_map is not None:
+                anon_map[NO_CACHE] = True
             return None
 
         result = (id_, self.__class__)
 
-        for attrname, obj, meth in _cache_key_traversal.run_generated_dispatch(
-            self, self._cache_key_traversal, "_generated_cache_key_traversal"
+        # inline of _cache_key_traversal_visitor.run_generated_dispatch()
+        try:
+            dispatcher = self.__class__.__dict__[
+                "_generated_cache_key_traversal"
+            ]
+        except KeyError:
+            dispatcher = _cache_key_traversal_visitor.generate_dispatch(
+                self, _cache_key_traversal, "_generated_cache_key_traversal"
+            )
+
+        for attrname, obj, meth in dispatcher(
+            self, _cache_key_traversal_visitor
         ):
             if obj is not None:
-                result += meth(attrname, obj, self, anon_map, bindparams)
+                if meth is CACHE_IN_PLACE:
+                    # cache in place is always going to be a Python
+                    # tuple, dict, list, etc. so we can do a boolean check
+                    if obj:
+                        result += (attrname, obj)
+                elif meth is STATIC_CACHE_KEY:
+                    result += (attrname, obj._static_cache_key)
+                elif meth is CALL_GEN_CACHE_KEY:
+                    result += (
+                        attrname,
+                        obj._gen_cache_key(anon_map, bindparams),
+                    )
+                elif meth is InternalTraversal.dp_clauseelement_list:
+                    if obj:
+                        result += (
+                            attrname,
+                            tuple(
+                                [
+                                    elem._gen_cache_key(anon_map, bindparams)
+                                    for elem in obj
+                                ]
+                            ),
+                        )
+                else:
+                    # note that all the "ClauseElement" standalone cases
+                    # here have been handled by inlines above; so we can
+                    # safely assume the object is a standard list/tuple/dict
+                    # which we can skip if it evaluates to false.
+                    # improvement would be to have this as a flag delivered
+                    # up front in the dispatcher list
+                    if obj:
+                        result += meth(
+                            attrname, obj, self, anon_map, bindparams
+                        )
+
         return result
 
     def _generate_cache_key(self):
@@ -118,16 +182,21 @@ def _clone(element, **kw):
 
 
 class _CacheKey(ExtendedInternalTraversal):
-    def visit_has_cache_key(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj._gen_cache_key(anon_map, bindparams))
+    # very common elements are inlined into the main _get_cache_key() method
+    # to produce a dramatic savings in Python function call overhead
+
+    visit_has_cache_key = visit_clauseelement = CALL_GEN_CACHE_KEY
+    visit_clauseelement_list = InternalTraversal.dp_clauseelement_list
+    visit_string = (
+        visit_boolean
+    ) = visit_operator = visit_plain_obj = CACHE_IN_PLACE
+    visit_statement_hint_list = CACHE_IN_PLACE
+    visit_type = STATIC_CACHE_KEY
 
     def visit_inspectable(self, attrname, obj, parent, anon_map, bindparams):
         return self.visit_has_cache_key(
             attrname, inspect(obj), parent, anon_map, bindparams
         )
-
-    def visit_clauseelement(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj._gen_cache_key(anon_map, bindparams))
 
     def visit_multi(self, attrname, obj, parent, anon_map, bindparams):
         return (
@@ -151,6 +220,8 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_has_cache_key_tuples(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        if not obj:
+            return ()
         return (
             attrname,
             tuple(
@@ -165,6 +236,8 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_has_cache_key_list(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        if not obj:
+            return ()
         return (
             attrname,
             tuple(elem._gen_cache_key(anon_map, bindparams) for elem in obj),
@@ -175,14 +248,6 @@ class _CacheKey(ExtendedInternalTraversal):
     ):
         return self.visit_has_cache_key_list(
             attrname, [inspect(o) for o in obj], parent, anon_map, bindparams
-        )
-
-    def visit_clauseelement_list(
-        self, attrname, obj, parent, anon_map, bindparams
-    ):
-        return (
-            attrname,
-            tuple(elem._gen_cache_key(anon_map, bindparams) for elem in obj),
         )
 
     def visit_clauseelement_tuples(
@@ -204,14 +269,18 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_fromclause_ordered_set(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        if not obj:
+            return ()
         return (
             attrname,
-            tuple(elem._gen_cache_key(anon_map, bindparams) for elem in obj),
+            tuple([elem._gen_cache_key(anon_map, bindparams) for elem in obj]),
         )
 
     def visit_clauseelement_unordered_set(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        if not obj:
+            return ()
         cache_keys = [
             elem._gen_cache_key(anon_map, bindparams) for elem in obj
         ]
@@ -230,39 +299,40 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_prefix_sequence(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        if not obj:
+            return ()
         return (
             attrname,
             tuple(
-                (clause._gen_cache_key(anon_map, bindparams), strval)
-                for clause, strval in obj
+                [
+                    (clause._gen_cache_key(anon_map, bindparams), strval)
+                    for clause, strval in obj
+                ]
             ),
         )
-
-    def visit_statement_hint_list(
-        self, attrname, obj, parent, anon_map, bindparams
-    ):
-        return (attrname, obj)
 
     def visit_table_hint_list(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        if not obj:
+            return ()
+
         return (
             attrname,
             tuple(
-                (
-                    clause._gen_cache_key(anon_map, bindparams),
-                    dialect_name,
-                    text,
-                )
-                for (clause, dialect_name), text in obj.items()
+                [
+                    (
+                        clause._gen_cache_key(anon_map, bindparams),
+                        dialect_name,
+                        text,
+                    )
+                    for (clause, dialect_name), text in obj.items()
+                ]
             ),
         )
 
-    def visit_type(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj._gen_cache_key)
-
     def visit_plain_dict(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, tuple((key, obj[key]) for key in sorted(obj)))
+        return (attrname, tuple([(key, obj[key]) for key in sorted(obj)]))
 
     def visit_string_clauseelement_dict(
         self, attrname, obj, parent, anon_map, bindparams
@@ -291,40 +361,12 @@ class _CacheKey(ExtendedInternalTraversal):
             ),
         )
 
-    def visit_string(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj)
-
-    def visit_boolean(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj)
-
-    def visit_operator(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj)
-
-    def visit_plain_obj(self, attrname, obj, parent, anon_map, bindparams):
-        return (attrname, obj)
-
     def visit_fromclause_canonical_column_collection(
         self, attrname, obj, parent, anon_map, bindparams
     ):
         return (
             attrname,
             tuple(col._gen_cache_key(anon_map, bindparams) for col in obj),
-        )
-
-    def visit_annotations_state(
-        self, attrname, obj, parent, anon_map, bindparams
-    ):
-        return (
-            attrname,
-            tuple(
-                (
-                    key,
-                    self.dispatch(sym)(
-                        key, obj[key], obj, anon_map, bindparams
-                    ),
-                )
-                for key, sym in parent._annotation_traversals
-            ),
         )
 
     def visit_unknown_structure(
@@ -334,7 +376,7 @@ class _CacheKey(ExtendedInternalTraversal):
         return ()
 
 
-_cache_key_traversal = _CacheKey()
+_cache_key_traversal_visitor = _CacheKey()
 
 
 class _CopyInternals(InternalTraversal):
@@ -489,29 +531,23 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
                 right._traverse_internals,
                 fillvalue=(None, None),
             ):
+                if not compare_annotations and (
+                    (left_attrname == "_annotations_cache_key")
+                    or (right_attrname == "_annotations_cache_key")
+                ):
+                    continue
+
                 if (
                     left_attrname != right_attrname
                     or left_visit_sym is not right_visit_sym
                 ):
-                    if not compare_annotations and (
-                        (
-                            left_visit_sym
-                            is InternalTraversal.dp_annotations_state,
-                        )
-                        or (
-                            right_visit_sym
-                            is InternalTraversal.dp_annotations_state,
-                        )
-                    ):
-                        continue
-
                     return False
                 elif left_attrname in attributes_compared:
                     continue
 
                 dispatch = self.dispatch(left_visit_sym)
-                left_child = getattr(left, left_attrname)
-                right_child = getattr(right, right_attrname)
+                left_child = operator.attrgetter(left_attrname)(left)
+                right_child = operator.attrgetter(right_attrname)(right)
                 if left_child is None:
                     if right_child is not None:
                         return False
@@ -563,33 +599,6 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             if lstr != rstr:
                 return COMPARE_FAILED
             self.stack.append((left[lstr], right[rstr]))
-
-    def visit_annotations_state(
-        self, left_parent, left, right_parent, right, **kw
-    ):
-        if not kw.get("compare_annotations", False):
-            return
-
-        for (lstr, lmeth), (rstr, rmeth) in util.zip_longest(
-            left_parent._annotation_traversals,
-            right_parent._annotation_traversals,
-            fillvalue=(None, None),
-        ):
-            if lstr != rstr or (lmeth is not rmeth):
-                return COMPARE_FAILED
-
-            dispatch = self.dispatch(lmeth)
-            left_child = left[lstr]
-            right_child = right[rstr]
-            if left_child is None:
-                if right_child is not None:
-                    return False
-                else:
-                    continue
-
-            comparison = dispatch(None, left_child, None, right_child, **kw)
-            if comparison is COMPARE_FAILED:
-                return comparison
 
     def visit_clauseelement_tuples(
         self, left_parent, left, right_parent, right, **kw

@@ -19,23 +19,26 @@ from .. import util
 
 class SupportsAnnotations(object):
     @util.memoized_property
-    def _annotation_traversals(self):
-        return [
-            (
-                key,
-                InternalTraversal.dp_has_cache_key
-                if isinstance(value, HasCacheKey)
-                else InternalTraversal.dp_plain_obj,
-            )
-            for key, value in self._annotations.items()
-        ]
+    def _annotations_cache_key(self):
+        return (
+            "_annotations",
+            tuple(
+                (
+                    key,
+                    value._gen_cache_key(None, [])
+                    if isinstance(value, HasCacheKey)
+                    else value,
+                )
+                for key, value in self._annotations.items()
+            ),
+        )
 
 
 class SupportsCloneAnnotations(SupportsAnnotations):
     _annotations = util.immutabledict()
 
     _traverse_internals = [
-        ("_annotations", InternalTraversal.dp_annotations_state)
+        ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
     ]
 
     def _annotate(self, values):
@@ -45,7 +48,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         """
         new = self._clone()
         new._annotations = new._annotations.union(values)
-        new.__dict__.pop("_annotation_traversals", None)
+        new.__dict__.pop("_annotations_cache_key", None)
         return new
 
     def _with_annotations(self, values):
@@ -55,7 +58,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         """
         new = self._clone()
         new._annotations = util.immutabledict(values)
-        new.__dict__.pop("_annotation_traversals", None)
+        new.__dict__.pop("_annotations_cache_key", None)
         return new
 
     def _deannotate(self, values=None, clone=False):
@@ -71,7 +74,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
             # the expression for a deep deannotation
             new = self._clone()
             new._annotations = {}
-            new.__dict__.pop("_annotation_traversals", None)
+            new.__dict__.pop("_annotations_cache_key", None)
             return new
         else:
             return self
@@ -146,7 +149,7 @@ class Annotated(object):
 
     def __init__(self, element, values):
         self.__dict__ = element.__dict__.copy()
-        self.__dict__.pop("_annotation_traversals", None)
+        self.__dict__.pop("_annotations_cache_key", None)
         self.__element = element
         self._annotations = values
         self._hash = hash(element)
@@ -159,7 +162,7 @@ class Annotated(object):
     def _with_annotations(self, values):
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
-        clone.__dict__.pop("_annotation_traversals", None)
+        clone.__dict__.pop("_annotations_cache_key", None)
         clone._annotations = values
         return clone
 
@@ -305,7 +308,7 @@ def _new_annotation_type(cls, base_cls):
 
     if "_traverse_internals" in cls.__dict__:
         anno_cls._traverse_internals = list(cls._traverse_internals) + [
-            ("_annotations", InternalTraversal.dp_annotations_state)
+            ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
         ]
     return anno_cls
 
