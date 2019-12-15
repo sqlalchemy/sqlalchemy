@@ -283,7 +283,10 @@ class ColumnProperty(StrategizedProperty):
         include computed columns defined with :class:`.Computed` and attributes
         defined with :func:`.orm.column_property`
         """
-        return self in self.parent._readonly_props
+        return (
+            self in self.parent._readonly_props
+            or getattr(self.expression, "computed", None) is not None
+        )
 
     class Comparator(util.MemoizedSlots, PropComparator):
         """Produce boolean, comparison, and other operators for
