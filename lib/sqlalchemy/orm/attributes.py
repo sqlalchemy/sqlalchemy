@@ -270,7 +270,7 @@ class InstrumentedAttribute(QueryableAttribute):
     """
 
     def __set__(self, instance, value):
-        if self.prop.read_only:
+        if self.prop.is_readonly:
             msg = (
                 "the value set to read only attribute '%s.%s' will be ignored."
                 " A future version of sqlalchemy will change this warning to "

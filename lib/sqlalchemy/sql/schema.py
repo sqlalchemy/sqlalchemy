@@ -1599,6 +1599,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         else:
             return ColumnClause.get_children(self, **kwargs)
 
+    @property
+    def _is_readonly(self):
+        """Indicates that the column is readonly. Currently only 
+        :class:`.Computed` columns are readonly"""
+        return self.computed is not None
+
 
 class ForeignKey(DialectKWArgs, SchemaItem):
     """Defines a dependency between two columns.

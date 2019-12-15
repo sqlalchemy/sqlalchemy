@@ -278,14 +278,14 @@ class ColumnProperty(StrategizedProperty):
             )
 
     @property
-    def read_only(self):
+    def is_readonly(self):
         """Indicates if the current property is read only. Read only properties
         include computed columns defined with :class:`.Computed` and attributes
         defined with :func:`.orm.column_property`
         """
         return (
             self in self.parent._readonly_props
-            or getattr(self.expression, "computed", None) is not None
+            or getattr(self.expression, "_is_readonly", False)
         )
 
     class Comparator(util.MemoizedSlots, PropComparator):
