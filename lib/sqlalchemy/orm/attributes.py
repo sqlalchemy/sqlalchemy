@@ -270,8 +270,13 @@ class InstrumentedAttribute(QueryableAttribute):
     """
 
     def __set__(self, instance, value):
-        if self.prop.raise_on_set is True:
-            raise AttributeError("can't set attribute %s" % self.key)
+        if self.prop.read_only:
+            msg = (
+                "the value set to read only attribute '%s.%s' will be ignored."
+                " A future version of sqlalchemy will change this warning to "
+                "raise an exception"
+            ) % (self.class_.__name__, self.key)
+            util.warn(msg)
         self.impl.set(
             instance_state(instance), instance_dict(instance), value, None
         )

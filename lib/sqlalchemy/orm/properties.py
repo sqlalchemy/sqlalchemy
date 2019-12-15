@@ -55,7 +55,6 @@ class ColumnProperty(StrategizedProperty):
         "_deferred_column_loader",
         "_raise_column_loader",
         "raiseload",
-        "raise_on_set",
     )
 
     def __init__(self, *columns, **kwargs):
@@ -129,17 +128,6 @@ class ColumnProperty(StrategizedProperty):
 
                 :ref:`deferred_raiseload`
 
-        :param raise_on_set: if True, indicated that this property cannot
-            be set by directly, but is fetched by the orm from the database.
-            Defaults to True for computed columns and columns defined by
-            calling :func:`.orm.column_property` directly
-
-            .. versionadded:: 1.3.10
-
-            .. seealso::
-
-                :class:`.Computed`
-
         """
         super(ColumnProperty, self).__init__()
         self._orig_columns = [
@@ -175,17 +163,6 @@ class ColumnProperty(StrategizedProperty):
                     break
             else:
                 self.doc = None
-
-        self.raise_on_set = kwargs.pop("raise_on_set", False)
-        if self.raise_on_set == "warn":
-            util.warn(
-                "Column defined with column_property currently ignore setted"
-                " value. This behaviour will be changed in a future version"
-                " to raise an exception. Set the kwarg raise_on_set to False"
-                " to preserve the current behaviour",
-                stacklevel=5  # set the stack level to warn at the correct line
-            )
-            self.raise_on_set = False
 
         if kwargs:
             raise TypeError(
@@ -300,6 +277,14 @@ class ColumnProperty(StrategizedProperty):
                 dest_dict, [self.key], no_loader=True
             )
 
+    @property
+    def read_only(self):
+        """Indicates if the current property is read only. Read only properties
+        include computed columns defined with :class:`.Computed` and attributes
+        defined with :func:`.orm.column_property`
+        """
+        return self in self.parent._readonly_props
+
     class Comparator(util.MemoizedSlots, PropComparator):
         """Produce boolean, comparison, and other operators for
         :class:`.ColumnProperty` attributes.
@@ -358,14 +343,3 @@ class ColumnProperty(StrategizedProperty):
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
-
-
-class _ColumnPropertyProxy(ColumnProperty):
-    def __init__(self, *columns, **kwargs):
-        # will be changed to True in a future release
-        kwargs.setdefault("raise_on_set", "warn")
-        super().__init__(*columns, **kwargs)
-
-
-_ColumnPropertyProxy.__doc__ = ColumnProperty.__doc__
-_ColumnPropertyProxy.__init__.__doc__ = ColumnProperty.__init__.__doc__

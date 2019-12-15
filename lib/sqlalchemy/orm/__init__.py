@@ -30,7 +30,6 @@ from .mapper import Mapper  # noqa
 from .mapper import reconstructor  # noqa
 from .mapper import validates  # noqa
 from .properties import ColumnProperty  # noqa
-from .properties import _ColumnPropertyProxy  # noqa
 from .query import AliasOption  # noqa
 from .query import Bundle  # noqa
 from .query import Query  # noqa
@@ -124,7 +123,7 @@ def dynamic_loader(argument, **kw):
     return relationship(argument, **kw)
 
 
-column_property = public_factory(_ColumnPropertyProxy, ".orm.column_property")
+column_property = public_factory(ColumnProperty, ".orm.column_property")
 composite = public_factory(CompositeProperty, ".orm.composite")
 
 
