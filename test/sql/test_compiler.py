@@ -1995,13 +1995,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_compound_selects(self):
         assert_raises_message(
-            exc.ArgumentError,
+            exc.CompileError,
             "All selectables passed to CompoundSelect "
             "must have identical numbers of columns; "
             "select #1 has 2 columns, select #2 has 3",
-            union,
-            table3.select(),
-            table1.select(),
+            union(table3.select(), table1.select()).compile,
         )
 
         x = union(

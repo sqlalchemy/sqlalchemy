@@ -2149,7 +2149,9 @@ class SQLCompiler(Compiled):
         if not populate_result_map and "add_to_result_map" in kwargs:
             del kwargs["add_to_result_map"]
 
-        froms = self._setup_select_stack(select, entry, asfrom, lateral)
+        froms = self._setup_select_stack(
+            select, entry, asfrom, lateral, compound_index
+        )
 
         column_clause_args = kwargs.copy()
         column_clause_args.update(
@@ -2254,9 +2256,32 @@ class SQLCompiler(Compiled):
         hint_text = self.get_select_hint_text(byfrom)
         return hint_text, byfrom
 
-    def _setup_select_stack(self, select, entry, asfrom, lateral):
+    def _setup_select_stack(
+        self, select, entry, asfrom, lateral, compound_index
+    ):
         correlate_froms = entry["correlate_froms"]
         asfrom_froms = entry["asfrom_froms"]
+
+        if compound_index > 0:
+            # note this is cached
+            select_0 = entry["selectable"].selects[0]
+            if select_0._is_select_container:
+                select_0 = select_0.element
+            numcols = len(select_0.selected_columns)
+            # numcols = len(select_0._columns_plus_names)
+            if len(select._columns_plus_names) != numcols:
+                raise exc.CompileError(
+                    "All selectables passed to "
+                    "CompoundSelect must have identical numbers of "
+                    "columns; select #%d has %d columns, select "
+                    "#%d has %d"
+                    % (
+                        1,
+                        numcols,
+                        compound_index + 1,
+                        len(select.selected_columns),
+                    )
+                )
 
         if asfrom and not lateral:
             froms = select._get_display_froms(

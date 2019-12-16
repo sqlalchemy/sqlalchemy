@@ -2782,31 +2782,12 @@ class CompoundSelect(GenerativeSelect):
     def __init__(self, keyword, *selects, **kwargs):
         self._auto_correlate = kwargs.pop("correlate", False)
         self.keyword = keyword
-        self.selects = []
-
-        numcols = None
-
-        # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
-        for n, s in enumerate(selects):
-            s = coercions.expect(roles.CompoundElementRole, s)
-
-            if not numcols:
-                numcols = len(s.selected_columns)
-            elif len(s.selected_columns) != numcols:
-                raise exc.ArgumentError(
-                    "All selectables passed to "
-                    "CompoundSelect must have identical numbers of "
-                    "columns; select #%d has %d columns, select "
-                    "#%d has %d"
-                    % (
-                        1,
-                        len(self.selects[0].selected_columns),
-                        n + 1,
-                        len(s.selected_columns),
-                    )
-                )
-
-            self.selects.append(s.self_group(against=self))
+        self.selects = [
+            coercions.expect(roles.CompoundElementRole, s).self_group(
+                against=self
+            )
+            for s in selects
+        ]
 
         GenerativeSelect.__init__(self, **kwargs)
 
