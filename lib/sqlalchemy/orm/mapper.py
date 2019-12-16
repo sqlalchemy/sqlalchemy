@@ -1395,16 +1395,24 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             self.primary_key = tuple(primary_key)
             self._log("Identified primary key columns: %s", primary_key)
 
-        # determine cols that aren't expressed within our tables; mark these
-        # as "read only" properties which are refreshed upon INSERT/UPDATE
+        # determine cols that are either table-derived expressions, or special
+        # table columns that generate a value and are never written towards.
+        # Mark these as "read only" properties which are refreshed upon
+        # INSERT/UPDATE and which are also candidates to block if a user-side
+        # value is set for them
         self._readonly_props = set(
             self._columntoproperty[col]
             for col in self._columntoproperty
             if self._columntoproperty[col] not in self._identity_key_props
-            and (
-                not hasattr(col, "table")
-                or col.table not in self._cols_by_table
-            )
+            and self._is_column_read_only(col)
+        )
+
+    def _is_column_read_only(self, col):
+        "Returns if a column should be added to _readonly_props"
+        return (
+            not hasattr(col, "table")
+            or col.table not in self._cols_by_table
+            or getattr(col, "_is_readonly", False)
         )
 
     def _configure_properties(self):
@@ -1714,10 +1722,9 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
                 # column is coming in after _readonly_props was
                 # initialized; check for 'readonly'
-                if hasattr(self, "_readonly_props") and (
-                    not hasattr(col, "table")
-                    or col.table not in self._cols_by_table
-                ):
+                if hasattr(
+                    self, "_readonly_props"
+                ) and self._is_column_read_only(col):
                     self._readonly_props.add(prop)
 
             else:

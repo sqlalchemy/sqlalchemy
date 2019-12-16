@@ -1601,8 +1601,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
     @property
     def _is_readonly(self):
-        """Indicates that the column is readonly. Currently only 
-        :class:`.Computed` columns are readonly"""
+        """Indicates that the column is readonly. A readonly column is treated
+        as a :func:`.orm.column_property` by the orm.
+
+        Currently only :class:`.Computed` columns are readonly
+        """
         return self.computed is not None
 
 
