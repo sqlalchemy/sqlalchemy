@@ -16,6 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import lambdas
 from . import Profiler
 
 
@@ -65,76 +66,67 @@ def setup_database(dburl, echo, num):
 
 
 @Profiler.profile
-def test_orm_query(n):
-    """test a straight ORM query of the full entity."""
+def test_orm_query_classic_style(n):
+    """classic ORM query of the full entity."""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
-        # new style
-        # stmt = future_select(Customer).where(Customer.id == id_)
-        # session.execute(stmt).scalars().unique().one()
         session.query(Customer).filter(Customer.id == id_).one()
 
 
 @Profiler.profile
-def test_orm_query_newstyle(n):
-    """test a straight ORM query of the full entity."""
-
-    # the newstyle query is faster for the following reasons:
-    # 1. it uses LABEL_STYLE_DISAMBIGUATE_ONLY, which saves on a huge amount
-    # of label generation and compilation calls
-    # 2. it does not use the Query @_assertions decorators.
-
-    # however, both test_orm_query and test_orm_query_newstyle are still
-    # 25-30% slower than the full blown Query version in 1.3.x and this
-    # continues to be concerning.
+def test_orm_query_new_style(n):
+    """new style ORM select() of the full entity."""
 
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
         stmt = future_select(Customer).where(Customer.id == id_)
-        session.execute(stmt).scalars().unique().one()
+        session.execute(stmt).scalar_one()
 
 
 @Profiler.profile
-def test_orm_query_cols_only(n):
-    """test an ORM query of only the entity columns."""
+def test_orm_query_new_style_using_embedded_lambdas(n):
+    """new style ORM select() of the full entity w/ embedded lambdas."""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
-        # new style
-        # stmt = future_select(
-        #    Customer.id, Customer.name, Customer.description
-        # ).filter(Customer.id == id_)
-        # session.execute(stmt).scalars().unique().one()
+        stmt = future_select(lambda: Customer).where(
+            lambda: Customer.id == id_
+        )
+        session.execute(stmt).scalar_one()
+
+
+@Profiler.profile
+def test_orm_query_new_style_using_external_lambdas(n):
+    """new style ORM select() of the full entity w/ external lambdas."""
+
+    session = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+
+        stmt = lambdas.lambda_stmt(lambda: future_select(Customer))
+        stmt += lambda s: s.where(Customer.id == id_)
+        session.execute(stmt).scalar_one()
+
+
+@Profiler.profile
+def test_orm_query_classic_style_cols_only(n):
+    """classic ORM query against columns"""
+    session = Session(bind=engine)
+    for id_ in random.sample(ids, n):
         session.query(Customer.id, Customer.name, Customer.description).filter(
             Customer.id == id_
         ).one()
 
 
-cache = {}
-
-
 @Profiler.profile
-def test_cached_orm_query(n):
-    """test new style cached queries of the full entity."""
+def test_orm_query_new_style_ext_lambdas_cols_only(n):
+    """new style ORM query w/ external lambdas against columns."""
     s = Session(bind=engine)
     for id_ in random.sample(ids, n):
-        # this runs significantly faster
-        stmt = future_select(Customer).where(Customer.id == id_)
-        # stmt = s.query(Customer).filter(Customer.id == id_)
-        s.execute(stmt, execution_options={"compiled_cache": cache}).one()
-
-
-@Profiler.profile
-def test_cached_orm_query_cols_only(n):
-    """test new style cached queries of the full entity."""
-    s = Session(bind=engine)
-    for id_ in random.sample(ids, n):
-        stmt = future_select(
-            Customer.id, Customer.name, Customer.description
-        ).filter(Customer.id == id_)
-        # stmt = s.query(
-        #     Customer.id, Customer.name, Customer.description
-        # ).filter(Customer.id == id_)
-        s.execute(stmt, execution_options={"compiled_cache": cache}).one()
+        stmt = lambdas.lambda_stmt(
+            lambda: future_select(
+                Customer.id, Customer.name, Customer.description
+            )
+        ) + (lambda s: s.filter(Customer.id == id_))
+        s.execute(stmt).one()
 
 
 @Profiler.profile
@@ -210,16 +202,6 @@ def test_core_reuse_stmt_compiled_cache(n):
         for id_ in random.sample(ids, n):
             row = conn.execute(stmt, id=id_).first()
             tuple(row)
-
-
-@Profiler.profile
-def test_core_just_statement_construct_plus_cache_key(n):
-    for i in range(n):
-        stmt = future_select(Customer.__table__).where(
-            Customer.id == bindparam("id")
-        )
-
-        stmt._generate_cache_key()
 
 
 if __name__ == "__main__":

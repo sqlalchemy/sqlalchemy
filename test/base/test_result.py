@@ -899,6 +899,19 @@ class OnlyScalarsTest(fixtures.TestBase):
         return chunks
 
     @testing.fixture
+    def no_tuple_one_fixture(self):
+        data = [(1, 1, 1)]
+
+        def chunks(num):
+            while data:
+                rows = data[0:num]
+                data[:] = []
+
+                yield [row[0] for row in rows]
+
+        return chunks
+
+    @testing.fixture
     def normal_fixture(self):
         data = [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)]
 
@@ -1004,3 +1017,21 @@ class OnlyScalarsTest(fixtures.TestBase):
         )
 
         eq_(list(r), [(1,), (2,), (1,), (1,), (4,)])
+
+    def test_scalar_mode_first(self, no_tuple_one_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_one_fixture, source_supports_scalars=True
+        )
+
+        eq_(r.one(), (1,))
+
+    def test_scalar_mode_scalar_one(self, no_tuple_one_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_one_fixture, source_supports_scalars=True
+        )
+
+        eq_(r.scalar_one(), 1)

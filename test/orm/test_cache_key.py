@@ -1,5 +1,9 @@
+import random
+
 from sqlalchemy import inspect
+from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy.future import select
 from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import defaultload
@@ -7,15 +11,19 @@ from sqlalchemy.orm import defer
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.base import CacheableOptions
 from sqlalchemy.sql.visitors import InternalTraversal
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
+from .test_query import QueryTest
 from ..sql.test_compare import CacheKeyFixture
 
 
@@ -419,3 +427,82 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
         self._run_cache_key_fixture(
             lambda: stmt_20(one(), two(), three()), compare_values=True,
         )
+
+
+class RoundTripTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    run_setup_mappers = None
+
+    @testing.fixture
+    def plain_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, back_populates="user")
+            },
+        )
+
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(User, back_populates="addresses")
+            },
+        )
+
+        return User, Address
+
+    def test_subqueryload(self, plain_fixture):
+
+        # subqueryload works pretty poorly w/ caching because it has
+        # to create a new query.  previously, baked query went through a
+        # bunch of hoops to improve upon this and they were found to be
+        # broken anyway.   so subqueryload currently pulls out the original
+        # query as well as the requested query and works with them at row
+        # processing time to create its own query.   all of which is fairly
+        # non-performant compared to the selectinloader that has a fixed
+        # query.
+        User, Address = plain_fixture
+
+        s = Session()
+
+        def query(names):
+            stmt = (
+                select(User)
+                .where(User.name.in_(names))
+                .options(subqueryload(User.addresses))
+                .order_by(User.id)
+            )
+            return s.execute(stmt)
+
+        def go1():
+            r1 = query(["ed"])
+            eq_(
+                r1.scalars().all(),
+                [User(name="ed", addresses=[Address(), Address(), Address()])],
+            )
+
+        def go2():
+            r1 = query(["ed", "fred"])
+            eq_(
+                r1.scalars().all(),
+                [
+                    User(
+                        name="ed", addresses=[Address(), Address(), Address()]
+                    ),
+                    User(name="fred", addresses=[Address()]),
+                ],
+            )
+
+        for i in range(5):
+            fn = random.choice([go1, go2])
+            self.assert_sql_count(testing.db, fn, 2)

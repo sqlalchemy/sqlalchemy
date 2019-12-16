@@ -124,6 +124,8 @@ class Select(_LegacySelect):
         target = coercions.expect(
             roles.JoinTargetRole, target, apply_propagate_attrs=self
         )
+        if onclause is not None:
+            onclause = coercions.expect(roles.OnClauseRole, onclause)
         self._setup_joins += (
             (target, onclause, None, {"isouter": isouter, "full": full}),
         )

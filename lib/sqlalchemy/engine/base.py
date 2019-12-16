@@ -1046,6 +1046,7 @@ class Connection(Connectable):
                 distilled_parameters,
                 _EMPTY_EXECUTION_OPTS,
             )
+
         try:
             meth = object_._execute_on_connection
         except AttributeError as err:

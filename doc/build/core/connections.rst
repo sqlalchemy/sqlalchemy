@@ -415,6 +415,478 @@ as the schema name is passed to these methods explicitly.
 
 .. versionadded:: 1.1
 
+.. _sql_caching:
+
+
+SQL Compilation Caching
+=======================
+
+.. versionadded:: 1.4  SQLAlchemy now has a transparent query caching system
+   that substantially lowers the Python computational overhead involved in
+   converting SQL statement constructs into SQL strings across both
+   Core and ORM.   See the introduction at :ref:`change_4639`.
+
+SQLAlchemy includes a comprehensive caching system for the SQL compiler as well
+as its ORM variants.   This caching system is transparent within the
+:class:`.Engine` and provides that the SQL compilation process for a given Core
+or ORM SQL statement, as well as related computations which assemble
+result-fetching mechanics for that statement, will only occur once for that
+statement object and all others with the identical
+structure, for the duration that the particular structure remains within the
+engine's "compiled cache". By "statement objects that have the identical
+structure", this generally corresponds to a SQL statement that is
+constructed within a function and is built each time that function runs::
+
+    def run_my_statement(connection, parameter):
+        stmt = select(table)
+        stmt = stmt.where(table.c.col == parameter)
+        stmt = stmt.order_by(table.c.id)
+        return connection.execute(stmt)
+
+The above statement will generate SQL resembling
+``SELECT id, col FROM table WHERE col = :col ORDER BY id``, noting that
+while the value of ``parameter`` is a plain Python object such as a string
+or an integer, the string SQL form of the statement does not include this
+value as it uses bound parameters.  Subsequent invocations of the above
+``run_my_statement()`` function will use a cached compilation construct
+within the scope of the ``connection.execute()`` call for enhanced performance.
+
+.. note:: it is important to note that the SQL compilation cache is caching
+   the **SQL string that is passed to the database only**, and **not** the
+   results returned by a query.   It is in no way a data cache and does not
+   impact the results returned for a particular SQL statement nor does it
+   imply any memory use linked to fetching of result rows.
+
+While SQLAlchemy has had a rudimentary statement cache since the early 1.x
+series, and additionally has featured the "Baked Query" extension for the ORM,
+both of these systems required a high degree of special API use in order for
+the cache to be effective.  The new cache as of 1.4 is instead completely
+automatic and requires no change in programming style to be effective.
+
+The cache is automatically used without any configurational changes and no
+special steps are needed in order to enable it. The following sections
+detail the configuration and advanced usage patterns for the cache.
+
+
+Configuration
+-------------
+
+The cache itself is a dictionary-like object called an ``LRUCache``, which is
+an internal SQLAlchemy dictionary subclass that tracks the usage of particular
+keys and features a periodic "pruning" step which removes the least recently
+used items when the size of the cache reaches a certain threshold.  The size
+of this cache defaults to 500 and may be configured using the
+:paramref:`_sa.create_engine.query_cache_size` parameter::
+
+    engine = create_engine("postgresql://scott:tiger@localhost/test", query_cache_size=1200)
+
+The size of the cache can grow to be a factor of 150% of the size given, before
+it's pruned back down to the target size.  A cache of size 1200 above can therefore
+grow to be 1800 elements in size at which point it will be pruned to 1200.
+
+The sizing of the cache is based on a single entry per unique SQL statement rendered,
+per engine.   SQL statements generated from both the Core and the ORM are
+treated equally.  DDL statements will usually not be cached.  In order to determine
+what the cache is doing, engine logging will include details about the
+cache's behavior, described in the next section.
+
+
+Estimating Cache Performance Using Logging
+------------------------------------------
+
+The above cache size of 1200 is actually fairly large.   For small applications,
+a size of 100 is likely sufficient.  To estimate the optimal size of the cache,
+assuming enough memory is present on the target host, the size of the cache
+should be based on the number of unique SQL strings that may be rendered for the
+target engine in use.    The most expedient way to see this is to use
+SQL echoing, which is most directly enabled by using the
+:paramref:`_sa.create_engine.echo` flag, or by using Python logging; see the
+section :ref:`dbengine_logging` for background on logging configuration.
+
+As an example, we will examine the logging produced by the following program::
+
+  from sqlalchemy import Column
+  from sqlalchemy import create_engine
+  from sqlalchemy import ForeignKey
+  from sqlalchemy import Integer
+  from sqlalchemy import String
+  from sqlalchemy.ext.declarative import declarative_base
+  from sqlalchemy.orm import relationship
+  from sqlalchemy.orm import Session
+
+  Base = declarative_base()
+
+
+  class A(Base):
+      __tablename__ = "a"
+
+      id = Column(Integer, primary_key=True)
+      data = Column(String)
+      bs = relationship("B")
+
+
+  class B(Base):
+      __tablename__ = "b"
+      id = Column(Integer, primary_key=True)
+      a_id = Column(ForeignKey("a.id"))
+      data = Column(String)
+
+
+  e = create_engine("sqlite://", echo=True)
+  Base.metadata.create_all(e)
+
+  s = Session(e)
+
+  s.add_all(
+      [A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()]), A(bs=[B(), B(), B()])]
+  )
+  s.commit()
+
+  for a_rec in s.query(A):
+      print(a_rec.bs)
+
+When run, each SQL statement that's logged will include a bracketed
+cache statistics badge to the left of the parameters passed.   The four
+types of message we may see are summarized as follows:
+
+* ``[raw sql]`` - the driver or the end-user emitted raw SQL using
+  :meth:`.Connection.exec_driver_sql` - caching does not apply
+
+* ``[no key]`` - the statement object is a DDL statement that is not cached, or
+  the statement object contains uncacheable elements such as user-defined
+  constructs or arbitrarily large VALUES clauses.
+
+* ``[generated in Xs]`` - the statement was a **cache miss** and had to be
+  compiled, then stored in the cache.  it took X seconds to produce the
+  compiled construct.  The number X will be in the small fractional seconds.
+
+* ``[cached since Xs ago]`` - the statement was a **cache hit** and did not
+  have to be recompiled.  The statement has been stored in the cache since
+  X seconds ago.  The number X will be proportional to how long the application
+  has been running and how long the statement has been cached, so for example
+  would be 86400 for a 24 hour period.
+
+Each badge is described in more detail below.
+
+The first statements we see for the above program will be the SQLite dialect
+checking for the existence of the "a" and "b" tables::
+
+  INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("a")
+  INFO sqlalchemy.engine.Engine [raw sql] ()
+  INFO sqlalchemy.engine.Engine PRAGMA main.table_info("b")
+  INFO sqlalchemy.engine.Engine [raw sql] ()
+
+For the above two SQLite PRAGMA statements, the badge reads ``[raw sql]``,
+which indicates the driver is sending a Python string directly to the
+database using :meth:`.Connection.exec_driver_sql`.  Caching does not apply
+to such statements because they already exist in string form, and there
+is nothing known about what kinds of result rows will be returned since
+SQLAlchemy does not parse SQL strings ahead of time.
+
+The next statements we see are the CREATE TABLE statements::
+
+  INFO sqlalchemy.engine.Engine
+  CREATE TABLE a (
+    id INTEGER NOT NULL,
+    data VARCHAR,
+    PRIMARY KEY (id)
+  )
+
+  INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+  INFO sqlalchemy.engine.Engine
+  CREATE TABLE b (
+    id INTEGER NOT NULL,
+    a_id INTEGER,
+    data VARCHAR,
+    PRIMARY KEY (id),
+    FOREIGN KEY(a_id) REFERENCES a (id)
+  )
+
+  INFO sqlalchemy.engine.Engine [no key 0.00006s] ()
+
+For each of these statements, the badge reads ``[no key 0.00006s]``.  This
+indicates that these two particular statements, caching did not occur because
+the DDL-oriented :class:`_schema.CreateTable` construct did not produce a
+cache key.  DDL constructs generally do not participate in caching because
+they are not typically subject to being repeated a second time and DDL
+is also a database configurational step where performance is not as critical.
+
+The ``[no key]`` badge is important for one other reason, as it can be produced
+for SQL statements that are cacheable except for some particular sub-construct
+that is not currently cacheable.   Examples of this include custom user-defined
+SQL elements that don't define caching parameters, as well as some constructs
+that generate arbitrarily long and non-reproducible SQL strings, the main
+examples being the :class:`.Values` construct as well as when using "multivalued
+inserts" with the :meth:`.Insert.values` method.
+
+So far our cache is still empty.  The next statements will be cached however,
+a segment looks like::
+
+
+  INFO sqlalchemy.engine.Engine INSERT INTO a (data) VALUES (?)
+  INFO sqlalchemy.engine.Engine [generated in 0.00011s] (None,)
+  INFO sqlalchemy.engine.Engine INSERT INTO a (data) VALUES (?)
+  INFO sqlalchemy.engine.Engine [cached since 0.0003533s ago] (None,)
+  INFO sqlalchemy.engine.Engine INSERT INTO a (data) VALUES (?)
+  INFO sqlalchemy.engine.Engine [cached since 0.0005326s ago] (None,)
+  INFO sqlalchemy.engine.Engine INSERT INTO b (a_id, data) VALUES (?, ?)
+  INFO sqlalchemy.engine.Engine [generated in 0.00010s] (1, None)
+  INFO sqlalchemy.engine.Engine INSERT INTO b (a_id, data) VALUES (?, ?)
+  INFO sqlalchemy.engine.Engine [cached since 0.0003232s ago] (1, None)
+  INFO sqlalchemy.engine.Engine INSERT INTO b (a_id, data) VALUES (?, ?)
+  INFO sqlalchemy.engine.Engine [cached since 0.0004887s ago] (1, None)
+
+Above, we see essentially two unique SQL strings; ``"INSERT INTO a (data) VALUES (?)"``
+and ``"INSERT INTO b (a_id, data) VALUES (?, ?)"``.  Since SQLAlchemy uses
+bound parameters for all literal values, even though these statements are
+repeated many times for different objects, because the parameters are separate,
+the actual SQL string stays the same.
+
+.. note:: the above two statements are generated by the ORM unit of work
+   process, and in fact will be caching these in a separate cache that is
+   local to each mapper.  However the mechanics and terminology are the same.
+   The section :ref:`engine_compiled_cache` below will describe how user-facing
+   code can also use an alternate caching container on a per-statement basis.
+
+The caching badge we see for the first occurrence of each of these two
+statements is ``[generated in 0.00011s]``. This indicates that the statement
+was **not in the cache, was compiled into a String in .00011s and was then
+cached**.   When we see the ``[generated]`` badge, we know that this means
+there was a **cache miss**.  This is to be expected for the first occurrence of
+a particular statement.  However, if lots of new ``[generated]`` badges are
+observed for a long-running application that is generally using the same series
+of SQL statements over and over, this may be a sign that the
+:paramref:`_sa.create_engine.query_cache_size` parameter is too small.  When a
+statement that was cached is then evicted from the cache due to the LRU
+cache pruning lesser used items, it will display the ``[generated]`` badge
+when it is next used.
+
+The caching badge that we then see for the subsequent occurrences of each of
+these two statements looks like ``[cached since 0.0003533s ago]``.  This
+indicates that the statement **was found in the cache, and was originally
+placed into the cache .0003533 seconds ago**.   It is important to note that
+while the ``[generated]`` and ``[cached since]`` badges refer to a number of
+seconds, they mean different things; in the case of ``[generated]``, the number
+is a rough timing of how long it took to compile the statement, and will be an
+extremely small amount of time.   In the case of ``[cached since]``, this is
+the total time that a statement has been present in the cache.  For an
+application that's been running for six hours, this number may read ``[cached
+since 21600 seconds ago]``, and that's a good thing.    Seeing high numbers for
+"cached since" is an indication that these statements have not been subject to
+cache misses for a long time.  Statements that frequently have a low number of
+"cached since" even if the application has been running a long time may
+indicate these statements are too frequently subject to cache misses, and that
+the
+:paramref:`_sa.create_engine.query_cache_size` may need to be increased.
+
+Our example program then performs some SELECTs where we can see the same
+pattern of "generated" then "cached", for the SELECT of the "a" table as well
+as for subsequent lazy loads of the "b" table::
+
+  INFO sqlalchemy.engine.Engine SELECT a.id AS a_id, a.data AS a_data
+  FROM a
+  INFO sqlalchemy.engine.Engine [generated in 0.00009s] ()
+  INFO sqlalchemy.engine.Engine SELECT b.id AS b_id, b.a_id AS b_a_id, b.data AS b_data
+  FROM b
+  WHERE ? = b.a_id
+  INFO sqlalchemy.engine.Engine [generated in 0.00010s] (1,)
+  INFO sqlalchemy.engine.Engine SELECT b.id AS b_id, b.a_id AS b_a_id, b.data AS b_data
+  FROM b
+  WHERE ? = b.a_id
+  INFO sqlalchemy.engine.Engine [cached since 0.0005922s ago] (2,)
+  INFO sqlalchemy.engine.Engine SELECT b.id AS b_id, b.a_id AS b_a_id, b.data AS b_data
+  FROM b
+  WHERE ? = b.a_id
+
+From our above program, a full run shows a total of four distinct SQL strings
+being cached.   Which indicates a cache size of **four** would be sufficient.   This is
+obviously an extremely small size, and the default size of 500 is fine to be left
+at its default.
+
+How much memory does the cache use?
+-----------------------------------
+
+The previous section detailed some techniques to check if the
+:paramref:`_sa.create_engine.query_cache_size` needs to be bigger.   How do we know
+if the cache is not too large?   The reason we may want to set
+:paramref:`_sa.create_engine.query_cache_size` to not be higher than a certain
+number would be because we have an application that may make use of a very large
+number of different statements, such as an application that is building queries
+on the fly from a search UX, and we don't want our host to run out of memory
+if for example, a hundred thousand different queries were run in the past 24 hours
+and they were all cached.
+
+It is extremely difficult to measure how much memory is occupied by Python
+data structures, however using a process to measure growth in memory via ``top`` as a
+successive series of 250 new statements are added to the cache suggest a
+moderate Core statement takes up about 12K while a small ORM statement takes about
+20K, including result-fetching structures which for the ORM will be much greater.
+
+
+.. _engine_compiled_cache:
+
+Disabling or using an alternate dictionary to cache some (or all) statements
+-----------------------------------------------------------------------------
+
+The internal cache used is known as ``LRUCache``, but this is mostly just
+a dictionary.  Any dictionary may be used as a cache for any series of
+statements by using the :paramref:`.Connection.execution_options.compiled_cache`
+option as an execution option.  Execution options may be set on a statement,
+on an :class:`_engine.Engine` or :class:`_engine.Connection`, as well as
+when using the ORM :meth:`_orm.Session.execute` method for SQLAlchemy-2.0
+style invocations.   For example, to run a series of SQL statements and have
+them cached in a particular dictionary::
+
+  my_cache = {}
+  with engine.connect().execution_options(compiled_cache=my_cache) as conn:
+      conn.execute(table.select())
+
+The SQLAlchemy ORM uses the above technique to hold onto per-mapper caches
+within the unit of work "flush" process that are separate from the default
+cache configured on the :class:`_engine.Engine`, as well as for some
+relationship loader queries.
+
+The cache can also be disabled with this argument by sending a value of
+``None``::
+
+  # disable caching for this connection
+  with engine.connect().execution_options(compiled_cache=None) as conn:
+      conn.execute(table.select())
+
+.. _engine_lambda_caching:
+
+Using Lambdas to add significant speed gains to statement production
+--------------------------------------------------------------------
+
+.. warning:: This technique is generally non-essential except in very performance
+   intensive scenarios, and intended for experienced Python programmers.
+   While fairly straightforward, it involves metaprogramming concepts that are
+   not appropriate for novice Python developers.  The lambda approach can be
+   applied to at a later time to existing code with a minimal amount of effort.
+
+The caching system has in its roots the SQLAlchemy :ref:`"baked query"
+<baked_toplevel>` extension, which made novel use of Python lambdas in order to
+produce SQL statements that were intrinsically cacheable, while at the same
+time decreasing not just the overhead involved to compile the statement into
+SQL, but also the overhead in constructing the statement object from a Python
+perspective. The new caching in SQLAlchemy by default does not substantially
+optimize the construction of SQL constructs.  This refers to the Python
+overhead taken up to construct the statement object itself before it is
+compiled or executed, such as the :class:`_sql.Select` object used in the
+example below::
+
+    def run_my_statement(connection, parameter):
+        stmt = select(table)
+        stmt = stmt.where(table.c.col == parameter)
+        stmt = stmt.order_by(table.c.id)
+
+        return connection.execute(stmt)
+
+Above, in order to construct ``stmt``, we see three Python functions or methods
+``select()``, ``.where()`` and ``.order_by()`` being invoked directly, and
+additionally there is a Python method invoked when we construct ``table.c.col
+== 'foo'``, as the expression language overrides the ``__eq__()`` method to
+produce a SQL construct.   Within each of these calls is a series of argument
+checking and internal construction logic that makes use of many more Python
+function calls.   With intense production of thousands of statement objects,
+these function calls can add up.   Using the recipe for profiling at
+:ref:`faq_code_profiling`, the above Python code within the scope of the
+``select()`` call down to the ``.order_by()`` call uses 73 Python function
+calls to produce.
+
+Additionally, statement caching requires that a cache key be generated against
+the above statement, which must be composed of all elements within the
+statement that uniquely identify the SQL that it would produce.  Measuring
+this process for the above statement takes another 40 Python function calls.
+
+In order to ensure the full performance gains of the prior "baked query"
+extension are still available, the "lambda:" system used by baked queries has
+been adapted into a more capable and easier to use system as an intrinsic part
+of the SQLAlchemy Core expression language (which by extension then includes
+ORM queries, which as of SQLAlchemy 1.4 using 2.0-style APIs may also be
+invoked directly from SQLAlchemy Core expression objects).   We can
+adapt our statement above to be built using "lambdas" by making use of the
+:func:`_sql.lambda_stmt` element.  Using this approach, we indicate that the
+:func:`_sql.select` should be returned by a lambda.  We can then add new
+criteria to the statement by composing further lambdas onto the object in a
+similar manner as how "baked queries" worked::
+
+  from sqlalchemy import lambda_stmt
+
+  def run_my_statement(connection, parameter):
+      stmt = lambda_stmt(lambda: select(table))
+      stmt += lambda s: s.where(table.c.col == parameter)
+      stmt += lambda s: s.order_by(table.c.id)
+
+      return connection.execute(stmt)
+
+  result = run_my_statement(some_connection, "some parameter")
+
+The above code produces a :class:`.StatementLambdaElement`, which behaves like a
+Core SQL construct but defers the construction of the statement in most
+cases until it is needed by the compiler.  If the statement is already cached,
+the lambdas will not be called.
+
+The cache key is based on the **Python source code location of each lambda
+itself**, which in the Python interpreter is essentially the ``__code__``
+element of the Python function. This means that the lambda approach should only
+be used inside of a function where the lambdas themselves will be the **same
+lambdas each time, from a Python source code perspective**.
+
+The execution process for the above lambda will **extract literal parameters**
+from the statement each time, without needing to actually run the lambdas. In
+the above example, each time the variable ``parameter`` is used within the
+lambda to generate the WHERE clause of the statement, while the actual lambda
+present will not actually be run, the value of ``parameter`` will be tracked
+and the current value of the variable will be used within the statement
+parameters at execution time.  This is a feature that was not possible with the
+"baked query" extension and involves the use of up-front analysis of the
+incoming ``__code__`` object to determine how parameters can be extracted from
+future lambdas against that same code object.
+
+More simply, this means it's safe for the lambda statement
+to use arbitrary literal parameters, which don't modify the structure
+of the statement, on each invocation::
+
+  def run_my_statement(connection, parameter):
+      stmt = lambda_stmt(lambda: select(table))
+      stmt += lambda s: s.where(table.c.col == parameter)
+      stmt += lambda s: s.order_by(table.c.id)
+
+      return connection.execute(stmt)
+
+However, it's not safe for an individual lambda so modify the SQL structure
+of the statement across calls::
+
+  # incorrect example
+  def run_my_statement(connection, parameter, add_criteria=False):
+      stmt = lambda_stmt(lambda: select(table))
+
+      # will not be cached correctly as add_criteria changes
+      stmt += lambda s: s.where(
+          and_(add_criteria, table.c.col == parameter)
+          if add_criteria
+          else s.where(table.c.col == parameter)
+      )
+
+      stmt += lambda s: s.order_by(table.c.id)
+
+      return connection.execute(stmt)
+
+The lambda statements indicated above will invoke all of the lambdas the first
+time they are constructed; subsequent to that, the lambdas will not be invoked.
+On these subsequent runs, a lambda construct will use far fewer Python function
+calls in order to construct the un-cached object as well as to generate the
+cache key after the first call.  The above statement using lambdas takes only
+41 Python function calls to generate the whole structure as well as to produce
+the cache key, including the extraction of the bound parameters. This is
+compared to a total of about 115 Python function calls for the non-lambda
+version.
+
+For a series of examples of "lambda" caching with performance comparisons,
+see the "short_selects" test suite within the :ref:`examples_performance`
+performance example.
+
 .. _engine_disposal:
 
 Engine Disposal

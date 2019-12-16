@@ -963,7 +963,10 @@ class Result(InPlaceGenerative):
             else:
                 return None
 
-        make_row = self._row_getter
+        if scalar and self._source_supports_scalars:
+            make_row = None
+        else:
+            make_row = self._row_getter
 
         row = make_row(row) if make_row else row
 
@@ -1016,7 +1019,7 @@ class Result(InPlaceGenerative):
             if post_creational_filter:
                 row = post_creational_filter(row)
 
-        if scalar and row:
+        if scalar and make_row:
             return row[0]
         else:
             return row

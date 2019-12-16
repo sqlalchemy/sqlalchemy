@@ -1031,7 +1031,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.compiled.cache_key is None:
             return "no key %.5fs" % (now - self.compiled._gen_time,)
         elif self.cache_hit:
-            return "cached for %.4gs" % (now - self.compiled._gen_time,)
+            return "cached since %.4gs ago" % (now - self.compiled._gen_time,)
         else:
             return "generated in %.5fs" % (now - self.compiled._gen_time,)
 

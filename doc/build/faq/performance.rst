@@ -74,6 +74,8 @@ point around when a statement is executed.  We attach a timer onto the
 connection using the :class:`._ConnectionRecord.info` dictionary; we use a
 stack here for the occasional case where the cursor execute events may be nested.
 
+.. _faq_code_profiling:
+
 Code Profiling
 ^^^^^^^^^^^^^^
 

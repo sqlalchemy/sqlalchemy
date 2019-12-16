@@ -46,6 +46,8 @@ from .expression import intersect_all  # noqa
 from .expression import Join  # noqa
 from .expression import join  # noqa
 from .expression import label  # noqa
+from .expression import lambda_stmt  # noqa
+from .expression import LambdaElement  # noqa
 from .expression import lateral  # noqa
 from .expression import literal  # noqa
 from .expression import literal_column  # noqa
@@ -62,6 +64,7 @@ from .expression import quoted_name  # noqa
 from .expression import Select  # noqa
 from .expression import select  # noqa
 from .expression import Selectable  # noqa
+from .expression import StatementLambdaElement  # noqa
 from .expression import Subquery  # noqa
 from .expression import subquery  # noqa
 from .expression import table  # noqa
@@ -106,18 +109,22 @@ def __go(lcls):
     from . import coercions
     from . import elements
     from . import events  # noqa
+    from . import lambdas
     from . import selectable
     from . import schema
     from . import sqltypes
+    from . import traversals
     from . import type_api
 
     base.coercions = elements.coercions = coercions
     base.elements = elements
     base.type_api = type_api
     coercions.elements = elements
+    coercions.lambdas = lambdas
     coercions.schema = schema
     coercions.selectable = selectable
     coercions.sqltypes = sqltypes
+    coercions.traversals = traversals
 
     _prepare_annotations(ColumnElement, AnnotatedColumnElement)
     _prepare_annotations(FromClause, AnnotatedFromClause)

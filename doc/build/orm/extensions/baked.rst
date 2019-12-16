@@ -22,8 +22,12 @@ the caching of the SQL calls and result sets themselves is available in
 
 .. deprecated:: 1.4  SQLAlchemy 1.4 and 2.0 feature an all-new direct query
    caching system that removes the need for the :class:`.BakedQuery` system.
-   Caching is now built in to all Core and ORM queries using the
-   :paramref:`_engine.create_engine.query_cache_size` parameter.
+   Caching is now transparently active for all Core and ORM queries with no
+   action taken by the user, using the system described at :ref:`sql_caching`.
+   For background on using lambda-style construction for cacheable Core and ORM
+   SQL constructs, which is now an optional technique to provide additional
+   performance gains, see the section :ref:`engine_lambda_caching`.
+
 
 
 .. versionadded:: 1.0.0

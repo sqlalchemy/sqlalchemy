@@ -21,9 +21,11 @@ if util.TYPE_CHECKING:
     from types import ModuleType
 
 elements = None  # type: ModuleType
+lambdas = None  # type: ModuleType
 schema = None  # type: ModuleType
 selectable = None  # type: ModuleType
 sqltypes = None  # type: ModuleType
+traversals = None  # type: ModuleType
 
 
 def _is_literal(element):
@@ -51,6 +53,23 @@ def _document_text_coercion(paramname, meth_rst, param_rst):
 
 
 def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
+    if (
+        role.allows_lambda
+        # note callable() will not invoke a __getattr__() method, whereas
+        # hasattr(obj, "__call__") will. by keeping the callable() check here
+        # we prevent most needless calls to hasattr()  and therefore
+        # __getattr__(), which is present on ColumnElement.
+        and callable(element)
+        and hasattr(element, "__code__")
+    ):
+        return lambdas.LambdaElement(
+            element,
+            role,
+            apply_propagate_attrs=apply_propagate_attrs,
+            argname=argname,
+            **kw
+        )
+
     # major case is that we are given a ClauseElement already, skip more
     # elaborate logic up front if possible
     impl = _impl_lookup[role]
@@ -106,7 +125,12 @@ def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
 
     if impl._role_class in resolved.__class__.__mro__:
         if impl._post_coercion:
-            resolved = impl._post_coercion(resolved, argname=argname, **kw)
+            resolved = impl._post_coercion(
+                resolved,
+                argname=argname,
+                original_element=original_element,
+                **kw
+            )
         return resolved
     else:
         return impl._implicit_coercions(
@@ -230,6 +254,8 @@ class _ColumnCoercions(object):
         ):
             self._warn_for_scalar_subquery_coercion()
             return resolved.element.scalar_subquery()
+        elif self._role_class.allows_lambda and resolved._is_lambda_element:
+            return resolved
         else:
             self._raise_for_expected(original_element, argname, resolved)
 
@@ -317,6 +343,21 @@ class _SelectIsNotFrom(object):
             code=code,
             **kw
         )
+
+
+class HasCacheKeyImpl(RoleImpl):
+    __slots__ = ()
+
+    def _implicit_coercions(
+        self, original_element, resolved, argname=None, **kw
+    ):
+        if isinstance(original_element, traversals.HasCacheKey):
+            return original_element
+        else:
+            self._raise_for_expected(original_element, argname, resolved)
+
+    def _literal_coercion(self, element, **kw):
+        return element
 
 
 class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
@@ -420,7 +461,14 @@ class InElementImpl(RoleImpl):
             assert not len(element.clauses) == 0
             return element.self_group(against=operator)
 
-        elif isinstance(element, elements.BindParameter) and element.expanding:
+        elif isinstance(element, elements.BindParameter):
+            if not element.expanding:
+                # coercing to expanding at the moment to work with the
+                # lambda system.  not sure if this is the right approach.
+                # is there a valid use case to send a single non-expanding
+                # param to IN? check for ARRAY type?
+                element = element._clone(maintain_key=True)
+                element.expanding = True
             if isinstance(expr, elements.Tuple):
                 element = element._with_expanding_in_types(
                     [elem.type for elem in expr]
@@ -429,6 +477,22 @@ class InElementImpl(RoleImpl):
             return element
         else:
             return element
+
+
+class OnClauseImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
+    __slots__ = ()
+
+    _coerce_consts = True
+
+    def _post_coercion(self, resolved, original_element=None, **kw):
+        # this is a hack right now as we want to use coercion on an
+        # ORM InstrumentedAttribute, but we want to return the object
+        # itself if it is one, not its clause element.
+        # ORM context _join and _legacy_join() would need to be improved
+        # to look for annotations in a clause element form.
+        if isinstance(original_element, roles.JoinTargetRole):
+            return original_element
+        return resolved
 
 
 class WhereHavingImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
@@ -634,6 +698,24 @@ class StatementImpl(_NoTextCoercion, RoleImpl):
 
 class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
     __slots__ = ()
+
+    def _literal_coercion(self, element, **kw):
+        if callable(element) and hasattr(element, "__code__"):
+            return lambdas.StatementLambdaElement(element, self._role_class)
+        else:
+            return super(CoerceTextStatementImpl, self)._literal_coercion(
+                element, **kw
+            )
+
+    def _implicit_coercions(
+        self, original_element, resolved, argname=None, **kw
+    ):
+        if resolved._is_lambda_element:
+            return resolved
+        else:
+            return super(CoerceTextStatementImpl, self)._implicit_coercions(
+                original_element, resolved, argname=argname, **kw
+            )
 
     def _text_coercion(self, element, argname=None):
         # TODO: this should emit deprecation warning,

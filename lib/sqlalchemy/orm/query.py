@@ -20,6 +20,7 @@ database to return iterable result sets.
 """
 import itertools
 import operator
+import types
 
 from . import attributes
 from . import exc as orm_exc
@@ -2229,7 +2230,8 @@ class Query(
             # non legacy argument form
             _props = [(target,)]
         elif not legacy and isinstance(
-            target, (expression.Selectable, type, AliasedClass,)
+            target,
+            (expression.Selectable, type, AliasedClass, types.FunctionType),
         ):
             # non legacy argument form
             _props = [(target, onclause)]
@@ -2284,7 +2286,13 @@ class Query(
                     legacy=True,
                     apply_propagate_attrs=self,
                 ),
-                prop[1] if len(prop) == 2 else None,
+                (
+                    coercions.expect(roles.OnClauseRole, prop[1])
+                    if not isinstance(prop[1], str)
+                    else prop[1]
+                )
+                if len(prop) == 2
+                else None,
                 None,
                 {
                     "isouter": isouter,

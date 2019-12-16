@@ -14,6 +14,7 @@ import itertools
 import operator
 import re
 
+from . import roles
 from .traversals import HasCacheKey  # noqa
 from .traversals import MemoizedHasCacheKey  # noqa
 from .visitors import ClauseVisitor
@@ -447,13 +448,17 @@ class CompileState(object):
                 "compile_state_plugin", "default"
             )
             klass = cls.plugins.get(
-                (plugin_name, statement.__visit_name__), None
+                (plugin_name, statement._effective_plugin_target), None
             )
             if klass is None:
-                klass = cls.plugins[("default", statement.__visit_name__)]
+                klass = cls.plugins[
+                    ("default", statement._effective_plugin_target)
+                ]
 
         else:
-            klass = cls.plugins[("default", statement.__visit_name__)]
+            klass = cls.plugins[
+                ("default", statement._effective_plugin_target)
+            ]
 
         if klass is cls:
             return cls(statement, compiler, **kw)
@@ -469,14 +474,18 @@ class CompileState(object):
             "compile_state_plugin", "default"
         )
         try:
-            return cls.plugins[(plugin_name, statement.__visit_name__)]
+            return cls.plugins[
+                (plugin_name, statement._effective_plugin_target)
+            ]
         except KeyError:
             return None
 
     @classmethod
     def _get_plugin_class_for_plugin(cls, statement, plugin_name):
         try:
-            return cls.plugins[(plugin_name, statement.__visit_name__)]
+            return cls.plugins[
+                (plugin_name, statement._effective_plugin_target)
+            ]
         except KeyError:
             return None
 
@@ -637,6 +646,10 @@ class Executable(Generative):
         ("_propagate_attrs", ExtendedInternalTraversal.dp_propagate_attrs),
     ]
 
+    @property
+    def _effective_plugin_target(self):
+        return self.__visit_name__
+
     @_generative
     def options(self, *options):
         """Apply options to this statement.
@@ -667,7 +680,9 @@ class Executable(Generative):
             to the usage of ORM queries
 
         """
-        self._with_options += options
+        self._with_options += tuple(
+            coercions.expect(roles.HasCacheKeyRole, opt) for opt in options
+        )
 
     @_generative
     def _add_context_option(self, callable_, cache_args):

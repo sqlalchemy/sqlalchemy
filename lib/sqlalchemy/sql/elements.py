@@ -215,6 +215,7 @@ class ClauseElement(
     _is_select_statement = False
     _is_bind_parameter = False
     _is_clause_list = False
+    _is_lambda_element = False
 
     _order_by_label_element = None
 
@@ -1337,9 +1338,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
                 :ref:`change_4808`.
 
-
-
-
         """
 
         if required is NO_ARG:
@@ -1406,15 +1404,15 @@ class BindParameter(roles.InElementRole, ColumnElement):
         the context of an expanding IN against a tuple.
 
         """
-        cloned = self._clone()
+        cloned = self._clone(maintain_key=True)
         cloned._expanding_in_types = types
         return cloned
 
-    def _with_value(self, value):
+    def _with_value(self, value, maintain_key=False):
         """Return a copy of this :class:`.BindParameter` with the given value
         set.
         """
-        cloned = self._clone()
+        cloned = self._clone(maintain_key=maintain_key)
         cloned.value = value
         cloned.callable = None
         cloned.required = False
@@ -1442,9 +1440,9 @@ class BindParameter(roles.InElementRole, ColumnElement):
         c.type = type_
         return c
 
-    def _clone(self):
+    def _clone(self, maintain_key=False):
         c = ClauseElement._clone(self)
-        if self.unique:
+        if not maintain_key and self.unique:
             c.key = _anonymous_label(
                 "%%(%d %s)s" % (id(c), c._orig_key or "param")
             )

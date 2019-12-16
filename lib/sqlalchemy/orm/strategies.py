@@ -1524,6 +1524,16 @@ class SubqueryLoader(PostLoader):
         # orig_compile_state = compile_state_cls.create_for_statement(
         # orig_query, None)
 
+        if orig_query._is_lambda_element:
+            util.warn(
+                'subqueryloader for "%s" must invoke lambda callable at %r in '
+                "order to produce a new query, decreasing the efficiency "
+                "of caching for this statement.  Consider using "
+                "selectinload() for more effective full-lambda caching"
+                % (self, orig_query)
+            )
+            orig_query = orig_query._resolved
+
         # this is the more "quick" version, however it's not clear how
         # much of this we need.    in particular I can't get a test to
         # fail if the "set_base_alias" is missing and not sure why that is.

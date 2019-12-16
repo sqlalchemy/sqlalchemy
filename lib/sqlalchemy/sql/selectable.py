@@ -847,7 +847,7 @@ class Join(roles.DMLTableRole, FromClause):
             # note: taken from If91f61527236fd4d7ae3cad1f24c38be921c90ba
             # not merged yet
             self.onclause = coercions.expect(
-                roles.WhereHavingRole, onclause
+                roles.OnClauseRole, onclause
             ).self_group(against=operators._asbool)
 
         self.isouter = isouter

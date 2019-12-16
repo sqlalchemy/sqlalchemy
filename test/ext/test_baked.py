@@ -1294,6 +1294,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
     def _test_baked_lazy_loading_relationship_flag(self, flag):
         User, Address = self._o2m_fixture(bake_queries=flag)
         from sqlalchemy import inspect
+        from sqlalchemy.orm.interfaces import UserDefinedOption
 
         address_mapper = inspect(Address)
         sess = Session(testing.db)
@@ -1302,13 +1303,40 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         # or core level and it is not easy to patch.  the option object
         # is the one thing that will get carried into the lazyload from the
         # outside and invoked on a per-compile basis
-        mock_opt = mock.Mock(
-            _is_compile_state=True,
-            propagate_to_loaders=True,
-            _gen_cache_key=lambda *args: ("hi",),
-            _generate_path_cache_key=lambda path: ("hi",),
-            _generate_cache_key=lambda *args: (("hi",), []),
-        )
+
+        class MockOpt(UserDefinedOption):
+            _is_compile_state = True
+            propagate_to_loaders = True
+            _is_legacy_option = True
+
+            def _gen_cache_key(self, *args):
+                return ("hi",)
+
+            def _generate_path_cache_key(self, *args):
+                return ("hi",)
+
+            def _generate_cache_key(self, *args):
+                return (("hi",), [])
+
+            _mock = mock.Mock()
+
+            def process_query(self, *args):
+                self._mock.process_query(*args)
+
+            def process_query_conditionally(self, *args):
+                self._mock.process_query_conditionally(*args)
+
+            def process_compile_state(self, *args):
+                self._mock.process_compile_state(*args)
+
+            def orm_execute(self):
+                self._mock.orm_execute()
+
+            @property
+            def mock_calls(self):
+                return self._mock.mock_calls
+
+        mock_opt = MockOpt()
 
         u1 = sess.query(User).options(mock_opt).first()
 

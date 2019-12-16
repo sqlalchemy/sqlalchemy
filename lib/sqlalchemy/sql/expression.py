@@ -29,6 +29,8 @@ __all__ = [
     "Insert",
     "Join",
     "Lateral",
+    "LambdaElement",
+    "StatementLambdaElement",
     "Select",
     "Selectable",
     "TableClause",
@@ -59,6 +61,7 @@ __all__ = [
     "join",
     "label",
     "lateral",
+    "lambda_stmt",
     "literal",
     "literal_column",
     "not_",
@@ -135,6 +138,9 @@ from .functions import func  # noqa
 from .functions import Function  # noqa
 from .functions import FunctionElement  # noqa
 from .functions import modifier  # noqa
+from .lambdas import lambda_stmt  # noqa
+from .lambdas import LambdaElement  # noqa
+from .lambdas import StatementLambdaElement  # noqa
 from .selectable import Alias  # noqa
 from .selectable import AliasedReturnsRows  # noqa
 from .selectable import CompoundSelect  # noqa

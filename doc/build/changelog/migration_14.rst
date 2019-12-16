@@ -23,6 +23,212 @@ What's New in SQLAlchemy 1.4?
 Behavioral Changes - General
 ============================
 
+.. _change_4639:
+
+Transparent SQL Compilation Caching added to All DQL, DML Statements in Core, ORM
+----------------------------------------------------------------------------------
+
+One of the most broadly encompassing changes to ever land in a single
+SQLAlchemy version, a many-month reorganization and refactoring of all querying
+systems from the base of Core all the way through ORM now allows the
+majority of Python computation involved producing SQL strings and related
+statement metadata from a user-constructed statement to be cached in memory,
+such that subsequent invocations of an identical statement construct will use
+35-60% fewer resources.
+
+This caching goes beyond the construction of the SQL string to also include the
+construction of result fetching structures that link the SQL construct to the
+result set, and in the ORM it includes the accommodation of ORM-enabled
+attribute loaders, relationship eager loaders and other options, and object
+construction routines that must be built up each time an ORM query seeks to run
+and construct ORM objects from result sets.
+
+To introduce the general idea of the feature, given code from the
+:ref:`examples_performance` suite as follows, which will invoke
+a very simple query "n" times, for a default value of n=10000.   The
+query returns only a single row, as the overhead we are looking to decrease
+is that of **many small queries**.    The optimization is not as significant
+for queries that return many rows::
+
+    session = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        result = session.query(Customer).filter(Customer.id == id_).one()
+
+This example in the 1.3 release of SQLAlchemy on a Dell XPS13 running Linux
+completes as follows::
+
+    test_orm_query : (10000 iterations); total time 3.440652 sec
+
+In 1.4, the code above without modification completes::
+
+    test_orm_query : (10000 iterations); total time 2.367934 sec
+
+This first test indicates that regular ORM queries when using caching can run
+over many iterations in the range of **30% faster**.
+
+"Baked Query" style construction now available for all Core and ORM Queries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The "Baked Query" extension has been in SQLAlchemy for several years and
+provides a caching system that is based on defining segments of SQL statements
+within Python functions, so that the functions both serve as cache keys
+(since they uniquely and persistently identify a specific line in the
+source code) as well as that they allow the construction of a statement
+to be deferred so that it only need to be invoked once, rather than every
+time the query is rendered.   The functionality of "Baked Query" is now a native
+part of the new caching system, which is available by simply using Python
+functions, typically lambda expressions, either inside of a statement,
+or on the outside using the ``lambda_stmt()`` function that works just
+like a Baked Query.
+
+Making use of the newer 2.0 style of using ``select()`` and adding the use
+of **optional** lambdas to defer the computation::
+
+    session = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        stmt = lambda_stmt(lambda: future_select(Customer))
+        stmt += lambda s: s.where(Customer.id == id_)
+        session.execute(stmt).scalar_one()
+
+The code above completes::
+
+    test_orm_query_newstyle_w_lambdas : (10000 iterations); total time 1.247092 sec
+
+This test indicates that using the newer "select()" style of ORM querying,
+in conjunction with a full "baked" style invocation that caches the entire
+construction, can run over many iterations in the range of **60% faster**.
+This performance is roughly the same as what the Baked Query extension
+provides as well.  The new approach effectively supersedes the Baked Query
+extension.
+
+For comparison, a Baked Query looks like the following::
+
+    bakery = baked.bakery()
+    s = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        q = bakery(lambda s: s.query(Customer))
+        q += lambda q: q.filter(Customer.id == bindparam("id"))
+        q(s).params(id=id_).one()
+
+The new API allows the same very fast "baked query" approach of building up a
+statement with lambdas, but does not require any other syntactical changes from
+regular statements.  It also no longer requires that "bindparam()" is used for
+literal values that may change; the "closure" of the Python function is scanned
+on every call to extract Python literal values that should be turned into
+parameters.
+
+Methodology Overview
+^^^^^^^^^^^^^^^^^^^^
+
+SQLAlchemy has also for many years included a "compiled_cache" option that is
+used internally by the ORM flush process as well as the Baked Query extension,
+which caches a SQL expression object based on the identity of the object
+itself.  That is, if you create a particular select() object and make use of
+the compiled cache feature, if you pass the same select() object each time, the
+SQL compilation would be cached.  This feature was of limited use since
+SQLAlchemy's programming paradigm is based on the continuous construction of
+new SQL expression objects each time one is required.
+
+The new caching feature uses the same "compiled_cache", however instead of
+using the statement object itself as the cache key, a separate tuple-oriented
+cache key is generated which represents the complete structure of the
+statement.   Two SQL constructs that are composed in exactly the same way will
+produce the same cache key, independent of the bound parameter values that are
+bundled with the statement; these are collected separately from each statement
+and are used when the cached SQL is executed.   The ORM ``Query`` integrates by
+producing a ``select()`` object from itself that is interpreted as an
+ORM-enabled SELECT within the SQL compilation process that occurs beyond the
+cache boundary.
+
+A general listing of architectural changes needed to support this feature:
+
+* The system by which arguments passed to SQL constructs are type-checked and
+  coerced into their desired form was rewritten from an ad-hoc and disorganized
+  system into the ``sqlalchemy.sql.roles`` and
+  ``sqlalchemy.sql.coercions`` modules which provide a type-based approach
+  to the task of composing SQL expression objects, error handling, coercion
+  of objects such as turning SELECT statements into subqueries, as well as
+  integrating with a new "plugin" system that allows SQL constructs to include
+  ORM functionality.
+
+* The system by which clause expressions constructs are iterated and compared
+  from an object structure point of view was also
+  rewritten from one which was ad-hoc and inconsistent into a complete system
+  within the new ``sqlalchemy.sql.traversals`` module.   A test suite was added
+  which ensures that all SQL construction objects include fully consistent
+  comparison and iteration behavior.   This work began with :ticket:`4336`.
+
+* The new iteration system naturally gave rise to the cache-key creation
+  system, which also uses a performance-optimized version of the
+  ``sqlalchemy.sql.traversals`` module to generate a deterministic cache key
+  for any SQL expression based on its structure.   Two instances of a SQL
+  expression that represent the same SQL structure, such as ``select(table('x',
+  column('q'))).where(column('z') > 5)``, are guaranteed to produce the same
+  cache key, independent of the bound parameters which for this statement would
+  be one parameter with the value "5".   Two instances of a SQL expression
+  where any elements are different will produce different cache keys.   When
+  the cache key is generated, the parameters are also collected which will be
+  used to formulate the final parameter list.  This work was completed over
+  many merges and was overall related to :ticket:`4639`.
+
+* The mechanism by which statements such as ``select()`` generate expensive
+  collections and datamembers that are only used for SQL compilation, such
+  as the list of columns and their labels, were organized into a new
+  decoupled system called ``CompileState``.
+
+* All elements of queries that needed to be made compatible with the concept of
+  deterministic SQL compilation were updated, including an expansion of the
+  "postcompile" concept used to render individual parameters inside of "IN"
+  expressions first included in 1.3 as well as alterations to how dialects like
+  the SQL Server dialect render LIMIT / OFFSET expressions that are not
+  compatible with bound parameters.
+
+* The ORM ``Query`` object was fully refactored such that all of the intense
+  computation which would previously occur whenever methods of ``Query`` were
+  called, such as the construction of the ``Query`` itself, when methods
+  ``filter()`` or ``join()`` would be called, etc., was completely reorganized
+  to take place within the ``CompileState`` architecture, meaning the ORM
+  process that generates a Core ``select()`` to render now takes place
+  **within** the SQL compilation process, beyond the caching boundary.  More
+  detail on this change is at
+  :ref:`change_deferred_construction`.
+
+* The ``Query`` object was unified with the ``select()`` object, such that
+  these two objects now have cross-compatible internal state.   The ``Query``
+  can turn itself into a ``select()`` that generates ORM queries by copying its
+  ``__dict__`` into a new ``Select`` object.
+
+* The 2.0-style :class:`.Result` object as well as the "future" version of
+  :class:`_engine.Engine` were developed and integrated into Core and later
+  the ORM also integrated on top of :class:`.Result`.
+
+* The Core and ORM execution models were completely reworked to integrate the
+  new cache key system, and in particular the ORM ``Query`` was reworked such
+  that its execution model now produces a ``Select`` which is passed to
+  ``Session.execute()``, which then invokes the 2.0-style execution model that
+  allows the ``Select`` to be processed as an ORM query beyond the caching
+  boundary.
+
+* Other systems such as ``Query`` bulk updates and deletes, the horizontal
+  sharding extension, the Baked Query extension, and the dogpile caching
+  example were updated to integrate with the new execution model and a new
+  event hook :meth:`.SessionEvents.do_orm_execute` has been added.
+
+* The caching has been enabled via the :paramref:`.create_engine.query_cache_size`
+  parameter, new logging features were added, and the "lambda" argument
+  construction module was added.
+
+.. seealso::
+
+    :ref:`sql_caching`
+
+:ticket:`4639`
+:ticket:`5380`
+:ticket:`4645`
+:ticket:`4808`
+:ticket:`5004`
+
+
 .. _change_deferred_construction:
 
 
@@ -35,20 +241,28 @@ of statement creation and compilation, where the compilation step would be
 cached, based on a cache key generated by the created statement object, which
 itself is newly created for each use.  Towards this goal, much of the Python
 computation which occurs within the construction of statements, particularly
-the ORM :class:`_query.Query`, is being moved to occur only when the statement is
-invoked.   This means that some of the error messages which can arise based on
-arguments passed to the object will no longer be raised immediately, and
-instead will occur only when the statement is invoked.
+the ORM :class:`_query.Query`, is being moved to occur later, when the
+statement is actually compiled, and additionally that it will only occur if the
+compiled form of the statement is not already cached.   This means that some of
+the error messages which can arise based on arguments passed to the object will
+no longer be raised immediately, and instead will occur only when the statement
+is invoked and its compiled form is not yet cached.
 
 Error conditions which fall under this category include:
 
 * when a :class:`_selectable.CompoundSelect` is constructed (e.g. a UNION, EXCEPT, etc.)
   and the SELECT statements passed do not have the same number of columns, a
-  :class:`.CompileError` is now raised to this effect; previously, a
+  :class:`.CompileError` is now raised to this effect; previously, an
   :class:`.ArgumentError` would be raised immediately upon statement
   construction.
 
-* To be continued...
+* Various error conditions which may arise when calling upon :meth:`.Query.join`
+  will be evaluated at statement compilation time rather than when the method
+  is first called.
+
+.. seealso::
+
+    :ref:`change_4639`
 
 .. _change_4656:
 

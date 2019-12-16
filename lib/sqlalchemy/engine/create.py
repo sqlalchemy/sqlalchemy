@@ -459,8 +459,7 @@ def create_engine(url, **kwargs):
 
      .. seealso::
 
-        ``engine_caching`` - TODO: this will be an upcoming section describing
-        the SQL caching system.
+        :ref:`sql_caching`
 
      .. versionadded:: 1.4
 

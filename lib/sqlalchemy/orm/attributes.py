@@ -59,6 +59,8 @@ class QueryableAttribute(
     interfaces.InspectionAttr,
     interfaces.PropComparator,
     roles.JoinTargetRole,
+    roles.OnClauseRole,
+    sql_base.Immutable,
     sql_base.MemoizedHasCacheKey,
 ):
     """Base class for :term:`descriptor` objects that intercept

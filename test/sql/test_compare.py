@@ -37,6 +37,7 @@ from sqlalchemy.sql import dml
 from sqlalchemy.sql import False_
 from sqlalchemy.sql import func
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import True_
 from sqlalchemy.sql import type_coerce
 from sqlalchemy.sql import visitors
@@ -55,6 +56,8 @@ from sqlalchemy.sql.elements import UnaryExpression
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
+from sqlalchemy.sql.lambdas import lambda_stmt
+from sqlalchemy.sql.lambdas import LambdaElement
 from sqlalchemy.sql.selectable import _OffsetLimitParam
 from sqlalchemy.sql.selectable import AliasedReturnsRows
 from sqlalchemy.sql.selectable import FromGrouping
@@ -791,6 +794,69 @@ class CoreFixtures(object):
     if util.py37:
         fixtures.append(_update_dml_w_dicts)
 
+    def _lambda_fixtures():
+        def one():
+            return LambdaElement(
+                lambda: table_a.c.a == column("q"), roles.WhereHavingRole
+            )
+
+        def two():
+            r = random.randint(1, 10)
+            q = 20
+            return LambdaElement(
+                lambda: table_a.c.a + q == r, roles.WhereHavingRole
+            )
+
+        some_value = random.randint(20, 30)
+
+        def three(y):
+            return LambdaElement(
+                lambda: and_(table_a.c.a == some_value, table_a.c.b > y),
+                roles.WhereHavingRole,
+            )
+
+        class Foo:
+            x = 10
+            y = 15
+
+        def four():
+            return LambdaElement(
+                lambda: and_(table_a.c.a == Foo.x), roles.WhereHavingRole
+            )
+
+        def five():
+            return LambdaElement(
+                lambda: and_(table_a.c.a == Foo.x, table_a.c.b == Foo.y),
+                roles.WhereHavingRole,
+            )
+
+        def six():
+            d = {"g": random.randint(40, 45)}
+
+            return LambdaElement(
+                lambda: and_(table_a.c.b == d["g"]), roles.WhereHavingRole
+            )
+
+        def seven():
+            # lambda statements don't collect bindparameter objects
+            # for fixed values, has to be in a variable
+            value = random.randint(10, 20)
+            return lambda_stmt(lambda: future_select(table_a)) + (
+                lambda s: s.where(table_a.c.a == value)
+            )
+
+        return [
+            one(),
+            two(),
+            three(random.randint(5, 10)),
+            four(),
+            five(),
+            six(),
+            seven(),
+        ]
+
+    dont_compare_values_fixtures.append(_lambda_fixtures)
+
 
 class CacheKeyFixture(object):
     def _run_cache_key_fixture(self, fixture, compare_values):
@@ -1076,7 +1142,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
         need = set(
             cls
             for cls in class_hierarchy(ClauseElement)
-            if issubclass(cls, (ColumnElement, Selectable))
+            if issubclass(cls, (ColumnElement, Selectable, LambdaElement))
             and (
                 "__init__" in cls.__dict__
                 or issubclass(cls, AliasedReturnsRows)

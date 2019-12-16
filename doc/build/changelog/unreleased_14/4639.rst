@@ -1,0 +1,25 @@
+.. change::
+    :tags: feature, performance
+    :tickets: 4639
+
+    An all-encompassing reorganization and refactoring of Core and ORM
+    internals now allows all Core and ORM statements within the areas of
+    DQL (e.g. SELECTs) and DML (e.g. INSERT, UPDATE, DELETE) to allow their
+    SQL compilation as well as the construction of result-fetching metadata
+    to be fully cached in most cases.   This effectively provides a transparent
+    and generalized version of what the "Baked Query" extension has offered
+    for the ORM in past versions.  The new feature can calculate the
+    cache key for any given SQL construction based on the string that
+    it would ultimately produce for a given dialect, allowing functions that
+    compose the equivalent select(), Query(), insert(), update() or delete()
+    object each time to have that statement cached after it's generated
+    the first time.
+
+    The feature is enabled transparently but includes some new programming
+    paradigms that may be employed to make the caching even more efficient.
+
+    .. seealso::
+
+        :ref:`change_4639`
+
+        :ref:`sql_caching`

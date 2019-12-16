@@ -614,7 +614,7 @@ class Function(FunctionElement):
         new :class:`.Function` instances.
 
         """
-        self.packagenames = kw.pop("packagenames", None) or []
+        self.packagenames = kw.pop("packagenames", None) or ()
         self.name = name
         self._bind = kw.get("bind", None)
         self.type = sqltypes.to_instance(kw.get("type_", None))
@@ -759,7 +759,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
                 for c in args
             ]
         self._has_args = self._has_args or bool(parsed_args)
-        self.packagenames = []
+        self.packagenames = ()
         self._bind = kwargs.get("bind", None)
         self.clause_expr = ClauseList(
             operator=operators.comma_op, group_contents=True, *parsed_args

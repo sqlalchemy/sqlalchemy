@@ -19,9 +19,21 @@ class SQLRole(object):
 
     """
 
+    allows_lambda = False
+    uses_inspection = False
+
 
 class UsesInspection(object):
     _post_inspect = None
+    uses_inspection = True
+
+
+class AllowsLambdaRole(object):
+    allows_lambda = True
+
+
+class HasCacheKeyRole(SQLRole):
+    _role_name = "Cacheable Core or ORM object"
 
 
 class ColumnArgumentRole(SQLRole):
@@ -40,7 +52,7 @@ class TruncatedLabelRole(SQLRole):
     _role_name = "String SQL identifier"
 
 
-class ColumnsClauseRole(UsesInspection, ColumnListRole):
+class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
     _role_name = "Column expression or FROM clause"
 
     @property
@@ -56,7 +68,7 @@ class ByOfRole(ColumnListRole):
     _role_name = "GROUP BY / OF / etc. expression"
 
 
-class GroupByRole(UsesInspection, ByOfRole):
+class GroupByRole(AllowsLambdaRole, UsesInspection, ByOfRole):
     # note there's a special case right now where you can pass a whole
     # ORM entity to group_by() and it splits out.   we may not want to keep
     # this around
@@ -64,7 +76,7 @@ class GroupByRole(UsesInspection, ByOfRole):
     _role_name = "GROUP BY expression"
 
 
-class OrderByRole(ByOfRole):
+class OrderByRole(AllowsLambdaRole, ByOfRole):
     _role_name = "ORDER BY expression"
 
 
@@ -76,7 +88,11 @@ class StatementOptionRole(StructuralRole):
     _role_name = "statement sub-expression element"
 
 
-class WhereHavingRole(StructuralRole):
+class OnClauseRole(AllowsLambdaRole, StructuralRole):
+    _role_name = "SQL expression for ON clause"
+
+
+class WhereHavingRole(OnClauseRole):
     _role_name = "SQL expression for WHERE/HAVING role"
 
 
@@ -102,7 +118,7 @@ class InElementRole(SQLRole):
     )
 
 
-class JoinTargetRole(UsesInspection, StructuralRole):
+class JoinTargetRole(AllowsLambdaRole, UsesInspection, StructuralRole):
     _role_name = (
         "Join target, typically a FROM expression, or ORM "
         "relationship attribute"
@@ -176,7 +192,7 @@ class HasCTERole(ReturnsRowsRole):
     pass
 
 
-class CompoundElementRole(SQLRole):
+class CompoundElementRole(AllowsLambdaRole, SQLRole):
     """SELECT statements inside a CompoundSelect, e.g. UNION, EXTRACT, etc."""
 
     _role_name = (

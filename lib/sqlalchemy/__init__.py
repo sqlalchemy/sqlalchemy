@@ -54,6 +54,7 @@ from .sql import insert  # noqa
 from .sql import intersect  # noqa
 from .sql import intersect_all  # noqa
 from .sql import join  # noqa
+from .sql import lambda_stmt  # noqa
 from .sql import lateral  # noqa
 from .sql import literal  # noqa
 from .sql import literal_column  # noqa

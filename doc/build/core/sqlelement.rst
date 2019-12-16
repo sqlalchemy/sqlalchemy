@@ -48,6 +48,8 @@ is placed in the FROM clause of a SELECT statement.
 
 .. autofunction:: label
 
+.. autofunction:: lambda_stmt
+
 .. autofunction:: literal
 
 .. autofunction:: literal_column
@@ -132,10 +134,16 @@ is placed in the FROM clause of a SELECT statement.
 .. autoclass:: Label
    :members:
 
+.. autoclass:: LambdaElement
+   :members:
+
 .. autoclass:: sqlalchemy.sql.elements.Null
    :members:
 
 .. autoclass:: Over
+   :members:
+
+.. autoclass:: StatementLambdaElement
    :members:
 
 .. autoclass:: TextClause

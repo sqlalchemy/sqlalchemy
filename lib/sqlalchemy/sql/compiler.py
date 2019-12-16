@@ -1296,6 +1296,10 @@ class SQLCompiler(Compiled):
             "Cannot compile Column object until " "its 'name' is assigned."
         )
 
+    def visit_lambda_element(self, element, **kw):
+        sql_element = element._resolved
+        return self.process(sql_element, **kw)
+
     def visit_column(
         self,
         column,
@@ -1624,7 +1628,7 @@ class SQLCompiler(Compiled):
         return func.clause_expr._compiler_dispatch(self, **kwargs)
 
     def visit_compound_select(
-        self, cs, asfrom=False, compound_index=0, **kwargs
+        self, cs, asfrom=False, compound_index=None, **kwargs
     ):
         toplevel = not self.stack
 
@@ -1635,9 +1639,13 @@ class SQLCompiler(Compiled):
 
         entry = self._default_stack_entry if toplevel else self.stack[-1]
         need_result_map = toplevel or (
-            compound_index == 0
+            not compound_index
             and entry.get("need_result_map_for_compound", False)
         )
+
+        # indicates there is already a CompoundSelect in play
+        if compound_index == 0:
+            entry["select_0"] = cs
 
         self.stack.append(
             {
@@ -2654,7 +2662,7 @@ class SQLCompiler(Compiled):
         select_stmt,
         asfrom=False,
         fromhints=None,
-        compound_index=0,
+        compound_index=None,
         select_wraps_for=None,
         lateral=False,
         from_linter=None,
@@ -2709,7 +2717,9 @@ class SQLCompiler(Compiled):
             or entry.get("need_result_map_for_nested", False)
         )
 
-        if compound_index > 0:
+        # indicates there is a CompoundSelect in play and we are not the
+        # first select
+        if compound_index:
             populate_result_map = False
 
         # this was first proposed as part of #3372; however, it is not
@@ -2844,11 +2854,10 @@ class SQLCompiler(Compiled):
         correlate_froms = entry["correlate_froms"]
         asfrom_froms = entry["asfrom_froms"]
 
-        if compound_index > 0:
-            # note this is cached
-            select_0 = entry["selectable"].selects[0]
-            if select_0._is_select_container:
-                select_0 = select_0.element
+        if compound_index == 0:
+            entry["select_0"] = select
+        elif compound_index:
+            select_0 = entry["select_0"]
             numcols = len(select_0.selected_columns)
 
             if len(compile_state.columns_plus_names) != numcols:

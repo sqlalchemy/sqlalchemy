@@ -115,45 +115,37 @@ class HasCacheKey(object):
         in the structures that would affect the SQL string or the type handlers
         should result in a different cache key.
 
-        If a structure cannot produce a useful cache key, it should raise
-        NotImplementedError, which will result in the entire structure
-        for which it's part of not being useful as a cache key.
-
+        If a structure cannot produce a useful cache key, the NO_CACHE
+        symbol should be added to the anon_map and the method should
+        return None.
 
         """
 
-        elements = util.preloaded.sql_elements
-
         idself = id(self)
+        cls = self.__class__
 
-        if anon_map is not None:
-            if idself in anon_map:
-                return (anon_map[idself], self.__class__)
-            else:
-                # inline of
-                # id_ = anon_map[idself]
-                anon_map[idself] = id_ = str(anon_map.index)
-                anon_map.index += 1
+        if idself in anon_map:
+            return (anon_map[idself], cls)
         else:
-            id_ = None
+            # inline of
+            # id_ = anon_map[idself]
+            anon_map[idself] = id_ = str(anon_map.index)
+            anon_map.index += 1
 
         try:
-            dispatcher = self.__class__.__dict__[
-                "_generated_cache_key_traversal"
-            ]
+            dispatcher = cls.__dict__["_generated_cache_key_traversal"]
         except KeyError:
             # most of the dispatchers are generated up front
             # in sqlalchemy/sql/__init__.py ->
             # traversals.py-> _preconfigure_traversals().
             # this block will generate any remaining dispatchers.
-            dispatcher = self.__class__._generate_cache_attrs()
+            dispatcher = cls._generate_cache_attrs()
 
         if dispatcher is NO_CACHE:
-            if anon_map is not None:
-                anon_map[NO_CACHE] = True
+            anon_map[NO_CACHE] = True
             return None
 
-        result = (id_, self.__class__)
+        result = (id_, cls)
 
         # inline of _cache_key_traversal_visitor.run_generated_dispatch()
 
@@ -163,15 +155,12 @@ class HasCacheKey(object):
             if obj is not None:
                 # TODO: see if C code can help here as Python lacks an
                 # efficient switch construct
-                if meth is CACHE_IN_PLACE:
-                    # cache in place is always going to be a Python
-                    # tuple, dict, list, etc. so we can do a boolean check
-                    if obj:
-                        result += (attrname, obj)
-                elif meth is STATIC_CACHE_KEY:
+
+                if meth is STATIC_CACHE_KEY:
                     result += (attrname, obj._static_cache_key)
                 elif meth is ANON_NAME:
-                    if elements._anonymous_label in obj.__class__.__mro__:
+                    elements = util.preloaded.sql_elements
+                    if isinstance(obj, elements._anonymous_label):
                         obj = obj.apply_map(anon_map)
                     result += (attrname, obj)
                 elif meth is CALL_GEN_CACHE_KEY:
@@ -179,8 +168,14 @@ class HasCacheKey(object):
                         attrname,
                         obj._gen_cache_key(anon_map, bindparams),
                     )
-                elif meth is PROPAGATE_ATTRS:
-                    if obj:
+
+                # remaining cache functions are against
+                # Python tuples, dicts, lists, etc. so we can skip
+                # if they are empty
+                elif obj:
+                    if meth is CACHE_IN_PLACE:
+                        result += (attrname, obj)
+                    elif meth is PROPAGATE_ATTRS:
                         result += (
                             attrname,
                             obj["compile_state_plugin"],
@@ -188,16 +183,14 @@ class HasCacheKey(object):
                                 anon_map, bindparams
                             ),
                         )
-                elif meth is InternalTraversal.dp_annotations_key:
-                    # obj is here is the _annotations dict.   however,
-                    # we want to use the memoized cache key version of it.
-                    # for Columns, this should be long lived.   For select()
-                    # statements, not so much, but they usually won't have
-                    # annotations.
-                    if obj:
+                    elif meth is InternalTraversal.dp_annotations_key:
+                        # obj is here is the _annotations dict.   however, we
+                        # want to use the memoized cache key version of it. for
+                        # Columns, this should be long lived.   For select()
+                        # statements, not so much, but they usually won't have
+                        # annotations.
                         result += self._annotations_cache_key
-                elif meth is InternalTraversal.dp_clauseelement_list:
-                    if obj:
+                    elif meth is InternalTraversal.dp_clauseelement_list:
                         result += (
                             attrname,
                             tuple(
@@ -207,14 +200,7 @@ class HasCacheKey(object):
                                 ]
                             ),
                         )
-                else:
-                    # note that all the "ClauseElement" standalone cases
-                    # here have been handled by inlines above; so we can
-                    # safely assume the object is a standard list/tuple/dict
-                    # which we can skip if it evaluates to false.
-                    # improvement would be to have this as a flag delivered
-                    # up front in the dispatcher list
-                    if obj:
+                    else:
                         result += meth(
                             attrname, obj, self, anon_map, bindparams
                         )
@@ -384,6 +370,14 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
 
         return "CacheKey(key=%s)" % ("\n".join(output),)
 
+    def _generate_param_dict(self):
+        """used for testing"""
+
+        from .compiler import prefix_anon_map
+
+        _anon_map = prefix_anon_map()
+        return {b.key % _anon_map: b.effective_value for b in self.bindparams}
+
 
 def _clone(element, **kw):
     return element._clone()
@@ -506,6 +500,7 @@ class _CacheKey(ExtendedInternalTraversal):
     ):
         if not obj:
             return ()
+
         return (
             attrname,
             tuple(
