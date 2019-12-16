@@ -12,7 +12,115 @@
 
 .. changelog::
     :version: 1.3.12
-    :include_notes_from: unreleased_13
+    :released: December 16, 2019
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5028
+
+        Fixed bug where "distinct" keyword passed to :func:`.select` would not
+        treat a string value as a "label reference" in the same way that the
+        :meth:`.select.distinct` does; it would instead raise unconditionally. This
+        keyword argument and the others passed to :func:`.select` will ultimately
+        be deprecated for SQLAlchemy 2.0.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4997
+
+        Fixed issue involving ``lazy="raise"`` strategy where an ORM delete of an
+        object would raise for a simple "use-get" style many-to-one relationship
+        that had lazy="raise" configured.  This is inconsistent vs. the change
+        introduced in 1.3 as part of :ticket:`4353`, where it was established that
+        a history operation that does not expect emit SQL should bypass the
+        ``lazy="raise"`` check, and instead effectively treat it as
+        ``lazy="raise_on_sql"`` for this case.  The fix adjusts the lazy loader
+        strategy to not raise for the case where the lazy load was instructed that
+        it should not emit SQL if the object were not present.
+
+    .. change::
+        :tags: bug, sql
+
+        Changed the text of the exception for "Can't resolve label reference" to
+        include other kinds of label coercions, namely that "DISTINCT" is also in
+        this category under the PostgreSQL dialect.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5000
+
+        Fixed regression introduced in 1.3.0 related to the association proxy
+        refactor in :ticket:`4351` that prevented :func:`.composite` attributes
+        from working in terms of an association proxy that references them.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 4983
+
+        Repaired support for the :class:`.mssql.DATETIMEOFFSET` datatype on PyODBC,
+        by adding PyODBC-level result handlers as it does not include native
+        support for this datatype.  This includes usage of the Python 3 "timezone"
+        tzinfo subclass in order to set up a timezone, which on Python 2 makes
+        use of a minimal backport of "timezone" in sqlalchemy.util.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4993
+
+        Setting persistence-related flags on :func:`.relationship` while also
+        setting viewonly=True will now emit a regular warning, as these flags do
+        not make sense for a viewonly=True relationship.   In particular, the
+        "cascade" settings have their own warning that is generated based on the
+        individual values, such as "delete, delete-orphan", that should not apply
+        to a viewonly relationship.   Note however that in the case of "cascade",
+        these settings are still erroneously taking effect even though the
+        relationship is set up as "viewonly".   In 1.4, all persistence-related
+        cascade settings will be disallowed on a viewonly=True relationship in
+        order to resolve this issue.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 5014
+
+        Fixed issue to workaround SQLite's behavior of assigning "numeric" affinity
+        to JSON datatypes, first described at :ref:`change_3850`, which returns
+        scalar numeric JSON values as a number and not as a string that can be JSON
+        deserialized.  The SQLite-specific JSON deserializer now gracefully
+        degrades for this case as an exception and bypasses deserialization for
+        single numeric values, as from a JSON perspective they are already
+        deserialized.
+
+
+
+    .. change::
+        :tags: bug, orm, py3k
+        :tickets: 4990
+
+        Fixed issue where when assigning a collection to itself as a slice, the
+        mutation operation would fail as it would first erase the assigned
+        collection inadvertently.   As an assignment that does not change  the
+        contents should not generate events, the operation is now a no-op. Note
+        that the fix only applies to Python 3; in Python 2, the ``__setitem__``
+        hook isn't called in this case; ``__setslice__`` is used instead which
+        recreates the list item-by-item in all cases.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5034
+
+        Fixed issue where by if the "begin" of a transaction failed at the Core
+        engine/connection level, such as due to network error or database is locked
+        for some transactional recipes, within the context of the :class:`.Session`
+        procuring that connection from the conneciton pool and then immediately
+        returning it, the ORM :class:`.Session` would not close the connection
+        despite this connection not being stored within the state of that
+        :class:`.Session`.  This would lead to the connection being cleaned out by
+        the connection pool weakref handler within garbage collection which is an
+        unpreferred codepath that in some special configurations can emit errors in
+        standard error.
 
 .. changelog::
     :version: 1.3.11
