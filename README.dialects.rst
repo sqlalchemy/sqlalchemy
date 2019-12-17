@@ -123,8 +123,8 @@ Key aspects of this file layout include:
   For a third-party dialect, the custom ``Requirements`` class can
   usually specify a simple yes/no answer for a particular system. For
   example, a requirements file that specifies a database that supports
-  the RETURNING construct but does not support reflection of tables
-  might look like this::
+  the RETURNING construct but does not support nullable boolean
+  columns might look like this::
 
       # sqlalchemy_access/requirements.py
 
