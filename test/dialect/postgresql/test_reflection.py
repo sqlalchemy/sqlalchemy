@@ -18,6 +18,7 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -1524,31 +1525,55 @@ class ReflectionTest(fixtures.TestBase):
     def test_reflect_check_constraint(self):
         meta = self.metadata
 
-        cc_table = Table(
-            "pgsql_cc",
-            meta,
-            Column("a", Integer()),
-            CheckConstraint("a > 1 AND a < 5", name="cc1"),
-            CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
-        )
+        sql = text("""\
+            CREATE OR REPLACE FUNCTION is_positive(
+                x integer DEFAULT '-1'::integer)
+                RETURNS boolean
+                LANGUAGE 'plpgsql'
+                COST 100
+                VOLATILE 
+            AS $BODY$BEGIN
+                RETURN x > 0;
+            END;$BODY$;
+        """)
+        testing.db.execute(sql)
 
-        cc_table.create()
+        try:
+            cc_table = Table(
+                "pgsql_cc",
+                meta,
+                Column("a", Integer()),
+                CheckConstraint("a > 1 AND a < 5", name="cc1"),
+                CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
+                CheckConstraint("is_positive(a)", name="cc3"),
+            )
 
-        reflected = Table("pgsql_cc", MetaData(testing.db), autoload=True)
+            cc_table.create()
 
-        check_constraints = dict(
-            (uc.name, uc.sqltext.text)
-            for uc in reflected.constraints
-            if isinstance(uc, CheckConstraint)
-        )
+            reflected = Table("pgsql_cc", MetaData(testing.db),
+                              autoload=True)
 
-        eq_(
-            check_constraints,
-            {
-                u"cc1": u"(a > 1) AND (a < 5)",
-                u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
-            },
-        )
+            check_constraints = dict(
+                (uc.name, uc.sqltext.text)
+                for uc in reflected.constraints
+                if isinstance(uc, CheckConstraint)
+            )
+
+            eq_(
+                check_constraints,
+                {
+                    u"cc1": u"(a > 1) AND (a < 5)",
+                    u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
+                    u"cc3": u"is_positive(a)",
+                },
+            )
+        except:
+            raise
+        finally:
+            sql = text("DROP TABLE IF EXISTS pgsql_cc")
+            testing.db.execute(sql)
+            sql = text("DROP FUNCTION IF EXISTS is_positive")
+            testing.db.execute(sql)
 
     def test_reflect_check_warning(self):
         rows = [("some name", "NOTCHECK foobar")]
