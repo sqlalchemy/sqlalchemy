@@ -40,7 +40,7 @@ class HasCacheKey(object):
         The cache key should be based on the SQL compiled structure that would
         ultimately be produced.   That is, two structures that are composed in
         exactly the same way should produce the same cache key; any difference
-        in the strucures that would affect the SQL string or the type handlers
+        in the structures that would affect the SQL string or the type handlers
         should result in a different cache key.
 
         If a structure cannot produce a useful cache key, it should raise
@@ -139,7 +139,7 @@ class HasCacheKey(object):
         The cache key should be based on the SQL compiled structure that would
         ultimately be produced.   That is, two structures that are composed in
         exactly the same way should produce the same cache key; any difference
-        in the strucures that would affect the SQL string or the type handlers
+        in the structures that would affect the SQL string or the type handlers
         should result in a different cache key.
 
         The cache key returned by this method is an instance of
