@@ -1525,7 +1525,7 @@ class ReflectionTest(fixtures.TestBase):
     def test_reflect_check_constraint(self):
         meta = self.metadata
 
-        sql = text("""\
+        udf_create = """\
             CREATE OR REPLACE FUNCTION is_positive(
                 x integer DEFAULT '-1'::integer)
                 RETURNS boolean
@@ -1535,45 +1535,39 @@ class ReflectionTest(fixtures.TestBase):
             AS $BODY$BEGIN
                 RETURN x > 0;
             END;$BODY$;
-        """)
-        testing.db.execute(sql)
+        """
+        sa.event.listen(meta, "before_create",
+                        sa.DDL(udf_create))
+        sa.event.listen(meta, "after_drop",
+                        sa.DDL("DROP FUNCTION is_positive"))
 
-        try:
-            cc_table = Table(
-                "pgsql_cc",
-                meta,
-                Column("a", Integer()),
-                CheckConstraint("a > 1 AND a < 5", name="cc1"),
-                CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
-                CheckConstraint("is_positive(a)", name="cc3"),
-            )
+        cc_table = Table(
+            "pgsql_cc",
+            meta,
+            Column("a", Integer()),
+            CheckConstraint("a > 1 AND a < 5", name="cc1"),
+            CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
+            CheckConstraint("is_positive(a)", name="cc3"),
+        )
 
-            cc_table.create()
+        cc_table.create()
 
-            reflected = Table("pgsql_cc", MetaData(testing.db),
-                              autoload=True)
+        reflected = Table("pgsql_cc", MetaData(), autoload_with=testing.db)
 
-            check_constraints = dict(
-                (uc.name, uc.sqltext.text)
-                for uc in reflected.constraints
-                if isinstance(uc, CheckConstraint)
-            )
+        check_constraints = dict(
+            (uc.name, uc.sqltext.text)
+            for uc in reflected.constraints
+            if isinstance(uc, CheckConstraint)
+        )
 
-            eq_(
-                check_constraints,
-                {
-                    u"cc1": u"(a > 1) AND (a < 5)",
-                    u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
-                    u"cc3": u"is_positive(a)",
-                },
-            )
-        except:
-            raise
-        finally:
-            sql = text("DROP TABLE IF EXISTS pgsql_cc")
-            testing.db.execute(sql)
-            sql = text("DROP FUNCTION IF EXISTS is_positive")
-            testing.db.execute(sql)
+        eq_(
+            check_constraints,
+            {
+                u"cc1": u"(a > 1) AND (a < 5)",
+                u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
+                u"cc3": u"is_positive(a)",
+            },
+        )
 
     def test_reflect_check_warning(self):
         rows = [("some name", "NOTCHECK foobar")]
