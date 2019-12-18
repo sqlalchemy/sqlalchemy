@@ -899,6 +899,28 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'ON anon_1."order" = "order"."order"',
         )
 
+    def test_prefixes(self):
+        orders = table("order", column("order"))
+        s = select([orders.c.order]).cte("regional_sales")
+        s = s.prefix_with("NOT MATERIALIZED", dialect="postgresql")
+        stmt = select([orders]).where(orders.c.order > s.c.order)
+
+        self.assert_compile(
+            stmt,
+            'WITH regional_sales AS (SELECT "order"."order" AS "order" '
+            'FROM "order") SELECT "order"."order" FROM "order", '
+            'regional_sales WHERE "order"."order" > regional_sales."order"',
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH regional_sales AS NOT MATERIALIZED "
+            '(SELECT "order"."order" AS "order" '
+            'FROM "order") SELECT "order"."order" FROM "order", '
+            'regional_sales WHERE "order"."order" > regional_sales."order"',
+            dialect="postgresql",
+        )
+
     def test_suffixes(self):
         orders = table("order", column("order"))
         s = select([orders.c.order]).cte("regional_sales")

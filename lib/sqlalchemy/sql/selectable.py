@@ -1502,7 +1502,7 @@ class TableSample(Alias):
             return functions.func.system(self.sampling)
 
 
-class CTE(Generative, HasSuffixes, Alias):
+class CTE(Generative, HasPrefixes, HasSuffixes, Alias):
     """Represent a Common Table Expression.
 
     The :class:`.CTE` object is obtained using the
@@ -1531,11 +1531,14 @@ class CTE(Generative, HasSuffixes, Alias):
         recursive=False,
         _cte_alias=None,
         _restates=frozenset(),
+        _prefixes=None,
         _suffixes=None,
     ):
         self.recursive = recursive
         self._cte_alias = _cte_alias
         self._restates = _restates
+        if _prefixes:
+            self._prefixes = _prefixes
         if _suffixes:
             self._suffixes = _suffixes
         super(CTE, self)._init(selectable, name=name)
@@ -1575,6 +1578,7 @@ class CTE(Generative, HasSuffixes, Alias):
             name=name,
             recursive=self.recursive,
             _cte_alias=self,
+            _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
 
@@ -1584,6 +1588,7 @@ class CTE(Generative, HasSuffixes, Alias):
             name=self.name,
             recursive=self.recursive,
             _restates=self._restates.union([self]),
+            _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
 
@@ -1593,6 +1598,7 @@ class CTE(Generative, HasSuffixes, Alias):
             name=self.name,
             recursive=self.recursive,
             _restates=self._restates.union([self]),
+            _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
 
@@ -1619,13 +1625,20 @@ class HasCTE(object):
         when combined with RETURNING, as well as a consumer of
         CTE rows.
 
+        .. versionchanged:: 1.1 Added support for UPDATE/INSERT/DELETE as
+           CTE, CTEs added to UPDATE/INSERT/DELETE.
+
         SQLAlchemy detects :class:`.CTE` objects, which are treated
         similarly to :class:`.Alias` objects, as special elements
         to be delivered to the FROM clause of the statement as well
         as to a WITH clause at the top of the statement.
 
-        .. versionchanged:: 1.1 Added support for UPDATE/INSERT/DELETE as
-           CTE, CTEs added to UPDATE/INSERT/DELETE.
+        For special prefixes such as PostgreSQL "MATERIALIZED" and
+        "NOT MATERIALIZED", the :meth:`.CTE.prefix_with` method may be
+        used to establish these.
+
+        .. versionchanged:: 1.3.13 Added support for prefixes.
+           In particular - MATERIALIZED and NOT MATERIALIZED.
 
         :param name: name given to the common table expression.  Like
          :meth:`._FromClause.alias`, the name can be left as ``None``

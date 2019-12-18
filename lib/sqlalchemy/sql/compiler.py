@@ -1694,8 +1694,11 @@ class SQLCompiler(Compiled):
                 if self.positional:
                     kwargs["positional_names"] = self.cte_positional[cte] = []
 
-                text += " AS \n" + cte.original._compiler_dispatch(
-                    self, asfrom=True, **kwargs
+                text += " AS %s\n%s" % (
+                    self._generate_prefixes(cte, cte._prefixes, **kwargs),
+                    cte.original._compiler_dispatch(
+                        self, asfrom=True, **kwargs
+                    ),
                 )
 
                 if cte._suffixes:
