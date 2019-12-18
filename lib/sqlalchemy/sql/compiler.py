@@ -1851,7 +1851,8 @@ class SQLCompiler(Compiled):
                     kwargs["positional_names"] = self.cte_positional[cte] = []
 
                 assert kwargs.get("subquery", False) is False
-                text += " AS \n(%s)" % (
+                text += " AS %s\n(%s)" % (
+                    self._generate_prefixes(cte, cte._prefixes, **kwargs),
                     cte.element._compiler_dispatch(
                         self, asfrom=True, **kwargs
                     ),

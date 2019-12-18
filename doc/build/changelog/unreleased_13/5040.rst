@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 5040
+
+    Added support for CTE prefixes so that it is possible to specify
+    MATERIALIZED or NOT MATERIALIZED. They were added in PostgreSQL 12.
+
+    .. seealso::
+
+        :meth:`.HasCTE.cte`
