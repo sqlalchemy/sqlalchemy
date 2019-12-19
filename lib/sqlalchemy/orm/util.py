@@ -1020,6 +1020,7 @@ class _ORMJoin(expression.Join):
                 source_polymorphic=True,
                 dest_polymorphic=True,
                 of_type_mapper=right_info.mapper,
+                alias_secondary=True,
             )
 
             if sj is not None:
