@@ -350,14 +350,27 @@ class InstanceEvents(event.Events):
         """
 
     def refresh_flush(self, target, flush_context, attrs):
-        """Receive an object instance after one or more attributes have
-        been refreshed within the persistence of the object.
+        """Receive an object instance after one or more attributes that
+        contain a column-level default or onupdate handler have been refreshed
+        during persistence of the object's state.
 
         This event is the same as :meth:`.InstanceEvents.refresh` except
-        it is invoked within the unit of work flush process, and the values
-        here typically come from the process of handling an INSERT or
-        UPDATE, such as via the RETURNING clause or from Python-side default
-        values.
+        it is invoked within the unit of work flush process, and includes
+        only non-primary-key columns that have column level default or
+        onupdate handlers, including Python callables as well as server side
+        defaults and triggers which may be fetched via the RETURNING clause.
+
+        .. note::
+
+            While the :meth:`.InstanceEvents.refresh_flush` event is triggered
+            for an object that was INSERTed as well as for an object that was
+            UPDATEd, the event is geared primarily  towards the UPDATE process;
+            it is mostly an internal artifact that INSERT actions can also
+            trigger this event, and note that **primary key columns for an
+            INSERTed row are explicitly omitted** from this event.  In order to
+            intercept the newly INSERTed state of an object, the
+            :meth:`.SessionEvents.pending_to_persistent` and
+            :meth:`.MapperEvents.after_insert` are better choices.
 
         .. versionadded:: 1.0.5
 
@@ -369,6 +382,12 @@ class InstanceEvents(event.Events):
          which handles the details of the flush.
         :param attrs: sequence of attribute names which
          were populated.
+
+        .. seealso::
+
+            :ref:`orm_server_defaults`
+
+            :ref:`metadata_defaults_toplevel`
 
         """
 
