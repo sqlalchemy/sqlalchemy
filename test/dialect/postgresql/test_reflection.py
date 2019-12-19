@@ -18,7 +18,6 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -1550,7 +1549,7 @@ class ReflectionTest(fixtures.TestBase):
             CheckConstraint("is_positive(a)", name="cc3"),
         )
 
-        cc_table.create()
+        meta.create_all()
 
         reflected = Table("pgsql_cc", MetaData(), autoload_with=testing.db)
 
