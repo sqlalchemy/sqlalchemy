@@ -243,7 +243,6 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         j2 = serializer.loads(serializer.dumps(j, -1), users.metadata)
         assert j2.left is j.left
         assert j2.right is j.right
-        assert j2._target_adapter._next
 
     @testing.exclude(
         "sqlite", "<=", (3, 5, 9), "id comparison failing on the buildbot"
