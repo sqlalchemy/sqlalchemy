@@ -1538,7 +1538,7 @@ class ReflectionTest(fixtures.TestBase):
         sa.event.listen(meta, "before_create",
                         sa.DDL(udf_create))
         sa.event.listen(meta, "after_drop",
-                        sa.DDL("DROP FUNCTION is_positive"))
+                        sa.DDL("DROP FUNCTION is_positive(integer)"))
 
         cc_table = Table(
             "pgsql_cc",
