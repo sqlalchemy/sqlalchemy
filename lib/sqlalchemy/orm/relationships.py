@@ -1056,6 +1056,7 @@ class RelationshipProperty(StrategizedProperty):
                 source_selectable=adapt_from,
                 source_polymorphic=True,
                 of_type_mapper=of_type_mapper,
+                alias_secondary=True,
             )
             if sj is not None:
                 return pj & sj
@@ -2228,12 +2229,18 @@ class RelationshipProperty(StrategizedProperty):
         dest_polymorphic=False,
         dest_selectable=None,
         of_type_mapper=None,
+        alias_secondary=False,
     ):
+
+        aliased = False
+
+        if alias_secondary and self.secondary is not None:
+            aliased = True
+
         if source_selectable is None:
             if source_polymorphic and self.parent.with_polymorphic:
                 source_selectable = self.parent._with_polymorphic_selectable
 
-        aliased = False
         if dest_selectable is None:
             dest_selectable = self.entity.selectable
             if dest_polymorphic and self.mapper.with_polymorphic:
@@ -2242,13 +2249,20 @@ class RelationshipProperty(StrategizedProperty):
             if self._is_self_referential and source_selectable is None:
                 dest_selectable = dest_selectable.alias()
                 aliased = True
-        else:
+        elif dest_selectable is not self.mapper._with_polymorphic_selectable:
             aliased = True
 
         dest_mapper = of_type_mapper or self.mapper
 
         single_crit = dest_mapper._single_table_criterion
-        aliased = aliased or (source_selectable is not None)
+        aliased = aliased or (
+            source_selectable is not None
+            and (
+                source_selectable
+                is not self.parent._with_polymorphic_selectable
+                or source_selectable._is_from_container  # e.g an alias
+            )
+        )
 
         (
             primaryjoin,
