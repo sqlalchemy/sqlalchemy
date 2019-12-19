@@ -1530,17 +1530,34 @@ class ReflectionTest(fixtures.TestBase):
     def test_reflect_check_constraint(self):
         meta = self.metadata
 
-        cc_table = Table(
+        udf_create = """\
+            CREATE OR REPLACE FUNCTION is_positive(
+                x integer DEFAULT '-1'::integer)
+                RETURNS boolean
+                LANGUAGE 'plpgsql'
+                COST 100
+                VOLATILE
+            AS $BODY$BEGIN
+                RETURN x > 0;
+            END;$BODY$;
+        """
+        sa.event.listen(meta, "before_create",
+                        sa.DDL(udf_create))
+        sa.event.listen(meta, "after_drop",
+                        sa.DDL("DROP FUNCTION is_positive(integer)"))
+
+        Table(
             "pgsql_cc",
             meta,
             Column("a", Integer()),
             CheckConstraint("a > 1 AND a < 5", name="cc1"),
             CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
+            CheckConstraint("is_positive(a)", name="cc3"),
         )
 
-        cc_table.create()
+        meta.create_all()
 
-        reflected = Table("pgsql_cc", MetaData(testing.db), autoload=True)
+        reflected = Table("pgsql_cc", MetaData(), autoload_with=testing.db)
 
         check_constraints = dict(
             (uc.name, uc.sqltext.text)
@@ -1553,6 +1570,7 @@ class ReflectionTest(fixtures.TestBase):
             {
                 u"cc1": u"(a > 1) AND (a < 5)",
                 u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
+                u"cc3": u"is_positive(a)",
             },
         )
 
