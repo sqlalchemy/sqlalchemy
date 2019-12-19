@@ -1,12 +1,16 @@
+from sqlalchemy import and_
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
+from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import mapper
@@ -814,6 +818,93 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
                 obj = q._execute_and_instances(context)
                 list(obj)
                 sess.close()
+
+        go()
+
+
+class JoinConditionTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.DeclarativeBasic):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+            b = relationship("B")
+
+        class B(cls.DeclarativeBasic):
+            __tablename__ = "b"
+
+            id = Column(Integer, primary_key=True)
+            d_id = Column(ForeignKey("d.id"))
+
+        class C(cls.DeclarativeBasic):
+            __tablename__ = "c"
+
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            d_id = Column(ForeignKey("d.id"))
+
+        class D(cls.DeclarativeBasic):
+            __tablename__ = "d"
+
+            id = Column(Integer, primary_key=True)
+
+        j = join(B, D, B.d_id == D.id).join(C, C.d_id == D.id)
+
+        A.d = relationship(
+            "D",
+            secondary=j,
+            primaryjoin=and_(A.b_id == B.id, A.id == C.a_id),
+            secondaryjoin=D.id == B.d_id,
+            uselist=False,
+            viewonly=True,
+        )
+
+    def test_a_to_b_plain(self):
+        A, B = self.classes("A", "B")
+
+        # should not use aliasing or adaption so should be cheap
+        @profiling.function_call_count(times=50)
+        def go():
+            orm_join(A, B, A.b)
+
+        go()
+
+    def test_a_to_b_aliased(self):
+        A, B = self.classes("A", "B")
+
+        a1 = aliased(A)
+
+        # uses aliasing, therefore adaption which is expensive
+        @profiling.function_call_count(times=50)
+        def go():
+            orm_join(a1, B, a1.b)
+
+        go()
+
+    def test_a_to_d(self):
+        A, D = self.classes("A", "D")
+
+        # the join condition between A and D uses a secondary selectable  with
+        # overlap so incurs aliasing, which is expensive, there is also a check
+        # that determines that this overlap exists which is not currently
+        # cached
+        @profiling.function_call_count(times=50)
+        def go():
+            orm_join(A, D, A.d)
+
+        go()
+
+    def test_a_to_d_aliased(self):
+        A, D = self.classes("A", "D")
+
+        a1 = aliased(A)
+
+        # aliased, uses adaption therefore expensive
+        @profiling.function_call_count(times=50)
+        def go():
+            orm_join(a1, D, a1.d)
 
         go()
 

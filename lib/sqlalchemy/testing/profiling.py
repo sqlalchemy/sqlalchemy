@@ -221,7 +221,7 @@ class ProfileStatsFile(object):
         profile_f.close()
 
 
-def function_call_count(variance=0.05):
+def function_call_count(variance=0.05, times=1):
     """Assert a target for a test case's function call count.
 
     The main purpose of this assertion is to detect changes in
@@ -234,8 +234,11 @@ def function_call_count(variance=0.05):
 
     def decorate(fn):
         def wrap(*args, **kw):
+            timerange = range(times)
             with count_functions(variance=variance):
-                return fn(*args, **kw)
+                for time in timerange:
+                    rv = fn(*args, **kw)
+                return rv
 
         return update_wrapper(wrap, fn)
 
