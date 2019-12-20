@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5048
+
+    Fixed issue where the collection of value processors on a
+    :class:`.Compiled` object would be mutated when "expanding IN" parameters
+    were used with a datatype that has bind value processors; in particular,
+    this would mean that when using statement caching and/or baked queries, the
+    same compiled._bind_processors collection would be mutated concurrently.
+    Since these processors are the same function for a given bind parameter
+    namespace every time, there was no actual negative effect of this issue,
+    however, the execution of a :class:`.Compiled` object should never be
+    causing any changes in its state, especially given that they are intended
+    to be thread-safe and reusable once fully constructed.
+

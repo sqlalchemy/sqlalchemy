@@ -752,6 +752,52 @@ class QueryTest(fixtures.TestBase):
                 [(7, "jack"), (8, "fred")],
             )
 
+    def test_expanding_in_dont_alter_compiled(self):
+        """test for issue #5048 """
+
+        class NameWithProcess(TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                return value[3:]
+
+        users = Table(
+            "query_users",
+            MetaData(),
+            Column("user_id", Integer, primary_key=True),
+            Column("user_name", NameWithProcess()),
+        )
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                users.insert(),
+                [
+                    dict(user_id=7, user_name="AB jack"),
+                    dict(user_id=8, user_name="BE fred"),
+                    dict(user_id=9, user_name="GP ed"),
+                ],
+            )
+
+            stmt = (
+                select([users])
+                .where(
+                    users.c.user_name.in_(bindparam("uname", expanding=True))
+                )
+                .order_by(users.c.user_id)
+            )
+
+            compiled = stmt.compile(testing.db)
+            eq_(len(compiled._bind_processors), 1)
+
+            eq_(
+                conn.execute(
+                    compiled, {"uname": ["HJ jack", "RR fred"]}
+                ).fetchall(),
+                [(7, "jack"), (8, "fred")],
+            )
+
+            eq_(len(compiled._bind_processors), 1)
+
     @testing.fails_on("firebird", "uses sql-92 rules")
     @testing.fails_on("sybase", "uses sql-92 rules")
     @testing.skip_if(["mssql"])

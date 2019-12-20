@@ -783,6 +783,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         processors = compiled._bind_processors
 
         if compiled.contains_expanding_parameters:
+            # copy processors for this case as they will be mutated
+            processors = dict(processors)
             positiontup = self._expand_in_parameters(compiled, processors)
         elif compiled.positional:
             positiontup = self.compiled.positiontup
