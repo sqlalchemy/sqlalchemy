@@ -23,7 +23,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
         User, Address, Keyword = self.classes("User", "Address", "Keyword")
 
         self._run_cache_key_fixture(
-            lambda: (inspect(User), inspect(Address), inspect(aliased(User)))
+            lambda: (inspect(User), inspect(Address), inspect(aliased(User))),
+            compare_values=True,
         )
 
     def test_attributes(self):
@@ -40,7 +41,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 User.addresses,
                 Address.email_address,
                 aliased(User).addresses,
-            )
+            ),
+            compare_values=True,
         )
 
     def test_unbound_options(self):
@@ -68,7 +70,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .defer(Item.description),
                 defaultload(User.orders).defaultload(Order.items),
                 defaultload(User.orders),
-            )
+            ),
+            compare_values=True,
         )
 
     def test_bound_options(self):
@@ -94,7 +97,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .defer(Item.description),
                 Load(User).defaultload(User.orders).defaultload(Order.items),
                 Load(User).defaultload(User.orders),
-            )
+            ),
+            compare_values=True,
         )
 
     def test_bound_options_equiv_on_strname(self):

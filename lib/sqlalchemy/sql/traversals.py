@@ -743,6 +743,14 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
         else:
             return COMPARE_FAILED
 
+    def compare_bindparam(self, left, right, **kw):
+        compare_values = kw.pop("compare_values", True)
+        if compare_values:
+            return []
+        else:
+            # this means, "skip these, we already compared"
+            return ["callable", "value"]
+
 
 class ColIdentityComparatorStrategy(TraversalComparatorStrategy):
     def compare_column_element(
