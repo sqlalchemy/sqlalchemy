@@ -773,6 +773,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         processors = compiled._bind_processors
 
         if compiled.literal_execute_params:
+            # copy processors for this case as they will be mutated
+            processors = dict(processors)
             positiontup = self._literal_execute_parameters(
                 compiled, processors
             )
