@@ -59,6 +59,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.util import random_choices
 from sqlalchemy.util import class_hierarchy
 
 
@@ -392,13 +393,13 @@ class CoreFixtures(object):
         lambda: (
             # same number of params each time, so compare for IN
             # with legacy behavior of bind for each value works
-            column("x").in_(random.choices(range(10), k=3)),
+            column("x").in_(random_choices(range(10), k=3)),
             # expanding IN places the whole list into a single parameter
             # so it can be of arbitrary length as well
             column("x").in_(
                 bindparam(
                     "q",
-                    random.choices(range(10), k=random.randint(0, 7)),
+                    random_choices(range(10), k=random.randint(0, 7)),
                     expanding=True,
                 )
             ),

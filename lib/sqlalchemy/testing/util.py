@@ -66,6 +66,21 @@ def picklers():
             yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
+if py2k:
+
+    def random_choices(population, k=1):
+        pop = list(population)
+        # lame but works :)
+        random.shuffle(pop)
+        return pop[0:k]
+
+
+else:
+
+    def random_choices(population, k=1):
+        return random.choices(population, k=k)
+
+
 def round_decimal(value, prec):
     if isinstance(value, float):
         return round(value, prec)
