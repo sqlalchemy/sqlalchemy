@@ -32,6 +32,7 @@ __all__ = [
     "Selectable",
     "TableClause",
     "Update",
+    "Values",
     "alias",
     "and_",
     "asc",
@@ -80,6 +81,7 @@ __all__ = [
     "Subquery",
     "TableSample",
     "tablesample",
+    "values",
 ]
 
 
@@ -156,6 +158,7 @@ from .selectable import TableClause  # noqa
 from .selectable import TableSample  # noqa
 from .selectable import TextAsFrom  # noqa
 from .selectable import TextualSelect  # noqa
+from .selectable import Values  # noqa
 from .visitors import Visitable  # noqa
 from ..util.langhelpers import public_factory  # noqa
 
@@ -184,6 +187,7 @@ label = public_factory(Label, ".sql.expression.label")
 case = public_factory(Case, ".sql.expression.case")
 cast = public_factory(Cast, ".sql.expression.cast")
 cte = public_factory(CTE._factory, ".sql.expression.cte")
+values = public_factory(Values, ".sql.expression.values")
 extract = public_factory(Extract, ".sql.expression.extract")
 tuple_ = public_factory(Tuple, ".sql.expression.tuple_")
 except_ = public_factory(

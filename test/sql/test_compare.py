@@ -25,6 +25,7 @@ from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import util
+from sqlalchemy import values
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Sequence
@@ -471,6 +472,43 @@ class CoreFixtures(object):
             table("a", column("q"), column("y", Integer)),
         ),
         lambda: (table_a, table_b),
+        lambda: (
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+            ).data([(1, "textA", 99), (2, "textB", 88)]),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myothervalues",
+            ).data([(1, "textA", 99), (2, "textB", 88)]),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+            ).data([(1, "textA", 89), (2, "textG", 88)]),
+            values(
+                column("mykey", Integer),
+                column("mynottext", String),
+                column("myint", Integer),
+                name="myvalues",
+            ).data([(1, "textA", 99), (2, "textB", 88)]),
+            # TODO: difference in type
+            # values(
+            #    [
+            #        column("mykey", Integer),
+            #        column("mytext", Text),
+            #        column("myint", Integer),
+            #    ],
+            #    (1, "textA", 99),
+            #    (2, "textB", 88),
+            #    alias_name="myvalues",
+            # ),
+        ),
     ]
 
     dont_compare_values_fixtures = [
