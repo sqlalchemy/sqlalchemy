@@ -9,6 +9,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import ColumnDefault
+from sqlalchemy import Computed
 from sqlalchemy import Enum
 from sqlalchemy import event
 from sqlalchemy import exc
@@ -3902,6 +3903,9 @@ class ColumnOptionsTest(fixtures.TestBase):
             c.info["bar"] = "zip"
             assert c.info["bar"] == "zip"
 
+    def test_readonly(self):
+        assert Column(String)._is_readonly is False
+        assert Column('x', String, Computed('w + 3'))._is_readonly is True
 
 class CatchAllEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
     def test_all_events(self):

@@ -31,6 +31,7 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm.persistence import _sort_states
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1995,6 +1996,38 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             pass
 
         mapper(B, users)
+
+    @testing.provide_metadata
+    def test_readonly_setter(self):
+        t = Table(
+            "foo-table",
+            self.metadata,
+            Column("id", Integer(), primary_key=True),
+            Column("comp", Integer(), sa.Computed("id + 1")),
+        )
+
+        class A(object):
+            pass
+
+        mapper(A, t, properties={"prop": column_property(t.c.id - 1)})
+
+        a = A()
+        a.id = 3
+
+        def setComputed():
+            a.comp = 33
+
+        def setProp():
+            a.comp = 33
+
+        assert_warnings(
+            setComputed,
+            ["the value set to read only attribute .*"],
+            regex=True,
+        )
+        assert_warnings(
+            setProp, ["the value set to read only attribute .*"], regex=True
+        )
 
 
 class DocumentTest(fixtures.TestBase):
