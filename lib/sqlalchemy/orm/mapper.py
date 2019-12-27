@@ -2807,9 +2807,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         if self.base_mapper.local_table in tables:
             return None
 
-        class ColumnsNotAvailable(Exception):
-            pass
-
         def visit_binary(binary):
             leftcol = binary.left
             rightcol = binary.right
@@ -2824,7 +2821,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     passive=attributes.PASSIVE_NO_INITIALIZE,
                 )
                 if leftval in orm_util._none_set:
-                    raise ColumnsNotAvailable()
+                    raise _OptGetColumnsNotAvailable()
                 binary.left = sql.bindparam(
                     None, leftval, type_=binary.right.type
                 )
@@ -2836,7 +2833,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     passive=attributes.PASSIVE_NO_INITIALIZE,
                 )
                 if rightval in orm_util._none_set:
-                    raise ColumnsNotAvailable()
+                    raise _OptGetColumnsNotAvailable()
                 binary.right = sql.bindparam(
                     None, rightval, type_=binary.right.type
                 )
@@ -2860,7 +2857,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                             {"binary": visit_binary},
                         )
                     )
-        except ColumnsNotAvailable:
+        except _OptGetColumnsNotAvailable:
             return None
 
         cond = sql.and_(*allconds)
@@ -3126,6 +3123,10 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     result[table].append((m, m._inherits_equated_pairs))
 
         return result
+
+
+class _OptGetColumnsNotAvailable(Exception):
+    pass
 
 
 def configure_mappers():

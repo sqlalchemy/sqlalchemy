@@ -226,6 +226,7 @@ def visit_binary_product(fn, expr):
                     yield e
 
     list(visit(expr))
+    visit = None  # remove gc cycles
 
 
 def find_tables(
@@ -881,7 +882,7 @@ class ColumnAdapter(ClauseAdapter):
             anonymize_labels=anonymize_labels,
         )
 
-        self.columns = util.populate_column_dict(self._locate_col)
+        self.columns = util.WeakPopulateDict(self._locate_col)
         if self.include_fn or self.exclude_fn:
             self.columns = self._IncludeExcludeMapping(self, self.columns)
         self.adapt_required = adapt_required
@@ -907,7 +908,7 @@ class ColumnAdapter(ClauseAdapter):
         ac = self.__class__.__new__(self.__class__)
         ac.__dict__.update(self.__dict__)
         ac._wrap = adapter
-        ac.columns = util.populate_column_dict(ac._locate_col)
+        ac.columns = util.WeakPopulateDict(ac._locate_col)
         if ac.include_fn or ac.exclude_fn:
             ac.columns = self._IncludeExcludeMapping(ac, ac.columns)
 
@@ -942,4 +943,4 @@ class ColumnAdapter(ClauseAdapter):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.columns = util.PopulateDict(self._locate_col)
+        self.columns = util.WeakPopulateDict(self._locate_col)

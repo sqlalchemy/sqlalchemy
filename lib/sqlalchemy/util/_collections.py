@@ -676,10 +676,13 @@ class IdentitySet(object):
 
 class WeakSequence(object):
     def __init__(self, __elements=()):
+        # adapted from weakref.WeakKeyDictionary, prevent reference
+        # cycles in the collection itself
         def _remove(item, selfref=weakref.ref(self)):
             self = selfref()
             if self is not None:
                 self._storage.remove(item)
+
         self._remove = _remove
         self._storage = [
             weakref.ref(element, _remove) for element in __elements
@@ -737,6 +740,22 @@ class PopulateDict(dict):
         return val
 
 
+class WeakPopulateDict(dict):
+    """Like PopulateDict, but assumes a self + a method and does not create
+    a reference cycle.
+
+    """
+
+    def __init__(self, creator_method):
+        self.creator = creator_method.__func__
+        weakself = creator_method.__self__
+        self.weakself = weakref.ref(weakself)
+
+    def __missing__(self, key):
+        self[key] = val = self.creator(self.weakself(), key)
+        return val
+
+
 # Define collections that are capable of storing
 # ColumnElement objects as hashable keys/elements.
 # At this point, these are mostly historical, things
@@ -744,7 +763,6 @@ class PopulateDict(dict):
 column_set = set
 column_dict = dict
 ordered_column_set = OrderedSet
-populate_column_dict = PopulateDict
 
 
 _getters = PopulateDict(operator.itemgetter)
