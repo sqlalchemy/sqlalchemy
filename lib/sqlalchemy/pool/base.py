@@ -511,6 +511,19 @@ class _ConnectionRecord(object):
 
     def get_connection(self):
         recycle = False
+
+        # NOTE: the various comparisons here are assuming that measurable time
+        # passes between these state changes.  however, time.time() is not
+        # guaranteed to have sub-second precision.  comparisons of
+        # "invalidation time" to "starttime" should perhaps use >= so that the
+        # state change can take place assuming no measurable  time has passed,
+        # however this does not guarantee correct behavior here as if time
+        # continues to not pass, it will try to reconnect repeatedly until
+        # these timestamps diverge, so in that sense using > is safer.  Per
+        # https://stackoverflow.com/a/1938096/34549, Windows time.time() may be
+        # within 16 milliseconds accuracy, so unit tests for connection
+        # invalidation need a sleep of at least this long between initial start
+        # time and invalidation for the logic below to work reliably.
         if self.connection is None:
             self.info.clear()
             self.__connect()
