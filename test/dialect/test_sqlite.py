@@ -43,6 +43,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -722,40 +723,43 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         e = create_engine("sqlite+pysqlite:///foo.db")
         assert e.pool.__class__ is pool.NullPool
 
-    def test_connect_args(self):
+    @combinations(
+        (
+            "sqlite:///foo.db",  # file path is absolute
+            ([os.path.abspath("foo.db")], {}),
+        ),
+        (
+            "sqlite:////abs/path/to/foo.db",
+            ([os.path.abspath("/abs/path/to/foo.db")], {}),
+        ),
+        ("sqlite://", ([":memory:"], {})),
+        (
+            "sqlite:///?check_same_thread=true",
+            ([":memory:"], {"check_same_thread": True}),
+        ),
+        (
+            "sqlite:///file:path/to/database?"
+            "check_same_thread=true&timeout=10&mode=ro&nolock=1&uri=true",
+            (
+                ["file:path/to/database?mode=ro&nolock=1"],
+                {"check_same_thread": True, "timeout": 10.0, "uri": True},
+            ),
+        ),
+        (
+            "sqlite:///file:path/to/database?" "mode=ro&uri=true",
+            (["file:path/to/database?mode=ro"], {"uri": True}),
+        ),
+        (
+            "sqlite:///file:path/to/database?uri=true",
+            (["file:path/to/database"], {"uri": True}),
+        ),
+    )
+    def test_connect_args(self, url, expected):
         """test create_connect_args scenarios including support for uri=True"""
 
         d = pysqlite_dialect.dialect()
-        for url, expected in [
-            (
-                "sqlite:///foo.db",  # file path is absolute
-                ([os.path.abspath("foo.db")], {}),
-            ),
-            ("sqlite:////abs/path/to/foo.db", (["/abs/path/to/foo.db"], {})),
-            ("sqlite://", ([":memory:"], {})),
-            (
-                "sqlite:///?check_same_thread=true",
-                ([":memory:"], {"check_same_thread": True}),
-            ),
-            (
-                "sqlite:///file:path/to/database?"
-                "check_same_thread=true&timeout=10&mode=ro&nolock=1&uri=true",
-                (
-                    ["file:path/to/database?mode=ro&nolock=1"],
-                    {"check_same_thread": True, "timeout": 10.0, "uri": True},
-                ),
-            ),
-            (
-                "sqlite:///file:path/to/database?" "mode=ro&uri=true",
-                (["file:path/to/database?mode=ro"], {"uri": True}),
-            ),
-            (
-                "sqlite:///file:path/to/database?uri=true",
-                (["file:path/to/database"], {"uri": True}),
-            ),
-        ]:
-            url = make_url(url)
-            eq_(d.create_connect_args(url), expected)
+        url = make_url(url)
+        eq_(d.create_connect_args(url), expected)
 
     @testing.combinations(
         ("no_persisted", "ignore"),
