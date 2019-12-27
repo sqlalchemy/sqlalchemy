@@ -1300,8 +1300,8 @@ class DefaultRequirements(SuiteRequirements):
                 drivername = conn.connection.connection.getinfo(
                     config.db.dialect.dbapi.SQL_DRIVER_NAME
                 )
-                # on linux this is 'libmsodbcsql-13.1.so.9.2'.
-                # don't know what it is on windows
+                # on linux this is something like 'libmsodbcsql-13.1.so.9.2'.
+                # on Windows this is something like 'msodbcsql17.dll'.
                 return "msodbc" in drivername
 
         return only_if(
