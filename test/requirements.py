@@ -645,6 +645,19 @@ class DefaultRequirements(SuiteRequirements):
     def two_phase_transactions(self):
         """Target database must support two-phase transactions."""
 
+        def prepared_transaction(config):
+            from sqlalchemy import select, exc
+
+            with config.db.connect() as conn:
+                try:
+                    trans = conn.begin_twophase()
+                    conn.execute(select([1]))
+                    trans.prepare()
+                    trans.commit()
+                    return True
+                except exc.OperationalError:
+                    return False
+
         return skip_if(
             [
                 no_support("firebird", "no SA implementation"),
@@ -672,6 +685,8 @@ class DefaultRequirements(SuiteRequirements):
                     "(late 2016), disabling for now",
                 ),
             ]
+        ) + only_if(
+            prepared_transaction, "missing support for prepared transaction"
         )
 
     @property

@@ -200,6 +200,11 @@ Additional steps specific to individual databases are as follows::
 
         grant dba to scott;
 
+    Tests for two phase transactions require support for prepared transactions. To include them
+    the feature must be enabled by setting max_prepared_transactions to a value > 0.
+    See documentation for details
+    https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAX-PREPARED-TRANSACTIONS
+
     MSSQL: Tests that involve multiple connections require Snapshot Isolation
     ability implemented on the test database in order to prevent deadlocks that
     will occur with record locking isolation. This feature is only available

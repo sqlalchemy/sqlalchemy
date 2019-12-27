@@ -1,0 +1,8 @@
+.. change::
+    :tags: test, postgresql
+    :tickets: 5057
+
+    Improve detection of two phase transactions requirements by checking that
+    the database supports prepared transactions. This mainly affects postgresql
+    that has the feature disabled by default
+
