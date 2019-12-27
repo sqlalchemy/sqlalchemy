@@ -1218,11 +1218,16 @@ class QueuePoolTest(PoolTestBase):
         is_(c2.connection, c_ref())
 
         c2_rec = c2._connection_record
+
+        # ensure pool invalidate time will be later than starttime
+        # for ConnectionRecord objects above
+        time.sleep(0.1)
         c2.invalidate(soft=True)
+
         is_(c2_rec.connection, c2.connection)
 
         c2.close()
-        time.sleep(0.5)
+
         c3 = p.connect()
         is_not_(c3.connection, c_ref())
         is_(c3._connection_record, c2_rec)
@@ -1286,6 +1291,7 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(1.5)
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
+    @testing.requires.timing_intensive
     def test_connect_handler_not_called_for_recycled(self):
         """test [ticket:3497]"""
 
@@ -1300,6 +1306,10 @@ class QueuePoolTest(PoolTestBase):
         c2.close()
 
         dbapi.shutdown(True)
+
+        # ensure pool invalidate time will be later than starttime
+        # for ConnectionRecord objects above
+        time.sleep(0.1)
 
         bad = p.connect()
         p._invalidate(bad)
@@ -1324,6 +1334,7 @@ class QueuePoolTest(PoolTestBase):
             [call.connect(ANY, ANY), call.checkout(ANY, ANY, ANY)],
         )
 
+    @testing.requires.timing_intensive
     def test_connect_checkout_handler_always_gets_info(self):
         """test [ticket:3497]"""
 
@@ -1336,6 +1347,10 @@ class QueuePoolTest(PoolTestBase):
         c2.close()
 
         dbapi.shutdown(True)
+
+        # ensure pool invalidate time will be later than starttime
+        # for ConnectionRecord objects above
+        time.sleep(0.1)
 
         bad = p.connect()
         p._invalidate(bad)
