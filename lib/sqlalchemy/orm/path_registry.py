@@ -54,6 +54,8 @@ class PathRegistry(object):
 
     """
 
+    __slots__ = ()
+
     is_token = False
     is_root = False
 
@@ -159,7 +161,10 @@ class PathRegistry(object):
 
     @classmethod
     def per_mapper(cls, mapper):
-        return EntityRegistry(cls.root, mapper)
+        if mapper.is_mapper:
+            return CachingEntityRegistry(cls.root, mapper)
+        else:
+            return SlotsEntityRegistry(cls.root, mapper)
 
     @classmethod
     def coerce(cls, raw):
@@ -199,6 +204,8 @@ PathRegistry.root = RootRegistry()
 
 
 class TokenRegistry(PathRegistry):
+    __slots__ = ("token", "parent", "path", "natural_path")
+
     def __init__(self, parent, token):
         self.token = token
         self.parent = parent
@@ -249,7 +256,7 @@ class PropRegistry(PathRegistry):
 
         self._wildcard_path_loader_key = (
             "loader",
-            self.parent.path + self.prop._wildcard_token,
+            parent.path + self.prop._wildcard_token,
         )
         self._default_path_loader_key = self.prop._default_path_loader_key
         self._loader_key = ("loader", self.path)
@@ -277,11 +284,12 @@ class PropRegistry(PathRegistry):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
         else:
-            return EntityRegistry(self, entity)
+            return SlotsEntityRegistry(self, entity)
 
 
-class EntityRegistry(PathRegistry, dict):
-    is_aliased_class = False
+class AbstractEntityRegistry(PathRegistry):
+    __slots__ = ()
+
     has_entity = True
 
     def __init__(self, parent, entity):
@@ -299,7 +307,10 @@ class EntityRegistry(PathRegistry, dict):
         # are usually not present in mappings.  So here we track both the
         # "enhanced" path in self.path and the "natural" path that doesn't
         # include those objects so these two traversals can be matched up.
+
         if parent.path and self.is_aliased_class:
+            # this is an infrequent code path used only for loader strategies
+            # that also make use of of_type().
             if entity.mapper.isa(parent.natural_path[-1].entity):
                 self.natural_path = parent.natural_path + (entity.mapper,)
             else:
@@ -308,7 +319,10 @@ class EntityRegistry(PathRegistry, dict):
                 )
         else:
             self.natural_path = self.path
-        self.entity_path = self
+
+    @property
+    def entity_path(self):
+        return self
 
     @property
     def mapper(self):
@@ -323,8 +337,34 @@ class EntityRegistry(PathRegistry, dict):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
         else:
+            return PropRegistry(self, entity)
+
+
+class SlotsEntityRegistry(AbstractEntityRegistry):
+    # for aliased class, return lightweight, no-cycles created
+    # version
+
+    __slots__ = (
+        "key",
+        "parent",
+        "is_aliased_class",
+        "entity",
+        "path",
+        "natural_path",
+    )
+
+
+class CachingEntityRegistry(AbstractEntityRegistry, dict):
+    # for long lived mapper, return dict based caching
+    # version that creates reference cycles
+
+    def __getitem__(self, entity):
+        if isinstance(entity, (int, slice)):
+            return self.path[entity]
+        else:
             return dict.__getitem__(self, entity)
 
     def __missing__(self, key):
         self[key] = item = PropRegistry(self, key)
+
         return item

@@ -2299,7 +2299,7 @@ class Query(object):
         while "prev" in jp:
             f, prev = jp["prev"]
             prev = prev.copy()
-            prev[f] = jp
+            prev[f] = jp.copy()
             jp["prev"] = (f, prev)
             jp = prev
         self._joinpath = jp

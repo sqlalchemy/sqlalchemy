@@ -8,6 +8,7 @@
 
 import re
 import types
+import weakref
 
 from . import attributes  # noqa
 from .base import _class_to_mapper  # noqa
@@ -580,14 +581,14 @@ class AliasedInsp(InspectionAttr):
         adapt_on_names,
         represents_outer_join,
     ):
-        self.entity = entity
+        self._weak_entity = weakref.ref(entity)
         self.mapper = mapper
         self.selectable = (
             self.persist_selectable
         ) = self.local_table = selectable
         self.name = name
         self.polymorphic_on = polymorphic_on
-        self._base_alias = _base_alias or self
+        self._base_alias = weakref.ref(_base_alias or self)
         self._use_mapper_path = _use_mapper_path
         self.represents_outer_join = represents_outer_join
 
@@ -622,6 +623,10 @@ class AliasedInsp(InspectionAttr):
         self._adapt_on_names = adapt_on_names
         self._target = mapper.class_
 
+    @property
+    def entity(self):
+        return self._weak_entity()
+
     is_aliased_class = True
     "always returns True"
 
@@ -631,7 +636,7 @@ class AliasedInsp(InspectionAttr):
         :class:`.AliasedInsp`."""
         return self.mapper.class_
 
-    @util.memoized_property
+    @property
     def _path_registry(self):
         if self._use_mapper_path:
             return self.mapper._path_registry
@@ -647,7 +652,7 @@ class AliasedInsp(InspectionAttr):
             "adapt_on_names": self._adapt_on_names,
             "with_polymorphic_mappers": self.with_polymorphic_mappers,
             "with_polymorphic_discriminator": self.polymorphic_on,
-            "base_alias": self._base_alias,
+            "base_alias": self._base_alias(),
             "use_mapper_path": self._use_mapper_path,
             "represents_outer_join": self.represents_outer_join,
         }
@@ -1226,7 +1231,7 @@ def _entity_corresponds_to(given, entity):
     """
     if entity.is_aliased_class:
         if given.is_aliased_class:
-            if entity._base_alias is given._base_alias:
+            if entity._base_alias() is given._base_alias():
                 return True
         return False
     elif given.is_aliased_class:

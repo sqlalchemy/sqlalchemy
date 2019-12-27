@@ -3293,7 +3293,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         # RelationshipProperty.Comparator._criterion_exists() does
         # this). Also keep _correlate liberally open with its previous
         # contents, as this set is used for matching, not rendering.
-        self._correlate = set(clone(f) for f in self._correlate).union(
+        self._correlate = set(clone(f, **kw) for f in self._correlate).union(
             self._correlate
         )
 
@@ -3301,7 +3301,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         # unusual case but same idea applies
         if self._correlate_except:
             self._correlate_except = set(
-                clone(f) for f in self._correlate_except
+                clone(f, **kw) for f in self._correlate_except
             ).union(self._correlate_except)
 
         # 4. clone other things.   The difficulty here is that Column

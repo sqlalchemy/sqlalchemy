@@ -2296,6 +2296,7 @@ def _annotate_columns(element, annotations):
 
     if element is not None:
         element = clone(element)
+    clone = None  # remove gc cycles
     return element
 
 

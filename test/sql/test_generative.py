@@ -101,8 +101,8 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
                         return True
                 return False
 
-            def _copy_internals(self, clone=_clone):
-                self.items = [clone(i) for i in self.items]
+            def _copy_internals(self, clone=_clone, **kw):
+                self.items = [clone(i, **kw) for i in self.items]
 
             def get_children(self, **kwargs):
                 return self.items
