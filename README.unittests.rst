@@ -189,6 +189,12 @@ Additional steps specific to individual databases are as follows::
 
      ALTER DATABASE test SET default_text_search_config = 'pg_catalog.english'
 
+    For two-phase transaction support, the max_prepared_transactions
+    configuration variable must be set to a non-zero value in postgresql.conf.
+    See
+    https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAX-PREPARED-TRANSACTIONS
+    for further background.
+
     ORACLE: a user named "test_schema" is created in addition to the default
     user.
 
