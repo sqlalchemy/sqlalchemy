@@ -2122,10 +2122,11 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
         if len(clauses) == 0:
             util.warn_deprecated(
-                "Calling %s without any argument is deprecated singe version "
-                "1.4 since it can produce ambiguous behaviour. A future "
-                "version of sqlalchemy will raise an exception in this case"
-                % operator.__name__
+                "Calling %(name)s without any argument is deprecated singe "
+                "version 1.4 since it can produce ambiguous behaviour. A "
+                "future version of sqlalchemy will raise an exception in this"
+                " case. Check the %(name)s documentation for further details"
+                % {"name": operator.__name__}
             )
 
         for clause in clauses:
@@ -2189,6 +2190,17 @@ class BooleanClauseList(ClauseList, ColumnElement):
                         where(users_table.c.name == 'wendy').\
                         where(users_table.c.enrolled == True)
 
+        Calling :func:`.and_` without argument is deprecated as of version 1.4,
+        and will raise an error in the future. To render the logic that an
+        empty `AND` should return `True` similar to python `all`:
+
+            * Calls to `and_()`, should be replaced by `and_(true())` or
+              `and_(True)`
+            * Calls to `and_(*args)` where `args` may be empty, should be
+              replaced by `and_(True, *args)` or `and_(true(), *args)`
+
+        .. versionchanged:: 1.4 Warning on empty invocation
+
         .. seealso::
 
             :func:`.or_`
@@ -2220,6 +2232,17 @@ class BooleanClauseList(ClauseList, ColumnElement):
                             (users_table.c.name == 'wendy') |
                             (users_table.c.name == 'jack')
                         )
+
+        Calling :func:`.or_` without argument is deprecated as of version 1.4,
+        and will raise an error in the future. To render the logic that an
+        empty `OR` should return `False` similar to python `any`:
+
+            * Calls to `or_()`, should be replaced by `or_(false())` or
+              `or_(False)`
+            * Calls to `or(*args)` where `args` may be empty, should be
+              replaced by `or_(False, *args)` or `or_(false(), *args)`
+
+        .. versionchanged:: 1.4 Warning on empty invocation
 
         .. seealso::
 
