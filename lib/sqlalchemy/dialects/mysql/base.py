@@ -2969,8 +2969,6 @@ class MySQLDialect(default.DefaultDialect):
             raise exc.NoSuchTableError(full_name)
         return row[1].strip()
 
-        return sql
-
     def _describe_table(self, connection, table, charset=None, full_name=None):
         """Run DESCRIBE for a ``Table`` and return processed rows."""
 

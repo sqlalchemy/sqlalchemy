@@ -15,7 +15,6 @@ from .base import _from_objects
 from .base import _generative
 from .base import DialectKWArgs
 from .base import Executable
-from .elements import _clone
 from .elements import and_
 from .elements import ClauseElement
 from .elements import Null
@@ -203,6 +202,9 @@ class UpdateBase(
             selectable = self.table
 
         self._hints = self._hints.union({(selectable, dialect_name): text})
+
+    def _copy_internals(self, **kw):
+        raise NotImplementedError()
 
 
 class ValuesBase(UpdateBase):
@@ -623,12 +625,6 @@ class Insert(ValuesBase):
         self.include_insert_from_select_defaults = include_defaults
         self.select = coercions.expect(roles.DMLSelectRole, select)
 
-    def _copy_internals(self, clone=_clone, **kw):
-        # TODO: coverage
-        self.parameters = self.parameters.copy()
-        if self.select is not None:
-            self.select = _clone(self.select)
-
 
 class Update(ValuesBase):
     """Represent an Update construct.
@@ -785,11 +781,6 @@ class Update(ValuesBase):
         else:
             return ()
 
-    def _copy_internals(self, clone=_clone, **kw):
-        # TODO: coverage
-        self._whereclause = clone(self._whereclause, **kw)
-        self.parameters = self.parameters.copy()
-
     @_generative
     def where(self, whereclause):
         """return a new update() construct with the given expression added to
@@ -921,7 +912,3 @@ class Delete(UpdateBase):
                 seen.update(item._cloned_set)
 
         return froms
-
-    def _copy_internals(self, clone=_clone, **kw):
-        # TODO: coverage
-        self._whereclause = clone(self._whereclause, **kw)
