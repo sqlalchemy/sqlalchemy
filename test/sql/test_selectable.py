@@ -2678,8 +2678,9 @@ class ReprTest(fixtures.TestBase):
             elements.True_(),
             elements.False_(),
             elements.ClauseList(),
-            elements.BooleanClauseList.and_(True),
-            elements.BooleanClauseList.or_(False),
+            # a single clause in and_ | or_ is optimized away
+            elements.BooleanClauseList.and_(text('1=1'), text('1=1')),
+            elements.BooleanClauseList.or_(text('1=1'), text('1=1')),
             elements.Tuple(),
             elements.Case([]),
             elements.Extract("foo", column("x")),

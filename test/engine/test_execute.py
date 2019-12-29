@@ -391,9 +391,10 @@ class ExecuteTest(fixtures.TestBase):
         for obj in (
             Table("foo", MetaData(), Column("x", Integer)),
             Column("x", Integer),
-            tsa.and_(True),
+            # a single clause in and_ is optimized away
+            tsa.and_(tsa.text("1=1"), tsa.text("1=1")),
+            tsa.and_(tsa.text("1=1"), tsa.text("1=1")).compile(),
             column("foo"),
-            tsa.and_(True).compile(),
             column("foo").compile(),
             MetaData(),
             Integer(),
