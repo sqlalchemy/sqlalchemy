@@ -1,0 +1,8 @@
+.. change::
+    :tags: tests, postgresql
+    :tickets: 5057
+
+    Improved detection of two phase transactions requirement for the PostgreSQL
+    database by testing that max_prepared_transactions is set to a value
+    greater than 0.  Pull request courtesy Federico Caselli.
+

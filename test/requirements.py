@@ -7,12 +7,14 @@ import sys
 
 from sqlalchemy import exc
 from sqlalchemy import util
+from sqlalchemy.sql import text
 from sqlalchemy.testing import exclusions
 from sqlalchemy.testing.exclusions import against
 from sqlalchemy.testing.exclusions import fails_if
 from sqlalchemy.testing.exclusions import fails_on
 from sqlalchemy.testing.exclusions import fails_on_everything_except
 from sqlalchemy.testing.exclusions import LambdaPredicate
+from sqlalchemy.testing.exclusions import NotPredicate
 from sqlalchemy.testing.exclusions import only_if
 from sqlalchemy.testing.exclusions import only_on
 from sqlalchemy.testing.exclusions import skip_if
@@ -632,6 +634,23 @@ class DefaultRequirements(SuiteRequirements):
     def two_phase_transactions(self):
         """Target database must support two-phase transactions."""
 
+        def pg_prepared_transaction(config):
+            if not against(config, "postgresql"):
+                return False
+
+            with config.db.connect() as conn:
+                try:
+                    num = conn.scalar(
+                        text(
+                            "select cast(setting AS integer) from pg_settings "
+                            "where name = 'max_prepared_transactions'"
+                        )
+                    )
+                except exc.OperationalError:
+                    return False
+                else:
+                    return num > 0
+
         return skip_if(
             [
                 no_support("firebird", "no SA implementation"),
@@ -657,6 +676,12 @@ class DefaultRequirements(SuiteRequirements):
                     "mysql",
                     "recent MySQL communiity editions have too many issues "
                     "(late 2016), disabling for now",
+                ),
+                NotPredicate(
+                    LambdaPredicate(
+                        pg_prepared_transaction,
+                        "max_prepared_transactions not available or zero",
+                    )
                 ),
             ]
         )
