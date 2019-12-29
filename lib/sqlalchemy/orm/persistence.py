@@ -864,15 +864,13 @@ def _emit_update_statements(
     )
 
     def update_stmt():
-        clause = sql.and_()
+        clauses = []
 
         for col in mapper._pks_by_table[table]:
-            clause.clauses.append(
-                col == sql.bindparam(col._label, type_=col.type)
-            )
+            clauses.append(col == sql.bindparam(col._label, type_=col.type))
 
         if needs_version_id:
-            clause.clauses.append(
+            clauses.append(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col._label,
@@ -880,7 +878,7 @@ def _emit_update_statements(
                 )
             )
 
-        stmt = table.update(clause)
+        stmt = table.update(sql.and_(*clauses) if len(clauses) > 0 else None)
         return stmt
 
     cached_stmt = base_mapper._memo(("update", table), update_stmt)
@@ -1180,15 +1178,13 @@ def _emit_post_update_statements(
     )
 
     def update_stmt():
-        clause = sql.and_()
+        clauses = []
 
         for col in mapper._pks_by_table[table]:
-            clause.clauses.append(
-                col == sql.bindparam(col._label, type_=col.type)
-            )
+            clauses.append(col == sql.bindparam(col._label, type_=col.type))
 
         if needs_version_id:
-            clause.clauses.append(
+            clauses.append(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col._label,
@@ -1196,7 +1192,7 @@ def _emit_post_update_statements(
                 )
             )
 
-        stmt = table.update(clause)
+        stmt = table.update(sql.and_(*clauses) if len(clauses) > 0 else None)
 
         if mapper.version_id_col is not None:
             stmt = stmt.return_defaults(mapper.version_id_col)
@@ -1295,21 +1291,19 @@ def _emit_delete_statements(
     )
 
     def delete_stmt():
-        clause = sql.and_()
+        clauses = []
         for col in mapper._pks_by_table[table]:
-            clause.clauses.append(
-                col == sql.bindparam(col.key, type_=col.type)
-            )
+            clauses.append(col == sql.bindparam(col.key, type_=col.type))
 
         if need_version_id:
-            clause.clauses.append(
+            clauses.append(
                 mapper.version_id_col
                 == sql.bindparam(
                     mapper.version_id_col.key, type_=mapper.version_id_col.type
                 )
             )
 
-        return table.delete(clause)
+        return table.delete(sql.and_(*clauses) if len(clauses) > 0 else None)
 
     statement = base_mapper._memo(("delete", table), delete_stmt)
     for connection, recs in groupby(delete, lambda rec: rec[1]):  # connection

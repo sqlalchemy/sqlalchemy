@@ -22,6 +22,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -633,16 +634,18 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_where_empty(self):
         table1 = self.tables.mytable
-        self.assert_compile(
-            table1.update().where(and_()),
-            "UPDATE mytable SET myid=:myid, name=:name, "
-            "description=:description",
-        )
-        self.assert_compile(
-            table1.update().where(or_()),
-            "UPDATE mytable SET myid=:myid, name=:name, "
-            "description=:description",
-        )
+        with expect_deprecated():
+            self.assert_compile(
+                table1.update().where(and_()),
+                "UPDATE mytable SET myid=:myid, name=:name, "
+                "description=:description",
+            )
+        with expect_deprecated():
+            self.assert_compile(
+                table1.update().where(or_()),
+                "UPDATE mytable SET myid=:myid, name=:name, "
+                "description=:description",
+            )
 
     def test_prefix_with(self):
         table1 = self.tables.mytable

@@ -78,6 +78,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.util import u
@@ -1396,12 +1397,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 and_(
                     or_(
                         or_(t.c.x == 12),
-                        and_(or_(), or_(and_(t.c.x == 8)), and_()),
+                        and_(or_(and_(t.c.x == 8))),
                     )
                 )
             ),
             "SELECT t.x FROM t WHERE t.x = :x_1 OR t.x = :x_2",
         )
+        with expect_deprecated():
+            self.assert_compile(
+                select([t]).where(
+                    and_(
+                        or_(
+                            or_(t.c.x == 12),
+                            and_(or_(), or_(and_(t.c.x == 8)), and_()),
+                        )
+                    )
+                ),
+                "SELECT t.x FROM t WHERE t.x = :x_1 OR t.x = :x_2",
+            )
 
     def test_true_short_circuit(self):
         t = table("t", column("x"))
@@ -1450,14 +1463,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_where_empty(self):
-        self.assert_compile(
-            select([table1.c.myid]).where(and_()),
-            "SELECT mytable.myid FROM mytable",
-        )
-        self.assert_compile(
-            select([table1.c.myid]).where(or_()),
-            "SELECT mytable.myid FROM mytable",
-        )
+        with expect_deprecated():
+            self.assert_compile(
+                select([table1.c.myid]).where(and_()),
+                "SELECT mytable.myid FROM mytable",
+            )
+        with expect_deprecated():
+            self.assert_compile(
+                select([table1.c.myid]).where(or_()),
+                "SELECT mytable.myid FROM mytable",
+            )
 
     def test_order_by_nulls(self):
         self.assert_compile(

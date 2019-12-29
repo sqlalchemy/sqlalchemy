@@ -391,9 +391,9 @@ class ExecuteTest(fixtures.TestBase):
         for obj in (
             Table("foo", MetaData(), Column("x", Integer)),
             Column("x", Integer),
-            tsa.and_(),
+            tsa.and_(True),
             column("foo"),
-            tsa.and_().compile(),
+            tsa.and_(True).compile(),
             column("foo").compile(),
             MetaData(),
             Integer(),

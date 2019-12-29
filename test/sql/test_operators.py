@@ -1034,7 +1034,8 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(or_(~and_(true())), "false")
 
     def test_three(self):
-        self.assert_compile(or_(and_()), "")
+        with expect_deprecated():
+            self.assert_compile(or_(and_()), "")
 
     def test_four(self):
         x = column("x")
