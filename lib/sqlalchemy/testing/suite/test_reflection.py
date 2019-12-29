@@ -1144,6 +1144,38 @@ class ComponentReflectionTest(fixtures.TablesTest):
             assert id_.get("autoincrement", True)
 
 
+class ComputedReflectionTest(fixtures.TablesTest):
+    run_inserts = run_deletes = None
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        if testing.requires.computed_columns.enabled:
+            Table(
+                "computed_column_table",
+                metadata,
+                Column("id", sa.Integer, primary_key=True),
+                sa.Column("normal", sa.Integer),
+                sa.Column(
+                    "computed_col", sa.Integer, sa.Computed("normal + 42")
+                ),
+                sa.Column("with_default", sa.Integer, server_default="42"),
+            )
+
+    @testing.requires.computed_columns
+    @testing.requires.table_reflection
+    def test_computed_col_default_not_set(self):
+        insp = inspect(testing.db)
+
+        cols = insp.get_columns("computed_column_table")
+        for col in cols:
+            if col["name"] == "with_default":
+                eq_(col["default"], "42")
+            elif not col["autoincrement"]:
+                is_(col["default"], None)
+
+
 class NormalizedNameTest(fixtures.TablesTest):
     __requires__ = ("denormalized_names",)
     __backend__ = True
@@ -1189,4 +1221,5 @@ __all__ = (
     "HasTableTest",
     "HasIndexTest",
     "NormalizedNameTest",
+    "ComputedReflectionTest",
 )
