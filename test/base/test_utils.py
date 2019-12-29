@@ -185,6 +185,19 @@ class WeakSequenceTest(fixtures.TestBase):
         eq_(len(w), 2)
         eq_(len(w._storage), 2)
 
+    @testing.requires.predictable_gc
+    def test_cleanout_container(self):
+        import weakref
+
+        class Foo(object):
+            pass
+
+        f = Foo()
+        w = WeakSequence([f])
+        w_wref = weakref.ref(w)
+        del w
+        eq_(w_wref(), None)
+
 
 class OrderedDictTest(fixtures.TestBase):
     def test_odict(self):
