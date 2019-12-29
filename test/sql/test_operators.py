@@ -50,7 +50,9 @@ from sqlalchemy.sql.expression import tuple_
 from sqlalchemy.sql.expression import UnaryExpression
 from sqlalchemy.sql.expression import union
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1151,6 +1153,16 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(or_(True, True), "true")
 
         self.assert_compile(or_(True, False), "true")
+
+    @combinations(and_, or_)
+    def test_empty_clauses(self, op):
+        with expect_deprecated(
+            "Calling %s without any argument is deprecated singe version "
+            "1.4 since it can produce ambiguous behaviour. A future "
+            "version of sqlalchemy will raise an exception in this case"
+            % op.__name__
+        ):
+            op()
 
 
 class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):

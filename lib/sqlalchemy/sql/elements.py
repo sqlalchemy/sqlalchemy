@@ -2119,6 +2119,15 @@ class BooleanClauseList(ClauseList, ColumnElement):
             coercions.expect(roles.WhereHavingRole, clause)
             for clause in util.coerce_generator_arg(clauses)
         ]
+
+        if len(clauses) == 0:
+            util.warn_deprecated(
+                "Calling %s without any argument is deprecated singe version "
+                "1.4 since it can produce ambiguous behaviour. A future "
+                "version of sqlalchemy will raise an exception in this case"
+                % operator.__name__
+            )
+
         for clause in clauses:
 
             if isinstance(clause, continue_on):
