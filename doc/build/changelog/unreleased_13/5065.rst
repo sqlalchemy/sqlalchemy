@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5065
+
+    Fixed bug where usage of joined eager loading would not properly wrap the
+    query inside of a subquery when :meth:`.Query.group_by` were used against
+    the query.   When any kind of result-limiting approach is used, such as
+    DISTINCT, LIMIT, OFFSET, joined eager loading embeds the row-limited query
+    inside of a subquery so that the collection results are not impacted.   For
+    some reason, the presence of GROUP BY was never included in this criterion,
+    even though it has a similar effect as using DISTINCT.   Additionally, the
+    bug would prevent using GROUP BY at all for a joined eager load query for
+    most database platforms which forbid non-aggregated, non-grouped columns
+    from being in the query, as the additional columns for the joined eager
+    load would not be accepted by the database.
+
+
