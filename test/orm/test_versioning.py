@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import uuid
 
@@ -23,6 +24,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.mock import patch
@@ -32,6 +34,34 @@ from sqlalchemy.testing.schema import Table
 
 def make_uuid():
     return uuid.uuid4().hex
+
+
+@contextlib.contextmanager
+def conditional_sane_rowcount_warnings(
+    update=False, delete=False, only_returning=False
+):
+    warnings = ()
+    if (
+        only_returning
+        and not testing.db.dialect.supports_sane_rowcount_returning
+    ) or (
+        not only_returning and not testing.db.dialect.supports_sane_rowcount
+    ):
+        if update:
+            warnings += (
+                "Dialect .* does not support updated rowcount - "
+                "versioning cannot be verified.",
+            )
+        if delete:
+            warnings += (
+                "Dialect .* does not support deleted rowcount - "
+                "versioning cannot be verified.",
+            )
+
+        with expect_warnings(*warnings):
+            yield
+    else:
+        yield
 
 
 class NullVersionIdTest(fixtures.MappedTest):
@@ -91,7 +121,6 @@ class NullVersionIdTest(fixtures.MappedTest):
             s1.commit,
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_null_version_id_update(self):
         Foo = self.classes.Foo
 
@@ -108,11 +137,14 @@ class NullVersionIdTest(fixtures.MappedTest):
         f1.value = "f1rev2"
         f1.version_id = None
 
-        assert_raises_message(
-            sa.orm.exc.FlushError,
-            "Instance does not contain a non-NULL version value",
-            s1.commit,
-        )
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            assert_raises_message(
+                sa.orm.exc.FlushError,
+                "Instance does not contain a non-NULL version value",
+                s1.commit,
+            )
 
 
 class VersioningTest(fixtures.MappedTest):
@@ -160,8 +192,6 @@ class VersioningTest(fixtures.MappedTest):
         finally:
             testing.db.dialect.supports_sane_rowcount = save
 
-    @testing.emits_warning(r".*versioning cannot be verified")
-    @testing.requires.sane_rowcount_w_returning
     def test_basic(self):
         Foo = self.classes.Foo
 
@@ -172,18 +202,24 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f1rev2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         s2 = create_session(autocommit=False)
         f1_s = s2.query(Foo).get(f1.id)
         f1_s.value = "f1rev3"
-        s2.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s2.commit()
 
         f1.value = "f1rev3mine"
 
         # Only dialects with a sane rowcount can detect the
         # StaleDataError
-        if testing.db.dialect.supports_sane_rowcount:
+        if testing.db.dialect.supports_sane_rowcount_returning:
             assert_raises_message(
                 sa.orm.exc.StaleDataError,
                 r"UPDATE statement on table 'version_table' expected "
@@ -192,19 +228,25 @@ class VersioningTest(fixtures.MappedTest):
             ),
             s1.rollback()
         else:
-            s1.commit()
+            with conditional_sane_rowcount_warnings(
+                update=True, only_returning=True
+            ):
+                s1.commit()
 
         # new in 0.5 !  don't need to close the session
         f1 = s1.query(Foo).get(f1.id)
         f2 = s1.query(Foo).get(f2.id)
 
         f1_s.value = "f1rev4"
-        s2.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s2.commit()
 
         s1.delete(f1)
         s1.delete(f2)
 
-        if testing.db.dialect.supports_sane_rowcount:
+        if testing.db.dialect.supports_sane_multi_rowcount:
             assert_raises_message(
                 sa.orm.exc.StaleDataError,
                 r"DELETE statement on table 'version_table' expected "
@@ -212,9 +254,9 @@ class VersioningTest(fixtures.MappedTest):
                 s1.commit,
             )
         else:
-            s1.commit()
+            with conditional_sane_rowcount_warnings(delete=True):
+                s1.commit()
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_multiple_updates(self):
         Foo = self.classes.Foo
 
@@ -226,14 +268,16 @@ class VersioningTest(fixtures.MappedTest):
 
         f1.value = "f1rev2"
         f2.value = "f2rev2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         eq_(
             s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
             [(f1.id, "f1rev2", 2), (f2.id, "f2rev2", 2)],
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_bulk_insert(self):
         Foo = self.classes.Foo
 
@@ -246,7 +290,6 @@ class VersioningTest(fixtures.MappedTest):
             [(1, "f1", 1), (2, "f2", 1)],
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_bulk_update(self):
         Foo = self.classes.Foo
 
@@ -256,13 +299,16 @@ class VersioningTest(fixtures.MappedTest):
         s1.add_all((f1, f2))
         s1.commit()
 
-        s1.bulk_update_mappings(
-            Foo,
-            [
-                {"id": f1.id, "value": "f1rev2", "version_id": 1},
-                {"id": f2.id, "value": "f2rev2", "version_id": 1},
-            ],
-        )
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.bulk_update_mappings(
+                Foo,
+                [
+                    {"id": f1.id, "value": "f1rev2", "version_id": 1},
+                    {"id": f2.id, "value": "f2rev2", "version_id": 1},
+                ],
+            )
         s1.commit()
 
         eq_(
@@ -270,7 +316,6 @@ class VersioningTest(fixtures.MappedTest):
             [(f1.id, "f1rev2", 2), (f2.id, "f2rev2", 2)],
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_bump_version(self):
         """test that version number can be bumped.
 
@@ -288,22 +333,28 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
         eq_(f1.version_id, 1)
         f1.version_id = 2
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
         eq_(f1.version_id, 2)
 
         # skip an id, test that history
         # is honored
         f1.version_id = 4
         f1.value = "something new"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
         eq_(f1.version_id, 4)
 
         f1.version_id = 5
         s1.delete(f1)
-        s1.commit()
+        with conditional_sane_rowcount_warnings(delete=True):
+            s1.commit()
         eq_(s1.query(Foo).count(), 0)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @engines.close_open_connections
     def test_versioncheck(self):
         """query.with_lockmode performs a 'version check' on an already loaded
@@ -319,7 +370,10 @@ class VersioningTest(fixtures.MappedTest):
         s2 = create_session(autocommit=False)
         f1s2 = s2.query(Foo).get(f1s1.id)
         f1s2.value = "f1 new value"
-        s2.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s2.commit()
 
         # load, version is wrong
         assert_raises_message(
@@ -340,7 +394,6 @@ class VersioningTest(fixtures.MappedTest):
         s1.close()
         s1.query(Foo).with_for_update(read=True).get(f1s1.id)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @engines.close_open_connections
     def test_versioncheck_legacy(self):
         """query.with_lockmode performs a 'version check' on an already loaded
@@ -356,7 +409,10 @@ class VersioningTest(fixtures.MappedTest):
         s2 = create_session(autocommit=False)
         f1s2 = s2.query(Foo).get(f1s1.id)
         f1s2.value = "f1 new value"
-        s2.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s2.commit()
 
         # load, version is wrong
         assert_raises_message(
@@ -391,7 +447,6 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
         s1.query(Foo).with_for_update(read=True).get(f1s1.id)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @engines.close_open_connections
     @testing.requires.update_nowait
     def test_versioncheck_for_update(self):
@@ -416,11 +471,11 @@ class VersioningTest(fixtures.MappedTest):
         )
         s1.rollback()
 
-        s2.commit()
+        with conditional_sane_rowcount_warnings(update=True):
+            s2.commit()
         s1.refresh(f1s1, with_for_update={"nowait": True})
         assert f1s1.version_id == f1s2.version_id
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @engines.close_open_connections
     @testing.requires.update_nowait
     def test_versioncheck_for_update_legacy(self):
@@ -444,11 +499,11 @@ class VersioningTest(fixtures.MappedTest):
         )
         s1.rollback()
 
-        s2.commit()
+        with conditional_sane_rowcount_warnings(update=True):
+            s2.commit()
         s1.refresh(f1s1, lockmode="update_nowait")
         assert f1s1.version_id == f1s2.version_id
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_update_multi_missing_broken_multi_rowcount(self):
         @util.memoized_property
         def rowcount(self):
@@ -459,22 +514,50 @@ class VersioningTest(fixtures.MappedTest):
 
         with patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
-        ):
-            with patch(
-                "sqlalchemy.engine.result.ResultProxy.rowcount", rowcount
+        ), patch("sqlalchemy.engine.result.ResultProxy.rowcount", rowcount):
+
+            Foo = self.classes.Foo
+            s1 = self._fixture()
+            f1s1 = Foo(value="f1 value")
+            s1.add(f1s1)
+            s1.commit()
+
+            f1s1.value = "f2 value"
+            with conditional_sane_rowcount_warnings(
+                update=True, only_returning=True
             ):
-
-                Foo = self.classes.Foo
-                s1 = self._fixture()
-                f1s1 = Foo(value="f1 value")
-                s1.add(f1s1)
-                s1.commit()
-
-                f1s1.value = "f2 value"
                 s1.flush()
-                eq_(f1s1.version_id, 2)
+            eq_(f1s1.version_id, 2)
 
-    @testing.emits_warning(r".*does not support updated rowcount")
+    def test_update_delete_no_plain_rowcount(self):
+
+        with patch.object(
+            config.db.dialect, "supports_sane_rowcount", False
+        ), patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            Foo = self.classes.Foo
+            s1 = self._fixture()
+            f1s1 = Foo(value="f1 value")
+            s1.add(f1s1)
+            s1.commit()
+
+            f1s1.value = "f2 value"
+
+            with expect_warnings(
+                "Dialect .* does not support updated rowcount - "
+                "versioning cannot be verified."
+            ):
+                s1.flush()
+            eq_(f1s1.version_id, 2)
+
+            s1.delete(f1s1)
+            with expect_warnings(
+                "Dialect .* does not support deleted rowcount - "
+                "versioning cannot be verified."
+            ):
+                s1.flush()
+
     @engines.close_open_connections
     def test_noversioncheck(self):
         """test query.with_lockmode works when the mapper has no version id
@@ -493,7 +576,6 @@ class VersioningTest(fixtures.MappedTest):
         assert f1s2.id == f1s1.id
         assert f1s2.value == f1s1.value
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_merge_no_version(self):
         Foo = self.classes.Foo
 
@@ -503,15 +585,20 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         f2 = Foo(id=f1.id, value="f3")
         f3 = s1.merge(f2)
         assert f3 is f1
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
         eq_(f3.version_id, 3)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_merge_correct_version(self):
         Foo = self.classes.Foo
 
@@ -521,15 +608,20 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         f2 = Foo(id=f1.id, value="f3", version_id=2)
         f3 = s1.merge(f2)
         assert f3 is f1
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
         eq_(f3.version_id, 3)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_merge_incorrect_version(self):
         Foo = self.classes.Foo
 
@@ -539,7 +631,10 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         f2 = Foo(id=f1.id, value="f3", version_id=1)
         assert_raises_message(
@@ -552,7 +647,6 @@ class VersioningTest(fixtures.MappedTest):
             f2,
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_merge_incorrect_version_not_in_session(self):
         Foo = self.classes.Foo
 
@@ -562,7 +656,10 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         f2 = Foo(id=f1.id, value="f3", version_id=1)
         s1.close()
@@ -622,64 +719,76 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
             s.flush()
         return s, n1, n2
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_o2m_plain(self):
         s, n1, n2 = self._fixture(o2m=True, post_update=False)
 
         n1.related.append(n2)
-        s.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.flush()
 
         eq_(n1.version_id, 1)
         eq_(n2.version_id, 2)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_m2o_plain(self):
         s, n1, n2 = self._fixture(o2m=False, post_update=False)
 
         n1.related = n2
-        s.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.flush()
 
         eq_(n1.version_id, 2)
         eq_(n2.version_id, 1)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_o2m_post_update(self):
         s, n1, n2 = self._fixture(o2m=True, post_update=True)
 
         n1.related.append(n2)
-        s.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.flush()
 
         eq_(n1.version_id, 1)
         eq_(n2.version_id, 2)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_m2o_post_update(self):
         s, n1, n2 = self._fixture(o2m=False, post_update=True)
 
         n1.related = n2
-        s.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.flush()
 
         eq_(n1.version_id, 2)
         eq_(n2.version_id, 1)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_o2m_post_update_not_assoc_w_insert(self):
         s, n1, n2 = self._fixture(o2m=True, post_update=True, insert=False)
 
         n1.related.append(n2)
         s.add_all([n1, n2])
-        s.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.flush()
 
         eq_(n1.version_id, 1)
         eq_(n2.version_id, 1)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_m2o_post_update_not_assoc_w_insert(self):
         s, n1, n2 = self._fixture(o2m=False, post_update=True, insert=False)
 
         n1.related = n2
         s.add_all([n1, n2])
-        s.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.flush()
 
         eq_(n1.version_id, 1)
         eq_(n2.version_id, 1)
@@ -704,6 +813,27 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
             r"update 1 row\(s\); 0 were matched.",
             s.flush,
         )
+
+    def test_o2m_post_update_no_sane_rowcount(self):
+        Node = self.classes.Node
+        s, n1, n2 = self._fixture(o2m=True, post_update=True)
+
+        n1.related.append(n2)
+
+        with patch.object(
+            config.db.dialect, "supports_sane_rowcount", False
+        ), patch.object(
+            config.db.dialect, "supports_sane_multi_rowcount", False
+        ):
+            s2 = Session(bind=s.connection(Node))
+            s2.query(Node).filter(Node.id == n2.id).update({"version_id": 3})
+            s2.commit()
+
+            with expect_warnings(
+                "Dialect .* does not support updated rowcount - "
+                "versioning cannot be verified."
+            ):
+                s.flush()
 
     @testing.requires.sane_rowcount_w_returning
     def test_m2o_post_update_version_assert(self):
@@ -854,7 +984,6 @@ class ColumnTypeTest(fixtures.MappedTest):
         s1 = Session()
         return s1
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @engines.close_open_connections
     def test_update(self):
         Foo = self.classes.Foo
@@ -865,7 +994,10 @@ class ColumnTypeTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f1rev2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
 
 class RowSwitchTest(fixtures.MappedTest):
@@ -912,7 +1044,6 @@ class RowSwitchTest(fixtures.MappedTest):
         )
         mapper(C, c, version_id_col=c.c.version_id)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_row_switch(self):
         P = self.classes.P
 
@@ -924,9 +1055,11 @@ class RowSwitchTest(fixtures.MappedTest):
         p = session.query(P).first()
         session.delete(p)
         session.add(P(id="P1", data="really a row-switch"))
-        session.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            session.commit()
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_child_row_switch(self):
         P, C = self.classes.P, self.classes.C
 
@@ -943,7 +1076,10 @@ class RowSwitchTest(fixtures.MappedTest):
 
         p = session.query(P).first()
         p.c = C(data="child row-switch")
-        session.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            session.commit()
 
 
 class AlternateGeneratorTest(fixtures.MappedTest):
@@ -997,7 +1133,6 @@ class AlternateGeneratorTest(fixtures.MappedTest):
             version_id_generator=lambda x: make_uuid(),
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_row_switch(self):
         P = self.classes.P
 
@@ -1009,9 +1144,11 @@ class AlternateGeneratorTest(fixtures.MappedTest):
         p = session.query(P).first()
         session.delete(p)
         session.add(P(id="P1", data="really a row-switch"))
-        session.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            session.commit()
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_child_row_switch_one(self):
         P, C = self.classes.P, self.classes.C
 
@@ -1028,9 +1165,11 @@ class AlternateGeneratorTest(fixtures.MappedTest):
 
         p = session.query(P).first()
         p.c = C(data="child row-switch")
-        session.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            session.commit()
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @testing.requires.sane_rowcount_w_returning
     def test_child_row_switch_two(self):
         P = self.classes.P
@@ -1066,7 +1205,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
                 sess2.commit,
             )
         else:
-            sess2.commit
+            sess2.commit()
 
 
 class PlainInheritanceTest(fixtures.MappedTest):
@@ -1098,7 +1237,6 @@ class PlainInheritanceTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_update_child_table_only(self):
         Base, sub, base, Sub = (
             self.classes.Base,
@@ -1116,7 +1254,10 @@ class PlainInheritanceTest(fixtures.MappedTest):
         s.commit()
 
         s1.sub_data = "s2"
-        s.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s.commit()
 
         eq_(s1.version_id, 2)
 
@@ -1350,7 +1491,6 @@ class ServerVersioningTest(fixtures.MappedTest):
     def test_update_col_eager_defaults(self):
         self._test_update_col(eager_defaults=True)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def _test_update_col(self, **kw):
         sess = self._fixture(**kw)
 
@@ -1388,9 +1528,11 @@ class ServerVersioningTest(fixtures.MappedTest):
                     lambda ctx: [{"param_1": 1}],
                 )
             )
-        self.assert_sql_execution(testing.db, sess.flush, *statements)
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            self.assert_sql_execution(testing.db, sess.flush, *statements)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @testing.requires.updateable_autoincrement_pks
     def test_sql_expr_bump(self):
         sess = self._fixture()
@@ -1403,11 +1545,13 @@ class ServerVersioningTest(fixtures.MappedTest):
 
         f1.id = self.classes.Foo.id + 0
 
-        sess.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            sess.flush()
 
         eq_(f1.version_id, 2)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     @testing.requires.updateable_autoincrement_pks
     @testing.requires.returning
     def test_sql_expr_w_mods_bump(self):
@@ -1421,12 +1565,12 @@ class ServerVersioningTest(fixtures.MappedTest):
 
         f1.id = self.classes.Foo.id + 3
 
-        sess.flush()
+        with conditional_sane_rowcount_warnings(update=True):
+            sess.flush()
 
         eq_(f1.id, 5)
         eq_(f1.version_id, 2)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_multi_update(self):
         sess = self._fixture()
 
@@ -1506,7 +1650,10 @@ class ServerVersioningTest(fixtures.MappedTest):
                     ),
                 ]
             )
-        self.assert_sql_execution(testing.db, sess.flush, *statements)
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     def test_delete_col(self):
         sess = self._fixture()
@@ -1528,7 +1675,8 @@ class ServerVersioningTest(fixtures.MappedTest):
                 lambda ctx: [{"id": 1, "version_id": 1}],
             )
         ]
-        self.assert_sql_execution(testing.db, sess.flush, *statements)
+        with conditional_sane_rowcount_warnings(delete=True):
+            self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_expire_on_commit(self):
@@ -1622,7 +1770,6 @@ class ManualVersionTest(fixtures.MappedTest):
 
         eq_(a1.vid, 1)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_update(self):
         sess = Session()
         a1 = self.classes.A()
@@ -1635,7 +1782,10 @@ class ManualVersionTest(fixtures.MappedTest):
         a1.vid = 2
         a1.data = "d2"
 
-        sess.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            sess.commit()
 
         eq_(a1.vid, 2)
 
@@ -1654,7 +1804,6 @@ class ManualVersionTest(fixtures.MappedTest):
         a1.data = "d2"
         assert_raises(orm_exc.StaleDataError, sess.commit)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_update_version_conditional(self):
         sess = Session()
         a1 = self.classes.A()
@@ -1667,13 +1816,19 @@ class ManualVersionTest(fixtures.MappedTest):
         # change the data and UPDATE without
         # incrementing version id
         a1.data = "d2"
-        sess.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            sess.commit()
 
         eq_(a1.vid, 1)
 
         a1.data = "d3"
         a1.vid = 2
-        sess.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            sess.commit()
 
         eq_(a1.vid, 2)
 
@@ -1721,7 +1876,6 @@ class ManualInheritanceVersionTest(fixtures.MappedTest):
 
         mapper(cls.classes.B, cls.tables.b, inherits=cls.classes.A)
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_no_increment(self):
         sess = Session()
         b1 = self.classes.B()
@@ -1734,13 +1888,19 @@ class ManualInheritanceVersionTest(fixtures.MappedTest):
         # change col on subtable only without
         # incrementing version id
         b1.b_data = "bd2"
-        sess.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            sess.commit()
 
         eq_(b1.vid, 1)
 
         b1.b_data = "d3"
         b1.vid = 2
-        sess.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            sess.commit()
 
         eq_(b1.vid, 2)
 
@@ -1798,7 +1958,6 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
         s1 = Session()
         return s1
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_implicit(self):
         Foo = self.classes.Foo
 
@@ -1810,14 +1969,16 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
 
         f1.value = "f1rev2"
         f2.value = "f2rev2"
-        s1.commit()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.commit()
 
         eq_(
             s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
             [(f1.id, "f1rev2", 2), (f2.id, "f2rev2", 2)],
         )
 
-    @testing.emits_warning(r".*versioning cannot be verified")
     def test_explicit(self):
         Foo = self.classes.Foo
 
@@ -1833,7 +1994,10 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
         f1.version_id = 2
         f2.value = "f2rev2"
         f2.version_id = 2
-        s1.flush()
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.flush()
 
         eq_(
             s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
