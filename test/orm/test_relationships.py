@@ -428,11 +428,11 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     this is an **extremely** unusual case::
 
-    Entity
-    ------
-     path -------+
-       ^         |
-       +---------+
+        Entity
+        ------
+         path -------+
+           ^         |
+           +---------+
 
     In this case, one-to-many and many-to-one are no longer accurate.
     Both relationships return collections.   I'm not sure if this is a good
