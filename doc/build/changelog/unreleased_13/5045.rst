@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 5045
+
+    Fixed issue where a timezone-aware ``datetime`` value being converted to
+    string for use as a parameter value of a :class:`.mssql.DATETIMEOFFSET`
+    column was omitting the fractional seconds.
