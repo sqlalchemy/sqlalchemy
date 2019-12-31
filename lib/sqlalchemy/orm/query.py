@@ -3479,6 +3479,7 @@ class Query(Generative):
             kwargs.get("limit") is not None
             or kwargs.get("offset") is not None
             or kwargs.get("distinct", False)
+            or kwargs.get("group_by", False)
         )
 
     def exists(self):
