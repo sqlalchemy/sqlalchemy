@@ -919,9 +919,9 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
 
         p_poly = with_polymorphic(Person, [Engineer])
         e_poly = inspect(p_poly.Engineer)
-        p_poly = inspect(p_poly)
+        p_poly_insp = inspect(p_poly)
 
-        p1 = PathRegistry.coerce((p_poly, emapper.attrs.machines))
+        p1 = PathRegistry.coerce((p_poly_insp, emapper.attrs.machines))
 
         # polymorphic AliasedClass - the path uses _entity_for_mapper()
         # to get the most specific sub-entity

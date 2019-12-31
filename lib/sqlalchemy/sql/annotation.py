@@ -136,6 +136,7 @@ def _deep_annotate(element, annotations, exclude=None):
 
     if element is not None:
         element = clone(element)
+    clone = None  # remove gc cycles
     return element
 
 
@@ -162,6 +163,7 @@ def _deep_deannotate(element, values=None):
 
     if element is not None:
         element = clone(element)
+    clone = None  # remove gc cycles
     return element
 
 

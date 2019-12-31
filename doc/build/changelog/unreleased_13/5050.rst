@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 5050
-
-    Fixed a reference cycle which could impact the GC behavior of the
-    :class:`.WeakSequence` object, currently used within one place in certain
-    mapper configurations.  The issue only affects configuration-time
-    structures. Pull request courtesy Carson Ip.
-

@@ -424,6 +424,24 @@ class _CompileLabel(visitors.Visitable):
         return self
 
 
+class prefix_anon_map(dict):
+    """A map that creates new keys for missing key access.
+    Considers keys of the form "<ident> <name>" to produce
+    new symbols "<name>_<index>", where "index" is an incrementing integer
+    corresponding to <name>.
+    Inlines the approach taken by :class:`sqlalchemy.util.PopulateDict` which
+    is otherwise usually used for this type of operation.
+    """
+
+    def __missing__(self, key):
+        (ident, derived) = key.split(" ", 1)
+        anonymous_counter = self.get(derived, 1)
+        self[derived] = anonymous_counter + 1
+        value = derived + "_" + str(anonymous_counter)
+        self[key] = value
+        return value
+
+
 class SQLCompiler(Compiled):
     """Default implementation of :class:`.Compiled`.
 
@@ -563,7 +581,7 @@ class SQLCompiler(Compiled):
 
         # a map which tracks "anonymous" identifiers that are created on
         # the fly here
-        self.anon_map = util.PopulateDict(self._process_anon)
+        self.anon_map = prefix_anon_map()
 
         # a map which tracks "truncated" names based on
         # dialect.label_length or dialect.max_identifier_length
@@ -1576,12 +1594,6 @@ class SQLCompiler(Compiled):
 
     def _anonymize(self, name):
         return name % self.anon_map
-
-    def _process_anon(self, key):
-        (ident, derived) = key.split(" ", 1)
-        anonymous_counter = self.anon_map.get(derived, 1)
-        self.anon_map[derived] = anonymous_counter + 1
-        return derived + "_" + str(anonymous_counter)
 
     def bindparam_string(
         self, name, positional_names=None, expanding=False, **kw
