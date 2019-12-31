@@ -29,6 +29,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import provision
 from sqlalchemy.testing.engines import testing_engine
+from sqlalchemy.testing.engines import testing_reaper
 
 
 # TODO: ShardTest can be turned into a base for further subclasses
@@ -568,6 +569,8 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
     def teardown(self):
         for db in self.dbs:
             db.connect().invalidate()
+
+        testing_reaper.close_all()
         for i in range(1, 3):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
