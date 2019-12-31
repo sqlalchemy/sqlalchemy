@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 4946
+
+    Fixed a few test failures which would occur on Windows due to SQLite file
+    locking issues, as well as some timing issues in connection pool related
+    tests; pull request courtesy Federico Caselli.
+
