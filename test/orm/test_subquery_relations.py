@@ -1113,6 +1113,45 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         result = q.order_by(sa.desc(User.id)).limit(2).offset(2).all()
         eq_(list(reversed(self.static.user_all_result[0:2])), result)
 
+    def test_group_by_only(self):
+        # test group_by() not impacting results, similarly to joinedload
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    mapper(Address, addresses),
+                    lazy="subquery",
+                    order_by=addresses.c.email_address,
+                )
+            },
+        )
+
+        q = create_session().query(User)
+        eq_(
+            [
+                User(id=7, addresses=[Address(id=1)]),
+                User(
+                    id=8,
+                    addresses=[
+                        Address(id=3, email_address="ed@bettyboop.com"),
+                        Address(id=4, email_address="ed@lala.com"),
+                        Address(id=2, email_address="ed@wood.com"),
+                    ],
+                ),
+                User(id=9, addresses=[Address(id=5)]),
+                User(id=10, addresses=[]),
+            ],
+            q.order_by(User.id).group_by(User).all(),  # group by all columns
+        )
+
     def test_one_to_many_scalar(self):
         Address, addresses, users, User = (
             self.classes.Address,

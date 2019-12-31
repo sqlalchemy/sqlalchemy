@@ -1109,6 +1109,46 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_group_by_only(self):
+        # like distinct(), a group_by() has a similar effect so the
+        # joined eager load needs to subquery for this as well
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    mapper(Address, addresses),
+                    lazy="joined",
+                    order_by=addresses.c.email_address,
+                )
+            },
+        )
+
+        q = create_session().query(User)
+        eq_(
+            [
+                User(id=7, addresses=[Address(id=1)]),
+                User(
+                    id=8,
+                    addresses=[
+                        Address(id=3, email_address="ed@bettyboop.com"),
+                        Address(id=4, email_address="ed@lala.com"),
+                        Address(id=2, email_address="ed@wood.com"),
+                    ],
+                ),
+                User(id=9, addresses=[Address(id=5)]),
+                User(id=10, addresses=[]),
+            ],
+            q.order_by(User.id).group_by(User).all(),  # group by all columns
+        )
+
     def test_limit_2(self):
         keywords, items, item_keywords, Keyword, Item = (
             self.tables.keywords,
