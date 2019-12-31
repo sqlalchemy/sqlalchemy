@@ -1334,8 +1334,7 @@ def _emit_delete_statements(
                 util.warn(
                     "Dialect %s does not support deleted rowcount "
                     "- versioning cannot be verified."
-                    % connection.dialect.dialect_description,
-                    stacklevel=12,
+                    % connection.dialect.dialect_description
                 )
                 connection.execute(statement, del_objects)
         else:

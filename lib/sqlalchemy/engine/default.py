@@ -281,6 +281,13 @@ class DefaultDialect(interfaces.Dialect):
 
     @property
     def supports_sane_rowcount_returning(self):
+        """True if this dialect supports sane rowcount even if RETURNING is
+        in use.
+
+        For dialects that don't support RETURNING, this is synomous
+        with supports_sane_rowcount.
+
+        """
         return self.supports_sane_rowcount
 
     @classmethod
