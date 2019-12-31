@@ -3695,10 +3695,10 @@ class Select(
             clone(f, **kw) for f in self._from_obj
         ).union(f for f in new_froms.values() if isinstance(f, Join))
 
-        self._correlate = set(clone(f) for f in self._correlate)
+        self._correlate = set(clone(f, **kw) for f in self._correlate)
         if self._correlate_except:
             self._correlate_except = set(
-                clone(f) for f in self._correlate_except
+                clone(f, **kw) for f in self._correlate_except
             )
 
         # 4. clone other things.   The difficulty here is that Column

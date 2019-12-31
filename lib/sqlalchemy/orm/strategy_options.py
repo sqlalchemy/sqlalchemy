@@ -90,7 +90,6 @@ class Load(HasCacheKey, Generative, MapperOption):
         # Load objects
         self.context = util.OrderedDict()
         self.local_opts = {}
-        self._of_type = None
         self.is_class_strategy = False
 
     @classmethod
@@ -105,6 +104,8 @@ class Load(HasCacheKey, Generative, MapperOption):
     @property
     def _context_cache_key(self):
         serialized = []
+        if self.context is None:
+            return []
         for (key, loader_path), obj in self.context.items():
             if key != "loader":
                 continue
@@ -190,6 +191,7 @@ class Load(HasCacheKey, Generative, MapperOption):
     is_class_strategy = False
     strategy = None
     propagate_to_loaders = False
+    _of_type = None
 
     def process_query(self, query):
         self._process(query, True)
@@ -316,12 +318,15 @@ class Load(HasCacheKey, Generative, MapperOption):
                         ext_info.mapper,
                         aliased=True,
                         _use_mapper_path=True,
-                        _existing_alias=existing,
+                        _existing_alias=inspect(existing)
+                        if existing is not None
+                        else None,
                     )
+
                     ext_info = inspect(ac)
 
                 path.entity_path[prop].set(
-                    self.context, "path_with_polymorphic", ext_info
+                    self.context, "path_with_polymorphic", ac
                 )
 
                 path = path[prop][ext_info]
@@ -399,13 +404,13 @@ class Load(HasCacheKey, Generative, MapperOption):
         self, attr, strategy, propagate_to_loaders=True
     ):
         strategy = self._coerce_strat(strategy)
-        self.is_class_strategy = False
+
         self.propagate_to_loaders = propagate_to_loaders
-        # if the path is a wildcard, this will set propagate_to_loaders=False
-        self._generate_path(self.path, attr, strategy, "relationship")
-        self.strategy = strategy
-        if strategy is not None:
-            self._set_path_strategy()
+        cloned = self._clone_for_bind_strategy(attr, strategy, "relationship")
+        self.path = cloned.path
+        self._of_type = cloned._of_type
+        cloned.is_class_strategy = self.is_class_strategy = False
+        self.propagate_to_loaders = cloned.propagate_to_loaders
 
     @_generative
     def set_column_strategy(self, attrs, strategy, opts=None, opts_only=False):
@@ -413,40 +418,49 @@ class Load(HasCacheKey, Generative, MapperOption):
 
         self.is_class_strategy = False
         for attr in attrs:
-            cloned = self._generate()
-            cloned.strategy = strategy
-            cloned._generate_path(self.path, attr, strategy, "column")
+            cloned = self._clone_for_bind_strategy(
+                attr, strategy, "column", opts_only=opts_only, opts=opts
+            )
             cloned.propagate_to_loaders = True
-            if opts:
-                cloned.local_opts.update(opts)
-            if opts_only:
-                cloned.is_opts_only = True
-            cloned._set_path_strategy()
-        self.is_class_strategy = False
 
     @_generative
     def set_generic_strategy(self, attrs, strategy):
         strategy = self._coerce_strat(strategy)
 
         for attr in attrs:
-            path = self._generate_path(self.path, attr, strategy, None)
-            cloned = self._generate()
-            cloned.strategy = strategy
-            cloned.path = path
+            cloned = self._clone_for_bind_strategy(attr, strategy, None)
             cloned.propagate_to_loaders = True
-            cloned._set_path_strategy()
 
     @_generative
     def set_class_strategy(self, strategy, opts):
         strategy = self._coerce_strat(strategy)
-        cloned = self._generate()
+        cloned = self._clone_for_bind_strategy(None, strategy, None)
         cloned.is_class_strategy = True
-        path = cloned._generate_path(self.path, None, strategy, None)
-        cloned.strategy = strategy
-        cloned.path = path
         cloned.propagate_to_loaders = True
-        cloned._set_path_strategy()
         cloned.local_opts.update(opts)
+
+    def _clone_for_bind_strategy(
+        self, attr, strategy, wildcard_key, opts_only=False, opts=None
+    ):
+        """Create an anonymous clone of the Load/_UnboundLoad that is suitable
+        to be placed in the context / _to_bind collection of this Load
+        object.   The clone will then lose references to context/_to_bind
+        in order to not create reference cycles.
+
+        """
+        cloned = self._generate()
+        cloned._generate_path(self.path, attr, strategy, wildcard_key)
+        cloned.strategy = strategy
+
+        cloned.local_opts = self.local_opts
+        if opts:
+            cloned.local_opts.update(opts)
+        if opts_only:
+            cloned.is_opts_only = True
+
+        if strategy or cloned.is_opts_only:
+            cloned._set_path_strategy()
+        return cloned
 
     def _set_for_path(self, context, path, replace=True, merge_opts=False):
         if merge_opts or not replace:
@@ -485,18 +499,24 @@ class Load(HasCacheKey, Generative, MapperOption):
                 merge_opts=self.is_opts_only,
             )
 
+        # remove cycles; _set_path_strategy is always invoked on an
+        # anonymous clone of the Load / UnboundLoad object since #5056
+        self.context = None
+
     def __getstate__(self):
         d = self.__dict__.copy()
-        d["context"] = PathRegistry.serialize_context_dict(
-            d["context"], ("loader",)
-        )
+        if d["context"] is not None:
+            d["context"] = PathRegistry.serialize_context_dict(
+                d["context"], ("loader",)
+            )
         d["path"] = self.path.serialize()
         return d
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.path = PathRegistry.deserialize(self.path)
-        self.context = PathRegistry.deserialize_context_dict(self.context)
+        if self.context is not None:
+            self.context = PathRegistry.deserialize_context_dict(self.context)
 
     def _chop_path(self, to_chop, path):
         i = -1
@@ -575,9 +595,16 @@ class _UnboundLoad(Load):
     def _set_path_strategy(self):
         self._to_bind.append(self)
 
-    def _apply_to_parent(self, parent, applied, bound):
+        # remove cycles; _set_path_strategy is always invoked on an
+        # anonymous clone of the Load / UnboundLoad object since #5056
+        self._to_bind = None
+
+    def _apply_to_parent(self, parent, applied, bound, to_bind=None):
         if self in applied:
             return applied[self]
+
+        if to_bind is None:
+            to_bind = self._to_bind
 
         cloned = self._generate()
 
@@ -601,8 +628,8 @@ class _UnboundLoad(Load):
         assert cloned.is_opts_only == self.is_opts_only
 
         new_to_bind = {
-            elem._apply_to_parent(parent, applied, bound)
-            for elem in self._to_bind
+            elem._apply_to_parent(parent, applied, bound, to_bind)
+            for elem in to_bind
         }
         cloned._to_bind = parent._to_bind
         cloned._to_bind.extend(new_to_bind)
@@ -681,11 +708,13 @@ class _UnboundLoad(Load):
         all_tokens = [token for key in keys for token in _split_key(key)]
 
         for token in all_tokens[0:-1]:
+            # set _is_chain_link first so that clones of the
+            # object also inherit this flag
+            opt._is_chain_link = True
             if chained:
                 opt = meth(opt, token, **kw)
             else:
                 opt = opt.defaultload(token)
-            opt._is_chain_link = True
 
         opt = meth(opt, all_tokens[-1], **kw)
         opt._is_chain_link = False

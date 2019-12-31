@@ -722,7 +722,7 @@ def cloned_traverse(obj, opts, visitors):
                         return newelem
 
                 cloned[id(elem)] = newelem = elem._clone()
-                newelem._copy_internals(clone=clone)
+                newelem._copy_internals(clone=clone, **kw)
                 meth = visitors.get(newelem.__visit_name__, None)
                 if meth:
                     meth(newelem)
@@ -730,6 +730,7 @@ def cloned_traverse(obj, opts, visitors):
 
     if obj is not None:
         obj = clone(obj)
+    clone = None  # remove gc cycles
     return obj
 
 
@@ -786,4 +787,5 @@ def replacement_traverse(obj, opts, replace):
 
     if obj is not None:
         obj = clone(obj, **opts)
+    clone = None  # remove gc cycles
     return obj

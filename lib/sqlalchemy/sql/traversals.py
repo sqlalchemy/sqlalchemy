@@ -29,6 +29,8 @@ def compare(obj1, obj2, **kw):
 class HasCacheKey(object):
     _cache_key_traversal = NO_CACHE
 
+    __slots__ = ()
+
     def _gen_cache_key(self, anon_map, bindparams):
         """return an optional cache key.
 

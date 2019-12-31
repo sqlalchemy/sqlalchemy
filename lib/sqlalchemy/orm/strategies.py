@@ -1070,11 +1070,11 @@ class SubqueryLoader(PostLoader):
 
         # build up a path indicating the path from the leftmost
         # entity to the thing we're subquery loading.
-        with_poly_info = path.get(
+        with_poly_entity = path.get(
             context.attributes, "path_with_polymorphic", None
         )
-        if with_poly_info is not None:
-            effective_entity = with_poly_info.entity
+        if with_poly_entity is not None:
+            effective_entity = with_poly_entity
         else:
             effective_entity = self.entity
 
@@ -1571,11 +1571,13 @@ class JoinedLoader(AbstractRelationshipLoader):
                 chained_from_outerjoin,
             )
 
-        with_poly_info = path.get(
+        with_poly_entity = path.get(
             context.attributes, "path_with_polymorphic", None
         )
-        if with_poly_info is not None:
-            with_polymorphic = with_poly_info.with_polymorphic_mappers
+        if with_poly_entity is not None:
+            with_polymorphic = inspect(
+                with_poly_entity
+            ).with_polymorphic_mappers
         else:
             with_polymorphic = None
 
@@ -1593,7 +1595,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             chained_from_outerjoin=chained_from_outerjoin,
         )
 
-        if with_poly_info is not None and None in set(
+        if with_poly_entity is not None and None in set(
             context.secondary_columns
         ):
             raise sa_exc.InvalidRequestError(
@@ -1622,7 +1624,6 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         # otherwise figure it out.
         alias = loadopt.local_opts["eager_from_alias"]
-
         root_mapper, prop = path[-2:]
 
         if alias is not None:
@@ -1633,11 +1634,11 @@ class JoinedLoader(AbstractRelationshipLoader):
             )
         else:
             if path.contains(context.attributes, "path_with_polymorphic"):
-                with_poly_info = path.get(
+                with_poly_entity = path.get(
                     context.attributes, "path_with_polymorphic"
                 )
                 adapter = orm_util.ORMAdapter(
-                    with_poly_info.entity,
+                    with_poly_entity,
                     equivalents=prop.mapper._equivalent_columns,
                 )
             else:
@@ -1721,11 +1722,11 @@ class JoinedLoader(AbstractRelationshipLoader):
         parentmapper,
         chained_from_outerjoin,
     ):
-        with_poly_info = path.get(
+        with_poly_entity = path.get(
             context.attributes, "path_with_polymorphic", None
         )
-        if with_poly_info:
-            to_adapt = with_poly_info.entity
+        if with_poly_entity:
+            to_adapt = with_poly_entity
         else:
             to_adapt = self._gen_pooled_aliased_class(context)
 
@@ -2284,12 +2285,12 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         # build up a path indicating the path from the leftmost
         # entity to the thing we're subquery loading.
-        with_poly_info = path_w_prop.get(
+        with_poly_entity = path_w_prop.get(
             context.attributes, "path_with_polymorphic", None
         )
 
-        if with_poly_info is not None:
-            effective_entity = with_poly_info.entity
+        if with_poly_entity is not None:
+            effective_entity = with_poly_entity
         else:
             effective_entity = self.entity
 

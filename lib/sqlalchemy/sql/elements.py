@@ -255,6 +255,12 @@ class ClauseElement(
         """
         s = util.column_set()
         f = self
+
+        # note this creates a cycle, asserted in test_memusage. however,
+        # turning this into a plain @property adds tends of thousands of method
+        # calls to Core / ORM performance tests, so the small overhead
+        # introduced by the relatively small amount of short term cycles
+        # produced here is preferable
         while f is not None:
             s.add(f)
             f = f._is_clone_of

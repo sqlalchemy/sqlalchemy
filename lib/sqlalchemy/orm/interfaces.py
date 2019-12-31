@@ -525,9 +525,7 @@ class StrategizedProperty(MapperProperty):
     def _get_context_loader(self, context, path):
         load = None
 
-        # use EntityRegistry.__getitem__()->PropRegistry here so
-        # that the path is stated in terms of our base
-        search_path = dict.__getitem__(path, self)
+        search_path = path[self]
 
         # search among: exact match, "attr.*", "default" strategy
         # if any.

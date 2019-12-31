@@ -31,7 +31,6 @@ from ._collections import OrderedDict  # noqa
 from ._collections import OrderedIdentitySet  # noqa
 from ._collections import OrderedProperties  # noqa
 from ._collections import OrderedSet  # noqa
-from ._collections import populate_column_dict  # noqa
 from ._collections import PopulateDict  # noqa
 from ._collections import Properties  # noqa
 from ._collections import ScopedRegistry  # noqa
@@ -42,6 +41,7 @@ from ._collections import to_set  # noqa
 from ._collections import unique_list  # noqa
 from ._collections import UniqueAppender  # noqa
 from ._collections import update_copy  # noqa
+from ._collections import WeakPopulateDict  # noqa
 from ._collections import WeakSequence  # noqa
 from .compat import b  # noqa
 from .compat import b64decode  # noqa
