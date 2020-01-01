@@ -41,13 +41,13 @@ from .sql.schema import Column  # noqa
 from .sql.schema import ColumnCollectionConstraint  # noqa
 from .sql.schema import ColumnCollectionMixin  # noqa
 from .sql.schema import ColumnDefault  # noqa
+from .sql.schema import Computed  # noqa
 from .sql.schema import Constraint  # noqa
 from .sql.schema import DefaultClause  # noqa
 from .sql.schema import DefaultGenerator  # noqa
 from .sql.schema import FetchedValue  # noqa
 from .sql.schema import ForeignKey  # noqa
 from .sql.schema import ForeignKeyConstraint  # noqa
-from .sql.schema import Computed  # noqa
 from .sql.schema import Index  # noqa
 from .sql.schema import MetaData  # noqa
 from .sql.schema import PrimaryKeyConstraint  # noqa

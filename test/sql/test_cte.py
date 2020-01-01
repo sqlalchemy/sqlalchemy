@@ -918,11 +918,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            'WITH regional_sales AS NOT MATERIALIZED '
+            "WITH regional_sales AS NOT MATERIALIZED "
             '(SELECT "order"."order" AS "order" '
             'FROM "order") SELECT "order"."order" FROM "order", '
             'regional_sales WHERE "order"."order" > regional_sales."order"',
-            dialect="postgresql"
+            dialect="postgresql",
         )
 
     def test_suffixes(self):

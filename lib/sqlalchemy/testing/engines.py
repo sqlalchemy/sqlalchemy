@@ -303,9 +303,7 @@ def mock_engine(dialect_name=None):
         d = engine.dialect
         return "\n".join(str(s.compile(dialect=d)) for s in engine.mock)
 
-    engine = create_mock_engine(
-        dialect_name + "://", executor
-    )
+    engine = create_mock_engine(dialect_name + "://", executor)
     assert not hasattr(engine, "mock")
     engine.mock = buffer
     engine.assert_sql = assert_sql

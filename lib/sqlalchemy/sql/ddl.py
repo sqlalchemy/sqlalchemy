@@ -715,7 +715,7 @@ class SchemaGenerator(DDLBase):
             CreateTable(
                 table,
                 include_foreign_key_constraints=  # noqa
-                    include_foreign_key_constraints,
+                    include_foreign_key_constraints,  # noqa
             )
             # fmt: on
         )

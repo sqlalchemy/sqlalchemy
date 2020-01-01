@@ -119,14 +119,14 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             pyodbc_SQL_CHAR = 1  # pyodbc.SQL_CHAR
             pyodbc_SQL_WCHAR = -8  # pyodbc.SQL_WCHAR
             if sys.version_info.major > 2:
-                conn.setdecoding(pyodbc_SQL_CHAR, encoding='utf-8')
-                conn.setdecoding(pyodbc_SQL_WCHAR, encoding='utf-8')
-                conn.setencoding(encoding='utf-8')
+                conn.setdecoding(pyodbc_SQL_CHAR, encoding="utf-8")
+                conn.setdecoding(pyodbc_SQL_WCHAR, encoding="utf-8")
+                conn.setencoding(encoding="utf-8")
             else:
-                conn.setdecoding(pyodbc_SQL_CHAR, encoding='utf-8')
-                conn.setdecoding(pyodbc_SQL_WCHAR, encoding='utf-8')
-                conn.setencoding(str, encoding='utf-8')
-                conn.setencoding(unicode, encoding='utf-8')
+                conn.setdecoding(pyodbc_SQL_CHAR, encoding="utf-8")
+                conn.setdecoding(pyodbc_SQL_WCHAR, encoding="utf-8")
+                conn.setencoding(str, encoding="utf-8")
+                conn.setencoding(unicode, encoding="utf-8")
 
         return on_connect
 

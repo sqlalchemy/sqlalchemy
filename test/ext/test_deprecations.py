@@ -1,15 +1,10 @@
 from sqlalchemy import testing
 from sqlalchemy.orm import mapper
+from . import test_mutable
 from .test_mutable import Foo
-from .test_mutable import (
-    MutableAssociationScalarPickleTest as _MutableAssociationScalarPickleTest,
-)
-from .test_mutable import (
-    MutableWithScalarJSONTest as _MutableWithScalarJSONTest,
-)
 
 
-class MutableIncludeNonPrimaryTest(_MutableWithScalarJSONTest):
+class MutableIncludeNonPrimaryTest(test_mutable.MutableWithScalarJSONTest):
     @classmethod
     def setup_mappers(cls):
         foo = cls.tables.foo
@@ -23,7 +18,9 @@ class MutableIncludeNonPrimaryTest(_MutableWithScalarJSONTest):
             )
 
 
-class MutableAssocIncludeNonPrimaryTest(_MutableAssociationScalarPickleTest):
+class MutableAssocIncludeNonPrimaryTest(
+    test_mutable.MutableAssociationScalarPickleTest
+):
     @classmethod
     def setup_mappers(cls):
         foo = cls.tables.foo

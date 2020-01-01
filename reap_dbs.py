@@ -20,5 +20,3 @@ logging.basicConfig()
 logging.getLogger(provision.__name__).setLevel(logging.INFO)
 
 provision.reap_dbs(sys.argv[1])
-
-

@@ -181,9 +181,9 @@ class MySQLDialect_oursql(MySQLDialect):
     ):
         return MySQLDialect._show_create_table(
             self,
-            connection.connect(
-                close_with_result=True
-            ).execution_options(_oursql_plain_query=True),
+            connection.connect(close_with_result=True).execution_options(
+                _oursql_plain_query=True
+            ),
             table,
             charset,
             full_name,
