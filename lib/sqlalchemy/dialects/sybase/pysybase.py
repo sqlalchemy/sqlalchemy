@@ -1,5 +1,5 @@
 # sybase/pysybase.py
-# Copyright (C) 2010-2019 the SQLAlchemy authors and contributors
+# Copyright (C) 2010-2020 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
