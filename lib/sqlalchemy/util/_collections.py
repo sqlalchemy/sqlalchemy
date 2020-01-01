@@ -944,7 +944,7 @@ class LRUCache(dict):
         return self.capacity + self.capacity * self.threshold
 
     def _manage_size(self):
-        if self._mutex.locked():
+        if not self._mutex.acquire(False):
             return
         try:
             size_alert = bool(self.size_alert)
