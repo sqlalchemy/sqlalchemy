@@ -80,6 +80,7 @@ from .compat import StringIO  # noqa
 from .compat import text_type  # noqa
 from .compat import threading  # noqa
 from .compat import timezone  # noqa
+from .compat import TYPE_CHECKING  # noqa
 from .compat import u  # noqa
 from .compat import ue  # noqa
 from .compat import unquote  # noqa

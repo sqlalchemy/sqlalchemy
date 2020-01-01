@@ -315,7 +315,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         ),
         (
-            lambda: select([t]).where(t.c.foo.in_(["x", "y", "z"])),
+            lambda t: select([t]).where(t.c.foo.in_(["x", "y", "z"])),
             "SELECT sometable.foo FROM sometable WHERE sometable.foo "
             "IN ([POSTCOMPILE_foo_1])",
             {
@@ -323,7 +323,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "check_post_param": {},
             },
         ),
-        (lambda: t.c.foo.in_([None]), "sometable.foo IN (NULL)", {}),
+        (lambda t: t.c.foo.in_([None]), "sometable.foo IN (NULL)", {}),
     )
     def test_strict_binds(self, expr, compiled, kw):
         """test the 'strict' compiler binds."""

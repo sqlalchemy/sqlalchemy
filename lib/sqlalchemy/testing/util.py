@@ -12,12 +12,13 @@ import sys
 import time
 import types
 
+from . import mock
 from ..util import decorator
 from ..util import defaultdict
+from ..util import inspect_getfullargspec
 from ..util import jython
 from ..util import py2k
 from ..util import pypy
-
 
 if jython:
 
@@ -276,6 +277,25 @@ def flag_combinations(*combinations):
     )
 
 
+def lambda_combinations(lambda_arg_sets, **kw):
+    from . import config
+
+    args = inspect_getfullargspec(lambda_arg_sets)
+
+    arg_sets = lambda_arg_sets(*[mock.Mock() for arg in args[0]])
+
+    def create_fixture(pos):
+        def fixture(**kw):
+            return lambda_arg_sets(**kw)[pos]
+
+        fixture.__name__ = "fixture_%3.3d" % pos
+        return fixture
+
+    return config.combinations(
+        *[(create_fixture(i),) for i in range(len(arg_sets))], **kw
+    )
+
+
 def resolve_lambda(__fn, **kw):
     """Given a no-arg lambda and a namespace, return a new lambda that
     has all the values filled in.
@@ -285,10 +305,12 @@ def resolve_lambda(__fn, **kw):
 
     """
 
+    pos_args = inspect_getfullargspec(__fn)[0]
+    pass_pos_args = {arg: kw.pop(arg) for arg in pos_args}
     glb = dict(__fn.__globals__)
     glb.update(kw)
     new_fn = types.FunctionType(__fn.__code__, glb)
-    return new_fn()
+    return new_fn(**pass_pos_args)
 
 
 def metadata_fixture(ddl="function"):

@@ -126,7 +126,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
                 conn.setdecoding(pyodbc_SQL_CHAR, encoding="utf-8")
                 conn.setdecoding(pyodbc_SQL_WCHAR, encoding="utf-8")
                 conn.setencoding(str, encoding="utf-8")
-                conn.setencoding(unicode, encoding="utf-8")
+                conn.setencoding(unicode, encoding="utf-8")  # noqa: F821
 
         return on_connect
 

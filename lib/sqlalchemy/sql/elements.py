@@ -43,6 +43,11 @@ from .. import exc
 from .. import inspection
 from .. import util
 
+if util.TYPE_CHECKING:
+    from typing import Any
+    from typing import Optional
+    from typing import Union
+
 
 def collate(expression, collation):
     """Return the clause ``expression COLLATE collation``.
@@ -709,7 +714,7 @@ class ColumnElement(
     _alt_names = ()
 
     def self_group(self, against=None):
-        # type: (Module, Module, Optional[Any]) -> ClauseEleent
+        # type: (Optional[Any]) -> ClauseElement
         if (
             against in (operators.and_, operators.or_, operators._asbool)
             and self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity

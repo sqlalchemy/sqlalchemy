@@ -54,6 +54,7 @@ from .util import adict  # noqa
 from .util import fail  # noqa
 from .util import flag_combinations  # noqa
 from .util import force_drop_names  # noqa
+from .util import lambda_combinations  # noqa
 from .util import metadata_fixture  # noqa
 from .util import provide_metadata  # noqa
 from .util import resolve_lambda  # noqa

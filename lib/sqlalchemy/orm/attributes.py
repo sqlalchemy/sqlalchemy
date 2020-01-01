@@ -1586,10 +1586,8 @@ def backref_listeners(attribute, key, uselist):
 _NO_HISTORY = util.symbol("NO_HISTORY")
 _NO_STATE_SYMBOLS = frozenset([id(PASSIVE_NO_RESULT), id(NO_VALUE)])
 
-History = util.namedtuple("History", ["added", "unchanged", "deleted"])
 
-
-class History(History):
+class History(util.namedtuple("History", ["added", "unchanged", "deleted"])):
     """A 3-tuple of added, unchanged and deleted values,
     representing the changes which have occurred on an instrumented
     attribute.

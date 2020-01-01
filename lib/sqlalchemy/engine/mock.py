@@ -108,7 +108,7 @@ def create_mock_engine(url, executor, **kw):
     # consume dialect arguments from kwargs
     for k in util.get_cls_kwargs(dialect_cls):
         if k in kw:
-            dialect_args[k] = kwargs.pop(k)
+            dialect_args[k] = kw.pop(k)
 
     # create dialect
     dialect = dialect_cls(**dialect_args)

@@ -17,10 +17,13 @@ from .. import inspection
 from .. import util
 from ..util import collections_abc
 
-elements = None  # type: types.ModuleType
-schema = None  # type: types.ModuleType
-selectable = None  # type: types.ModuleType
-sqltypes = None  # type: types.ModuleType
+if util.TYPE_CHECKING:
+    from types import ModuleType
+
+elements = None  # type: ModuleType
+schema = None  # type: ModuleType
+selectable = None  # type: ModuleType
+sqltypes = None  # type: ModuleType
 
 
 def _is_literal(element):

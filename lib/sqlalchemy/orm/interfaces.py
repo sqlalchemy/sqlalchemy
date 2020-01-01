@@ -39,6 +39,12 @@ from ..sql import operators
 from ..sql import visitors
 from ..sql.traversals import HasCacheKey
 
+if util.TYPE_CHECKING:
+    from typing import Any
+    from typing import List
+    from typing import Optional
+    from .mapper import Mapper
+    from .util import AliasedInsp
 
 __all__ = (
     "EXT_CONTINUE",
@@ -363,8 +369,12 @@ class PropComparator(operators.ColumnOperators):
 
     __slots__ = "prop", "property", "_parententity", "_adapt_to_entity"
 
-    def __init__(self, prop, parentmapper, adapt_to_entity=None):
-        # type: (MapperProperty, Mapper, Optional(AliasedInsp))
+    def __init__(
+        self,
+        prop,  # type: MapperProperty
+        parentmapper,  # type: Mapper
+        adapt_to_entity=None,  # type: Optional[AliasedInsp]
+    ):
         self.prop = self.property = prop
         self._parententity = adapt_to_entity or parentmapper
         self._adapt_to_entity = adapt_to_entity
@@ -372,8 +382,10 @@ class PropComparator(operators.ColumnOperators):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def _bulk_update_tuples(self, value):
-        # type: (ColumnOperators) -> List[tuple[ColumnOperators, Any]]
+    def _bulk_update_tuples(
+        self, value  # type: (operators.ColumnOperators)
+    ):
+        # type: (...) -> List[tuple[operators.ColumnOperators, Any]]
         """Receive a SQL expression that represents a value in the SET
         clause of an UPDATE statement.
 

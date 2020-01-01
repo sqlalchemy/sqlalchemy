@@ -50,6 +50,10 @@ from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 
+if util.TYPE_CHECKING:
+    from typing import Any
+    from typing import Optional
+
 
 class _OffsetLimitParam(BindParameter):
     @property
@@ -2096,7 +2100,7 @@ class SelectBase(
     _memoized_property = util.group_expirable_memoized_property()
 
     def _generate_fromclause_column_proxies(self, fromclause):
-        # type: (FromClause)
+        # type: (FromClause) -> None
         raise NotImplementedError()
 
     def _refresh_for_new_column(self, column):
@@ -2344,7 +2348,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     _is_select_container = True
 
     def __init__(self, element):
-        # type: (SelectBase)
+        # type: (SelectBase) -> None
         self.element = coercions.expect(roles.SelectStatementRole, element)
 
     @property
