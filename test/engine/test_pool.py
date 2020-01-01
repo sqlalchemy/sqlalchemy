@@ -970,11 +970,8 @@ class QueuePoolTest(PoolTestBase):
         dbapi = MockDBAPI()
 
         def creator():
-            mutex.acquire()
-            try:
+            with mutex:
                 return dbapi.connect()
-            finally:
-                mutex.release()
 
         success = []
         for timeout in (None, 30):

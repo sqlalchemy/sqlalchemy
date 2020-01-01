@@ -698,8 +698,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         # prevent this mapper from being constructed
         # while a configure_mappers() is occurring (and defer a
         # configure_mappers() until construction succeeds)
-        _CONFIGURE_MUTEX.acquire()
-        try:
+        with _CONFIGURE_MUTEX:
             self.dispatch._events._new_mapper_instance(class_, self)
             self._configure_inheritance()
             self._configure_class_instrumentation()
@@ -709,8 +708,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             Mapper._new_mappers = True
             self._log("constructed")
             self._expire_memoizations()
-        finally:
-            _CONFIGURE_MUTEX.release()
 
     # major attributes initialized at the classlevel so that
     # they can be Sphinx-documented.
@@ -3167,8 +3164,7 @@ def configure_mappers():
     if not Mapper._new_mappers:
         return
 
-    _CONFIGURE_MUTEX.acquire()
-    try:
+    with _CONFIGURE_MUTEX:
         global _already_compiling
         if _already_compiling:
             return
@@ -3225,8 +3221,6 @@ def configure_mappers():
                 Mapper._new_mappers = False
         finally:
             _already_compiling = False
-    finally:
-        _CONFIGURE_MUTEX.release()
     Mapper.dispatch._for_class(Mapper).after_configured()
 
 

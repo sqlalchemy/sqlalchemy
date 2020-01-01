@@ -762,8 +762,7 @@ class AutomapBase(object):
                 autoload_replace=False,
             )
 
-        _CONFIGURE_MUTEX.acquire()
-        try:
+        with _CONFIGURE_MUTEX:
             table_to_map_config = dict(
                 (m.local_table, m)
                 for m in _DeferredMapperConfig.classes_for_base(
@@ -818,8 +817,6 @@ class AutomapBase(object):
 
             for map_config in _DeferredMapperConfig.classes_for_base(cls):
                 map_config.map()
-        finally:
-            _CONFIGURE_MUTEX.release()
 
     _sa_decl_prepare = True
     """Indicate that the mapping of classes should be deferred.
