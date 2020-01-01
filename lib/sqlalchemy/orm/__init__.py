@@ -231,17 +231,14 @@ def clear_mappers():
     upon a fixed set of classes.
 
     """
-    mapperlib._CONFIGURE_MUTEX.acquire()
-    try:
-        while _mapper_registry:
-            try:
-                # can't even reliably call list(weakdict) in jython
-                mapper, b = _mapper_registry.popitem()
-                mapper.dispose()
-            except KeyError:
-                pass
-    finally:
-        mapperlib._CONFIGURE_MUTEX.release()
+    with mapperlib._CONFIGURE_MUTEX, _mapper_registry:
+        try:
+            # can't even reliably call list(weakdict) in jython
+            mapper, b = _mapper_registry.popitem()
+            mapper.dispose()
+        except KeyError:
+            pass
+
 
 
 joinedload = strategy_options.joinedload._unbound_fn

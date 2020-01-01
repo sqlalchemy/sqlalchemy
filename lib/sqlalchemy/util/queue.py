@@ -17,7 +17,7 @@ producing a ``put()`` inside the ``get()`` and therefore a reentrant
 condition.
 
 """
-
+import functools
 from collections import deque
 from time import time as _time
 
@@ -37,6 +37,15 @@ class Full(Exception):
     "Exception raised by Queue.put(block=0)/put_nowait()."
 
     pass
+
+
+def atomic(f):
+    @functools.wraps(f)
+    def decorated(self, *args, **kwargs):
+        with self.mutex:
+            return f(self, *args, **kwargs)
+
+    return decorated
 
 
 class Queue:
@@ -63,31 +72,25 @@ class Queue:
         # If this queue uses LIFO or FIFO
         self.use_lifo = use_lifo
 
+    @atomic
     def qsize(self):
         """Return the approximate size of the queue (not reliable!)."""
 
-        self.mutex.acquire()
-        n = self._qsize()
-        self.mutex.release()
-        return n
+        return self._qsize()
 
+    @atomic
     def empty(self):
         """Return True if the queue is empty, False otherwise (not
         reliable!)."""
 
-        self.mutex.acquire()
-        n = self._empty()
-        self.mutex.release()
-        return n
+        return self._empty()
 
+    @atomic
     def full(self):
         """Return True if the queue is full, False otherwise (not
         reliable!)."""
 
-        self.mutex.acquire()
-        n = self._full()
-        self.mutex.release()
-        return n
+        return self._full()
 
     def put(self, item, block=True, timeout=None):
         """Put an item into the queue.
@@ -102,8 +105,7 @@ class Queue:
         (`timeout` is ignored in that case).
         """
 
-        self.not_full.acquire()
-        try:
+        with self.not_full:
             if not block:
                 if self._full():
                     raise Full
@@ -121,8 +123,6 @@ class Queue:
                     self.not_full.wait(remaining)
             self._put(item)
             self.not_empty.notify()
-        finally:
-            self.not_full.release()
 
     def put_nowait(self, item):
         """Put an item into the queue without blocking.
@@ -143,8 +143,7 @@ class Queue:
         return an item if one is immediately available, else raise the
         ``Empty`` exception (`timeout` is ignored in that case).
         """
-        self.not_empty.acquire()
-        try:
+        with self.not_empty:
             if not block:
                 if self._empty():
                     raise Empty
@@ -163,8 +162,6 @@ class Queue:
             item = self._get()
             self.not_full.notify()
             return item
-        finally:
-            self.not_empty.release()
 
     def get_nowait(self):
         """Remove and return an item from the queue without blocking.
@@ -193,7 +190,7 @@ class Queue:
 
     # Check whether the queue is full
     def _full(self):
-        return self.maxsize > 0 and len(self.queue) == self.maxsize
+        return 0 < self.maxsize == len(self.queue)
 
     # Put a new item in the queue
     def _put(self, item):

@@ -1179,11 +1179,8 @@ def counter():
 
     # avoid the 2to3 "next" transformation...
     def _next():
-        lock.acquire()
-        try:
+        with lock:
             return next(counter)
-        finally:
-            lock.release()
 
     return _next
 
@@ -1362,14 +1359,11 @@ class symbol(object):
     _lock = compat.threading.Lock()
 
     def __new__(cls, name, doc=None, canonical=None):
-        cls._lock.acquire()
-        try:
+        with cls._lock:
             sym = cls.symbols.get(name)
             if sym is None:
                 cls.symbols[name] = sym = _symbol(name, doc, canonical)
             return sym
-        finally:
-            symbol._lock.release()
 
     @classmethod
     def parse_user_argument(
