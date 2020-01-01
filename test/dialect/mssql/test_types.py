@@ -735,7 +735,7 @@ class TypeRoundTripTest(
             11,
             2,
             32,
-            0,
+            123456,
             util.timezone(datetime.timedelta(hours=1)),
         )
         t.insert().execute(

@@ -235,9 +235,9 @@ class _ODBCDateTimeOffset(DATETIMEOFFSET):
     def bind_processor(self, dialect):
         def process(value):
             """Convert to string format required by T-SQL."""
-            dto_string = value.strftime("%Y-%m-%d %H:%M:%S %z")
+            dto_string = value.strftime("%Y-%m-%d %H:%M:%S.%f %z")
             # offset needs a colon, e.g., -0700 -> -07:00
-            return dto_string[:23] + ":" + dto_string[23:]
+            return dto_string[:30] + ":" + dto_string[30:]
 
         return process
 
