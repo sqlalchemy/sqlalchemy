@@ -58,7 +58,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup(self):
         self._registry = deepcopy(functions._registry)
         self._case_sensitive_registry = deepcopy(
-            functions._case_sensitive_registry)
+            functions._case_sensitive_registry
+        )
 
     def teardown(self):
         functions._registry = self._registry
@@ -95,8 +96,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 dialect=dialect,
             )
 
-            functions._registry['_default'].pop('fake_func')
-            functions._case_sensitive_registry['_default'].pop('fake_func')
+            functions._registry["_default"].pop("fake_func")
+            functions._case_sensitive_registry["_default"].pop("fake_func")
 
     def test_use_labels(self):
         self.assert_compile(
@@ -242,7 +243,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_replace_function(self):
         class replaceable_func(GenericFunction):
             type = Integer
-            identifier = 'replaceable_func'
+            identifier = "replaceable_func"
 
         assert isinstance(func.Replaceable_Func().type, Integer)
         assert isinstance(func.RePlAcEaBlE_fUnC().type, Integer)
@@ -251,11 +252,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         with expect_warnings(
             "The GenericFunction 'replaceable_func' is already registered and "
             "is going to be overriden.",
-            regex=False
+            regex=False,
         ):
+
             class replaceable_func_override(GenericFunction):
                 type = DateTime
-                identifier = 'replaceable_func'
+                identifier = "replaceable_func"
 
         assert isinstance(func.Replaceable_Func().type, DateTime)
         assert isinstance(func.RePlAcEaBlE_fUnC().type, DateTime)
@@ -1078,7 +1080,7 @@ class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
         functions._registry = self._registry
 
     def test_GenericFunction_is_registered(self):
-        assert 'GenericFunction' not in functions._registry['_default']
+        assert "GenericFunction" not in functions._registry["_default"]
 
     def test_register_function(self):
 
@@ -1092,7 +1094,7 @@ class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
         class registered_func_child(registered_func):
             type = sqltypes.Integer
 
-        assert 'registered_func' in functions._registry['_default']
+        assert "registered_func" in functions._registry["_default"]
         assert isinstance(func.registered_func_child().type, Integer)
 
         class not_registered_func(GenericFunction):
@@ -1104,5 +1106,5 @@ class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
         class not_registered_func_child(not_registered_func):
             type = sqltypes.Integer
 
-        assert 'not_registered_func' not in functions._registry['_default']
+        assert "not_registered_func" not in functions._registry["_default"]
         assert isinstance(func.not_registered_func_child().type, Integer)
