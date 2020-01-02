@@ -3,6 +3,7 @@ from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -28,6 +29,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
@@ -120,6 +122,62 @@ class TransScopingTest(_fixtures.FixtureTest):
         c.execute("select * from users")
         s.close()
         c.execute("select * from users")
+
+    def test_autobegin_execute(self):
+        # test the new autobegin behavior introduced in #5074
+        s = Session(testing.db)
+
+        is_(s._transaction, None)
+
+        s.execute(select([1]))
+        is_not_(s._transaction, None)
+
+        s.commit()
+        is_(s._transaction, None)
+
+        s.execute(select([1]))
+        is_not_(s._transaction, None)
+
+        s.close()
+        is_(s._transaction, None)
+
+        s.execute(select([1]))
+        is_not_(s._transaction, None)
+
+        s.close()
+        is_(s._transaction, None)
+
+    def test_autobegin_flush(self):
+        # test the new autobegin behavior introduced in #5074
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(testing.db)
+
+        is_(s._transaction, None)
+
+        # empty flush, nothing happens
+        s.flush()
+        is_(s._transaction, None)
+
+        s.add(User(id=1, name="name"))
+        s.flush()
+        is_not_(s._transaction, None)
+        s.commit()
+        is_(s._transaction, None)
+
+    def test_autobegin_begin_method(self):
+        s = Session(testing.db)
+
+        s.begin()  # OK
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "A transaction is already begun.  Use "
+            "subtransactions=True to allow subtransactions.",
+            s.begin,
+        )
 
     @testing.requires.independent_connections
     @engines.close_open_connections
@@ -406,6 +464,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.flush()
         assert u1 not in sess
         assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        assert sess.transaction is not None
         sess.rollback()
         assert u1 in sess
 
