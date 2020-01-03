@@ -3911,7 +3911,7 @@ class Query(object):
 
         for rec in context.create_eager_joins:
             strategy = rec[0]
-            strategy(*rec[1:])
+            strategy(context, *rec[1:])
 
         if context.from_clause:
             # "load from explicit FROMs" mode,

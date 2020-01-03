@@ -1,6 +1,6 @@
 .. change::
     :tags: bug, orm, engine
-    :tickets: 5056, 5050
+    :tickets: 5056, 5050, 5071
 
     Added test support and repaired a wide variety of unnecessary reference
     cycles created for short-lived objects, mostly in the area of ORM queries.
