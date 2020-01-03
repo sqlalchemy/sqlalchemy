@@ -1208,6 +1208,21 @@ class CycleTest(_fixtures.FixtureTest):
 
         go()
 
+    def test_query_joinedload(self):
+        User, Address = self.classes("User", "Address")
+
+        s = Session()
+
+        def generate():
+            s.query(User).options(joinedload(User.addresses)).all()
+
+        # cycles here are due to ClauseElement._cloned_set and Load.context
+        @assert_cycles(28)
+        def go():
+            generate()
+
+        go()
+
     def test_plain_join(self):
         users, addresses = self.tables("users", "addresses")
 
