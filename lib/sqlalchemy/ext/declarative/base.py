@@ -179,8 +179,7 @@ class _MapperConfig(object):
 
         self._scan_attributes()
 
-        mapperlib._CONFIGURE_MUTEX.acquire()
-        try:
+        with mapperlib._CONFIGURE_MUTEX:
             clsregistry.add_class(self.classname, self.cls)
 
             self._extract_mappable_attributes()
@@ -192,8 +191,6 @@ class _MapperConfig(object):
             self._setup_inheritance()
 
             self._early_mapping()
-        finally:
-            mapperlib._CONFIGURE_MUTEX.release()
 
     def _early_mapping(self):
         self.map()
