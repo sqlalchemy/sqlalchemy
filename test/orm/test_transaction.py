@@ -550,6 +550,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
     def test_no_sql_during_rollback(self):
         sess = create_session(bind=testing.db, autocommit=False)
 
+        sess.connection()
+
         @event.listens_for(sess, "after_rollback")
         def go(session):
             session.execute("select 1")
@@ -1273,6 +1275,7 @@ class RollbackRecoverTest(_LocalFixture):
     def test_pk_violation(self):
         User, Address = self.classes.User, self.classes.Address
         s = self.session()
+
         a1 = Address(email_address="foo")
         u1 = User(id=1, name="ed", addresses=[a1])
         s.add(u1)
@@ -1287,6 +1290,7 @@ class RollbackRecoverTest(_LocalFixture):
 
         with expect_warnings("New instance"):
             assert_raises(sa_exc.IntegrityError, s.commit)
+
         assert_raises(sa_exc.InvalidRequestError, s.commit)
         s.rollback()
         assert u2 not in s

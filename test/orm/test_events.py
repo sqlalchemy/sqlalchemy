@@ -1500,6 +1500,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(
             canary,
             [
+                "after_transaction_create",  # changed in #5074
                 "before_attach",
                 "after_attach",
                 "before_commit",
@@ -1522,7 +1523,6 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
                 "after_transaction_end",
                 "after_soft_rollback",
                 "after_transaction_end",
-                "after_transaction_create",
                 "after_soft_rollback",
             ],
         )
@@ -1564,6 +1564,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(
             canary,
             [
+                "after_transaction_create",  # changed due to #5074
                 "before_attach",
                 "after_attach",
                 "before_flush",
@@ -1599,7 +1600,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
                 "after_transaction_end",
                 "after_commit",
                 "after_transaction_end",
-                "after_transaction_create",
+                # no longer autocreates after #5074
             ],
         )
 
@@ -1647,10 +1648,10 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(
             canary,
             [
+                "after_transaction_create",  # moved to top due to #5074
                 "before_commit",
                 "after_commit",
                 "after_transaction_end",
-                "after_transaction_create",
             ],
         )
 
@@ -1713,7 +1714,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_connection_emits_after_begin(self):
         sess, canary = self._listener_fixture(bind=testing.db)
         sess.connection()
-        eq_(canary, ["after_begin"])
+        # changed due to #5074
+        eq_(canary, ["after_transaction_create", "after_begin"])
         sess.close()
 
     def test_reentrant_flush(self):

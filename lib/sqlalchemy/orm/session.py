@@ -123,14 +123,14 @@ class SessionTransaction(object):
 
     **Life Cycle**
 
-    A :class:`.SessionTransaction` is associated with a :class:`.Session`
-    in its default mode of ``autocommit=False`` immediately, associated
-    with no database connections.  As the :class:`.Session` is called upon
-    to emit SQL on behalf of various :class:`.Engine` or :class:`.Connection`
-    objects, a corresponding :class:`.Connection` and associated
-    :class:`.Transaction` is added to a collection within the
-    :class:`.SessionTransaction` object, becoming one of the
-    connection/transaction pairs maintained by the
+    A :class:`.SessionTransaction` is associated with a :class:`.Session` in
+    its default mode of ``autocommit=False`` whenever the "autobegin" process
+    takes place, associated with no database connections.  As the
+    :class:`.Session` is called upon to emit SQL on behalf of various
+    :class:`.Engine` or :class:`.Connection` objects, a corresponding
+    :class:`.Connection` and associated :class:`.Transaction` is added to a
+    collection within the :class:`.SessionTransaction` object, becoming one of
+    the connection/transaction pairs maintained by the
     :class:`.SessionTransaction`.  The start of a :class:`.SessionTransaction`
     can be tracked using the :meth:`.SessionEvents.after_transaction_create`
     event.
@@ -140,12 +140,17 @@ class SessionTransaction(object):
     :meth:`.Session.close` methods are called.  At this point, the
     :class:`.SessionTransaction` removes its association with its parent
     :class:`.Session`.   A :class:`.Session` that is in ``autocommit=False``
-    mode will create a new :class:`.SessionTransaction` to replace it
-    immediately, whereas a :class:`.Session` that's in ``autocommit=True``
-    mode will remain without a :class:`.SessionTransaction` until the
-    :meth:`.Session.begin` method is called.  The end of a
+    mode will create a new :class:`.SessionTransaction` to replace it when the
+    next "autobegin" event occurs, whereas a :class:`.Session` that's in
+    ``autocommit=True`` mode will remain without a :class:`.SessionTransaction`
+    until the :meth:`.Session.begin` method is called.  The end of a
     :class:`.SessionTransaction` can be tracked using the
     :meth:`.SessionEvents.after_transaction_end` event.
+
+    .. versionchanged:: 1.4 the :class:`.SessionTransaction` is not created
+       immediately within a :class:`.Session` when constructed or when the
+       previous transaction is removed, it instead is created when the
+       :class:`.Session` is next used.
 
     **Nesting and Subtransactions**
 
@@ -217,7 +222,7 @@ class SessionTransaction(object):
 
     _rollback_exception = None
 
-    def __init__(self, session, parent=None, nested=False):
+    def __init__(self, session, parent=None, nested=False, autobegin=False):
         self.session = session
         self._connections = {}
         self._parent = parent
@@ -230,7 +235,7 @@ class SessionTransaction(object):
             )
 
         if self.session._enable_transaction_accounting:
-            self._take_snapshot()
+            self._take_snapshot(autobegin=autobegin)
 
         self.session.dispatch.after_transaction_create(self.session, self)
 
@@ -334,7 +339,7 @@ class SessionTransaction(object):
 
         return result
 
-    def _take_snapshot(self):
+    def _take_snapshot(self, autobegin=False):
         if not self._is_transaction_boundary:
             self._new = self._parent._new
             self._deleted = self._parent._deleted
@@ -342,7 +347,7 @@ class SessionTransaction(object):
             self._key_switches = self._parent._key_switches
             return
 
-        if not self.session._flushing:
+        if not autobegin and not self.session._flushing:
             self.session.flush()
 
         self._new = weakref.WeakKeyDictionary()
@@ -577,7 +582,7 @@ class SessionTransaction(object):
         return self._parent
 
     def close(self, invalidate=False):
-        self.session.transaction = self._parent
+        self.session._transaction = self._parent
         if self._parent is None:
             for connection, transaction, autoclose in set(
                 self._connections.values()
@@ -592,9 +597,6 @@ class SessionTransaction(object):
         self._state = CLOSED
         self.session.dispatch.after_transaction_end(self.session, self)
 
-        if self._parent is None:
-            if not self.session.autocommit:
-                self.session.begin()
         self.session = None
         self._connections = None
 
@@ -603,7 +605,7 @@ class SessionTransaction(object):
 
     def __exit__(self, type_, value, traceback):
         self._assert_active(deactive_ok=True, prepared_ok=True)
-        if self.session.transaction is None:
+        if self.session._transaction is None:
             return
         if type_ is None:
             try:
@@ -832,7 +834,7 @@ class Session(_SessionClassMethods):
         self.__binds = {}
         self._flushing = False
         self._warn_on_events = False
-        self.transaction = None
+        self._transaction = None
         self.hash_key = _new_sessionid()
         self.autoflush = autoflush
         self.autocommit = autocommit
@@ -849,14 +851,24 @@ class Session(_SessionClassMethods):
             for key, bind in binds.items():
                 self._add_bind(key, bind)
 
-        if not self.autocommit:
-            self.begin()
         _sessions[self.hash_key] = self
 
     connection_callable = None
 
-    transaction = None
-    """The current active or inactive :class:`.SessionTransaction`."""
+    @property
+    def transaction(self):
+        """The current active or inactive :class:`.SessionTransaction`.
+
+        If this session is in "autobegin" mode and the transaction was not
+        begun, this accessor will implicitly begin the transaction.
+
+        .. versionchanged:: 1.4  the :attr:`.Session.transaction` attribute
+           is now a read-only descriptor that will automatically start a
+           transaction in "autobegin" mode if one is not present.
+
+        """
+        self._autobegin()
+        return self._transaction
 
     @util.memoized_property
     def info(self):
@@ -872,6 +884,13 @@ class Session(_SessionClassMethods):
 
         """
         return {}
+
+    def _autobegin(self):
+        if not self.autocommit and self._transaction is None:
+            self._transaction = SessionTransaction(self, autobegin=True)
+            return True
+
+        return False
 
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this :class:`.Session`.
@@ -925,17 +944,22 @@ class Session(_SessionClassMethods):
 
 
         """
-        if self.transaction is not None:
+
+        if self._autobegin():
+            if not subtransactions and not nested:
+                return
+
+        if self._transaction is not None:
             if subtransactions or nested:
-                self.transaction = self.transaction._begin(nested=nested)
+                self._transaction = self._transaction._begin(nested=nested)
             else:
                 raise sa_exc.InvalidRequestError(
                     "A transaction is already begun.  Use "
                     "subtransactions=True to allow subtransactions."
                 )
         else:
-            self.transaction = SessionTransaction(self, nested=nested)
-        return self.transaction  # needed for __enter__/__exit__ hook
+            self._transaction = SessionTransaction(self, nested=nested)
+        return self._transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):
         """Begin a "nested" transaction on this Session, e.g. SAVEPOINT.
@@ -977,10 +1001,10 @@ class Session(_SessionClassMethods):
             :ref:`session_rollback`
 
         """
-        if self.transaction is None:
+        if self._transaction is None:
             pass
         else:
-            self.transaction.rollback()
+            self._transaction.rollback()
 
     def commit(self):
         """Flush pending changes and commit the current transaction.
@@ -1010,13 +1034,11 @@ class Session(_SessionClassMethods):
             :ref:`session_committing`
 
         """
-        if self.transaction is None:
-            if not self.autocommit:
-                self.begin()
-            else:
+        if self._transaction is None:
+            if not self._autobegin():
                 raise sa_exc.InvalidRequestError("No transaction is begun.")
 
-        self.transaction.commit()
+        self._transaction.commit()
 
     def prepare(self):
         """Prepare the current transaction in progress for two phase commit.
@@ -1029,13 +1051,11 @@ class Session(_SessionClassMethods):
         :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
 
         """
-        if self.transaction is None:
-            if not self.autocommit:
-                self.begin()
-            else:
+        if self._transaction is None:
+            if not self._autobegin():
                 raise sa_exc.InvalidRequestError("No transaction is begun.")
 
-        self.transaction.prepare()
+        self._transaction.prepare()
 
     def connection(
         self,
@@ -1117,8 +1137,10 @@ class Session(_SessionClassMethods):
         )
 
     def _connection_for_bind(self, engine, execution_options=None, **kw):
-        if self.transaction is not None:
-            return self.transaction._connection_for_bind(
+        self._autobegin()
+
+        if self._transaction is not None:
+            return self._transaction._connection_for_bind(
                 engine, execution_options
             )
         else:
@@ -1272,8 +1294,13 @@ class Session(_SessionClassMethods):
         This clears all items and ends any transaction in progress.
 
         If this session were created with ``autocommit=False``, a new
-        transaction is immediately begun.  Note that this new transaction does
-        not use any connection resources until they are first needed.
+        transaction will be begun when the :class:`.Session` is next asked
+        to procure a database connection.
+
+        .. versionchanged:: 1.4  The :meth:`.Session.close` method does not
+           immediately create a new :class:`.SessionTransaction` object;
+           instead, the new :class:`.SessionTransaction` is created only if
+           the :class:`.Session` is used again for a database operation.
 
         """
         self._close_impl(invalidate=False)
@@ -1313,8 +1340,8 @@ class Session(_SessionClassMethods):
 
     def _close_impl(self, invalidate):
         self.expunge_all()
-        if self.transaction is not None:
-            for transaction in self.transaction._iterate_self_and_parents():
+        if self._transaction is not None:
+            for transaction in self._transaction._iterate_self_and_parents():
                 transaction.close(invalidate)
 
     def expunge_all(self):
@@ -1864,10 +1891,10 @@ class Session(_SessionClassMethods):
             elif self.identity_map.contains_state(state):
                 self.identity_map.safe_discard(state)
                 self._deleted.pop(state, None)
-            elif self.transaction:
+            elif self._transaction:
                 # state is "detached" from being deleted, but still present
                 # in the transaction snapshot
-                self.transaction._deleted.pop(state, None)
+                self._transaction._deleted.pop(state, None)
         statelib.InstanceState._detach_states(
             states, self, to_transient=to_transient
         )
@@ -1913,11 +1940,11 @@ class Session(_SessionClassMethods):
                     # state has already replaced this one in the identity
                     # map (see test/orm/test_naturalpks.py ReversePKsTest)
                     self.identity_map.safe_discard(state)
-                    if state in self.transaction._key_switches:
-                        orig_key = self.transaction._key_switches[state][0]
+                    if state in self._transaction._key_switches:
+                        orig_key = self._transaction._key_switches[state][0]
                     else:
                         orig_key = state.key
-                    self.transaction._key_switches[state] = (
+                    self._transaction._key_switches[state] = (
                         orig_key,
                         instance_key,
                     )
@@ -1955,18 +1982,18 @@ class Session(_SessionClassMethods):
             self._new.pop(state)
 
     def _register_altered(self, states):
-        if self._enable_transaction_accounting and self.transaction:
+        if self._enable_transaction_accounting and self._transaction:
             for state in states:
                 if state in self._new:
-                    self.transaction._new[state] = True
+                    self._transaction._new[state] = True
                 else:
-                    self.transaction._dirty[state] = True
+                    self._transaction._dirty[state] = True
 
     def _remove_newly_deleted(self, states):
         persistent_to_deleted = self.dispatch.persistent_to_deleted or None
         for state in states:
-            if self._enable_transaction_accounting and self.transaction:
-                self.transaction._deleted[state] = True
+            if self._enable_transaction_accounting and self._transaction:
+                self._transaction._deleted[state] = True
 
             if persistent_to_deleted is not None:
                 # get a strong reference before we pop out of
@@ -2427,6 +2454,8 @@ class Session(_SessionClassMethods):
             self._after_attach(state, obj)
 
     def _before_attach(self, state, obj):
+        self._autobegin()
+
         if state.session_id == self.hash_key:
             return False
 
@@ -3083,7 +3112,8 @@ class Session(_SessionClassMethods):
         :meth:`.SessionEvents.after_rollback` and related events.
 
         """
-        return self.transaction and self.transaction.is_active
+        self._autobegin()
+        return self._transaction and self._transaction.is_active
 
     identity_map = None
     """A mapping of object identities to objects themselves.

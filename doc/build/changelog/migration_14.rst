@@ -398,6 +398,59 @@ as was present previously.
 Behavioral Changes - ORM
 ========================
 
+.. _change_5074:
+
+Session does not immediately create a new SessionTransaction object
+----------------------------------------------------------------------------
+
+The :class:`.Session` object's default behavior of ``autocommit=False``
+historically has meant that there is always a :class:`.SessionTransaction`
+object in play, associated with the :class:`.Session` via the
+:attr:`.Session.transaction` attribute.   When the given
+:class:`.SessionTransaction` was complete, due to a commit, rollback, or close,
+it was immediately replaced with a new one.  The :class:`.SessionTransaction`
+by itself does not imply the usage of any connection-oriented resources, so
+this long-standing behavior has a particular elegance to it in that the state
+of :attr:`.Session.transaction` is always predictable as non-None.
+
+However, as part of the initiative in :ticket:`5056` to greatly reduce
+reference cycles, this assumption means that calling upon
+:meth:`.Session.close` results in a :class:`.Session` object that still has
+reference cycles and is more expensive to clean up, not to mention that there
+is a small overhead in constructing the :class:`.SessionTransaction`
+object, which meant that there would be unnecessary overhead created
+for a :class:`.Session` that for example invoked :meth:`.Session.commit`
+and then :meth:`.Session.close`.
+
+As such, it was decided that :meth:`.Session.close` should leave the internal
+state of ``self.transaction``, now referred to internally as
+``self._transaction``, as None, and that a new :class:`.SessionTransaction`
+should only be created when needed.  For consistency and code coverage, this
+behavior was also expanded to include all the points at which "autobegin" is
+expected, not just when :meth:`.Session.close` were called.
+
+In particular, this causes a behavioral change for applications which
+subscribe to the :meth:`.SessionEvents.after_transaction_create` event hook;
+previously, this event would be emitted when the :class:`.Session` were  first
+constructed, as well as for most actions that closed the previous transaction
+and would emit :meth:`.SessionEvents.after_transaction_end`.  The new behavior
+is that :meth:`.SessionEvents.after_transaction_create` is emitted on demand,
+when the :class:`.Session` has not yet created a  new
+:class:`.SessionTransaction` object and mapped objects are associated with the
+:class:`.Session` through methods like :meth:`.Session.add` and
+:meth:`.Session.delete`, when  the :attr:`.Session.transaction` attribute is
+called upon, when the :meth:`.Session.flush` method has tasks to complete, etc.
+
+Besides the change in when the :meth:`.SessionEvents.after_transaction_create`
+event is emitted, the change should have no other user-visible impact on the
+:class:`.Session` object's behavior; the :class:`.Session` will continue to have
+the behavior that it remains usable for new operations after :meth:`.Session.close`
+is called, and the sequencing of how the :class:`.Session` interacts with the
+:class:`.Engine` and the database itself should also remain unaffected, since
+these operations were already operating in an on-demand fashion.
+
+:ticket:`5074`
+
 .. _change_1763:
 
 Eager loaders emit during unexpire operations

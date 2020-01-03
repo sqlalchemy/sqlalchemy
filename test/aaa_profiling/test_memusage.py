@@ -1457,3 +1457,48 @@ class CycleTest(_fixtures.FixtureTest):
             visit_binary_product(visit, expr)
 
         go()
+
+    def test_session_transaction(self):
+        @assert_cycles()
+        def go():
+            s = Session(testing.db)
+            s.connection()
+            s.close()
+
+        go()
+
+    def test_session_commit_rollback(self):
+        # this is enabled by #5074
+        @assert_cycles()
+        def go():
+            s = Session(testing.db)
+            s.connection()
+            s.commit()
+
+        go()
+
+        @assert_cycles()
+        def go():
+            s = Session(testing.db)
+            s.connection()
+            s.rollback()
+
+        go()
+
+    def test_session_multi_transaction(self):
+        @assert_cycles()
+        def go():
+            s = Session(testing.db)
+            assert s._transaction is None
+
+            s.connection()
+
+            s.close()
+            assert s._transaction is None
+
+            s.connection()
+            assert s._transaction is not None
+
+            s.close()
+
+        go()
