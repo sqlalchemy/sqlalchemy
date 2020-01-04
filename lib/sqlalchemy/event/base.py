@@ -161,7 +161,7 @@ class _EventMeta(type):
 
     def __init__(cls, classname, bases, dict_):
         _create_dispatcher_class(cls, classname, bases, dict_)
-        return type.__init__(cls, classname, bases, dict_)
+        type.__init__(cls, classname, bases, dict_)
 
 
 def _create_dispatcher_class(cls, classname, bases, dict_):
