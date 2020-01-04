@@ -21,6 +21,20 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 typedef intargfunc ssizeargfunc;
 #endif
 
+#if PY_MAJOR_VERSON < 3
+
+// new typedef in Python 3
+typedef long Py_hash_t;
+
+// from pymacro.h, new in Python 3.2
+#if defined(__GNUC__) || defined(__clang__)
+#  define Py_UNUSED(name) _unused_ ## name __attribute__((unused))
+#else
+#  define Py_UNUSED(name) _unused_ ## name
+#endif
+
+#endif
+
 
 /***********
  * Structs *
@@ -868,7 +882,7 @@ initcresultproxy(void)
         INITERROR;
 
     if (PyType_Ready(&tuplegetter_type) < 0)
-        return NULL;
+        INITERROR;
 
 #if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&module_def);

@@ -125,6 +125,12 @@ def run_setup(with_cext):
     if with_cext:
         kwargs["ext_modules"] = ext_modules
     else:
+        if os.environ.get("REQUIRE_SQLALCHEMY_CEXT"):
+            raise AssertionError(
+                "Can't build on this platform with "
+                "REQUIRE_SQLALCHEMY_CEXT set."
+            )
+
         kwargs["ext_modules"] = []
 
     setup(
@@ -197,6 +203,15 @@ else:
     try:
         run_setup(True)
     except BuildFailed as exc:
+
+        if os.environ.get("REQUIRE_SQLALCHEMY_CEXT"):
+            status_msgs(
+                "NOTE: C extension build is required because "
+                "REQUIRE_SQLALCHEMY_CEXT is set, and the build has failed; "
+                "will not degrade to non-C extensions"
+            )
+            raise
+
         status_msgs(
             exc.cause,
             "WARNING: The C extension could not be compiled, "

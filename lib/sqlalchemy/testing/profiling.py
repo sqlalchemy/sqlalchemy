@@ -22,7 +22,6 @@ from . import config
 from .util import gc_collect
 from ..util import jython
 from ..util import pypy
-from ..util import update_wrapper
 from ..util import win32
 
 
@@ -232,17 +231,21 @@ def function_call_count(variance=0.05, times=1):
 
     """
 
-    def decorate(fn):
-        def wrap(*args, **kw):
-            timerange = range(times)
-            with count_functions(variance=variance):
-                for time in timerange:
-                    rv = fn(*args, **kw)
-                return rv
+    # use signature-rewriting decorator function so that py.test fixtures
+    # still work on py27.  In Py3, update_wrapper() alone is good enough,
+    # likely due to the introduction of __signature__.
 
-        return update_wrapper(wrap, fn)
+    from sqlalchemy.util import decorator
 
-    return decorate
+    @decorator
+    def wrap(fn, *args, **kw):
+        timerange = range(times)
+        with count_functions(variance=variance):
+            for time in timerange:
+                rv = fn(*args, **kw)
+            return rv
+
+    return wrap
 
 
 @contextlib.contextmanager
