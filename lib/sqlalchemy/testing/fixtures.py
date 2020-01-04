@@ -330,7 +330,7 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
         class FindFixture(type):
             def __init__(cls, classname, bases, dict_):
                 cls_registry[classname] = cls
-                return type.__init__(cls, classname, bases, dict_)
+                type.__init__(cls, classname, bases, dict_)
 
         class _Base(util.with_metaclass(FindFixture, object)):
             pass
