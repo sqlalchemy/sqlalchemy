@@ -50,7 +50,8 @@ def register_function(identifier, fn, package="_default"):
 
     """
     reg = _registry[package]
-    identifier = identifier.lower()
+
+    identifier = util.text_type(identifier).lower()
 
     # Check if a function with the same identifier is registered.
     if identifier in reg:
@@ -544,7 +545,6 @@ class _FunctionGenerator(object):
 
         if package is not None:
             func = _registry[package].get(fname.lower())
-
             if func is not None:
                 return func(*c, **o)
 
@@ -707,8 +707,32 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
 
     The above function will render as follows::
 
-        >>> print func.geo.buffer()
+        >>> print(func.geo.buffer())
         ST_Buffer()
+
+    The name will be rendered as is, however without quoting unless the name
+    contains special characters that require quoting.  To force quoting
+    on or off for the name, use the :class:`.sqlalchemy.sql.quoted_name`
+    construct::
+
+        from sqlalchemy.sql import quoted_name
+
+        class GeoBuffer(GenericFunction):
+            type = Geometry
+            package = "geo"
+            name = quoted_name("ST_Buffer", True)
+            identifier = "buffer"
+
+    The above function will render as::
+
+        >>> print(func.geo.buffer())
+        "ST_Buffer"()
+
+    .. versionadded:: 1.3.13  The :class:`.quoted_name` construct is now
+       recognized for quoting when used with the "name" attribute of the
+       object, so that quoting can be forced on or off for the function
+       name.
+
 
     """
 
