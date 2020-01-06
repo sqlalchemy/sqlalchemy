@@ -57,7 +57,7 @@ def register_function(identifier, fn, package="_default"):
     reg = _registry[package]
     case_sensitive_reg = _case_sensitive_registry[package]
     raw_identifier = identifier
-    identifier = identifier.lower()
+    identifier = util.text_type(identifier).lower()
 
     # Check if a function with the same lowercase identifier is registered.
     if identifier in reg and reg[identifier] is not _CASE_SENSITIVE:
@@ -749,8 +749,32 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
 
     The above function will render as follows::
 
-        >>> print func.geo.buffer()
+        >>> print(func.geo.buffer())
         ST_Buffer()
+
+    The name will be rendered as is, however without quoting unless the name
+    contains special characters that require quoting.  To force quoting
+    on or off for the name, use the :class:`.sqlalchemy.sql.quoted_name`
+    construct::
+
+        from sqlalchemy.sql import quoted_name
+
+        class GeoBuffer(GenericFunction):
+            type = Geometry
+            package = "geo"
+            name = quoted_name("ST_Buffer", True)
+            identifier = "buffer"
+
+    The above function will render as::
+
+        >>> print(func.geo.buffer())
+        "ST_Buffer"()
+
+    .. versionadded:: 1.3.13  The :class:`.quoted_name` construct is now
+       recognized for quoting when used with the "name" attribute of the
+       object, so that quoting can be forced on or off for the function
+       name.
+
 
     """
 

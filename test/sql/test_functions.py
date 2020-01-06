@@ -29,6 +29,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.sql import column
 from sqlalchemy.sql import functions
+from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.sql.functions import FunctionElement
@@ -269,6 +270,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert isinstance(func.notmyfunc(), myfunc)
         assert not isinstance(func.myfunc(), myfunc)
+
+    def test_custom_w_quoted_name(self):
+        class myfunc(GenericFunction):
+            name = quoted_name("NotMyFunc", quote=True)
+            identifier = "myfunc"
+
+        self.assert_compile(func.myfunc(), '"NotMyFunc"()')
+
+    def test_custom_w_quoted_name_no_identifier(self):
+        class myfunc(GenericFunction):
+            name = quoted_name("NotMyFunc", quote=True)
+
+        # note this requires that the quoted name be lower cased for
+        # correct lookup
+        self.assert_compile(func.notmyfunc(), '"NotMyFunc"()')
 
     def test_custom_package_namespace(self):
         def cls1(pk_name):

@@ -1121,6 +1121,7 @@ class SQLCompiler(Compiled):
                 name = (
                     self.preparer.quote(name)
                     if self.preparer._requires_quotes_illegal_chars(name)
+                    or isinstance(name, elements.quoted_name)
                     else name
                 )
                 name = name + "%(expr)s"
@@ -1129,6 +1130,7 @@ class SQLCompiler(Compiled):
                     (
                         self.preparer.quote(tok)
                         if self.preparer._requires_quotes_illegal_chars(tok)
+                        or isinstance(name, elements.quoted_name)
                         else tok
                     )
                     for tok in func.packagenames
