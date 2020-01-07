@@ -1759,7 +1759,6 @@ class JoinedLoader(AbstractRelationshipLoader):
         context.create_eager_joins.append(
             (
                 self._create_eager_join,
-                context,
                 entity,
                 path,
                 adapter,
