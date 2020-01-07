@@ -1725,6 +1725,106 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         )
 
 
+class JoinedloadWPolyOfTypeContinued(
+    fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
+):
+    """test for #5082 """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "users"
+
+            id = Column(Integer, primary_key=True)
+
+        class Foo(Base):
+            __tablename__ = "foos"
+            __mapper_args__ = {"polymorphic_on": "type"}
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10), nullable=False)
+            owner_id = Column(Integer, ForeignKey("users.id"))
+            owner = relationship(
+                "User", backref=backref("foos"), cascade="all"
+            )
+
+        class SubFoo(Foo):
+            __tablename__ = "foos_sub"
+            __mapper_args__ = {"polymorphic_identity": "SUB"}
+
+            id = Column(Integer, ForeignKey("foos.id"), primary_key=True)
+            baz = Column(Integer)
+            bar_id = Column(Integer, ForeignKey("bars.id"))
+            bar = relationship("Bar")
+
+        class Bar(Base):
+            __tablename__ = "bars"
+
+            id = Column(Integer, primary_key=True)
+            fred_id = Column(Integer, ForeignKey("freds.id"), nullable=False)
+            fred = relationship("Fred")
+
+        class Fred(Base):
+            __tablename__ = "freds"
+
+            id = Column(Integer, primary_key=True)
+
+    @classmethod
+    def insert_data(cls):
+        User, Fred, Bar, SubFoo = cls.classes("User", "Fred", "Bar", "SubFoo")
+        user = User(id=1)
+        fred = Fred(id=1)
+        bar = Bar(fred=fred)
+        rectangle = SubFoo(owner=user, baz=10, bar=bar)
+
+        s = Session()
+        s.add_all([user, fred, bar, rectangle])
+        s.commit()
+
+    def test_joined_load(self):
+        Foo, User, Bar = self.classes("Foo", "User", "Bar")
+
+        s = Session()
+
+        foo_polymorphic = with_polymorphic(Foo, "*", aliased=True)
+
+        foo_load = joinedload(User.foos.of_type(foo_polymorphic))
+        query = s.query(User).options(
+            foo_load.joinedload(foo_polymorphic.SubFoo.bar).joinedload(
+                Bar.fred
+            )
+        )
+
+        self.assert_compile(
+            query,
+            "SELECT users.id AS users_id, anon_1.foos_id AS anon_1_foos_id, "
+            "anon_1.foos_type AS anon_1_foos_type, anon_1.foos_owner_id "
+            "AS anon_1_foos_owner_id, freds_1.id AS freds_1_id, bars_1.id "
+            "AS bars_1_id, bars_1.fred_id AS bars_1_fred_id, "
+            "anon_1.foos_sub_id AS anon_1_foos_sub_id, "
+            "anon_1.foos_sub_baz AS anon_1_foos_sub_baz, "
+            "anon_1.foos_sub_bar_id AS anon_1_foos_sub_bar_id "
+            "FROM users LEFT OUTER JOIN "
+            "(SELECT foos.id AS foos_id, foos.type AS foos_type, "
+            "foos.owner_id AS foos_owner_id, foos_sub.id AS foos_sub_id, "
+            "foos_sub.baz AS foos_sub_baz, foos_sub.bar_id AS foos_sub_bar_id "
+            "FROM foos LEFT OUTER JOIN foos_sub ON foos.id = foos_sub.id) "
+            "AS anon_1 ON users.id = anon_1.foos_owner_id "
+            "LEFT OUTER JOIN bars AS bars_1 "
+            "ON bars_1.id = anon_1.foos_sub_bar_id "
+            "LEFT OUTER JOIN freds AS freds_1 ON freds_1.id = bars_1.fred_id",
+        )
+
+        def go():
+            user = query.one()
+            user.foos[0].bar
+            user.foos[0].bar.fred
+
+        self.assert_sql_count(testing.db, go, 1)
+
+
 class JoinedloadSinglePolysubSingle(
     fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
 ):

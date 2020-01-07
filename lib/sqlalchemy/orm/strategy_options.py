@@ -312,6 +312,7 @@ class Load(HasCacheKey, Generative, MapperOption):
                 existing = path.entity_path[prop].get(
                     self.context, "path_with_polymorphic"
                 )
+
                 if not ext_info.is_aliased_class:
                     ac = orm_util.with_polymorphic(
                         ext_info.mapper.base_mapper,

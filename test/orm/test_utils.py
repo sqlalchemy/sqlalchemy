@@ -935,14 +935,19 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
         emapper = inspect(Engineer)
 
         p_poly = with_polymorphic(Person, [Engineer])
-        e_poly = inspect(p_poly.Engineer)
+        e_poly = inspect(p_poly.Engineer)  # noqa - used by comment below
         p_poly_insp = inspect(p_poly)
 
         p1 = PathRegistry.coerce((p_poly_insp, emapper.attrs.machines))
 
-        # polymorphic AliasedClass - the path uses _entity_for_mapper()
-        # to get the most specific sub-entity
-        eq_(p1.path, (e_poly, emapper.attrs.machines))
+        # polymorphic AliasedClass - as of #5082, for the sub entities that are
+        # generated for each subclass by with_polymorphic(),  use_mapper_path
+        # is not True so that creating paths from the sub entities, which don't
+        # by themselves encapsulate the with_polymorphic selectable, states the
+        # path in terms of that plain entity. previously, this path would be
+        # (e_poly, emapper.attrs.machines), but a loader strategy would never
+        # match on "e_poly", it would see "emapper".
+        eq_(p1.path, (emapper, emapper.attrs.machines))
 
     def test_with_poly_base(self):
         Person = _poly_fixtures.Person

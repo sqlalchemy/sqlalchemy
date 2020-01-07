@@ -255,7 +255,10 @@ class PropRegistry(PathRegistry):
                 and prop.parent in insp.with_polymorphic_mappers
             ):
                 subclass_entity = parent[-1]._entity_for_mapper(prop.parent)
-                parent = parent.parent[subclass_entity]
+                if subclass_entity._use_mapper_path:
+                    parent = parent.parent[subclass_entity.mapper]
+                else:
+                    parent = parent.parent[subclass_entity]
 
         self.prop = prop
         self.parent = parent
