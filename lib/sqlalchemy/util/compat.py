@@ -158,6 +158,8 @@ if py3k:
     def ue(s):
         return s
 
+    from typing import TYPE_CHECKING
+
     # Unused. Kept for backwards compatibility.
     callable = callable  # noqa
 else:
@@ -244,8 +246,10 @@ else:
     def safe_bytestring(text):
         # py2k only
         if not isinstance(text, string_types):
-            return unicode(text).encode("ascii", errors="backslashreplace")
-        elif isinstance(text, unicode):
+            return unicode(text).encode(  # noqa: F821
+                "ascii", errors="backslashreplace"
+            )
+        elif isinstance(text, unicode):  # noqa: F821
             return text.encode("ascii", errors="backslashreplace")
         else:
             return text
@@ -258,6 +262,8 @@ else:
         "        assert cause is not value, 'Same cause emitted'\n"
         "    raise tp, value, tb\n"
     )
+
+    TYPE_CHECKING = False
 
 
 if py35:

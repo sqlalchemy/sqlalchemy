@@ -159,7 +159,9 @@ class compound(object):
         for fail in self.fails:
             if self._check_combinations(combination, fail) and fail(config):
                 if util.py2k:
-                    str_ex = unicode(ex).encode("utf-8", errors="ignore")
+                    str_ex = unicode(ex).encode(  # noqa: F821
+                        "utf-8", errors="ignore"
+                    )
                 else:
                     str_ex = str(ex)
                 print(

@@ -161,7 +161,7 @@ class RowTupleTest(QueryTest):
         is_(sess.query(ex)._deep_entity_zero(), inspect(User))
 
     @testing.combinations(
-        lambda: (
+        lambda sess, User: (
             sess.query(User),
             [
                 {
@@ -173,7 +173,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, User, users: (
             sess.query(User.id, User),
             [
                 {
@@ -192,7 +192,7 @@ class RowTupleTest(QueryTest):
                 },
             ],
         ),
-        lambda: (
+        lambda sess, User, user_alias, users: (
             sess.query(User.id, user_alias),
             [
                 {
@@ -211,7 +211,7 @@ class RowTupleTest(QueryTest):
                 },
             ],
         ),
-        lambda: (
+        lambda sess, user_alias, users: (
             sess.query(user_alias.id),
             [
                 {
@@ -223,7 +223,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, user_alias_id_label, users, user_alias: (
             sess.query(user_alias_id_label),
             [
                 {
@@ -235,7 +235,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, address_alias, Address: (
             sess.query(address_alias),
             [
                 {
@@ -247,7 +247,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, name_label, fn, users, User: (
             sess.query(name_label, fn),
             [
                 {
@@ -266,7 +266,7 @@ class RowTupleTest(QueryTest):
                 },
             ],
         ),
-        lambda: (
+        lambda sess, cte: (
             sess.query(cte),
             [
                 {
@@ -278,7 +278,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, subq1: (
             sess.query(subq1.c.id),
             [
                 {
@@ -290,7 +290,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, subq2: (
             sess.query(subq2.c.id),
             [
                 {
@@ -302,7 +302,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, users: (
             sess.query(users),
             [
                 {
@@ -321,7 +321,7 @@ class RowTupleTest(QueryTest):
                 },
             ],
         ),
-        lambda: (
+        lambda sess, users: (
             sess.query(users.c.name),
             [
                 {
@@ -333,7 +333,7 @@ class RowTupleTest(QueryTest):
                 }
             ],
         ),
-        lambda: (
+        lambda sess, bundle, User: (
             sess.query(bundle),
             [
                 {
@@ -968,9 +968,9 @@ class GetTest(QueryTest):
 
 class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     @testing.combinations(
-        lambda: s.query(User).limit(2),
-        lambda: s.query(User).filter(User.id == 1).offset(2),
-        lambda: s.query(User).limit(2).offset(2),
+        lambda s, User: s.query(User).limit(2),
+        lambda s, User: s.query(User).filter(User.id == 1).offset(2),
+        lambda s, User: s.query(User).limit(2).offset(2),
     )
     def test_no_limit_offset(self, test_case):
         User = self.classes.User
@@ -1128,11 +1128,11 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         is_(q1._entity_zero(), inspect(User))
 
     @testing.combinations(
-        lambda: s.query(User).filter(User.id == 5),
-        lambda: s.query(User).filter_by(id=5),
-        lambda: s.query(User).limit(5),
-        lambda: s.query(User).group_by(User.name),
-        lambda: s.query(User).order_by(User.name),
+        lambda s, User: s.query(User).filter(User.id == 5),
+        lambda s, User: s.query(User).filter_by(id=5),
+        lambda s, User: s.query(User).limit(5),
+        lambda s, User: s.query(User).group_by(User.name),
+        lambda s, User: s.query(User).order_by(User.name),
     )
     def test_from_statement(self, test_case):
         User = self.classes.User
@@ -1144,11 +1144,11 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         assert_raises(sa_exc.InvalidRequestError, q.from_statement, text("x"))
 
     @testing.combinations(
-        (Query.filter, lambda: meth(User.id == 5)),
-        (Query.filter_by, lambda: meth(id=5)),
-        (Query.limit, lambda: meth(5)),
-        (Query.group_by, lambda: meth(User.name)),
-        (Query.order_by, lambda: meth(User.name)),
+        (Query.filter, lambda meth, User: meth(User.id == 5)),
+        (Query.filter_by, lambda meth: meth(id=5)),
+        (Query.limit, lambda meth: meth(5)),
+        (Query.group_by, lambda meth, User: meth(User.name)),
+        (Query.order_by, lambda meth, User: meth(User.name)),
     )
     def test_from_statement_text(self, meth, test_case):
 
@@ -1251,13 +1251,13 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         id_="ar",
     )
     @testing.combinations(
-        (lambda: 5, lambda: User.id, ":id_1 %s users.id"),
+        (lambda User: 5, lambda User: User.id, ":id_1 %s users.id"),
         (lambda: 5, lambda: literal(6), ":param_1 %s :param_2"),
-        (lambda: User.id, lambda: 5, "users.id %s :id_1"),
-        (lambda: User.id, lambda: literal("b"), "users.id %s :param_1"),
-        (lambda: User.id, lambda: User.id, "users.id %s users.id"),
+        (lambda User: User.id, lambda: 5, "users.id %s :id_1"),
+        (lambda User: User.id, lambda: literal("b"), "users.id %s :param_1"),
+        (lambda User: User.id, lambda User: User.id, "users.id %s users.id"),
         (lambda: literal(5), lambda: "b", ":param_1 %s :param_2"),
-        (lambda: literal(5), lambda: User.id, ":param_1 %s users.id"),
+        (lambda: literal(5), lambda User: User.id, ":param_1 %s users.id"),
         (lambda: literal(5), lambda: literal(6), ":param_1 %s :param_2"),
         argnames="lhs, rhs, res",
         id_="aar",
@@ -1280,35 +1280,30 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         id_="arr",
         argnames="py_op, fwd_op, rev_op",
     )
-    @testing.combinations(
-        (lambda: "a", lambda: User.id, ":id_1", "users.id"),
-        (
-            lambda: "a",
-            lambda: literal("b"),
-            ":param_2",
-            ":param_1",
-        ),  # note swap!
-        (lambda: User.id, lambda: "b", "users.id", ":id_1"),
-        (lambda: User.id, lambda: literal("b"), "users.id", ":param_1"),
-        (lambda: User.id, lambda: User.id, "users.id", "users.id"),
-        (lambda: literal("a"), lambda: "b", ":param_1", ":param_2"),
-        (lambda: literal("a"), lambda: User.id, ":param_1", "users.id"),
-        (lambda: literal("a"), lambda: literal("b"), ":param_1", ":param_2"),
-        (lambda: ualias.id, lambda: literal("b"), "users_1.id", ":param_1"),
-        (lambda: User.id, lambda: ualias.name, "users.id", "users_1.name"),
-        (lambda: User.name, lambda: ualias.name, "users.name", "users_1.name"),
-        (lambda: ualias.name, lambda: User.name, "users_1.name", "users.name"),
-        argnames="lhs, rhs, l_sql, r_sql",
-        id_="aarr",
+    @testing.lambda_combinations(
+        lambda User, ualias: (
+            ("a", User.id, ":id_1", "users.id"),
+            ("a", literal("b"), ":param_2", ":param_1"),  # note swap!
+            (User.id, "b", "users.id", ":id_1"),
+            (User.id, literal("b"), "users.id", ":param_1"),
+            (User.id, User.id, "users.id", "users.id"),
+            (literal("a"), "b", ":param_1", ":param_2"),
+            (literal("a"), User.id, ":param_1", "users.id"),
+            (literal("a"), literal("b"), ":param_1", ":param_2"),
+            (ualias.id, literal("b"), "users_1.id", ":param_1"),
+            (User.id, ualias.name, "users.id", "users_1.name"),
+            (User.name, ualias.name, "users.name", "users_1.name"),
+            (ualias.name, User.name, "users_1.name", "users.name"),
+        ),
+        argnames="fixture",
     )
-    def test_comparison(self, py_op, fwd_op, rev_op, lhs, rhs, l_sql, r_sql):
+    def test_comparison(self, py_op, fwd_op, rev_op, fixture):
         User = self.classes.User
 
         create_session().query(User)
         ualias = aliased(User)
 
-        lhs = testing.resolve_lambda(lhs, User=User, ualias=ualias)
-        rhs = testing.resolve_lambda(rhs, User=User, ualias=ualias)
+        lhs, rhs, l_sql, r_sql = fixture(User=User, ualias=ualias)
 
         # the compiled clause should match either (e.g.):
         # 'a' < 'b' -or- 'b' > 'a'.

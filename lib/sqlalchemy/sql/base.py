@@ -19,9 +19,12 @@ from .visitors import ClauseVisitor
 from .. import exc
 from .. import util
 
-coercions = None  # type: types.ModuleType
-elements = None  # type: types.ModuleType
-type_api = None  # type: types.ModuleType
+if util.TYPE_CHECKING:
+    from types import ModuleType
+
+coercions = None  # type: ModuleType
+elements = None  # type: ModuleType
+type_api = None  # type: ModuleType
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
