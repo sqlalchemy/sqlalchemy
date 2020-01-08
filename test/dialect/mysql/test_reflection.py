@@ -4,6 +4,7 @@ import re
 
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import DateTime
 from sqlalchemy import DDL
 from sqlalchemy import DefaultClause
@@ -37,6 +38,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 
 
@@ -1143,3 +1145,53 @@ class RawReflectionTest(fixtures.TestBase):
                 "SET NULL",
             ),
         )
+
+
+class ComputedReflectionTest(fixtures.TablesTest):
+    run_inserts = run_deletes = None
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        if testing.requires.computed_columns.enabled:
+            Table(
+                "computed_column_table",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("normal", Integer),
+                Column("computed_no_flag", Integer, Computed("normal + 42")),
+                Column(
+                    "computed_virtual",
+                    Integer,
+                    Computed("normal + 2", persisted=False),
+                ),
+                Column(
+                    "computed_stored",
+                    Integer,
+                    Computed("normal - 42", persisted=True),
+                ),
+            )
+
+    def test_get_column_returns_persisted(self):
+        insp = inspect(testing.db)
+
+        cols = insp.get_columns("computed_column_table")
+        data = {c["name"]: c for c in cols}
+
+        def test(column, sqltext, persisted):
+            is_true("computed" in data[column])
+            compData = data[column]["computed"]
+            actual = (
+                compData["sqltext"]
+                .casefold()
+                .replace(" ", "")
+                .replace("`", "")
+            )
+            is_true(sqltext in actual)
+            is_true("persisted" in compData)
+            is_(compData["persisted"], persisted)
+
+        test("computed_no_flag", "normal+42", False)
+        test("computed_virtual", "normal+2", False)
+        test("computed_stored", "normal-42", True)

@@ -249,6 +249,14 @@ class MySQLTableDefinitionParser(object):
         if comment is not None:
             comment = comment.replace("\\\\", "\\").replace("''", "'")
 
+        sqltext = spec.get("generated")
+        if sqltext is not None:
+            computed = dict(sqltext=sqltext)
+            persisted = spec.get("persistence")
+            if persisted is not None:
+                computed["persisted"] = persisted == "STORED"
+            col_kw["computed"] = computed
+
         col_d = dict(
             name=name, type=type_instance, default=default, comment=comment
         )
@@ -376,6 +384,8 @@ class MySQLTableDefinitionParser(object):
             r"(?:NULL|'(?:''|[^'])*'|[\w\(\)]+"
             r"(?: +ON UPDATE [\w\(\)]+)?)"
             r"))?"
+            r"(?: +(?:GENERATED ALWAYS)? ?AS +(?P<generated>\("
+            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?)?"
             r"(?: +(?P<autoincr>AUTO_INCREMENT))?"
             r"(?: +COMMENT +'(?P<comment>(?:''|[^'])*)')?"
             r"(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?"
