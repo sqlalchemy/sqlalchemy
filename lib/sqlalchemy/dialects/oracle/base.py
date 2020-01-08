@@ -1715,7 +1715,10 @@ class OracleDialect(default.DefaultDialect):
                     coltype = sqltypes.NULLTYPE
 
             if genetared == "YES":
+                computed = dict(sqltext=default)
                 default = None
+            else:
+                computed = None
 
             cdict = {
                 "name": colname,
@@ -1727,6 +1730,8 @@ class OracleDialect(default.DefaultDialect):
             }
             if orig_colname.lower() == orig_colname:
                 cdict["quote"] = True
+            if computed is not None:
+                cdict["computed"] = computed
 
             columns.append(cdict)
         return columns

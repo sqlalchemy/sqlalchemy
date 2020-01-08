@@ -2888,7 +2888,7 @@ class PGDialect(default.DefaultDialect):
             attnum,
             table_oid,
             comment,
-            generated
+            generated,
         ) in rows:
             column_info = self._get_column_info(
                 name,
@@ -3026,9 +3026,13 @@ class PGDialect(default.DefaultDialect):
             )
             coltype = sqltypes.NULLTYPE
 
-        # remove default from generated columns
-        if generated != '':
+        # If a zero byte (''), then not a generated column.
+        #  Otherwise, s = stored. (Other values might be added in the future.)
+        if generated != "":
+            computed = dict(sqltext=default, persisted=generated == "s")
             default = None
+        else:
+            computed = None
 
         # adjust the default value
         autoincrement = False
@@ -3059,6 +3063,8 @@ class PGDialect(default.DefaultDialect):
             autoincrement=autoincrement,
             comment=comment,
         )
+        if computed is not None:
+            column_info['computed'] = computed
         return column_info
 
     @reflection.cache

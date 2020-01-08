@@ -1175,6 +1175,26 @@ class ComputedReflectionTest(fixtures.TablesTest):
             elif not col["autoincrement"]:
                 is_(col["default"], None)
 
+    @testing.requires.computed_columns
+    @testing.requires.table_reflection
+    def test_get_column_returns_computed(self):
+        insp = inspect(testing.db)
+
+        cols = insp.get_columns("computed_column_table")
+        data = {c["name"]: c for c in cols}
+        for key in ("id", "normal", "with_default"):
+            assert "computed" not in data[key]
+        compData = data["computed_col"]
+        assert "computed" in compData
+        assert "sqltext" in compData["computed"]
+        actual = compData["computed"]["sqltext"].casefold().replace(" ", "")
+        assert "normal+42" in actual
+        if testing.against("postgresql"):
+            assert 'persisted' in compData["computed"]
+            assert compData["computed"]["persisted"] is True
+        elif testing.against("oracle"):
+            assert 'persisted' not in compData["computed"]
+
 
 class NormalizedNameTest(fixtures.TablesTest):
     __requires__ = ("denormalized_names",)
