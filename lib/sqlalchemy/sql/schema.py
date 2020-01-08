@@ -977,6 +977,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
     __visit_name__ = "column"
 
+    _is_readonly = False
+    """Indicates that the column is readonly. A readonly column is treated
+    as a :func:`.orm.column_property` by the orm.
+
+    Currently only :class:`.Computed` columns are readonly
+    """
+
     def __init__(self, *args, **kwargs):
         r"""
         Construct a new ``Column`` object.
@@ -1598,15 +1605,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             )
         else:
             return ColumnClause.get_children(self, **kwargs)
-
-    @property
-    def _is_readonly(self):
-        """Indicates that the column is readonly. A readonly column is treated
-        as a :func:`.orm.column_property` by the orm.
-
-        Currently only :class:`.Computed` columns are readonly
-        """
-        return self.computed is not None
 
 
 class ForeignKey(DialectKWArgs, SchemaItem):
@@ -4420,6 +4418,7 @@ class Computed(FetchedValue, SchemaItem):
         parent.computed = self
         self.column.server_onupdate = self
         self.column.server_default = self
+        self.column._is_readonly = True
 
     def _as_for_update(self, for_update):
         return self

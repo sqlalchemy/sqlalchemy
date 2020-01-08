@@ -115,6 +115,7 @@ def _register_attribute(
                 impl_class=impl_class,
                 send_modified_events=not useobject or not prop.viewonly,
                 doc=prop.doc,
+                readonly=prop in mapper._readonly_props,
                 **kw
             )
 

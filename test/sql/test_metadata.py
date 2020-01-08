@@ -3904,8 +3904,9 @@ class ColumnOptionsTest(fixtures.TestBase):
             assert c.info["bar"] == "zip"
 
     def test_readonly(self):
-        assert Column(String)._is_readonly is False
-        assert Column('x', String, Computed('w + 3'))._is_readonly is True
+        is_false(Column(String)._is_readonly)
+        is_true(Column("x", String, Computed("w + 3"))._is_readonly)
+
 
 class CatchAllEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
     def test_all_events(self):

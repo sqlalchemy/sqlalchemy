@@ -31,9 +31,9 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm.persistence import _sort_states
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -2014,20 +2014,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         a = A()
         a.id = 3
 
-        def setComputed():
+        with expect_warnings("the value set to read only attribute .*"):
             a.comp = 33
-
-        def setProp():
-            a.comp = 33
-
-        assert_warnings(
-            setComputed,
-            ["the value set to read only attribute .*"],
-            regex=True,
-        )
-        assert_warnings(
-            setProp, ["the value set to read only attribute .*"], regex=True
-        )
+        with expect_warnings("the value set to read only attribute .*"):
+            a.prop = 42
 
 
 class DocumentTest(fixtures.TestBase):
