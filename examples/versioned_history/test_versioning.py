@@ -128,11 +128,10 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
     def test_w_mapper_versioning(self):
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
+            use_mapper_versioning = True
 
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
-
-        SomeClass.__mapper__.version_id_col = SomeClass.__table__.c.version
 
         self.create_tables()
         sess = self.session
