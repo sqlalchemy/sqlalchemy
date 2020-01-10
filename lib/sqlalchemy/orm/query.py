@@ -3152,10 +3152,13 @@ class Query(Generative):
         else:
             self._suffixes = suffixes
 
-    def all(self):
+    def all(self, scalar=False):
         """Return the results represented by this :class:`.Query` as a list.
 
         This results in an execution of the underlying SQL statement.
+
+        :param scalar: If True, return a list of scalar objects as a opposed to a list of tuples.
+        This is useful when selecting a single column.
 
         .. warning::  The :class:`.Query` object, when asked to return either
            a sequence or iterator that consists of full ORM-mapped entities,
@@ -3166,7 +3169,10 @@ class Query(Generative):
 
                 :ref:`faq_query_deduplicating`
         """
-        return list(self)
+        l = list(self)
+        if scalar:
+            l = [i[0] for i in l]
+        return l
 
     @_generative
     @_assertions(_no_clauseelement_condition)

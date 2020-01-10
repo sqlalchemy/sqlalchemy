@@ -965,6 +965,15 @@ class GetTest(QueryTest):
         assert u.addresses[0].email_address == "jack@bean.com"
         assert u.orders[1].items[2].description == "item 5"
 
+    def test_scalar_list_result(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        usernames_tuple = s.query(User.name).all()
+        usernames = s.query(User.name).all(scalar=True)
+        assert usernames == [u[0] for u in usernames_tuple]
+
 
 class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     @testing.combinations(
