@@ -1278,6 +1278,13 @@ class BindParameter(ColumnElement):
         d["value"] = v
         return d
 
+    def __setstate__(self, state):
+        if state.get("unique", False):
+            state["key"] = _anonymous_label(
+                "%%(%d %s)s" % (id(self), state.get("_orig_key", "param"))
+            )
+        self.__dict__.update(state)
+
     def __repr__(self):
         return "BindParameter(%r, %r, type_=%r)" % (
             self.key,
