@@ -198,7 +198,11 @@ class ColumnLoader(LoaderStrategy):
         active_history = (
             self.parent_property.active_history
             or self.columns[0].primary_key
-            or mapper.version_id_col in set(self.columns)
+            or (
+                mapper.version_id_col is not None
+                and mapper._columntoproperty.get(mapper.version_id_col, None)
+                is self.parent_property
+            )
         )
 
         _register_attribute(

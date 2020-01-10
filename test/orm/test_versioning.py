@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import Date
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import orm
 from sqlalchemy import select
@@ -13,6 +14,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
+from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
@@ -26,6 +28,8 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
@@ -2003,3 +2007,43 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
             s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
             [(f1.id, "f1rev2", 2), (f2.id, "f2rev2", 2)],
         )
+
+    def test_implicit_no_readonly(self):
+        # test issue 4194
+        Foo = self.classes.Foo
+
+        s1 = self._implicit_version_fixture()
+        f1 = Foo(value="f1")
+        s1.add(f1)
+        s1.flush()
+
+        is_false(bool(inspect(Foo)._readonly_props))
+
+        def go():
+            eq_(f1.version_id, 1)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_explicit_assign_from_expired(self):
+        # test issue 4195
+        Foo = self.classes.Foo
+
+        s1 = self._explicit_version_fixture()
+
+        configure_mappers()
+        is_true(Foo.version_id.impl.active_history)
+
+        f1 = Foo(value="f1", version_id=1)
+        s1.add(f1)
+
+        s1.flush()
+
+        s1.expire_all()
+
+        f1.value = "f2"
+        f1.version_id = 2
+
+        with conditional_sane_rowcount_warnings(
+            update=True, only_returning=True
+        ):
+            s1.flush()
