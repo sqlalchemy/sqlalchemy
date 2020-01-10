@@ -61,6 +61,26 @@ can be applied::
 
     SomeHistoryClass = SomeClass.__history_mapper__.class_
 
+The versioning example also integrates with the ORM optimistic concurrency
+feature documented at :ref:`mapper_version_counter`.   To enable this feature,
+set the flag ``Versioned.use_mapper_versioning`` to True::
+
+    class SomeClass(Versioned, Base):
+        __tablename__ = 'sometable'
+
+        use_mapper_versioning = True
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+
+        def __eq__(self, other):
+            assert type(other) is SomeClass and other.id == self.id
+
+Above, if two instance of ``SomeClass`` with the same version identifier
+are updated and sent to the database for UPDATE concurrently, if the database
+isolation level allows the two UPDATE statements to proceed, one will fail
+because it no longer is against the last known version identifier.
+
 .. autosource::
 
 """
