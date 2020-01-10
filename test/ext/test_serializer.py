@@ -13,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy.ext import serializer
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
@@ -38,9 +39,6 @@ class User(fixtures.ComparableEntity):
 
 class Address(fixtures.ComparableEntity):
     pass
-
-
-users = addresses = Session = None
 
 
 class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
@@ -289,6 +287,60 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
                 'WHERE "\u6e2c\u8a66"."\u6e2c\u8a66_id" = :\u6e2c\u8a66_id_1'
             ),
             dialect="default",
+        )
+
+
+class ColumnPropertyWParamTest(
+    AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    __dialect__ = "default"
+
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        global TestTable
+
+        class TestTable(Base):
+            __tablename__ = "test"
+
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            _some_id = Column("some_id", String)
+            some_primary_id = column_property(
+                func.left(_some_id, 6).cast(Integer)
+            )
+
+    def test_deserailize_colprop(self):
+        TestTable = self.classes.TestTable
+
+        s = scoped_session(sessionmaker())
+
+        expr = s.query(TestTable).filter(TestTable.some_primary_id == 123456)
+
+        expr2 = serializer.loads(serializer.dumps(expr), TestTable.metadata, s)
+
+        # note in the original, the same bound parameter is used twice
+        self.assert_compile(
+            expr,
+            "SELECT test.some_id AS test_some_id, "
+            "CAST(left(test.some_id, :left_1) AS INTEGER) AS anon_1, "
+            "test.id AS test_id FROM test WHERE "
+            "CAST(left(test.some_id, :left_1) AS INTEGER) = :param_1",
+            checkparams={"left_1": 6, "param_1": 123456},
+        )
+
+        # in the deserialized, it's two separate parameter objects which
+        # need to have different anonymous names.  they still have
+        # the same value however
+        self.assert_compile(
+            expr2,
+            "SELECT test.some_id AS test_some_id, "
+            "CAST(left(test.some_id, :left_1) AS INTEGER) AS anon_1, "
+            "test.id AS test_id FROM test WHERE "
+            "CAST(left(test.some_id, :left_2) AS INTEGER) = :param_1",
+            checkparams={"left_1": 6, "left_2": 6, "param_1": 123456},
         )
 
 
