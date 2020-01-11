@@ -29,6 +29,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql.schema import CheckConstraint
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import reflection_fixture
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
@@ -1633,7 +1634,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             ("my_custom_type(ARG1, ARG2)", ("ARG1", "ARG2")),
         ]:
             column_info = dialect._get_column_info(
-                "colname", sch, None, False, {}, {}, "public", None
+                "colname", sch, None, False, {}, {}, "public", None, ""
             )
             assert isinstance(column_info["type"], self.CustomType)
             eq_(column_info["type"].arg1, args[0])
@@ -1708,3 +1709,14 @@ class IntervalReflectionTest(fixtures.TestBase):
         assert isinstance(columns["data1"]["type"], INTERVAL)
         eq_(columns["data1"]["type"].fields, None)
         eq_(columns["data1"]["type"].precision, 6)
+
+
+class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
+    __only_on__ = "postgresql"
+    return_persisted = True
+    default_persisted = True
+    support_stored = True
+    support_virtual = False
+
+    def to_sqltext(self, column, op, value):
+        return "(%s %s %s)" % (column, op, value)

@@ -27,6 +27,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import reflection_fixture
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -681,3 +682,14 @@ class TypeReflectionTest(fixtures.TestBase):
             # (FLOAT(5), oracle.FLOAT(binary_precision=126),),
         ]
         self._run_test(specs, ["precision"])
+
+
+class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
+    __only_on__ = "oracle"
+    return_persisted = False
+    default_persisted = False
+    support_stored = False
+    support_virtual = True
+
+    def to_sqltext(self, column, op, value):
+        return '"%s"%s%s' % (column, op, value)

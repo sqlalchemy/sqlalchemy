@@ -171,5 +171,5 @@ computed_columns = Table(
     Column("is_computed", Boolean),
     Column("is_persisted", Boolean),
     Column("definition", CoerceUnicode),
-    schema='sys'
+    schema="sys",
 )

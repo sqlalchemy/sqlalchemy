@@ -1144,72 +1144,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
             assert id_.get("autoincrement", True)
 
 
-class ComputedReflectionTest(fixtures.TablesTest):
-    run_inserts = run_deletes = None
-
-    __backend__ = True
-
-    @classmethod
-    def define_tables(cls, metadata):
-        if testing.requires.computed_columns.enabled:
-            Table(
-                "computed_column_table",
-                metadata,
-                Column("id", Integer, primary_key=True),
-                Column("normal", Integer),
-                Column("computed_col", Integer, sa.Computed("normal + 42")),
-                Column("with_default", Integer, server_default="42"),
-            )
-
-    @testing.requires.computed_columns
-    @testing.requires.table_reflection
-    def test_computed_col_default_not_set(self):
-        insp = inspect(testing.db)
-
-        cols = insp.get_columns("computed_column_table")
-        for col in cols:
-            if col["name"] == "with_default":
-                is_true("42" in col["default"])
-            elif not col["autoincrement"]:
-                is_(col["default"], None)
-
-    @testing.requires.computed_columns
-    @testing.requires.table_reflection
-    def test_get_column_returns_computed(self):
-        insp = inspect(testing.db)
-
-        cols = insp.get_columns("computed_column_table")
-        data = {c["name"]: c for c in cols}
-        for key in ("id", "normal", "with_default"):
-            is_true("computed" not in data[key])
-        compData = data["computed_col"]
-        is_true("computed" in compData)
-        is_true("sqltext" in compData["computed"])
-        actual = compData["computed"]["sqltext"].casefold().replace(" ", "")
-        if testing.against("postgresql"):
-            is_true("normal+42" in actual)
-            is_true("persisted" in compData["computed"])
-            is_true(compData["computed"]["persisted"])
-        elif testing.against("oracle"):
-            is_true("normal+42" in actual)
-            is_true("persisted" not in compData["computed"])
-        elif testing.against("mysql"):
-            actual = actual.replace("`", "")
-            is_true("normal+42" in actual)
-            is_true("persisted" in compData["computed"])
-            is_false(compData["computed"]["persisted"])
-        elif testing.against("mssql"):
-            actual = (
-                actual.replace("[", "")
-                .replace("]", "")
-                .replace("(", "")
-                .replace(")", "")
-            )
-            is_true("normal+42" in actual)
-            is_true("persisted" in compData["computed"])
-            is_false(compData["computed"]["persisted"])
-
-
 class NormalizedNameTest(fixtures.TablesTest):
     __requires__ = ("denormalized_names",)
     __backend__ = True
@@ -1255,5 +1189,4 @@ __all__ = (
     "HasTableTest",
     "HasIndexTest",
     "NormalizedNameTest",
-    "ComputedReflectionTest",
 )

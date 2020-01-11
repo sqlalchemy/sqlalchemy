@@ -1,6 +1,5 @@
 # -*- encoding: utf-8
 from sqlalchemy import Column
-from sqlalchemy import Computed
 from sqlalchemy import DDL
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
@@ -25,8 +24,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import reflection_fixture
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
@@ -517,75 +516,12 @@ class OwnerPlusDBTest(fixtures.TestBase):
             eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
 
 
-class ComputedReflectionTest(fixtures.TablesTest):
-    run_inserts = run_deletes = None
+class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
+    __only_on__ = "mssql"
+    return_persisted = True
+    default_persisted = False
+    support_stored = True
+    support_virtual = True
 
-    __backend__ = True
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "computed_column_table",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("normal", Integer),
-            Column("computed_no_flag", Integer, Computed("normal + 42")),
-            Column(
-                "computed_virtual",
-                Integer,
-                Computed("normal + 2", persisted=False),
-            ),
-            Column(
-                "computed_stored",
-                Integer,
-                Computed("normal - 42", persisted=True),
-            ),
-        )
-        Table(
-            "computed_column_table",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("normal", Integer),
-            Column("computed_no_flag", Integer, Computed("normal / 42")),
-            Column(
-                "computed_virtual",
-                Integer,
-                Computed("normal / 2", persisted=False),
-            ),
-            Column(
-                "computed_stored",
-                Integer,
-                Computed("normal * 42", persisted=True),
-            ),
-            schema=testing.config.test_schema,
-        )
-
-    def check_column(self, data, column, sqltext, persisted):
-        is_true("computed" in data[column])
-        compData = data[column]["computed"]
-        actual = compData["sqltext"]
-        eq_(sqltext, actual)
-        is_true("persisted" in compData)
-        is_(compData["persisted"], persisted)
-
-    def test_get_column_returns_persisted(self):
-        insp = inspect(testing.db)
-
-        cols = insp.get_columns("computed_column_table")
-        data = {c["name"]: c for c in cols}
-
-        self.check_column(data, "computed_no_flag", "([normal]+(42))", False)
-        self.check_column(data, "computed_virtual", "([normal]+(2))", False)
-        self.check_column(data, "computed_stored", "([normal]-(42))", True)
-
-    def test_get_column_returns_persisted_with_schama(self):
-        insp = inspect(testing.db)
-
-        cols = insp.get_columns(
-            "computed_column_table", schema=testing.config.test_schema
-        )
-        data = {c["name"]: c for c in cols}
-
-        self.check_column(data, "computed_no_flag", "([normal]/(42))", False)
-        self.check_column(data, "computed_virtual", "([normal]/(2))", False)
-        self.check_column(data, "computed_stored", "([normal]*(42))", True)
+    def to_sqltext(self, column, op, value):
+        return "([%s]%s(%s))" % (column, op, value)
