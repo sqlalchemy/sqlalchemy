@@ -1,12 +1,14 @@
 from . import config
 from .assertions import eq_
 from .assertions import is_
+from .assertions import is_not_
 from .assertions import is_true
 from .fixtures import TablesTest
 from .. import inspect
 from .. import Integer
 from ..schema import Column
 from ..schema import Computed
+from ..schema import MetaData
 from ..schema import Table
 
 
@@ -158,5 +160,42 @@ class ComputedReflectionFixtureTest(TablesTest):
                 data,
                 "computed_stored",
                 self.to_sqltext("normal", "*", "42"),
+                True,
+            )
+
+    def check_table_column(self, table, name, text, persisted):
+        is_true(name in table.columns)
+        col = table.columns[name]
+        is_not_(col.computed, None)
+        is_true(isinstance(col.computed, Computed))
+
+        eq_(str(col.computed.sqltext), text)
+        if self.return_persisted:
+            eq_(col.computed.persisted, persisted)
+        else:
+            is_(col.computed.persisted, None)
+
+    def test_table_reflection(self):
+        meta = MetaData()
+        table = Table("computed_column_table", meta, autoload_with=config.db)
+
+        self.check_table_column(
+            table,
+            "computed_no_flag",
+            self.to_sqltext("normal", "+", "42"),
+            self.default_persisted,
+        )
+        if self.support_virtual:
+            self.check_table_column(
+                table,
+                "computed_virtual",
+                self.to_sqltext("normal", "+", "2"),
+                False,
+            )
+        if self.support_stored:
+            self.check_table_column(
+                table,
+                "computed_stored",
+                self.to_sqltext("normal", "-", "42"),
                 True,
             )

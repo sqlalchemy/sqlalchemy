@@ -754,6 +754,10 @@ class Inspector(object):
 
             colargs.append(default)
 
+        if "computed" in col_d:
+            computed = sa_schema.Computed(**col_d["computed"])
+            colargs.append(computed)
+
         if "sequence" in col_d:
             self._reflect_col_sequence(col_d, colargs)
 
