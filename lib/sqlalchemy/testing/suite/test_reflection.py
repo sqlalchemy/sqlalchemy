@@ -1157,9 +1157,7 @@ class ComputedReflectionTest(fixtures.TablesTest):
                 metadata,
                 Column("id", Integer, primary_key=True),
                 Column("normal", Integer),
-                Column(
-                    "computed_col", Integer, sa.Computed("normal + 42")
-                ),
+                Column("computed_col", Integer, sa.Computed("normal + 42")),
                 Column("with_default", Integer, server_default="42"),
             )
 
@@ -1188,15 +1186,26 @@ class ComputedReflectionTest(fixtures.TablesTest):
         is_true("computed" in compData)
         is_true("sqltext" in compData["computed"])
         actual = compData["computed"]["sqltext"].casefold().replace(" ", "")
-        if testing.against("mysql"):
-            actual = actual.replace("`", "")
-        is_true("normal+42" in actual)
         if testing.against("postgresql"):
+            is_true("normal+42" in actual)
             is_true("persisted" in compData["computed"])
             is_true(compData["computed"]["persisted"])
         elif testing.against("oracle"):
+            is_true("normal+42" in actual)
             is_true("persisted" not in compData["computed"])
         elif testing.against("mysql"):
+            actual = actual.replace("`", "")
+            is_true("normal+42" in actual)
+            is_true("persisted" in compData["computed"])
+            is_false(compData["computed"]["persisted"])
+        elif testing.against("mssql"):
+            actual = (
+                actual.replace("[", "")
+                .replace("]", "")
+                .replace("(", "")
+                .replace(")", "")
+            )
+            is_true("normal+42" in actual)
             is_true("persisted" in compData["computed"])
             is_false(compData["computed"]["persisted"])
 

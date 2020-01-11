@@ -695,6 +695,7 @@ from ...engine import reflection
 from ...sql import compiler
 from ...sql import elements
 from ...sql import expression
+from ...sql import func
 from ...sql import quoted_name
 from ...sql import util as sql_util
 from ...types import BIGINT
@@ -2656,6 +2657,11 @@ class MSDialect(default.DefaultDialect):
             [columns], whereclause, order_by=[columns.c.ordinal_position]
         )
 
+        cc = ischema.computed_columns
+        computedSql = sql.select([cc]).where(
+            cc.columns.object_id == func.object_id(tablename)
+        )
+
         c = connection.execute(s)
         cols = []
         while True:
@@ -2722,6 +2728,16 @@ class MSDialect(default.DefaultDialect):
                 "default": default,
                 "autoincrement": False,
             }
+
+            c_res = connection.execute(
+                computedSql.where(cc.columns.name == name)
+            ).first()
+            if c_res is not None:
+                cdict["computed"] = dict(
+                    sqltext=c_res[cc.columns.definition],
+                    persisted=c_res[cc.columns.is_persisted],
+                )
+
             cols.append(cdict)
         # autoincrement and identity
         colmap = {}
