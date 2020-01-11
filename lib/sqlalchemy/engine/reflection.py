@@ -340,7 +340,23 @@ class Inspector(object):
         * ``default`` - the column's server default value - this is returned
           as a string SQL expression.
 
-        * ``attrs``  - dict containing optional column attributes
+        * ``autoincrement`` - indicates that the column is auto incremented -
+          this is returned as a boolean or 'auto'
+
+        * ``comment`` - (optional) the commnet on the column. Only some
+          dialects return this key
+
+        * ``computed`` - (optional) when present it indicates that this column
+          is computed by the database. Only some dialects return this key.
+          Returned as a dict with the keys:
+
+          * ``sqltext`` - the expression used to generate this column returned
+            as a string SQL expression
+
+          * ``persisted`` - (optional) boolean that indicates if the column is
+            stored in the table
+
+        * ``dialect_options`` - (optional) a dict with dialect specific options
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
