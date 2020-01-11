@@ -1182,16 +1182,11 @@ class ComputedReflectionTest(fixtures.TablesTest):
         def test(column, sqltext, persisted):
             is_true("computed" in data[column])
             compData = data[column]["computed"]
-            actual = (
-                compData["sqltext"]
-                .casefold()
-                .replace(" ", "")
-                .replace("`", "")
-            )
-            is_true(sqltext in actual)
+            actual = compData["sqltext"]
+            eq_(sqltext, actual)
             is_true("persisted" in compData)
             is_(compData["persisted"], persisted)
 
-        test("computed_no_flag", "normal+42", False)
-        test("computed_virtual", "normal+2", False)
-        test("computed_stored", "normal-42", True)
+        test("computed_no_flag", "((`normal` + 42))", False)
+        test("computed_virtual", "((`normal` + 2))", False)
+        test("computed_stored", "((`normal` - 42))", True)
