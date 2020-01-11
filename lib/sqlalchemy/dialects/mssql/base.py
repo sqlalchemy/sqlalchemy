@@ -2651,15 +2651,17 @@ class MSDialect(default.DefaultDialect):
                 columns.c.table_name == tablename,
                 columns.c.table_schema == owner,
             )
+            table_fullname = "%s.%s" % (owner, tablename)
         else:
             whereclause = columns.c.table_name == tablename
+            table_fullname = tablename
         s = sql.select(
             [columns], whereclause, order_by=[columns.c.ordinal_position]
         )
 
         cc = ischema.computed_columns
         computedSql = sql.select([cc]).where(
-            cc.columns.object_id == func.object_id(tablename)
+            cc.columns.object_id == func.object_id(table_fullname)
         )
 
         c = connection.execute(s)

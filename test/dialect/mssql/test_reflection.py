@@ -524,24 +524,49 @@ class ComputedReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        if testing.requires.computed_columns.enabled:
-            Table(
-                "computed_column_table",
-                metadata,
-                Column("id", Integer, primary_key=True),
-                Column("normal", Integer),
-                Column("computed_no_flag", Integer, Computed("normal + 42")),
-                Column(
-                    "computed_virtual",
-                    Integer,
-                    Computed("normal + 2", persisted=False),
-                ),
-                Column(
-                    "computed_stored",
-                    Integer,
-                    Computed("normal - 42", persisted=True),
-                ),
-            )
+        Table(
+            "computed_column_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("normal", Integer),
+            Column("computed_no_flag", Integer, Computed("normal + 42")),
+            Column(
+                "computed_virtual",
+                Integer,
+                Computed("normal + 2", persisted=False),
+            ),
+            Column(
+                "computed_stored",
+                Integer,
+                Computed("normal - 42", persisted=True),
+            ),
+        )
+        Table(
+            "computed_column_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("normal", Integer),
+            Column("computed_no_flag", Integer, Computed("normal / 42")),
+            Column(
+                "computed_virtual",
+                Integer,
+                Computed("normal / 2", persisted=False),
+            ),
+            Column(
+                "computed_stored",
+                Integer,
+                Computed("normal * 42", persisted=True),
+            ),
+            schema=testing.config.test_schema,
+        )
+
+    def check_column(self, data, column, sqltext, persisted):
+        is_true("computed" in data[column])
+        compData = data[column]["computed"]
+        actual = compData["sqltext"]
+        eq_(sqltext, actual)
+        is_true("persisted" in compData)
+        is_(compData["persisted"], persisted)
 
     def test_get_column_returns_persisted(self):
         insp = inspect(testing.db)
@@ -549,14 +574,18 @@ class ComputedReflectionTest(fixtures.TablesTest):
         cols = insp.get_columns("computed_column_table")
         data = {c["name"]: c for c in cols}
 
-        def test(column, sqltext, persisted):
-            is_true("computed" in data[column])
-            compData = data[column]["computed"]
-            actual = compData["sqltext"]
-            eq_(sqltext, actual)
-            is_true("persisted" in compData)
-            is_(compData["persisted"], persisted)
+        self.check_column(data, "computed_no_flag", "([normal]+(42))", False)
+        self.check_column(data, "computed_virtual", "([normal]+(2))", False)
+        self.check_column(data, "computed_stored", "([normal]-(42))", True)
 
-        test("computed_no_flag", "([normal]+(42))", False)
-        test("computed_virtual", "([normal]+(2))", False)
-        test("computed_stored", "([normal]-(42))", True)
+    def test_get_column_returns_persisted_with_schama(self):
+        insp = inspect(testing.db)
+
+        cols = insp.get_columns(
+            "computed_column_table", schema=testing.config.test_schema
+        )
+        data = {c["name"]: c for c in cols}
+
+        self.check_column(data, "computed_no_flag", "([normal]/(42))", False)
+        self.check_column(data, "computed_virtual", "([normal]/(2))", False)
+        self.check_column(data, "computed_stored", "([normal]*(42))", True)
