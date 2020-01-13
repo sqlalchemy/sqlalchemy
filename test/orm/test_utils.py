@@ -913,24 +913,60 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
         )
 
     def test_with_poly_sub(self):
+        Company = _poly_fixtures.Company
         Person = _poly_fixtures.Person
         Engineer = _poly_fixtures.Engineer
         emapper = inspect(Engineer)
+        cmapper = inspect(Company)
 
         p_poly = with_polymorphic(Person, [Engineer])
-        e_poly = inspect(p_poly.Engineer)  # noqa - used by comment below
+        e_poly_insp = inspect(p_poly.Engineer)  # noqa - used by comment below
         p_poly_insp = inspect(p_poly)
 
         p1 = PathRegistry.coerce((p_poly_insp, emapper.attrs.machines))
 
-        # polymorphic AliasedClass - as of #5082, for the sub entities that are
-        # generated for each subclass by with_polymorphic(),  use_mapper_path
-        # is not True so that creating paths from the sub entities, which don't
-        # by themselves encapsulate the with_polymorphic selectable, states the
-        # path in terms of that plain entity. previously, this path would be
-        # (e_poly, emapper.attrs.machines), but a loader strategy would never
-        # match on "e_poly", it would see "emapper".
-        eq_(p1.path, (emapper, emapper.attrs.machines))
+        # changes as of #5082: when a with_polymorphic is in the middle
+        # of a path, the natural path makes sure it uses the base mappers,
+        # however when it's at the root, the with_polymorphic stays in
+        # the natural path
+
+        # this behavior is the same as pre #5082, it was temporarily changed
+        # but this proved to be incorrect.   The path starts on a
+        # with_polymorphic(), so a Query will "naturally" construct a path
+        # that comes from that wp.
+        eq_(p1.path, (e_poly_insp, emapper.attrs.machines))
+        eq_(p1.natural_path, (e_poly_insp, emapper.attrs.machines))
+
+        # this behavior is new as of the final version of #5082.
+        # the path starts on a normal entity and has a with_polymorphic
+        # in the middle, for this to match what Query will generate it needs
+        # to use the non aliased mappers in the natural path.
+        p2 = PathRegistry.coerce(
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                p_poly_insp,
+                emapper.attrs.machines,
+            )
+        )
+        eq_(
+            p2.path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                e_poly_insp,
+                emapper.attrs.machines,
+            ),
+        )
+        eq_(
+            p2.natural_path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                emapper,
+                emapper.attrs.machines,
+            ),
+        )
 
     def test_with_poly_base(self):
         Person = _poly_fixtures.Person
