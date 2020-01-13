@@ -1612,9 +1612,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if select._distinct:
             s += "DISTINCT "
 
-        if select._simple_int_limit and (
-            select._offset_clause is None
-            or (select._simple_int_offset and select._offset == 0)
+        if (
+            not self.dialect._support_limit_offset
+            and select._simple_int_limit
+            and (
+                select._offset_clause is None
+                or (select._simple_int_offset and select._offset == 0)
+            )
         ):
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
@@ -1635,8 +1639,19 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return text
 
     def limit_clause(self, select, **kw):
-        # Limit in mssql is after the select keyword
-        return ""
+        if self.dialect._support_limit_offset:
+            text = ""
+            if select._offset_clause is not None:
+                text += " OFFSET %s ROWS" % self.process(
+                    select._offset_clause, **kw
+                )
+            if select._limit_clause is not None:
+                text += "\n FETCH NEXT %s ROWS ONLY " % self.process(
+                    select._limit_clause, **kw
+                )
+            return text
+        else:
+            return ""
 
     def visit_try_cast(self, element, **kw):
         return "TRY_CAST (%s AS %s)" % (
@@ -1650,11 +1665,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
         """
         if (
-            (not select._simple_int_limit and select._limit_clause is not None)
-            or (
-                select._offset_clause is not None
-                and not select._simple_int_offset
-                or select._offset
+            not self.dialect._support_limit_offset
+            and (
+                not select._simple_int_limit
+                and select._limit_clause is not None
             )
         ) and not getattr(select, "_mssql_visit", None):
 
@@ -2302,6 +2316,12 @@ class MSDialect(default.DefaultDialect):
         (sa_schema.Index, {"clustered": None, "include": None, "where": None}),
         (sa_schema.Column, {"identity_start": 1, "identity_increment": 1}),
     ]
+
+    @property
+    def _support_limit_offset(self):
+        return (
+                self.server_version_info and self.server_version_info[0]>=12
+        )
 
     def __init__(
         self,
