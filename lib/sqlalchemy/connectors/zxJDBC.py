@@ -17,7 +17,7 @@ class ZxJDBCConnector(Connector):
     supports_sane_multi_rowcount = False
 
     supports_unicode_binds = True
-    supports_unicode_statements = sys.version > "2.5.0+"
+    supports_unicode_statements = True
     description_encoding = None
     default_paramstyle = "qmark"
 
