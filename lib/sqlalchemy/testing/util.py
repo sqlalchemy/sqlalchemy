@@ -14,6 +14,7 @@ import types
 
 from ..util import decorator
 from ..util import defaultdict
+from ..util import inspect_getfullargspec
 from ..util import jython
 from ..util import py2k
 from ..util import pypy
@@ -270,10 +271,12 @@ def resolve_lambda(__fn, **kw):
 
     """
 
+    pos_args = inspect_getfullargspec(__fn)[0]
+    pass_pos_args = {arg: kw.pop(arg) for arg in pos_args}
     glb = dict(__fn.__globals__)
     glb.update(kw)
     new_fn = types.FunctionType(__fn.__code__, glb)
-    return new_fn()
+    return new_fn(**pass_pos_args)
 
 
 def metadata_fixture(ddl="function"):

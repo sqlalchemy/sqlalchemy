@@ -5383,6 +5383,35 @@ class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
         # PYTHONHASHSEED
         in_("d", a1.c.__dict__)
 
+    def test_multi_path_load_of_type(self):
+        A, B, C, D = self.classes("A", "B", "C", "D")
+
+        s = Session()
+
+        c = C(d=D())
+
+        s.add(A(b=B(c=c), c=c))
+        s.commit()
+
+        c_alias_1 = aliased(C)
+        c_alias_2 = aliased(C)
+
+        q = s.query(A)
+        q = q.join(A.b).join(B.c.of_type(c_alias_1)).join(c_alias_1.d)
+        q = q.options(
+            contains_eager(A.b)
+            .contains_eager(B.c.of_type(c_alias_1))
+            .contains_eager(c_alias_1.d)
+        )
+        q = q.join(A.c.of_type(c_alias_2))
+        q = q.options(contains_eager(A.c.of_type(c_alias_2)))
+
+        a1 = q.all()[0]
+
+        # ensure 'd' key was populated in dict.  Varies based on
+        # PYTHONHASHSEED
+        in_("d", a1.c.__dict__)
+
 
 class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
     """test for [ticket:3431]"""
@@ -5441,6 +5470,7 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         l_ac = aliased(LD)
         u_ac = aliased(User)
 
+        # these paths don't work out correctly?
         lz_test = (
             s.query(LDA)
             .join("ld")
@@ -5450,6 +5480,39 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
                 contains_eager("a")
                 .contains_eager("ld", alias=l_ac)
                 .contains_eager("user", alias=u_ac)
+            )
+            .first()
+        )
+
+        in_("user", lz_test.a.ld.__dict__)
+
+    def test_multi_path_load_of_type(self):
+        User, LD, A, LDA = self.classes("User", "LD", "A", "LDA")
+
+        s = Session()
+
+        u0 = User(data=42)
+        l0 = LD(user=u0)
+        z0 = A(ld=l0)
+        lz0 = LDA(ld=l0, a=z0)
+        s.add_all([u0, l0, z0, lz0])
+        s.commit()
+
+        l_ac = aliased(LD)
+        u_ac = aliased(User)
+
+        lz_test = (
+            s.query(LDA)
+            .join(LDA.ld)
+            .options(contains_eager(LDA.ld))
+            .join(LDA.a)
+            .join(LDA.ld.of_type(l_ac))
+            .join(l_ac.user.of_type(u_ac))
+            .options(
+                contains_eager(LDA.a),
+                contains_eager(LDA.ld.of_type(l_ac)).contains_eager(
+                    l_ac.user.of_type(u_ac)
+                ),
             )
             .first()
         )

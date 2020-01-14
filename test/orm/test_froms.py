@@ -1235,6 +1235,36 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_contains_eager_multi_aliased_of_type(self):
+        # test newer style that does not use the alias parameter
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = create_session()
+        q = sess.query(User)
+
+        # test using Aliased with more than one level deep
+        oalias = aliased(Order)
+        ialias = aliased(Item)
+
+        def go():
+            result = (
+                q.options(
+                    contains_eager(User.orders.of_type(oalias)).contains_eager(
+                        oalias.items.of_type(ialias)
+                    )
+                )
+                .outerjoin(User.orders.of_type(oalias))
+                .outerjoin(oalias.items.of_type(ialias))
+                .order_by(User.id, oalias.id, ialias.id)
+            )
+            assert self.static.user_order_result == result.all()
+
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_contains_eager_chaining(self):
         """test that contains_eager() 'chains' by default."""
 

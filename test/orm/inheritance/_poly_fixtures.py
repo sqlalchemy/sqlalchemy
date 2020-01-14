@@ -1,6 +1,7 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import util
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
@@ -384,11 +385,14 @@ class _PolymorphicUnions(_PolymorphicFixtureBase):
             cls.tables.managers,
             cls.tables.boss,
         )
+
         person_join = polymorphic_union(
-            {
-                "engineer": people.join(engineers),
-                "manager": people.join(managers),
-            },
+            util.OrderedDict(
+                [
+                    ("engineer", people.join(engineers)),
+                    ("manager", people.join(managers)),
+                ]
+            ),
             None,
             "pjoin",
         )

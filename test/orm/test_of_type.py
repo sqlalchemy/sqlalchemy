@@ -152,21 +152,40 @@ class _PolymorphicTestBase(object):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_with_polymorphic_join_exec_contains_eager_two(self):
+    @testing.combinations(
+        # this form is not expected to work in all cases, ultimately
+        # the "alias" parameter should be deprecated entirely
+        # lambda Company, wp: contains_eager(Company.employees, alias=wp),
+        lambda Company, wp: contains_eager(Company.employees.of_type(wp)),
+        lambda Company, wp: contains_eager(
+            Company.employees.of_type(wp), alias=wp
+        ),
+    )
+    def test_with_polymorphic_join_exec_contains_eager_two(
+        self, contains_eager_option
+    ):
         sess = Session()
 
+        wp = with_polymorphic(Person, [Engineer, Manager], aliased=True)
+        contains_eager_option = testing.resolve_lambda(
+            contains_eager_option, Company=Company, wp=wp
+        )
+        q = (
+            sess.query(Company)
+            .join(Company.employees.of_type(wp))
+            .order_by(Company.company_id, wp.person_id)
+            .options(contains_eager_option)
+        )
+
         def go():
-            wp = with_polymorphic(Person, [Engineer, Manager], aliased=True)
-            eq_(
-                sess.query(Company)
-                .join(Company.employees.of_type(wp))
-                .order_by(Company.company_id, wp.person_id)
-                .options(contains_eager(Company.employees, alias=wp))
-                .all(),
-                [self.c1, self.c2],
-            )
+            eq_(q.all(), [self.c1, self.c2])
 
         self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_compile(
+            q,
+            self._test_with_polymorphic_join_exec_contains_eager_two_result(),
+        )
 
     def test_with_polymorphic_any(self):
         sess = Session()
@@ -275,6 +294,38 @@ class PolymorphicPolymorphicTest(
             + " ON companies.company_id = people_1.company_id"
         )
 
+    def _test_with_polymorphic_join_exec_contains_eager_two_result(self):
+        return (
+            "SELECT anon_1.people_person_id AS anon_1_people_person_id, "
+            "anon_1.people_company_id AS anon_1_people_company_id, "
+            "anon_1.people_name AS anon_1_people_name, "
+            "anon_1.people_type AS anon_1_people_type, "
+            "anon_1.engineers_person_id AS anon_1_engineers_person_id, "
+            "anon_1.engineers_status AS anon_1_engineers_status, "
+            "anon_1.engineers_engineer_name "
+            "AS anon_1_engineers_engineer_name, "
+            "anon_1.engineers_primary_language "
+            "AS anon_1_engineers_primary_language, anon_1.managers_person_id "
+            "AS anon_1_managers_person_id, anon_1.managers_status "
+            "AS anon_1_managers_status, anon_1.managers_manager_name "
+            "AS anon_1_managers_manager_name, companies.company_id "
+            "AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS "
+            "people_person_id, people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, "
+            "engineers.person_id AS engineers_person_id, engineers.status "
+            "AS engineers_status, engineers.engineer_name "
+            "AS engineers_engineer_name, engineers.primary_language "
+            "AS engineers_primary_language, managers.person_id "
+            "AS managers_person_id, managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name FROM people "
+            "LEFT OUTER JOIN engineers ON people.person_id = "
+            "engineers.person_id LEFT OUTER JOIN managers "
+            "ON people.person_id = managers.person_id) AS anon_1 "
+            "ON companies.company_id = anon_1.people_company_id "
+            "ORDER BY companies.company_id, anon_1.people_person_id"
+        )
+
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
     def _polymorphic_join_target(self, cls):
@@ -286,6 +337,34 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
         return (
             comp_sel.process(sel, asfrom=True).replace("\n", "")
             + " AS anon_1 ON companies.company_id = anon_1.company_id"
+        )
+
+    def _test_with_polymorphic_join_exec_contains_eager_two_result(self):
+        return (
+            "SELECT anon_1.person_id AS anon_1_person_id, "
+            "anon_1.company_id AS anon_1_company_id, anon_1.name AS "
+            "anon_1_name, anon_1.type AS anon_1_type, anon_1.status "
+            "AS anon_1_status, anon_1.engineer_name AS "
+            "anon_1_engineer_name, anon_1.primary_language AS "
+            "anon_1_primary_language, anon_1.manager_name AS "
+            "anon_1_manager_name, companies.company_id AS "
+            "companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT engineers.person_id AS "
+            "person_id, people.company_id AS company_id, people.name AS name, "
+            "people.type AS type, engineers.status AS status, "
+            "engineers.engineer_name AS engineer_name, "
+            "engineers.primary_language AS primary_language, "
+            "CAST(NULL AS VARCHAR(50)) AS manager_name FROM people "
+            "JOIN engineers ON people.person_id = engineers.person_id "
+            "UNION ALL SELECT managers.person_id AS person_id, "
+            "people.company_id AS company_id, people.name AS name, "
+            "people.type AS type, managers.status AS status, "
+            "CAST(NULL AS VARCHAR(50)) AS engineer_name, "
+            "CAST(NULL AS VARCHAR(50)) AS primary_language, "
+            "managers.manager_name AS manager_name FROM people "
+            "JOIN managers ON people.person_id = managers.person_id) AS "
+            "anon_1 ON companies.company_id = anon_1.company_id "
+            "ORDER BY companies.company_id, anon_1.person_id"
         )
 
 
@@ -303,6 +382,37 @@ class PolymorphicAliasedJoinsTest(
             + " AS anon_1 ON companies.company_id = anon_1.people_company_id"
         )
 
+    def _test_with_polymorphic_join_exec_contains_eager_two_result(self):
+        return (
+            "SELECT anon_1.people_person_id AS anon_1_people_person_id, "
+            "anon_1.people_company_id AS anon_1_people_company_id, "
+            "anon_1.people_name AS anon_1_people_name, anon_1.people_type "
+            "AS anon_1_people_type, anon_1.engineers_person_id AS "
+            "anon_1_engineers_person_id, anon_1.engineers_status AS "
+            "anon_1_engineers_status, anon_1.engineers_engineer_name "
+            "AS anon_1_engineers_engineer_name, "
+            "anon_1.engineers_primary_language AS "
+            "anon_1_engineers_primary_language, anon_1.managers_person_id "
+            "AS anon_1_managers_person_id, anon_1.managers_status "
+            "AS anon_1_managers_status, anon_1.managers_manager_name "
+            "AS anon_1_managers_manager_name, companies.company_id "
+            "AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS "
+            "people_person_id, people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, "
+            "engineers.person_id AS engineers_person_id, engineers.status "
+            "AS engineers_status, engineers.engineer_name AS "
+            "engineers_engineer_name, engineers.primary_language "
+            "AS engineers_primary_language, managers.person_id AS "
+            "managers_person_id, managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name FROM people "
+            "LEFT OUTER JOIN engineers ON people.person_id = "
+            "engineers.person_id LEFT OUTER JOIN managers "
+            "ON people.person_id = managers.person_id) AS anon_1 "
+            "ON companies.company_id = anon_1.people_company_id "
+            "ORDER BY companies.company_id, anon_1.people_person_id"
+        )
+
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
     def _polymorphic_join_target(self, cls):
@@ -317,6 +427,38 @@ class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
         return (
             comp_sel.process(sel, asfrom=True).replace("\n", "")
             + " ON companies.company_id = people_1.company_id"
+        )
+
+    def _test_with_polymorphic_join_exec_contains_eager_two_result(self):
+        return (
+            "SELECT anon_1.people_person_id AS anon_1_people_person_id, "
+            "anon_1.people_company_id AS anon_1_people_company_id, "
+            "anon_1.people_name AS anon_1_people_name, "
+            "anon_1.people_type AS anon_1_people_type, "
+            "anon_1.engineers_person_id AS anon_1_engineers_person_id, "
+            "anon_1.engineers_status AS anon_1_engineers_status, "
+            "anon_1.engineers_engineer_name "
+            "AS anon_1_engineers_engineer_name, "
+            "anon_1.engineers_primary_language "
+            "AS anon_1_engineers_primary_language, anon_1.managers_person_id "
+            "AS anon_1_managers_person_id, anon_1.managers_status "
+            "AS anon_1_managers_status, anon_1.managers_manager_name "
+            "AS anon_1_managers_manager_name, companies.company_id "
+            "AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS "
+            "people_person_id, people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, "
+            "engineers.person_id AS engineers_person_id, engineers.status "
+            "AS engineers_status, engineers.engineer_name "
+            "AS engineers_engineer_name, engineers.primary_language "
+            "AS engineers_primary_language, managers.person_id "
+            "AS managers_person_id, managers.status AS managers_status, "
+            "managers.manager_name AS managers_manager_name FROM people "
+            "LEFT OUTER JOIN engineers ON people.person_id = "
+            "engineers.person_id LEFT OUTER JOIN managers "
+            "ON people.person_id = managers.person_id) AS anon_1 "
+            "ON companies.company_id = anon_1.people_company_id "
+            "ORDER BY companies.company_id, anon_1.people_person_id"
         )
 
     def test_joinedload_explicit_with_unaliased_poly_compile(self):
