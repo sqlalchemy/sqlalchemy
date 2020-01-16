@@ -618,11 +618,17 @@ def _collect_update_commands(
                 if hasattr(value, "__clause_element__") or isinstance(
                     value, sql.ClauseElement
                 ):
-                    value_params[col] = (
-                        value.__clause_element__()
-                        if hasattr(value, "__clause_element__")
-                        else value
-                    )
+                    if hasattr(value, "__clause_element__"):
+                        value = value.__clause_element__()
+
+                    if (
+                        state.manager[propkey].impl.is_equal(
+                            value, state.committed_state[propkey]
+                        )
+                        is not True
+                    ):
+                        value_params[col] = value
+
                 # guard against values that generate non-__nonzero__
                 # objects for __eq__()
                 elif (
