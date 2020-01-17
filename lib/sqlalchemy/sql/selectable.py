@@ -698,7 +698,7 @@ class Join(FromClause):
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
         else:
-            self.onclause = onclause
+            self.onclause = onclause.self_group(against=operators._asbool)
 
         self.isouter = isouter
         self.full = full
