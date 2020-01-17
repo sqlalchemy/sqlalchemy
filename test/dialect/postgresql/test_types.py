@@ -95,10 +95,6 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             {"data": 9},
         )
 
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        "XXX: postgresql+zxjdbc currently returns a Decimal result for Float",
-    )
     def test_float_coercion(self):
         data_table = self.tables.data_table
 
@@ -119,9 +115,6 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             ).scalar()
             eq_(round_decimal(ret, 9), result)
 
-    @testing.fails_on(
-        "postgresql+zxjdbc", "zxjdbc has no support for PG arrays"
-    )
     @testing.provide_metadata
     def test_arrays_pg(self):
         metadata = self.metadata
@@ -138,9 +131,6 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         row = t1.select().execute().first()
         eq_(row, ([5], [5], [6], [decimal.Decimal("6.4")]))
 
-    @testing.fails_on(
-        "postgresql+zxjdbc", "zxjdbc has no support for PG arrays"
-    )
     @testing.provide_metadata
     def test_arrays_base(self):
         metadata = self.metadata
@@ -163,11 +153,6 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "postgresql > 8.3"
 
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        'zxjdbc fails on ENUM: column "XXX" is of type '
-        "XXX but expression is of type character varying",
-    )
     @testing.provide_metadata
     def test_create_table(self):
         metadata = self.metadata
@@ -198,11 +183,6 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             exc.CompileError, etype.compile, dialect=postgresql.dialect()
         )
 
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        'zxjdbc fails on ENUM: column "XXX" is of type '
-        "XXX but expression is of type character varying",
-    )
     @testing.provide_metadata
     def test_unicode_labels(self):
         metadata = self.metadata
@@ -842,10 +822,6 @@ class TimezoneTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        "XXX: postgresql+zxjdbc doesn't give a tzinfo back",
-    )
     def test_with_timezone(self):
 
         # get a date with a tzinfo
@@ -1201,7 +1177,7 @@ class ArrayRoundTripTest(object):
 
     __only_on__ = "postgresql"
     __backend__ = True
-    __unsupported_on__ = "postgresql+pg8000", "postgresql+zxjdbc"
+    __unsupported_on__ = ("postgresql+pg8000",)
 
     ARRAY = postgresql.ARRAY
 

@@ -7,7 +7,6 @@
 
 from . import base  # noqa
 from . import cx_oracle  # noqa
-from . import zxjdbc  # noqa
 from .base import BFILE
 from .base import BINARY_DOUBLE
 from .base import BINARY_FLOAT

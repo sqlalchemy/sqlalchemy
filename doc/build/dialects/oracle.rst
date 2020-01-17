@@ -61,7 +61,3 @@ cx_Oracle
 
 .. automodule:: sqlalchemy.dialects.oracle.cx_oracle
 
-zxjdbc
-------
-
-.. automodule:: sqlalchemy.dialects.oracle.zxjdbc

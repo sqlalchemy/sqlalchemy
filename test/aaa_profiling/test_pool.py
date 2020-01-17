@@ -21,8 +21,8 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown(self):
         # the tests leave some fake connections
         # around which don't necessarily
-        # get gc'ed as quickly as we'd like,
-        # on backends like pypy, python3.2
+        # get gc'ed as quickly as we'd like all the time,
+        # particularly for non-refcount gc
         pool_module._refs.clear()
 
     def setup(self):

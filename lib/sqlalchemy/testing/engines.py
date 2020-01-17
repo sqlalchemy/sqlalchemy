@@ -58,7 +58,7 @@ class ConnectionKiller(object):
         # this can cause a deadlock with pg8000 - pg8000 acquires
         # prepared statement lock inside of rollback() - if async gc
         # is collecting in finalize_fairy, deadlock.
-        # not sure if this should be if pypy/jython only.
+        # not sure if this should be for non-cpython only.
         # note that firebird/fdb definitely needs this though
         for conn, rec in list(self.conns):
             if rec.connection is None:

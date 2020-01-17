@@ -15,7 +15,6 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
-from sqlalchemy.testing import fails_if
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -2060,13 +2059,13 @@ class ArgInspectionTest(fixtures.TestBase):
             ),
         )
 
-    @fails_if(lambda: util.pypy, "pypy returns plain *arg, **kw")
+    @testing.requires.cpython
     def test_callable_argspec_py_builtin(self):
         import datetime
 
         assert_raises(TypeError, get_callable_argspec, datetime.datetime.now)
 
-    @fails_if(lambda: util.pypy, "pypy returns plain *arg, **kw")
+    @testing.requires.cpython
     def test_callable_argspec_obj_init(self):
         assert_raises(TypeError, get_callable_argspec, object)
 
@@ -2148,7 +2147,7 @@ class ArgInspectionTest(fixtures.TestBase):
             compat.FullArgSpec(["x", "y"], None, None, None, [], None, {}),
         )
 
-    @fails_if(lambda: util.pypy, "pypy returns plain *arg, **kw")
+    @testing.requires.cpython
     def test_callable_argspec_partial(self):
         from functools import partial
 
@@ -2495,10 +2494,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 grouped=False,
             )
 
-    @testing.fails_if(
-        lambda: util.pypy,
-        "pypy doesn't report Obj.__init__ as object.__init__",
-    )
+    @testing.requires.cpython
     def test_init_grouped(self):
         object_spec = {
             "args": "(self)",
@@ -2522,10 +2518,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         self._test_init(None, object_spec, wrapper_spec, custom_spec)
         self._test_init(True, object_spec, wrapper_spec, custom_spec)
 
-    @testing.fails_if(
-        lambda: util.pypy,
-        "pypy doesn't report Obj.__init__ as object.__init__",
-    )
+    @testing.requires.cpython
     def test_init_bare(self):
         object_spec = {
             "args": "self",

@@ -1507,11 +1507,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         "pg8000 parses the SQL itself before passing on "
         "to PG, doesn't parse this",
     )
-    @testing.fails_on(
-        "postgresql+zxjdbc",
-        "zxjdbc parses the SQL itself before passing on "
-        "to PG, doesn't parse this",
-    )
     @testing.fails_on("firebird", "unknown")
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean

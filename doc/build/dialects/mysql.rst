@@ -201,7 +201,3 @@ pyodbc
 
 .. automodule:: sqlalchemy.dialects.mysql.pyodbc
 
-zxjdbc
-------
-
-.. automodule:: sqlalchemy.dialects.mysql.zxjdbc

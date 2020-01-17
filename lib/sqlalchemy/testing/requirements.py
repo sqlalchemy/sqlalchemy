@@ -1034,7 +1034,7 @@ class SuiteRequirements(Requirements):
         from sqlalchemy.util import pickle
 
         return exclusions.only_if(
-            lambda: not util.pypy
+            lambda: util.cpython
             and pickle.__name__ == "cPickle"
             or sys.version_info >= (3, 2),
             "Needs cPickle+cPython or newer Python 3 pickle",

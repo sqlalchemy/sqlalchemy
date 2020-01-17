@@ -9,36 +9,22 @@ import decimal
 import gc
 import random
 import sys
-import time
 import types
 
 from . import mock
 from ..util import decorator
 from ..util import defaultdict
+from ..util import has_refcount_gc
 from ..util import inspect_getfullargspec
-from ..util import jython
 from ..util import py2k
-from ..util import pypy
 
-if jython:
+if not has_refcount_gc:
 
-    def jython_gc_collect(*args):
-        """aggressive gc.collect for tests."""
-        gc.collect()
-        time.sleep(0.1)
-        gc.collect()
-        gc.collect()
-        return 0
-
-    # "lazy" gc, for VM's that don't GC on refcount == 0
-    gc_collect = lazy_gc = jython_gc_collect
-elif pypy:
-
-    def pypy_gc_collect(*args):
+    def non_refcount_gc_collect(*args):
         gc.collect()
         gc.collect()
 
-    gc_collect = lazy_gc = pypy_gc_collect
+    gc_collect = lazy_gc = non_refcount_gc_collect
 else:
     # assume CPython - straight gc.collect, lazy_gc() is a pass
     gc_collect = gc.collect

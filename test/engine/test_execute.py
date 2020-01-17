@@ -105,7 +105,7 @@ class ExecuteTest(fixtures.TestBase):
         eq_(result, "%")
 
     @testing.fails_on_everything_except(
-        "firebird", "sqlite", "+pyodbc", "+mxodbc", "+zxjdbc", "mysql+oursql"
+        "firebird", "sqlite", "+pyodbc", "+mxodbc", "mysql+oursql"
     )
     def test_raw_qmark(self):
         def go(conn):
@@ -172,7 +172,6 @@ class ExecuteTest(fixtures.TestBase):
         "mysql+mysqlconnector",
         "postgresql",
     )
-    @testing.fails_on("postgresql+zxjdbc", "sprintf not supported")
     def test_raw_sprintf(self):
         def go(conn):
             conn.execute(

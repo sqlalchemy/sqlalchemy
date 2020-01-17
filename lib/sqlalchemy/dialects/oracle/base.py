@@ -575,7 +575,7 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
 
         Note that only DAY TO SECOND intervals are currently supported.
         This is due to a lack of support for YEAR TO MONTH intervals
-        within available DBAPIs (cx_oracle and zxjdbc).
+        within available DBAPIs.
 
         :param day_precision: the day precision value.  this is the number of
           digits to store for the day field.  Defaults to "2"

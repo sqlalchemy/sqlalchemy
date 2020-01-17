@@ -46,7 +46,6 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.util.compat import pypy
 from . import _fixtures
 from .inheritance import _poly_fixtures
 from .test_options import PathTest as OptionsPathTest
@@ -343,8 +342,7 @@ class StrongIdentityMapTest(_fixtures.FixtureTest):
     def test_prune_events(self):
         self._test_prune(self._event_fixture)
 
-    @testing.fails_if(lambda: pypy, "pypy has a real GC")
-    @testing.fails_on("+zxjdbc", "http://www.sqlalchemy.org/trac/ticket/1473")
+    @testing.requires.cpython
     def _test_prune(self, fixture):
         s, prune = fixture()
 

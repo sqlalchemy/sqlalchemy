@@ -1156,9 +1156,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
 
     """PostgreSQL INTERVAL type.
 
-    The INTERVAL type may not be supported on all DBAPIs.
-    It is known to work on psycopg2 and not pg8000 or zxjdbc.
-
     """
 
     __visit_name__ = "INTERVAL"

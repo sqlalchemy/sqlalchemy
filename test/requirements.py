@@ -92,9 +92,9 @@ class DefaultRequirements(SuiteRequirements):
         """target database must *not* support ON UPDATE..CASCADE behavior in
         foreign keys."""
 
-        return fails_on_everything_except(
-            "sqlite", "oracle", "+zxjdbc"
-        ) + skip_if("mssql")
+        return fails_on_everything_except("sqlite", "oracle") + skip_if(
+            "mssql"
+        )
 
     @property
     def recursive_fk_cascade(self):
@@ -681,11 +681,6 @@ class DefaultRequirements(SuiteRequirements):
                     "sybase", "two-phase xact not supported by drivers/SQLA"
                 ),
                 no_support(
-                    "postgresql+zxjdbc",
-                    "FIXME: JDBC driver confuses the transaction state, "
-                    "may need separate XA implementation",
-                ),
-                no_support(
                     "mysql",
                     "recent MySQL communiity editions have too many issues "
                     "(late 2016), disabling for now",
@@ -828,7 +823,6 @@ class DefaultRequirements(SuiteRequirements):
             [
                 lambda config: against(config, "postgresql")
                 and not against(config, "+pg8000")
-                and not against(config, "+zxjdbc")
             ]
         )
 
@@ -915,9 +909,7 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
 
-        return skip_if(
-            ["mssql", "mysql", "firebird", "+zxjdbc", "oracle", "sybase"]
-        )
+        return skip_if(["mssql", "mysql", "firebird", "oracle", "sybase"])
 
     @property
     def timestamp_microseconds(self):
@@ -968,9 +960,7 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.time() with microsecond objects."""
 
-        return skip_if(
-            ["mssql", "mysql", "firebird", "+zxjdbc", "oracle", "sybase"]
-        )
+        return skip_if(["mssql", "mysql", "firebird", "oracle", "sybase"])
 
     @property
     def precision_numerics_general(self):

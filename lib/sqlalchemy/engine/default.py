@@ -410,9 +410,7 @@ class DefaultDialect(interfaces.Dialect):
             return results == {True}
 
     def _check_unicode_description(self, connection):
-        # all DBAPIs on Py2K return cursor.description as encoded,
-        # until pypy2.1beta2 with sqlite, so let's just check it -
-        # it's likely others will start doing this too in Py2k.
+        # all DBAPIs on Py2K return cursor.description as encoded
 
         if util.py2k and not self.supports_unicode_statements:
             cast_to = util.binary_type

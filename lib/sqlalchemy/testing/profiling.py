@@ -15,13 +15,13 @@ in a more fine-grained way than nose's profiling plugin.
 import collections
 import contextlib
 import os
+import platform
 import pstats
 import sys
 
 from . import config
 from .util import gc_collect
-from ..util import jython
-from ..util import pypy
+from ..util import cpython
 from ..util import win32
 
 
@@ -91,12 +91,12 @@ class ProfileStatsFile(object):
         # keep it at 2.7, 3.1, 3.2, etc. for now.
         py_version = ".".join([str(v) for v in sys.version_info[0:2]])
 
-        platform_tokens = [py_version]
+        if not cpython:
+            platform_tokens = [platform.python_implementation(), py_version]
+        else:
+            platform_tokens = [py_version]
         platform_tokens.append(dbapi_key)
-        if jython:
-            platform_tokens.append("jython")
-        if pypy:
-            platform_tokens.append("pypy")
+
         if win32:
             platform_tokens.append("win")
         platform_tokens.append(
