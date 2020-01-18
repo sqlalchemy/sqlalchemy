@@ -5,6 +5,7 @@ from sqlalchemy import and_
 from sqlalchemy import between
 from sqlalchemy import exc
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal_column
 from sqlalchemy import not_
@@ -986,6 +987,42 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_six(self):
         self.assert_compile(
             or_(false(), true()), "1 = 1", dialect=self._dialect(False)
+        )
+
+    def test_seven_a(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=true()),
+            "t1 JOIN t2 ON 1 = 1",
+            dialect=self._dialect(False),
+        )
+
+    def test_seven_b(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=false()),
+            "t1 JOIN t2 ON 0 = 1",
+            dialect=self._dialect(False),
+        )
+
+    def test_seven_c(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=true()),
+            "t1 JOIN t2 ON true",
+            dialect=self._dialect(True),
+        )
+
+    def test_seven_d(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=false()),
+            "t1 JOIN t2 ON false",
+            dialect=self._dialect(True),
         )
 
     def test_eight(self):
