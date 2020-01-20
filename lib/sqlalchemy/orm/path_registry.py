@@ -242,51 +242,61 @@ class PropRegistry(PathRegistry):
         # given MapperProperty's parent.
         insp = inspection.inspect(parent[-1])
         natural_parent = parent
+
         if not insp.is_aliased_class or insp._use_mapper_path:
             parent = natural_parent = parent.parent[prop.parent]
-        elif insp.is_aliased_class and insp.with_polymorphic_mappers:
-            if (
-                prop.parent is not insp.mapper
-                and prop.parent in insp.with_polymorphic_mappers
-            ):
-                subclass_entity = parent[-1]._entity_for_mapper(prop.parent)
-                parent = parent.parent[subclass_entity]
+        elif (
+            insp.is_aliased_class
+            and insp.with_polymorphic_mappers
+            and prop.parent is not insp.mapper
+            and prop.parent in insp.with_polymorphic_mappers
+        ):
+            subclass_entity = parent[-1]._entity_for_mapper(prop.parent)
+            parent = parent.parent[subclass_entity]
 
-                # when building a path where with_polymorphic() is in use,
-                # special logic to determine the "natural path" when subclass
-                # entities are used.
-                #
-                # here we are trying to distinguish between a path that starts
-                # on a the with_polymorhpic entity vs. one that starts on a
-                # normal entity that introduces a with_polymorphic() in the
-                # middle using of_type():
-                #
-                #  # as in test_polymorphic_rel->
-                #  #    test_subqueryload_on_subclass_uses_path_correctly
-                #  wp = with_polymorphic(RegularEntity, "*")
-                #  sess.query(wp).options(someload(wp.SomeSubEntity.foos))
-                #
-                # vs
-                #
-                #  # as in test_relationship->JoinedloadWPolyOfTypeContinued
-                #  wp = with_polymorphic(SomeFoo, "*")
-                #  sess.query(RegularEntity).options(
-                #       someload(RegularEntity.foos.of_type(wp))
-                #       .someload(wp.SubFoo.bar)
-                #   )
-                #
-                # in the former case, the Query as it generates a path that we
-                # want to match will be in terms of the with_polymorphic at the
-                # beginning.  in the latter case, Query will generate simple
-                # paths that don't know about this with_polymorphic, so we must
-                # use a separate natural path.
-                #
-                #
-                if parent.parent:
-                    natural_parent = parent.parent[subclass_entity.mapper]
-                    self.is_unnatural = True
-                else:
-                    natural_parent = parent
+            # when building a path where with_polymorphic() is in use,
+            # special logic to determine the "natural path" when subclass
+            # entities are used.
+            #
+            # here we are trying to distinguish between a path that starts
+            # on a the with_polymorhpic entity vs. one that starts on a
+            # normal entity that introduces a with_polymorphic() in the
+            # middle using of_type():
+            #
+            #  # as in test_polymorphic_rel->
+            #  #    test_subqueryload_on_subclass_uses_path_correctly
+            #  wp = with_polymorphic(RegularEntity, "*")
+            #  sess.query(wp).options(someload(wp.SomeSubEntity.foos))
+            #
+            # vs
+            #
+            #  # as in test_relationship->JoinedloadWPolyOfTypeContinued
+            #  wp = with_polymorphic(SomeFoo, "*")
+            #  sess.query(RegularEntity).options(
+            #       someload(RegularEntity.foos.of_type(wp))
+            #       .someload(wp.SubFoo.bar)
+            #   )
+            #
+            # in the former case, the Query as it generates a path that we
+            # want to match will be in terms of the with_polymorphic at the
+            # beginning.  in the latter case, Query will generate simple
+            # paths that don't know about this with_polymorphic, so we must
+            # use a separate natural path.
+            #
+            #
+            if parent.parent:
+                natural_parent = parent.parent[subclass_entity.mapper]
+                self.is_unnatural = True
+            else:
+                natural_parent = parent
+        elif (
+            natural_parent.parent
+            and insp.is_aliased_class
+            and prop.parent  # this should always be the case here
+            is not insp.mapper
+            and insp.mapper.isa(prop.parent)
+        ):
+            natural_parent = parent.parent[prop.parent]
 
         self.prop = prop
         self.parent = parent

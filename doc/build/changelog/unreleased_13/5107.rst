@@ -1,0 +1,10 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 5107
+
+    Fixed regression in loader options introduced in 1.3.0b3 via :ticket:`4468`
+    where the ability to create a loader option using
+    :meth:`.PropComparator.of_type` targeting an aliased entity that is an
+    inheriting subclass of the entity which the preceding relationship refers
+    to would fail to produce a matching path.   See also :ticket:`5082` fixed
+    in this same release which involves a similar kind of issue.
