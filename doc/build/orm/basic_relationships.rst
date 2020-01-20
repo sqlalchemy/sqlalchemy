@@ -412,7 +412,7 @@ associated object, and a second to a target attribute.
         p1.children.append(c1)
 
         # redundant, will cause a duplicate INSERT on Association
-        p1.parent_associations.append(Association(child=c1))
+        p1.child_associations.append(Association(child=c1))
 
   It's fine to use a mapping like the above if you know what
   you're doing, though it may be a good idea to apply the ``viewonly=True`` parameter
