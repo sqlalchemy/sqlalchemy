@@ -292,8 +292,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
                     Column("q", sa.String(5)),
                     test_needs_fk=True,
                 )
-                Index("noncol_idx_nopk", noncol_idx_test_nopk.c.q.desc())
-                Index("noncol_idx_pk", noncol_idx_test_pk.c.q.desc())
+
+                if testing.requires.indexes_with_ascdesc.enabled:
+                    # cls.create_expression_indexes()
+                    Index("noncol_idx_nopk", noncol_idx_test_nopk.c.q.desc())
+                    Index("noncol_idx_pk", noncol_idx_test_pk.c.q.desc())
 
         if testing.requires.view_column_reflection.enabled:
             cls.define_views(metadata, schema)
