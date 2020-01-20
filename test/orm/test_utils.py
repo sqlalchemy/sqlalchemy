@@ -985,6 +985,89 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
             ),
         )
 
+    def test_nonpoly_oftype_aliased_subclass_onroot(self):
+        Engineer = _poly_fixtures.Engineer
+        eng_alias = aliased(Engineer)
+        ea_insp = inspect(eng_alias)
+
+        p1 = PathRegistry.coerce((ea_insp, ea_insp.mapper.attrs.paperwork))
+
+        eq_(p1.path, (ea_insp, ea_insp.mapper.attrs.paperwork))
+        eq_(p1.natural_path, (ea_insp, ea_insp.mapper.attrs.paperwork))
+
+    def test_nonpoly_oftype_aliased_subclass(self):
+        Company = _poly_fixtures.Company
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        cmapper = inspect(Company)
+        pmapper = inspect(Person)
+        eng_alias = aliased(Engineer)
+        ea_insp = inspect(eng_alias)
+
+        p1 = PathRegistry.coerce(
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                ea_insp,
+                ea_insp.mapper.attrs.paperwork,
+            )
+        )
+
+        eq_(
+            p1.path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                ea_insp,
+                ea_insp.mapper.attrs.paperwork,
+            ),
+        )
+        eq_(
+            p1.natural_path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                pmapper,
+                pmapper.attrs.paperwork,
+            ),
+        )
+
+    def test_nonpoly_oftype_subclass(self):
+        Company = _poly_fixtures.Company
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        emapper = inspect(Engineer)
+        cmapper = inspect(Company)
+        pmapper = inspect(Person)
+
+        p1 = PathRegistry.coerce(
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                emapper,
+                emapper.attrs.paperwork,
+            )
+        )
+
+        eq_(
+            p1.path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                pmapper,
+                pmapper.attrs.paperwork,
+            ),
+        )
+        eq_(
+            p1.natural_path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                pmapper,
+                pmapper.attrs.paperwork,
+            ),
+        )
+
     def test_with_poly_base(self):
         Person = _poly_fixtures.Person
         Engineer = _poly_fixtures.Engineer

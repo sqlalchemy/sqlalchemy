@@ -1825,6 +1825,70 @@ class JoinedloadWPolyOfTypeContinued(
         self.assert_sql_count(testing.db, go, 1)
 
 
+class ContainsEagerMultipleOfType(
+    fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
+):
+    """test for #5107 """
+
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class X(Base):
+            __tablename__ = "x"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer, ForeignKey("a.id"))
+            a = relationship("A", back_populates="x")
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            b = relationship("B", back_populates="a")
+            kind = Column(String(30))
+            x = relationship("X", back_populates="a")
+            __mapper_args__ = {
+                "polymorphic_identity": "a",
+                "polymorphic_on": kind,
+                "with_polymorphic": "*",
+            }
+
+        class B(A):
+            a_id = Column(Integer, ForeignKey("a.id"))
+            a = relationship(
+                "A", back_populates="b", uselist=False, remote_side=A.id
+            )
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+    def test_contains_eager_multi_alias(self):
+        X, B, A = self.classes("X", "B", "A")
+        s = Session()
+
+        a_b_alias = aliased(B, name="a_b")
+        b_x_alias = aliased(X, name="b_x")
+
+        q = (
+            s.query(A)
+            .outerjoin(A.b.of_type(a_b_alias))
+            .outerjoin(a_b_alias.x.of_type(b_x_alias))
+            .options(
+                contains_eager(A.b.of_type(a_b_alias)).contains_eager(
+                    a_b_alias.x.of_type(b_x_alias)
+                )
+            )
+        )
+        self.assert_compile(
+            q,
+            "SELECT b_x.id AS b_x_id, b_x.a_id AS b_x_a_id, a_b.id AS a_b_id, "
+            "a_b.kind AS a_b_kind, a_b.a_id AS a_b_a_id, a.id AS a_id_1, "
+            "a.kind AS a_kind, a.a_id AS a_a_id FROM a "
+            "LEFT OUTER JOIN a AS a_b ON a.id = a_b.a_id AND a_b.kind IN "
+            "([POSTCOMPILE_kind_1]) LEFT OUTER JOIN x AS b_x "
+            "ON a_b.id = b_x.a_id",
+        )
+
+
 class JoinedloadSinglePolysubSingle(
     fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
 ):
