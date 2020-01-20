@@ -3,6 +3,7 @@ from .assertions import eq_
 from .assertions import is_
 from .assertions import is_not_
 from .assertions import is_true
+from .assertions import is_instance_of
 from .fixtures import TablesTest
 from .. import inspect
 from .. import Integer
@@ -167,7 +168,7 @@ class ComputedReflectionFixtureTest(TablesTest):
         is_true(name in table.columns)
         col = table.columns[name]
         is_not_(col.computed, None)
-        is_true(isinstance(col.computed, Computed))
+        is_instance_of(col.computed, Computed)
 
         eq_(str(col.computed.sqltext), text)
         if self.return_persisted:

@@ -2660,7 +2660,7 @@ class MSDialect(default.DefaultDialect):
         )
 
         cc = ischema.computed_columns
-        computedSql = sql.select([cc]).where(
+        computed_sql = sql.select([cc]).where(
             cc.columns.object_id == func.object_id(table_fullname)
         )
 
@@ -2732,7 +2732,7 @@ class MSDialect(default.DefaultDialect):
             }
 
             c_res = connection.execute(
-                computedSql.where(cc.columns.name == name)
+                computed_sql.where(cc.columns.name == name)
             ).first()
             if c_res is not None:
                 cdict["computed"] = dict(

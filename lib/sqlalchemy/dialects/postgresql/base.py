@@ -2833,7 +2833,7 @@ class PGDialect(default.DefaultDialect):
         generated = (
             "a.attgenerated as generated"
             if self.server_version_info >= (12,)
-            else "'' as generated"
+            else "NULL as generated"
         )
         SQL_COLS = (
             """
@@ -3027,8 +3027,8 @@ class PGDialect(default.DefaultDialect):
             coltype = sqltypes.NULLTYPE
 
         # If a zero byte (''), then not a generated column.
-        #  Otherwise, s = stored. (Other values might be added in the future.)
-        if generated != "":
+        # Otherwise, s = stored. (Other values might be added in the future.)
+        if generated:
             computed = dict(sqltext=default, persisted=generated == "s")
             default = None
         else:

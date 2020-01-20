@@ -1689,7 +1689,7 @@ class OracleDialect(default.DefaultDialect):
             nullable = row[5] == "Y"
             default = row[6]
             comment = row[7]
-            genetared = row[8]
+            generated = row[8]
 
             if coltype == "NUMBER":
                 if precision is None and scale == 0:
@@ -1714,7 +1714,7 @@ class OracleDialect(default.DefaultDialect):
                     )
                     coltype = sqltypes.NULLTYPE
 
-            if genetared == "YES":
+            if generated == "YES":
                 computed = dict(sqltext=default)
                 default = None
             else:
