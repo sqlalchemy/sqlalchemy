@@ -294,7 +294,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 )
 
                 if testing.requires.indexes_with_ascdesc.enabled:
-                    # cls.create_expression_indexes()
                     Index("noncol_idx_nopk", noncol_idx_test_nopk.c.q.desc())
                     Index("noncol_idx_pk", noncol_idx_test_pk.c.q.desc())
 
@@ -885,10 +884,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
         eq_(list(t.indexes)[0].name, ixname)
 
     @testing.requires.index_reflection
+    @testing.requires.indexes_with_ascdesc
     def test_get_noncol_index_no_pk(self):
         self._test_get_noncol_index("noncol_idx_test_nopk", "noncol_idx_nopk")
 
     @testing.requires.index_reflection
+    @testing.requires.indexes_with_ascdesc
     def test_get_noncol_index_pk(self):
         self._test_get_noncol_index("noncol_idx_test_pk", "noncol_idx_pk")
 
