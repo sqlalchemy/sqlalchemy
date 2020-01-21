@@ -38,7 +38,6 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing import reflection_fixture
 
 
 class TypeReflectionTest(fixtures.TestBase):
@@ -1144,14 +1143,3 @@ class RawReflectionTest(fixtures.TestBase):
                 "SET NULL",
             ),
         )
-
-
-class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
-    __only_on__ = "mysql"
-    return_persisted = True
-    default_persisted = False
-    support_stored = True
-    support_virtual = True
-
-    def to_sqltext(self, column, op, value):
-        return "((`%s` %s %s))" % (column, op, value)

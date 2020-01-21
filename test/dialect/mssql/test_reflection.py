@@ -25,7 +25,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing import reflection_fixture
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
@@ -514,14 +513,3 @@ class OwnerPlusDBTest(fixtures.TestBase):
                     ],
                 )
             eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
-
-
-class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
-    __only_on__ = "mssql"
-    return_persisted = True
-    default_persisted = False
-    support_stored = True
-    support_virtual = True
-
-    def to_sqltext(self, column, op, value):
-        return "([%s]%s(%s))" % (column, op, value)
