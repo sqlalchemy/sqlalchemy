@@ -3064,7 +3064,7 @@ class PGDialect(default.DefaultDialect):
             comment=comment,
         )
         if computed is not None:
-            column_info['computed'] = computed
+            column_info["computed"] = computed
         return column_info
 
     @reflection.cache
