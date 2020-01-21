@@ -6,6 +6,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from . import util as _util  # noqa
+from .engine import create_engine  # noqa
+from .engine import create_mock_engine  # noqa
+from .engine import engine_from_config  # noqa
 from .inspection import inspect  # noqa
 from .schema import BLANK_SCHEMA  # noqa
 from .schema import CheckConstraint  # noqa
@@ -117,14 +120,6 @@ from .types import Unicode  # noqa
 from .types import UnicodeText  # noqa
 from .types import VARBINARY  # noqa
 from .types import VARCHAR  # noqa
-
-from .engine import create_engine  # noqa nosort
-from .engine import engine_from_config  # noqa nosort
-from .engine import create_mock_engine  # noqa nosort
-
-# these are placed last because there are
-# cross dependencies between sqlalchemy.sql and
-# sqlalchemy.engine that cause import cycles
 
 
 __version__ = "1.4.0b1"
