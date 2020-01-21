@@ -21,19 +21,6 @@ class ComputedReflectionFixtureTest(TablesTest):
         return self.regexp.sub("", text)
 
     @classmethod
-    def _col(cls, name, sqltext, persisted):
-        if (
-            persisted
-            and cls.support_stored
-            or not persisted
-            and cls.support_virtual
-        ):
-            return [
-                Column(name, Integer, Computed(sqltext, persisted=persisted))
-            ]
-        return []
-
-    @classmethod
     def define_tables(cls, metadata):
         Table(
             "computed_default_table",
