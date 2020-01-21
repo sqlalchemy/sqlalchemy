@@ -8,6 +8,7 @@ from .. import engines
 from .. import eq_
 from .. import expect_warnings
 from .. import fixtures
+from .. import reflection_fixture
 from .. import is_
 from ..provision import temp_table_keyword_args
 from ..schema import Column
@@ -1184,9 +1185,100 @@ class NormalizedNameTest(fixtures.TablesTest):
         eq_(tablenames[1].upper(), tablenames[1].lower())
 
 
+class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
+    run_inserts = run_deletes = None
+
+    __backend__ = True
+    __requires__ = ("computed_columns", "table_reflection")
+
+    def test_computed_col_default_not_set(self):
+        insp = inspect(config.db)
+
+        cols = insp.get_columns("computed_column_table")
+        for col in cols:
+            if col["name"] == "with_default":
+                is_true("42" in col["default"])
+            elif not col["autoincrement"]:
+                is_(col["default"], None)
+
+    def test_get_column_returns_computed(self):
+        insp = inspect(config.db)
+
+        cols = insp.get_columns("computed_default_table")
+        data = {c["name"]: c for c in cols}
+        for key in ("id", "normal", "with_default"):
+            is_true("computed" not in data[key])
+        compData = data["computed_col"]
+        is_true("computed" in compData)
+        is_true("sqltext" in compData["computed"])
+        eq_(self.normalize(compData["computed"]["sqltext"]), "normal+42")
+        eq_(
+            "persisted" in compData["computed"],
+            testing.requires.computed_columns_reflect_persisted.enabled,
+        )
+        if testing.requires.computed_columns_reflect_persisted.enabled:
+            eq_(
+                compData["computed"]["persisted"],
+                testing.requires.computed_columns_default_persisted.enabled,
+            )
+
+    def check_column(self, data, column, sqltext, persisted):
+        is_true("computed" in data[column])
+        compData = data[column]["computed"]
+        eq_(self.normalize(compData["sqltext"]), sqltext)
+        if testing.requires.computed_columns_reflect_persisted.enabled:
+            is_true("persisted" in compData)
+            is_(compData["persisted"], persisted)
+
+    def test_get_column_returns_persisted(self):
+        insp = inspect(config.db)
+
+        cols = insp.get_columns("computed_column_table")
+        data = {c["name"]: c for c in cols}
+
+        self.check_column(
+            data,
+            "computed_no_flag",
+            "normal+42",
+            testing.requires.computed_columns_default_persisted.enabled,
+        )
+        if testing.requires.computed_columns_virtual.enabled:
+            self.check_column(
+                data, "computed_virtual", "normal+2", False,
+            )
+        if testing.requires.computed_columns_stored.enabled:
+            self.check_column(
+                data, "computed_stored", "normal-42", True,
+            )
+
+    def test_get_column_returns_persisted_with_schama(self):
+        insp = inspect(config.db)
+
+        cols = insp.get_columns(
+            "computed_column_table", schema=config.test_schema
+        )
+        data = {c["name"]: c for c in cols}
+
+        self.check_column(
+            data,
+            "computed_no_flag",
+            "normal/42",
+            testing.requires.computed_columns_default_persisted.enabled,
+        )
+        if testing.requires.computed_columns_virtual.enabled:
+            self.check_column(
+                data, "computed_virtual", "normal/2", False,
+            )
+        if testing.requires.computed_columns_stored.enabled:
+            self.check_column(
+                data, "computed_stored", "normal*42", True,
+            )
+
+
 __all__ = (
     "ComponentReflectionTest",
     "HasTableTest",
     "HasIndexTest",
     "NormalizedNameTest",
+    "ComputedReflectionTest",
 )
