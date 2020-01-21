@@ -1501,16 +1501,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def computed_columns_stored(self):
         return self.computed_columns + skip_if(["oracle", "firebird"])
-        # return only_if(
-        #     [self.computed_columns, skip_if(["oracle", "firebird"])]
-        # )
 
     @property
     def computed_columns_virtual(self):
         return self.computed_columns + skip_if(["postgresql", "firebird"])
-        # return only_if(
-        #     [self.computed_columns, skip_if(["postgresql", "firebird"])]
-        # )
 
     @property
     def computed_columns_default_persisted(self):
