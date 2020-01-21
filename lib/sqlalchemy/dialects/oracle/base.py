@@ -1670,6 +1670,7 @@ class OracleDialect(default.DefaultDialect):
             AND col.column_name = com.column_name
             AND col.owner = com.owner
             WHERE col.table_name = :table_name
+            AND col.hidden_column = 'NO'
         """
         if schema is not None:
             params["owner"] = schema
