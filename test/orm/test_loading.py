@@ -1,7 +1,10 @@
 from sqlalchemy import exc
 from sqlalchemy import select
+from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import loading
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
@@ -10,10 +13,49 @@ from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.util import KeyedTuple
 from . import _fixtures
 
-
 # class GetFromIdentityTest(_fixtures.FixtureTest):
 # class LoadOnIdentTest(_fixtures.FixtureTest):
-# class InstanceProcessorTest(_fixture.FixtureTest):
+
+
+class InstanceProcessorTest(_fixtures.FixtureTest):
+    def test_state_no_load_path_comparison(self):
+        # test issue #5110
+        User, Order, Address = self.classes("User", "Order", "Address")
+        users, orders, addresses = self.tables("users", "orders", "addresses")
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, lazy="joined"),
+                "orders": relationship(
+                    Order, lazy="joined", order_by=orders.c.id
+                ),
+            },
+        )
+        mapper(
+            Order,
+            orders,
+            properties={"address": relationship(Address, lazy="joined")},
+        )
+        mapper(Address, addresses)
+
+        s = Session()
+
+        def go():
+            eq_(
+                User(
+                    id=7,
+                    orders=[
+                        Order(id=1, address=Address(id=1)),
+                        Order(id=3, address=Address(id=1)),
+                        Order(id=5, address=None),
+                    ],
+                ),
+                s.query(User).populate_existing().get(7),
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
 
 
 class InstancesTest(_fixtures.FixtureTest):
