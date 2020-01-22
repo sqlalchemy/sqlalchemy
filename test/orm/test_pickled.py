@@ -777,7 +777,11 @@ class TupleLabelTest(_fixtures.FixtureTest):
                 eq_(row.foobar, row[1])
 
             oalias = aliased(Order)
-            for row in sess.query(User, oalias).join(User.orders).all():
+            for row in (
+                sess.query(User, oalias)
+                .join(User.orders.of_type(oalias))
+                .all()
+            ):
                 if pickled is not False:
                     row = pickle.loads(pickle.dumps(row, pickled))
                 eq_(list(row.keys()), ["User"])

@@ -9,11 +9,13 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
+from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
@@ -1481,6 +1483,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         q2 = (
             q.select_entity_from(sel)
             .filter(u2.id > 1)
+            .filter(or_(u2.id == User.id, u2.id != User.id))
             .order_by(User.id, sel.c.id, u2.id)
             .values(User.name, sel.c.name, u2.name)
         )
@@ -1853,17 +1856,17 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             .filter(Order.id > oalias.id)
             .order_by(Order.id, oalias.id),
             sess.query(Order, oalias)
+            .filter(Order.id > oalias.id)
             .from_self()
             .filter(Order.user_id == oalias.user_id)
             .filter(Order.user_id == 7)
-            .filter(Order.id > oalias.id)
             .order_by(Order.id, oalias.id),
             # same thing, but reversed.
             sess.query(oalias, Order)
+            .filter(Order.id < oalias.id)
             .from_self()
             .filter(oalias.user_id == Order.user_id)
             .filter(oalias.user_id == 7)
-            .filter(Order.id < oalias.id)
             .order_by(oalias.id, Order.id),
             # here we go....two layers of aliasing
             sess.query(Order, oalias)
@@ -3537,7 +3540,11 @@ class LabelCollideTest(fixtures.MappedTest):
 
     def test_overlap_plain(self):
         s = Session()
-        row = s.query(self.classes.Foo, self.classes.Bar).all()[0]
+        row = (
+            s.query(self.classes.Foo, self.classes.Bar)
+            .join(self.classes.Bar, true())
+            .all()[0]
+        )
 
         def go():
             eq_(row.Foo.id, 1)
@@ -3550,7 +3557,12 @@ class LabelCollideTest(fixtures.MappedTest):
 
     def test_overlap_subquery(self):
         s = Session()
-        row = s.query(self.classes.Foo, self.classes.Bar).from_self().all()[0]
+        row = (
+            s.query(self.classes.Foo, self.classes.Bar)
+            .join(self.classes.Bar, true())
+            .from_self()
+            .all()[0]
+        )
 
         def go():
             eq_(row.Foo.id, 1)

@@ -852,7 +852,7 @@ class CTEDefaultTest(fixtures.TablesTest):
 
             if b == "select":
                 conn.execute(p.insert().values(s=1))
-                stmt = select([p.c.s, cte.c.z])
+                stmt = select([p.c.s, cte.c.z]).where(p.c.s == cte.c.z)
             elif b == "insert":
                 sel = select([1, cte.c.z])
                 stmt = (

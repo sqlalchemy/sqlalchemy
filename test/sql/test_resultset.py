@@ -19,6 +19,7 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
@@ -771,7 +772,11 @@ class ResultProxyTest(fixtures.TablesTest):
         users.insert().execute(user_id=1, user_name="john")
         ua = users.alias()
         u2 = users.alias()
-        result = select([users.c.user_id, ua.c.user_id]).execute()
+        result = (
+            select([users.c.user_id, ua.c.user_id])
+            .select_from(users.join(ua, true()))
+            .execute()
+        )
         row = result.first()
 
         # as of 1.1 issue #3501, we use pure positional
@@ -1414,7 +1419,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed1 = self.tables.keyed1
         keyed2 = self.tables.keyed2
 
-        row = testing.db.execute(select([keyed1, keyed2])).first()
+        row = testing.db.execute(
+            select([keyed1, keyed2]).select_from(keyed1.join(keyed2, true()))
+        ).first()
 
         # column access is unambiguous
         eq_(row[self.tables.keyed2.c.b], "b2")
@@ -1446,7 +1453,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = testing.db.execute(
-            select([keyed1, keyed2]).apply_labels()
+            select([keyed1, keyed2])
+            .select_from(keyed1.join(keyed2, true()))
+            .apply_labels()
         ).first()
 
         # column access is unambiguous
@@ -1459,7 +1468,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed1 = self.tables.keyed1
         keyed4 = self.tables.keyed4
 
-        row = testing.db.execute(select([keyed1, keyed4])).first()
+        row = testing.db.execute(
+            select([keyed1, keyed4]).select_from(keyed1.join(keyed4, true()))
+        ).first()
         eq_(row.b, "b4")
         eq_(row.q, "q4")
         eq_(row.a, "a1")
@@ -1470,7 +1481,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed1 = self.tables.keyed1
         keyed3 = self.tables.keyed3
 
-        row = testing.db.execute(select([keyed1, keyed3])).first()
+        row = testing.db.execute(
+            select([keyed1, keyed3]).select_from(keyed1.join(keyed3, true()))
+        ).first()
         eq_(row.q, "c1")
 
         # prior to 1.4 #4887, this raised an "ambiguous column name 'a'""
@@ -1493,7 +1506,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = testing.db.execute(
-            select([keyed1, keyed2]).apply_labels()
+            select([keyed1, keyed2])
+            .select_from(keyed1.join(keyed2, true()))
+            .apply_labels()
         ).first()
         eq_(row.keyed1_b, "a1")
         eq_(row.keyed1_a, "a1")
@@ -1515,18 +1530,22 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
         keyed3 = self.tables.keyed3
 
-        stmt = select(
-            [
-                keyed2.c.a,
-                keyed3.c.a,
-                keyed2.c.a,
-                keyed2.c.a,
-                keyed3.c.a,
-                keyed3.c.a,
-                keyed3.c.d,
-                keyed3.c.d,
-            ]
-        ).apply_labels()
+        stmt = (
+            select(
+                [
+                    keyed2.c.a,
+                    keyed3.c.a,
+                    keyed2.c.a,
+                    keyed2.c.a,
+                    keyed3.c.a,
+                    keyed3.c.a,
+                    keyed3.c.d,
+                    keyed3.c.d,
+                ]
+            )
+            .select_from(keyed2.join(keyed3, true()))
+            .apply_labels()
+        )
 
         result = testing.db.execute(stmt)
         is_false(result._metadata.matched_on_name)

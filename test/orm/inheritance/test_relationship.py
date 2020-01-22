@@ -11,6 +11,7 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
@@ -1302,10 +1303,12 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         d = session.query(D).one()
 
         def go():
+            # NOTE: subqueryload is broken for this case, first found
+            # when cartesian product detection was added.
             for a in (
                 session.query(A)
                 .with_polymorphic([B, C])
-                .options(subqueryload(B.related), subqueryload(C.related))
+                .options(selectinload(B.related), selectinload(C.related))
             ):
                 eq_(a.related, [d])
 
