@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 5039
-
-    Fixed issue where the PostgreSQL dialect would fail to parse a reflected
-    CHECK constraint that was a boolean-valued function (as opposed to a
-    boolean-valued expression).
