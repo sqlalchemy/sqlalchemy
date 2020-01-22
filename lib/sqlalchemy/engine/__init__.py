@@ -15,6 +15,7 @@ constructor ``create_engine()``.
 
 """
 
+from . import events  # noqa
 from . import util  # noqa
 from .base import Connection  # noqa
 from .base import Engine  # noqa

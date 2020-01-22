@@ -98,6 +98,7 @@ def __go(lcls):
     from . import base
     from . import coercions
     from . import elements
+    from . import events  # noqa
     from . import selectable
     from . import schema
     from . import sqltypes

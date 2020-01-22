@@ -5,8 +5,8 @@ import operator
 from . import operators
 from .visitors import ExtendedInternalTraversal
 from .visitors import InternalTraversal
-from .. import inspect
 from .. import util
+from ..inspection import inspect
 
 SKIP_TRAVERSE = util.symbol("skip_traverse")
 COMPARE_FAILED = False
