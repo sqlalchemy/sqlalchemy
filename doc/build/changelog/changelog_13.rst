@@ -12,7 +12,175 @@
 
 .. changelog::
     :version: 1.3.13
-    :include_notes_from: unreleased_13
+    :released: January 22, 2020
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5039
+
+        Fixed issue where the PostgreSQL dialect would fail to parse a reflected
+        CHECK constraint that was a boolean-valued function (as opposed to a
+        boolean-valued expression).
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 5086
+
+        Fixed bug in sqlalchemy.ext.serializer where a unique
+        :class:`.BindParameter` object could conflict with itself if it were
+        present in the mapping itself, as well as the filter condition of the
+        query, as one side would be used against the non-deserialized version and
+        the other side would use the deserialized version.  Logic is added to
+        :class:`.BindParameter` similar to its "clone" method which will uniquify
+        the parameter name upon deserialize so that it doesn't conflict with its
+        original.
+
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 5079
+
+        A function created using :class:`.GenericFunction` can now specify that the
+        name of the function should be rendered with or without quotes by assigning
+        the :class:`.quoted_name` construct to the .name element of the object.
+        Prior to 1.3.4, quoting was never applied to function names, and some
+        quoting was introduced in :ticket:`4467` but no means to force quoting for
+        a mixed case name was available.  Additionally, the :class:`.quoted_name`
+        construct when used as the name will properly register its lowercase name
+        in the function registry so that the name continues to be available via the
+        ``func.`` registry.
+
+        .. seealso::
+
+            :class:`.GenericFunction`
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5048
+
+        Fixed issue where the collection of value processors on a
+        :class:`.Compiled` object would be mutated when "expanding IN" parameters
+        were used with a datatype that has bind value processors; in particular,
+        this would mean that when using statement caching and/or baked queries, the
+        same compiled._bind_processors collection would be mutated concurrently.
+        Since these processors are the same function for a given bind parameter
+        namespace every time, there was no actual negative effect of this issue,
+        however, the execution of a :class:`.Compiled` object should never be
+        causing any changes in its state, especially given that they are intended
+        to be thread-safe and reusable once fully constructed.
+
+
+    .. change::
+        :tags: tests, postgresql
+        :tickets: 5057
+
+        Improved detection of two phase transactions requirement for the PostgreSQL
+        database by testing that max_prepared_transactions is set to a value
+        greater than 0.  Pull request courtesy Federico Caselli.
+
+
+    .. change::
+        :tags: bug, orm, engine
+        :tickets: 5056, 5050, 5071
+
+        Added test support and repaired a wide variety of unnecessary reference
+        cycles created for short-lived objects, mostly in the area of ORM queries.
+        Thanks much to Carson Ip for the help on this.
+
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 5107
+
+        Fixed regression in loader options introduced in 1.3.0b3 via :ticket:`4468`
+        where the ability to create a loader option using
+        :meth:`.PropComparator.of_type` targeting an aliased entity that is an
+        inheriting subclass of the entity which the preceding relationship refers
+        to would fail to produce a matching path.   See also :ticket:`5082` fixed
+        in this same release which involves a similar kind of issue.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 4946
+
+        Fixed a few test failures which would occur on Windows due to SQLite file
+        locking issues, as well as some timing issues in connection pool related
+        tests; pull request courtesy Federico Caselli.
+
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 5082
+
+        Fixed regression in joined eager loading introduced in 1.3.0b3 via
+        :ticket:`4468` where the ability to create a joined option across a
+        :func:`.with_polymorphic` into a polymorphic subclass using
+        :meth:`.RelationshipProperty.of_type` and then further along regular mapped
+        relationships would fail as the polymorphic subclass would not add itself
+        to the load path in a way that could be located by the loader strategy.  A
+        tweak has been made to resolve this scenario.
+
+
+    .. change::
+        :tags: performance, orm
+
+        Identified a performance issue in the system by which a join is constructed
+        based on a mapped relationship.   The clause adaption system would be used
+        for the majority of join expressions including in the common case where no
+        adaptation is needed.   The conditions under which this adaptation occur
+        have been refined so that average non-aliased joins along a simple
+        relationship without a "secondary" table use about 70% less function calls.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 5040
+
+        Added support for prefixes to the :class:`.CTE` construct, to allow
+        support for Postgresql 12 "MATERIALIZED" and "NOT MATERIALIZED" phrases.
+        Pull request courtesy Marat Sharafutdinov.
+
+        .. seealso::
+
+            :meth:`.HasCTE.cte`
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5045
+
+        Fixed issue where a timezone-aware ``datetime`` value being converted to
+        string for use as a parameter value of a :class:`.mssql.DATETIMEOFFSET`
+        column was omitting the fractional seconds.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5068
+
+        Repaired a warning in the ORM flush process that was not covered by  test
+        coverage when deleting objects that use the "version_id" feature. This
+        warning is generally unreachable unless using a dialect that sets the
+        "supports_sane_rowcount" flag to False, which  is not typically the case
+        however is possible for some MySQL configurations as well as older Firebird
+        drivers, and likely some third party dialects.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5065
+
+        Fixed bug where usage of joined eager loading would not properly wrap the
+        query inside of a subquery when :meth:`.Query.group_by` were used against
+        the query.   When any kind of result-limiting approach is used, such as
+        DISTINCT, LIMIT, OFFSET, joined eager loading embeds the row-limited query
+        inside of a subquery so that the collection results are not impacted.   For
+        some reason, the presence of GROUP BY was never included in this criterion,
+        even though it has a similar effect as using DISTINCT.   Additionally, the
+        bug would prevent using GROUP BY at all for a joined eager load query for
+        most database platforms which forbid non-aggregated, non-grouped columns
+        from being in the query, as the additional columns for the joined eager
+        load would not be accepted by the database.
+
+
 
 .. changelog::
     :version: 1.3.12
