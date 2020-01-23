@@ -32,7 +32,6 @@ from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in_
-from sqlalchemy.testing import reflection_fixture
 from sqlalchemy.testing import skip
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -2272,7 +2271,7 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
         self._do_test("x", {"default": my_default}, assert_text_of_one)
 
 
-class ComputedColumnTest(reflection_fixture.ComputedReflectionFixtureTest):
+class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
     run_inserts = run_deletes = None
 
     __backend__ = True

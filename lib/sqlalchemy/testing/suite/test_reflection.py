@@ -8,7 +8,6 @@ from .. import engines
 from .. import eq_
 from .. import expect_warnings
 from .. import fixtures
-from .. import reflection_fixture
 from .. import is_
 from ..provision import temp_table_keyword_args
 from ..schema import Column
@@ -1185,7 +1184,7 @@ class NormalizedNameTest(fixtures.TablesTest):
         eq_(tablenames[1].upper(), tablenames[1].lower())
 
 
-class ComputedReflectionTest(reflection_fixture.ComputedReflectionFixtureTest):
+class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
     run_inserts = run_deletes = None
 
     __backend__ = True
