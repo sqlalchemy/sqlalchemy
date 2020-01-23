@@ -480,6 +480,30 @@ class _MutableListTestBase(_MutableListTestFixture):
 
         eq_(f1.data, [1, 2, 3])
 
+    def test_sort_w_key(self):
+        sess = Session()
+
+        f1 = Foo(data=[1, 3, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data.sort(key=lambda elem: -1 * elem)
+        sess.commit()
+
+        eq_(f1.data, [3, 2, 1])
+
+    def test_sort_w_reverse_kwarg(self):
+        sess = Session()
+
+        f1 = Foo(data=[1, 3, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data.sort(reverse=True)
+        sess.commit()
+
+        eq_(f1.data, [3, 2, 1])
+
     def test_reverse(self):
         sess = Session()
 
