@@ -410,7 +410,7 @@ class ComputedReflectionFixtureTest(TablesTest):
     regexp = re.compile(r"[\[\]\(\)\s`'\"]*")
 
     def normalize(self, text):
-        return self.regexp.sub("", text).casefold()
+        return self.regexp.sub("", text).lower()
 
     @classmethod
     def define_tables(cls, metadata):
