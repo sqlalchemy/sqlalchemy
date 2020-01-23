@@ -2131,32 +2131,64 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
     @classmethod
     def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
+
+        has_continue_on = None
+        special_elements = (continue_on, skip_on)
         convert_clauses = []
 
-        clauses = [
-            coercions.expect(roles.WhereHavingRole, clause)
-            for clause in util.coerce_generator_arg(clauses)
-        ]
-        for clause in clauses:
+        for clause in util.coerce_generator_arg(clauses):
+            clause = coercions.expect(roles.WhereHavingRole, clause)
 
-            if isinstance(clause, continue_on):
-                continue
+            # elements that are not the continue/skip are the most
+            # common, try to have only one isinstance() call for that case.
+            if not isinstance(clause, special_elements):
+                convert_clauses.append(clause)
             elif isinstance(clause, skip_on):
+                # instance of skip_on, e.g. and_(x, y, False, z), cancels
+                # the rest out
                 return clause.self_group(against=operators._asbool)
+            elif has_continue_on is None:
+                # instance of continue_on, like and_(x, y, True, z), store it
+                # if we didn't find one already, we will use it if there
+                # are no other expressions here.
+                has_continue_on = clause
 
-            convert_clauses.append(clause)
+        lcc = len(convert_clauses)
 
-        if len(convert_clauses) == 1:
+        if lcc > 1:
+            # multiple elements.  Return regular BooleanClauseList
+            # which will link elements against the operator.
+            return cls._construct_raw(
+                operator,
+                [c.self_group(against=operator) for c in convert_clauses],
+            )
+        elif lcc == 1:
+            # just one element.  return it as a single boolean element,
+            # not a list and discard the operator.
             return convert_clauses[0].self_group(against=operators._asbool)
-        elif not convert_clauses and clauses:
-            return clauses[0].self_group(against=operators._asbool)
+        elif not lcc and has_continue_on is not None:
+            # no elements but we had a "continue", just return the continue
+            # as a boolean element, discard the operator.
+            return has_continue_on.self_group(against=operators._asbool)
+        else:
+            # no elements period.  deprecated use case.  return an empty
+            # ClauseList construct that generates nothing unless it has
+            # elements added to it.
+            util.warn_deprecated(
+                "Invoking %(name)s() without arguments is deprecated, and "
+                "will be disallowed in a future release.   For an empty "
+                "%(name)s() construct, use %(name)s(%(continue_on)s, *args)."
+                % {
+                    "name": operator.__name__,
+                    "continue_on": "True" if continue_on is True_ else "False",
+                }
+            )
+            return cls._construct_raw(operator)
 
-        convert_clauses = [
-            c.self_group(against=operator) for c in convert_clauses
-        ]
-
+    @classmethod
+    def _construct_raw(cls, operator, clauses=None):
         self = cls.__new__(cls)
-        self.clauses = convert_clauses
+        self.clauses = clauses if clauses else []
         self.group = True
         self.operator = operator
         self.group_contents = True
@@ -2198,6 +2230,25 @@ class BooleanClauseList(ClauseList, ColumnElement):
                         where(users_table.c.name == 'wendy').\
                         where(users_table.c.enrolled == True)
 
+        The :func:`.and_` construct must be given at least one positional
+        argument in order to be valid; a :func:`.and_` construct with no
+        arguments is ambiguous.   To produce an "empty" or dynamically
+        generated :func:`.and_`  expression, from a given list of expressions,
+        a "default" element of ``True`` should be specified::
+
+            criteria = and_(True, *expressions)
+
+        The above expression will compile to SQL as the expression ``true``
+        or ``1 = 1``, depending on backend, if no other expressions are
+        present.  If expressions are present, then the ``True`` value is
+        ignored as it does not affect the outcome of an AND expression that
+        has other elements.
+
+        .. deprecated:: 1.4  The :func:`.and_` element now requires that at
+           least one argument is passed; creating the :func:`.and_` construct
+           with no arguments is deprecated, and will emit a deprecation warning
+           while continuing to produce a blank SQL string.
+
         .. seealso::
 
             :func:`.or_`
@@ -2229,6 +2280,25 @@ class BooleanClauseList(ClauseList, ColumnElement):
                             (users_table.c.name == 'wendy') |
                             (users_table.c.name == 'jack')
                         )
+
+        The :func:`.or_` construct must be given at least one positional
+        argument in order to be valid; a :func:`.or_` construct with no
+        arguments is ambiguous.   To produce an "empty" or dynamically
+        generated :func:`.or_`  expression, from a given list of expressions,
+        a "default" element of ``False`` should be specified::
+
+            or_criteria = or_(False, *expressions)
+
+        The above expression will compile to SQL as the expression ``false``
+        or ``0 = 1``, depending on backend, if no other expressions are
+        present.  If expressions are present, then the ``False`` value is
+        ignored as it does not affect the outcome of an OR expression which
+        has other elements.
+
+        .. deprecated:: 1.4  The :func:`.or_` element now requires that at
+           least one argument is passed; creating the :func:`.or_` construct
+           with no arguments is deprecated, and will emit a deprecation warning
+           while continuing to produce a blank SQL string.
 
         .. seealso::
 
