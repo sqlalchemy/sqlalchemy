@@ -18,6 +18,7 @@ from sqlalchemy.orm.path_registry import RootRegistry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.util import compat
@@ -637,6 +638,31 @@ class PathRegistryTest(_fixtures.FixtureTest):
         is_(p1 != p3, True)
         is_(p1 != p4, True)
         is_(p1 != p5, True)
+
+    def test_eq_non_path(self):
+        umapper = inspect(self.classes.User)
+        amapper = inspect(self.classes.Address)
+        u_alias = inspect(aliased(self.classes.User))
+        p1 = PathRegistry.coerce((umapper,))
+        p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
+        p3 = PathRegistry.coerce((u_alias, umapper.attrs.addresses))
+        p4 = PathRegistry.coerce((u_alias, umapper.attrs.addresses, amapper))
+        p5 = PathRegistry.coerce((u_alias,)).token(":*")
+
+        non_object = 54.1432
+
+        for obj in [p1, p2, p3, p4, p5]:
+            with expect_warnings(
+                "Comparison of PathRegistry to "
+                "<.* 'float'> is not supported"
+            ):
+                is_(obj == non_object, False)
+
+            with expect_warnings(
+                "Comparison of PathRegistry to "
+                "<.* 'float'> is not supported"
+            ):
+                is_(obj != non_object, True)
 
     def test_contains_mapper(self):
         umapper = inspect(self.classes.User)

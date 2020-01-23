@@ -65,7 +65,24 @@ class PathRegistry(HasCacheKey):
     ]
 
     def __eq__(self, other):
-        return other is not None and self.path == other.path
+        try:
+            return other is not None and self.path == other.path
+        except AttributeError:
+            util.warn(
+                "Comparison of PathRegistry to %r is not supported"
+                % (type(other))
+            )
+            return False
+
+    def __ne__(self, other):
+        try:
+            return other is None or self.path != other.path
+        except AttributeError:
+            util.warn(
+                "Comparison of PathRegistry to %r is not supported"
+                % (type(other))
+            )
+            return True
 
     def set(self, attributes, key, value):
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
