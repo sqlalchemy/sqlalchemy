@@ -2272,11 +2272,6 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
 
 
 class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
-    run_inserts = run_deletes = None
-
-    __backend__ = True
-    __requires__ = ("computed_columns", "table_reflection")
-
     def check_table_column(self, table, name, text, persisted):
         is_true(name in table.columns)
         col = table.columns[name]

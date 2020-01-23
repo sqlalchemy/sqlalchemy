@@ -1185,11 +1185,6 @@ class NormalizedNameTest(fixtures.TablesTest):
 
 
 class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
-    run_inserts = run_deletes = None
-
-    __backend__ = True
-    __requires__ = ("computed_columns", "table_reflection")
-
     def test_computed_col_default_not_set(self):
         insp = inspect(config.db)
 
