@@ -283,6 +283,10 @@ intended for production use!
     # To stop the container. It will also remove it.
     docker stop mssql
 
+NOTE: with this configuration the url to use is not the default one configured
+in setup, but ``mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test``.  It can
+be used with py.test by using ``--db docker_mssql``
+
 CONFIGURING LOGGING
 -------------------
 SQLAlchemy logs its activity and debugging through Python's logging package.
