@@ -141,7 +141,7 @@ The above paragraph changes somewhat when the multiprocessing option
 is used, in that separate databases will be created instead, however
 in the case of Postgresql, the starting database is used as a template,
 so the starting database must still be empty.  See below for example
-configuration using docker.
+configurations using docker.
 
 The test runner will by default create and drop tables within the default
 database that's in the database URL, *unless* the multiprocessing option is in
@@ -285,7 +285,7 @@ intended for production use!
 
 NOTE: with this configuration the url to use is not the default one configured
 in setup, but ``mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test``.  It can
-be used with py.test by using ``--db docker_mssql``
+be used with py.test by using ``--db docker_mssql``.
 
 CONFIGURING LOGGING
 -------------------
