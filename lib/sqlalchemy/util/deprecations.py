@@ -22,8 +22,10 @@ def warn_deprecated(msg, stacklevel=3):
     warnings.warn(msg, exc.SADeprecationWarning, stacklevel=stacklevel)
 
 
-def warn_pending_deprecation(msg, stacklevel=3):
-    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=stacklevel)
+def warn_deprecated_20(msg, stacklevel=3):
+    msg += "(Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+
+    warnings.warn(msg, exc.RemovedIn20Warning, stacklevel=stacklevel)
 
 
 def deprecated_cls(version, message, constructor="__init__"):
@@ -41,7 +43,9 @@ def deprecated_cls(version, message, constructor="__init__"):
     return decorate
 
 
-def deprecated(version, message=None, add_deprecation_to_docstring=True):
+def deprecated(
+    version, message=None, add_deprecation_to_docstring=True, warning=None
+):
     """Decorates a function and issues a deprecation warning on use.
 
     :param version:
@@ -66,15 +70,31 @@ def deprecated(version, message=None, add_deprecation_to_docstring=True):
     if message is None:
         message = "Call to deprecated function %(func)s"
 
+    if warning is None:
+        warning = exc.SADeprecationWarning
+
     def decorate(fn):
         return _decorate_with_warning(
-            fn,
-            exc.SADeprecationWarning,
-            message % dict(func=fn.__name__),
-            header,
+            fn, warning, message % dict(func=fn.__name__), header
         )
 
     return decorate
+
+
+def deprecated_20(api_name, alternative=None, **kw):
+    message = (
+        "The %s() function/method is considered legacy as of the "
+        "1.x series of SQLAlchemy and will be removed in 2.0." % api_name
+    )
+
+    if alternative:
+        message += " " + alternative
+
+    message += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+
+    return deprecated(
+        "2.0", message=message, warning=exc.RemovedIn20Warning, **kw
+    )
 
 
 def deprecated_params(**specs):
@@ -94,8 +114,14 @@ def deprecated_params(**specs):
     """
 
     messages = {}
+    version_warnings = {}
     for param, (version, message) in specs.items():
         messages[param] = _sanitize_restructured_text(message)
+        version_warnings[param] = (
+            exc.RemovedIn20Warning
+            if version == "2.0"
+            else exc.SADeprecationWarning
+        )
 
     def decorate(fn):
         spec = compat.inspect_getfullargspec(fn)
@@ -115,14 +141,16 @@ def deprecated_params(**specs):
         @decorator
         def warned(fn, *args, **kwargs):
             for m in check_defaults:
-                if kwargs[m] != defaults[m]:
+                if (defaults[m] is None and kwargs[m] is not None) or (
+                    defaults[m] is not None and kwargs[m] != defaults[m]
+                ):
                     warnings.warn(
-                        messages[m], exc.SADeprecationWarning, stacklevel=3
+                        messages[m], version_warnings[m], stacklevel=3
                     )
             for m in check_kw:
                 if m in kwargs:
                     warnings.warn(
-                        messages[m], exc.SADeprecationWarning, stacklevel=3
+                        messages[m], version_warnings[m], stacklevel=3
                     )
 
             return fn(*args, **kwargs)
@@ -139,44 +167,6 @@ def deprecated_params(**specs):
         decorated = warned(fn)
         decorated.__doc__ = doc
         return decorated
-
-    return decorate
-
-
-def pending_deprecation(
-    version, message=None, add_deprecation_to_docstring=True
-):
-    """Decorates a function and issues a pending deprecation warning on use.
-
-    :param version:
-      An approximate future version at which point the pending deprecation
-      will become deprecated.  Not used in messaging.
-
-    :param message:
-      If provided, issue message in the warning.  A sensible default
-      is used if not provided.
-
-    :param add_deprecation_to_docstring:
-      Default True.  If False, the wrapped function's __doc__ is left
-      as-is.  If True, the 'message' is prepended to the docs if
-      provided, or sensible default if message is omitted.
-    """
-
-    if add_deprecation_to_docstring:
-        header = ".. deprecated:: %s (pending) %s" % (version, (message or ""))
-    else:
-        header = None
-
-    if message is None:
-        message = "Call to deprecated function %(func)s"
-
-    def decorate(fn):
-        return _decorate_with_warning(
-            fn,
-            exc.SAPendingDeprecationWarning,
-            message % dict(func=fn.__name__),
-            header,
-        )
 
     return decorate
 

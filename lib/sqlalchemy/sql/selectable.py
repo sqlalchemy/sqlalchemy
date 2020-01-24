@@ -369,7 +369,8 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
             col = list(self.primary_key)[0]
         else:
             col = list(self.columns)[0]
-        return Select(
+        return Select._create_select_from_fromclause(
+            self,
             [functions.func.count(col).label("tbl_row_count")],
             whereclause,
             from_obj=[self],
@@ -1018,7 +1019,11 @@ class Join(FromClause):
         """
         collist = [self.left, self.right]
 
-        return Select(collist, whereclause, from_obj=[self], **kwargs)
+        if whereclause is not None:
+            kwargs["whereclause"] = whereclause
+        return Select._create_select_from_fromclause(
+            self, collist, **kwargs
+        ).select_from(self)
 
     @property
     def bind(self):
@@ -1142,7 +1147,7 @@ class Join(FromClause):
                 full=self.full,
             )
         else:
-            return self.select(use_labels=True, correlate=False).alias(name)
+            return self.select().apply_labels().correlate(None).alias(name)
 
     @property
     def _hide_froms(self):
@@ -1155,26 +1160,7 @@ class Join(FromClause):
         return [self] + self.left._from_objects + self.right._from_objects
 
 
-# FromClause ->
-#   AliasedReturnsRows
-#        -> Alias   only for FromClause
-#        -> Subquery  only for SelectBase
-#        -> CTE only for HasCTE -> SelectBase, DML
-#        -> Lateral -> FromClause, but we accept SelectBase
-#           w/ non-deprecated coercion
-#        -> TableSample -> only for FromClause
-class AliasedReturnsRows(FromClause):
-    """Base class of aliases against tables, subqueries, and other
-    selectables."""
-
-    _is_from_container = True
-    named_with_column = True
-
-    _traverse_internals = [
-        ("element", InternalTraversal.dp_clauseelement),
-        ("name", InternalTraversal.dp_anon_name),
-    ]
-
+class NoInit(object):
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
             "The %s class is not intended to be constructed "
@@ -1187,6 +1173,27 @@ class AliasedReturnsRows(FromClause):
                 self.__class__.__name__.lower(),
             )
         )
+
+
+# FromClause ->
+#   AliasedReturnsRows
+#        -> Alias   only for FromClause
+#        -> Subquery  only for SelectBase
+#        -> CTE only for HasCTE -> SelectBase, DML
+#        -> Lateral -> FromClause, but we accept SelectBase
+#           w/ non-deprecated coercion
+#        -> TableSample -> only for FromClause
+class AliasedReturnsRows(NoInit, FromClause):
+    """Base class of aliases against tables, subqueries, and other
+    selectables."""
+
+    _is_from_container = True
+    named_with_column = True
+
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("name", InternalTraversal.dp_anon_name),
+    ]
 
     @classmethod
     def _construct(cls, *arg, **kw):
@@ -3046,7 +3053,7 @@ class DeprecatedSelectGenerations(object):
         :class:`.Select` object.
 
         """
-        self.column.non_generative(self, column)
+        self.add_columns.non_generative(self, column)
 
     @util.deprecated(
         "1.4",
@@ -3171,6 +3178,38 @@ class Select(
         + SupportsCloneAnnotations._traverse_internals
     )
 
+    @classmethod
+    def _create_select(cls, *entities):
+        self = cls.__new__(cls)
+        self._raw_columns = [
+            coercions.expect(roles.ColumnsClauseRole, ent)
+            for ent in util.to_list(entities)
+        ]
+
+        # this should all go away once Select is converted to have
+        # default state at the class level
+        self._auto_correlate = True
+        self._from_obj = util.OrderedSet()
+        self._whereclause = None
+        self._having = None
+
+        GenerativeSelect.__init__(self)
+
+        return self
+
+    @classmethod
+    def _create_select_from_fromclause(cls, target, entities, *arg, **kw):
+        if arg or kw:
+            util.warn_deprecated_20(
+                "Passing arguments to %s.select() is deprecated and "
+                "will be removed in SQLAlchemy 2.0.  Please use generative "
+                "methods such as select().where(), etc."
+                % (target.__class__.__name__,)
+            )
+            return Select(entities, *arg, **kw)
+        else:
+            return Select._create_select(*entities)
+
     @util.deprecated_params(
         autocommit=(
             "0.6",
@@ -3201,7 +3240,7 @@ class Select(
         suffixes=None,
         **kwargs
     ):
-        """Construct a new :class:`.Select`.
+        """Construct a new :class:`.Select` using the 1.x style API.
 
         Similar functionality is also available via the
         :meth:`.FromClause.select` method on any :class:`.FromClause`.
@@ -3387,6 +3426,13 @@ class Select(
             :meth:`.Select.apply_labels`
 
         """
+        util.warn_deprecated_20(
+            "The select() function in SQLAlchemy 2.0 will accept a "
+            "series of columns / tables and other entities only, "
+            "passed positionally. For forwards compatibility, use the "
+            "sqlalchemy.future.select() construct."
+        )
+
         self._auto_correlate = correlate
         if distinct is not False:
             self._distinct = True
@@ -3418,8 +3464,6 @@ class Select(
             self._raw_columns = []
             for c in columns:
                 c = coercions.expect(roles.ColumnsClauseRole, c)
-                if isinstance(c, ScalarSelect):
-                    c = c.self_group(against=operators.comma_op)
                 self._raw_columns.append(c)
         else:
             self._raw_columns = []
@@ -3446,7 +3490,6 @@ class Select(
 
         GenerativeSelect.__init__(self, **kwargs)
 
-    # @_memoized_property
     @property
     def _froms(self):
         # current roadblock to caching is two tests that test that the
@@ -3741,6 +3784,32 @@ class Select(
         )
 
     @_generative
+    def add_columns(self, *columns):
+        """return a new select() construct with the given column expressions
+            added to its columns clause.
+
+            E.g.::
+
+                my_select = my_select.add_columns(table.c.new_column)
+
+            See the documentation for :meth:`.Select.with_only_columns`
+            for guidelines on adding /replacing the columns of a
+            :class:`.Select` object.
+
+        """
+        self._reset_memoizations()
+
+        self._raw_columns = self._raw_columns + [
+            coercions.expect(roles.ColumnsClauseRole, column)
+            for column in columns
+        ]
+
+    @util.deprecated(
+        "1.4",
+        "The :meth:`.Select.column` method is deprecated and will "
+        "be removed in a future release.  Please use "
+        ":meth:`.Select.add_columns",
+    )
     def column(self, column):
         """return a new select() construct with the given column expression
             added to its columns clause.
@@ -3754,13 +3823,7 @@ class Select(
             :class:`.Select` object.
 
         """
-        self._reset_memoizations()
-        column = coercions.expect(roles.ColumnsClauseRole, column)
-
-        if isinstance(column, ScalarSelect):
-            column = column.self_group(against=operators.comma_op)
-
-        self._raw_columns = self._raw_columns + [column]
+        return self.add_columns(column)
 
     @util.dependencies("sqlalchemy.sql.util")
     def reduce_columns(self, sqlutil, only_synonyms=True):
@@ -4340,7 +4403,9 @@ class Exists(UnaryExpression):
         return element.self_group(against=operators.exists)
 
     def select(self, whereclause=None, **params):
-        return Select([self], whereclause, **params)
+        if whereclause is not None:
+            params["whereclause"] = whereclause
+        return Select._create_select_from_fromclause(self, [self], **params)
 
     def correlate(self, *fromclause):
         e = self._clone()

@@ -642,8 +642,6 @@ class Query(Generative):
         """Return the full SELECT statement represented by this
         :class:`.Query`, converted to a scalar subquery.
 
-        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.as_scalar`.
-
         """
         return self.scalar_subquery()
 
@@ -1477,17 +1475,14 @@ class Query(Generative):
         for c in column:
             _ColumnEntity(self, c)
 
-    @util.pending_deprecation(
-        "0.7",
-        ":meth:`.add_column` is superseded " "by :meth:`.add_columns`",
-        False,
+    @util.deprecated(
+        "1.4",
+        ":meth:`.Query.add_column` is deprecated and will be removed in a "
+        "future release.  Please use :meth:`.Query.add_columns`",
     )
     def add_column(self, column):
         """Add a column expression to the list of result columns to be
         returned.
-
-        Pending deprecation: :meth:`.add_column` will be superseded by
-        :meth:`.add_columns`.
 
         """
         return self.add_columns(column)

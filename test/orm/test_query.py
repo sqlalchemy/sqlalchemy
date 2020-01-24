@@ -1045,14 +1045,14 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         s = create_session()
         q = s.query(User)
-        assert_raises(sa_exc.ArgumentError, q.add_column, object())
+        assert_raises(sa_exc.ArgumentError, q.add_columns, object())
 
     def test_invalid_column_tuple(self):
         User = self.classes.User
 
         s = create_session()
         q = s.query(User)
-        assert_raises(sa_exc.ArgumentError, q.add_column, (1, 1))
+        assert_raises(sa_exc.ArgumentError, q.add_columns, (1, 1))
 
     def test_distinct(self):
         """test that a distinct() call is not valid before 'clauseelement'

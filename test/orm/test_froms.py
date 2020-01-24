@@ -252,7 +252,7 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
         orm_subq = sess.query(u_alias).filter(u_alias.id > User.id).exists()
 
         self.assert_compile(
-            q.add_column(raw_subq),
+            q.add_columns(raw_subq),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
             "EXISTS (SELECT * FROM users AS users_1 "
@@ -265,7 +265,7 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
 
         # only difference is "1" vs. "*" (not sure why that is)
         self.assert_compile(
-            q.add_column(orm_subq),
+            q.add_columns(orm_subq),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
             "EXISTS (SELECT 1 FROM users AS users_1 "
@@ -545,7 +545,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         eq_(
             sess.query(User.id)
             .from_self()
-            .add_column(func.count().label("foo"))
+            .add_columns(func.count().label("foo"))
             .group_by(User.id)
             .order_by(User.id)
             .from_self()
@@ -1835,7 +1835,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 sess.query(User)
                 .limit(1)
                 .options(joinedload("addresses"))
-                .add_column(User.name)
+                .add_columns(User.name)
                 .all()
             )
             eq_(results, [(User(name="jack"), "jack")])
@@ -2109,11 +2109,11 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         expected = [(u, u.name) for u in sess.query(User).all()]
 
         for add_col in (User.name, users.c.name):
-            assert sess.query(User).add_column(add_col).all() == expected
+            assert sess.query(User).add_columns(add_col).all() == expected
             sess.expunge_all()
 
         assert_raises(
-            sa_exc.ArgumentError, sess.query(User).add_column, object()
+            sa_exc.ArgumentError, sess.query(User).add_columns, object()
         )
 
     def test_add_multi_columns(self):
@@ -2124,12 +2124,12 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         eq_(
-            sess.query(User.id).add_column(users).all(),
+            sess.query(User.id).add_columns(users).all(),
             [(7, 7, "jack"), (8, 8, "ed"), (9, 9, "fred"), (10, 10, "chuck")],
         )
 
     def test_multi_columns_2(self):
-        """test aliased/nonalised joins with the usage of add_column()"""
+        """test aliased/nonalised joins with the usage of add_columns()"""
 
         User, Address, addresses, users = (
             self.classes.User,
@@ -2148,7 +2148,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             q.group_by(users)
             .order_by(User.id)
             .outerjoin("addresses")
-            .add_column(func.count(Address.id).label("count"))
+            .add_columns(func.count(Address.id).label("count"))
         )
         eq_(q.all(), expected)
         sess.expunge_all()
@@ -2159,7 +2159,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             q.group_by(users)
             .order_by(User.id)
             .outerjoin(adalias, "addresses")
-            .add_column(func.count(adalias.id).label("count"))
+            .add_columns(func.count(adalias.id).label("count"))
         )
         eq_(q.all(), expected)
         sess.expunge_all()
@@ -2173,7 +2173,9 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             .order_by(User.id)
         )
         q = sess.query(User)
-        result = q.add_column(s.selected_columns.count).from_statement(s).all()
+        result = (
+            q.add_columns(s.selected_columns.count).from_statement(s).all()
+        )
         assert result == expected
 
     def test_raw_columns(self):
@@ -2196,8 +2198,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         q = (
             create_session()
             .query(User)
-            .add_column(func.count(adalias.c.id))
-            .add_column(("Name:" + users.c.name))
+            .add_columns(func.count(adalias.c.id), ("Name:" + users.c.name))
             .outerjoin(adalias, "addresses")
             .group_by(users)
             .order_by(users.c.id)
@@ -2218,8 +2219,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         )
         q = create_session().query(User)
         result = (
-            q.add_column(s.selected_columns.count)
-            .add_column(s.selected_columns.concat)
+            q.add_columns(s.selected_columns.count, s.selected_columns.concat)
             .from_statement(s)
             .all()
         )
@@ -2231,8 +2231,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         q = (
             create_session()
             .query(User)
-            .add_column(func.count(addresses.c.id))
-            .add_column(("Name:" + users.c.name))
+            .add_columns(func.count(addresses.c.id), ("Name:" + users.c.name))
             .select_entity_from(users.outerjoin(addresses))
             .group_by(users)
             .order_by(users.c.id)
@@ -2244,8 +2243,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         q = (
             create_session()
             .query(User)
-            .add_column(func.count(addresses.c.id))
-            .add_column(("Name:" + users.c.name))
+            .add_columns(func.count(addresses.c.id), ("Name:" + users.c.name))
             .outerjoin("addresses")
             .group_by(users)
             .order_by(users.c.id)
@@ -2257,8 +2255,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         q = (
             create_session()
             .query(User)
-            .add_column(func.count(adalias.c.id))
-            .add_column(("Name:" + users.c.name))
+            .add_columns(func.count(adalias.c.id), ("Name:" + users.c.name))
             .outerjoin(adalias, "addresses")
             .group_by(users)
             .order_by(users.c.id)

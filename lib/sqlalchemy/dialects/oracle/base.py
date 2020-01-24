@@ -986,7 +986,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
                     for elem in for_update.of:
                         if not select.selected_columns.contains_column(elem):
-                            select = select.column(elem)
+                            select = select.add_columns(elem)
 
                 # Wrap the middle select and add the hint
                 inner_subquery = select.alias()
@@ -1056,7 +1056,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     limitselect._for_update_arg = for_update
                     select = limitselect
                 else:
-                    limitselect = limitselect.column(
+                    limitselect = limitselect.add_columns(
                         sql.literal_column("ROWNUM").label("ora_rn")
                     )
                     limitselect._oracle_visit = True
@@ -1069,7 +1069,7 @@ class OracleCompiler(compiler.SQLCompiler):
                                 limitselect_cols.corresponding_column(elem)
                                 is None
                             ):
-                                limitselect = limitselect.column(elem)
+                                limitselect = limitselect.add_columns(elem)
 
                     limit_subquery = limitselect.alias()
                     origselect_cols = orig_select.selected_columns

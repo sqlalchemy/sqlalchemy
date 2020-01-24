@@ -199,7 +199,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         eq_(
             session.query(Manager.name)
-            .add_column(ealias.name)
+            .add_columns(ealias.name)
             .join(ealias, true())
             .all(),
             [("Tom", "Kurt"), ("Tom", "Ed")],

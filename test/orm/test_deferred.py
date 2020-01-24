@@ -834,7 +834,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         o1 = (
             sess.query(Order)
             .order_by(Order.id)
-            .add_column(orders.c.description)
+            .add_columns(orders.c.description)
             .first()
         )[0]
 

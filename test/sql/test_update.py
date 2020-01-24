@@ -505,7 +505,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             column_keys=["j"],
         )
 
-    def test_update_ordered_parameters_1(self):
+    def test_update_ordered_parameters_oldstyle_1(self):
         table1 = self.tables.mytable
 
         # Confirm that we can pass values as list value pairs
@@ -534,7 +534,35 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "mytable.name = :param_2 || mytable.name || :param_3",
         )
 
-    def test_update_ordered_parameters_2(self):
+    def test_update_ordered_parameters_newstyle_1(self):
+        table1 = self.tables.mytable
+
+        # Confirm that we can pass values as list value pairs
+        # note these are ordered *differently* from table.c
+        values = [
+            (table1.c.name, table1.c.name + "lala"),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
+        ]
+        self.assert_compile(
+            update(table1)
+            .where(
+                (table1.c.myid == func.hoho(4))
+                & (
+                    table1.c.name
+                    == literal("foo") + table1.c.name + literal("lala")
+                )
+            )
+            .ordered_values(*values),
+            "UPDATE mytable "
+            "SET "
+            "name=(mytable.name || :name_1), "
+            "myid=do_stuff(mytable.myid, :param_1) "
+            "WHERE "
+            "mytable.myid = hoho(:hoho_1) AND "
+            "mytable.name = :param_2 || mytable.name || :param_3",
+        )
+
+    def test_update_ordered_parameters_oldstyle_2(self):
         table1 = self.tables.mytable
 
         # Confirm that we can pass values as list value pairs
@@ -554,6 +582,35 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 ),
                 preserve_parameter_order=True,
             ).values(values),
+            "UPDATE mytable "
+            "SET "
+            "name=(mytable.name || :name_1), "
+            "description=:description, "
+            "myid=do_stuff(mytable.myid, :param_1) "
+            "WHERE "
+            "mytable.myid = hoho(:hoho_1) AND "
+            "mytable.name = :param_2 || mytable.name || :param_3",
+        )
+
+    def test_update_ordered_parameters_newstyle_2(self):
+        table1 = self.tables.mytable
+
+        # Confirm that we can pass values as list value pairs
+        # note these are ordered *differently* from table.c
+        values = [
+            (table1.c.name, table1.c.name + "lala"),
+            ("description", "some desc"),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
+        ]
+        self.assert_compile(
+            update(
+                table1,
+                (table1.c.myid == func.hoho(4))
+                & (
+                    table1.c.name
+                    == literal("foo") + table1.c.name + literal("lala")
+                ),
+            ).ordered_values(*values),
             "UPDATE mytable "
             "SET "
             "name=(mytable.name || :name_1), "

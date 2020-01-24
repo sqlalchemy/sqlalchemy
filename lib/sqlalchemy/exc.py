@@ -587,11 +587,24 @@ class NotSupportedError(DatabaseError):
 
 
 class SADeprecationWarning(DeprecationWarning):
-    """Issued once per usage of a deprecated API."""
+    """Issued for usage of deprecated APIs."""
+
+
+class RemovedIn20Warning(SADeprecationWarning):
+    """Issued for usage of APIs specifically deprecated in SQLAlchemy 2.0.
+
+    .. seealso::
+
+        :ref:`error_b8d9`.
+
+    """
 
 
 class SAPendingDeprecationWarning(PendingDeprecationWarning):
-    """Issued once per usage of a deprecated API."""
+    """A similar warning as :class:`.SADeprecationWarning`, this warning
+    is not used in modern versions of SQLAlchemy.
+
+    """
 
 
 class SAWarning(RuntimeWarning):

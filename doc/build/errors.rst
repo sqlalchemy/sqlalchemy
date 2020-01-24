@@ -33,6 +33,43 @@ Within this section, the goal is to try to provide background on some of the
 most common runtime errors as well as programming time errors.
 
 
+Legacy API Features
+===================
+
+.. _error_b8d9:
+
+The <some function> in SQLAlchemy 2.0 will no longer <something>; use the "future" construct
+--------------------------------------------------------------------------------------------
+
+SQLAlchemy 2.0 is expected to be a major shift for a wide variety of key
+SQLAlchemy usage patterns in both the Core and ORM components.   The goal
+of this release is to make a slight readjustment in some of the most
+fundamental assumptions of SQLAlchemy since its early beginnings, and
+to deliver a newly streamlined usage model that is hoped to be significantly
+more minimalist and consistent between the Core and ORM components, as well as
+more capable.
+
+Introduced at :ref:`migration_20_toplevel`, the SQLAlchemy 2.0 project includes
+a comprehensive future compatibility system that is to be integrated into the
+1.4 series of SQLAlchemy, such that applications will have a clear,
+unambiguous, and incremental upgrade path in order to migrate applications to
+being fully 2.0 compatible.   The :class:`.exc.RemovedIn20Warning` deprecation
+warning is at the base of this system to provide guidance on what behaviors in
+an existing codebase will need to be modified.
+
+For some occurrences of this warning, an additional recommendation to use an
+API in either the ``sqlalchemy.future`` or  ``sqlalchemy.orm.future`` packages
+may be present.  This refers to two  special future-compatibility packages that
+are part of SQLAlchemy 1.4 and  are there to help migrate an application to the
+2.0 version.
+
+.. seealso::
+
+    :ref:`migration_20_toplevel`  - An overview of the upgrade process from
+    the 1.x series, as well as the current goals and progress of SQLAlchemy
+    2.0.
+
+
 Connections and Transactions
 ============================
 

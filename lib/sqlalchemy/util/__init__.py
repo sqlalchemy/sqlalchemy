@@ -88,12 +88,12 @@ from .compat import win32  # noqa
 from .compat import with_metaclass  # noqa
 from .compat import zip_longest  # noqa
 from .deprecations import deprecated  # noqa
+from .deprecations import deprecated_20  # noqa
 from .deprecations import deprecated_cls  # noqa
 from .deprecations import deprecated_params  # noqa
 from .deprecations import inject_docstring_text  # noqa
-from .deprecations import pending_deprecation  # noqa
 from .deprecations import warn_deprecated  # noqa
-from .deprecations import warn_pending_deprecation  # noqa
+from .deprecations import warn_deprecated_20  # noqa
 from .langhelpers import add_parameter_text  # noqa
 from .langhelpers import as_interface  # noqa
 from .langhelpers import asbool  # noqa

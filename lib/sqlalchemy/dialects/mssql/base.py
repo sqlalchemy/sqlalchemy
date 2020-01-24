@@ -1715,7 +1715,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             select = select._generate()
             select._mssql_visit = True
             select = (
-                select.column(
+                select.add_columns(
                     sql.func.ROW_NUMBER()
                     .over(order_by=_order_by_clauses)
                     .label("mssql_rn")
