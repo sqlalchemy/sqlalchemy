@@ -264,7 +264,7 @@ intended for production use!
 
 **MSSQL configuration**::
 
-    # only needed if a local image of mysql is not already present
+    # only needed if a local image of mssql is not already present
     docker pull mcr.microsoft.com/mssql/server:2019-CU1-ubuntu-16.04
 
     # create the container with the proper configuration for sqlalchemy
