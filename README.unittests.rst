@@ -141,7 +141,7 @@ The above paragraph changes somewhat when the multiprocessing option
 is used, in that separate databases will be created instead, however
 in the case of Postgresql, the starting database is used as a template,
 so the starting database must still be empty.  See below for example
-configuration using docker
+configuration using docker.
 
 The test runner will by default create and drop tables within the default
 database that's in the database URL, *unless* the multiprocessing option is in
@@ -228,7 +228,7 @@ The following configurations are just examples that developers can use to
 quickly set up a local environment for SQLAlchemy development. They are **NOT**
 intended for production use!
 
-** PostgreSQL configuration **
+**PostgreSQL configuration**::
 
     # only needed if a local image of postgres is not already present
     docker pull postgres:12
@@ -246,7 +246,7 @@ intended for production use!
     # To stop the container. It will also remove it.
     docker stop postgres
 
-** MySQL configuration **
+**MySQL configuration**::
 
     # only needed if a local image of mysql is not already present
     docker pull mysql:8
@@ -262,7 +262,7 @@ intended for production use!
     # To stop the container. It will also remove it.
     docker stop mysql
 
-** MSSQL configuration **
+**MSSQL configuration**::
 
     # only needed if a local image of mysql is not already present
     docker pull mcr.microsoft.com/mssql/server:2019-CU1-ubuntu-16.04
