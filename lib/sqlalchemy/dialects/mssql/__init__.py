@@ -8,6 +8,7 @@
 from . import adodbapi  # noqa
 from . import base  # noqa
 from . import mxodbc  # noqa
+from . import provision  # noqa
 from . import pymssql  # noqa
 from . import pyodbc  # noqa
 from .base import BIGINT

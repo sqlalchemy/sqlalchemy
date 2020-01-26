@@ -9,6 +9,7 @@ from .. import eq_
 from .. import expect_warnings
 from .. import fixtures
 from .. import is_
+from ..provision import temp_table_keyword_args
 from ..schema import Column
 from ..schema import Table
 from ... import event
@@ -304,16 +305,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_temp_tables(cls, metadata):
-        # cheat a bit, we should fix this with some dialect-level
-        # temp table fixture
-        if testing.against("oracle"):
-            kw = {
-                "prefixes": ["GLOBAL TEMPORARY"],
-                "oracle_on_commit": "PRESERVE ROWS",
-            }
-        else:
-            kw = {"prefixes": ["TEMPORARY"]}
-
+        kw = temp_table_keyword_args(config, config.db)
         user_tmp = Table(
             "user_tmp",
             metadata,
