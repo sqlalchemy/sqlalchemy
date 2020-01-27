@@ -3491,7 +3491,7 @@ class PGDialect(default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.sub(r'^\((.+)\)$', r'\1', m.group(1))
+                sqltext = re.sub(r"^\((.+)\)$", r"\1", m.group(1))
             entry = {"name": name, "sqltext": sqltext}
             if m and m.group(2):
                 entry["dialect_options"] = {"not_valid": True}

@@ -3384,7 +3384,7 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
         eq_(row, (Parent(id=2), None))
 
     def test_pk_not_null_discriminator_null_from_base(self):
-        A, = self.classes("A")
+        (A,) = self.classes("A")
 
         sess = Session()
         q = sess.query(A).filter(A.id == 3)
@@ -3397,7 +3397,7 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
         )
 
     def test_pk_not_null_discriminator_null_from_sub(self):
-        B, = self.classes("B")
+        (B,) = self.classes("B")
 
         sess = Session()
         q = sess.query(B).filter(B.id == 4)

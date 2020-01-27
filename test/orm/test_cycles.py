@@ -1760,7 +1760,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
     def test_update_defaults_refresh_flush_event_no_postupdate(self):
         # run the same test as test_update_defaults_refresh_flush_event
         # but don't actually use any postupdate functionality
-        A, = self.classes("A")
+        (A,) = self.classes("A")
 
         canary = mock.Mock()
         event.listen(A, "refresh_flush", canary.refresh_flush)
@@ -1845,7 +1845,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         # run the same test as
         # test_update_defaults_dont_expire_on_delete_no_postupdate
         # but don't actually use any postupdate functionality
-        A, = self.classes("A")
+        (A,) = self.classes("A")
 
         canary = mock.Mock()
         event.listen(A, "refresh_flush", canary.refresh_flush)

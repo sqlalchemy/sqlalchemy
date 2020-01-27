@@ -807,7 +807,7 @@ class ColumnCollectionsTest(
         )
 
     def test_determine_local_remote_pairs_o2m_composite_selfref_func_warning(
-        self
+        self,
     ):
         self._assert_non_simple_warning(
             self._join_fixture_o2m_composite_selfref_func
@@ -823,7 +823,7 @@ class ColumnCollectionsTest(
         )
 
     def test_determine_local_remote_pairs_o2m_composite_selfref_func_annotated(
-        self
+        self,
     ):
         joincond = self._join_fixture_o2m_composite_selfref_func_annotated()
         eq_(

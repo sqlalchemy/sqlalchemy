@@ -186,4 +186,5 @@ def temp_table_keyword_args(cfg, eng):
     ComponentReflectionTest class in suite/test_reflection.py
     """
     raise NotImplementedError(
-        "no temp table keyword args routine for cfg: %s" % eng.url)
+        "no temp table keyword args routine for cfg: %s" % eng.url
+    )

@@ -1535,10 +1535,10 @@ class ReflectionTest(fixtures.TestBase):
                 RETURN x > 0;
             END;$BODY$;
         """
-        sa.event.listen(meta, "before_create",
-                        sa.DDL(udf_create))
-        sa.event.listen(meta, "after_drop",
-                        sa.DDL("DROP FUNCTION is_positive(integer)"))
+        sa.event.listen(meta, "before_create", sa.DDL(udf_create))
+        sa.event.listen(
+            meta, "after_drop", sa.DDL("DROP FUNCTION is_positive(integer)")
+        )
 
         Table(
             "pgsql_cc",
