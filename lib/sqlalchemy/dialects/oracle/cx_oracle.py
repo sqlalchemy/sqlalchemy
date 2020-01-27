@@ -1085,7 +1085,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         return tuple(int(x) for x in connection.connection.version.split("."))
 
     def is_disconnect(self, e, connection, cursor):
-        error, = e.args
+        (error,) = e.args
         if isinstance(
             e, (self.dbapi.InterfaceError, self.dbapi.DatabaseError)
         ) and "not connected" in str(e):

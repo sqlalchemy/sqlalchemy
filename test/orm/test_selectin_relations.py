@@ -3021,7 +3021,7 @@ class SingleInhSubclassTest(
         s.commit()
 
     def test_load(self):
-        EmployerUser, = self.classes("EmployerUser")
+        (EmployerUser,) = self.classes("EmployerUser")
         s = Session()
 
         q = s.query(EmployerUser)

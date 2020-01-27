@@ -1417,7 +1417,7 @@ class O2MWOSideFixedTest(fixtures.MappedTest):
         self._fixture(False)
         City = self.classes.City
         sess = Session(testing.db)
-        c2, = sess.query(City).order_by(City.id).all()
+        (c2,) = sess.query(City).order_by(City.id).all()
 
         eq_([p.id for p in c2.people], [])
 

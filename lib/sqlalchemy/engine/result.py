@@ -220,9 +220,11 @@ class ResultMetaData(object):
         self._orig_processors = None
 
         if context.result_column_struct:
-            result_columns, cols_are_ordered, textual_ordered = (
-                context.result_column_struct
-            )
+            (
+                result_columns,
+                cols_are_ordered,
+                textual_ordered,
+            ) = context.result_column_struct
             num_ctx_cols = len(result_columns)
         else:
             result_columns = (
