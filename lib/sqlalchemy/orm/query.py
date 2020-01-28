@@ -260,6 +260,7 @@ class Query(Generative):
             self._from_obj_alias = sql_util.ColumnAdapter(
                 self._from_obj[0], equivs
             )
+            self._enable_single_crit = False
         elif (
             set_base_alias
             and len(self._from_obj) == 1
@@ -267,6 +268,7 @@ class Query(Generative):
             and info.is_aliased_class
         ):
             self._from_obj_alias = info._adapter
+            self._enable_single_crit = False
 
     def _reset_polymorphic_adapter(self, mapper):
         for m2 in mapper._with_polymorphic_mappers:
@@ -1379,7 +1381,6 @@ class Query(Generative):
             ._anonymous_fromclause()
         )
         q = self._from_selectable(fromclause)
-        q._enable_single_crit = False
         q._select_from_entity = self._entity_zero()
         if entities:
             q._set_entities(entities)
@@ -1407,6 +1408,7 @@ class Query(Generative):
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], True)
+        self._enable_single_crit = False
 
         # this enables clause adaptation for non-ORM
         # expressions.
@@ -1875,9 +1877,7 @@ class Query(Generative):
             self._having = criterion
 
     def _set_op(self, expr_fn, *q):
-        return self._from_selectable(
-            expr_fn(*([self] + list(q))).subquery()
-        )._set_enable_single_crit(False)
+        return self._from_selectable(expr_fn(*([self] + list(q))).subquery())
 
     def union(self, *q):
         """Produce a UNION of this Query against one or more queries.

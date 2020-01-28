@@ -756,6 +756,114 @@ the cascade settings for a viewonly relationship.
 :ticket:`4993`
 :ticket:`4994`
 
+.. _change_5122:
+
+Stricter behavior when querying inheritance mappings using custom queries
+-------------------------------------------------------------------------
+
+This change applies to the scenario where a joined- or single- table
+inheritance subclass entity is being queried, given a completed SELECT subquery
+to select from.   If the given subquery returns rows that do not correspond to
+the requested polymorphic identity or identities, an error is raised.
+Previously, this condition would pass silently under joined table inheritance,
+returning an invalid subclass, and under single table inheritance, the
+:class:`.Query` would be adding additional criteria against the subquery to
+limit the results which could inappropriately interfere with the intent of the
+query.
+
+Given the example mapping of ``Employee``, ``Engineer(Employee)``, ``Manager(Employee)``,
+in the 1.3 series if we were to emit the following query against a joined
+inheritance mapping::
+
+    s = Session(e)
+
+    s.add_all([Engineer(), Manager()])
+
+    s.commit()
+
+    print(
+        s.query(Manager).select_entity_from(s.query(Employee).subquery()).all()
+    )
+
+
+The subquery selects both the ``Engineer`` and the ``Manager`` rows, and
+even though the outer query is against ``Manager``, we get a non ``Manager``
+object back::
+
+    SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
+    FROM (SELECT employee.type AS type, employee.id AS id
+    FROM employee) AS anon_1
+    2020-01-29 18:04:13,524 INFO sqlalchemy.engine.base.Engine ()
+    [<__main__.Engineer object at 0x7f7f5b9a9810>, <__main__.Manager object at 0x7f7f5b9a9750>]
+
+The new behavior is that this condition raises an error::
+
+    sqlalchemy.exc.InvalidRequestError: Row with identity key
+    (<class '__main__.Employee'>, (1,), None) can't be loaded into an object;
+    the polymorphic discriminator column '%(140205120401296 anon)s.type'
+    refers to mapped class Engineer->engineer, which is not a sub-mapper of
+    the requested mapped class Manager->manager
+
+The above error only raises if the primary key columns of that entity are
+non-NULL.  If there's no primary key for a given entity in a row, no attempt
+to construct an entity is made.
+
+In the case of single inheritance mapping, the change in behavior is slightly
+more involved;   if ``Engineer`` and ``Manager`` above are mapped with
+single table inheritance, in 1.3 the following query would be emitted and
+only a ``Manager`` object is returned::
+
+    SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
+    FROM (SELECT employee.type AS type, employee.id AS id
+    FROM employee) AS anon_1
+    WHERE anon_1.type IN (?)
+    2020-01-29 18:08:32,975 INFO sqlalchemy.engine.base.Engine ('manager',)
+    [<__main__.Manager object at 0x7ff1b0200d50>]
+
+The :class:`.Query` added the "single table inheritance" criteria to the
+subquery, editorializing on the intent that was originally set up by it.
+This behavior was added in version 1.0 in :ticket:`3891`, and creates a
+behavioral inconsistency between "joined" and "single" table inheritance,
+and additionally modifies the intent of the given query, which may intend
+to return additional rows where the columns that correspond to the inheriting
+entity are NULL, which is a valid use case.    The behavior is now equivalent
+to that of joined table inheritance, where it is assumed that the subquery
+returns the correct rows and an error is raised if an unexpected polymorphic
+identity is encountered::
+
+    SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
+    FROM (SELECT employee.type AS type, employee.id AS id
+    FROM employee) AS anon_1
+    2020-01-29 18:13:10,554 INFO sqlalchemy.engine.base.Engine ()
+    Traceback (most recent call last):
+    # ...
+    sqlalchemy.exc.InvalidRequestError: Row with identity key
+    (<class '__main__.Employee'>, (1,), None) can't be loaded into an object;
+    the polymorphic discriminator column '%(140700085268432 anon)s.type'
+    refers to mapped class Engineer->employee, which is not a sub-mapper of
+    the requested mapped class Manager->employee
+
+The correct adjustment to the situation as presented above which worked on 1.3
+is to adjust the given subquery to correctly filter the rows based on the
+discriminator column::
+
+    print(
+        s.query(Manager).select_entity_from(
+            s.query(Employee).filter(Employee.discriminator == 'manager').
+            subquery()).all()
+    )
+
+    SELECT anon_1.type AS anon_1_type, anon_1.id AS anon_1_id
+    FROM (SELECT employee.type AS type, employee.id AS id
+    FROM employee
+    WHERE employee.type = ?) AS anon_1
+    2020-01-29 18:14:49,770 INFO sqlalchemy.engine.base.Engine ('manager',)
+    [<__main__.Manager object at 0x7f70e13fca90>]
+
+
+:ticket:`5122`
+
+
 New Features - Core
 ====================
 

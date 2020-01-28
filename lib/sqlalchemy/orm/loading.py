@@ -643,11 +643,9 @@ def _instance_processor(
                 identity_token,
             )
             if not is_not_primary_key(identitykey[1]):
-                raise sa_exc.InvalidRequestError(
-                    "Row with identity key %s can't be loaded into an "
-                    "object; the polymorphic discriminator column '%s' is "
-                    "NULL" % (identitykey, polymorphic_discriminator)
-                )
+                return identitykey
+            else:
+                return None
 
         _instance = _decorate_polymorphic_switch(
             _instance,
@@ -843,6 +841,8 @@ def _decorate_polymorphic_switch(
         else:
             if sub_mapper is mapper:
                 return None
+            elif not sub_mapper.isa(mapper):
+                return False
 
             return _instance_processor(
                 sub_mapper,
@@ -863,11 +863,37 @@ def _decorate_polymorphic_switch(
             _instance = polymorphic_instances[discriminator]
             if _instance:
                 return _instance(row)
+            elif _instance is False:
+                identitykey = ensure_no_pk(row)
+
+                if identitykey:
+                    raise sa_exc.InvalidRequestError(
+                        "Row with identity key %s can't be loaded into an "
+                        "object; the polymorphic discriminator column '%s' "
+                        "refers to %s, which is not a sub-mapper of "
+                        "the requested %s"
+                        % (
+                            identitykey,
+                            polymorphic_on,
+                            mapper.polymorphic_map[discriminator],
+                            mapper,
+                        )
+                    )
+                else:
+                    return None
             else:
                 return instance_fn(row)
         else:
-            ensure_no_pk(row)
-            return None
+            identitykey = ensure_no_pk(row)
+
+            if identitykey:
+                raise sa_exc.InvalidRequestError(
+                    "Row with identity key %s can't be loaded into an "
+                    "object; the polymorphic discriminator column '%s' is "
+                    "NULL" % (identitykey, polymorphic_on)
+                )
+            else:
+                return None
 
     return polymorphic_instance
 

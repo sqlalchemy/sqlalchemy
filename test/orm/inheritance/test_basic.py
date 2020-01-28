@@ -3384,7 +3384,7 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
         eq_(row, (Parent(id=2), None))
 
     def test_pk_not_null_discriminator_null_from_base(self):
-        A, = self.classes("A")
+        (A,) = self.classes("A")
 
         sess = Session()
         q = sess.query(A).filter(A.id == 3)
@@ -3397,7 +3397,7 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
         )
 
     def test_pk_not_null_discriminator_null_from_sub(self):
-        B, = self.classes("B")
+        (B,) = self.classes("B")
 
         sess = Session()
         q = sess.query(B).filter(B.id == 4)
@@ -3406,6 +3406,96 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
             r"Row with identity key \(<class '.*A'>, \(4,\), None\) can't be "
             "loaded into an object; the polymorphic discriminator "
             "column 'a.type' is NULL",
+            q.all,
+        )
+
+
+class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
+    run_setup_mappers = "once"
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class AJoined(fixtures.ComparableEntity, Base):
+            __tablename__ = "ajoined"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10), nullable=False)
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "a",
+            }
+
+        class AJoinedSubA(AJoined):
+            __tablename__ = "ajoinedsuba"
+            id = Column(ForeignKey("ajoined.id"), primary_key=True)
+            __mapper_args__ = {"polymorphic_identity": "suba"}
+
+        class AJoinedSubB(AJoined):
+            __tablename__ = "ajoinedsubb"
+            id = Column(ForeignKey("ajoined.id"), primary_key=True)
+            __mapper_args__ = {"polymorphic_identity": "subb"}
+
+        class ASingle(fixtures.ComparableEntity, Base):
+            __tablename__ = "asingle"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10), nullable=False)
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "a",
+            }
+
+        class ASingleSubA(ASingle):
+            __mapper_args__ = {"polymorphic_identity": "suba"}
+
+        class ASingleSubB(ASingle):
+            __mapper_args__ = {"polymorphic_identity": "subb"}
+
+    @classmethod
+    def insert_data(cls):
+        ASingleSubA, ASingleSubB, AJoinedSubA, AJoinedSubB = cls.classes(
+            "ASingleSubA", "ASingleSubB", "AJoinedSubA", "AJoinedSubB"
+        )
+        s = Session()
+
+        s.add_all([ASingleSubA(), ASingleSubB(), AJoinedSubA(), AJoinedSubB()])
+        s.commit()
+
+    def test_single_invalid_ident(self):
+        ASingle, ASingleSubA = self.classes("ASingle", "ASingleSubA")
+
+        s = Session()
+
+        q = s.query(ASingleSubA).select_entity_from(
+            select([ASingle]).subquery()
+        )
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Row with identity key \(.*ASingle.*\) can't be loaded into an "
+            r"object; the polymorphic discriminator column '.*.type' refers "
+            r"to mapped class ASingleSubB->asingle, which is not a "
+            r"sub-mapper of the requested mapped class ASingleSubA->asingle",
+            q.all,
+        )
+
+    def test_joined_invalid_ident(self):
+        AJoined, AJoinedSubA = self.classes("AJoined", "AJoinedSubA")
+
+        s = Session()
+
+        q = s.query(AJoinedSubA).select_entity_from(
+            select([AJoined]).subquery()
+        )
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Row with identity key \(.*AJoined.*\) can't be loaded into an "
+            r"object; the polymorphic discriminator column '.*.type' refers "
+            r"to mapped class AJoinedSubB->ajoinedsubb, which is not a "
+            r"sub-mapper of the requested mapped class "
+            r"AJoinedSubA->ajoinedsuba",
             q.all,
         )
 
