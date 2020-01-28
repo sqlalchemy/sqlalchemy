@@ -265,7 +265,6 @@ class PropRegistry(PathRegistry):
         elif (
             insp.is_aliased_class
             and insp.with_polymorphic_mappers
-            and prop.parent is not insp.mapper
             and prop.parent in insp.with_polymorphic_mappers
         ):
             subclass_entity = parent[-1]._entity_for_mapper(prop.parent)
