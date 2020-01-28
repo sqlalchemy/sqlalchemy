@@ -1011,6 +1011,45 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
             ),
         )
 
+    def test_with_poly_base_two(self):
+        Company = _poly_fixtures.Company
+        Person = _poly_fixtures.Person
+        Engineer = _poly_fixtures.Engineer
+        cmapper = inspect(Company)
+        pmapper = inspect(Person)
+
+        p_poly = with_polymorphic(Person, [Engineer])
+        e_poly_insp = inspect(p_poly.Engineer)  # noqa - used by comment below
+        p_poly_insp = inspect(p_poly)
+
+        p1 = PathRegistry.coerce(
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                p_poly_insp,
+                pmapper.attrs.paperwork,
+            )
+        )
+
+        eq_(
+            p1.path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                p_poly_insp,
+                pmapper.attrs.paperwork,
+            ),
+        )
+        eq_(
+            p1.natural_path,
+            (
+                cmapper,
+                cmapper.attrs.employees,
+                pmapper,
+                pmapper.attrs.paperwork,
+            ),
+        )
+
     def test_nonpoly_oftype_aliased_subclass_onroot(self):
         Engineer = _poly_fixtures.Engineer
         eng_alias = aliased(Engineer)
@@ -1094,7 +1133,7 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
             ),
         )
 
-    def test_with_poly_base(self):
+    def test_with_poly_base_one(self):
         Person = _poly_fixtures.Person
         Engineer = _poly_fixtures.Engineer
         pmapper = inspect(Person)
