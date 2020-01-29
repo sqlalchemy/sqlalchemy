@@ -53,12 +53,12 @@ from .compat import cmp  # noqa
 from .compat import cpython  # noqa
 from .compat import decode_backslashreplace  # noqa
 from .compat import dottedgetter  # noqa
+from .compat import has_refcount_gc  # noqa
 from .compat import inspect_getfullargspec  # noqa
 from .compat import int_types  # noqa
 from .compat import iterbytes  # noqa
 from .compat import itertools_filter  # noqa
 from .compat import itertools_filterfalse  # noqa
-from .compat import jython  # noqa
 from .compat import namedtuple  # noqa
 from .compat import nested  # noqa
 from .compat import next  # noqa
@@ -69,7 +69,6 @@ from .compat import py2k  # noqa
 from .compat import py33  # noqa
 from .compat import py36  # noqa
 from .compat import py3k  # noqa
-from .compat import pypy  # noqa
 from .compat import quote_plus  # noqa
 from .compat import raise_from_cause  # noqa
 from .compat import reduce  # noqa

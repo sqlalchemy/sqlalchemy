@@ -584,7 +584,8 @@ class MiscBackendTest(
 
     @testing.requires.psycopg2_compatibility
     def test_psycopg2_non_standard_err(self):
-        # under pypy the name here is psycopg2cffi
+        # note that psycopg2 is sometimes called psycopg2cffi
+        # depending on platform
         psycopg2 = testing.db.dialect.dbapi
         TransactionRollbackError = __import__(
             "%s.extensions" % psycopg2.__name__
@@ -670,11 +671,6 @@ $$ LANGUAGE plpgsql;
             "commit prepared 'gilberte'",
         )
 
-    @testing.fails_on(
-        "+zxjdbc",
-        "Can't infer the SQL type to use for an instance "
-        "of org.python.core.PyObjectDerived.",
-    )
     def test_extract(self):
         fivedaysago = testing.db.scalar(
             select([func.now()])
@@ -784,7 +780,6 @@ $$ LANGUAGE plpgsql;
         finally:
             testing.db.execute("drop table speedy_users")
 
-    @testing.fails_on("+zxjdbc", "psycopg2/pg8000 specific assertion")
     @testing.requires.psycopg2_or_pg8000_compatibility
     def test_numeric_raise(self):
         stmt = text("select cast('hi' as char) as hi").columns(hi=Numeric)

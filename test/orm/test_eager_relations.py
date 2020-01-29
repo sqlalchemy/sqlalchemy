@@ -5399,6 +5399,35 @@ class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
         # PYTHONHASHSEED
         in_("d", a1.c.__dict__)
 
+    def test_multi_path_load_of_type(self):
+        A, B, C, D = self.classes("A", "B", "C", "D")
+
+        s = Session()
+
+        c = C(d=D())
+
+        s.add(A(b=B(c=c), c=c))
+        s.commit()
+
+        c_alias_1 = aliased(C)
+        c_alias_2 = aliased(C)
+
+        q = s.query(A)
+        q = q.join(A.b).join(B.c.of_type(c_alias_1)).join(c_alias_1.d)
+        q = q.options(
+            contains_eager(A.b)
+            .contains_eager(B.c.of_type(c_alias_1))
+            .contains_eager(c_alias_1.d)
+        )
+        q = q.join(A.c.of_type(c_alias_2))
+        q = q.options(contains_eager(A.c.of_type(c_alias_2)))
+
+        a1 = q.all()[0]
+
+        # ensure 'd' key was populated in dict.  Varies based on
+        # PYTHONHASHSEED
+        in_("d", a1.c.__dict__)
+
 
 class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
     """test for [ticket:3431]"""
@@ -5457,6 +5486,7 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         l_ac = aliased(LD)
         u_ac = aliased(User)
 
+        # these paths don't work out correctly?
         lz_test = (
             s.query(LDA)
             .join("ld")
@@ -5466,6 +5496,39 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
                 contains_eager("a")
                 .contains_eager("ld", alias=l_ac)
                 .contains_eager("user", alias=u_ac)
+            )
+            .first()
+        )
+
+        in_("user", lz_test.a.ld.__dict__)
+
+    def test_multi_path_load_of_type(self):
+        User, LD, A, LDA = self.classes("User", "LD", "A", "LDA")
+
+        s = Session()
+
+        u0 = User(data=42)
+        l0 = LD(user=u0)
+        z0 = A(ld=l0)
+        lz0 = LDA(ld=l0, a=z0)
+        s.add_all([u0, l0, z0, lz0])
+        s.commit()
+
+        l_ac = aliased(LD)
+        u_ac = aliased(User)
+
+        lz_test = (
+            s.query(LDA)
+            .join(LDA.ld)
+            .options(contains_eager(LDA.ld))
+            .join(LDA.a)
+            .join(LDA.ld.of_type(l_ac))
+            .join(l_ac.user.of_type(u_ac))
+            .options(
+                contains_eager(LDA.a),
+                contains_eager(LDA.ld.of_type(l_ac)).contains_eager(
+                    l_ac.user.of_type(u_ac)
+                ),
             )
             .first()
         )
@@ -5520,6 +5583,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(aa, A)
             .filter(aa.id == 1)
             .filter(A.id == 2)
+            .filter(aa.id != A.id)
             .options(joinedload("bs").joinedload("cs"))
         )
         self._run_tests(q, 1)
@@ -5532,6 +5596,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(A, aa)
             .filter(aa.id == 2)
             .filter(A.id == 1)
+            .filter(aa.id != A.id)
             .options(joinedload("bs").joinedload("cs"))
         )
         self._run_tests(q, 1)
@@ -5544,6 +5609,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(aa, A)
             .filter(aa.id == 1)
             .filter(A.id == 2)
+            .filter(aa.id != A.id)
             .options(joinedload(A.bs).joinedload(B.cs))
         )
         self._run_tests(q, 3)
@@ -5556,6 +5622,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(aa, A)
             .filter(aa.id == 1)
             .filter(A.id == 2)
+            .filter(aa.id != A.id)
             .options(defaultload(A.bs).joinedload(B.cs))
         )
         self._run_tests(q, 3)
@@ -5566,7 +5633,13 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
         aa = aliased(A)
         opt = Load(A).joinedload(A.bs).joinedload(B.cs)
 
-        q = s.query(aa, A).filter(aa.id == 1).filter(A.id == 2).options(opt)
+        q = (
+            s.query(aa, A)
+            .filter(aa.id == 1)
+            .filter(A.id == 2)
+            .filter(aa.id != A.id)
+            .options(opt)
+        )
         self._run_tests(q, 3)
 
     def test_pathed_lazyload_plus_joined_aliased_abs_bcs(self):
@@ -5575,7 +5648,13 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
         aa = aliased(A)
         opt = Load(aa).defaultload(aa.bs).joinedload(B.cs)
 
-        q = s.query(aa, A).filter(aa.id == 1).filter(A.id == 2).options(opt)
+        q = (
+            s.query(aa, A)
+            .filter(aa.id == 1)
+            .filter(A.id == 2)
+            .filter(aa.id != A.id)
+            .options(opt)
+        )
         self._run_tests(q, 2)
 
     def test_pathed_joinedload_aliased_abs_bcs(self):
@@ -5584,7 +5663,13 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
         aa = aliased(A)
         opt = Load(aa).joinedload(aa.bs).joinedload(B.cs)
 
-        q = s.query(aa, A).filter(aa.id == 1).filter(A.id == 2).options(opt)
+        q = (
+            s.query(aa, A)
+            .filter(aa.id == 1)
+            .filter(A.id == 2)
+            .filter(aa.id != A.id)
+            .options(opt)
+        )
         self._run_tests(q, 1)
 
     def test_lazyload_plus_joined_aliased_abs_bcs(self):
@@ -5595,6 +5680,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(aa, A)
             .filter(aa.id == 1)
             .filter(A.id == 2)
+            .filter(aa.id != A.id)
             .options(defaultload(aa.bs).joinedload(B.cs))
         )
         self._run_tests(q, 2)
@@ -5607,6 +5693,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(aa, A)
             .filter(aa.id == 1)
             .filter(A.id == 2)
+            .filter(aa.id != A.id)
             .options(joinedload(aa.bs).joinedload(B.cs))
         )
         self._run_tests(q, 1)
@@ -5619,6 +5706,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(A, aa)
             .filter(aa.id == 2)
             .filter(A.id == 1)
+            .filter(aa.id != A.id)
             .options(joinedload(aa.bs).joinedload(B.cs))
         )
         self._run_tests(q, 3)
@@ -5631,6 +5719,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(A, aa)
             .filter(aa.id == 2)
             .filter(A.id == 1)
+            .filter(aa.id != A.id)
             .options(defaultload(aa.bs).joinedload(B.cs))
         )
         self._run_tests(q, 3)
@@ -5643,6 +5732,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(A, aa)
             .filter(aa.id == 2)
             .filter(A.id == 1)
+            .filter(aa.id != A.id)
             .options(defaultload(A.bs).joinedload(B.cs))
         )
         self._run_tests(q, 2)
@@ -5655,6 +5745,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             s.query(A, aa)
             .filter(aa.id == 2)
             .filter(A.id == 1)
+            .filter(aa.id != A.id)
             .options(joinedload(A.bs).joinedload(B.cs))
         )
         self._run_tests(q, 1)

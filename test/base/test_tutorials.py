@@ -6,6 +6,7 @@ import os
 import re
 import sys
 
+from sqlalchemy import testing
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 
@@ -86,6 +87,7 @@ class DocTest(fixtures.TestBase):
     def test_orm(self):
         self._run_doctest("orm/tutorial.rst")
 
+    @testing.emits_warning("SELECT statement has a cartesian")
     def test_core(self):
         self._run_doctest("core/tutorial.rst")
 

@@ -11,6 +11,7 @@ import collections
 import contextlib
 import inspect
 import operator
+import platform
 import sys
 
 
@@ -21,10 +22,12 @@ py32 = sys.version_info >= (3, 2)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
 py265 = sys.version_info >= (2, 6, 5)
-jython = sys.platform.startswith("java")
-pypy = hasattr(sys, "pypy_version_info")
+
+
+cpython = platform.python_implementation() == "CPython"
 win32 = sys.platform.startswith("win")
-cpython = not pypy and not jython  # TODO: something better for this ?
+
+has_refcount_gc = bool(cpython)
 
 contextmanager = contextlib.contextmanager
 dottedgetter = operator.attrgetter

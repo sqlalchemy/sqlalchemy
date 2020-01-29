@@ -1037,27 +1037,40 @@ def contains_eager(loadopt, attr, alias=None):
     ``User`` entity, and the returned ``Order`` objects would have the
     ``Order.user`` attribute pre-populated.
 
-    :func:`.contains_eager` also accepts an `alias` argument, which is the
-    string name of an alias, an :func:`~sqlalchemy.sql.expression.alias`
-    construct, or an :func:`~sqlalchemy.orm.aliased` construct. Use this when
-    the eagerly-loaded rows are to come from an aliased table::
+    When making use of aliases with :func:`.contains_eager`, the path
+    should be specified using :meth:`.PropComparator.of_type`::
 
         user_alias = aliased(User)
         sess.query(Order).\
                 join((user_alias, Order.user)).\
-                options(contains_eager(Order.user, alias=user_alias))
+                options(contains_eager(Order.user.of_type(user_alias)))
 
-    When using :func:`.contains_eager` in conjunction with inherited
-    subclasses, the :meth:`.RelationshipProperty.of_type` modifier should
-    also be used in order to set up the pathing properly::
+    :meth:`.PropComparator.of_type` is also used to indicate a join
+    against specific subclasses of an inherting mapper, or
+    of a :func:`.with_polymorphic` construct::
 
+        # employees of a particular subtype
         sess.query(Company).\
             outerjoin(Company.employees.of_type(Manager)).\
             options(
                 contains_eager(
                     Company.employees.of_type(Manager),
-                    alias=Manager)
+                )
             )
+
+        # employees of a multiple subtypes
+        wp = with_polymorphic(Employee, [Manager, Engineer])
+        sess.query(Company).\
+            outerjoin(Company.employees.of_type(wp)).\
+            options(
+                contains_eager(
+                    Company.employees.of_type(wp),
+                )
+            )
+
+    The :paramref:`.contains_eager.alias` parameter is used for a similar
+    purpose, however the :meth:`.PropComparator.of_type` approach should work
+    in all cases and is more effective and explicit.
 
     .. seealso::
 
@@ -1070,6 +1083,7 @@ def contains_eager(loadopt, attr, alias=None):
         if not isinstance(alias, str):
             info = inspect(alias)
             alias = info.selectable
+
         else:
             util.warn_deprecated(
                 "Passing a string name for the 'alias' argument to "

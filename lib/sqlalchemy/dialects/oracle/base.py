@@ -575,7 +575,7 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
 
         Note that only DAY TO SECOND intervals are currently supported.
         This is due to a lack of support for YEAR TO MONTH intervals
-        within available DBAPIs (cx_oracle and zxjdbc).
+        within available DBAPIs.
 
         :param day_precision: the day precision value.  this is the number of
           digits to store for the day field.  Defaults to "2"
@@ -829,19 +829,24 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return " FROM DUAL"
 
-    def visit_join(self, join, **kwargs):
+    def visit_join(self, join, from_linter=None, **kwargs):
         if self.dialect.use_ansi:
-            return compiler.SQLCompiler.visit_join(self, join, **kwargs)
+            return compiler.SQLCompiler.visit_join(
+                self, join, from_linter=from_linter, **kwargs
+            )
         else:
+            if from_linter:
+                from_linter.edges.add((join.left, join.right))
+
             kwargs["asfrom"] = True
             if isinstance(join.right, expression.FromGrouping):
                 right = join.right.element
             else:
                 right = join.right
             return (
-                self.process(join.left, **kwargs)
+                self.process(join.left, from_linter=from_linter, **kwargs)
                 + ", "
-                + self.process(right, **kwargs)
+                + self.process(right, from_linter=from_linter, **kwargs)
             )
 
     def _get_nonansi_join_whereclause(self, froms):

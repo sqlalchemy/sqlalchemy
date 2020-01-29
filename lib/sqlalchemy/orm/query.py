@@ -133,9 +133,31 @@ class Query(Generative):
     """An :class:`.InstanceState` that is using this :class:`.Query` for a
     lazy load operation.
 
-    This can be used for extensions like the horizontal sharding extension
-    as well as event handlers and custom mapper options to determine
-    when a query is being used to lazy load a relationship on an object.
+    The primary rationale for this attribute is to support the horizontal
+    sharding extension, where it is available within specific query
+    execution time hooks created by this extension.   To that end, the
+    attribute is only intended to be meaningful at **query execution time**,
+    and importantly not any time prior to that, including query compilation
+    time.
+
+    .. note::
+
+        Within the realm of regular :class:`.Query` usage, this attribute is
+        set by the lazy loader strategy before the query is invoked.  However
+        there is no established hook that is available to reliably intercept
+        this value programmatically.  It is set by the lazy loading strategy
+        after any  mapper option objects would have been applied, and now that
+        the lazy  loading strategy in the ORM makes use of "baked" queries to
+        cache SQL  compilation, the :meth:`.QueryEvents.before_compile` hook is
+        also not reliable.
+
+        Currently, setting the :paramref:`.relationship.bake_queries` to
+        ``False`` on the target :func:`.relationship`, and then making use of
+        the :meth:`.QueryEvents.before_compile` event hook, is the only
+        available programmatic path to intercepting this attribute. In future
+        releases, there will be new hooks available that allow interception of
+        the :class:`.Query` before it is executed, rather than before it is
+        compiled.
 
     .. versionadded:: 1.2.9
 

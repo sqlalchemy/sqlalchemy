@@ -213,8 +213,3 @@ pygresql
 
 .. automodule:: sqlalchemy.dialects.postgresql.pygresql
 
-zxjdbc
-------
-
-.. automodule:: sqlalchemy.dialects.postgresql.zxjdbc
-

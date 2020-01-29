@@ -828,8 +828,8 @@ class MutableList(Mutable, list):
         list.clear(self)
         self.changed()
 
-    def sort(self):
-        list.sort(self)
+    def sort(self, **kw):
+        list.sort(self, **kw)
         self.changed()
 
     def reverse(self):

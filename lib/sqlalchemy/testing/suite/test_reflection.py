@@ -9,6 +9,7 @@ from .. import eq_
 from .. import expect_warnings
 from .. import fixtures
 from .. import is_
+from ..provision import temp_table_keyword_args
 from ..schema import Column
 from ..schema import Table
 from ... import event
@@ -292,8 +293,10 @@ class ComponentReflectionTest(fixtures.TablesTest):
                     Column("q", sa.String(5)),
                     test_needs_fk=True,
                 )
-                Index("noncol_idx_nopk", noncol_idx_test_nopk.c.q.desc())
-                Index("noncol_idx_pk", noncol_idx_test_pk.c.q.desc())
+
+                if testing.requires.indexes_with_ascdesc.enabled:
+                    Index("noncol_idx_nopk", noncol_idx_test_nopk.c.q.desc())
+                    Index("noncol_idx_pk", noncol_idx_test_pk.c.q.desc())
 
         if testing.requires.view_column_reflection.enabled:
             cls.define_views(metadata, schema)
@@ -302,16 +305,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_temp_tables(cls, metadata):
-        # cheat a bit, we should fix this with some dialect-level
-        # temp table fixture
-        if testing.against("oracle"):
-            kw = {
-                "prefixes": ["GLOBAL TEMPORARY"],
-                "oracle_on_commit": "PRESERVE ROWS",
-            }
-        else:
-            kw = {"prefixes": ["TEMPORARY"]}
-
+        kw = temp_table_keyword_args(config, config.db)
         user_tmp = Table(
             "user_tmp",
             metadata,
@@ -882,10 +876,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
         eq_(list(t.indexes)[0].name, ixname)
 
     @testing.requires.index_reflection
+    @testing.requires.indexes_with_ascdesc
     def test_get_noncol_index_no_pk(self):
         self._test_get_noncol_index("noncol_idx_test_nopk", "noncol_idx_nopk")
 
     @testing.requires.index_reflection
+    @testing.requires.indexes_with_ascdesc
     def test_get_noncol_index_pk(self):
         self._test_get_noncol_index("noncol_idx_test_pk", "noncol_idx_pk")
 

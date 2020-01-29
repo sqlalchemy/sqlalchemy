@@ -316,9 +316,10 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
 
         mapper(Machine, machines)
 
-        person_with_polymorphic, manager_with_polymorphic = (
-            cls._get_polymorphics()
-        )
+        (
+            person_with_polymorphic,
+            manager_with_polymorphic,
+        ) = cls._get_polymorphics()
 
         mapper(
             Person,

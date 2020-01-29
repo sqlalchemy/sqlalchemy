@@ -275,9 +275,6 @@ class TypesTest(fixtures.TestBase):
             )
             eq_(conn.execute(s3).fetchall(), [(5, rowid)])
 
-    @testing.fails_on(
-        "+zxjdbc", "Not yet known how to pass values of the " "INTERVAL type"
-    )
     @testing.provide_metadata
     def test_interval(self):
         metadata = self.metadata

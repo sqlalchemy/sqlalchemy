@@ -41,10 +41,6 @@ from ..util import compat
 from ..util import pickle
 
 
-if util.jython:
-    import array
-
-
 class _LookupExpressionAdapter(object):
 
     """Mixin expression adaptations based on lookup tables.
@@ -923,19 +919,7 @@ class _Binary(TypeEngine):
     if util.py2k:
 
         def result_processor(self, dialect, coltype):
-            if util.jython:
-
-                def process(value):
-                    if value is not None:
-                        if isinstance(value, array.array):
-                            return value.tostring()
-                        return str(value)
-                    else:
-                        return None
-
-            else:
-                process = processors.to_str
-            return process
+            return processors.to_str
 
     else:
 

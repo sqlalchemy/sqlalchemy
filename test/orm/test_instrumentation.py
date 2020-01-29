@@ -750,8 +750,6 @@ class MiscTest(fixtures.ORMTest):
         assert instrumentation.manager_of_class(A) is None
         assert not hasattr(A, "x")
 
-        # I prefer 'is' here but on pypy
-        # it seems only == works
         assert A.__init__ == object.__init__
 
     def test_compileonattr_rel_backref_a(self):

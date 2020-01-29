@@ -435,7 +435,8 @@ class PropComparator(operators.ColumnOperators):
         return a.of_type(class_)
 
     def of_type(self, class_):
-        r"""Redefine this object in terms of a polymorphic subclass.
+        r"""Redefine this object in terms of a polymorphic subclass,
+        :func:`.with_polymorphic` construct, or :func:`.aliased` construct.
 
         Returns a new PropComparator from which further criterion can be
         evaluated.

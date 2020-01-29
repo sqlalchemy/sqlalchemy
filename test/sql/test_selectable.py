@@ -32,6 +32,7 @@ from sqlalchemy.sql import Alias
 from sqlalchemy.sql import base
 from sqlalchemy.sql import column
 from sqlalchemy.sql import elements
+from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
@@ -2678,7 +2679,8 @@ class ReprTest(fixtures.TestBase):
             elements.True_(),
             elements.False_(),
             elements.ClauseList(),
-            elements.BooleanClauseList.and_(),
+            elements.BooleanClauseList._construct_raw(operators.and_),
+            elements.BooleanClauseList._construct_raw(operators.or_),
             elements.Tuple(),
             elements.Case([]),
             elements.Extract("foo", column("x")),

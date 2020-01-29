@@ -597,12 +597,14 @@ class RelationshipTest4(fixtures.MappedTest):
         mapper(
             Engineer,
             engineers,
+            with_polymorphic=([Engineer], people.join(engineers)),
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
         mapper(
             Manager,
             managers,
+            with_polymorphic=([Manager], people.join(managers)),
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
@@ -1239,12 +1241,14 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         mapper(
             Engineer,
             engineers,
+            with_polymorphic=([Engineer], people.join(engineers)),
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
         mapper(
             Manager,
             managers,
+            with_polymorphic=([Manager], people.join(managers)),
             inherits=person_mapper,
             polymorphic_identity="manager",
         )

@@ -11,6 +11,7 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
@@ -1302,10 +1303,12 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         d = session.query(D).one()
 
         def go():
+            # NOTE: subqueryload is broken for this case, first found
+            # when cartesian product detection was added.
             for a in (
                 session.query(A)
                 .with_polymorphic([B, C])
-                .options(subqueryload(B.related), subqueryload(C.related))
+                .options(selectinload(B.related), selectinload(C.related))
             ):
                 eq_(a.related, [d])
 
@@ -1738,6 +1741,7 @@ class JoinedloadWPolyOfTypeContinued(
             __tablename__ = "users"
 
             id = Column(Integer, primary_key=True)
+            foos = relationship("Foo", back_populates="owner")
 
         class Foo(Base):
             __tablename__ = "foos"
@@ -1746,9 +1750,9 @@ class JoinedloadWPolyOfTypeContinued(
             id = Column(Integer, primary_key=True)
             type = Column(String(10), nullable=False)
             owner_id = Column(Integer, ForeignKey("users.id"))
-            owner = relationship(
-                "User", backref=backref("foos"), cascade="all"
-            )
+            owner = relationship("User", back_populates="foos")
+            bar_id = Column(ForeignKey("bars.id"))
+            bar = relationship("Bar")
 
         class SubFoo(Foo):
             __tablename__ = "foos_sub"
@@ -1756,11 +1760,18 @@ class JoinedloadWPolyOfTypeContinued(
 
             id = Column(Integer, ForeignKey("foos.id"), primary_key=True)
             baz = Column(Integer)
-            bar_id = Column(Integer, ForeignKey("bars.id"))
-            bar = relationship("Bar")
+            sub_bar_id = Column(Integer, ForeignKey("sub_bars.id"))
+            sub_bar = relationship("SubBar")
 
         class Bar(Base):
             __tablename__ = "bars"
+
+            id = Column(Integer, primary_key=True)
+            fred_id = Column(Integer, ForeignKey("freds.id"), nullable=False)
+            fred = relationship("Fred")
+
+        class SubBar(Base):
+            __tablename__ = "sub_bars"
 
             id = Column(Integer, primary_key=True)
             fred_id = Column(Integer, ForeignKey("freds.id"), nullable=False)
@@ -1773,17 +1784,66 @@ class JoinedloadWPolyOfTypeContinued(
 
     @classmethod
     def insert_data(cls):
-        User, Fred, Bar, SubFoo = cls.classes("User", "Fred", "Bar", "SubFoo")
+        User, Fred, SubBar, Bar, SubFoo = cls.classes(
+            "User", "Fred", "SubBar", "Bar", "SubFoo"
+        )
         user = User(id=1)
         fred = Fred(id=1)
         bar = Bar(fred=fred)
-        rectangle = SubFoo(owner=user, baz=10, bar=bar)
+        sub_bar = SubBar(fred=fred)
+        rectangle = SubFoo(owner=user, baz=10, bar=bar, sub_bar=sub_bar)
 
         s = Session()
-        s.add_all([user, fred, bar, rectangle])
+        s.add_all([user, fred, bar, sub_bar, rectangle])
         s.commit()
 
-    def test_joined_load(self):
+    def test_joined_load_lastlink_subclass(self):
+        Foo, User, SubBar = self.classes("Foo", "User", "SubBar")
+
+        s = Session()
+
+        foo_polymorphic = with_polymorphic(Foo, "*", aliased=True)
+
+        foo_load = joinedload(User.foos.of_type(foo_polymorphic))
+        query = s.query(User).options(
+            foo_load.joinedload(foo_polymorphic.SubFoo.sub_bar).joinedload(
+                SubBar.fred
+            )
+        )
+
+        self.assert_compile(
+            query,
+            "SELECT users.id AS users_id, anon_1.foos_id AS anon_1_foos_id, "
+            "anon_1.foos_type AS anon_1_foos_type, anon_1.foos_owner_id "
+            "AS anon_1_foos_owner_id, "
+            "anon_1.foos_bar_id AS anon_1_foos_bar_id, "
+            "freds_1.id AS freds_1_id, sub_bars_1.id "
+            "AS sub_bars_1_id, sub_bars_1.fred_id AS sub_bars_1_fred_id, "
+            "anon_1.foos_sub_id AS anon_1_foos_sub_id, "
+            "anon_1.foos_sub_baz AS anon_1_foos_sub_baz, "
+            "anon_1.foos_sub_sub_bar_id AS anon_1_foos_sub_sub_bar_id "
+            "FROM users LEFT OUTER JOIN "
+            "(SELECT foos.id AS foos_id, foos.type AS foos_type, "
+            "foos.owner_id AS foos_owner_id, foos.bar_id AS foos_bar_id, "
+            "foos_sub.id AS foos_sub_id, "
+            "foos_sub.baz AS foos_sub_baz, "
+            "foos_sub.sub_bar_id AS foos_sub_sub_bar_id "
+            "FROM foos LEFT OUTER JOIN foos_sub ON foos.id = foos_sub.id) "
+            "AS anon_1 ON users.id = anon_1.foos_owner_id "
+            "LEFT OUTER JOIN sub_bars AS sub_bars_1 "
+            "ON sub_bars_1.id = anon_1.foos_sub_sub_bar_id "
+            "LEFT OUTER JOIN freds AS freds_1 "
+            "ON freds_1.id = sub_bars_1.fred_id",
+        )
+
+        def go():
+            user = query.one()
+            user.foos[0].sub_bar
+            user.foos[0].sub_bar.fred
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_joined_load_lastlink_baseclass(self):
         Foo, User, Bar = self.classes("Foo", "User", "Bar")
 
         s = Session()
@@ -1792,28 +1852,31 @@ class JoinedloadWPolyOfTypeContinued(
 
         foo_load = joinedload(User.foos.of_type(foo_polymorphic))
         query = s.query(User).options(
-            foo_load.joinedload(foo_polymorphic.SubFoo.bar).joinedload(
-                Bar.fred
-            )
+            foo_load.joinedload(foo_polymorphic.bar).joinedload(Bar.fred)
         )
 
         self.assert_compile(
             query,
-            "SELECT users.id AS users_id, anon_1.foos_id AS anon_1_foos_id, "
-            "anon_1.foos_type AS anon_1_foos_type, anon_1.foos_owner_id "
-            "AS anon_1_foos_owner_id, freds_1.id AS freds_1_id, bars_1.id "
-            "AS bars_1_id, bars_1.fred_id AS bars_1_fred_id, "
-            "anon_1.foos_sub_id AS anon_1_foos_sub_id, "
-            "anon_1.foos_sub_baz AS anon_1_foos_sub_baz, "
-            "anon_1.foos_sub_bar_id AS anon_1_foos_sub_bar_id "
-            "FROM users LEFT OUTER JOIN "
-            "(SELECT foos.id AS foos_id, foos.type AS foos_type, "
-            "foos.owner_id AS foos_owner_id, foos_sub.id AS foos_sub_id, "
-            "foos_sub.baz AS foos_sub_baz, foos_sub.bar_id AS foos_sub_bar_id "
-            "FROM foos LEFT OUTER JOIN foos_sub ON foos.id = foos_sub.id) "
-            "AS anon_1 ON users.id = anon_1.foos_owner_id "
-            "LEFT OUTER JOIN bars AS bars_1 "
-            "ON bars_1.id = anon_1.foos_sub_bar_id "
+            "SELECT users.id AS users_id, freds_1.id AS freds_1_id, "
+            "bars_1.id AS bars_1_id, "
+            "bars_1.fred_id AS bars_1_fred_id, "
+            "anon_1.foos_id AS anon_1_foos_id, "
+            "anon_1.foos_type AS anon_1_foos_type, anon_1.foos_owner_id AS "
+            "anon_1_foos_owner_id, anon_1.foos_bar_id AS anon_1_foos_bar_id, "
+            "anon_1.foos_sub_id AS anon_1_foos_sub_id, anon_1.foos_sub_baz AS "
+            "anon_1_foos_sub_baz, "
+            "anon_1.foos_sub_sub_bar_id AS anon_1_foos_sub_sub_bar_id "
+            "FROM users LEFT OUTER JOIN (SELECT foos.id AS foos_id, "
+            "foos.type AS foos_type, "
+            "foos.owner_id AS foos_owner_id, foos.bar_id AS foos_bar_id, "
+            "foos_sub.id AS "
+            "foos_sub_id, foos_sub.baz AS foos_sub_baz, "
+            "foos_sub.sub_bar_id AS "
+            "foos_sub_sub_bar_id FROM foos "
+            "LEFT OUTER JOIN foos_sub ON foos.id = "
+            "foos_sub.id) AS anon_1 ON users.id = anon_1.foos_owner_id "
+            "LEFT OUTER JOIN bars "
+            "AS bars_1 ON bars_1.id = anon_1.foos_bar_id "
             "LEFT OUTER JOIN freds AS freds_1 ON freds_1.id = bars_1.fred_id",
         )
 
@@ -1823,6 +1886,70 @@ class JoinedloadWPolyOfTypeContinued(
             user.foos[0].bar.fred
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class ContainsEagerMultipleOfType(
+    fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
+):
+    """test for #5107 """
+
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class X(Base):
+            __tablename__ = "x"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer, ForeignKey("a.id"))
+            a = relationship("A", back_populates="x")
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            b = relationship("B", back_populates="a")
+            kind = Column(String(30))
+            x = relationship("X", back_populates="a")
+            __mapper_args__ = {
+                "polymorphic_identity": "a",
+                "polymorphic_on": kind,
+                "with_polymorphic": "*",
+            }
+
+        class B(A):
+            a_id = Column(Integer, ForeignKey("a.id"))
+            a = relationship(
+                "A", back_populates="b", uselist=False, remote_side=A.id
+            )
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+    def test_contains_eager_multi_alias(self):
+        X, B, A = self.classes("X", "B", "A")
+        s = Session()
+
+        a_b_alias = aliased(B, name="a_b")
+        b_x_alias = aliased(X, name="b_x")
+
+        q = (
+            s.query(A)
+            .outerjoin(A.b.of_type(a_b_alias))
+            .outerjoin(a_b_alias.x.of_type(b_x_alias))
+            .options(
+                contains_eager(A.b.of_type(a_b_alias)).contains_eager(
+                    a_b_alias.x.of_type(b_x_alias)
+                )
+            )
+        )
+        self.assert_compile(
+            q,
+            "SELECT b_x.id AS b_x_id, b_x.a_id AS b_x_a_id, a_b.id AS a_b_id, "
+            "a_b.kind AS a_b_kind, a_b.a_id AS a_b_a_id, a.id AS a_id_1, "
+            "a.kind AS a_kind, a.a_id AS a_a_id FROM a "
+            "LEFT OUTER JOIN a AS a_b ON a.id = a_b.a_id AND a_b.kind IN "
+            "([POSTCOMPILE_kind_1]) LEFT OUTER JOIN x AS b_x "
+            "ON a_b.id = b_x.a_id",
+        )
 
 
 class JoinedloadSinglePolysubSingle(

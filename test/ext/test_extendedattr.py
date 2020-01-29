@@ -109,7 +109,7 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             )
 
             # This proves SA can handle a class with non-string dict keys
-            if not util.pypy and not util.jython:
+            if util.cpython:
                 locals()[42] = 99  # Don't remove this line!
 
             def __init__(self, **kwargs):

@@ -1,4 +1,3 @@
-from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import column
 from sqlalchemy import exc
@@ -8,7 +7,6 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
-from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import table
@@ -18,6 +16,8 @@ from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import default
+from sqlalchemy.sql import operators
+from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -634,12 +634,16 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_where_empty(self):
         table1 = self.tables.mytable
         self.assert_compile(
-            table1.update().where(and_()),
+            table1.update().where(
+                BooleanClauseList._construct_raw(operators.and_)
+            ),
             "UPDATE mytable SET myid=:myid, name=:name, "
             "description=:description",
         )
         self.assert_compile(
-            table1.update().where(or_()),
+            table1.update().where(
+                BooleanClauseList._construct_raw(operators.or_)
+            ),
             "UPDATE mytable SET myid=:myid, name=:name, "
             "description=:description",
         )

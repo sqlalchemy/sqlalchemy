@@ -97,7 +97,6 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.fails_on(
         "firebird", "fb/kintersbasdb can't handle the bind params"
     )
-    @testing.fails_on("oracle+zxjdbc", "JDBC driver bug")
     def test_anon_expressions(self):
         result = (
             table.insert()

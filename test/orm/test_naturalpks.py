@@ -1612,7 +1612,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
         self._test_fk_threelevel(False)
 
     def _test_pk(self, passive_updates):
-        Engineer, = self.classes("Engineer")
+        (Engineer,) = self.classes("Engineer")
         self._mapping_fixture(False, passive_updates)
         sess = sa.orm.sessionmaker()()
 
@@ -1685,7 +1685,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
         )
 
     def _test_pk_threelevel(self, passive_updates):
-        Owner, = self.classes("Owner")
+        (Owner,) = self.classes("Owner")
 
         self._mapping_fixture(True, passive_updates)
 

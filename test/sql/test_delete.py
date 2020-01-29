@@ -15,6 +15,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -77,12 +78,14 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_where_empty(self):
         table1 = self.tables.mytable
 
-        self.assert_compile(
-            table1.delete().where(and_()), "DELETE FROM mytable"
-        )
-        self.assert_compile(
-            table1.delete().where(or_()), "DELETE FROM mytable"
-        )
+        with expect_deprecated():
+            self.assert_compile(
+                table1.delete().where(and_()), "DELETE FROM mytable"
+            )
+        with expect_deprecated():
+            self.assert_compile(
+                table1.delete().where(or_()), "DELETE FROM mytable"
+            )
 
     def test_prefix_with(self):
         table1 = self.tables.mytable

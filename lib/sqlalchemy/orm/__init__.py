@@ -233,12 +233,8 @@ def clear_mappers():
     """
     with mapperlib._CONFIGURE_MUTEX:
         while _mapper_registry:
-            try:
-                # can't even reliably call list(weakdict) in jython
-                mapper, b = _mapper_registry.popitem()
-                mapper.dispose()
-            except KeyError:
-                pass
+            mapper, b = _mapper_registry.popitem()
+            mapper.dispose()
 
 
 joinedload = strategy_options.joinedload._unbound_fn

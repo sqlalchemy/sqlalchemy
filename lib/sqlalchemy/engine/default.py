@@ -31,7 +31,6 @@ from ..sql import expression
 from ..sql import schema
 from ..sql.elements import quoted_name
 
-
 AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)", re.I | re.UNICODE
 )
@@ -214,6 +213,9 @@ class DefaultDialect(interfaces.Dialect):
         supports_native_boolean=None,
         max_identifier_length=None,
         label_length=None,
+        # int() is because the @deprecated_params decorator cannot accommodate
+        # the direct reference to the "NO_LINTING" object
+        compiler_linting=int(compiler.NO_LINTING),
         **kwargs
     ):
 
@@ -249,7 +251,7 @@ class DefaultDialect(interfaces.Dialect):
                 self._user_defined_max_identifier_length
             )
         self.label_length = label_length
-
+        self.compiler_linting = compiler_linting
         if self.description_encoding == "use_encoding":
             self._description_decoder = (
                 processors.to_unicode_processor_factory
@@ -410,9 +412,7 @@ class DefaultDialect(interfaces.Dialect):
             return results == {True}
 
     def _check_unicode_description(self, connection):
-        # all DBAPIs on Py2K return cursor.description as encoded,
-        # until pypy2.1beta2 with sqlite, so let's just check it -
-        # it's likely others will start doing this too in Py2k.
+        # all DBAPIs on Py2K return cursor.description as encoded
 
         if util.py2k and not self.supports_unicode_statements:
             cast_to = util.binary_type

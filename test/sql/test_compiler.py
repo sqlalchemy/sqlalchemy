@@ -70,7 +70,9 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import label
+from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
+from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
 from sqlalchemy.testing import assert_raises
@@ -1393,10 +1395,20 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select([t]).where(
+                and_(or_(or_(t.c.x == 12), and_(or_(and_(t.c.x == 8)))))
+            ),
+            "SELECT t.x FROM t WHERE t.x = :x_1 OR t.x = :x_2",
+        )
+        self.assert_compile(
+            select([t]).where(
                 and_(
                     or_(
                         or_(t.c.x == 12),
-                        and_(or_(), or_(and_(t.c.x == 8)), and_()),
+                        and_(
+                            BooleanClauseList._construct_raw(operators.or_),
+                            or_(and_(t.c.x == 8)),
+                            BooleanClauseList._construct_raw(operators.and_),
+                        ),
                     )
                 )
             ),
@@ -1451,11 +1463,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_where_empty(self):
         self.assert_compile(
-            select([table1.c.myid]).where(and_()),
+            select([table1.c.myid]).where(
+                BooleanClauseList._construct_raw(operators.and_)
+            ),
             "SELECT mytable.myid FROM mytable",
         )
         self.assert_compile(
-            select([table1.c.myid]).where(or_()),
+            select([table1.c.myid]).where(
+                BooleanClauseList._construct_raw(operators.or_)
+            ),
             "SELECT mytable.myid FROM mytable",
         )
 

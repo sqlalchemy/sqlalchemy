@@ -5,6 +5,7 @@ from sqlalchemy import and_
 from sqlalchemy import between
 from sqlalchemy import exc
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal_column
 from sqlalchemy import not_
@@ -41,6 +42,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import true
 from sqlalchemy.sql.elements import BindParameter
+from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.expression import ClauseList
@@ -50,6 +52,7 @@ from sqlalchemy.sql.expression import tuple_
 from sqlalchemy.sql.expression import UnaryExpression
 from sqlalchemy.sql.expression import union
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -988,6 +991,42 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             or_(false(), true()), "1 = 1", dialect=self._dialect(False)
         )
 
+    def test_seven_a(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=true()),
+            "t1 JOIN t2 ON 1 = 1",
+            dialect=self._dialect(False),
+        )
+
+    def test_seven_b(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=false()),
+            "t1 JOIN t2 ON 0 = 1",
+            dialect=self._dialect(False),
+        )
+
+    def test_seven_c(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=true()),
+            "t1 JOIN t2 ON true",
+            dialect=self._dialect(True),
+        )
+
+    def test_seven_d(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        self.assert_compile(
+            join(t1, t2, onclause=false()),
+            "t1 JOIN t2 ON false",
+            dialect=self._dialect(True),
+        )
+
     def test_eight(self):
         self.assert_compile(
             and_(false(), true()), "false", dialect=self._dialect(True)
@@ -1025,14 +1064,67 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)
 
-    def test_one(self):
+    def test_single_bool_one(self):
         self.assert_compile(~and_(true()), "false")
 
-    def test_two(self):
+    def test_single_bool_two(self):
+        self.assert_compile(~and_(True), "false")
+
+    def test_single_bool_three(self):
         self.assert_compile(or_(~and_(true())), "false")
 
-    def test_three(self):
-        self.assert_compile(or_(and_()), "")
+    def test_single_bool_four(self):
+        self.assert_compile(~or_(false()), "true")
+
+    def test_single_bool_five(self):
+        self.assert_compile(~or_(False), "true")
+
+    def test_single_bool_six(self):
+        self.assert_compile(and_(~or_(false())), "true")
+
+    def test_single_bool_seven(self):
+        self.assert_compile(and_(True), "true")
+
+    def test_single_bool_eight(self):
+        self.assert_compile(or_(False), "false")
+
+    def test_single_bool_nine(self):
+        self.assert_compile(
+            and_(True),
+            "1 = 1",
+            dialect=default.DefaultDialect(supports_native_boolean=False),
+        )
+
+    def test_single_bool_ten(self):
+        self.assert_compile(
+            or_(False),
+            "0 = 1",
+            dialect=default.DefaultDialect(supports_native_boolean=False),
+        )
+
+    @combinations((and_, "and_", "True"), (or_, "or_", "False"))
+    def test_empty_clauses(self, op, str_op, str_continue):
+        # these warning classes will change to ArgumentError when the
+        # deprecated behavior is disabled
+        assert_raises_message(
+            exc.SADeprecationWarning,
+            r"Invoking %(str_op)s\(\) without arguments is deprecated, and "
+            r"will be disallowed in a future release.   For an empty "
+            r"%(str_op)s\(\) construct, use "
+            r"%(str_op)s\(%(str_continue)s, \*args\)\."
+            % {"str_op": str_op, "str_continue": str_continue},
+            op,
+        )
+
+    def test_empty_and_raw(self):
+        self.assert_compile(
+            BooleanClauseList._construct_raw(operators.and_), ""
+        )
+
+    def test_empty_or_raw(self):
+        self.assert_compile(
+            BooleanClauseList._construct_raw(operators.and_), ""
+        )
 
     def test_four(self):
         x = column("x")

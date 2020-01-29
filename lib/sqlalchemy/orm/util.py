@@ -606,7 +606,7 @@ class AliasedInsp(sql_base.HasCacheKey, InspectionAttr):
                         selectable,
                         base_alias=self,
                         adapt_on_names=adapt_on_names,
-                        use_mapper_path=True,
+                        use_mapper_path=_use_mapper_path,
                     )
 
                     setattr(self.entity, poly.class_.__name__, ent)

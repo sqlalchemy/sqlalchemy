@@ -12,6 +12,7 @@
 
 import re
 
+from . import events  # noqa
 from .elements import _defer_name
 from .elements import _defer_none_name
 from .elements import conv
@@ -24,7 +25,6 @@ from .schema import PrimaryKeyConstraint
 from .schema import Table
 from .schema import UniqueConstraint
 from .. import event
-from .. import events  # noqa
 from .. import exc
 
 

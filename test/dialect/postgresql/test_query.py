@@ -751,7 +751,6 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata.drop_all()
 
     @testing.fails_on("postgresql+pg8000", "uses positional")
-    @testing.fails_on("postgresql+zxjdbc", "uses qmark")
     def test_expression_pyformat(self):
         self.assert_compile(
             matchtable.c.title.match("somstr"),
@@ -761,7 +760,6 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.fails_on("postgresql+psycopg2", "uses pyformat")
     @testing.fails_on("postgresql+pypostgresql", "uses pyformat")
     @testing.fails_on("postgresql+pygresql", "uses pyformat")
-    @testing.fails_on("postgresql+zxjdbc", "uses qmark")
     @testing.fails_on("postgresql+psycopg2cffi", "uses pyformat")
     def test_expression_positional(self):
         self.assert_compile(

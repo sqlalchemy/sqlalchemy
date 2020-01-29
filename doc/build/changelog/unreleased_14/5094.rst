@@ -1,0 +1,14 @@
+.. change::
+    :tags: change, platform
+    :tickets: 5094
+
+    Removed all dialect code related to support for Jython and zxJDBC. Jython
+    has not been supported by SQLAlchemy for many years and it is not expected
+    that the current zxJDBC code is at all functional; for the moment it just
+    takes up space and adds confusion by showing up in documentation. At the
+    moment, it appears that Jython has achieved Python 2.7 support in its
+    releases but not Python 3.   If Jython were to be supported again, the form
+    it should take is against the Python 3 version of Jython, and the various
+    zxJDBC stubs for various backends should be implemented as a third party
+    dialect.
+

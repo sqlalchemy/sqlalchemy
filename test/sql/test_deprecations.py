@@ -1,6 +1,7 @@
 #! coding: utf-8
 
 from sqlalchemy import alias
+from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import CHAR
 from sqlalchemy import column
@@ -14,6 +15,7 @@ from sqlalchemy import join
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import null
+from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import String
@@ -42,7 +44,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class DeprecationWarningsTest(fixtures.TestBase):
+class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
     __backend__ = True
 
     def test_ident_preparer_force(self):
@@ -121,6 +123,14 @@ class DeprecationWarningsTest(fixtures.TestBase):
             "will be removed in a future release."
         ):
             select([column("x")], for_update=True)
+
+    def test_empty_and_or(self):
+        with testing.expect_deprecated(
+            r"Invoking and_\(\) without arguments is deprecated, and "
+            r"will be disallowed in a future release.   For an empty "
+            r"and_\(\) construct, use and_\(True, \*args\)"
+        ):
+            self.assert_compile(or_(and_()), "")
 
 
 class ConvertUnicodeDeprecationTest(fixtures.TestBase):
