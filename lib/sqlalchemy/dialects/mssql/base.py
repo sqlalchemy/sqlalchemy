@@ -2472,7 +2472,7 @@ class MSDialect(default.DefaultDialect):
                 self.server_version_info >= MS_2012_VERSION
             )
 
-        self._supports_offset_fetch = (self.server_version_info and self.server_version_info[0] >= 12)
+        self._supports_offset_fetch = (self.server_version_info and self.server_version_info[0] >= 11)
 
     def _get_default_schema_name(self, connection):
         if self.server_version_info < MS_2005_VERSION:
