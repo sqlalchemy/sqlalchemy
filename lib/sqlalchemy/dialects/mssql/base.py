@@ -1660,10 +1660,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 )
 
             text = ""
+
             if select._offset_clause is not None:
-                text += "\n OFFSET %s ROWS" % self.process(
-                    select._offset_clause, **kw
-                )
+                offset_str = self.process(select._offset_clause, **kw)
+            else:
+                offset_str = '0'
+            text += "\n OFFSET %s ROWS" % offset_str
+
             if select._limit_clause is not None:
                 text += "\n FETCH NEXT %s ROWS ONLY " % self.process(
                     select._limit_clause, **kw
