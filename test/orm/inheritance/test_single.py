@@ -1,3 +1,4 @@
+from sqlalchemy import and_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -76,9 +77,22 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         class JuniorEngineer(Engineer):
             pass
 
+        class Report(cls.Comparable):
+            pass
+
     @classmethod
     def setup_mappers(cls):
-        Employee, Manager, JuniorEngineer, employees, Engineer = (
+        (
+            Report,
+            reports,
+            Employee,
+            Manager,
+            JuniorEngineer,
+            employees,
+            Engineer,
+        ) = (
+            cls.classes.Report,
+            cls.tables.reports,
             cls.classes.Employee,
             cls.classes.Manager,
             cls.classes.JuniorEngineer,
@@ -86,7 +100,17 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             cls.classes.Engineer,
         )
 
-        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(
+            Report, reports, properties={"employee": relationship(Employee)}
+        )
+        mapper(
+            Employee,
+            employees,
+            polymorphic_on=employees.c.type,
+            properties={
+                "reports": relationship(Report, back_populates="employee")
+            },
+        )
         mapper(Manager, inherits=Employee, polymorphic_identity="manager")
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
         mapper(
@@ -394,11 +418,66 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         sess.add_all([m1, m2, e1, e2])
         sess.flush()
 
+        # note test_basic -> UnexpectedPolymorphicIdentityTest as well
         eq_(
             sess.query(Manager)
-            .select_entity_from(employees.select().limit(10).subquery())
+            .select_entity_from(
+                employees.select()
+                .where(employees.c.type == "manager")
+                .order_by(employees.c.employee_id)
+                .limit(10)
+                .subquery()
+            )
             .all(),
             [m1, m2],
+        )
+
+    def test_select_from_subquery_with_composed_union(self):
+        Report, reports, Manager, JuniorEngineer, employees, Engineer = (
+            self.classes.Report,
+            self.tables.reports,
+            self.classes.Manager,
+            self.classes.JuniorEngineer,
+            self.tables.employees,
+            self.classes.Engineer,
+        )
+
+        sess = create_session()
+        r1, r2, r3, r4 = (
+            Report(name="r1"),
+            Report(name="r2"),
+            Report(name="r3"),
+            Report(name="r4"),
+        )
+        m1 = Manager(name="manager1", manager_data="data1", reports=[r1])
+        m2 = Manager(name="manager2", manager_data="data2", reports=[r2])
+        e1 = Engineer(name="engineer1", engineer_info="einfo1", reports=[r3])
+        e2 = JuniorEngineer(
+            name="engineer2", engineer_info="einfo2", reports=[r4]
+        )
+        sess.add_all([m1, m2, e1, e2])
+        sess.flush()
+
+        stmt = (
+            select([reports, employees])
+            .select_from(
+                reports.outerjoin(
+                    employees,
+                    and_(
+                        employees.c.employee_id == reports.c.employee_id,
+                        employees.c.type == "manager",
+                    ),
+                )
+            )
+            .apply_labels()
+            .subquery()
+        )
+        eq_(
+            sess.query(Report, Manager)
+            .select_entity_from(stmt)
+            .order_by(Report.name)
+            .all(),
+            [(r1, m1), (r2, m2), (r3, None), (r4, None)],
         )
 
     def test_count(self):
@@ -437,21 +516,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         )
 
     def test_type_filtering(self):
-        Employee, Manager, reports, Engineer = (
-            self.classes.Employee,
+        Report, Manager, Engineer = (
+            self.classes.Report,
             self.classes.Manager,
-            self.tables.reports,
             self.classes.Engineer,
         )
 
-        class Report(fixtures.ComparableEntity):
-            pass
-
-        mapper(
-            Report,
-            reports,
-            properties={"employee": relationship(Employee, backref="reports")},
-        )
         sess = create_session()
 
         m1 = Manager(name="Tom", manager_data="data1")
@@ -468,21 +538,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         )
 
     def test_type_joins(self):
-        Employee, Manager, reports, Engineer = (
-            self.classes.Employee,
+        Report, Manager, Engineer = (
+            self.classes.Report,
             self.classes.Manager,
-            self.tables.reports,
             self.classes.Engineer,
         )
 
-        class Report(fixtures.ComparableEntity):
-            pass
-
-        mapper(
-            Report,
-            reports,
-            properties={"employee": relationship(Employee, backref="reports")},
-        )
         sess = create_session()
 
         m1 = Manager(name="Tom", manager_data="data1")
