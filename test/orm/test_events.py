@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import event
+from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -8,6 +9,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events
 from sqlalchemy.orm import EXT_SKIP
 from sqlalchemy.orm import instrumentation
@@ -22,6 +24,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not_
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -633,6 +636,98 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             return EXT_SKIP
 
         probe()
+
+
+class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.DeclarativeBasic):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            unloaded = deferred(Column(String(50)))
+            bs = relationship("B", lazy="joined")
+
+        class B(cls.DeclarativeBasic):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+    @classmethod
+    def insert_data(cls):
+        A, B = cls.classes("A", "B")
+        s = Session(testing.db)
+        s.add(A(bs=[B(), B(), B()]))
+        s.commit()
+
+    def _combinations(fn):
+        return testing.combinations(
+            (lambda A: A, "load", lambda instance, context: instance.unloaded),
+            (
+                lambda A: A,
+                "refresh",
+                lambda instance, context, attrs: instance.unloaded,
+            ),
+            (
+                lambda session: session,
+                "loaded_as_persistent",
+                lambda session, instance: instance.unloaded
+                if instance.__class__.__name__ == "A"
+                else None,
+            ),
+            argnames="target, event_name, fn",
+        )(fn)
+
+    def teardown(self):
+        A = self.classes.A
+        A._sa_class_manager.dispatch._clear()
+
+    @_combinations
+    def test_warning(self, target, event_name, fn):
+        A = self.classes.A
+        s = Session()
+        target = testing.util.resolve_lambda(target, A=A, session=s)
+        event.listen(target, event_name, fn)
+
+        with expect_warnings(
+            r"Loading context for \<A at .*\> has changed within a "
+            r"load/refresh handler, suggesting a row refresh operation "
+            r"took place. "
+            r"If this event handler is expected to be emitting row refresh "
+            r"operations within an existing load or refresh operation, set "
+            r"restore_load_context=True when establishing the listener to "
+            r"ensure the context remains unchanged when the event handler "
+            r"completes."
+        ):
+            a1 = s.query(A).all()[0]
+            if event_name == "refresh":
+                s.refresh(a1)
+        # joined eager load didn't continue
+        eq_(len(a1.bs), 1)
+
+    @_combinations
+    def test_flag_resolves_existing(self, target, event_name, fn):
+        A = self.classes.A
+        s = Session()
+        target = testing.util.resolve_lambda(target, A=A, session=s)
+
+        a1 = s.query(A).all()[0]
+
+        s.expire(a1)
+        event.listen(target, event_name, fn, restore_load_context=True)
+        s.query(A).all()
+
+    @_combinations
+    def test_flag_resolves(self, target, event_name, fn):
+        A = self.classes.A
+        s = Session()
+        target = testing.util.resolve_lambda(target, A=A, session=s)
+        event.listen(target, event_name, fn, restore_load_context=True)
+
+        a1 = s.query(A).all()[0]
+        if event_name == "refresh":
+            s.refresh(a1)
+        # joined eager load continued
+        eq_(len(a1.bs), 3)
 
 
 class DeclarativeEventListenTest(
