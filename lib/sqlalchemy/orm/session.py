@@ -1913,7 +1913,7 @@ class Session(_SessionClassMethods):
 
         if pending_to_persistent is not None:
             for state in states.intersection(self._new):
-                pending_to_persistent(self, state.obj())
+                pending_to_persistent(self, state)
 
         # remove from new last, might be the last strong ref
         for state in set(states).intersection(self._new):
@@ -1936,7 +1936,7 @@ class Session(_SessionClassMethods):
             if persistent_to_deleted is not None:
                 # get a strong reference before we pop out of
                 # self._deleted
-                obj = state.obj()
+                obj = state.obj()  # noqa
 
             self.identity_map.safe_discard(state)
             self._deleted.pop(state, None)
@@ -1945,7 +1945,7 @@ class Session(_SessionClassMethods):
             # is still in the transaction snapshot and needs to be
             # tracked as part of that
             if persistent_to_deleted is not None:
-                persistent_to_deleted(self, obj)
+                persistent_to_deleted(self, state)
 
     def add(self, instance, _warn=True):
         """Place an object in the ``Session``.
@@ -2322,7 +2322,7 @@ class Session(_SessionClassMethods):
         if to_attach:
             self._after_attach(state, obj)
         elif revert_deletion:
-            self.dispatch.deleted_to_persistent(self, obj)
+            self.dispatch.deleted_to_persistent(self, state)
 
     def _save_or_update_impl(self, state):
         if state.key is None:
@@ -2402,7 +2402,7 @@ class Session(_SessionClassMethods):
                 % (state_str(state), state.session_id, self.hash_key)
             )
 
-        self.dispatch.before_attach(self, obj)
+        self.dispatch.before_attach(self, state)
 
         return True
 
@@ -2410,12 +2410,12 @@ class Session(_SessionClassMethods):
         state.session_id = self.hash_key
         if state.modified and state._strong_obj is None:
             state._strong_obj = obj
-        self.dispatch.after_attach(self, obj)
+        self.dispatch.after_attach(self, state)
 
         if state.key:
-            self.dispatch.detached_to_persistent(self, obj)
+            self.dispatch.detached_to_persistent(self, state)
         else:
-            self.dispatch.transient_to_pending(self, obj)
+            self.dispatch.transient_to_pending(self, state)
 
     def __contains__(self, instance):
         """Return True if the instance is associated with this session.

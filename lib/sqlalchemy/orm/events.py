@@ -161,6 +161,16 @@ class InstanceEvents(event.Events):
        to applicable event listener functions will be the
        instance's :class:`.InstanceState` management
        object, rather than the mapped instance itself.
+    :param restore_load_context=False: Applies to the
+       :meth:`.InstanceEvents.load` and :meth:`.InstanceEvents.refresh`
+       events.  Restores the loader context of the object when the event
+       hook is complete, so that ongoing eager load operations continue
+       to target the object appropriately.  A warning is emitted if the
+       object is moved to a new loader context from within one of these
+       events if this flag is not set.
+
+       .. versionadded:: 1.3.14
+
 
     """
 
@@ -193,13 +203,30 @@ class InstanceEvents(event.Events):
         return None
 
     @classmethod
-    def _listen(cls, event_key, raw=False, propagate=False, **kw):
+    def _listen(
+        cls,
+        event_key,
+        raw=False,
+        propagate=False,
+        restore_load_context=False,
+        **kw
+    ):
         target, fn = (event_key.dispatch_target, event_key._listen_fn)
 
-        if not raw:
+        if not raw or restore_load_context:
 
             def wrap(state, *arg, **kw):
-                return fn(state.obj(), *arg, **kw)
+                if not raw:
+                    target = state.obj()
+                else:
+                    target = state
+                if restore_load_context:
+                    runid = state.runid
+                try:
+                    return fn(target, *arg, **kw)
+                finally:
+                    if restore_load_context:
+                        state.runid = runid
 
             event_key = event_key.with_wrapper(wrap)
 
@@ -297,10 +324,47 @@ class InstanceEvents(event.Events):
         incoming result rows, and is only called once for that
         instance's lifetime.
 
-        Note that during a result-row load, this method is called upon
-        the first row received for this instance.  Note that some
-        attributes and collections may or may not be loaded or even
-        initialized, depending on what's present in the result rows.
+        .. warning::
+
+            During a result-row load, this event is invoked when the
+            first row received for this instance is processed.  When using
+            eager loading with collection-oriented attributes, the additional
+            rows that are to be loaded / processed in order to load subsequent
+            collection items have not occurred yet.   This has the effect
+            both that collections will not be fully loaded, as well as that
+            if an operation occurs within this event handler that emits
+            another database load operation for the object, the "loading
+            context" for the object can change and interfere with the
+            existing eager loaders still in progress.
+
+            Examples of what can cause the "loading context" to change within
+            the event handler include, but are not necessarily limited to:
+
+            * accessing deferred attributes that weren't part of the row,
+              will trigger an "undefer" operation and refresh the object
+
+            * accessing attributes on a joined-inheritance subclass that
+              weren't part of the row, will trigger a refresh operation.
+
+            As of SQLAlchemy 1.3.14, a warning is emitted when this occurs. The
+            :paramref:`.InstanceEvents.restore_load_context` option may  be
+            used on the event to prevent this warning; this will ensure that
+            the existing loading context is maintained for the object after the
+            event is called::
+
+                @event.listens_for(
+                    SomeClass, "load", restore_load_context=True)
+                def on_load(instance, context):
+                    instance.some_unloaded_attribute
+
+            .. versionchanged:: 1.3.14 Added
+               :paramref:`.InstanceEvents.restore_load_context`
+               and :paramref:`.SessionEvents.restore_load_context` flags which
+               apply to "on load" events, which will ensure that the loading
+               context for an object is restored when the event hook is
+               complete; a warning is emitted if the load context of the object
+               changes without this flag being set.
+
 
         The :meth:`.InstanceEvents.load` event is also available in a
         class-method decorator format called :func:`.orm.reconstructor`.
@@ -332,6 +396,15 @@ class InstanceEvents(event.Events):
 
         Contrast this to the :meth:`.InstanceEvents.load` method, which
         is invoked when the object is first loaded from a query.
+
+        .. note:: This event is invoked within the loader process before
+           eager loaders may have been completed, and the object's state may
+           not be complete.  Additionally, invoking row-level refresh
+           operations on the object will place the object into a new loader
+           context, interfering with the existing load context.   See the note
+           on :meth:`.InstanceEvents.load` for background on making use of the
+           :paramref:`.InstanceEvents.restore_load_context` parameter, in
+           order to resolve this scenario.
 
         :param target: the mapped instance.  If
          the event is configured with ``raw=True``, this will
@@ -1210,6 +1283,9 @@ class _MapperEventsHold(_EventsHold):
     dispatch = event.dispatcher(HoldMapperEvents)
 
 
+_sessionevents_lifecycle_event_names = set()
+
+
 class SessionEvents(event.Events):
     """Define events specific to :class:`.Session` lifecycle.
 
@@ -1233,11 +1309,31 @@ class SessionEvents(event.Events):
     will apply listeners to all :class:`.Session` instances
     globally.
 
+    :param raw=False: When True, the "target" argument passed
+       to applicable event listener functions that work on individual
+       objects will be the instance's :class:`.InstanceState` management
+       object, rather than the mapped instance itself.
+
+       .. versionadded:: 1.3.14
+
+    :param restore_load_context=False: Applies to the
+       :meth:`.SessionEvents.loaded_as_persistent` event.  Restores the loader
+       context of the object when the event hook is complete, so that ongoing
+       eager load operations continue to target the object appropriately.  A
+       warning is emitted if the object is moved to a new loader context from
+       within this event if this flag is not set.
+
+       .. versionadded:: 1.3.14
+
     """
 
     _target_class_doc = "SomeSessionOrFactory"
 
     _dispatch_target = Session
+
+    def _lifecycle_event(fn):
+        _sessionevents_lifecycle_event_names.add(fn.__name__)
+        return fn
 
     @classmethod
     def _accept_with(cls, target):
@@ -1264,6 +1360,38 @@ class SessionEvents(event.Events):
             return target
         else:
             return None
+
+    @classmethod
+    def _listen(cls, event_key, raw=False, restore_load_context=False, **kw):
+        is_instance_event = (
+            event_key.identifier in _sessionevents_lifecycle_event_names
+        )
+
+        if is_instance_event:
+            if not raw or restore_load_context:
+
+                fn = event_key._listen_fn
+
+                def wrap(session, state, *arg, **kw):
+                    if not raw:
+                        target = state.obj()
+                        if target is None:
+                            # existing behavior is that if the object is
+                            # garbage collected, no event is emitted
+                            return
+                    else:
+                        target = state
+                    if restore_load_context:
+                        runid = state.runid
+                    try:
+                        return fn(session, target, *arg, **kw)
+                    finally:
+                        if restore_load_context:
+                            state.runid = runid
+
+                event_key = event_key.with_wrapper(wrap)
+
+        event_key.base_listen(**kw)
 
     def after_transaction_create(self, session, transaction):
         """Execute when a new :class:`.SessionTransaction` is created.
@@ -1549,6 +1677,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def before_attach(self, session, instance):
         """Execute before an instance is attached to a session.
 
@@ -1563,6 +1692,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def after_attach(self, session, instance):
         """Execute after an instance is attached to a session.
 
@@ -1657,6 +1787,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def transient_to_pending(self, session, instance):
         """Intercept the "transient to pending" transition for a specific object.
 
@@ -1677,6 +1808,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def pending_to_transient(self, session, instance):
         """Intercept the "pending to transient" transition for a specific object.
 
@@ -1697,6 +1829,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def persistent_to_transient(self, session, instance):
         """Intercept the "persistent to transient" transition for a specific object.
 
@@ -1716,6 +1849,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def pending_to_persistent(self, session, instance):
         """Intercept the "pending to persistent"" transition for a specific object.
 
@@ -1737,6 +1871,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def detached_to_persistent(self, session, instance):
         """Intercept the "detached to persistent" transition for a specific object.
 
@@ -1772,6 +1907,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def loaded_as_persistent(self, session, instance):
         """Intercept the "loaded as persistent" transition for a specific object.
 
@@ -1783,6 +1919,16 @@ class SessionEvents(event.Events):
         is guaranteed to be present in the session's identity map when
         this event is called.
 
+        .. note:: This event is invoked within the loader process before
+           eager loaders may have been completed, and the object's state may
+           not be complete.  Additionally, invoking row-level refresh
+           operations on the object will place the object into a new loader
+           context, interfering with the existing load context.   See the note
+           on :meth:`.InstanceEvents.load` for background on making use of the
+           :paramref:`.SessionEvents.restore_load_context` parameter, which
+           works in the same manner as that of
+           :paramref:`.InstanceEvents.restore_load_context`, in  order to
+           resolve this scenario.
 
         :param session: target :class:`.Session`
 
@@ -1796,6 +1942,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def persistent_to_deleted(self, session, instance):
         """Intercept the "persistent to deleted" transition for a specific object.
 
@@ -1827,6 +1974,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def deleted_to_persistent(self, session, instance):
         """Intercept the "deleted to persistent" transition for a specific object.
 
@@ -1843,6 +1991,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def deleted_to_detached(self, session, instance):
         """Intercept the "deleted to detached" transition for a specific object.
 
@@ -1865,6 +2014,7 @@ class SessionEvents(event.Events):
 
         """
 
+    @_lifecycle_event
     def persistent_to_detached(self, session, instance):
         """Intercept the "persistent to detached" transition for a specific object.
 

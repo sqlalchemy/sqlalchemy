@@ -348,21 +348,13 @@ class InstanceState(interfaces.InspectionAttrInfo):
             if persistent:
                 if to_transient:
                     if persistent_to_transient is not None:
-                        obj = state.obj()
-                        if obj is not None:
-                            persistent_to_transient(session, obj)
+                        persistent_to_transient(session, state)
                 elif persistent_to_detached is not None:
-                    obj = state.obj()
-                    if obj is not None:
-                        persistent_to_detached(session, obj)
+                    persistent_to_detached(session, state)
             elif deleted and deleted_to_detached is not None:
-                obj = state.obj()
-                if obj is not None:
-                    deleted_to_detached(session, obj)
+                deleted_to_detached(session, state)
             elif pending and pending_to_transient is not None:
-                obj = state.obj()
-                if obj is not None:
-                    pending_to_transient(session, obj)
+                pending_to_transient(session, state)
 
             state._strong_obj = None
 

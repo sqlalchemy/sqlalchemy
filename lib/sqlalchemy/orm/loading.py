@@ -336,6 +336,18 @@ def _setup_entity_query(
         column_collection.append(pd)
 
 
+def _warn_for_runid_changed(state):
+    util.warn(
+        "Loading context for %s has changed within a load/refresh "
+        "handler, suggesting a row refresh operation took place. If this "
+        "event handler is expected to be "
+        "emitting row refresh operations within an existing load or refresh "
+        "operation, set restore_load_context=True when establishing the "
+        "listener to ensure the context remains unchanged when the event "
+        "handler completes." % (state_str(state),)
+    )
+
+
 def _instance_processor(
     mapper,
     context,
@@ -575,15 +587,28 @@ def _instance_processor(
             )
 
             if isnew:
+                # state.runid should be equal to context.runid / runid
+                # here, however for event checks we are being more conservative
+                # and checking against existing run id
+                # assert state.runid == runid
+
+                existing_runid = state.runid
+
                 if loaded_instance:
                     if load_evt:
                         state.manager.dispatch.load(state, context)
+                        if state.runid != existing_runid:
+                            _warn_for_runid_changed(state)
                     if persistent_evt:
-                        loaded_as_persistent(context.session, state.obj())
+                        loaded_as_persistent(context.session, state)
+                        if state.runid != existing_runid:
+                            _warn_for_runid_changed(state)
                 elif refresh_evt:
                     state.manager.dispatch.refresh(
                         state, context, only_load_props
                     )
+                    if state.runid != runid:
+                        _warn_for_runid_changed(state)
 
                 if populate_existing or state.modified:
                     if refresh_state and only_load_props:
@@ -619,7 +644,10 @@ def _instance_processor(
 
                 if isnew:
                     if refresh_evt:
+                        existing_runid = state.runid
                         state.manager.dispatch.refresh(state, context, to_load)
+                        if state.runid != existing_runid:
+                            _warn_for_runid_changed(state)
 
                     state._commit(dict_, to_load)
 
