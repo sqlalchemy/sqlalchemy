@@ -1641,15 +1641,15 @@ class MSSQLCompiler(compiler.SQLCompiler):
         """
 
         if self.dialect._supports_offset_fetch and (
-                (
-                        not select._simple_int_limit
-                        and select._limit_clause is not None
-                )
-                or (
-                        select._offset_clause is not None
-                        and not select._simple_int_offset
-                        or select._offset
-                )
+            (
+                not select._simple_int_limit
+                and select._limit_clause is not None
+            )
+            or (
+                select._offset_clause is not None
+                and not select._simple_int_offset
+                or select._offset
+            )
         ):
             # OFFSET are FETCH are options of the ORDER BY clause
             if not select._order_by_clause.clauses:
@@ -2475,7 +2475,8 @@ class MSDialect(default.DefaultDialect):
                 self.server_version_info >= MS_2012_VERSION
             )
 
-        self._supports_offset_fetch = (self.server_version_info and self.server_version_info[0] >= 11)
+        self._supports_offset_fetch = (
+            self.server_version_info and self.server_version_info[0] >= 11)
 
     def _get_default_schema_name(self, connection):
         if self.server_version_info < MS_2005_VERSION:
