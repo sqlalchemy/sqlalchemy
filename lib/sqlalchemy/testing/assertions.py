@@ -13,13 +13,12 @@ import warnings
 
 from . import assertsql
 from . import config
+from . import engines
 from . import mock
-from . import util as testutil
 from .exclusions import db_spec
 from .util import fail
 from .. import exc as sa_exc
 from .. import orm
-from .. import pool
 from .. import schema
 from .. import types as sqltypes
 from .. import util
@@ -183,49 +182,8 @@ def global_cleanup_assertions():
     _assert_no_stray_pool_connections()
 
 
-_STRAY_CONNECTION_FAILURES = 0
-
-
 def _assert_no_stray_pool_connections():
-    global _STRAY_CONNECTION_FAILURES
-
-    # lazy gc on cPython means "do nothing."  pool connections
-    # shouldn't be in cycles, should go away.
-    testutil.lazy_gc()
-
-    # however, once in awhile, on an EC2 machine usually,
-    # there's a ref in there.  usually just one.
-    if pool._refs:
-
-        # OK, let's be somewhat forgiving.
-        _STRAY_CONNECTION_FAILURES += 1
-
-        print(
-            "Encountered a stray connection in test cleanup: %s"
-            % str(pool._refs)
-        )
-        # then do a real GC sweep.   We shouldn't even be here
-        # so a single sweep should really be doing it, otherwise
-        # there's probably a real unreachable cycle somewhere.
-        testutil.gc_collect()
-
-    # if we've already had two of these occurrences, or
-    # after a hard gc sweep we still have pool._refs?!
-    # now we have to raise.
-    if pool._refs:
-        err = str(pool._refs)
-
-        # but clean out the pool refs collection directly,
-        # reset the counter,
-        # so the error doesn't at least keep happening.
-        pool._refs.clear()
-        _STRAY_CONNECTION_FAILURES = 0
-        warnings.warn(
-            "Stray connection refused to leave " "after gc.collect(): %s" % err
-        )
-    elif _STRAY_CONNECTION_FAILURES > 10:
-        assert False, "Encountered more than 10 stray connections"
-        _STRAY_CONNECTION_FAILURES = 0
+    engines.testing_reaper.assert_all_closed()
 
 
 def eq_regex(a, b, msg=None):

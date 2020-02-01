@@ -21,7 +21,6 @@ from . import events  # noqa
 from .base import _ConnectionFairy  # noqa
 from .base import _ConnectionRecord  # noqa
 from .base import _finalize_fairy  # noqa
-from .base import _refs  # noqa
 from .base import Pool
 from .base import reset_commit
 from .base import reset_none

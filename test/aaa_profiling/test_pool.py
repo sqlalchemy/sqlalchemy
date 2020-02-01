@@ -1,4 +1,3 @@
-from sqlalchemy import pool as pool_module
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import fixtures
@@ -17,13 +16,6 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
 
         def close(self):
             pass
-
-    def teardown(self):
-        # the tests leave some fake connections
-        # around which don't necessarily
-        # get gc'ed as quickly as we'd like all the time,
-        # particularly for non-refcount gc
-        pool_module._refs.clear()
 
     def setup(self):
         # create a throwaway pool which

@@ -725,6 +725,8 @@ class QueuePoolTest(PoolTestBase):
 
     def _do_testqueuepool(self, useclose=False):
         p = self._queuepool_fixture(pool_size=3, max_overflow=-1)
+        reaper = testing.engines.ConnectionKiller()
+        reaper.add_pool(p)
 
         def status(pool):
             return (
@@ -772,8 +774,8 @@ class QueuePoolTest(PoolTestBase):
             lazy_gc()
         self.assert_(status(p) == (3, 2, 0, 1))
         c1.close()
-        lazy_gc()
-        assert not pool._refs
+
+        reaper.assert_all_closed()
 
     def test_timeout_accessor(self):
         expected_timeout = 123
@@ -837,7 +839,7 @@ class QueuePoolTest(PoolTestBase):
             assert t < 14, "Not all timeouts were < 14 seconds %r" % timeouts
 
     def _test_overflow(self, thread_count, max_overflow):
-        gc_collect()
+        reaper = testing.engines.ConnectionKiller()
 
         dbapi = MockDBAPI()
         mutex = threading.Lock()
@@ -850,6 +852,7 @@ class QueuePoolTest(PoolTestBase):
         p = pool.QueuePool(
             creator=creator, pool_size=3, timeout=2, max_overflow=max_overflow
         )
+        reaper.add_pool(p)
         peaks = []
 
         def whammy():
@@ -873,8 +876,7 @@ class QueuePoolTest(PoolTestBase):
 
         self.assert_(max(peaks) <= max_overflow)
 
-        lazy_gc()
-        assert not pool._refs
+        reaper.assert_all_closed()
 
     def test_overflow_reset_on_failed_connect(self):
         dbapi = Mock()

@@ -425,7 +425,6 @@ class _ConnectionRecord(object):
             lambda ref: _finalize_fairy
             and _finalize_fairy(None, rec, pool, ref, echo),
         )
-        _refs.add(rec)
         if echo:
             pool.logger.debug(
                 "Connection %r checked out from pool", dbapi_connection
@@ -594,7 +593,6 @@ def _finalize_fairy(
     been garbage collected.
 
     """
-    _refs.discard(connection_record)
 
     if ref is not None:
         if connection_record.fairy_ref is not ref:
@@ -631,9 +629,6 @@ def _finalize_fairy(
 
     if connection_record and connection_record.fairy_ref is not None:
         connection_record.checkin()
-
-
-_refs = set()
 
 
 class _ConnectionFairy(object):
@@ -918,7 +913,6 @@ class _ConnectionFairy(object):
 
         if self._connection_record is not None:
             rec = self._connection_record
-            _refs.remove(rec)
             rec.fairy_ref = None
             rec.connection = None
             # TODO: should this be _return_conn?

@@ -12,7 +12,6 @@ import warnings
 import weakref
 
 from . import config
-from . import uses_deprecated
 from .util import decorator
 from .. import event
 from .. import pool
@@ -24,7 +23,13 @@ class ConnectionKiller(object):
         self.testing_engines = weakref.WeakKeyDictionary()
         self.conns = set()
 
+    def add_pool(self, pool):
+        event.listen(pool, "connect", self.connect)
+        event.listen(pool, "checkout", self.checkout)
+        event.listen(pool, "invalidate", self.invalidate)
+
     def add_engine(self, engine):
+        self.add_pool(engine.pool)
         self.testing_engines[engine] = True
 
     def connect(self, dbapi_conn, con_record):
@@ -75,7 +80,6 @@ class ConnectionKiller(object):
         else:
             self._stop_test_ctx_aggressive()
 
-    @uses_deprecated()
     def _stop_test_ctx_minimal(self):
         self.close_all()
 
@@ -85,7 +89,6 @@ class ConnectionKiller(object):
             if rec is not config.db:
                 rec.dispose()
 
-    @uses_deprecated()
     def _stop_test_ctx_aggressive(self):
         self.close_all()
         for conn, rec in list(self.conns):
@@ -265,9 +268,6 @@ def testing_engine(url=None, options=None):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0
     if use_reaper:
-        event.listen(engine.pool, "connect", testing_reaper.connect)
-        event.listen(engine.pool, "checkout", testing_reaper.checkout)
-        event.listen(engine.pool, "invalidate", testing_reaper.invalidate)
         testing_reaper.add_engine(engine)
 
     return engine
