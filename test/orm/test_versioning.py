@@ -398,45 +398,6 @@ class VersioningTest(fixtures.MappedTest):
         s1.close()
         s1.query(Foo).with_for_update(read=True).get(f1s1.id)
 
-    @engines.close_open_connections
-    def test_versioncheck_legacy(self):
-        """query.with_lockmode performs a 'version check' on an already loaded
-        instance"""
-
-        Foo = self.classes.Foo
-
-        s1 = self._fixture()
-        f1s1 = Foo(value="f1 value")
-        s1.add(f1s1)
-        s1.commit()
-
-        s2 = create_session(autocommit=False)
-        f1s2 = s2.query(Foo).get(f1s1.id)
-        f1s2.value = "f1 new value"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
-            s2.commit()
-
-        # load, version is wrong
-        assert_raises_message(
-            sa.orm.exc.StaleDataError,
-            r"Instance .* has version id '\d+' which does not "
-            r"match database-loaded version id '\d+'",
-            s1.query(Foo).with_for_update(read=True).get,
-            f1s1.id,
-        )
-
-        # reload it - this expires the old version first
-        s1.refresh(f1s1, with_for_update=dict(read=True))
-
-        # now assert version OK
-        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
-
-        # assert brand new load is OK too
-        s1.close()
-        s1.query(Foo).with_for_update(read=True).get(f1s1.id)
-
     def test_versioncheck_not_versioned(self):
         """ensure the versioncheck logic skips if there isn't a
         version_id_col actually configured"""
@@ -471,41 +432,13 @@ class VersioningTest(fixtures.MappedTest):
         f1s2.value = "f1 new value"
 
         assert_raises(
-            exc.DBAPIError, s1.refresh, f1s1, lockmode="update_nowait"
+            exc.DBAPIError, s1.refresh, f1s1, with_for_update={"nowait": True}
         )
         s1.rollback()
 
         with conditional_sane_rowcount_warnings(update=True):
             s2.commit()
         s1.refresh(f1s1, with_for_update={"nowait": True})
-        assert f1s1.version_id == f1s2.version_id
-
-    @engines.close_open_connections
-    @testing.requires.update_nowait
-    def test_versioncheck_for_update_legacy(self):
-        """query.with_lockmode performs a 'version check' on an already loaded
-        instance"""
-
-        Foo = self.classes.Foo
-
-        s1 = self._fixture()
-        f1s1 = Foo(value="f1 value")
-        s1.add(f1s1)
-        s1.commit()
-
-        s2 = create_session(autocommit=False)
-        f1s2 = s2.query(Foo).get(f1s1.id)
-        s2.refresh(f1s2, lockmode="update")
-        f1s2.value = "f1 new value"
-
-        assert_raises(
-            exc.DBAPIError, s1.refresh, f1s1, lockmode="update_nowait"
-        )
-        s1.rollback()
-
-        with conditional_sane_rowcount_warnings(update=True):
-            s2.commit()
-        s1.refresh(f1s1, lockmode="update_nowait")
         assert f1s1.version_id == f1s2.version_id
 
     def test_update_multi_missing_broken_multi_rowcount(self):

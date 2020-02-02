@@ -1535,9 +1535,7 @@ class TextClause(
         ),
     )
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
-    def _create_text(
-        self, text, bind=None, bindparams=None, typemap=None,
-    ):
+    def _create_text(self, text, bind=None, bindparams=None, typemap=None):
         r"""Construct a new :class:`.TextClause` clause, representing
         a textual SQL string directly.
 
