@@ -2245,9 +2245,6 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
 
 
 class PGInspector(reflection.Inspector):
-    def __init__(self, conn):
-        reflection.Inspector.__init__(self, conn)
-
     def get_table_oid(self, table_name, schema=None):
         """Return the OID for the given table name."""
 

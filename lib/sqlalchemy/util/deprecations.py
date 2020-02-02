@@ -23,7 +23,7 @@ def warn_deprecated(msg, stacklevel=3):
 
 
 def warn_deprecated_20(msg, stacklevel=3):
-    msg += "(Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+    msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
 
     warnings.warn(msg, exc.RemovedIn20Warning, stacklevel=stacklevel)
 
@@ -38,6 +38,23 @@ def deprecated_cls(version, message, constructor="__init__"):
             exc.SADeprecationWarning,
             message % dict(func=constructor),
             header,
+        )
+
+    return decorate
+
+
+def deprecated_20_cls(clsname, alternative=None, constructor="__init__"):
+    message = (
+        ".. deprecated:: 2.0 The %s class is considered legacy as of the "
+        "1.x series of SQLAlchemy and will be removed in 2.0." % clsname
+    )
+
+    if alternative:
+        message += " " + alternative
+
+    def decorate(cls):
+        return _decorate_cls_with_warning(
+            cls, constructor, exc.RemovedIn20Warning, message, message
         )
 
     return decorate
@@ -83,14 +100,12 @@ def deprecated(
 
 def deprecated_20(api_name, alternative=None, **kw):
     message = (
-        "The %s() function/method is considered legacy as of the "
+        "The %s function/method is considered legacy as of the "
         "1.x series of SQLAlchemy and will be removed in 2.0." % api_name
     )
 
     if alternative:
         message += " " + alternative
-
-    message += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
 
     return deprecated(
         "2.0", message=message, warning=exc.RemovedIn20Warning, **kw
@@ -194,25 +209,36 @@ def _decorate_cls_with_warning(
 ):
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
-        docstring_header %= dict(func=constructor)
 
+        if constructor is not None:
+            docstring_header %= dict(func=constructor)
+
+        if issubclass(wtype, exc.RemovedIn20Warning):
+            docstring_header += (
+                " (Background on SQLAlchemy 2.0 at: "
+                ":ref:`migration_20_toplevel`)"
+            )
         doc = inject_docstring_text(doc, docstring_header, 1)
 
         if type(cls) is type:
             clsdict = dict(cls.__dict__)
             clsdict["__doc__"] = doc
+            clsdict.pop("__dict__", None)
             cls = type(cls.__name__, cls.__bases__, clsdict)
-            constructor_fn = clsdict[constructor]
+            if constructor is not None:
+                constructor_fn = clsdict[constructor]
+
         else:
             cls.__doc__ = doc
-            constructor_fn = getattr(cls, constructor)
+            if constructor is not None:
+                constructor_fn = getattr(cls, constructor)
 
-    setattr(
-        cls,
-        constructor,
-        _decorate_with_warning(constructor_fn, wtype, message, None),
-    )
-
+        if constructor is not None:
+            setattr(
+                cls,
+                constructor,
+                _decorate_with_warning(constructor_fn, wtype, message, None),
+            )
     return cls
 
 
@@ -221,16 +247,29 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     message = _sanitize_restructured_text(message)
 
+    if issubclass(wtype, exc.RemovedIn20Warning):
+        doc_only = (
+            " (Background on SQLAlchemy 2.0 at: "
+            ":ref:`migration_20_toplevel`)"
+        )
+        warning_only = (
+            " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+        )
+    else:
+        doc_only = warning_only = ""
+
     @decorator
     def warned(fn, *args, **kwargs):
         skip_warning = kwargs.pop("_sa_skip_warning", False)
         if not skip_warning:
-            warnings.warn(message, wtype, stacklevel=3)
+            warnings.warn(message + warning_only, wtype, stacklevel=3)
         return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ""
     if docstring_header is not None:
         docstring_header %= dict(func=func.__name__)
+
+        docstring_header += doc_only
 
         doc = inject_docstring_text(doc, docstring_header, 1)
 

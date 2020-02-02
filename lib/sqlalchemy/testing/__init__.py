@@ -20,6 +20,7 @@ from .assertions import eq_  # noqa
 from .assertions import eq_ignore_whitespace  # noqa
 from .assertions import eq_regex  # noqa
 from .assertions import expect_deprecated  # noqa
+from .assertions import expect_deprecated_20  # noqa
 from .assertions import expect_warnings  # noqa
 from .assertions import in_  # noqa
 from .assertions import is_  # noqa

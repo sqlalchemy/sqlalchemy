@@ -35,7 +35,6 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
 from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.schema import FetchedValue
@@ -1963,7 +1962,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
     def test_foreign_key_name_is_none(self):
         # and not "0"
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("b")
         eq_(
             fks,
@@ -1988,7 +1987,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_foreign_key_name_is_not_none(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("c")
         eq_(
             fks,
@@ -2013,7 +2012,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_foreign_key_implicit_parent(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("implicit_referrer")
         eq_(
             fks,
@@ -2030,7 +2029,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_foreign_key_composite_implicit_parent(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("implicit_referrer_comp")
         eq_(
             fks,
@@ -2049,7 +2048,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
     def test_foreign_key_implicit_missing_parent(self):
         # test when the FK refers to a non-existent table and column names
         # aren't given.   only sqlite allows this case to exist
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("implicit_referrer_comp_fake")
         # the referred table doesn't exist but the operation does not fail
         eq_(
@@ -2079,7 +2078,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_unnamed_inline_foreign_key(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("e")
         eq_(
             fks,
@@ -2096,7 +2095,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_unnamed_inline_foreign_key_quoted(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("e1")
         eq_(
             fks,
@@ -2127,7 +2126,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_foreign_key_composite_broken_casing(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("j")
         eq_(
             fks,
@@ -2158,7 +2157,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_foreign_key_ondelete_onupdate(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         fks = inspector.get_foreign_keys("onud_test")
         eq_(
             fks,
@@ -2221,7 +2220,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
             )
 
     def test_dont_reflect_autoindex(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(inspector.get_indexes("o"), [])
         eq_(
             inspector.get_indexes("o", include_auto_indexes=True),
@@ -2237,7 +2236,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
     def test_create_index_with_schema(self):
         """Test creation of index with explicit schema"""
 
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_indexes("l", schema="main"),
             [
@@ -2250,35 +2249,35 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_unique_constraint_named(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("f"),
             [{"column_names": ["x"], "name": "foo_fx"}],
         )
 
     def test_unique_constraint_named_broken_casing(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("h"),
             [{"column_names": ["x"], "name": "foo_hx"}],
         )
 
     def test_unique_constraint_named_broken_temp(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("g"),
             [{"column_names": ["x"], "name": "foo_gx"}],
         )
 
     def test_unique_constraint_unnamed_inline(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("d"),
             [{"column_names": ["x"], "name": None}],
         )
 
     def test_unique_constraint_unnamed_inline_quoted(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("d1"),
             [{"column_names": ["some ( STUPID n,ame"], "name": None}],
@@ -2293,42 +2292,42 @@ class ConstraintReflectionTest(fixtures.TestBase):
         )
 
     def test_unique_constraint_unnamed_normal(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("m"),
             [{"column_names": ["x"], "name": None}],
         )
 
     def test_unique_constraint_unnamed_normal_temporary(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_unique_constraints("n"),
             [{"column_names": ["x"], "name": None}],
         )
 
     def test_primary_key_constraint_named(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_pk_constraint("p"),
             {"constrained_columns": ["id"], "name": "pk_name"},
         )
 
     def test_primary_key_constraint_unnamed(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_pk_constraint("q"),
             {"constrained_columns": ["id"], "name": None},
         )
 
     def test_primary_key_constraint_no_pk(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_pk_constraint("d"),
             {"constrained_columns": [], "name": None},
         )
 
     def test_check_constraint(self):
-        inspector = Inspector(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_check_constraints("cp"),
             [

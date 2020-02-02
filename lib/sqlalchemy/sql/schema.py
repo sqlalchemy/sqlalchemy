@@ -4095,9 +4095,7 @@ class MetaData(SchemaItem):
         if bind is None:
             bind = _bind_or_error(self)
 
-        with bind.connect() as conn:
-            insp = inspection.inspect(conn)
-
+        with inspection.inspect(bind)._inspection_context() as insp:
             reflect_opts = {
                 "autoload_with": insp,
                 "extend_existing": extend_existing,

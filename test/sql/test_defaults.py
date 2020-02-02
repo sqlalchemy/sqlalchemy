@@ -163,12 +163,7 @@ class DefaultTest(fixtures.TestBase):
 
         def mydefault_using_connection(ctx):
             conn = ctx.connection
-            try:
-                return conn.execute(sa.select([sa.text("12")])).scalar()
-            finally:
-                # ensure a "close()" on this connection does nothing,
-                # since its a "branched" connection
-                conn.close()
+            return conn.execute(sa.select([sa.text("12")])).scalar()
 
         use_function_defaults = testing.against("postgresql", "mssql")
         is_oracle = testing.against("oracle")

@@ -1092,6 +1092,16 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
 
+@util.deprecated_20_cls(
+    ":class:`.Connectable`",
+    alternative=(
+        "The :class:`.Engine` will be the only Core "
+        "object that features a .connect() method, and the "
+        ":class:`.Connection` will be the only object that features "
+        "an .execute() method."
+    ),
+    constructor=None,
+)
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
@@ -1119,34 +1129,6 @@ class Connectable(object):
     May be ``self`` if this is already an :class:`.Engine`.
 
     """
-
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Connectable.create` method is deprecated and will be "
-        "removed in a future release.  Please use the ``.create()`` method "
-        "on specific schema objects to emit DDL sequences, including "
-        ":meth:`.Table.create`, :meth:`.Index.create`, and "
-        ":meth:`.MetaData.create_all`.",
-    )
-    def create(self, entity, **kwargs):
-        """Emit CREATE statements for the given schema entity.
-        """
-
-        raise NotImplementedError()
-
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Connectable.drop` method is deprecated and will be "
-        "removed in a future release.  Please use the ``.drop()`` method "
-        "on specific schema objects to emit DDL sequences, including "
-        ":meth:`.Table.drop`, :meth:`.Index.drop`, and "
-        ":meth:`.MetaData.drop_all`.",
-    )
-    def drop(self, entity, **kwargs):
-        """Emit DROP statements for the given schema entity.
-        """
-
-        raise NotImplementedError()
 
     def execute(self, object_, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`."""

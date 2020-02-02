@@ -102,6 +102,15 @@ class Connection(Connectable):
             self.__transaction = None
             self.__savepoint_seq = 0
             self.should_close_with_result = close_with_result
+            if close_with_result:
+                util.warn_deprecated_20(
+                    '"Connectionless" execution, which refers to running '
+                    "SQL commands using the Engine.execute() (or "
+                    "some_statement.execute()) method without "
+                    "calling .connect() or .begin() to get a Connection, is "
+                    "deprecated and will be removed SQLAlchemy 2.0"
+                )
+
             self.__invalid = False
             self.__can_reconnect = True
             self._echo = self.engine._should_log_info()
@@ -489,6 +498,7 @@ class Connection(Connectable):
 
         return self.connection.info
 
+    @util.deprecated_20(":meth:`.Connection.connect`")
     def connect(self, close_with_result=False):
         """Returns a branched version of this :class:`.Connection`.
 
@@ -884,6 +894,12 @@ class Connection(Connectable):
 
         """
         if self.__branch_from:
+            util.warn_deprecated(
+                "The .close() method on a so-called 'branched' connection is "
+                "deprecated as of 1.4, as are 'branched' connections overall, "
+                "and will be removed in a future release.  If this is a "
+                "default-handling function, don't close the connection."
+            )
             try:
                 del self.__connection
             except AttributeError:
@@ -2237,7 +2253,6 @@ class Engine(Connectable, log.Identified):
         resource to be returned to the connection pool.
 
         """
-
         connection = self.connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
 

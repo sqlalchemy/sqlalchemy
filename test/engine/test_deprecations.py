@@ -13,6 +13,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
+from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.testing import assert_raises
@@ -20,6 +21,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.mock import Mock
@@ -29,6 +31,52 @@ from sqlalchemy.testing.schema import Table
 
 class SomeException(Exception):
     pass
+
+
+class ConnectionlessDeprecationTest(fixtures.TestBase):
+    """test various things associated with "connectionless" executions."""
+
+    def test_inspector_constructor_engine(self):
+        with testing.expect_deprecated(
+            r"The __init__\(\) method on Inspector is deprecated and will "
+            r"be removed in a future release."
+        ):
+            i1 = reflection.Inspector(testing.db)
+
+        is_(i1.bind, testing.db)
+
+    def test_inspector_constructor_connection(self):
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated(
+                r"The __init__\(\) method on Inspector is deprecated and "
+                r"will be removed in a future release."
+            ):
+                i1 = reflection.Inspector(conn)
+
+            is_(i1.bind, conn)
+            is_(i1.engine, testing.db)
+
+    def test_inspector_from_engine(self):
+        with testing.expect_deprecated(
+            r"The from_engine\(\) method on Inspector is deprecated and will "
+            r"be removed in a future release."
+        ):
+            i1 = reflection.Inspector.from_engine(testing.db)
+
+        is_(i1.bind, testing.db)
+
+    def test_bind_close_conn(self):
+        e = testing.db
+        conn = e.connect()
+
+        with testing.expect_deprecated(
+            r"The .close\(\) method on a so-called 'branched' "
+            "connection is deprecated"
+        ):
+            with conn.connect() as c2:
+                assert not c2.closed
+        assert not conn.closed
+        assert c2.closed
 
 
 class CreateEngineTest(fixtures.TestBase):
@@ -512,3 +560,17 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
         ):
             table_names = testing.db.table_names()
         is_true(set(table_names).issuperset(metadata.tables))
+
+
+class ExecutionOptionsTest(fixtures.TestBase):
+    def test_branched_connection_execution_options(self):
+        engine = engines.testing_engine("sqlite://")
+
+        conn = engine.connect()
+        c2 = conn.execution_options(foo="bar")
+
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) function/method is considered "
+        ):
+            c2_branch = c2.connect()
+        eq_(c2_branch._execution_options, {"foo": "bar"})

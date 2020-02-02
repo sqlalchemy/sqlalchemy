@@ -21,7 +21,6 @@ from ... import MetaData
 from ... import String
 from ... import testing
 from ... import types as sql_types
-from ...engine.reflection import Inspector
 from ...schema import DDL
 from ...schema import Index
 from ...sql.elements import quoted_name
@@ -661,7 +660,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_deprecated_get_primary_keys(self):
         meta = self.metadata
         users = self.tables.users
-        insp = Inspector(meta.bind)
+        insp = inspect(meta.bind)
         assert_raises_message(
             sa_exc.SADeprecationWarning,
             r".*get_primary_keys\(\) method is deprecated",

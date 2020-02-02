@@ -81,6 +81,10 @@ def expect_deprecated(*messages, **kw):
     return _expect_warnings(sa_exc.SADeprecationWarning, messages, **kw)
 
 
+def expect_deprecated_20(*messages, **kw):
+    return _expect_warnings(sa_exc.RemovedIn20Warning, messages, **kw)
+
+
 def emits_warning_on(db, *messages):
     """Mark a test as emitting a warning on a specific dialect.
 

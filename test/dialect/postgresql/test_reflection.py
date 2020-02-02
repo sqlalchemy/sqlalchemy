@@ -25,7 +25,6 @@ from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.dialects.postgresql import TSRANGE
-from sqlalchemy.engine import reflection
 from sqlalchemy.sql.schema import CheckConstraint
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -1199,7 +1198,7 @@ class ReflectionTest(fixtures.TestBase):
             metadata=self.metadata,
         )
         enum_type.create(conn)
-        inspector = reflection.Inspector.from_engine(conn.engine)
+        inspector = inspect(conn)
         eq_(
             inspector.get_enums("test_schema"),
             [
@@ -1218,7 +1217,7 @@ class ReflectionTest(fixtures.TestBase):
             "cat", "dog", "rat", name="pet", metadata=self.metadata
         )
         enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_enums(),
             [
@@ -1356,7 +1355,7 @@ class ReflectionTest(fixtures.TestBase):
         )
         enum_type.create(testing.db)
         schema_enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
 
         eq_(
             inspector.get_enums(),
@@ -1392,7 +1391,7 @@ class ReflectionTest(fixtures.TestBase):
     def test_inspect_enum_empty(self):
         enum_type = postgresql.ENUM(name="empty", metadata=self.metadata)
         enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
 
         eq_(
             inspector.get_enums(),

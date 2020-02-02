@@ -810,12 +810,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         parameters = []
         if compiled.positional:
             for compiled_params in self.compiled_parameters:
-                param = []
-                for key in positiontup:
-                    if key in processors:
-                        param.append(processors[key](compiled_params[key]))
-                    else:
-                        param.append(compiled_params[key])
+                param = [
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key]
+                    for key in positiontup
+                ]
                 parameters.append(dialect.execute_sequence_format(param))
         else:
             encode = not dialect.supports_unicode_statements
@@ -948,7 +948,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         else:
             return autocommit
 
-    def _execute_scalar(self, stmt, type_):
+    def _execute_scalar(self, stmt, type_, parameters=None):
         """Execute a string statement on the current cursor, returning a
         scalar result.
 
@@ -965,12 +965,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         ):
             stmt = self.dialect._encoder(stmt)[0]
 
-        if self.dialect.positional:
-            default_params = self.dialect.execute_sequence_format()
-        else:
-            default_params = {}
+        if not parameters:
+            if self.dialect.positional:
+                parameters = self.dialect.execute_sequence_format()
+            else:
+                parameters = {}
 
-        conn._cursor_execute(self.cursor, stmt, default_params, context=self)
+        conn._cursor_execute(self.cursor, stmt, parameters, context=self)
         r = self.cursor.fetchone()[0]
         if type_ is not None:
             # apply type post processors to the result
@@ -1288,17 +1289,50 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             self.current_column = column
             return default.arg(self)
         elif default.is_clause_element:
-            # TODO: expensive branching here should be
-            # pulled into _exec_scalar()
-            conn = self.connection
-            if not default._arg_is_typed:
-                default_arg = expression.type_coerce(default.arg, type_)
-            else:
-                default_arg = default.arg
-            c = expression.select([default_arg]).compile(bind=conn)
-            return conn._execute_compiled(c, (), {}).scalar()
+            return self._exec_default_clause_element(column, default, type_)
         else:
             return default.arg
+
+    def _exec_default_clause_element(self, column, default, type_):
+        # execute a default that's a complete clause element.  Here, we have
+        # to re-implement a miniature version of the compile->parameters->
+        # cursor.execute() sequence, since we don't want to modify the state
+        # of the connection  / result in progress or create new connection/
+        # result objects etc.
+        # .. versionchanged:: 1.4
+
+        if not default._arg_is_typed:
+            default_arg = expression.type_coerce(default.arg, type_)
+        else:
+            default_arg = default.arg
+        compiled = expression.select([default_arg]).compile(
+            dialect=self.dialect
+        )
+        compiled_params = compiled.construct_params()
+        processors = compiled._bind_processors
+        if compiled.positional:
+            positiontup = compiled.positiontup
+            parameters = self.dialect.execute_sequence_format(
+                [
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key]
+                    for key in positiontup
+                ]
+            )
+        else:
+            parameters = dict(
+                (
+                    key,
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key],
+                )
+                for key in compiled_params
+            )
+        return self._execute_scalar(
+            util.text_type(compiled), type_, parameters=parameters
+        )
 
     current_parameters = None
     """A dictionary of parameters applied to the current row.

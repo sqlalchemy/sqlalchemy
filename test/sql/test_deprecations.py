@@ -1494,3 +1494,38 @@ class PositionalTextTest(fixtures.TablesTest):
             "Could not locate column in row for column 'text1.b'",
             lambda: row[text1.c.b],
         )
+
+
+class DefaultTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.provide_metadata
+    def test_close_on_branched(self):
+        metadata = self.metadata
+
+        def mydefault_using_connection(ctx):
+            conn = ctx.connection
+            try:
+                return conn.execute(select([text("12")])).scalar()
+            finally:
+                # ensure a "close()" on this connection does nothing,
+                # since its a "branched" connection
+                conn.close()
+
+        table = Table(
+            "foo",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer, default=mydefault_using_connection),
+        )
+
+        metadata.create_all(testing.db)
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated(
+                r"The .close\(\) method on a so-called 'branched' "
+                r"connection is deprecated as of 1.4, as are "
+                r"'branched' connections overall"
+            ):
+                conn.execute(table.insert().values(x=5))
+
+            eq_(conn.execute(select([table])).first(), (5, 12))
