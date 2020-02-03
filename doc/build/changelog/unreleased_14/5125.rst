@@ -1,0 +1,7 @@
+.. change::
+    :tags: change, mssql
+    :tickets: 5125
+
+    For limit-offset keywords OFFSET and FETCH are using (as part of the ORDER BY
+    clause). Works with MSSQL server version is 11 and higher. The implementation
+    of a simple limit query has not changed (TOP is using as usual)
