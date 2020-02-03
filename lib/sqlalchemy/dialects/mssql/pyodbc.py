@@ -234,10 +234,21 @@ class _ms_binary_pyodbc(object):
 class _ODBCDateTimeOffset(DATETIMEOFFSET):
     def bind_processor(self, dialect):
         def process(value):
-            """Convert to string format required by T-SQL."""
-            dto_string = value.strftime("%Y-%m-%d %H:%M:%S.%f %z")
-            # offset needs a colon, e.g., -0700 -> -07:00
-            return dto_string[:30] + ":" + dto_string[30:]
+            if value is None:
+                return None
+            elif isinstance(value, util.string_types):
+                # if a string was passed directly, allow it through
+                return value
+            else:
+                # Convert to string format required by T-SQL
+                dto_string = value.strftime("%Y-%m-%d %H:%M:%S.%f %z")
+                # offset needs a colon, e.g., -0700 -> -07:00
+                # "UTC offset in the form (+-)HHMM[SS[.ffffff]]"
+                # backend currently rejects seconds / fractional seconds
+                dto_string = re.sub(
+                    r"([\+\-]\d{2})([\d\.]+)$", r"\1:\2", dto_string
+                )
+                return dto_string
 
         return process
 
