@@ -186,6 +186,57 @@ returned ``Address``.   The :func:`.backref` function formatted the arguments we
 it into a form that is interpreted by the receiving :func:`.relationship` as additional
 arguments to be applied to the new relationship it creates.
 
+Setting cascade for backrefs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A key behavior that occurs in the 1.x series of SQLAlchemy regarding backrefs
+is that :ref:`cascades <unitofwork_cascades>` will occur bidirectionally by
+default.   This basically means, if one starts with an ``User`` object
+that's been persisted in the :class:`.Session`::
+
+    user = session.query(User).filter(User.id == 1).first()
+
+The above ``User`` is :term:`persistent` in the :class:`.Session`.  It usually
+is intuitive that if we create an ``Address`` object and append to the
+``User.addresses`` collection, it is automatically added to the
+:class:`.Session` as in the example below::
+
+    user = session.query(User).filter(User.id == 1).first()
+    address = Address(email_address='foo')
+    user.addresses.append(address)
+
+The above behavior is known as the "save update cascade" and is described
+in the section :ref:`unitofwork_cascades`.
+
+However, if we instead created a new ``Address`` object, and associated the
+``User`` object with the ``Address`` as follows::
+
+    address = Address(email_address='foo', user=user)
+
+In the above example, it is **not** as intuitive that the ``Address`` would
+automatically be added to the :class:`.Session`.  However, the backref behavior
+of ``Address.user`` indicates that the ``Address`` object is also appended to
+the ``User.addresses`` collection.  This in turn intiates a **cascade**
+operation which indicates that this ``Address`` should be placed into the
+:class:`.Session` as a :term:`pending` object.
+
+Since this behavior has been identified as counter-intuitive to most people,
+it can be disabled by setting :paramref:`~.relationship.cascade_backrefs`
+to False, as in::
+
+
+    class User(Base):
+        # ...
+
+        addresses = relationship("Address", back_populates="user", cascade_backefs=False)
+
+See the example in :ref:`backref_cascade` for further information.
+
+.. seealso::
+
+    :ref:`backref_cascade`.
+
+
 One Way Backrefs
 ~~~~~~~~~~~~~~~~
 
