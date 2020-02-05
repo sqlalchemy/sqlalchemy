@@ -844,6 +844,29 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert t.c.x in set(c._create_result_map()["x"][1])
         assert t.c.y in set(c._create_result_map()["y"][1])
 
+    def test_limit_offset_using_offset_fetch(self):
+        t = table("t", column("x", Integer), column("y", Integer))
+        dialect_2012 = mssql.base.MSDialect()
+        dialect_2012._supports_offset_fetch = True
+
+        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
+
+        self.assert_compile(
+            s,
+            "SELECT t.x, t.y "
+            "FROM t "
+            "WHERE t.x = :x_1 ORDER BY t.y "
+            "OFFSET :param_1 ROWS "
+            "FETCH NEXT :param_2 ROWS ONLY ",
+            checkparams={"param_1": 20, "param_2": 10, "x_1": 5},
+            dialect=dialect_2012
+        )
+
+        c = s.compile(dialect=dialect_2012)
+        eq_(len(c._result_columns), 2)
+        assert t.c.x in set(c._create_result_map()["x"][1])
+        assert t.c.y in set(c._create_result_map()["y"][1])
+
     def test_limit_offset_w_ambiguous_cols(self):
         t = table("t", column("x", Integer), column("y", Integer))
 
