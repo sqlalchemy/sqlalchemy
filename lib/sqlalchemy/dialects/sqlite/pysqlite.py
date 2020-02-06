@@ -243,6 +243,44 @@ require unicode, however, so that non-``unicode`` values passed inadvertently
 will emit a warning.  Pysqlite will emit an error if a non-``unicode`` string
 is passed containing non-ASCII characters.
 
+Dealing with Mixed String / Binary Columns in Python 3
+------------------------------------------------------
+
+The SQLite database is weakly typed, and as such it is possible when using
+binary values, which in Python 3 are represented as ``b'some string'``, that a
+particular SQLite database can have data values within different rows where
+some of them will be returned as a ``b''`` value by the Pysqlite driver, and
+others will be returned as Python strings, e.g. ``''`` values.   This situation
+is not known to occur if the SQLAlchemy :class:`.LargeBinary` datatype is used
+consistently, however if a particular SQLite database has data that was
+inserted using the Pysqlite driver directly, or when using the SQLAlchemy
+:class:`.String` type which was later changed to :class:`.LargeBinary`, the
+table will not be consistently readable because SQLAlchemy's
+:class:`.LargeBinary` datatype does not handle strings so it has no way of
+"encoding" a value that is in string format.
+
+To deal with a SQLite table that has mixed string / binary data in the
+same column, use a custom type that will check each row individually::
+
+    # note this is Python 3 only
+
+    from sqlalchemy import String
+    from sqlalchemy import TypeDecorator
+
+    class MixedBinary(TypeDecorator):
+        impl = String
+
+        def process_result_value(self, value, dialect):
+            if isinstance(value, str):
+                value = bytes(value, 'utf-8')
+            elif value is not None:
+                value = bytes(value)
+
+            return value
+
+Then use the above ``MixedBinary`` datatype in the place where
+:class:`.LargeBinary` would normally be used.
+
 .. _pysqlite_serializable:
 
 Serializable isolation / Savepoints / Transactional DDL
