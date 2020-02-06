@@ -14,7 +14,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm.exc import UnmappedColumnError
-from sqlalchemy.orm.properties import RelationshipProperty
+from sqlalchemy.orm.relationships import RelationshipProperty
 
 
 def col_references_table(col, table):
