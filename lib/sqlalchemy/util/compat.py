@@ -267,7 +267,18 @@ else:
 
 
 if py35:
-    from inspect import formatannotation
+
+    def _formatannotation(annotation, base_module=None):
+        """vendored from python 3.7
+        """
+
+        if getattr(annotation, "__module__", None) == "typing":
+            return repr(annotation).replace("typing.", "")
+        if isinstance(annotation, type):
+            if annotation.__module__ in ("builtins", base_module):
+                return annotation.__qualname__
+            return annotation.__module__ + "." + annotation.__qualname__
+        return repr(annotation)
 
     def inspect_formatargspec(
         args,
@@ -282,7 +293,7 @@ if py35:
         formatvarkw=lambda name: "**" + name,
         formatvalue=lambda value: "=" + repr(value),
         formatreturns=lambda text: " -> " + text,
-        formatannotation=formatannotation,
+        formatannotation=_formatannotation,
     ):
         """Copy formatargspec from python 3.7 standard library.
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, installation
+    :tickets: 5138
+
+    Vendored the ``inspect.formatannotation`` function inside of
+    ``sqlalchemy.util.compat``, which is needed for the vendored version of
+    ``inspect.formatargspec``.  The function is not documented in cPython and
+    is not guaranteed to be available in future Python versions.
+
