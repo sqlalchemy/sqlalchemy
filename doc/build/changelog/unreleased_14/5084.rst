@@ -1,0 +1,8 @@
+.. change::
+    :tags: change, mssql
+    :tickets: 5084
+
+    SQL Server OFFSET and FETCH keywords are now used for limit/offset, rather
+    than using a window function, for SQL Server versions 11 and higher. TOP is
+    still used for a query that features only LIMIT.   Pull request courtesy
+    Elkin.

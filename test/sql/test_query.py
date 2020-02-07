@@ -1013,7 +1013,6 @@ class LimitTest(fixtures.TestBase):
         self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
 
     @testing.requires.offset
-    @testing.fails_on("mssql", "FIXME: unknown")
     def test_select_distinct_offset(self):
         """Test the interaction between distinct and offset"""
 

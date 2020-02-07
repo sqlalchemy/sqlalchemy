@@ -1635,8 +1635,45 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return text
 
     def limit_clause(self, select, **kw):
-        # Limit in mssql is after the select keyword
-        return ""
+        """ MSSQL 2012 supports OFFSET/FETCH operators
+            Use it instead subquery with row_number
+
+        """
+
+        if self.dialect._supports_offset_fetch and (
+            (
+                not select._simple_int_limit
+                and select._limit_clause is not None
+            )
+            or (
+                select._offset_clause is not None
+                and not select._simple_int_offset
+                or select._offset
+            )
+        ):
+            # OFFSET are FETCH are options of the ORDER BY clause
+            if not select._order_by_clause.clauses:
+                raise exc.CompileError(
+                    "MSSQL requires an order_by when "
+                    "using an OFFSET or a non-simple "
+                    "LIMIT clause"
+                )
+
+            text = ""
+
+            if select._offset_clause is not None:
+                offset_str = self.process(select._offset_clause, **kw)
+            else:
+                offset_str = '0'
+            text += "\n OFFSET %s ROWS" % offset_str
+
+            if select._limit_clause is not None:
+                text += "\n FETCH NEXT %s ROWS ONLY " % self.process(
+                    select._limit_clause, **kw
+                )
+            return text
+        else:
+            return ""
 
     def visit_try_cast(self, element, **kw):
         return "TRY_CAST (%s AS %s)" % (
@@ -1647,9 +1684,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_select(self, select, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
         so tries to wrap it in a subquery with ``row_number()`` criterion.
+        MSSQL 2012 and above are excluded
 
         """
-        if (
+        if not self.dialect._supports_offset_fetch and (
             (not select._simple_int_limit and select._limit_clause is not None)
             or (
                 select._offset_clause is not None
@@ -2288,6 +2326,7 @@ class MSDialect(default.DefaultDialect):
     non_native_boolean_check_constraint = False
     supports_unicode_binds = True
     postfetch_lastrowid = True
+    _supports_offset_fetch = False
 
     server_version_info = ()
 
@@ -2435,6 +2474,9 @@ class MSDialect(default.DefaultDialect):
             self.deprecate_large_types = (
                 self.server_version_info >= MS_2012_VERSION
             )
+
+        self._supports_offset_fetch = (
+            self.server_version_info and self.server_version_info[0] >= 11)
 
     def _get_default_schema_name(self, connection):
         if self.server_version_info < MS_2005_VERSION:
