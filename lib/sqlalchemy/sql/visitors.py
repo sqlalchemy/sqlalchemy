@@ -180,7 +180,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
         ]
 
     Above, the :class:`.Case` class indicates its internal state as the
-    attribtues named ``value``, ``whens``, and ``else\_``.    They each
+    attributes named ``value``, ``whens``, and ``else\_``.    They each
     link to an :class:`.InternalTraversal` method which indicates the type
     of datastructure referred towards.
 
