@@ -177,62 +177,66 @@ from ..util.langhelpers import public_factory  # noqa
 # the functions to be available in the sqlalchemy.sql.* namespace and
 # to be auto-cross-documenting from the function to the class itself.
 
-all_ = public_factory(CollectionAggregate._create_all, ".expression.all_")
-any_ = public_factory(CollectionAggregate._create_any, ".expression.any_")
-and_ = public_factory(BooleanClauseList.and_, ".expression.and_")
-alias = public_factory(Alias._factory, ".expression.alias")
-tablesample = public_factory(TableSample._factory, ".expression.tablesample")
-lateral = public_factory(Lateral._factory, ".expression.lateral")
-or_ = public_factory(BooleanClauseList.or_, ".expression.or_")
-bindparam = public_factory(BindParameter, ".expression.bindparam")
-select = public_factory(Select, ".expression.select")
-text = public_factory(TextClause._create_text, ".expression.text")
-table = public_factory(TableClause, ".expression.table")
-column = public_factory(ColumnClause, ".expression.column")
-over = public_factory(Over, ".expression.over")
-within_group = public_factory(WithinGroup, ".expression.within_group")
-label = public_factory(Label, ".expression.label")
-case = public_factory(Case, ".expression.case")
-cast = public_factory(Cast, ".expression.cast")
-cte = public_factory(CTE._factory, ".expression.cte")
-extract = public_factory(Extract, ".exp  # noqaression.extract")
-tuple_ = public_factory(Tuple, ".expression.tuple_")
-except_ = public_factory(CompoundSelect._create_except, ".expression.except_")
+all_ = public_factory(CollectionAggregate._create_all, ".sql.expression.all_")
+any_ = public_factory(CollectionAggregate._create_any, ".sql.expression.any_")
+and_ = public_factory(BooleanClauseList.and_, ".sql.expression.and_")
+alias = public_factory(Alias._factory, ".sql.expression.alias")
+tablesample = public_factory(
+    TableSample._factory, ".sql.expression.tablesample"
+)
+lateral = public_factory(Lateral._factory, ".sql.expression.lateral")
+or_ = public_factory(BooleanClauseList.or_, ".sql.expression.or_")
+bindparam = public_factory(BindParameter, ".sql.expression.bindparam")
+select = public_factory(Select, ".sql.expression.select")
+text = public_factory(TextClause._create_text, ".sql.expression.text")
+table = public_factory(TableClause, ".sql.expression.table")
+column = public_factory(ColumnClause, ".sql.expression.column")
+over = public_factory(Over, ".sql.expression.over")
+within_group = public_factory(WithinGroup, ".sql.expression.within_group")
+label = public_factory(Label, ".sql.expression.label")
+case = public_factory(Case, ".sql.expression.case")
+cast = public_factory(Cast, ".sql.expression.cast")
+cte = public_factory(CTE._factory, ".sql.expression.cte")
+extract = public_factory(Extract, ".sql.expression.extract")
+tuple_ = public_factory(Tuple, ".sql.expression.tuple_")
+except_ = public_factory(
+    CompoundSelect._create_except, ".sql.expression.except_"
+)
 except_all = public_factory(
-    CompoundSelect._create_except_all, ".expression.except_all"
+    CompoundSelect._create_except_all, ".sql.expression.except_all"
 )
 intersect = public_factory(
-    CompoundSelect._create_intersect, ".expression.intersect"
+    CompoundSelect._create_intersect, ".sql.expression.intersect"
 )
 intersect_all = public_factory(
-    CompoundSelect._create_intersect_all, ".expression.intersect_all"
+    CompoundSelect._create_intersect_all, ".sql.expression.intersect_all"
 )
-union = public_factory(CompoundSelect._create_union, ".expression.union")
+union = public_factory(CompoundSelect._create_union, ".sql.expression.union")
 union_all = public_factory(
-    CompoundSelect._create_union_all, ".expression.union_all"
+    CompoundSelect._create_union_all, ".sql.expression.union_all"
 )
-exists = public_factory(Exists, ".expression.exists")
+exists = public_factory(Exists, ".sql.expression.exists")
 nullsfirst = public_factory(
-    UnaryExpression._create_nullsfirst, ".expression.nullsfirst"
+    UnaryExpression._create_nullsfirst, ".sql.expression.nullsfirst"
 )
 nullslast = public_factory(
-    UnaryExpression._create_nullslast, ".expression.nullslast"
+    UnaryExpression._create_nullslast, ".sql.expression.nullslast"
 )
-asc = public_factory(UnaryExpression._create_asc, ".expression.asc")
-desc = public_factory(UnaryExpression._create_desc, ".expression.desc")
+asc = public_factory(UnaryExpression._create_asc, ".sql.expression.asc")
+desc = public_factory(UnaryExpression._create_desc, ".sql.expression.desc")
 distinct = public_factory(
-    UnaryExpression._create_distinct, ".expression.distinct"
+    UnaryExpression._create_distinct, ".sql.expression.distinct"
 )
-type_coerce = public_factory(TypeCoerce, ".expression.type_coerce")
-true = public_factory(True_._instance, ".expression.true")
-false = public_factory(False_._instance, ".expression.false")
-null = public_factory(Null._instance, ".expression.null")
-join = public_factory(Join._create_join, ".expression.join")
-outerjoin = public_factory(Join._create_outerjoin, ".expression.outerjoin")
-insert = public_factory(Insert, ".expression.insert")
-update = public_factory(Update, ".expression.update")
-delete = public_factory(Delete, ".expression.delete")
-funcfilter = public_factory(FunctionFilter, ".expression.funcfilter")
+type_coerce = public_factory(TypeCoerce, ".sql.expression.type_coerce")
+true = public_factory(True_._instance, ".sql.expression.true")
+false = public_factory(False_._instance, ".sql.expression.false")
+null = public_factory(Null._instance, ".sql.expression.null")
+join = public_factory(Join._create_join, ".sql.expression.join")
+outerjoin = public_factory(Join._create_outerjoin, ".sql.expression.outerjoin")
+insert = public_factory(Insert, ".sql.expression.insert")
+update = public_factory(Update, ".sql.expression.update")
+delete = public_factory(Delete, ".sql.expression.delete")
+funcfilter = public_factory(FunctionFilter, ".sql.expression.funcfilter")
 
 
 # internal functions still being called from tests and the ORM,

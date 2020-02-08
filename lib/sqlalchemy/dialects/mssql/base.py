@@ -1206,7 +1206,7 @@ class TryCast(sql.elements.Cast):
         super(TryCast, self).__init__(*arg, **kw)
 
 
-try_cast = public_factory(TryCast, ".mssql.try_cast")
+try_cast = public_factory(TryCast, ".dialects.mssql.try_cast")
 
 # old names.
 MSDateTime = _MSDateTime

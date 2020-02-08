@@ -352,8 +352,8 @@ will be performed.   The statement allows for separate specification of the
 values to INSERT versus the values for UPDATE.
 
 SQLAlchemy provides ``ON DUPLICATE KEY UPDATE`` support via the MySQL-specific
-:func:`.mysql.dml.insert()` function, which provides
-the generative method :meth:`~.mysql.dml.Insert.on_duplicate_key_update`::
+:func:`.mysql.insert()` function, which provides
+the generative method :meth:`~.mysql.Insert.on_duplicate_key_update`::
 
     from sqlalchemy.dialects.mysql import insert
 
@@ -377,7 +377,7 @@ an error or to skip performing an UPDATE.
 existing row, using any combination of new values as well as values
 from the proposed insertion.   These values are normally specified using
 keyword arguments passed to the
-:meth:`~.mysql.dml.Insert.on_duplicate_key_update`
+:meth:`~.mysql.Insert.on_duplicate_key_update`
 given column key values (usually the name of the column, unless it
 specifies :paramref:`.Column.key`) as keys and literal or SQL expressions
 as values::
@@ -421,8 +421,8 @@ this context is unambiguous::
 
 
 In order to refer to the proposed insertion row, the special alias
-:attr:`~.mysql.dml.Insert.inserted` is available as an attribute on
-the :class:`.mysql.dml.Insert` object; this object is a
+:attr:`~.mysql.Insert.inserted` is available as an attribute on
+the :class:`.mysql.Insert` object; this object is a
 :class:`.ColumnCollection` which contains all columns of the target
 table::
 
