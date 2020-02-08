@@ -23,6 +23,9 @@ class Insert(StandardInsert):
 
     Adds methods for PG-specific syntaxes such as ON CONFLICT.
 
+    The :class:`.postgresql.Insert` object is created using the
+    :func:`sqlalchemy.dialects.postgresql.insert` function.
+
     .. versionadded:: 1.1
 
     """
@@ -139,7 +142,9 @@ class Insert(StandardInsert):
         )
 
 
-insert = public_factory(Insert, ".dialects.postgresql.insert")
+insert = public_factory(
+    Insert, ".dialects.postgresql.insert", ".dialects.postgresql.Insert"
+)
 
 
 class OnConflictClause(ClauseElement):

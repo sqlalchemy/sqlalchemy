@@ -1220,7 +1220,7 @@ class TryCast(sql.elements.Cast):
         super(TryCast, self).__init__(*arg, **kw)
 
 
-try_cast = public_factory(TryCast, ".mssql.try_cast")
+try_cast = public_factory(TryCast, ".dialects.mssql.try_cast")
 
 # old names.
 MSDateTime = _MSDateTime
@@ -1641,10 +1641,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         """
 
         if self.dialect._supports_offset_fetch and (
-            (
-                not select._simple_int_limit
-                and select._limit_clause is not None
-            )
+            (not select._simple_int_limit and select._limit_clause is not None)
             or (
                 select._offset_clause is not None
                 and not select._simple_int_offset
@@ -1664,7 +1661,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             if select._offset_clause is not None:
                 offset_str = self.process(select._offset_clause, **kw)
             else:
-                offset_str = '0'
+                offset_str = "0"
             text += "\n OFFSET %s ROWS" % offset_str
 
             if select._limit_clause is not None:
@@ -1687,14 +1684,21 @@ class MSSQLCompiler(compiler.SQLCompiler):
         MSSQL 2012 and above are excluded
 
         """
-        if not self.dialect._supports_offset_fetch and (
-            (not select._simple_int_limit and select._limit_clause is not None)
-            or (
-                select._offset_clause is not None
-                and not select._simple_int_offset
-                or select._offset
+        if (
+            not self.dialect._supports_offset_fetch
+            and (
+                (
+                    not select._simple_int_limit
+                    and select._limit_clause is not None
+                )
+                or (
+                    select._offset_clause is not None
+                    and not select._simple_int_offset
+                    or select._offset
+                )
             )
-        ) and not getattr(select, "_mssql_visit", None):
+            and not getattr(select, "_mssql_visit", None)
+        ):
 
             # to use ROW_NUMBER(), an ORDER BY is required.
             if not select._order_by_clause.clauses:
@@ -2476,7 +2480,8 @@ class MSDialect(default.DefaultDialect):
             )
 
         self._supports_offset_fetch = (
-            self.server_version_info and self.server_version_info[0] >= 11)
+            self.server_version_info and self.server_version_info[0] >= 11
+        )
 
     def _get_default_schema_name(self, connection):
         if self.server_version_info < MS_2005_VERSION:

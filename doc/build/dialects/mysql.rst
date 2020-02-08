@@ -159,9 +159,9 @@ construction arguments, are as follows:
 MySQL DML Constructs
 -------------------------
 
-.. autofunction:: sqlalchemy.dialects.mysql.dml.insert
+.. autofunction:: sqlalchemy.dialects.mysql.insert
 
-.. autoclass:: sqlalchemy.dialects.mysql.dml.Insert
+.. autoclass:: sqlalchemy.dialects.mysql.Insert
   :members:
 
 

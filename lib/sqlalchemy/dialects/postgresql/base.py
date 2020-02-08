@@ -304,9 +304,9 @@ or they may be *inferred* by stating the columns and conditions that comprise
 the indexes.
 
 SQLAlchemy provides ``ON CONFLICT`` support via the PostgreSQL-specific
-:func:`.postgresql.dml.insert()` function, which provides
-the generative methods :meth:`~.postgresql.dml.Insert.on_conflict_do_update`
-and :meth:`~.postgresql.dml.Insert.on_conflict_do_nothing`::
+:func:`.postgresql.insert()` function, which provides
+the generative methods :meth:`~.postgresql.Insert.on_conflict_do_update`
+and :meth:`~.postgresql.Insert.on_conflict_do_nothing`::
 
     from sqlalchemy.dialects.postgresql import insert
 
@@ -415,8 +415,8 @@ for UPDATE::
     :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
 
 In order to refer to the proposed insertion row, the special alias
-:attr:`~.postgresql.dml.Insert.excluded` is available as an attribute on
-the :class:`.postgresql.dml.Insert` object; this object is a
+:attr:`~.postgresql.Insert.excluded` is available as an attribute on
+the :class:`.postgresql.Insert` object; this object is a
 :class:`.ColumnCollection` which alias contains all columns of the target
 table::
 
@@ -452,7 +452,7 @@ parameter, which will limit those rows which receive an UPDATE::
 ``ON CONFLICT`` may also be used to skip inserting a row entirely
 if any conflict with a unique or exclusion constraint occurs; below
 this is illustrated using the
-:meth:`~.postgresql.dml.Insert.on_conflict_do_nothing` method::
+:meth:`~.postgresql.Insert.on_conflict_do_nothing` method::
 
     from sqlalchemy.dialects.postgresql import insert
 

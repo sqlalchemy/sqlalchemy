@@ -181,9 +181,9 @@ For example::
 PostgreSQL DML Constructs
 -------------------------
 
-.. autofunction:: sqlalchemy.dialects.postgresql.dml.insert
+.. autofunction:: sqlalchemy.dialects.postgresql.insert
 
-.. autoclass:: sqlalchemy.dialects.postgresql.dml.Insert
+.. autoclass:: sqlalchemy.dialects.postgresql.Insert
   :members:
 
 psycopg2

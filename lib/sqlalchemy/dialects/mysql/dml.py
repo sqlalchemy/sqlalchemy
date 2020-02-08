@@ -15,6 +15,9 @@ class Insert(StandardInsert):
 
     Adds methods for MySQL-specific syntaxes such as ON DUPLICATE KEY UPDATE.
 
+    The :class:`~.mysql.Insert` object is created using the
+    :func:`sqlalchemy.dialects.mysql.insert` function.
+
     .. versionadded:: 1.2
 
     """
@@ -105,7 +108,9 @@ class Insert(StandardInsert):
         self._post_values_clause = OnDuplicateClause(inserted_alias, values)
 
 
-insert = public_factory(Insert, ".dialects.mysql.insert")
+insert = public_factory(
+    Insert, ".dialects.mysql.insert", ".dialects.mysql.Insert"
+)
 
 
 class OnDuplicateClause(ClauseElement):

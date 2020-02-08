@@ -170,7 +170,7 @@ def _exec_code_in_env(code, env, fn_name):
     return env[fn_name]
 
 
-def public_factory(target, location):
+def public_factory(target, location, class_location=None):
     """Produce a wrapping function for the given cls or classmethod.
 
     Rationale here is so that the __init__ method of the
@@ -183,14 +183,14 @@ def public_factory(target, location):
         doc = (
             "Construct a new :class:`.%s` object. \n\n"
             "This constructor is mirrored as a public API function; "
-            "see :func:`~%s` "
+            "see :func:`sqlalchemy%s` "
             "for a full usage and argument description."
             % (target.__name__, location)
         )
     else:
         fn = callable_ = target
         doc = (
-            "This function is mirrored; see :func:`~%s` "
+            "This function is mirrored; see :func:`sqlalchemy%s` "
             "for a description of arguments." % location
         )
 
@@ -209,12 +209,38 @@ def %(name)s(%(args)s):
     env = {"cls": callable_, "symbol": symbol}
     exec(code, env)
     decorated = env[location_name]
-    decorated.__doc__ = fn.__doc__
+    if hasattr(fn, "_linked_to"):
+        linked_to, linked_to_location = fn._linked_to
+        linked_to_doc = linked_to.__doc__
+        if class_location is None:
+            class_location = "%s.%s" % (target.__module__, target.__name__)
+
+        linked_to_doc = inject_docstring_text(
+            linked_to_doc,
+            ".. container:: inherited_member\n\n    "
+            "Inherited from :func:`sqlalchemy%s`; this constructor "
+            "creates a :class:`%s` object"
+            % (linked_to_location, class_location),
+            0,
+        )
+        decorated.__doc__ = linked_to_doc
+    else:
+        decorated.__doc__ = fn.__doc__
+
     decorated.__module__ = "sqlalchemy" + location.rsplit(".", 1)[0]
+    if decorated.__module__ not in sys.modules:
+        raise ImportError(
+            "public_factory location %s is not in sys.modules"
+            % (decorated.__module__,)
+        )
     if compat.py2k or hasattr(fn, "__func__"):
         fn.__func__.__doc__ = doc
+        if not hasattr(fn.__func__, "_linked_to"):
+            fn.__func__._linked_to = (decorated, location)
     else:
         fn.__doc__ = doc
+        if not hasattr(fn, "_linked_to"):
+            fn._linked_to = (decorated, location)
     return decorated
 
 
