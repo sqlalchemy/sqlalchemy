@@ -756,7 +756,7 @@ class AutomapBase(object):
         """
         if reflect:
             cls.metadata.reflect(
-                engine,
+                bind=engine,
                 schema=schema,
                 extend_existing=True,
                 autoload_replace=False,
