@@ -35,19 +35,9 @@ class compound(object):
         self.fails = set()
         self.skips = set()
         self.tags = set()
-        self.combinations = {}
 
     def __add__(self, other):
         return self.add(other)
-
-    def with_combination(self, **kw):
-        copy = compound()
-        copy.fails.update(self.fails)
-        copy.skips.update(self.skips)
-        copy.tags.update(self.tags)
-        copy.combinations.update((f, kw) for f in copy.fails)
-        copy.combinations.update((s, kw) for s in copy.skips)
-        return copy
 
     def add(self, *others):
         copy = compound()
@@ -95,7 +85,6 @@ class compound(object):
         self.skips.update(other.skips)
         self.fails.update(other.fails)
         self.tags.update(other.tags)
-        self.combinations.update(other.combinations)
 
     def __call__(self, fn):
         if hasattr(fn, "_sa_exclusion_extend"):
@@ -118,29 +107,13 @@ class compound(object):
         try:
             yield
         except Exception as ex:
-            all_fails._expect_failure(config._current, ex, None)
+            all_fails._expect_failure(config._current, ex)
         else:
-            all_fails._expect_success(config._current, None)
-
-    def _check_combinations(self, combination, predicate):
-        if predicate in self.combinations:
-            for k, v in combination:
-                if (
-                    k in self.combinations[predicate]
-                    and self.combinations[predicate][k] != v
-                ):
-                    return False
-        return True
+            all_fails._expect_success(config._current)
 
     def _do(self, cfg, fn, *args, **kw):
-        if len(args) > 1:
-            insp = inspect_getfullargspec(fn)
-            combination = list(zip(insp.args[1:], args[1:]))
-        else:
-            combination = None
-
         for skip in self.skips:
-            if self._check_combinations(combination, skip) and skip(cfg):
+            if skip(cfg):
                 msg = "'%s' : %s" % (
                     config.get_current_test_name(),
                     skip._as_string(cfg),
@@ -150,14 +123,14 @@ class compound(object):
         try:
             return_value = fn(*args, **kw)
         except Exception as ex:
-            self._expect_failure(cfg, ex, combination, name=fn.__name__)
+            self._expect_failure(cfg, ex, name=fn.__name__)
         else:
-            self._expect_success(cfg, combination, name=fn.__name__)
+            self._expect_success(cfg, name=fn.__name__)
             return return_value
 
-    def _expect_failure(self, config, ex, combination, name="block"):
+    def _expect_failure(self, config, ex, name="block"):
         for fail in self.fails:
-            if self._check_combinations(combination, fail) and fail(config):
+            if fail(config):
                 if util.py2k:
                     str_ex = unicode(ex).encode("utf-8", errors="ignore")
                 else:
@@ -172,12 +145,12 @@ class compound(object):
         else:
             util.raise_from_cause(ex)
 
-    def _expect_success(self, config, combination, name="block"):
+    def _expect_success(self, config, name="block"):
         if not self.fails:
             return
 
         for fail in self.fails:
-            if self._check_combinations(combination, fail) and fail(config):
+            if fail(config):
                 raise AssertionError(
                     "Unexpected success for '%s' (%s)"
                     % (

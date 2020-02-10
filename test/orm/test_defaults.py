@@ -263,7 +263,13 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
             )
 
     @testing.combinations(
-        (True, testing.requires.computed_columns_on_update_returning), (False,)
+        (
+            "eagerload",
+            True,
+            testing.requires.computed_columns_on_update_returning,
+        ),
+        ("noneagerload", False,),
+        id_="ia",
     )
     def test_update_computed(self, eager):
         if eager:
