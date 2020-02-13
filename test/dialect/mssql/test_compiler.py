@@ -370,8 +370,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_noorderby_insubquery(self):
-        """test that the ms-sql dialect removes ORDER BY clauses from
-        subqueries"""
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present"""
 
         table1 = table(
             "mytable",
@@ -387,6 +387,112 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT * FROM (SELECT mytable.myid AS "
             "myid FROM mytable) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
+        )
+
+    def test_noorderby_insubquery_limit(self):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        q = (
+            select([table1.c.myid], order_by=[table1.c.myid])
+            .limit(10)
+            .alias("foo")
+        )
+        crit = q.c.myid == table1.c.myid
+        self.assert_compile(
+            select(["*"], crit),
+            "SELECT * FROM (SELECT TOP [POSTCOMPILE_param_1] mytable.myid AS "
+            "myid FROM mytable ORDER BY mytable.myid) AS foo, mytable WHERE "
+            "foo.myid = mytable.myid",
+        )
+
+    def test_noorderby_insubquery_offset_oldstyle(self):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        q = (
+            select([table1.c.myid], order_by=[table1.c.myid])
+            .offset(10)
+            .alias("foo")
+        )
+        crit = q.c.myid == table1.c.myid
+        self.assert_compile(
+            select(["*"], crit),
+            "SELECT * FROM (SELECT anon_1.myid AS myid FROM "
+            "(SELECT mytable.myid AS myid, ROW_NUMBER() OVER (ORDER BY "
+            "mytable.myid) AS mssql_rn FROM mytable) AS anon_1 "
+            "WHERE mssql_rn > :param_1) AS foo, mytable WHERE "
+            "foo.myid = mytable.myid",
+        )
+
+    def test_noorderby_insubquery_offset_newstyle(self):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        q = (
+            select([table1.c.myid], order_by=[table1.c.myid])
+            .offset(10)
+            .alias("foo")
+        )
+        crit = q.c.myid == table1.c.myid
+        dialect = mssql.dialect()
+        dialect._supports_offset_fetch = True
+        self.assert_compile(
+            select(["*"], crit),
+            "SELECT * FROM (SELECT mytable.myid AS myid FROM mytable "
+            "ORDER BY mytable.myid OFFSET :param_1 ROWS) AS foo, "
+            "mytable WHERE foo.myid = mytable.myid",
+            dialect=dialect,
+        )
+
+    def test_noorderby_insubquery_limit_offset_newstyle(self):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        q = (
+            select([table1.c.myid], order_by=[table1.c.myid])
+            .limit(10)
+            .offset(10)
+            .alias("foo")
+        )
+        crit = q.c.myid == table1.c.myid
+        dialect = mssql.dialect()
+        dialect._supports_offset_fetch = True
+        self.assert_compile(
+            select(["*"], crit),
+            "SELECT * FROM (SELECT mytable.myid AS myid FROM mytable "
+            "ORDER BY mytable.myid OFFSET :param_1 ROWS "
+            "FETCH NEXT :param_2 ROWS ONLY ) AS foo, "
+            "mytable WHERE foo.myid = mytable.myid",
+            dialect=dialect,
         )
 
     def test_noorderby_parameters_insubquery(self):
@@ -859,7 +965,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "OFFSET :param_1 ROWS "
             "FETCH NEXT :param_2 ROWS ONLY ",
             checkparams={"param_1": 20, "param_2": 10, "x_1": 5},
-            dialect=dialect_2012
+            dialect=dialect_2012,
         )
 
         c = s.compile(dialect=dialect_2012)
