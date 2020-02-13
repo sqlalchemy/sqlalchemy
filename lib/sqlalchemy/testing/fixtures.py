@@ -56,6 +56,32 @@ class TestBase(object):
         if hasattr(self, "tearDown"):
             self.tearDown()
 
+    @config.fixture()
+    def connection(self):
+        conn = config.db.connect()
+        trans = conn.begin()
+        try:
+            yield conn
+        finally:
+            trans.rollback()
+            conn.close()
+
+    # propose a replacement for @testing.provide_metadata.
+    # the problem with this is that TablesTest below has a ".metadata"
+    # attribute already which is accessed directly as part of the
+    # @testing.provide_metadata pattern.  Might need to call this _metadata
+    # for it to be useful.
+    # @config.fixture()
+    # def metadata(self):
+    #    """Provide bound MetaData for a single test, dropping afterwards."""
+    #
+    #    from . import engines
+    #    metadata = schema.MetaData(config.db)
+    #    try:
+    #        yield metadata
+    #    finally:
+    #       engines.drop_all_tables(metadata, config.db)
+
 
 class TablesTest(TestBase):
 
