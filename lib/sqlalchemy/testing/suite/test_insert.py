@@ -113,7 +113,8 @@ class InsertBehaviorTest(fixtures.TablesTest):
         else:
             engine = config.db
 
-        r = engine.execute(self.tables.autoinc_pk.insert(), data="some data")
+        with engine.begin() as conn:
+            r = conn.execute(self.tables.autoinc_pk.insert(), data="some data")
         assert r._soft_closed
         assert not r.closed
         assert r.is_insert
@@ -282,9 +283,10 @@ class ReturningTest(fixtures.TablesTest):
     def test_explicit_returning_pk_autocommit(self):
         engine = config.db
         table = self.tables.autoinc_pk
-        r = engine.execute(
-            table.insert().returning(table.c.id), data="some data"
-        )
+        with engine.begin() as conn:
+            r = conn.execute(
+                table.insert().returning(table.c.id), data="some data"
+            )
         pk = r.first()[0]
         fetched_pk = config.db.scalar(select([table.c.id]))
         eq_(fetched_pk, pk)

@@ -182,7 +182,8 @@ execution.  Given this example::
                     Column('x', Integer))
     m.create_all(engine)
 
-    engine.execute(t.insert(), {'id': 1, 'x':1}, {'id':2, 'x':2})
+    with engine.begin() as conn:
+        conn.execute(t.insert(), {'id': 1, 'x':1}, {'id':2, 'x':2})
 
 The above column will be created with IDENTITY, however the INSERT statement
 we emit is specifying explicit values.  In the echo output we can see

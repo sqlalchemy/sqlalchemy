@@ -1026,18 +1026,24 @@ class TypeRoundTripTest(
                 ]
 
             for counter, engine in enumerate(eng):
-                engine.execute(tbl.insert())
-                if "int_y" in tbl.c:
-                    assert engine.scalar(select([tbl.c.int_y])) == counter + 1
-                    assert (
-                        list(engine.execute(tbl.select()).first()).count(
-                            counter + 1
+                with engine.begin() as conn:
+                    conn.execute(tbl.insert())
+                    if "int_y" in tbl.c:
+                        eq_(
+                            conn.execute(select([tbl.c.int_y])).scalar(),
+                            counter + 1,
                         )
-                        == 1
-                    )
-                else:
-                    assert 1 not in list(engine.execute(tbl.select()).first())
-                engine.execute(tbl.delete())
+                        assert (
+                            list(conn.execute(tbl.select()).first()).count(
+                                counter + 1
+                            )
+                            == 1
+                        )
+                    else:
+                        assert 1 not in list(
+                            conn.execute(tbl.select()).first()
+                        )
+                    conn.execute(tbl.delete())
 
 
 class StringTest(fixtures.TestBase, AssertsCompiledSQL):
