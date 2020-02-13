@@ -395,8 +395,10 @@ generated a FROM clause for us. The result returned is again a
 :class:`~sqlalchemy.engine.ResultProxy` object, which acts much like a
 DBAPI cursor, including methods such as
 :func:`~sqlalchemy.engine.ResultProxy.fetchone` and
-:func:`~sqlalchemy.engine.ResultProxy.fetchall`. The easiest way to get
-rows from it is to just iterate:
+:func:`~sqlalchemy.engine.ResultProxy.fetchall`.    These methods return
+row objects, which are provided via the :class:`.Row` class.  The
+result object can be iterated directly in order to provide an iterator
+of :class:`.Row` objects:
 
 .. sourcecode:: pycon+sql
 
@@ -405,9 +407,11 @@ rows from it is to just iterate:
     (1, u'jack', u'Jack Jones')
     (2, u'wendy', u'Wendy Williams')
 
-Above, we see that printing each row produces a simple tuple-like result. We
-have more options at accessing the data in each row. One very common way is
-through dictionary access, using the string names of columns:
+Above, we see that printing each :class:`.Row` produces a simple
+tuple-like result.  The :class:`.Row` behaves like a hybrid between
+a Python mapping and tuple, with several methods of retrieving the data
+in each column.  One common way is
+as a Python mapping of strings, using the string names of columns:
 
 .. sourcecode:: pycon+sql
 
@@ -420,7 +424,7 @@ through dictionary access, using the string names of columns:
     >>> print("name:", row['name'], "; fullname:", row['fullname'])
     name: jack ; fullname: Jack Jones
 
-Integer indexes work as well:
+Another way is as a Python sequence, using integer indexes:
 
 .. sourcecode:: pycon+sql
 
@@ -428,8 +432,10 @@ Integer indexes work as well:
     >>> print("name:", row[1], "; fullname:", row[2])
     name: wendy ; fullname: Wendy Williams
 
-But another way, whose usefulness will become apparent later on, is to use the
-:class:`~sqlalchemy.schema.Column` objects directly as keys:
+A more specialized method of column access is to use the SQL construct that
+directly corresponds to a particular column as the mapping key; in this
+example, it means we would use the  :class:`.Column` objects selected in our
+SELECT directly as keys:
 
 .. sourcecode:: pycon+sql
 
@@ -441,16 +447,18 @@ But another way, whose usefulness will become apparent later on, is to use the
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
 
-Result sets which have pending rows remaining should be explicitly closed
-before discarding. While the cursor and connection resources referenced by the
-:class:`~sqlalchemy.engine.ResultProxy` will be respectively closed and
-returned to the connection pool when the object is garbage collected, it's
-better to make it explicit as some database APIs are very picky about such
-things:
+The :class:`.ResultProxy` object features "auto-close" behavior that closes the
+underlying DBAPI ``cursor`` object when all pending result rows have been
+fetched.   If a :class:`.ResultProxy` is to be discarded before such an
+autoclose has occurred, it can be explicitly closed using the
+:meth:`.ResultProxy.close` method:
 
 .. sourcecode:: pycon+sql
 
     >>> result.close()
+
+Selecting Specific Columns
+===========================
 
 If we'd like to more carefully control the columns which are placed in the
 COLUMNS clause of the select, we reference individual
