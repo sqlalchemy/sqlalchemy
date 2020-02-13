@@ -116,13 +116,20 @@ except ImportError:
 
 
 class RowProxy(BaseRowProxy):
-    """Proxy values from a single cursor row.
+    """Represent a single result row.
 
-    Mostly follows "ordered dictionary" behavior, mapping result
-    values to the string-based column name, the integer position of
-    the result in the row, as well as Column instances which can be
-    mapped to the original Columns that produced this result set (for
-    results that correspond to constructed SQL expressions).
+    The :class:`.RowProxy` object is retrieved from a database result, from the
+    :class:`.ResultProxy` object using methods like
+    :meth:`.ResultProxy.fetchall`.
+
+    The :class:`.RowProxy` object seeks to act mostly like a Python named
+    tuple, but also provides some Python dictionary behaviors at the same time.
+
+    .. seealso::
+
+        :ref:`coretutorial_selecting` - includes examples of selecting
+        rows from SELECT statements.
+
     """
 
     __slots__ = ()
@@ -170,25 +177,72 @@ class RowProxy(BaseRowProxy):
         return repr(sql_util._repr_row(self))
 
     def has_key(self, key):
-        """Return True if this RowProxy contains the given key."""
+        """Return True if this :class:`.RowProxy` contains the given key.
+
+        Through the SQLAlchemy 1.x series, the ``__contains__()`` method
+        of :class:`.RowProxy` also links to :meth:`.RowProxy.has_key`, in that
+        an expression such as ::
+
+            "some_col" in row
+
+        Will return True if the row contains a column named ``"some_col"``,
+        in the way that a Python mapping works.
+
+        However, it is planned that the 2.0 series of SQLAlchemy will reverse
+        this behavior so that ``__contains__()`` will refer to a value being
+        present in the row, in the way that a Python tuple works.
+
+        """
 
         return self._parent._has_key(key)
 
     def items(self):
-        """Return a list of tuples, each tuple containing a key/value pair."""
-        # TODO: no coverage here
+        """Return a list of tuples, each tuple containing a key/value pair.
+
+        This method is analogous to the Python dictionary ``.items()`` method,
+        except that it returns a list, not an iterator.
+
+        """
+
         return [(key, self[key]) for key in self.keys()]
 
     def keys(self):
-        """Return the list of keys as strings represented by this RowProxy."""
+        """Return the list of keys as strings represented by this
+        :class:`.RowProxy`.
+
+        This method is analogous to the Python dictionary ``.keys()`` method,
+        except that it returns a list, not an iterator.
+
+        """
 
         return self._parent.keys
 
     def iterkeys(self):
+        """Return a an iterator against the :meth:`.RowProxy.keys` method.
+
+        This method is analogous to the Python-2-only dictionary
+        ``.iterkeys()`` method.
+
+        """
         return iter(self._parent.keys)
 
     def itervalues(self):
+        """Return a an iterator against the :meth:`.RowProxy.values` method.
+
+        This method is analogous to the Python-2-only dictionary
+        ``.itervalues()`` method.
+
+        """
         return iter(self)
+
+    def values(self):
+        """Return the values represented by this :class:`.RowProxy` as a list.
+
+        This method is analogous to the Python dictionary ``.values()`` method,
+        except that it returns a list, not an iterator.
+
+        """
+        return super(RowProxy, self).values()
 
 
 try:
@@ -684,23 +738,16 @@ class ResultMetaData(object):
 
 
 class ResultProxy(object):
-    """Wraps a DB-API cursor object to provide easier access to row columns.
+    """A facade around a DBAPI cursor object.
 
-    Individual columns may be accessed by their integer position,
-    case-insensitive column name, or by ``schema.Column``
-    object. e.g.::
+    Returns database rows via the :class:`.RowProxy` class, which provides
+    additional API features and behaviors on top of the raw data returned
+    by the DBAPI.
 
-      row = fetchone()
+    .. seealso::
 
-      col1 = row[0]    # access via integer position
-
-      col2 = row['col2']   # access via name
-
-      col3 = row[mytable.c.mycol] # access via Column object.
-
-    ``ResultProxy`` also handles post-processing of result column
-    data using ``TypeEngine`` objects, which are referenced from
-    the originating SQL statement that produced this result set.
+        :ref:`coretutorial_selecting` - introductory material for accessing
+        :class:`.ResultProxy` and :class:`.RowProxy` objects.
 
     """
 
@@ -758,7 +805,9 @@ class ResultProxy(object):
                 )
 
     def keys(self):
-        """Return the current set of string keys for rows."""
+        """Return the list of string keys that would represented by each
+        :class:`.RowProxy`."""
+
         if self._metadata:
             return self._metadata.keys
         else:
@@ -931,8 +980,6 @@ class ResultProxy(object):
 
             :ref:`connections_toplevel`
 
-            :meth:`.ResultProxy._soft_close`
-
         """
 
         if not self.closed:
@@ -950,7 +997,10 @@ class ResultProxy(object):
                 yield row
 
     def __next__(self):
-        """Implement the next() protocol.
+        """Implement the Python next() protocol.
+
+        This method, mirrored as both ``.next()`` and  ``.__next__()``, is part
+        of Python's API for producing iterator-like behavior.
 
         .. versionadded:: 1.2
 
@@ -1203,9 +1253,7 @@ class ResultProxy(object):
         an empty list.   After the :meth:`.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 
-        .. versionchanged:: 1.0.0 - Added "soft close" behavior which
-           allows the result to be used in an "exhausted" state prior to
-           calling the :meth:`.ResultProxy.close` method.
+        :return: a list of :class:`.RowProxy` objects
 
         """
 
@@ -1231,9 +1279,7 @@ class ResultProxy(object):
         an empty list.   After the :meth:`.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 
-        .. versionchanged:: 1.0.0 - Added "soft close" behavior which
-           allows the result to be used in an "exhausted" state prior to
-           calling the :meth:`.ResultProxy.close` method.
+        :return: a list of :class:`.RowProxy` objects
 
         """
 
@@ -1259,9 +1305,7 @@ class ResultProxy(object):
         After the :meth:`.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 
-        .. versionchanged:: 1.0.0 - Added "soft close" behavior which
-           allows the result to be used in an "exhausted" state prior to
-           calling the :meth:`.ResultProxy.close` method.
+        :return: a :class:`.RowProxy` object, or None if no rows remain
 
         """
         try:
@@ -1279,10 +1323,10 @@ class ResultProxy(object):
     def first(self):
         """Fetch the first row and then close the result set unconditionally.
 
-        Returns None if no row is present.
-
         After calling this method, the object is fully closed,
         e.g. the :meth:`.ResultProxy.close` method will have been called.
+
+        :return: a :class:`.RowProxy` object, or None if no rows remain
 
         """
         if self._metadata is None:
@@ -1306,10 +1350,10 @@ class ResultProxy(object):
     def scalar(self):
         """Fetch the first column of the first row, and close the result set.
 
-        Returns None if no row is present.
-
         After calling this method, the object is fully closed,
         e.g. the :meth:`.ResultProxy.close` method will have been called.
+
+        :return: a Python scalar value , or None if no rows remain
 
         """
         row = self.first()

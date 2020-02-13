@@ -738,7 +738,6 @@ Connection / Engine API
 
 .. autoclass:: ResultProxy
     :members:
-    :private-members: _soft_close
 
 .. autoclass:: RowProxy
     :members:
