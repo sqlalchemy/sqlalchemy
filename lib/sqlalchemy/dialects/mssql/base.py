@@ -245,9 +245,16 @@ CREATE TABLE statement for this column will yield::
 LIMIT/OFFSET Support
 --------------------
 
-MSSQL has no support for the LIMIT or OFFSET keywords. LIMIT is
-supported directly through the ``TOP`` Transact SQL keyword.   A statement
-such as::
+MSSQL has added support for LIMIT / OFFSET as of SQL Server 2012, via the
+"OFFSET n ROWS" and "FETCH NEXT n ROWS" clauses.  SQLAlchemy supports these
+syntaxes automatically if SQL Server 2012 or greater is detected.
+
+.. versionchanged:: 1.4 support added for SQL Server "OFFSET n ROWS" and
+   "FETCH NEXT n ROWS" syntax.
+
+For statements that specify only LIMIT and no OFFSET, all versions of SQL
+Server support the TOP keyword.   This syntax is used for all SQL Server
+versions when no OFFSET clause is present.  A statement such as::
 
     select([some_table]).limit(5)
 
@@ -255,8 +262,9 @@ will render similarly to::
 
     SELECT TOP 5 col1, col2.. FROM table
 
-LIMIT with OFFSET support is implemented using the using the ``ROW_NUMBER()``
-window function.   A statement such as::
+For versions of SQL Server prior to SQL Server 2012, a statement that uses
+LIMIT and OFFSET, or just OFFSET alone, will be rendered using the
+``ROW_NUMBER()`` window function.   A statement such as::
 
     select([some_table]).order_by(some_table.c.col3).limit(5).offset(10)
 
@@ -267,8 +275,9 @@ will render similarly to::
     mssql_rn FROM table WHERE t.x = :x_1) AS
     anon_1 WHERE mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1
 
-Note that when using LIMIT and OFFSET together, the statement must have
-an ORDER BY as well.
+Note that when using LIMIT and/or OFFSET, whether using the older
+or newer SQL Server syntaxes, the statement must have an ORDER BY as well,
+else a :class:`.CompileError` is raised.
 
 .. _mssql_isolation_level:
 
@@ -1884,7 +1893,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def order_by_clause(self, select, **kw):
         # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
-        if self.is_subquery() and not select._limit:
+        if (
+            self.is_subquery()
+            and not select._limit
+            and (not select._offset or not self.dialect._supports_offset_fetch)
+        ):
             # avoid processing the order by clause if we won't end up
             # using it, because we don't want all the bind params tacked
             # onto the positional list if that is what the dbapi requires
