@@ -184,8 +184,8 @@ class CompiledSQL(SQLMatchRule):
 
     def _failure_message(self, expected_params):
         return (
-            "Testing for compiled statement %r partial params %s, "
-            "received %%(received_statement)r with params "
+            "Testing for compiled statement\n%r partial params %s, "
+            "received\n%%(received_statement)r with params "
             "%%(received_parameters)r"
             % (
                 self.statement.replace("%", "%%"),
@@ -343,6 +343,9 @@ class SQLExecuteObserved(object):
         self.parameters = _distill_params(multiparams, params)
         self.statements = []
 
+    def __repr__(self):
+        return str(self.statements)
+
 
 class SQLCursorExecuteObserved(
     collections.namedtuple(
@@ -373,7 +376,7 @@ class SQLAsserter(object):
             elif rule.errormessage:
                 assert False, rule.errormessage
         if observed:
-            assert False, "Additional SQL statements remain"
+            assert False, "Additional SQL statements remain:\n%s" % observed
         elif not rule.is_consumed:
             rule.no_more_statements()
 

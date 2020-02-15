@@ -533,6 +533,8 @@ equally::
 
         result.scalar()  # first col of first row  (warns if additional rows remain?)
         result.scalars()  # iterator of first col of each row
+        result.scalars(1)  # iterator of second col of each row
+        result.scalars('a')  # iterator of the "a" col of each row
         result.scalars().all()  # same, as a list
 
         result.columns('a', 'b').<anything>  # limit column tuples
@@ -543,6 +545,8 @@ equally::
         # if the result is an ORM result, you could do:
         result.columns(User, Address)   # assuming these are available entities
 
+        # or to get just User as a list
+        result.scalars(User).all()
 
         # index access and slices ?
         result[0].all()  # same as result.scalars().all()
@@ -867,6 +871,37 @@ of the form ``(target, onclause)`` as well::
 
 By using attributes instead of strings above, the :meth:`.Query.join` method
 no longer needs the almost never-used option of ``from_joinpoint``.
+
+Other ORM Query patterns changed
+=================================
+
+This section will collect various :class:`.Query` patterns and how they work
+in terms of :func:`.future.select`.
+
+.. _migration_20_query_distinct:
+
+Using DISTINCT with additional columns, but only select the entity
+-------------------------------------------------------------------
+
+:class:`.Query` will automatically add columns in the ORDER BY when
+distinct is used.  The following query will select from all User columns
+as well as "address.email_address" but only return User objects::
+
+    result = session.query(User).join(User.addresses).\
+        distinct().order_by(Address.email_address).all()
+
+Relational databases won't allow you to ORDER BY "address.email_address" if
+it isn't also in the columns clause.   But the above query only wants "User"
+objects back.  In 2.0, this very unusual use case is performed explicitly,
+and the limiting of the entities/columns to ``User`` is done on the result::
+
+
+    from sqlalchemy.future import select
+
+    stmt = select(User, Address.email_address).join(User.addresses).\
+        distinct().order_by(Address.email_address)
+
+    result = session.execute(stmt).scalars(User).all()
 
 Transparent Statement Compilation Caching replaces "Baked" queries, works in Core
 ==================================================================================

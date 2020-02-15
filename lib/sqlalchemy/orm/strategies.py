@@ -1235,6 +1235,15 @@ class SubqueryLoader(PostLoader):
         if q._limit is None and q._offset is None:
             q._order_by = None
 
+        if q._distinct is True and q._order_by:
+            # the logic to automatically add the order by columns to the query
+            # when distinct is True is deprecated in the query
+            to_add = sql_util.expand_column_list_from_order_by(
+                target_cols, q._order_by
+            )
+            if to_add:
+                q._set_entities(target_cols + to_add)
+
         # the original query now becomes a subquery
         # which we'll join onto.
 

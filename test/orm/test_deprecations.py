@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import and_
+from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -7,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy.ext.declarative import comparable_using
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
@@ -2287,3 +2289,78 @@ class TestDeprecation20(fixtures.TestBase):
     def test_eagerloading(self):
         with testing.expect_deprecated_20(".*joinedload"):
             eagerload("foo")
+
+
+class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_columns_augmented_roundtrip_one(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        q = (
+            sess.query(User)
+            .join("addresses")
+            .distinct()
+            .order_by(desc(Address.email_address))
+        )
+        with testing.expect_deprecated(
+            "ORDER BY columns added implicitly due to "
+        ):
+            eq_([User(id=7), User(id=9), User(id=8)], q.all())
+
+    def test_columns_augmented_roundtrip_three(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(User.id, User.name.label("foo"), Address.id)
+            .join(Address, true())
+            .filter(User.name == "jack")
+            .filter(User.id + Address.user_id > 0)
+            .distinct()
+            .order_by(User.id, User.name, Address.email_address)
+        )
+
+        # even though columns are added, they aren't in the result
+        with testing.expect_deprecated(
+            "ORDER BY columns added implicitly due to "
+        ):
+            eq_(
+                q.all(),
+                [
+                    (7, "jack", 3),
+                    (7, "jack", 4),
+                    (7, "jack", 2),
+                    (7, "jack", 5),
+                    (7, "jack", 1),
+                ],
+            )
+            for row in q:
+                eq_(row._mapping.keys(), ["id", "foo", "id"])
+
+    def test_columns_augmented_sql_one(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(User.id, User.name.label("foo"), Address.id)
+            .distinct()
+            .order_by(User.id, User.name, Address.email_address)
+        )
+
+        # Address.email_address is added because of DISTINCT,
+        # however User.id, User.name are not b.c. they're already there,
+        # even though User.name is labeled
+        with testing.expect_deprecated(
+            "ORDER BY columns added implicitly due to "
+        ):
+            self.assert_compile(
+                q,
+                "SELECT DISTINCT users.id AS users_id, users.name AS foo, "
+                "addresses.id AS addresses_id, addresses.email_address AS "
+                "addresses_email_address FROM users, addresses "
+                "ORDER BY users.id, users.name, addresses.email_address",
+            )
