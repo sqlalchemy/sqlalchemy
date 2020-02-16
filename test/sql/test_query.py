@@ -1244,7 +1244,9 @@ class CompoundTest(fixtures.TestBase):
         "firebird",
         "has trouble extracting anonymous column from union subquery",
     )
-    @testing.fails_on("mysql", "FIXME: unknown")
+    @testing.fails_on(
+        testing.requires._mysql_not_mariadb_104, "FIXME: unknown"
+    )
     @testing.fails_on("sqlite", "FIXME: unknown")
     def test_union_all(self):
         e = union_all(
@@ -1348,7 +1350,8 @@ class CompoundTest(fixtures.TestBase):
         eq_(found2, wanted)
 
     @testing.fails_on(
-        ["sqlite", "mysql"], "Can't handle this style of nesting"
+        ["sqlite", testing.requires._mysql_not_mariadb_104],
+        "Can't handle this style of nesting",
     )
     @testing.requires.except_
     def test_except_style3(self):
@@ -1381,7 +1384,8 @@ class CompoundTest(fixtures.TestBase):
 
     @testing.requires.intersect
     @testing.fails_on(
-        ["sqlite", "mysql"], "sqlite can't handle leading parenthesis"
+        ["sqlite", testing.requires._mysql_not_mariadb_104],
+        "sqlite can't handle leading parenthesis",
     )
     def test_intersect_unions(self):
         u = intersect(
