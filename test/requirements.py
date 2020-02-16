@@ -1451,6 +1451,12 @@ class DefaultRequirements(SuiteRequirements):
             or config.db.dialect._mariadb_normalized_version_info < (10, 3)
         )
 
+    def _mysql_not_mariadb_104(self, config):
+        return against(config, "mysql") and (
+            not config.db.dialect._is_mariadb
+            or config.db.dialect._mariadb_normalized_version_info < (10, 4)
+        )
+
     def _has_mysql_on_windows(self, config):
         return (
             against(config, "mysql")
