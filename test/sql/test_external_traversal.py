@@ -1831,7 +1831,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
         )
-        select_copy = s.column(column("yyy"))
+        select_copy = s.add_columns(column("yyy"))
         self.assert_compile(
             select_copy,
             "SELECT table1.col1, table1.col2, " "table1.col3, yyy FROM table1",

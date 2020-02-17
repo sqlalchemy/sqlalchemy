@@ -963,7 +963,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select(
             [], exists([1], table2.c.otherid == table1.c.myid), from_obj=table1
         )
-        s.column.non_generative(s, table1)
+        s.add_columns.non_generative(s, table1)
         self.assert_compile(
             s,
             "SELECT mytable.myid, mytable.name, "
@@ -4932,7 +4932,7 @@ class ResultMapTest(fixtures.TestBase):
         orig = [t.c.x, t.c.y, l1, l2, l3]
         stmt = select(orig)
         wrapped = stmt._generate()
-        wrapped = wrapped.column(
+        wrapped = wrapped.add_columns(
             func.ROW_NUMBER().over(order_by=t.c.z)
         ).alias()
 
@@ -4968,7 +4968,7 @@ class ResultMapTest(fixtures.TestBase):
         eq_(len(stmt._columns_plus_names), 7)
 
         wrapped = stmt._generate()
-        wrapped = wrapped.column(
+        wrapped = wrapped.add_columns(
             func.ROW_NUMBER().over(order_by=t.c.z)
         ).alias()
 

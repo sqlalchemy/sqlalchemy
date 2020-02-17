@@ -46,19 +46,82 @@ class UpdateBase(
     _prefixes = ()
     named_with_column = False
 
+    @classmethod
+    def _constructor_20_deprecations(cls, fn_name, clsname, names):
+
+        param_to_method_lookup = dict(
+            whereclause=(
+                "The :paramref:`.%(func)s.whereclause` parameter "
+                "will be removed "
+                "in SQLAlchemy 2.0.  Please refer to the "
+                ":meth:`.%(classname)s.where` method."
+            ),
+            values=(
+                "The :paramref:`.%(func)s.values` parameter will be removed "
+                "in SQLAlchemy 2.0.  Please refer to the "
+                ":meth:`.%(classname)s.values` method."
+            ),
+            bind=(
+                "The :paramref:`.%(func)s.bind` parameter will be removed in "
+                "SQLAlchemy 2.0.  Please use explicit connection execution."
+            ),
+            inline=(
+                "The :paramref:`.%(func)s.inline` parameter will be "
+                "removed in "
+                "SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.inline` method."
+            ),
+            prefixes=(
+                "The :paramref:`.%(func)s.prefixes parameter will be "
+                "removed in "
+                "SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.prefix_with` "
+                "method."
+            ),
+            return_defaults=(
+                "The :paramref:`.%(func)s.return_defaults` parameter will be "
+                "removed in SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.return_defaults` method."
+            ),
+            returning=(
+                "The :paramref:`.%(func)s.returning` parameter will be "
+                "removed in SQLAlchemy 2.0.  Please use the "
+                ":meth:`.%(classname)s.returning`` method."
+            ),
+            preserve_parameter_order=(
+                "The :paramref:`%(func)s.preserve_parameter_order` parameter "
+                "will be removed in SQLAlchemy 2.0.   Use the "
+                ":meth:`.%(classname)s.ordered_values` method with a list "
+                "of tuples. "
+            ),
+        )
+
+        return util.deprecated_params(
+            **{
+                name: (
+                    "2.0",
+                    param_to_method_lookup[name]
+                    % {"func": fn_name, "classname": clsname},
+                )
+                for name in names
+            }
+        )
+
     def _generate_fromclause_column_proxies(self, fromclause):
         fromclause._columns._populate_separate_keys(
             col._make_proxy(fromclause) for col in self._returning
         )
 
-    def _process_colparams(self, parameters):
+    def _process_colparams(self, parameters, preserve_parameter_order=False):
         def process_single(p):
             if isinstance(p, (list, tuple)):
                 return dict((c.key, pval) for c, pval in zip(self.table.c, p))
             else:
                 return p
 
-        if self._preserve_parameter_order and parameters is not None:
+        if (
+            preserve_parameter_order or self._preserve_parameter_order
+        ) and parameters is not None:
             if not isinstance(parameters, list) or (
                 parameters and not isinstance(parameters[0], tuple)
             ):
@@ -492,6 +555,18 @@ class Insert(ValuesBase):
 
     _supports_multi_parameters = True
 
+    @ValuesBase._constructor_20_deprecations(
+        "insert",
+        "Insert",
+        [
+            "values",
+            "inline",
+            "bind",
+            "prefixes",
+            "returning",
+            "return_defaults",
+        ],
+    )
     def __init__(
         self,
         table,
@@ -549,7 +624,7 @@ class Insert(ValuesBase):
             :ref:`inserts_and_updates` - SQL Expression Tutorial
 
         """
-        ValuesBase.__init__(self, table, values, prefixes)
+        super(Insert, self).__init__(table, values, prefixes)
         self._bind = bind
         self.select = self.select_names = None
         self.include_insert_from_select_defaults = False
@@ -563,6 +638,25 @@ class Insert(ValuesBase):
             return (self.select,)
         else:
             return ()
+
+    @_generative
+    def inline(self):
+        """Make this :class:`.Insert` construct "inline" .
+
+        When set, no attempt will be made to retrieve the
+        SQL-generated default values to be provided within the statement;
+        in particular,
+        this allows SQL expressions to be rendered 'inline' within the
+        statement without the need to pre-execute them beforehand; for
+        backends that support "returning", this turns off the "implicit
+        returning" feature for the statement.
+
+
+        .. versionchanged:: 1.4 the :paramref:`.Insert.inline` parameter
+           is now superseded by the :meth:`.Insert.inline` method.
+
+        """
+        self.inline = True
 
     @_generative
     def from_select(self, names, select, include_defaults=True):
@@ -636,6 +730,20 @@ class Update(ValuesBase):
 
     __visit_name__ = "update"
 
+    @ValuesBase._constructor_20_deprecations(
+        "update",
+        "Update",
+        [
+            "whereclause",
+            "values",
+            "inline",
+            "bind",
+            "prefixes",
+            "returning",
+            "return_defaults",
+            "preserve_parameter_order",
+        ],
+    )
     def __init__(
         self,
         table,
@@ -761,8 +869,9 @@ class Update(ValuesBase):
 
 
         """
+
         self._preserve_parameter_order = preserve_parameter_order
-        ValuesBase.__init__(self, table, values, prefixes)
+        super(Update, self).__init__(table, values, prefixes)
         self._bind = bind
         self._returning = returning
         if whereclause is not None:
@@ -780,6 +889,62 @@ class Update(ValuesBase):
             return (self._whereclause,)
         else:
             return ()
+
+    @_generative
+    def ordered_values(self, *args):
+        """Specify the VALUES clause of this UPDATE statement with an explicit
+        parameter ordering that will be maintained in the SET clause of the
+        resulting UPDATE statement.
+
+        E.g.::
+
+            stmt = table.update().ordered_values(
+                ("name", "ed"), ("ident": "foo")
+            )
+
+        .. seealso::
+
+           :ref:`updates_order_parameters` - full example of the
+           :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+           flag
+
+        .. versionchanged:: 1.4 The :meth:`.Update.ordered_values` method
+           supersedes the :paramref:`.update.preserve_parameter_order`
+           parameter, which will be removed in SQLAlchemy 2.0.
+
+        """
+        if self.select is not None:
+            raise exc.InvalidRequestError(
+                "This construct already inserts from a SELECT"
+            )
+
+        if self.parameters is None:
+            (
+                self.parameters,
+                self._has_multi_parameters,
+            ) = self._process_colparams(
+                list(args), preserve_parameter_order=True
+            )
+        else:
+            raise exc.ArgumentError(
+                "This statement already has values present"
+            )
+
+    @_generative
+    def inline(self):
+        """Make this :class:`.Update` construct "inline" .
+
+        When set, SQL defaults present on :class:`.Column` objects via the
+        ``default`` keyword will be compiled 'inline' into the statement and
+        not pre-executed.  This means that their values will not be available
+        in the dictionary returned from
+        :meth:`.ResultProxy.last_updated_params`.
+
+        .. versionchanged:: 1.4 the :paramref:`.update.inline` parameter
+           is now superseded by the :meth:`.Update.inline` method.
+
+        """
+        self.inline = True
 
     @_generative
     def where(self, whereclause):
@@ -821,6 +986,11 @@ class Delete(UpdateBase):
 
     __visit_name__ = "delete"
 
+    @ValuesBase._constructor_20_deprecations(
+        "delete",
+        "Delete",
+        ["whereclause", "values", "bind", "prefixes", "returning"],
+    )
     def __init__(
         self,
         table,

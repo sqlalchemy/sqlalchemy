@@ -31,6 +31,8 @@ def setup_filters():
         "ignore", category=DeprecationWarning, message=".*inspect.get.*argspec"
     )
 
+    warnings.filterwarnings("ignore", category=sa_exc.RemovedIn20Warning)
+
 
 def assert_warnings(fn, warning_msgs, regex=False):
     """Assert that each of the given warnings are emitted by fn.

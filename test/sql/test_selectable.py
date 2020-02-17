@@ -346,8 +346,10 @@ class SelectableTest(
         sel = select([literal_column("1").label("a")])
         eq_(list(sel.selected_columns.keys()), ["a"])
         cloned = visitors.ReplacingCloningVisitor().traverse(sel)
-        cloned.column.non_generative(cloned, literal_column("2").label("b"))
-        cloned.column.non_generative(cloned, func.foo())
+        cloned.add_columns.non_generative(
+            cloned, literal_column("2").label("b")
+        )
+        cloned.add_columns.non_generative(cloned, func.foo())
         eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo()"])
 
     def test_clone_col_list_changes_then_proxy(self):
@@ -355,7 +357,7 @@ class SelectableTest(
         stmt = select([t.c.q]).subquery()
 
         def add_column(stmt):
-            stmt.column.non_generative(stmt, t.c.p)
+            stmt.add_columns.non_generative(stmt, t.c.p)
 
         stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
         eq_(list(stmt.c.keys()), ["q"])
@@ -366,7 +368,7 @@ class SelectableTest(
         stmt = select([t.c.q]).subquery()
 
         def add_column(stmt):
-            stmt.column.non_generative(stmt, t.c.p)
+            stmt.add_columns.non_generative(stmt, t.c.p)
 
         stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
         eq_(list(stmt.c.keys()), ["q"])
@@ -396,7 +398,7 @@ class SelectableTest(
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
-        replaced.column.non_generative(replaced, joinfrom.c.b)
+        replaced.add_columns.non_generative(replaced, joinfrom.c.b)
         self.assert_compile(
             replaced,
             "SELECT basefrom.a, joinfrom.b FROM (SELECT 1 AS a) AS basefrom "
@@ -859,7 +861,7 @@ class SelectableTest(
 
     def test_join(self):
         a = join(table1, table2)
-        print(str(a.select(use_labels=True)))
+        print(str(a.select().apply_labels()))
         b = table2.alias("b")
         j = join(a, b)
         print(str(j))
@@ -874,7 +876,7 @@ class SelectableTest(
         self.assert_(criterion.compare(j.onclause))
 
     def test_subquery_labels_join(self):
-        a = table1.select(use_labels=True).subquery()
+        a = table1.select().apply_labels().subquery()
         j = join(a, table2)
 
         criterion = a.c.table1_col1 == table2.c.col2
@@ -1580,7 +1582,7 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
         t1t2 = t1.join(t2)
         t2t3 = t2.join(t3)
 
-        st2t3 = t2t3.select(use_labels=True).subquery()
+        st2t3 = t2t3.select().apply_labels().subquery()
         j = t1t2.join(st2t3)
         assert j.onclause.compare(t2.c.id == st2t3.c.t3_t2id)
         self.assert_compile(
@@ -2016,7 +2018,8 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
         pjoin = (
             people.outerjoin(engineers)
             .outerjoin(managers)
-            .select(use_labels=True)
+            .select()
+            .apply_labels()
             .alias("pjoin")
         )
         eq_(

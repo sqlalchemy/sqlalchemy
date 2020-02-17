@@ -2217,8 +2217,8 @@ method as Python dictionary keys, there is no other fixed ordering
 available.
 
 However in some cases, the order of parameters rendered in the SET clause of an
-UPDATE statement can be significant.  The main example of this is when using
-MySQL and providing updates to column values based on that of other
+UPDATE statement may need to be explicitly stated.  The main example of this is
+when using MySQL and providing updates to column values based on that of other
 column values.  The end result of the following statement::
 
     UPDATE some_table SET x = y + 10, y = 20
@@ -2232,20 +2232,21 @@ a per-value basis, as opposed to on a per-row basis, and as each SET clause
 is evaluated, the values embedded in the row are changing.
 
 To suit this specific use case, the
-:paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
-flag may be used.  When using this flag, we supply a **Python list of 2-tuples**
-as the argument to the :meth:`.Update.values` method::
+:meth:`.update.ordered_values` method may be used.  When using this method,
+we supply a **series of 2-tuples**
+as the argument to the method::
 
-    stmt = some_table.update(preserve_parameter_order=True).\
-        values([(some_table.c.y, 20), (some_table.c.x, some_table.c.y + 10)])
+    stmt = some_table.update().\
+        ordered_values((some_table.c.y, 20), (some_table.c.x, some_table.c.y + 10))
 
-The list of 2-tuples is essentially the same structure as a Python dictionary
-except it is ordered.  Using the above form, we are assured that the
-"y" column's SET clause will render first, then the "x" column's SET clause.
+The series of 2-tuples is essentially the same structure as a Python
+dictionary, except that it explicitly suggests a specific ordering. Using the
+above form, we are assured that the "y" column's SET clause will render first,
+then the "x" column's SET clause.
 
-.. versionadded:: 1.0.10 Added support for explicit ordering of UPDATE
-   parameters using the :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order` flag.
-
+.. versionchanged:: 1.4  Added the :meth:`.Update.ordered_values` method which
+   supersedes the :paramref:`.update.preserve_parameter_order` flag that will
+   be removed in SQLAlchemy 2.0.
 
 .. seealso::
 

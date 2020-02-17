@@ -43,7 +43,7 @@ extensions = [
 # have reported this.
 templates_path = [os.path.abspath("templates")]
 
-nitpicky = True
+nitpicky = False
 
 # The suffix of source filenames.
 source_suffix = ".rst"

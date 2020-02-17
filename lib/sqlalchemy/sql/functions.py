@@ -341,7 +341,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
             s = select([function_element])
 
         """
-        s = Select([self])
+        s = Select._create_select(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s

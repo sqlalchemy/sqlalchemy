@@ -670,6 +670,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     # a hook for SQLite's translation of
     # result column names
+    # NOTE: pyhive is using this hook, can't remove it :(
     _translate_colname = None
 
     _expanded_parameters = util.immutabledict()

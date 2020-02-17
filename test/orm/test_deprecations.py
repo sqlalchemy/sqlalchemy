@@ -416,6 +416,20 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "subquery object."
         )
 
+    def test_invalid_column(self):
+        User = self.classes.User
+
+        s = create_session()
+        q = s.query(User.id)
+
+        with testing.expect_deprecated(r"Query.add_column\(\) is deprecated"):
+            q = q.add_column(User.name)
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name FROM users",
+        )
+
     def test_via_textasfrom_select_from(self):
         User = self.classes.User
         s = create_session()

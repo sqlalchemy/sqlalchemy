@@ -132,6 +132,17 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             self.assert_compile(or_(and_()), "")
 
+    def test_fromclause_count(self):
+        with testing.expect_deprecated(
+            r"The FromClause.count\(\) method is deprecated, and will be "
+            r"removed in a future release."
+        ):
+            self.assert_compile(
+                table("q", column("x")).count(),
+                "SELECT count(q.x) AS tbl_row_count FROM q",
+                dialect="default",
+            )
+
 
 class ConvertUnicodeDeprecationTest(fixtures.TestBase):
 
@@ -644,6 +655,16 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             select([stmt]),
             "SELECT anon_1.a FROM (SELECT 1 AS a ORDER BY 1) AS anon_1",
         )
+
+    def test_column(self):
+        stmt = select([column("x")])
+        with testing.expect_deprecated(
+            r"The Select.column\(\) method is deprecated and will be "
+            "removed in a future release."
+        ):
+            stmt = stmt.column(column("q"))
+
+        self.assert_compile(stmt, "SELECT x, q")
 
     def test_append_column_after_replace_selectable(self):
         basesel = select([literal_column("1").label("a")])
