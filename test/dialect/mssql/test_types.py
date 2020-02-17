@@ -749,10 +749,10 @@ class TypeRoundTripTest(
         return t
 
     @testing.combinations(
-        ("dto_param_none", None, None, False),
+        ("dto_param_none", lambda: None, None, False),
         (
             "dto_param_datetime_aware_positive",
-            datetime.datetime(
+            lambda: datetime.datetime(
                 2007,
                 10,
                 30,
@@ -767,7 +767,7 @@ class TypeRoundTripTest(
         ),
         (
             "dto_param_datetime_aware_negative",
-            datetime.datetime(
+            lambda: datetime.datetime(
                 2007,
                 10,
                 30,
@@ -782,7 +782,7 @@ class TypeRoundTripTest(
         ),
         (
             "dto_param_datetime_aware_seconds_frac_fail",
-            datetime.datetime(
+            lambda: datetime.datetime(
                 2007,
                 10,
                 30,
@@ -798,19 +798,24 @@ class TypeRoundTripTest(
         ),
         (
             "dto_param_datetime_naive",
-            datetime.datetime(2007, 10, 30, 11, 2, 32, 123456),
+            lambda: datetime.datetime(2007, 10, 30, 11, 2, 32, 123456),
             0,
             False,
         ),
         (
             "dto_param_string_one",
-            "2007-10-30 11:02:32.123456 +01:00",
+            lambda: "2007-10-30 11:02:32.123456 +01:00",
             1,
             False,
         ),
         # wow
-        ("dto_param_string_two", "October 30, 2007 11:02:32.123456", 0, False),
-        ("dto_param_string_invalid", "this is not a date", 0, True),
+        (
+            "dto_param_string_two",
+            lambda: "October 30, 2007 11:02:32.123456",
+            0,
+            False,
+        ),
+        ("dto_param_string_invalid", lambda: "this is not a date", 0, True),
         id_="iaaa",
         argnames="dto_param_value, expected_offset_hours, should_fail",
     )
@@ -822,6 +827,8 @@ class TypeRoundTripTest(
         should_fail,
     ):
         t = datetimeoffset_fixture
+        dto_param_value = dto_param_value()
+
         with testing.db.begin() as conn:
             if should_fail:
                 assert_raises(
