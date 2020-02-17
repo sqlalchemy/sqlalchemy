@@ -2704,6 +2704,12 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         )
         mapper(B, self.tables.t2)
 
+        with testing.expect_warnings(
+            "Setting backref / back_populates on "
+            "relationship B.a to refer to viewonly relationship A.bs"
+        ):
+            configure_mappers()
+
         a1 = A()
         b1 = B()
         a1.bs.append(b1)
@@ -2734,6 +2740,12 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
             },
         )
         mapper(B, self.tables.t2)
+
+        with testing.expect_warnings(
+            "Setting backref / back_populates on "
+            "relationship A.bs to refer to viewonly relationship B.a"
+        ):
+            configure_mappers()
 
         a1 = A()
         b1 = B()
@@ -2834,6 +2846,12 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
             },
         )
         mapper(B, t2)
+
+        with testing.expect_warnings(
+            "Setting backref / back_populates on "
+            "relationship A.bs to refer to viewonly relationship B.a"
+        ):
+            configure_mappers()
 
         sess = create_session()
         a1 = A()
