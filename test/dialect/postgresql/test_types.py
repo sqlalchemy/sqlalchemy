@@ -190,6 +190,58 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 [(1, "two"), (2, "three"), (3, "three")],
             )
 
+    @testing.combinations(None, "foo")
+    def test_create_table_schema_translate_map(self, symbol_name):
+        # note we can't use the fixture here because it will not drop
+        # from the correct schema
+        metadata = MetaData()
+
+        t1 = Table(
+            "table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "value",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="schema_enum",
+                    schema=symbol_name,
+                ),
+            ),
+            schema=symbol_name,
+        )
+        with testing.db.connect() as conn:
+            conn = conn.execution_options(
+                schema_translate_map={symbol_name: testing.config.test_schema}
+            )
+            t1.create(conn)
+            assert "schema_enum" in [
+                e["name"]
+                for e in inspect(conn).get_enums(
+                    schema=testing.config.test_schema
+                )
+            ]
+            t1.create(conn, checkfirst=True)
+
+            conn.execute(t1.insert(), value="two")
+            conn.execute(t1.insert(), value="three")
+            conn.execute(t1.insert(), value="three")
+            eq_(
+                conn.execute(t1.select().order_by(t1.c.id)).fetchall(),
+                [(1, "two"), (2, "three"), (3, "three")],
+            )
+
+            t1.drop(conn)
+            assert "schema_enum" not in [
+                e["name"]
+                for e in inspect(conn).get_enums(
+                    schema=testing.config.test_schema
+                )
+            ]
+            t1.drop(conn, checkfirst=True)
+
     def test_name_required(self):
         metadata = MetaData(testing.db)
         etype = Enum("four", "five", "six", metadata=metadata)

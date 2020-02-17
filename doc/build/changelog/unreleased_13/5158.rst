@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 5158
+
+    Fixed issue where the "schema_translate_map" feature would not work with a
+    PostgreSQL native enumeration type (i.e. :class:`.Enum`,
+    :class:`.postgresql.ENUM`) in that while the "CREATE TYPE" statement would
+    be emitted with the correct schema, the schema would not be rendered in
+    the CREATE TABLE statement at the point at which the enumeration was
+    referenced.
+
