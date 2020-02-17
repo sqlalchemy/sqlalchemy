@@ -9,7 +9,7 @@ pool = None
 
 
 class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
-    __requires__ = ("cpython",)
+    __requires__ = ("cpython", "python_profiling_backend")
 
     class Connection(object):
         def rollback(self):
