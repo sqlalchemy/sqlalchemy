@@ -827,6 +827,19 @@ class RelationshipProperty(StrategizedProperty):
           the full set of related objects, to prevent modifications of the
           collection from resulting in persistence operations.
 
+          .. warning:: The viewonly=True relationship should not be mutated
+             in Python; that means, elements should not be added or removed
+             from collections nor should a many-to-one or one-to-one attribute
+             be altered in Python.  The viewonly=True relationship should only
+             be accessed via read.   Towards this behavior, it is also not
+             appropriate for the viewonly=True relationship to have any kind
+             of persistence cascade settings, nor should it be the target of
+             either :paramref:`.relationship.backref` or
+             :paramref:`.relationship.back_populates`, as backrefs imply
+             in-Python mutation of the attribute.  SQLAlchemy may emit
+             warnings for some or all of these conditions as of the 1.3 and
+             1.4 series of SQLAlchemy and will eventually be disallowed.
+
         :param omit_join:
           Allows manual control over the "selectin" automatic join
           optimization.  Set to ``False`` to disable the "omit join" feature
@@ -1841,6 +1854,14 @@ class RelationshipProperty(StrategizedProperty):
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
+        if other.viewonly:
+            util.warn_limited(
+                "Setting backref / back_populates on relationship %s to refer "
+                "to viewonly relationship %s will be deprecated in SQLAlchemy "
+                "1.4, and will be disallowed in a future release.  "
+                "viewonly relationships should not be mutated",
+                (self, other),
+            )
         self._reverse_property.add(other)
         other._reverse_property.add(self)
 
