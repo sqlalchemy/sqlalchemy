@@ -1483,3 +1483,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def computed_columns(self):
         return skip_if(["postgresql < 12", "sqlite", "mysql < 5.7"])
+
+    @property
+    def python_profiling_backend(self):
+        return only_on(["sqlite"])
