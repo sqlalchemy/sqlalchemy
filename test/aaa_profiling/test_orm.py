@@ -25,6 +25,8 @@ from sqlalchemy.testing.schema import Table
 
 
 class MergeTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -101,7 +103,7 @@ class MergeTest(fixtures.MappedTest):
 
         sess2.transaction  # autobegin
 
-        @profiling.function_call_count(variance=0.10)
+        @profiling.function_call_count(variance=0.10, warmup=1)
         def go2():
             return sess2.merge(p2, load=False)
 
@@ -146,6 +148,8 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     to load 1000 related objects from the identity map.
 
     """
+
+    __requires__ = ("python_profiling_backend",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -232,6 +236,8 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
 
 class MergeBackrefsTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -324,6 +330,8 @@ class MergeBackrefsTest(fixtures.MappedTest):
 
 
 class DeferOptionsTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -386,6 +394,8 @@ class DeferOptionsTest(fixtures.MappedTest):
 
 
 class AttributeOverheadTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -463,6 +473,8 @@ class AttributeOverheadTest(fixtures.MappedTest):
 
 
 class SessionTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -527,6 +539,8 @@ class SessionTest(fixtures.MappedTest):
 
 
 class QueryTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -593,6 +607,8 @@ class SelectInEagerLoadTest(fixtures.MappedTest):
     this callcount blows up.
 
     """
+
+    __requires__ = ("python_profiling_backend",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -672,6 +688,8 @@ class SelectInEagerLoadTest(fixtures.MappedTest):
 
 
 class JoinedEagerLoadTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         def make_some_columns():
@@ -829,6 +847,8 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
 
 
 class JoinConditionTest(fixtures.DeclarativeMappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def setup_classes(cls):
         class A(cls.DeclarativeBasic):
@@ -871,7 +891,7 @@ class JoinConditionTest(fixtures.DeclarativeMappedTest):
         A, B = self.classes("A", "B")
 
         # should not use aliasing or adaption so should be cheap
-        @profiling.function_call_count(times=50)
+        @profiling.function_call_count(times=50, warmup=1)
         def go():
             orm_join(A, B, A.b)
 
@@ -883,7 +903,7 @@ class JoinConditionTest(fixtures.DeclarativeMappedTest):
         a1 = aliased(A)
 
         # uses aliasing, therefore adaption which is expensive
-        @profiling.function_call_count(times=50)
+        @profiling.function_call_count(times=50, warmup=1)
         def go():
             orm_join(a1, B, a1.b)
 
@@ -896,7 +916,7 @@ class JoinConditionTest(fixtures.DeclarativeMappedTest):
         # overlap so incurs aliasing, which is expensive, there is also a check
         # that determines that this overlap exists which is not currently
         # cached
-        @profiling.function_call_count(times=50)
+        @profiling.function_call_count(times=50, warmup=1)
         def go():
             orm_join(A, D, A.d)
 
@@ -908,7 +928,7 @@ class JoinConditionTest(fixtures.DeclarativeMappedTest):
         a1 = aliased(A)
 
         # aliased, uses adaption therefore expensive
-        @profiling.function_call_count(times=50)
+        @profiling.function_call_count(times=50, warmup=1)
         def go():
             orm_join(a1, D, a1.d)
 
@@ -916,6 +936,8 @@ class JoinConditionTest(fixtures.DeclarativeMappedTest):
 
 
 class BranchedOptionTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         def make_some_columns():
@@ -1044,7 +1066,7 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         cache_path = inspect(A)._path_registry
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for opt in opts:
                 opt._generate_path_cache_key(cache_path)
@@ -1064,7 +1086,7 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         cache_path = inspect(A)._path_registry
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for opt in opts:
                 opt._generate_path_cache_key(cache_path)
@@ -1084,7 +1106,7 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         q = Session().query(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             q.options(*opts)
 
@@ -1103,7 +1125,7 @@ class BranchedOptionTest(fixtures.MappedTest):
 
         q = Session().query(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             q.options(*opts)
 
@@ -1111,6 +1133,8 @@ class BranchedOptionTest(fixtures.MappedTest):
 
 
 class AnnotatedOverheadTest(fixtures.MappedTest):
+    __requires__ = ("python_profiling_backend",)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1147,7 +1171,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
 
         q = s.query(A).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1161,7 +1185,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
 
         q = s.query(a.c.data).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1173,7 +1197,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(A.data).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1185,7 +1209,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(A, A.data).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1198,7 +1222,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(A, a.c.data).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1211,7 +1235,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(a.c.data, A).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1223,7 +1247,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(A.data, A).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1236,7 +1260,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(Bundle("ASdf", a.c.data), A).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()
@@ -1248,7 +1272,7 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         s = Session()
         q = s.query(Bundle("ASdf", A.data), A).select_from(A)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 q.all()

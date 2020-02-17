@@ -17,7 +17,7 @@ from sqlalchemy.util import classproperty
 
 
 class EnumTest(fixtures.TestBase):
-    __requires__ = ("cpython",)
+    __requires__ = ("cpython", "python_profiling_backend")
 
     def setup(self):
         class SomeEnum(object):
@@ -50,7 +50,7 @@ class EnumTest(fixtures.TestBase):
 
 
 class CacheKeyTest(fixtures.TestBase):
-    __requires__ = ("cpython",)
+    __requires__ = ("cpython", "python_profiling_backend")
 
     @testing.fixture(scope="class")
     def mapping_fixture(self):
