@@ -237,6 +237,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema_translate_map=schema_translate_map,
         )
 
+    def test_create_table_with_schema_type_schema_translate(self):
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+        schema_translate_map = {None: "foo", "someschema": "bar"}
+
+        table = Table(
+            "some_table", MetaData(), Column("q", e1), Column("p", e2)
+        )
+        from sqlalchemy.schema import CreateTable
+
+        self.assert_compile(
+            CreateTable(table),
+            "CREATE TABLE foo.some_table (q foo.somename, p bar.somename)",
+            schema_translate_map=schema_translate_map,
+        )
+
     def test_create_table_with_tablespace(self):
         m = MetaData()
         tbl = Table(
