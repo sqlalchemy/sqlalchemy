@@ -1890,7 +1890,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 colspec += " SERIAL"
         else:
             colspec += " " + self.dialect.type_compiler.process(
-                column.type, type_expression=column
+                column.type,
+                type_expression=column,
+                identifier_preparer=self.preparer,
             )
             default = self.get_column_default_string(column)
             if default is not None:
@@ -2152,8 +2154,11 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self.visit_ENUM(type_, **kw)
 
-    def visit_ENUM(self, type_, **kw):
-        return self.dialect.identifier_preparer.format_type(type_)
+    def visit_ENUM(self, type_, identifier_preparer=None, **kw):
+        if identifier_preparer is None:
+            identifier_preparer = self.dialect.identifier_preparer
+
+        return identifier_preparer.format_type(type_)
 
     def visit_TIMESTAMP(self, type_, **kw):
         return "TIMESTAMP%s %s" % (
