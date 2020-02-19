@@ -871,54 +871,51 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         # support sqlite :memory: database...
         data_table.create(engine, checkfirst=True)
-        engine.execute(
-            data_table.insert(), {"name": "row1", "data": data_element}
-        )
+        with engine.connect() as conn:
+            conn.execute(
+                data_table.insert(), {"name": "row1", "data": data_element}
+            )
+            row = conn.execute(select([data_table.c.data])).first()
 
-        row = engine.execute(select([data_table.c.data])).first()
+            eq_(row, (data_element,))
+            eq_(js.mock_calls, [mock.call(data_element)])
+            eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
-        eq_(row, (data_element,))
-        eq_(js.mock_calls, [mock.call(data_element)])
-        eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
-
-    def test_round_trip_none_as_sql_null(self):
+    def test_round_trip_none_as_sql_null(self, connection):
         col = self.tables.data_table.c["nulldata"]
 
-        with config.db.connect() as conn:
-            conn.execute(
-                self.tables.data_table.insert(), {"name": "r1", "data": None}
-            )
+        conn = connection
+        conn.execute(
+            self.tables.data_table.insert(), {"name": "r1", "data": None}
+        )
 
-            eq_(
-                conn.scalar(
-                    select([self.tables.data_table.c.name]).where(
-                        col.is_(null())
-                    )
-                ),
-                "r1",
-            )
+        eq_(
+            conn.scalar(
+                select([self.tables.data_table.c.name]).where(col.is_(null()))
+            ),
+            "r1",
+        )
 
-            eq_(conn.scalar(select([col])), None)
+        eq_(conn.scalar(select([col])), None)
 
-    def test_round_trip_json_null_as_json_null(self):
+    def test_round_trip_json_null_as_json_null(self, connection):
         col = self.tables.data_table.c["data"]
 
-        with config.db.connect() as conn:
-            conn.execute(
-                self.tables.data_table.insert(),
-                {"name": "r1", "data": JSON.NULL},
-            )
+        conn = connection
+        conn.execute(
+            self.tables.data_table.insert(), {"name": "r1", "data": JSON.NULL},
+        )
 
-            eq_(
-                conn.scalar(
-                    select([self.tables.data_table.c.name]).where(
-                        cast(col, String) == "null"
-                    )
-                ),
-                "r1",
-            )
+        eq_(
+            conn.scalar(
+                select([self.tables.data_table.c.name]).where(
+                    cast(col, String) == "null"
+                )
+            ),
+            "r1",
+        )
 
-            eq_(conn.scalar(select([col])), None)
+        eq_(conn.scalar(select([col])), None)
 
     def test_round_trip_none_as_json_null(self):
         col = self.tables.data_table.c["data"]

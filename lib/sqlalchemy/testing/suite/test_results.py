@@ -225,7 +225,7 @@ class ServerSideCursorsTest(
 
     def _is_server_side(self, cursor):
         if self.engine.dialect.driver == "psycopg2":
-            return cursor.name
+            return bool(cursor.name)
         elif self.engine.dialect.driver == "pymysql":
             sscursor = __import__("pymysql.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
@@ -245,43 +245,48 @@ class ServerSideCursorsTest(
         engines.testing_reaper.close_all()
         self.engine.dispose()
 
-    def test_global_string(self):
-        engine = self._fixture(True)
-        result = engine.execute("select 1")
-        assert self._is_server_side(result.cursor)
-
-    def test_global_text(self):
-        engine = self._fixture(True)
-        result = engine.execute(text("select 1"))
-        assert self._is_server_side(result.cursor)
-
-    def test_global_expr(self):
-        engine = self._fixture(True)
-        result = engine.execute(select([1]))
-        assert self._is_server_side(result.cursor)
-
-    def test_global_off_explicit(self):
-        engine = self._fixture(False)
-        result = engine.execute(text("select 1"))
-
-        # It should be off globally ...
-
-        assert not self._is_server_side(result.cursor)
-
-    def test_stmt_option(self):
-        engine = self._fixture(False)
-
-        s = select([1]).execution_options(stream_results=True)
-        result = engine.execute(s)
-
-        # ... but enabled for this one.
-
-        assert self._is_server_side(result.cursor)
+    @testing.combinations(
+        ("global_string", True, "select 1", True),
+        ("global_text", True, text("select 1"), True),
+        ("global_expr", True, select([1]), True),
+        ("global_off_explicit", False, text("select 1"), False),
+        (
+            "stmt_option",
+            False,
+            select([1]).execution_options(stream_results=True),
+            True,
+        ),
+        (
+            "stmt_option_disabled",
+            True,
+            select([1]).execution_options(stream_results=False),
+            False,
+        ),
+        ("for_update_expr", True, select([1]).with_for_update(), True),
+        ("for_update_string", True, "SELECT 1 FOR UPDATE", True),
+        ("text_no_ss", False, text("select 42"), False),
+        (
+            "text_ss_option",
+            False,
+            text("select 42").execution_options(stream_results=True),
+            True,
+        ),
+        id_="iaaa",
+        argnames="engine_ss_arg, statement, cursor_ss_status",
+    )
+    def test_ss_cursor_status(
+        self, engine_ss_arg, statement, cursor_ss_status
+    ):
+        engine = self._fixture(engine_ss_arg)
+        with engine.begin() as conn:
+            result = conn.execute(statement)
+            eq_(self._is_server_side(result.cursor), cursor_ss_status)
+            result.close()
 
     def test_conn_option(self):
         engine = self._fixture(False)
 
-        # and this one
+        # should be enabled for this one
         result = (
             engine.connect()
             .execution_options(stream_results=True)
@@ -300,46 +305,21 @@ class ServerSideCursorsTest(
         )
         assert not self._is_server_side(result.cursor)
 
-    def test_stmt_option_disabled(self):
-        engine = self._fixture(True)
-        s = select([1]).execution_options(stream_results=False)
-        result = engine.execute(s)
-        assert not self._is_server_side(result.cursor)
-
     def test_aliases_and_ss(self):
         engine = self._fixture(False)
         s1 = select([1]).execution_options(stream_results=True).alias()
-        result = engine.execute(s1)
-        assert self._is_server_side(result.cursor)
+        with engine.begin() as conn:
+            result = conn.execute(s1)
+            assert self._is_server_side(result.cursor)
+            result.close()
 
         # s1's options shouldn't affect s2 when s2 is used as a
         # from_obj.
         s2 = select([1], from_obj=s1)
-        result = engine.execute(s2)
-        assert not self._is_server_side(result.cursor)
-
-    def test_for_update_expr(self):
-        engine = self._fixture(True)
-        s1 = select([1]).with_for_update()
-        result = engine.execute(s1)
-        assert self._is_server_side(result.cursor)
-
-    def test_for_update_string(self):
-        engine = self._fixture(True)
-        result = engine.execute("SELECT 1 FOR UPDATE")
-        assert self._is_server_side(result.cursor)
-
-    def test_text_no_ss(self):
-        engine = self._fixture(False)
-        s = text("select 42")
-        result = engine.execute(s)
-        assert not self._is_server_side(result.cursor)
-
-    def test_text_ss_option(self):
-        engine = self._fixture(False)
-        s = text("select 42").execution_options(stream_results=True)
-        result = engine.execute(s)
-        assert self._is_server_side(result.cursor)
+        with engine.begin() as conn:
+            result = conn.execute(s2)
+            assert not self._is_server_side(result.cursor)
+            result.close()
 
     @testing.provide_metadata
     def test_roundtrip(self):
