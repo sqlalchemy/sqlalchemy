@@ -1185,7 +1185,7 @@ class Session(_SessionClassMethods):
         The second positional argument to :meth:`.Session.execute` is an
         optional parameter set.  Similar to that of
         :meth:`.Connection.execute`, whether this is passed as a single
-        dictionary, or a list of dictionaries, determines whether the DBAPI
+        dictionary, or a sequence of dictionaries, determines whether the DBAPI
         cursor's ``execute()`` or ``executemany()`` is used to execute the
         statement.   An INSERT construct may be invoked for a single row::
 
@@ -2652,7 +2652,7 @@ class Session(_SessionClassMethods):
             **before using this method, and fully test and confirm the
             functionality of all code developed using these systems.**
 
-        :param objects: a list of mapped object instances.  The mapped
+        :param objects: a sequence of mapped object instances.  The mapped
          objects are persisted as is, and are **not** associated with the
          :class:`.Session` afterwards.
 
@@ -2705,7 +2705,7 @@ class Session(_SessionClassMethods):
         def key(state):
             return (state.mapper, state.key is not None)
 
-        obj_states = tuple(attributes.instance_state(obj) for obj in objects)
+        obj_states = (attributes.instance_state(obj) for obj in objects)
         if not preserve_order:
             obj_states = sorted(obj_states, key=key)
 
@@ -2755,11 +2755,11 @@ class Session(_SessionClassMethods):
          representing the single kind of object represented within the mapping
          list.
 
-        :param mappings: a list of dictionaries, each one containing the state
-         of the mapped row to be inserted, in terms of the attribute names
-         on the mapped class.   If the mapping refers to multiple tables,
-         such as a joined-inheritance mapping, each dictionary must contain
-         all keys to be populated into all tables.
+        :param mappings: a sequence of dictionaries, each one containing the
+         state of the mapped row to be inserted, in terms of the attribute
+         names on the mapped class.   If the mapping refers to multiple tables,
+         such as a joined-inheritance mapping, each dictionary must contain all
+         keys to be populated into all tables.
 
         :param return_defaults: when True, rows that are missing values which
          generate defaults, namely integer primary key defaults and sequences,
@@ -2846,14 +2846,14 @@ class Session(_SessionClassMethods):
          representing the single kind of object represented within the mapping
          list.
 
-        :param mappings: a list of dictionaries, each one containing the state
-         of the mapped row to be updated, in terms of the attribute names
-         on the mapped class.   If the mapping refers to multiple tables,
-         such as a joined-inheritance mapping, each dictionary may contain
-         keys corresponding to all tables.   All those keys which are present
-         and are not part of the primary key are applied to the SET clause
-         of the UPDATE statement; the primary key values, which are required,
-         are applied to the WHERE clause.
+        :param mappings: a sequence of dictionaries, each one containing the
+         state of the mapped row to be updated, in terms of the attribute names
+         on the mapped class.   If the mapping refers to multiple tables, such
+         as a joined-inheritance mapping, each dictionary may contain keys
+         corresponding to all tables.   All those keys which are present and
+         are not part of the primary key are applied to the SET clause of the
+         UPDATE statement; the primary key values, which are required, are
+         applied to the WHERE clause.
 
 
         .. seealso::
