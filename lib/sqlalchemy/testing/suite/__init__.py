@@ -9,4 +9,5 @@ from .test_rowcount import *  # noqa
 from .test_select import *  # noqa
 from .test_sequence import *  # noqa
 from .test_types import *  # noqa
+from .test_unicode_ddl import *  # noqa
 from .test_update_delete import *  # noqa
