@@ -331,6 +331,7 @@ class DefaultRequirements(SuiteRequirements):
 
         if against(config, "sqlite"):
             default = "SERIALIZABLE"
+            levels.add("AUTOCOMMIT")
         elif against(config, "postgresql"):
             default = "READ COMMITTED"
             levels.add("AUTOCOMMIT")

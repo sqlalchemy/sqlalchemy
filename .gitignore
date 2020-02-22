@@ -30,3 +30,4 @@ test/test_schema.db
 *test_schema.db
 .idea
 /Pipfile*
+/querytest.db

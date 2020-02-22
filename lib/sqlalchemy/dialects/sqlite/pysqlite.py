@@ -324,6 +324,12 @@ ourselves. This is achieved using two event listeners::
         # emit our own BEGIN
         conn.execute("BEGIN")
 
+.. warning:: When using the above recipe, it is advised to not use the
+   :paramref:`.execution_options.isolation_level` setting on
+   :class:`.Connection` and :func:`.create_engine` with the SQLite driver,
+   as this function necessarily will also alter the ".isolation_level" setting.
+
+
 Above, we intercept a new pysqlite connection and disable any transactional
 integration.   Then, at the point at which SQLAlchemy knows that transaction
 scope is to begin, we emit ``"BEGIN"`` ourselves.
@@ -436,6 +442,20 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
     def _get_server_version_info(self, connection):
         return self.dbapi.sqlite_version_info
+
+    def set_isolation_level(self, connection, level):
+        if hasattr(connection, "connection"):
+            dbapi_connection = connection.connection
+        else:
+            dbapi_connection = connection
+
+        if level == "AUTOCOMMIT":
+            dbapi_connection.isolation_level = None
+        else:
+            dbapi_connection.isolation_level = ""
+            return super(SQLiteDialect_pysqlite, self).set_isolation_level(
+                connection, level
+            )
 
     def create_connect_args(self, url):
         if url.username or url.password or url.host or url.port:

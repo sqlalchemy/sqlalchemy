@@ -168,8 +168,8 @@ work when using the pysqlite driver.
 
 .. _sqlite_isolation_level:
 
-Transaction Isolation Level
-----------------------------
+Transaction Isolation Level / Autocommit
+----------------------------------------
 
 SQLite supports "transaction isolation" in a non-standard way, along two
 axes.  One is that of the
@@ -184,6 +184,15 @@ Valid values for this parameter when used with SQLite are ``"SERIALIZABLE"``
 and ``"READ UNCOMMITTED"`` corresponding to a value of 0 and 1, respectively.
 SQLite defaults to ``SERIALIZABLE``, however its behavior is impacted by
 the pysqlite driver's default behavior.
+
+When using the pysqlite driver, the ``"AUTOCOMMIT"`` isolation level is also
+available, which will alter the pysqlite connection using the ``.isolation_level``
+attribute on the DBAPI connection and set it to None for the duration
+of the setting.
+
+.. versionadded:: 1.3.16 added support for SQLite AUTOCOMMIT isolation level
+   when using the pysqlite / sqlite3 SQLite driver.
+
 
 The other axis along which SQLite's transactional locking is impacted is
 via the nature of the ``BEGIN`` statement used.   The three varieties
