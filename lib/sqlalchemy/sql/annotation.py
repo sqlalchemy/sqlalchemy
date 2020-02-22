@@ -37,7 +37,7 @@ class SupportsAnnotations(object):
 class SupportsCloneAnnotations(SupportsAnnotations):
     _annotations = util.immutabledict()
 
-    _traverse_internals = [
+    _clone_annotations_traverse_internals = [
         ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
     ]
 

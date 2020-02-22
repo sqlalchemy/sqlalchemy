@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import tuple_
 from sqlalchemy import union
@@ -61,7 +62,6 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import random_choices
 from sqlalchemy.util import class_hierarchy
-
 
 meta = MetaData()
 meta2 = MetaData()
@@ -543,6 +543,10 @@ class CacheKeyFixture(object):
 
 
 class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
+    @testing.combinations(table_a.update(), table_a.insert(), table_a.delete())
+    def test_dml_not_cached_yet(self, dml_stmt):
+        eq_(dml_stmt._generate_cache_key(), None)
+
     def test_cache_key(self):
         for fixtures_, compare_values in [
             (self.fixtures, True),

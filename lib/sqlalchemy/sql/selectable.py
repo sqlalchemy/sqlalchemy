@@ -208,7 +208,9 @@ class Selectable(ReturnsRows):
 class HasPrefixes(object):
     _prefixes = ()
 
-    _traverse_internals = [("_prefixes", InternalTraversal.dp_prefix_sequence)]
+    _has_prefixes_traverse_internals = [
+        ("_prefixes", InternalTraversal.dp_prefix_sequence)
+    ]
 
     @_generative
     @_document_text_coercion(
@@ -261,7 +263,9 @@ class HasPrefixes(object):
 class HasSuffixes(object):
     _suffixes = ()
 
-    _traverse_internals = [("_suffixes", InternalTraversal.dp_prefix_sequence)]
+    _has_suffixes_traverse_internals = [
+        ("_suffixes", InternalTraversal.dp_prefix_sequence)
+    ]
 
     @_generative
     @_document_text_coercion(
@@ -1480,8 +1484,8 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
             ("_restates", InternalTraversal.dp_clauseelement_unordered_set),
             ("recursive", InternalTraversal.dp_boolean),
         ]
-        + HasPrefixes._traverse_internals
-        + HasSuffixes._traverse_internals
+        + HasPrefixes._has_prefixes_traverse_internals
+        + HasSuffixes._has_suffixes_traverse_internals
     )
 
     @classmethod
@@ -2793,7 +2797,7 @@ class CompoundSelect(GenerativeSelect):
         ("_group_by_clause", InternalTraversal.dp_clauseelement),
         ("_for_update_arg", InternalTraversal.dp_clauseelement),
         ("keyword", InternalTraversal.dp_string),
-    ] + SupportsCloneAnnotations._traverse_internals
+    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
 
     UNION = util.symbol("UNION")
     UNION_ALL = util.symbol("UNION ALL")
@@ -3173,9 +3177,9 @@ class Select(
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_list),
         ]
-        + HasPrefixes._traverse_internals
-        + HasSuffixes._traverse_internals
-        + SupportsCloneAnnotations._traverse_internals
+        + HasPrefixes._has_prefixes_traverse_internals
+        + HasSuffixes._has_suffixes_traverse_internals
+        + SupportsCloneAnnotations._clone_annotations_traverse_internals
     )
 
     @classmethod
@@ -4500,7 +4504,7 @@ class TextualSelect(SelectBase):
     _traverse_internals = [
         ("element", InternalTraversal.dp_clauseelement),
         ("column_args", InternalTraversal.dp_clauseelement_list),
-    ] + SupportsCloneAnnotations._traverse_internals
+    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
 
     _is_textual = True
 
