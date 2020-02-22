@@ -682,7 +682,7 @@ class SQLCompiler(Compiled):
 
         # compile INSERT/UPDATE defaults/sequences inlined (no pre-
         # execute)
-        self.inline = inline or getattr(statement, "inline", False)
+        self.inline = inline or getattr(statement, "_inline", False)
 
         self.linting = linting
 
