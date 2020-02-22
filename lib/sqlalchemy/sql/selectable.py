@@ -80,7 +80,7 @@ def subquery(alias, *args, **kwargs):
 
 
 class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
-    """The basemost class for Core contructs that have some concept of
+    """The basemost class for Core constructs that have some concept of
     columns that can represent rows.
 
     While the SELECT statement and TABLE are the primary things we think
@@ -2184,7 +2184,7 @@ class SelectBase(
         "and will be removed in a future release; this method implicitly "
         "creates a subquery that should be explicit.  "
         "Please call :meth:`.SelectBase.subquery` first in order to create "
-        "a subquery, which then can be seleted.",
+        "a subquery, which then can be selected.",
     )
     def join(self, *arg, **kw):
         return self._implicit_subquery.join(*arg, **kw)
@@ -2195,7 +2195,7 @@ class SelectBase(
         "and will be removed in a future release; this method implicitly "
         "creates a subquery that should be explicit.  "
         "Please call :meth:`.SelectBase.subquery` first in order to create "
-        "a subquery, which then can be seleted.",
+        "a subquery, which then can be selected.",
     )
     def outerjoin(self, *arg, **kw):
         return self._implicit_subquery.outerjoin(*arg, **kw)
