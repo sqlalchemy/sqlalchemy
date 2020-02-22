@@ -628,7 +628,7 @@ class Insert(ValuesBase):
         self._bind = bind
         self.select = self.select_names = None
         self.include_insert_from_select_defaults = False
-        self.inline = inline
+        self._inline = inline
         self._returning = returning
         self._validate_dialect_kwargs(dialect_kw)
         self._return_defaults = return_defaults
@@ -656,7 +656,7 @@ class Insert(ValuesBase):
            is now superseded by the :meth:`.Insert.inline` method.
 
         """
-        self.inline = True
+        self._inline = True
 
     @_generative
     def from_select(self, names, select, include_defaults=True):
@@ -715,7 +715,7 @@ class Insert(ValuesBase):
         )
 
         self.select_names = names
-        self.inline = True
+        self._inline = True
         self.include_insert_from_select_defaults = include_defaults
         self.select = coercions.expect(roles.DMLSelectRole, select)
 
@@ -869,7 +869,6 @@ class Update(ValuesBase):
 
 
         """
-
         self._preserve_parameter_order = preserve_parameter_order
         super(Update, self).__init__(table, values, prefixes)
         self._bind = bind
@@ -880,7 +879,7 @@ class Update(ValuesBase):
             )
         else:
             self._whereclause = None
-        self.inline = inline
+        self._inline = inline
         self._validate_dialect_kwargs(dialect_kw)
         self._return_defaults = return_defaults
 
@@ -944,7 +943,7 @@ class Update(ValuesBase):
            is now superseded by the :meth:`.Update.inline` method.
 
         """
-        self.inline = True
+        self._inline = True
 
     @_generative
     def where(self, whereclause):

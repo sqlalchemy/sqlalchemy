@@ -1731,3 +1731,96 @@ class DefaultTest(fixtures.TestBase):
                 conn.execute(table.insert().values(x=5))
 
             eq_(conn.execute(select([table])).first(), (5, 12))
+
+
+class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_insert_inline_kw_defaults(self):
+        m = MetaData()
+        foo = Table("foo", m, Column("id", Integer))
+
+        t = Table(
+            "test",
+            m,
+            Column("col1", Integer, default=func.foo(1)),
+            Column(
+                "col2",
+                Integer,
+                default=select([func.coalesce(func.max(foo.c.id))]),
+            ),
+        )
+
+        with testing.expect_deprecated_20(
+            "The insert.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = t.insert(inline=True, values={})
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
+            "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
+            "foo))",
+            inline_flag=True,
+        )
+
+    def test_insert_inline_kw_default(self):
+        metadata = MetaData()
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer, default=func.foobar()),
+        )
+
+        with testing.expect_deprecated_20(
+            "The insert.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = table.insert(values={}, inline=True)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            inline_flag=True,
+        )
+
+        with testing.expect_deprecated_20(
+            "The insert.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = table.insert(inline=True)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            params={},
+            inline_flag=True,
+        )
+
+    def test_update_inline_kw_defaults(self):
+        m = MetaData()
+        foo = Table("foo", m, Column("id", Integer))
+
+        t = Table(
+            "test",
+            m,
+            Column("col1", Integer, onupdate=func.foo(1)),
+            Column(
+                "col2",
+                Integer,
+                onupdate=select([func.coalesce(func.max(foo.c.id))]),
+            ),
+            Column("col3", String(30)),
+        )
+
+        with testing.expect_deprecated_20(
+            "The update.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = t.update(inline=True, values={"col3": "foo"})
+
+        self.assert_compile(
+            stmt,
+            "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
+            "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
+            "col3=:col3",
+            inline_flag=True,
+        )

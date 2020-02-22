@@ -460,7 +460,7 @@ class DefaultTest(fixtures.TestBase):
             set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]),
         )
 
-        r = t.insert(inline=True).execute()
+        r = t.insert().inline().execute()
         assert r.lastrow_has_defaults()
         eq_(
             set(r.context.postfetch_cols),
