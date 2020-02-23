@@ -2193,14 +2193,15 @@ Correlated Updates
 ------------------
 
 A correlated update lets you update a table using selection from another
-table, or the same table:
+table, or the same table; the SELECT statement is passed as a scalar
+subquery using :meth:`.Select.scalar_subquery`:
 
 .. sourcecode:: pycon+sql
 
     >>> stmt = select([addresses.c.email_address]).\
     ...             where(addresses.c.user_id == users.c.id).\
     ...             limit(1)
-    >>> conn.execute(users.update().values(fullname=stmt))
+    >>> conn.execute(users.update().values(fullname=stmt.scalar_subquery()))
     {opensql}UPDATE users SET fullname=(SELECT addresses.email_address
         FROM addresses
         WHERE addresses.user_id = users.id

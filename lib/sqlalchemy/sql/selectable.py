@@ -3145,8 +3145,6 @@ class Select(
 
     __visit_name__ = "select"
 
-    _prefixes = ()
-    _suffixes = ()
     _hints = util.immutabledict()
     _statement_hints = ()
     _distinct = False

@@ -1459,10 +1459,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 "get_current_parameters() can only be invoked in the "
                 "context of a Python side column default function"
             )
+
+        compile_state = self.compiled.compile_state
         if (
             isolate_multiinsert_groups
             and self.isinsert
-            and self.compiled.statement._has_multi_parameters
+            and compile_state._has_multi_parameters
         ):
             if column._is_multiparam_column:
                 index = column.index + 1
@@ -1470,7 +1472,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             else:
                 d = {column.key: parameters[column.key]}
                 index = 0
-            keys = self.compiled.statement.parameters[0].keys()
+            keys = compile_state._dict_parameters.keys()
             d.update(
                 (key, parameters["%s_m%d" % (key, index)]) for key in keys
             )

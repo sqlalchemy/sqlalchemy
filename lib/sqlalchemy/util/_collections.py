@@ -47,17 +47,10 @@ class immutabledict(ImmutableContainer, dict):
         return immutabledict, (dict(self),)
 
     def union(self, d):
-        if not d:
-            return self
-        elif not self:
-            if isinstance(d, immutabledict):
-                return d
-            else:
-                return immutabledict(d)
-        else:
-            d2 = immutabledict(self)
-            dict.update(d2, d)
-            return d2
+        new = dict.__new__(self.__class__)
+        dict.__init__(new, self)
+        dict.update(new, d)
+        return new
 
     def __repr__(self):
         return "immutabledict(%s)" % dict.__repr__(self)

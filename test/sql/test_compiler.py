@@ -4818,7 +4818,11 @@ class ResultMapTest(fixtures.TestBase):
         Table("t1", m, astring)
         t2 = Table("t2", m, aint)
 
-        stmt = t2.insert().values(a=select([astring])).returning(aint)
+        stmt = (
+            t2.insert()
+            .values(a=select([astring]).scalar_subquery())
+            .returning(aint)
+        )
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
             comp._create_result_map(),

@@ -579,7 +579,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
     def test_insert(self):
         User = self.classes.User
 
-        u = User(name="test", counter=sa.select([5]))
+        u = User(name="test", counter=sa.select([5]).scalar_subquery())
 
         session = create_session()
         session.add(u)

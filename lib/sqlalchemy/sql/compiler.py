@@ -653,6 +653,20 @@ class SQLCompiler(Compiled):
 
     insert_prefetch = update_prefetch = ()
 
+    compile_state = None
+    """Optional :class:`.CompileState` object that maintains additional
+    state used by the compiler.
+
+    Major executable objects such as :class:`.Insert`, :class:`.Update`,
+    :class:`.Delete`, :class:`.Select` will generate this state when compiled
+    in order to calculate additional information about the object.   For the
+    top level object that is to be executed, the state can be stored here where
+    it can also have applicability towards result set processing.
+
+    .. versionadded:: 1.4
+
+    """
+
     def __init__(
         self,
         dialect,
@@ -1292,6 +1306,13 @@ class SQLCompiler(Compiled):
         else:
             return "0"
 
+    def _generate_delimited_list(self, elements, separator, **kw):
+        return separator.join(
+            s
+            for s in (c._compiler_dispatch(self, **kw) for c in elements)
+            if s
+        )
+
     def visit_clauselist(self, clauselist, **kw):
         sep = clauselist.operator
         if sep is None:
@@ -1299,13 +1320,7 @@ class SQLCompiler(Compiled):
         else:
             sep = OPERATORS[clauselist.operator]
 
-        text = sep.join(
-            s
-            for s in (
-                c._compiler_dispatch(self, **kw) for c in clauselist.clauses
-            )
-            if s
-        )
+        text = self._generate_delimited_list(clauselist.clauses, sep, **kw)
         if clauselist._tuple_values and self.dialect.tuple_in_values:
             text = "VALUES " + text
         return text
@@ -2810,7 +2825,17 @@ class SQLCompiler(Compiled):
         return dialect_hints, table_text
 
     def visit_insert(self, insert_stmt, **kw):
+
+        compile_state = insert_stmt._compile_state_cls(
+            insert_stmt, self, isinsert=True, **kw
+        )
+        insert_stmt = compile_state.statement
+
         toplevel = not self.stack
+
+        if toplevel:
+            self.isinsert = True
+            self.compile_state = compile_state
 
         self.stack.append(
             {
@@ -2820,8 +2845,8 @@ class SQLCompiler(Compiled):
             }
         )
 
-        crud_params = crud._setup_crud_params(
-            self, insert_stmt, crud.ISINSERT, **kw
+        crud_params = crud._get_crud_params(
+            self, insert_stmt, compile_state, **kw
         )
 
         if (
@@ -2835,7 +2860,7 @@ class SQLCompiler(Compiled):
                 "inserts." % self.dialect.name
             )
 
-        if insert_stmt._has_multi_parameters:
+        if compile_state._has_multi_parameters:
             if not self.dialect.supports_multivalues_insert:
                 raise exc.CompileError(
                     "The '%s' dialect with current database "
@@ -2888,7 +2913,7 @@ class SQLCompiler(Compiled):
                 text += " %s" % select_text
         elif not crud_params and supports_default_values:
             text += " DEFAULT VALUES"
-        elif insert_stmt._has_multi_parameters:
+        elif compile_state._has_multi_parameters:
             text += " VALUES %s" % (
                 ", ".join(
                     "(%s)" % (", ".join(c[1] for c in crud_param_set))
@@ -2947,9 +2972,16 @@ class SQLCompiler(Compiled):
         )
 
     def visit_update(self, update_stmt, **kw):
-        toplevel = not self.stack
+        compile_state = update_stmt._compile_state_cls(
+            update_stmt, self, isupdate=True, **kw
+        )
+        update_stmt = compile_state.statement
 
-        extra_froms = update_stmt._extra_froms
+        toplevel = not self.stack
+        if toplevel:
+            self.isupdate = True
+
+        extra_froms = compile_state._extra_froms
         is_multitable = bool(extra_froms)
 
         if is_multitable:
@@ -2981,8 +3013,8 @@ class SQLCompiler(Compiled):
         table_text = self.update_tables_clause(
             update_stmt, update_stmt.table, render_extra_froms, **kw
         )
-        crud_params = crud._setup_crud_params(
-            self, update_stmt, crud.ISUPDATE, **kw
+        crud_params = crud._get_crud_params(
+            self, update_stmt, compile_state, **kw
         )
 
         if update_stmt._hints:
@@ -3022,8 +3054,10 @@ class SQLCompiler(Compiled):
             if extra_from_text:
                 text += " " + extra_from_text
 
-        if update_stmt._whereclause is not None:
-            t = self.process(update_stmt._whereclause, **kw)
+        if update_stmt._where_criteria:
+            t = self._generate_delimited_list(
+                update_stmt._where_criteria, OPERATORS[operators.and_], **kw
+            )
             if t:
                 text += " WHERE " + t
 
@@ -3045,10 +3079,6 @@ class SQLCompiler(Compiled):
 
         return text
 
-    @util.memoized_property
-    def _key_getters_for_crud_column(self):
-        return crud._key_getters_for_crud_column(self, self.statement)
-
     def delete_extra_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
     ):
@@ -3069,11 +3099,16 @@ class SQLCompiler(Compiled):
         return from_table._compiler_dispatch(self, asfrom=True, iscrud=True)
 
     def visit_delete(self, delete_stmt, **kw):
+        compile_state = delete_stmt._compile_state_cls(
+            delete_stmt, self, isdelete=True, **kw
+        )
+        delete_stmt = compile_state.statement
+
         toplevel = not self.stack
+        if toplevel:
+            self.isdelete = True
 
-        crud._setup_crud_params(self, delete_stmt, crud.ISDELETE, **kw)
-
-        extra_froms = delete_stmt._extra_froms
+        extra_froms = compile_state._extra_froms
 
         correlate_froms = {delete_stmt.table}.union(extra_froms)
         self.stack.append(
@@ -3122,8 +3157,10 @@ class SQLCompiler(Compiled):
             if extra_from_text:
                 text += " " + extra_from_text
 
-        if delete_stmt._whereclause is not None:
-            t = delete_stmt._whereclause._compiler_dispatch(self, **kw)
+        if delete_stmt._where_criteria:
+            t = self._generate_delimited_list(
+                delete_stmt._where_criteria, OPERATORS[operators.and_], **kw
+            )
             if t:
                 text += " WHERE " + t
 

@@ -1450,31 +1450,17 @@ class MSExecutionContext(default.DefaultExecutionContext):
             insert_has_sequence = seq_column is not None
 
             if insert_has_sequence:
+                compile_state = self.compiled.compile_state
                 self._enable_identity_insert = (
                     seq_column.key in self.compiled_parameters[0]
                 ) or (
-                    self.compiled.statement.parameters
+                    compile_state._dict_parameters
                     and (
-                        (
-                            self.compiled.statement._has_multi_parameters
-                            and (
-                                seq_column.key
-                                in self.compiled.statement.parameters[0]
-                                or seq_column
-                                in self.compiled.statement.parameters[0]
-                            )
-                        )
-                        or (
-                            not self.compiled.statement._has_multi_parameters
-                            and (
-                                seq_column.key
-                                in self.compiled.statement.parameters
-                                or seq_column
-                                in self.compiled.statement.parameters
-                            )
-                        )
+                        seq_column.key in compile_state._dict_parameters
+                        or seq_column in compile_state._dict_parameters
                     )
                 )
+
             else:
                 self._enable_identity_insert = False
 

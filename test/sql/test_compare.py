@@ -25,9 +25,12 @@ from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import util
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql import dml
 from sqlalchemy.sql import False_
 from sqlalchemy.sql import func
 from sqlalchemy.sql import operators
@@ -57,7 +60,6 @@ from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
-from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import random_choices
@@ -94,6 +96,11 @@ class MyEntity(HasCacheKey):
         ("name", InternalTraversal.dp_string),
         ("element", InternalTraversal.dp_clauseelement),
     ]
+
+
+dml.Insert.argument_for("sqlite", "foo", None)
+dml.Update.argument_for("sqlite", "foo", None)
+dml.Delete.argument_for("sqlite", "foo", None)
 
 
 class CoreFixtures(object):
@@ -329,6 +336,64 @@ class CoreFixtures(object):
             ),
         ),
         lambda: (
+            table_a.insert(),
+            table_a.insert().values({})._annotate({"nocache": True}),
+            table_b.insert(),
+            table_b.insert().with_dialect_options(sqlite_foo="some value"),
+            table_b.insert().from_select(["a", "b"], select([table_a])),
+            table_b.insert().from_select(
+                ["a", "b"], select([table_a]).where(table_a.c.a > 5)
+            ),
+            table_b.insert().from_select(["a", "b"], select([table_b])),
+            table_b.insert().from_select(["c", "d"], select([table_a])),
+            table_b.insert().returning(table_b.c.a),
+            table_b.insert().returning(table_b.c.a, table_b.c.b),
+            table_b.insert().inline(),
+            table_b.insert().prefix_with("foo"),
+            table_b.insert().with_hint("RUNFAST"),
+            table_b.insert().values(a=5, b=10),
+            table_b.insert().values(a=5),
+            table_b.insert()
+            .values({table_b.c.a: 5, "b": 10})
+            ._annotate({"nocache": True}),
+            table_b.insert().values(a=7, b=10),
+            table_b.insert().values(a=5, b=10).inline(),
+            table_b.insert()
+            .values([{"a": 5, "b": 10}, {"a": 8, "b": 12}])
+            ._annotate({"nocache": True}),
+        ),
+        lambda: (
+            table_b.update(),
+            table_b.update().where(table_b.c.a == 5),
+            table_b.update().where(table_b.c.b == 5),
+            table_b.update()
+            .where(table_b.c.b == 5)
+            .with_dialect_options(mysql_limit=10),
+            table_b.update()
+            .where(table_b.c.b == 5)
+            .with_dialect_options(mysql_limit=10, sqlite_foo="some value"),
+            table_b.update().where(table_b.c.a == 5).values(a=5, b=10),
+            table_b.update().where(table_b.c.a == 5).values(a=5, b=10, c=12),
+            table_b.update()
+            .where(table_b.c.b == 5)
+            .values(a=5, b=10)
+            ._annotate({"nocache": True}),
+            table_b.update().values(a=5, b=10),
+            table_b.update()
+            .values({"a": 5, table_b.c.b: 10})
+            ._annotate({"nocache": True}),
+            table_b.update().values(a=7, b=10),
+            table_b.update().ordered_values(("a", 5), ("b", 10)),
+            table_b.update().ordered_values(("b", 10), ("a", 5)),
+            table_b.update().ordered_values((table_b.c.a, 5), ("b", 10)),
+        ),
+        lambda: (
+            table_b.delete(),
+            table_b.delete().with_dialect_options(sqlite_foo="some value"),
+            table_b.delete().where(table_b.c.a == 5),
+            table_b.delete().where(table_b.c.b == 5),
+        ),
+        lambda: (
             select([table_a.c.a]),
             select([table_a.c.a]).prefix_with("foo"),
             select([table_a.c.a]).prefix_with("foo", dialect="mysql"),
@@ -490,8 +555,12 @@ class CacheKeyFixture(object):
             if a == b:
                 a_key = case_a[a]._generate_cache_key()
                 b_key = case_b[b]._generate_cache_key()
-                is_not_(a_key, None)
-                is_not_(b_key, None)
+
+                if a_key is None:
+                    assert case_a[a]._annotations.get("nocache")
+
+                    assert b_key is None
+                    continue
 
                 eq_(a_key.key, b_key.key)
                 eq_(hash(a_key), hash(b_key))
@@ -505,6 +574,13 @@ class CacheKeyFixture(object):
             else:
                 a_key = case_a[a]._generate_cache_key()
                 b_key = case_b[b]._generate_cache_key()
+
+                if a_key is None or b_key is None:
+                    if a_key is None:
+                        assert case_a[a]._annotations.get("nocache")
+                    if b_key is None:
+                        assert case_b[b]._annotations.get("nocache")
+                    continue
 
                 if a_key.key == b_key.key:
                     for a_param, b_param in zip(
@@ -562,7 +638,18 @@ class CacheKeyFixture(object):
 
 
 class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
-    @testing.combinations(table_a.update(), table_a.insert(), table_a.delete())
+    # we are slightly breaking the policy of not having external dialect
+    # stuff in here, but use pg/mysql as test cases to ensure that these
+    # objects don't report an inaccurate cache key, which is dependent
+    # on the base insert sending out _post_values_clause and the caching
+    # system properly recognizing these constructs as not cacheable
+
+    @testing.combinations(
+        postgresql.insert(table_a).on_conflict_do_update(
+            index_elements=[table_a.c.a], set_={"name": "foo"}
+        ),
+        mysql.insert(table_a).on_duplicate_key_update(updated_once=None),
+    )
     def test_dml_not_cached_yet(self, dml_stmt):
         eq_(dml_stmt._generate_cache_key(), None)
 

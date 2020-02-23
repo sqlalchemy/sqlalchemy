@@ -7,6 +7,7 @@ from sqlalchemy import extract
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import select
@@ -36,7 +37,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not_
-
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
@@ -1961,29 +1961,53 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_add_kwarg(self):
         i = t1.insert()
-        eq_(i.parameters, None)
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        eq_(compile_state._dict_parameters, None)
         i = i.values(col1=5)
-        eq_(i.parameters, {"col1": 5})
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        self._compare_param_dict(compile_state._dict_parameters, {"col1": 5})
         i = i.values(col2=7)
-        eq_(i.parameters, {"col1": 5, "col2": 7})
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        self._compare_param_dict(
+            compile_state._dict_parameters, {"col1": 5, "col2": 7}
+        )
 
     def test_via_tuple_single(self):
         i = t1.insert()
-        eq_(i.parameters, None)
+
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        eq_(compile_state._dict_parameters, None)
+
         i = i.values((5, 6, 7))
-        eq_(i.parameters, {"col1": 5, "col2": 6, "col3": 7})
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+
+        self._compare_param_dict(
+            compile_state._dict_parameters, {"col1": 5, "col2": 6, "col3": 7},
+        )
 
     def test_kw_and_dict_simultaneously_single(self):
         i = t1.insert()
-        i = i.values({"col1": 5}, col2=7)
-        eq_(i.parameters, {"col1": 5, "col2": 7})
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Can't pass positional and kwargs to values\(\) simultaneously",
+            i.values,
+            {"col1": 5},
+            col2=7,
+        )
 
     def test_via_tuple_multi(self):
         i = t1.insert()
-        eq_(i.parameters, None)
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        eq_(compile_state._dict_parameters, None)
+
         i = i.values([(5, 6, 7), (8, 9, 10)])
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
         eq_(
-            i.parameters,
+            compile_state._dict_parameters, {"col1": 5, "col2": 6, "col3": 7},
+        )
+        eq_(compile_state._has_multi_parameters, True)
+        eq_(
+            compile_state._multi_parameters,
             [
                 {"col1": 5, "col2": 6, "col3": 7},
                 {"col1": 8, "col2": 9, "col3": 10},
@@ -1992,58 +2016,92 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_inline_values_single(self):
         i = t1.insert(values={"col1": 5})
-        eq_(i.parameters, {"col1": 5})
-        is_(i._has_multi_parameters, False)
+
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+
+        self._compare_param_dict(compile_state._dict_parameters, {"col1": 5})
+        is_(compile_state._has_multi_parameters, False)
 
     def test_inline_values_multi(self):
         i = t1.insert(values=[{"col1": 5}, {"col1": 6}])
-        eq_(i.parameters, [{"col1": 5}, {"col1": 6}])
-        is_(i._has_multi_parameters, True)
+
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+
+        # multiparams are not converted to bound parameters
+        eq_(compile_state._dict_parameters, {"col1": 5})
+
+        # multiparams are not converted to bound parameters
+        eq_(compile_state._multi_parameters, [{"col1": 5}, {"col1": 6}])
+        is_(compile_state._has_multi_parameters, True)
+
+    def _compare_param_dict(self, a, b):
+        if list(a) != list(b):
+            return False
+
+        from sqlalchemy.types import NullType
+
+        for a_k, a_i in a.items():
+            b_i = b[a_k]
+
+            # compare BindParameter on the left to
+            # literal value on the right
+            assert a_i.compare(literal(b_i, type_=NullType()))
 
     def test_add_dictionary(self):
         i = t1.insert()
-        eq_(i.parameters, None)
+
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+
+        eq_(compile_state._dict_parameters, None)
         i = i.values({"col1": 5})
-        eq_(i.parameters, {"col1": 5})
-        is_(i._has_multi_parameters, False)
+
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+
+        self._compare_param_dict(compile_state._dict_parameters, {"col1": 5})
+        is_(compile_state._has_multi_parameters, False)
 
         i = i.values({"col1": 6})
         # note replaces
-        eq_(i.parameters, {"col1": 6})
-        is_(i._has_multi_parameters, False)
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+
+        self._compare_param_dict(compile_state._dict_parameters, {"col1": 6})
+        is_(compile_state._has_multi_parameters, False)
 
         i = i.values({"col2": 7})
-        eq_(i.parameters, {"col1": 6, "col2": 7})
-        is_(i._has_multi_parameters, False)
+        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        self._compare_param_dict(
+            compile_state._dict_parameters, {"col1": 6, "col2": 7}
+        )
+        is_(compile_state._has_multi_parameters, False)
 
     def test_add_kwarg_disallowed_multi(self):
         i = t1.insert()
         i = i.values([{"col1": 5}, {"col1": 7}])
+        i = i.values(col2=7)
         assert_raises_message(
             exc.InvalidRequestError,
-            "This construct already has multiple parameter sets.",
-            i.values,
-            col2=7,
+            "Can't mix single and multiple VALUES formats",
+            i.compile,
         )
 
     def test_cant_mix_single_multi_formats_dict_to_list(self):
         i = t1.insert().values(col1=5)
+        i = i.values([{"col1": 6}])
         assert_raises_message(
-            exc.ArgumentError,
-            "Can't mix single-values and multiple values "
-            "formats in one statement",
-            i.values,
-            [{"col1": 6}],
+            exc.InvalidRequestError,
+            "Can't mix single and multiple VALUES "
+            "formats in one INSERT statement",
+            i.compile,
         )
 
     def test_cant_mix_single_multi_formats_list_to_dict(self):
         i = t1.insert().values([{"col1": 6}])
+        i = i.values({"col1": 5})
         assert_raises_message(
-            exc.ArgumentError,
-            "Can't mix single-values and multiple values "
-            "formats in one statement",
-            i.values,
-            {"col1": 5},
+            exc.InvalidRequestError,
+            "Can't mix single and multiple VALUES "
+            "formats in one INSERT statement",
+            i.compile,
         )
 
     def test_erroneous_multi_args_dicts(self):
@@ -2072,7 +2130,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         i = t1.insert()
         assert_raises_message(
             exc.ArgumentError,
-            "Can't pass kwargs and multiple parameter sets simultaneously",
+            r"Can't pass positional and kwargs to values\(\) simultaneously",
             i.values,
             [{"col1": 5}],
             col2=7,
@@ -2080,17 +2138,18 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_update_no_support_multi_values(self):
         u = t1.update()
+        u = u.values([{"col1": 5}, {"col1": 7}])
         assert_raises_message(
             exc.InvalidRequestError,
-            "This construct does not support multiple parameter sets.",
-            u.values,
-            [{"col1": 5}, {"col1": 7}],
+            "UPDATE construct does not support multiple parameter sets.",
+            u.compile,
         )
 
     def test_update_no_support_multi_constructor(self):
+        stmt = t1.update(values=[{"col1": 5}, {"col1": 7}])
+
         assert_raises_message(
             exc.InvalidRequestError,
-            "This construct does not support multiple parameter sets.",
-            t1.update,
-            values=[{"col1": 5}, {"col1": 7}],
+            "UPDATE construct does not support multiple parameter sets.",
+            stmt.compile,
         )

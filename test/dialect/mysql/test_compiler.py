@@ -512,15 +512,22 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update(values={"col1": 123}), "UPDATE t SET col1=%s"
         )
         self.assert_compile(
-            t.update(values={"col1": 123}, mysql_limit=5),
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=5),
             "UPDATE t SET col1=%s LIMIT 5",
         )
         self.assert_compile(
-            t.update(values={"col1": 123}, mysql_limit=None),
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=None),
             "UPDATE t SET col1=%s",
         )
         self.assert_compile(
-            t.update(t.c.col2 == 456, values={"col1": 123}, mysql_limit=1),
+            t.update()
+            .where(t.c.col2 == 456)
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=1),
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1",
         )
 

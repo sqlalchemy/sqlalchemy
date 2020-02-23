@@ -8,25 +8,162 @@
 Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
 
 """
-
+from sqlalchemy.types import NullType
 from . import coercions
 from . import roles
 from .base import _from_objects
 from .base import _generative
+from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
-from .elements import and_
+from .base import HasCompileState
 from .elements import ClauseElement
 from .elements import Null
 from .selectable import HasCTE
 from .selectable import HasPrefixes
+from .visitors import InternalTraversal
 from .. import exc
 from .. import util
+from ..util import collections_abc
+
+
+class DMLState(CompileState):
+    _no_parameters = True
+    _dict_parameters = None
+    _multi_parameters = None
+    _parameter_ordering = None
+    _has_multi_parameters = False
+    isupdate = False
+    isdelete = False
+    isinsert = False
+
+    def __init__(
+        self,
+        statement,
+        compiler,
+        isinsert=False,
+        isupdate=False,
+        isdelete=False,
+        **kw
+    ):
+        self.statement = statement
+
+        if isupdate:
+            self.isupdate = True
+            self._preserve_parameter_order = (
+                statement._preserve_parameter_order
+            )
+            if statement._ordered_values is not None:
+                self._process_ordered_values(statement)
+            elif statement._values is not None:
+                self._process_values(statement)
+            elif statement._multi_values:
+                self._process_multi_values(statement)
+            self._extra_froms = self._make_extra_froms(statement)
+        elif isinsert:
+            self.isinsert = True
+            if statement._select_names:
+                self._process_select_values(statement)
+            if statement._values is not None:
+                self._process_values(statement)
+            if statement._multi_values:
+                self._process_multi_values(statement)
+        elif isdelete:
+            self.isdelete = True
+            self._extra_froms = self._make_extra_froms(statement)
+        else:
+            assert False, "one of isinsert, isupdate, or isdelete must be set"
+
+    def _make_extra_froms(self, statement):
+        froms = []
+        seen = {statement.table}
+
+        for crit in statement._where_criteria:
+            for item in _from_objects(crit):
+                if not seen.intersection(item._cloned_set):
+                    froms.append(item)
+                seen.update(item._cloned_set)
+
+        return froms
+
+    def _process_multi_values(self, statement):
+        if not statement._supports_multi_parameters:
+            raise exc.InvalidRequestError(
+                "%s construct does not support "
+                "multiple parameter sets." % statement.__visit_name__.upper()
+            )
+
+        for parameters in statement._multi_values:
+            multi_parameters = [
+                {
+                    c.key: value
+                    for c, value in zip(statement.table.c, parameter_set)
+                }
+                if isinstance(parameter_set, collections_abc.Sequence)
+                else parameter_set
+                for parameter_set in parameters
+            ]
+
+            if self._no_parameters:
+                self._no_parameters = False
+                self._has_multi_parameters = True
+                self._multi_parameters = multi_parameters
+                self._dict_parameters = self._multi_parameters[0]
+            elif not self._has_multi_parameters:
+                self._cant_mix_formats_error()
+            else:
+                self._multi_parameters.extend(multi_parameters)
+
+    def _process_values(self, statement):
+        if self._no_parameters:
+            self._has_multi_parameters = False
+            self._dict_parameters = statement._values
+            self._no_parameters = False
+        elif self._has_multi_parameters:
+            self._cant_mix_formats_error()
+
+    def _process_ordered_values(self, statement):
+        parameters = statement._ordered_values
+
+        if self._no_parameters:
+            self._no_parameters = False
+            self._dict_parameters = dict(parameters)
+            self._parameter_ordering = [key for key, value in parameters]
+        elif self._has_multi_parameters:
+            self._cant_mix_formats_error()
+        else:
+            raise exc.InvalidRequestError(
+                "Can only invoke ordered_values() once, and not mixed "
+                "with any other values() call"
+            )
+
+    def _process_select_values(self, statement):
+        parameters = {
+            coercions.expect(roles.DMLColumnRole, name, as_key=True): Null()
+            for name in statement._select_names
+        }
+
+        if self._no_parameters:
+            self._no_parameters = False
+            self._dict_parameters = parameters
+        else:
+            # this condition normally not reachable as the Insert
+            # does not allow this construction to occur
+            assert False, "This statement already has parameters"
+
+    def _cant_mix_formats_error(self):
+        raise exc.InvalidRequestError(
+            "Can't mix single and multiple VALUES "
+            "formats in one INSERT statement; one style appends to a "
+            "list while the other replaces values, so the intent is "
+            "ambiguous."
+        )
 
 
 class UpdateBase(
     roles.DMLRole,
     HasCTE,
+    HasCompileState,
     DialectKWArgs,
     HasPrefixes,
     Executable,
@@ -42,9 +179,9 @@ class UpdateBase(
         {"autocommit": True}
     )
     _hints = util.immutabledict()
-    _parameter_ordering = None
-    _prefixes = ()
     named_with_column = False
+
+    _compile_state_cls = DMLState
 
     @classmethod
     def _constructor_20_deprecations(cls, fn_name, clsname, names):
@@ -112,43 +249,6 @@ class UpdateBase(
             col._make_proxy(fromclause) for col in self._returning
         )
 
-    def _process_colparams(self, parameters, preserve_parameter_order=False):
-        def process_single(p):
-            if isinstance(p, (list, tuple)):
-                return dict((c.key, pval) for c, pval in zip(self.table.c, p))
-            else:
-                return p
-
-        if (
-            preserve_parameter_order or self._preserve_parameter_order
-        ) and parameters is not None:
-            if not isinstance(parameters, list) or (
-                parameters and not isinstance(parameters[0], tuple)
-            ):
-                raise ValueError(
-                    "When preserve_parameter_order is True, "
-                    "values() only accepts a list of 2-tuples"
-                )
-            self._parameter_ordering = [key for key, value in parameters]
-
-            return dict(parameters), False
-
-        if (
-            isinstance(parameters, (list, tuple))
-            and parameters
-            and isinstance(parameters[0], (list, tuple, dict))
-        ):
-
-            if not self._supports_multi_parameters:
-                raise exc.InvalidRequestError(
-                    "This construct does not support "
-                    "multiple parameter sets."
-                )
-
-            return [process_single(p) for p in parameters], True
-        else:
-            return process_single(parameters), False
-
     def params(self, *arg, **kw):
         """Set the parameters for the statement.
 
@@ -162,6 +262,29 @@ class UpdateBase(
             " To set the values for an INSERT or UPDATE statement, use"
             " stmt.values(**parameters)."
         )
+
+    @_generative
+    def with_dialect_options(self, **opt):
+        """Add dialect options to this INSERT/UPDATE/DELETE object.
+
+        e.g.::
+
+            upd = table.update().dialect_options(mysql_limit=10)
+
+        .. versionadded: 1.4 - this method supersedes the dialect options
+           associated with the constructor.
+
+
+        """
+        self._validate_dialect_kwargs(opt)
+
+    def _validate_dialect_kwargs_deprecated(self, dialect_kw):
+        util.warn_deprecated_20(
+            "Passing dialect keyword arguments directly to the "
+            "constructor is deprecated and will be removed in SQLAlchemy "
+            "2.0.  Please use the ``with_dialect_options()`` method."
+        )
+        self._validate_dialect_kwargs(dialect_kw)
 
     def bind(self):
         """Return a 'bind' linked to this :class:`.UpdateBase`
@@ -266,9 +389,6 @@ class UpdateBase(
 
         self._hints = self._hints.union({(selectable, dialect_name): text})
 
-    def _copy_internals(self, **kw):
-        raise NotImplementedError()
-
 
 class ValuesBase(UpdateBase):
     """Supplies support for :meth:`.ValuesBase.values` to
@@ -277,16 +397,21 @@ class ValuesBase(UpdateBase):
     __visit_name__ = "values_base"
 
     _supports_multi_parameters = False
-    _has_multi_parameters = False
     _preserve_parameter_order = False
     select = None
     _post_values_clause = None
 
+    _values = None
+    _multi_values = ()
+    _ordered_values = None
+    _select_names = None
+
+    _returning = ()
+
     def __init__(self, table, values, prefixes):
         self.table = coercions.expect(roles.FromClauseRole, table)
-        self.parameters, self._has_multi_parameters = self._process_colparams(
-            values
-        )
+        if values is not None:
+            self.values.non_generative(self, values)
         if prefixes:
             self._setup_prefixes(prefixes)
 
@@ -416,59 +541,96 @@ class ValuesBase(UpdateBase):
             :func:`~.expression.update` - produce an ``UPDATE`` statement
 
         """
-        if self.select is not None:
+        if self._select_names:
             raise exc.InvalidRequestError(
                 "This construct already inserts from a SELECT"
             )
-        if self._has_multi_parameters and kwargs:
-            raise exc.InvalidRequestError(
-                "This construct already has multiple parameter sets."
+        elif self._ordered_values:
+            raise exc.ArgumentError(
+                "This statement already has ordered values present"
             )
 
         if args:
-            if len(args) > 1:
+            # positional case.  this is currently expensive.   we don't
+            # yet have positional-only args so we have to check the length.
+            # then we need to check multiparams vs. single dictionary.
+            # since the parameter format is needed in order to determine
+            # a cache key, we need to determine this up front.
+            arg = args[0]
+
+            if kwargs:
+                raise exc.ArgumentError(
+                    "Can't pass positional and kwargs to values() "
+                    "simultaneously"
+                )
+            elif len(args) > 1:
                 raise exc.ArgumentError(
                     "Only a single dictionary/tuple or list of "
                     "dictionaries/tuples is accepted positionally."
                 )
-            v = args[0]
-        else:
-            v = {}
 
-        if self.parameters is None:
-            (
-                self.parameters,
-                self._has_multi_parameters,
-            ) = self._process_colparams(v)
-        else:
-            if self._has_multi_parameters:
-                self.parameters = list(self.parameters)
-                p, self._has_multi_parameters = self._process_colparams(v)
-                if not self._has_multi_parameters:
-                    raise exc.ArgumentError(
-                        "Can't mix single-values and multiple values "
-                        "formats in one statement"
-                    )
+            elif not self._preserve_parameter_order and isinstance(
+                arg, collections_abc.Sequence
+            ):
 
-                self.parameters.extend(p)
-            else:
-                self.parameters = self.parameters.copy()
-                p, self._has_multi_parameters = self._process_colparams(v)
-                if self._has_multi_parameters:
-                    raise exc.ArgumentError(
-                        "Can't mix single-values and multiple values "
-                        "formats in one statement"
-                    )
-                self.parameters.update(p)
+                if arg and isinstance(arg[0], (list, dict, tuple)):
+                    self._multi_values += (arg,)
+                    return
 
-        if kwargs:
-            if self._has_multi_parameters:
-                raise exc.ArgumentError(
-                    "Can't pass kwargs and multiple parameter sets "
-                    "simultaneously"
+                # tuple values
+                arg = {c.key: value for c, value in zip(self.table.c, arg)}
+            elif self._preserve_parameter_order and not isinstance(
+                arg, collections_abc.Sequence
+            ):
+                raise ValueError(
+                    "When preserve_parameter_order is True, "
+                    "values() only accepts a list of 2-tuples"
                 )
+
+        else:
+            # kwarg path.  this is the most common path for non-multi-params
+            # so this is fairly quick.
+            arg = kwargs
+            if args:
+                raise exc.ArgumentError(
+                    "Only a single dictionary/tuple or list of "
+                    "dictionaries/tuples is accepted positionally."
+                )
+
+        # for top level values(), convert literals to anonymous bound
+        # parameters at statement construction time, so that these values can
+        # participate in the cache key process like any other ClauseElement.
+        # crud.py now intercepts bound parameters with unique=True from here
+        # and ensures they get the "crud"-style name when rendered.
+
+        if self._preserve_parameter_order:
+            arg = [
+                (
+                    k,
+                    coercions.expect(
+                        roles.ExpressionElementRole,
+                        v,
+                        type_=NullType(),
+                        is_crud=True,
+                    ),
+                )
+                for k, v in arg
+            ]
+            self._ordered_values = arg
+        else:
+            arg = {
+                k: coercions.expect(
+                    roles.ExpressionElementRole,
+                    v,
+                    type_=NullType(),
+                    is_crud=True,
+                )
+                for k, v in arg.items()
+            }
+            if self._values:
+                self._values = self._values.union(arg)
             else:
-                self.parameters.update(kwargs)
+                self._values = util.immutabledict(arg)
 
     @_generative
     def return_defaults(self, *cols):
@@ -555,6 +717,25 @@ class Insert(ValuesBase):
 
     _supports_multi_parameters = True
 
+    select = None
+    include_insert_from_select_defaults = False
+
+    _traverse_internals = (
+        [
+            ("table", InternalTraversal.dp_clauseelement),
+            ("_inline", InternalTraversal.dp_boolean),
+            ("_select_names", InternalTraversal.dp_string_list),
+            ("_values", InternalTraversal.dp_dml_values),
+            ("_multi_values", InternalTraversal.dp_dml_multi_values),
+            ("select", InternalTraversal.dp_clauseelement),
+            ("_post_values_clause", InternalTraversal.dp_clauseelement),
+            ("_returning", InternalTraversal.dp_clauseelement_list),
+            ("_hints", InternalTraversal.dp_table_hint_list),
+        ]
+        + HasPrefixes._has_prefixes_traverse_internals
+        + DialectKWArgs._dialect_kwargs_traverse_internals
+    )
+
     @ValuesBase._constructor_20_deprecations(
         "insert",
         "Insert",
@@ -626,18 +807,13 @@ class Insert(ValuesBase):
         """
         super(Insert, self).__init__(table, values, prefixes)
         self._bind = bind
-        self.select = self.select_names = None
-        self.include_insert_from_select_defaults = False
         self._inline = inline
-        self._returning = returning
-        self._validate_dialect_kwargs(dialect_kw)
-        self._return_defaults = return_defaults
+        if returning:
+            self._returning = returning
+        if dialect_kw:
+            self._validate_dialect_kwargs_deprecated(dialect_kw)
 
-    def get_children(self, **kwargs):
-        if self.select is not None:
-            return (self.select,)
-        else:
-            return ()
+        self._return_defaults = return_defaults
 
     @_generative
     def inline(self):
@@ -702,25 +878,34 @@ class Insert(ValuesBase):
            :attr:`.ResultProxy.inserted_primary_key` accessor does not apply.
 
         """
-        if self.parameters:
+
+        if self._values:
             raise exc.InvalidRequestError(
                 "This construct already inserts value expressions"
             )
 
-        self.parameters, self._has_multi_parameters = self._process_colparams(
-            {
-                coercions.expect(roles.DMLColumnRole, n, as_key=True): Null()
-                for n in names
-            }
-        )
-
-        self.select_names = names
+        self._select_names = names
         self._inline = True
         self.include_insert_from_select_defaults = include_defaults
         self.select = coercions.expect(roles.DMLSelectRole, select)
 
 
-class Update(ValuesBase):
+class DMLWhereBase(object):
+    _where_criteria = ()
+
+    @_generative
+    def where(self, whereclause):
+        """return a new construct with the given expression added to
+        its WHERE clause, joined to the existing clause via AND, if any.
+
+        """
+
+        self._where_criteria += (
+            coercions.expect(roles.WhereHavingRole, whereclause),
+        )
+
+
+class Update(DMLWhereBase, ValuesBase):
     """Represent an Update construct.
 
     The :class:`.Update` object is created using the :func:`update()`
@@ -729,6 +914,20 @@ class Update(ValuesBase):
     """
 
     __visit_name__ = "update"
+
+    _traverse_internals = (
+        [
+            ("table", InternalTraversal.dp_clauseelement),
+            ("_where_criteria", InternalTraversal.dp_clauseelement_list),
+            ("_inline", InternalTraversal.dp_boolean),
+            ("_ordered_values", InternalTraversal.dp_dml_ordered_values),
+            ("_values", InternalTraversal.dp_dml_values),
+            ("_returning", InternalTraversal.dp_clauseelement_list),
+            ("_hints", InternalTraversal.dp_table_hint_list),
+        ]
+        + HasPrefixes._has_prefixes_traverse_internals
+        + DialectKWArgs._dialect_kwargs_traverse_internals
+    )
 
     @ValuesBase._constructor_20_deprecations(
         "update",
@@ -874,20 +1073,13 @@ class Update(ValuesBase):
         self._bind = bind
         self._returning = returning
         if whereclause is not None:
-            self._whereclause = coercions.expect(
-                roles.WhereHavingRole, whereclause
+            self._where_criteria += (
+                coercions.expect(roles.WhereHavingRole, whereclause),
             )
-        else:
-            self._whereclause = None
         self._inline = inline
-        self._validate_dialect_kwargs(dialect_kw)
+        if dialect_kw:
+            self._validate_dialect_kwargs_deprecated(dialect_kw)
         self._return_defaults = return_defaults
-
-    def get_children(self, **kwargs):
-        if self._whereclause is not None:
-            return (self._whereclause,)
-        else:
-            return ()
 
     @_generative
     def ordered_values(self, *args):
@@ -912,22 +1104,27 @@ class Update(ValuesBase):
            parameter, which will be removed in SQLAlchemy 2.0.
 
         """
-        if self.select is not None:
-            raise exc.InvalidRequestError(
-                "This construct already inserts from a SELECT"
-            )
-
-        if self.parameters is None:
-            (
-                self.parameters,
-                self._has_multi_parameters,
-            ) = self._process_colparams(
-                list(args), preserve_parameter_order=True
-            )
-        else:
+        if self._values:
             raise exc.ArgumentError(
                 "This statement already has values present"
             )
+        elif self._ordered_values:
+            raise exc.ArgumentError(
+                "This statement already has ordered values present"
+            )
+        arg = [
+            (
+                k,
+                coercions.expect(
+                    roles.ExpressionElementRole,
+                    v,
+                    type_=NullType(),
+                    is_crud=True,
+                ),
+            )
+            for k, v in args
+        ]
+        self._ordered_values = arg
 
     @_generative
     def inline(self):
@@ -945,37 +1142,8 @@ class Update(ValuesBase):
         """
         self._inline = True
 
-    @_generative
-    def where(self, whereclause):
-        """return a new update() construct with the given expression added to
-        its WHERE clause, joined to the existing clause via AND, if any.
 
-        """
-        if self._whereclause is not None:
-            self._whereclause = and_(
-                self._whereclause,
-                coercions.expect(roles.WhereHavingRole, whereclause),
-            )
-        else:
-            self._whereclause = coercions.expect(
-                roles.WhereHavingRole, whereclause
-            )
-
-    @property
-    def _extra_froms(self):
-        froms = []
-        seen = {self.table}
-
-        if self._whereclause is not None:
-            for item in _from_objects(self._whereclause):
-                if not seen.intersection(item._cloned_set):
-                    froms.append(item)
-                seen.update(item._cloned_set)
-
-        return froms
-
-
-class Delete(UpdateBase):
+class Delete(DMLWhereBase, UpdateBase):
     """Represent a DELETE construct.
 
     The :class:`.Delete` object is created using the :func:`delete()`
@@ -984,6 +1152,17 @@ class Delete(UpdateBase):
     """
 
     __visit_name__ = "delete"
+
+    _traverse_internals = (
+        [
+            ("table", InternalTraversal.dp_clauseelement),
+            ("_where_criteria", InternalTraversal.dp_clauseelement_list),
+            ("_returning", InternalTraversal.dp_clauseelement_list),
+            ("_hints", InternalTraversal.dp_table_hint_list),
+        ]
+        + HasPrefixes._has_prefixes_traverse_internals
+        + DialectKWArgs._dialect_kwargs_traverse_internals
+    )
 
     @ValuesBase._constructor_20_deprecations(
         "delete",
@@ -1041,43 +1220,9 @@ class Delete(UpdateBase):
             self._setup_prefixes(prefixes)
 
         if whereclause is not None:
-            self._whereclause = coercions.expect(
-                roles.WhereHavingRole, whereclause
-            )
-        else:
-            self._whereclause = None
-
-        self._validate_dialect_kwargs(dialect_kw)
-
-    def get_children(self, **kwargs):
-        if self._whereclause is not None:
-            return (self._whereclause,)
-        else:
-            return ()
-
-    @_generative
-    def where(self, whereclause):
-        """Add the given WHERE clause to a newly returned delete construct."""
-
-        if self._whereclause is not None:
-            self._whereclause = and_(
-                self._whereclause,
+            self._where_criteria += (
                 coercions.expect(roles.WhereHavingRole, whereclause),
             )
-        else:
-            self._whereclause = coercions.expect(
-                roles.WhereHavingRole, whereclause
-            )
 
-    @property
-    def _extra_froms(self):
-        froms = []
-        seen = {self.table}
-
-        if self._whereclause is not None:
-            for item in _from_objects(self._whereclause):
-                if not seen.intersection(item._cloned_set):
-                    froms.append(item)
-                seen.update(item._cloned_set)
-
-        return froms
+        if dialect_kw:
+            self._validate_dialect_kwargs_deprecated(dialect_kw)

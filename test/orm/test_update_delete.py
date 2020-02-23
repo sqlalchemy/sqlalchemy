@@ -20,7 +20,6 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -680,8 +679,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         with mock.patch.object(q, "_execute_crud") as exec_:
             q.filter(User.id == 15).update({"name": "foob", "id": 123})
             # Confirm that parameters are a dict instead of tuple or list
-            params_type = type(exec_.mock_calls[0][1][0].parameters)
-            is_(params_type, dict)
+            params = exec_.mock_calls[0][1][0]._values
+            assert isinstance(params, dict)
 
     def test_update_preserve_parameter_order(self):
         User = self.classes.User
@@ -695,7 +694,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 update_args={"preserve_parameter_order": True},
             )
             cols = [
-                c.key for c in exec_.mock_calls[0][1][0]._parameter_ordering
+                c.key for c, v in exec_.mock_calls[0][1][0]._ordered_values
             ]
             eq_(["id", "name"], cols)
 
@@ -708,7 +707,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 update_args={"preserve_parameter_order": True},
             )
             cols = [
-                c.key for c in exec_.mock_calls[0][1][0]._parameter_ordering
+                c.key for c, v in exec_.mock_calls[0][1][0]._ordered_values
             ]
             eq_(["name", "id"], cols)
 

@@ -269,6 +269,9 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     """
 
+    dp_string_list = symbol("SL")
+    """Visit a list of strings."""
+
     dp_anon_name = symbol("AN")
     """Visit a potentially "anonymized" string value.
 
@@ -312,6 +315,9 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     significant for cache key generation.
 
     """
+
+    dp_dialect_options = symbol("DO")
+    """visit a dialect options structure."""
 
     dp_string_clauseelement_dict = symbol("CD")
     """Visit a dictionary of string keys to :class:`.ClauseElement`
@@ -362,6 +368,21 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     dp_unknown_structure = symbol("UK")
     """Visit an unknown structure.
+
+    """
+
+    dp_dml_ordered_values = symbol("DML_OV")
+    """visit the values() ordered tuple list of an :class:`.Update` object."""
+
+    dp_dml_values = symbol("DML_V")
+    """visit the values() dictionary of a :class:`.ValuesBase
+    (e.g. Insert or Update) object.
+
+    """
+
+    dp_dml_multi_values = symbol("DML_MV")
+    """visit the values() multi-valued list of dictionaries of an
+    :class:`.Insert` object.
 
     """
 

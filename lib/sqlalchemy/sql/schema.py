@@ -1413,6 +1413,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 "Column must be constructed with a non-blank name or "
                 "assign a non-blank .name before adding to a Table."
             )
+
+        Column._memoized_property.expire_instance(self)
+
         if self.key is None:
             self.key = self.name
 
@@ -2080,24 +2083,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             self._set_target_column(_column)
 
 
-class _NotAColumnExpr(object):
-    # the coercions system is not used in crud.py for the values passed in
-    # the insert().values() and update().values() methods, so the usual
-    # pathways to rejecting a coercion in the unlikely case of adding defaut
-    # generator objects to insert() or update() constructs aren't available;
-    # create a quick coercion rejection here that is specific to what crud.py
-    # calls on value objects.
-    def _not_a_column_expr(self):
-        raise exc.InvalidRequestError(
-            "This %s cannot be used directly "
-            "as a column expression." % self.__class__.__name__
-        )
-
-    self_group = lambda self: self._not_a_column_expr()  # noqa
-    _from_objects = property(lambda self: self._not_a_column_expr())
-
-
-class DefaultGenerator(_NotAColumnExpr, SchemaItem):
+class DefaultGenerator(SchemaItem):
     """Base class for column *default* values."""
 
     __visit_name__ = "default_generator"
@@ -2505,7 +2491,7 @@ class Sequence(roles.StatementRole, DefaultGenerator):
 
 
 @inspection._self_inspects
-class FetchedValue(_NotAColumnExpr, SchemaEventTarget):
+class FetchedValue(SchemaEventTarget):
     """A marker for a transparent database-side default.
 
     Use :class:`.FetchedValue` when the database is configured
@@ -2528,6 +2514,7 @@ class FetchedValue(_NotAColumnExpr, SchemaEventTarget):
     is_server_default = True
     reflected = False
     has_argument = False
+    is_clause_element = False
 
     def __init__(self, for_update=False):
         self.for_update = for_update

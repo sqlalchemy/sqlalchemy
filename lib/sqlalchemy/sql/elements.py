@@ -200,6 +200,7 @@ class ClauseElement(
     _is_from_container = False
     _is_select_container = False
     _is_select_statement = False
+    _is_bind_parameter = False
 
     _order_by_label_element = None
 
@@ -1010,6 +1011,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
     _is_crud = False
     _expanding_in_types = ()
+    _is_bind_parameter = True
 
     def __init__(
         self,
@@ -1025,6 +1027,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         literal_execute=False,
         _compared_to_operator=None,
         _compared_to_type=None,
+        _is_crud=False,
     ):
         r"""Produce a "bound expression".
 
@@ -1303,6 +1306,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.required = required
         self.expanding = expanding
         self.literal_execute = literal_execute
+        if _is_crud:
+            self._is_crud = True
         if type_ is None:
             if _compared_to_type is not None:
                 self.type = _compared_to_type.coerce_compared_value(
@@ -4264,20 +4269,11 @@ class ColumnClause(
         else:
             return other.proxy_set.intersection(self.proxy_set)
 
-    def _get_table(self):
-        return self.__dict__["table"]
-
-    def _set_table(self, table):
-        self._memoized_property.expire_instance(self)
-        self.__dict__["table"] = table
-
     def get_children(self, column_tables=False, **kw):
         if column_tables and self.table is not None:
             return [self.table]
         else:
             return []
-
-    table = property(_get_table, _set_table)
 
     @_memoized_property
     def _from_objects(self):

@@ -421,7 +421,9 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
 
         ins = t.insert(inline=True).values(
             id=bindparam("id"),
-            x=select([literal_column("5")]).select_from(self.tables.data),
+            x=select([literal_column("5")])
+            .select_from(self.tables.data)
+            .scalar_subquery(),
             y=bindparam("y"),
             z=bindparam("z"),
         )
@@ -469,7 +471,9 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
 
         ins = t.insert(inline=True).values(
             id=bindparam("id"),
-            x=select([literal_column("5")]).select_from(self.tables.data),
+            x=select([literal_column("5")])
+            .select_from(self.tables.data)
+            .scalar_subquery(),
             y=bindparam("y"),
             z=bindparam("z"),
         )

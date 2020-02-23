@@ -658,16 +658,18 @@ class DefaultTest(fixtures.TestBase):
                 [const],
             )
             assert_raises_message(
-                sa.exc.InvalidRequestError,
-                "cannot be used directly as a column expression.",
-                str,
-                t.insert().values(col4=const),
+                sa.exc.ArgumentError,
+                "SQL expression element expected, got %s"
+                % const.__class__.__name__,
+                t.insert().values,
+                col4=const,
             )
             assert_raises_message(
-                sa.exc.InvalidRequestError,
-                "cannot be used directly as a column expression.",
-                str,
-                t.update().values(col4=const),
+                sa.exc.ArgumentError,
+                "SQL expression element expected, got %s"
+                % const.__class__.__name__,
+                t.update().values,
+                col4=const,
             )
 
     def test_missing_many_param(self):

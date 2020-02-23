@@ -200,6 +200,9 @@ class _CacheKey(ExtendedInternalTraversal):
             attrname, inspect(obj), parent, anon_map, bindparams
         )
 
+    def visit_string_list(self, attrname, obj, parent, anon_map, bindparams):
+        return tuple(obj)
+
     def visit_multi(self, attrname, obj, parent, anon_map, bindparams):
         return (
             attrname,
@@ -336,6 +339,25 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_plain_dict(self, attrname, obj, parent, anon_map, bindparams):
         return (attrname, tuple([(key, obj[key]) for key in sorted(obj)]))
 
+    def visit_dialect_options(
+        self, attrname, obj, parent, anon_map, bindparams
+    ):
+        return (
+            attrname,
+            tuple(
+                (
+                    dialect_name,
+                    tuple(
+                        [
+                            (key, obj[dialect_name][key])
+                            for key in sorted(obj[dialect_name])
+                        ]
+                    ),
+                )
+                for dialect_name in sorted(obj)
+            ),
+        )
+
     def visit_string_clauseelement_dict(
         self, attrname, obj, parent, anon_map, bindparams
     ):
@@ -366,14 +388,60 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_fromclause_canonical_column_collection(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        # inlining into the internals of ColumnCollection
         return (
             attrname,
-            tuple(col._gen_cache_key(anon_map, bindparams) for col in obj),
+            tuple(
+                col._gen_cache_key(anon_map, bindparams)
+                for k, col in obj._collection
+            ),
         )
 
     def visit_unknown_structure(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        anon_map[NO_CACHE] = True
+        return ()
+
+    def visit_dml_ordered_values(
+        self, attrname, obj, parent, anon_map, bindparams
+    ):
+        return (
+            attrname,
+            tuple(
+                (
+                    key._gen_cache_key(anon_map, bindparams)
+                    if hasattr(key, "__clause_element__")
+                    else key,
+                    value._gen_cache_key(anon_map, bindparams),
+                )
+                for key, value in obj
+            ),
+        )
+
+    def visit_dml_values(self, attrname, obj, parent, anon_map, bindparams):
+
+        expr_values = {k for k in obj if hasattr(k, "__clause_element__")}
+        if expr_values:
+            # expr values can't be sorted deterministically right now,
+            # so no cache
+            anon_map[NO_CACHE] = True
+            return ()
+
+        str_values = expr_values.symmetric_difference(obj)
+
+        return (
+            attrname,
+            tuple(
+                (k, obj[k]._gen_cache_key(anon_map, bindparams))
+                for k in sorted(str_values)
+            ),
+        )
+
+    def visit_dml_multi_values(
+        self, attrname, obj, parent, anon_map, bindparams
+    ):
+        # multivalues are simply not cacheable right now
         anon_map[NO_CACHE] = True
         return ()
 
@@ -403,6 +471,70 @@ class _CopyInternals(InternalTraversal):
         return dict(
             (key, clone(value, **kw)) for key, value in element.items()
         )
+
+    def visit_dml_ordered_values(self, parent, element, clone=_clone, **kw):
+        # sequence of 2-tuples
+        return [
+            (
+                clone(key, **kw)
+                if hasattr(key, "__clause_element__")
+                else key,
+                clone(value, **kw),
+            )
+            for key, value in element
+        ]
+
+    def visit_dml_values(self, parent, element, clone=_clone, **kw):
+        # sequence of dictionaries
+        return [
+            {
+                (
+                    clone(key, **kw)
+                    if hasattr(key, "__clause_element__")
+                    else key
+                ): clone(value, **kw)
+                for key, value in sub_element.items()
+            }
+            for sub_element in element
+        ]
+
+    def visit_dml_multi_values(self, parent, element, clone=_clone, **kw):
+        # sequence of sequences, each sequence contains a list/dict/tuple
+
+        def copy(elem):
+            if isinstance(elem, (list, tuple)):
+                return [
+                    (
+                        clone(key, **kw)
+                        if hasattr(key, "__clause_element__")
+                        else key,
+                        clone(value, **kw)
+                        if hasattr(value, "__clause_element__")
+                        else value,
+                    )
+                    for key, value in elem
+                ]
+            elif isinstance(elem, dict):
+                return {
+                    (
+                        clone(key, **kw)
+                        if hasattr(key, "__clause_element__")
+                        else key
+                    ): (
+                        clone(value, **kw)
+                        if hasattr(value, "__clause_element__")
+                        else value
+                    )
+                    for key, value in elem
+                }
+            else:
+                # TODO: use abc classes
+                assert False
+
+        return [
+            [copy(sub_element) for sub_element in sequence]
+            for sequence in element
+        ]
 
 
 _copy_internals = _CopyInternals()
@@ -441,6 +573,25 @@ class _GetChildren(InternalTraversal):
 
     def visit_clauseelement_unordered_set(self, element, **kw):
         return tuple(element)
+
+    def visit_dml_ordered_values(self, element, **kw):
+        for k, v in element:
+            if hasattr(k, "__clause_element__"):
+                yield k
+            yield v
+
+    def visit_dml_values(self, element, **kw):
+        expr_values = {k for k in element if hasattr(k, "__clause_element__")}
+        str_values = expr_values.symmetric_difference(element)
+
+        for k in sorted(str_values):
+            yield element[k]
+        for k in expr_values:
+            yield k
+            yield element[k]
+
+    def visit_dml_multi_values(self, element, **kw):
+        return ()
 
 
 _get_children = _GetChildren()
@@ -644,6 +795,9 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_string(self, left_parent, left, right_parent, right, **kw):
         return left == right
 
+    def visit_string_list(self, left_parent, left, right_parent, right, **kw):
+        return left == right
+
     def visit_anon_name(self, left_parent, left, right_parent, right, **kw):
         return _resolve_name_for_compare(
             left_parent, left, self.anon_map[0], **kw
@@ -661,6 +815,11 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
         return left._compare_type_affinity(right)
 
     def visit_plain_dict(self, left_parent, left, right_parent, right, **kw):
+        return left == right
+
+    def visit_dialect_options(
+        self, left_parent, left, right_parent, right, **kw
+    ):
         return left == right
 
     def visit_plain_obj(self, left_parent, left, right_parent, right, **kw):
@@ -713,6 +872,55 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     ):
         raise NotImplementedError()
 
+    def visit_dml_ordered_values(
+        self, left_parent, left, right_parent, right, **kw
+    ):
+        # sequence of tuple pairs
+
+        for (lk, lv), (rk, rv) in util.zip_longest(
+            left, right, fillvalue=(None, None)
+        ):
+            lkce = hasattr(lk, "__clause_element__")
+            rkce = hasattr(rk, "__clause_element__")
+            if lkce != rkce:
+                return COMPARE_FAILED
+            elif lkce and not self.compare_inner(lk, rk, **kw):
+                return COMPARE_FAILED
+            elif not lkce and lk != rk:
+                return COMPARE_FAILED
+            elif not self.compare_inner(lv, rv, **kw):
+                return COMPARE_FAILED
+
+    def visit_dml_values(self, left_parent, left, right_parent, right, **kw):
+        if left is None or right is None or len(left) != len(right):
+            return COMPARE_FAILED
+
+        for lk in left:
+            lv = left[lk]
+
+            if lk not in right:
+                return COMPARE_FAILED
+            rv = right[lk]
+
+            if not self.compare_inner(lv, rv, **kw):
+                return COMPARE_FAILED
+
+    def visit_dml_multi_values(
+        self, left_parent, left, right_parent, right, **kw
+    ):
+        for lseq, rseq in util.zip_longest(left, right, fillvalue=None):
+            if lseq is None or rseq is None:
+                return COMPARE_FAILED
+
+            for ld, rd in util.zip_longest(lseq, rseq, fillvalue=None):
+                if (
+                    self.visit_dml_values(
+                        left_parent, ld, right_parent, rd, **kw
+                    )
+                    is COMPARE_FAILED
+                ):
+                    return COMPARE_FAILED
+
     def compare_clauselist(self, left, right, **kw):
         if left.operator is right.operator:
             if operators.is_associative(left.operator):
@@ -731,11 +939,11 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
         if left.operator == right.operator:
             if operators.is_commutative(left.operator):
                 if (
-                    compare(left.left, right.left, **kw)
-                    and compare(left.right, right.right, **kw)
+                    self.compare_inner(left.left, right.left, **kw)
+                    and self.compare_inner(left.right, right.right, **kw)
                 ) or (
-                    compare(left.left, right.right, **kw)
-                    and compare(left.right, right.left, **kw)
+                    self.compare_inner(left.left, right.right, **kw)
+                    and self.compare_inner(left.right, right.left, **kw)
                 ):
                     return ["operator", "negate", "left", "right"]
                 else:

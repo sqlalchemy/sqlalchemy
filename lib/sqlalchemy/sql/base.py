@@ -16,6 +16,7 @@ import re
 
 from .traversals import HasCacheKey  # noqa
 from .visitors import ClauseVisitor
+from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 
@@ -221,6 +222,10 @@ class DialectKWArgs(object):
 
     """
 
+    _dialect_kwargs_traverse_internals = [
+        ("dialect_options", InternalTraversal.dp_dialect_options)
+    ]
+
     @classmethod
     def argument_for(cls, dialect_name, argument_name, default):
         """Add a new kind of dialect-specific keyword argument for this class.
@@ -386,6 +391,39 @@ class DialectKWArgs(object):
                     construct_arg_dictionary[arg_name] = kwargs[k]
 
 
+class CompileState(object):
+    """Produces additional object state necessary for a statement to be
+    compiled.
+
+    the :class:`.CompileState` class is at the base of classes that assemble
+    state for a particular statement object that is then used by the
+    compiler.   This process is essentially an extension of the process that
+    the SQLCompiler.visit_XYZ() method takes, however there is an emphasis
+    on converting raw user intent into more organized structures rather than
+    producing string output.   The top-level :class:`.CompileState` for the
+    statement being executed is also accessible when the execution context
+    works with invoking the statement and collecting results.
+
+    The production of :class:`.CompileState` is specific to the compiler,  such
+    as within the :meth:`.SQLCompiler.visit_insert`,
+    :meth:`.SQLCompiler.visit_select` etc. methods.  These methods are also
+    responsible for associating the :class:`.CompileState` with the
+    :class:`.SQLCompiler` itself, if the statement is the "toplevel" statement,
+    i.e. the outermost SQL statement that's actually being executed.
+    There can be other :class:`.CompileState` objects that are not the
+    toplevel, such as when a SELECT subquery or CTE-nested
+    INSERT/UPDATE/DELETE is generated.
+
+    .. versionadded:: 1.4
+
+    """
+
+    __slots__ = ("statement",)
+
+    def __init__(self, statement, compiler, **kw):
+        self.statement = statement
+
+
 class Generative(object):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator."""
@@ -394,6 +432,12 @@ class Generative(object):
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
         return s
+
+
+class HasCompileState(Generative):
+    """A class that has a :class:`.CompileState` associated with it."""
+
+    _compile_state_cls = CompileState
 
 
 class Executable(Generative):
@@ -626,6 +670,9 @@ class ColumnCollection(object):
 
     def keys(self):
         return [k for (k, col) in self._collection]
+
+    def __bool__(self):
+        return bool(self._collection)
 
     def __len__(self):
         return len(self._collection)

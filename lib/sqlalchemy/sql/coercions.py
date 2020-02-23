@@ -55,7 +55,10 @@ def expect(role, element, **kw):
     # elaborate logic up front if possible
     impl = _impl_lookup[role]
 
-    if not isinstance(element, (elements.ClauseElement, schema.SchemaItem)):
+    if not isinstance(
+        element,
+        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue),
+    ):
         resolved = impl._resolve_for_clause_element(element, **kw)
     else:
         resolved = element
@@ -194,7 +197,9 @@ class _ColumnCoercions(object):
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
-        if resolved._is_select_statement:
+        if not resolved.is_clause_element:
+            self._raise_for_expected(original_element, argname, resolved)
+        elif resolved._is_select_statement:
             self._warn_for_scalar_subquery_coercion()
             return resolved.scalar_subquery()
         elif resolved._is_from_clause and isinstance(
@@ -290,14 +295,14 @@ class ExpressionElementImpl(
     _ColumnCoercions, RoleImpl, roles.ExpressionElementRole
 ):
     def _literal_coercion(
-        self, element, name=None, type_=None, argname=None, **kw
+        self, element, name=None, type_=None, argname=None, is_crud=False, **kw
     ):
         if element is None:
             return elements.Null()
         else:
             try:
                 return elements.BindParameter(
-                    name, element, type_, unique=True
+                    name, element, type_, unique=True, _is_crud=is_crud
                 )
             except exc.ArgumentError as err:
                 self._raise_for_expected(element, err=err)
