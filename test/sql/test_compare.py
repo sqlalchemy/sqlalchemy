@@ -168,6 +168,25 @@ class CoreFixtures(object):
             ),
         ),
         lambda: (
+            table_a,
+            table_a._annotate({"orm": True}),
+            table_a._annotate({"orm": True})._annotate({"bar": False}),
+            table_a._annotate(
+                {"orm": True, "parententity": MyEntity("a", table_a)}
+            ),
+            table_a._annotate(
+                {"orm": True, "parententity": MyEntity("b", table_a)}
+            ),
+            table_a._annotate(
+                {"orm": True, "parententity": MyEntity("b", select([table_a]))}
+            ),
+        ),
+        lambda: (
+            table("a", column("x"), column("y")),
+            table("a", column("x"), column("y"))._annotate({"orm": True}),
+            table("b", column("x"), column("y"))._annotate({"orm": True}),
+        ),
+        lambda: (
             cast(column("q"), Integer),
             cast(column("q"), Float),
             cast(column("p"), Integer),
@@ -776,7 +795,27 @@ class CompareClausesTest(fixtures.TestBase):
 
         ne_(t1._generate_cache_key(), t2._generate_cache_key())
 
-        eq_(t1._generate_cache_key().key, (t1,))
+        eq_(t1._generate_cache_key().key, (t1, "_annotations", ()))
+
+    def test_compare_metadata_tables_annotations(self):
+        # metadata Table objects cache on their own identity, not their
+        # structure.   This is mainly to reduce the size of cache keys
+        # as well as reduce computational overhead, as Table objects have
+        # very large internal state and they are also generally global
+        # objects.
+
+        t1 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
+        t2 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
+
+        t1 = t1._annotate({"orm": True})
+        t2 = t2._annotate({"orm": True})
+
+        ne_(t1._generate_cache_key(), t2._generate_cache_key())
+
+        eq_(
+            t1._generate_cache_key().key,
+            (t1, "_annotations", (("orm", True),)),
+        )
 
     def test_compare_adhoc_tables(self):
         # non-metadata tables compare on their structure.  these objects are

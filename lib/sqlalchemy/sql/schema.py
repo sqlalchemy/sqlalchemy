@@ -431,7 +431,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     ]
 
     def _gen_cache_key(self, anon_map, bindparams):
-        return (self,)
+        return (self,) + self._annotations_cache_key
 
     @util.deprecated_params(
         useexisting=(
