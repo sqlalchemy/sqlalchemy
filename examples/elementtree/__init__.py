@@ -17,7 +17,7 @@ E.g.::
     # locate documents with a certain path/attribute structure
     for document in find_document('/somefile/header/field2[@attr=foo]'):
         # dump the XML
-        print document
+        print(document)
 
 .. autosource::
     :files: pickle_type.py, adjacency_list.py, optimized_al.py

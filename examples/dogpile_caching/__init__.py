@@ -25,7 +25,7 @@ E.g.::
     q = q.options(RelationshipCache(Person.addresses, "default"))
 
     # query
-    print q.all()
+    print(q.all())
 
 To run, both SQLAlchemy and dogpile.cache must be
 installed or on the current PYTHONPATH. The demo will create a local
