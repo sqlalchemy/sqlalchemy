@@ -772,7 +772,10 @@ are **not available** when using these methods:
 
 * Functionality related to primary key mutation, ON UPDATE cascade
 
-* SQL expression inserts / updates (e.g. :ref:`flush_embedded_sql_expressions`)
+* SQL expression inserts / updates (e.g. :ref:`flush_embedded_sql_expressions`) -
+  having to evaluate these would prevent INSERT and UPDATE statements from
+  being batched together in a straightforward way for a single executemany()
+  call as they alter the SQL compilation of the statement itself.
 
 * ORM events such as :meth:`.MapperEvents.before_insert`, etc.  The bulk
   session methods have no event support.
