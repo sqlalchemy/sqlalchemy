@@ -506,9 +506,8 @@ def _collect_insert_commands(
             col = propkey_to_col[propkey]
             if value is None and col not in eval_none and not render_nulls:
                 continue
-            elif (
-                not bulk
-                and hasattr(value, "__clause_element__")
+            elif not bulk and (
+                hasattr(value, "__clause_element__")
                 or isinstance(value, sql.ClauseElement)
             ):
                 value_params[col] = (
