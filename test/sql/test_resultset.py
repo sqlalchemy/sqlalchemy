@@ -1030,6 +1030,16 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(list(row._mapping.keys()), ["user_id", "user_name"])
         eq_(row._fields, ("user_id", "user_name"))
 
+    def test_row_keys_legacy_dont_warn(self):
+        users = self.tables.users
+
+        users.insert().execute(user_id=1, user_name="foo")
+        result = users.select().execute()
+        row = result.first()
+        # DO NOT WARN DEPRECATED IN 1.x, ONLY 2.0 WARNING
+        eq_(dict(row), {"user_id": 1, "user_name": "foo"})
+        eq_(row.keys(), ["user_id", "user_name"])
+
     def test_keys_anon_labels(self):
         """test [ticket:3483]"""
 

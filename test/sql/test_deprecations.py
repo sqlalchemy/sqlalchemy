@@ -1582,9 +1582,8 @@ class ResultProxyTest(fixtures.TablesTest):
             text("select * from users where user_id=2")
         ).first()
 
-        with testing.expect_deprecated(
-            r"The Row.keys\(\) method is deprecated and will be "
-            "removed in a future release."
+        with testing.expect_deprecated_20(
+            r"The Row.keys\(\) function/method is considered legacy "
         ):
             eq_(r.keys(), ["user_id", "user_name"])
 

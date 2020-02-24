@@ -222,10 +222,9 @@ class Row(BaseRow, collections_abc.Sequence):
     def __repr__(self):
         return repr(sql_util._repr_row(self))
 
-    @util.deprecated(
-        "1.4",
-        "The :meth:`.Row.keys` method is deprecated and will be removed in a "
-        "future release.  Use the namedtuple standard accessor "
+    @util.deprecated_20(
+        ":meth:`.Row.keys`",
+        alternative="Use the namedtuple standard accessor "
         ":attr:`.Row._fields`, or for full mapping behavior use  "
         "row._mapping.keys() ",
     )
