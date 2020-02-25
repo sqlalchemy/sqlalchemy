@@ -411,7 +411,7 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
             Column("integer_data", datatype),
         )
 
-        metadata.create_all(connection)
+        metadata.create_all(config.db)
 
         connection.execute(int_table.insert(), {"integer_data": data})
 
