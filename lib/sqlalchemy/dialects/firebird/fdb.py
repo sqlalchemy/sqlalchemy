@@ -42,7 +42,7 @@ accept every argument that Kinterbasdb does.
 
       conn = engine.connect().execution_options(enable_rowcount=True)
       r = conn.execute(stmt)
-      print r.rowcount
+      print(r.rowcount)
 
 * ``retaining`` - False by default.   Setting this to True will pass the
   ``retaining=True`` keyword argument to the ``.commit()`` and ``.rollback()``

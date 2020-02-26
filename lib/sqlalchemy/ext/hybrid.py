@@ -66,10 +66,10 @@ descriptor evaluates the function body given the ``Interval`` class as
 the argument, which when evaluated with SQLAlchemy expression mechanics
 returns a new SQL expression::
 
-    >>> print Interval.length
+    >>> print(Interval.length)
     interval."end" - interval.start
 
-    >>> print Session().query(Interval).filter(Interval.length > 10)
+    >>> print(Session().query(Interval).filter(Interval.length > 10))
     SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
@@ -78,7 +78,7 @@ returns a new SQL expression::
 ORM methods such as :meth:`~.Query.filter_by` generally use ``getattr()`` to
 locate attributes, so can also be used with hybrid attributes::
 
-    >>> print Session().query(Interval).filter_by(length=5)
+    >>> print(Session().query(Interval).filter_by(length=5))
     SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
@@ -101,14 +101,14 @@ SQL expression-level boolean behavior::
     >>> i1.intersects(Interval(25, 29))
     False
 
-    >>> print Session().query(Interval).filter(Interval.contains(15))
+    >>> print(Session().query(Interval).filter(Interval.contains(15)))
     SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end
     FROM interval
     WHERE interval.start <= :start_1 AND interval."end" > :end_1
 
     >>> ia = aliased(Interval)
-    >>> print Session().query(Interval, ia).filter(Interval.intersects(ia))
+    >>> print(Session().query(Interval, ia).filter(Interval.intersects(ia)))
     SELECT interval.id AS interval_id, interval.start AS interval_start,
     interval."end" AS interval_end, interval_1.id AS interval_1_id,
     interval_1.start AS interval_1_start, interval_1."end" AS interval_1_end
@@ -153,7 +153,7 @@ object for class-level expressions::
     >>> i1.radius
     2
 
-    >>> print Session().query(Interval).filter(Interval.radius > 5)
+    >>> print(Session().query(Interval).filter(Interval.radius > 5))
     SELECT interval.id AS interval_id, interval.start AS interval_start,
         interval."end" AS interval_end
     FROM interval
@@ -325,8 +325,8 @@ However, at the expression level, it's expected that the ``User`` class will
 be used in an appropriate context such that an appropriate join to
 ``SavingsAccount`` will be present::
 
-    >>> print Session().query(User, User.balance).\
-    ...     join(User.accounts).filter(User.balance > 5000)
+    >>> print(Session().query(User, User.balance).
+    ...       join(User.accounts).filter(User.balance > 5000))
     SELECT "user".id AS user_id, "user".name AS user_name,
     account.balance AS account_balance
     FROM "user" JOIN account ON "user".id = account.user_id
@@ -390,7 +390,7 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
 The above recipe will give us the ``balance`` column which renders
 a correlated SELECT::
 
-    >>> print s.query(User).filter(User.balance > 400)
+    >>> print(s.query(User).filter(User.balance > 400))
     SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE (SELECT sum(account.balance) AS sum_1
@@ -443,7 +443,7 @@ named ``word_insensitive``::
 Above, SQL expressions against ``word_insensitive`` will apply the ``LOWER()``
 SQL function to both sides::
 
-    >>> print Session().query(SearchWord).filter_by(word_insensitive="Trucks")
+    >>> print(Session().query(SearchWord).filter_by(word_insensitive="Trucks"))
     SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
     FROM searchword
     WHERE lower(searchword.word) = lower(:lower_1)
@@ -579,7 +579,7 @@ The ``word_insensitive`` attribute now has case-insensitive comparison behavior
 universally, including SQL expression vs. Python expression (note the Python
 value is converted to lower case on the Python side here)::
 
-    >>> print Session().query(SearchWord).filter_by(word_insensitive="Trucks")
+    >>> print(Session().query(SearchWord).filter_by(word_insensitive="Trucks"))
     SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
     FROM searchword
     WHERE lower(searchword.word) = :lower_1
@@ -588,12 +588,12 @@ SQL expression versus SQL expression::
 
     >>> sw1 = aliased(SearchWord)
     >>> sw2 = aliased(SearchWord)
-    >>> print Session().query(
+    >>> print(Session().query(
     ...                    sw1.word_insensitive,
     ...                    sw2.word_insensitive).\
     ...                        filter(
     ...                            sw1.word_insensitive > sw2.word_insensitive
-    ...                        )
+    ...                        ))
     SELECT lower(searchword_1.word) AS lower_1,
     lower(searchword_2.word) AS lower_2
     FROM searchword AS searchword_1, searchword AS searchword_2
@@ -606,7 +606,7 @@ Python only expression::
     True
     >>> ws1.word_insensitive == "XOmEwOrX"
     False
-    >>> print ws1.word_insensitive
+    >>> print(ws1.word_insensitive)
     someword
 
 The Hybrid Value pattern is very useful for any kind of value that may have
