@@ -1,14 +1,11 @@
-import logging
 import time
 
 from ... import exc
 from ... import text
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
+from ...testing.provision import log
 from ...testing.provision import temp_table_keyword_args
-
-
-log = logging.getLogger(__name__)
 
 
 @create_db.for_db("postgresql")

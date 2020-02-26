@@ -2878,11 +2878,14 @@ class AutocommitTextTest(fixtures.TestBase):
             options={"_initialize": False, "pool_reset_on_return": None}
         )
         engine.dialect.dbapi = dbapi
-        engine.execute("%s something table something" % keyword)
-        if expected:
-            eq_(dbapi.connect().mock_calls, [call.cursor(), call.commit()])
-        else:
-            eq_(dbapi.connect().mock_calls, [call.cursor()])
+
+        with engine.connect() as conn:
+            conn.execute("%s something table something" % keyword)
+
+            if expected:
+                eq_(dbapi.connect().mock_calls, [call.cursor(), call.commit()])
+            else:
+                eq_(dbapi.connect().mock_calls, [call.cursor()])
 
     def test_update(self):
         self._test_keyword("UPDATE")

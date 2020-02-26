@@ -1,14 +1,10 @@
-import logging
-
 from ... import create_engine
 from ... import exc
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
+from ...testing.provision import log
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import update_db_opts
-
-
-log = logging.getLogger(__name__)
 
 
 @update_db_opts.for_db("mssql")

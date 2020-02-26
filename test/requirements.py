@@ -193,7 +193,9 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def temporary_tables(self):
         """target database supports temporary tables"""
-        return skip_if(["mssql", "firebird"], "not supported (?)")
+        return skip_if(
+            ["mssql", "firebird", self._sqlite_file_db], "not supported (?)"
+        )
 
     @property
     def temp_table_reflection(self):
@@ -483,12 +485,14 @@ class DefaultRequirements(SuiteRequirements):
     def temp_table_names(self):
         """target dialect supports listing of temporary table names"""
 
-        return only_on(["sqlite", "oracle"])
+        return only_on(["sqlite", "oracle"]) + skip_if(self._sqlite_file_db)
 
     @property
     def temporary_views(self):
         """target database supports temporary views"""
-        return only_on(["sqlite", "postgresql"])
+        return only_on(["sqlite", "postgresql"]) + skip_if(
+            self._sqlite_file_db
+        )
 
     @property
     def update_nowait(self):
@@ -849,6 +853,14 @@ class DefaultRequirements(SuiteRequirements):
                 "sqlite",
             ]
         )
+
+    def _sqlite_file_db(self, config):
+        return against(config, "sqlite") and config.db.dialect._is_url_file_db(
+            config.db.url
+        )
+
+    def _sqlite_memory_db(self, config):
+        return not self._sqlite_file_db(config)
 
     def _sqlite_json(self, config):
         if not against(config, "sqlite >= 3.9"):
@@ -1486,4 +1498,4 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def python_profiling_backend(self):
-        return only_on(["sqlite"])
+        return only_on([self._sqlite_memory_db])

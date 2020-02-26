@@ -4,7 +4,9 @@ from ...engine import url as sa_url
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
 from ...testing.provision import follower_url_from_main
+from ...testing.provision import log
 from ...testing.provision import post_configure_engine
+from ...testing.provision import run_reap_dbs
 from ...testing.provision import temp_table_keyword_args
 
 
@@ -26,6 +28,11 @@ def _sqlite_post_configure_engine(url, engine, follower_ident):
         # use file DBs in all cases, memory acts kind of strangely
         # as an attached
         if not follower_ident:
+            # note this test_schema.db gets created for all test runs.
+            # there's not any dedicated cleanup step for it.  it in some
+            # ways corresponds to the "test.test_schema" schema that's
+            # expected to be already present, so for now it just stays
+            # in a given checkout directory.
             dbapi_connection.execute(
                 'ATTACH DATABASE "test_schema.db" AS test_schema'
             )
@@ -43,12 +50,26 @@ def _sqlite_create_db(cfg, eng, ident):
 
 @drop_db.for_db("sqlite")
 def _sqlite_drop_db(cfg, eng, ident):
-    if ident:
-        os.remove("%s_test_schema.db" % ident)
-    else:
-        os.remove("%s.db" % ident)
+    for path in ["%s.db" % ident, "%s_test_schema.db" % ident]:
+        if os.path.exists(path):
+            log.info("deleting SQLite database file: %s" % path)
+            os.remove(path)
 
 
 @temp_table_keyword_args.for_db("sqlite")
 def _sqlite_temp_table_keyword_args(cfg, eng):
     return {"prefixes": ["TEMPORARY"]}
+
+
+@run_reap_dbs.for_db("sqlite")
+def _reap_sqlite_dbs(url, idents):
+    log.info("db reaper connecting to %r", url)
+
+    log.info("identifiers in file: %s", ", ".join(idents))
+    for ident in idents:
+        # we don't have a config so we can't call _sqlite_drop_db due to the
+        # decorator
+        for path in ["%s.db" % ident, "%s_test_schema.db" % ident]:
+            if os.path.exists(path):
+                log.info("deleting SQLite database file: %s" % path)
+                os.remove(path)

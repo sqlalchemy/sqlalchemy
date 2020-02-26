@@ -68,6 +68,11 @@ class ProfileStatsFile(object):
 
         dbapi_key = config.db.name + "_" + config.db.driver
 
+        if config.db.name == "sqlite" and config.db.dialect._is_url_file_db(
+            config.db.url
+        ):
+            dbapi_key += "_file"
+
         # keep it at 2.7, 3.1, 3.2, etc. for now.
         py_version = ".".join([str(v) for v in sys.version_info[0:2]])
 
