@@ -3913,10 +3913,10 @@ class Select(
             >>> table1 = table('t1', column('a'), column('b'))
             >>> table2 = table('t2', column('a'), column('b'))
             >>> s1 = select([table1.c.a, table2.c.b])
-            >>> print s1
+            >>> print(s1)
             SELECT t1.a, t2.b FROM t1, t2
             >>> s2 = s1.with_only_columns([table2.c.b])
-            >>> print s2
+            >>> print(s2)
             SELECT t2.b FROM t1
 
         The preferred way to maintain a specific FROM clause
@@ -3928,7 +3928,7 @@ class Select(
             ...         select_from(table1.join(table2,
             ...                 table1.c.a==table2.c.a))
             >>> s2 = s1.with_only_columns([table2.c.b])
-            >>> print s2
+            >>> print(s2)
             SELECT t2.b FROM t1 JOIN t2 ON t1.a=t2.a
 
         Care should also be taken to use the correct
