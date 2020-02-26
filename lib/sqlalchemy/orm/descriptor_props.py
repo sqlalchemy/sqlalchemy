@@ -772,7 +772,7 @@ class ComparableProperty(DescriptorProperty):
         A mapping like the above allows the ``word_insensitive`` attribute
         to render an expression like::
 
-            >>> print SearchWord.word_insensitive == "Trucks"
+            >>> print(SearchWord.word_insensitive == "Trucks")
             lower(search_word.word) = lower(:lower_1)
 
         :param comparator_factory:

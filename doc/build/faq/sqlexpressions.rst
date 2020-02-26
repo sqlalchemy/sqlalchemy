@@ -201,16 +201,16 @@ What if we defaulted the value of :paramref:`.Operators.op.precedence` to 100,
 e.g. the highest?  Then this expression makes more parenthesis, but is
 otherwise OK, that is, these two are equivalent::
 
-    >>> print (column('q') - column('y')).op('+', precedence=100)(column('z'))
+    >>> print((column('q') - column('y')).op('+', precedence=100)(column('z')))
     (q - y) + z
-    >>> print (column('q') - column('y')).op('+')(column('z'))
+    >>> print((column('q') - column('y')).op('+')(column('z')))
     q - y + z
 
 but these two are not::
 
-    >>> print column('q') - column('y').op('+', precedence=100)(column('z'))
+    >>> print(column('q') - column('y').op('+', precedence=100)(column('z')))
     q - y + z
-    >>> print column('q') - column('y').op('+')(column('z'))
+    >>> print(column('q') - column('y').op('+')(column('z')))
     q - (y + z)
 
 For now, it's not clear that as long as we are doing parenthesization based on

@@ -27,7 +27,7 @@ Example::
          filter(Animal.facts.any(
            and_(AnimalFact.key == u'weasel-like',
                 AnimalFact.value == True))))
-    print 'weasel-like animals', q.all()
+    print('weasel-like animals', q.all())
 
 .. autosource::
 

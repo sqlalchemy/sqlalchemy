@@ -1198,13 +1198,13 @@ RANGE and ROWS expressions for window functions::
 
     >>> from sqlalchemy import func
 
-    >>> print func.row_number().over(order_by='x', range_=(-5, 10))
+    >>> print(func.row_number().over(order_by='x', range_=(-5, 10)))
     row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND :param_2 FOLLOWING)
 
-    >>> print func.row_number().over(order_by='x', rows=(None, 0))
+    >>> print(func.row_number().over(order_by='x', rows=(None, 0)))
     row_number() OVER (ORDER BY x ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 
-    >>> print func.row_number().over(order_by='x', range_=(-2, None))
+    >>> print(func.row_number().over(order_by='x', range_=(-2, None)))
     row_number() OVER (ORDER BY x RANGE BETWEEN :param_1 PRECEDING AND UNBOUNDED FOLLOWING)
 
 :paramref:`.expression.over.range_` and :paramref:`.expression.over.rows` are specified as
@@ -1384,19 +1384,19 @@ New operators :meth:`.ColumnOperators.is_distinct_from` and
 :meth:`.ColumnOperators.isnot_distinct_from` allow the IS DISTINCT
 FROM and IS NOT DISTINCT FROM sql operation::
 
-    >>> print column('x').is_distinct_from(None)
+    >>> print(column('x').is_distinct_from(None))
     x IS DISTINCT FROM NULL
 
 Handling is provided for NULL, True and False::
 
-    >>> print column('x').isnot_distinct_from(False)
+    >>> print(column('x').isnot_distinct_from(False))
     x IS NOT DISTINCT FROM false
 
 For SQLite, which doesn't have this operator, "IS" / "IS NOT" is rendered,
 which on SQLite works for NULL unlike other backends::
 
     >>> from sqlalchemy.dialects import sqlite
-    >>> print column('x').is_distinct_from(None).compile(dialect=sqlite.dialect())
+    >>> print(column('x').is_distinct_from(None).compile(dialect=sqlite.dialect()))
     x IS NOT NULL
 
 .. _change_1957:
@@ -2322,7 +2322,7 @@ passed through the literal quoting system::
     >>> from sqlalchemy.schema import MetaData, Table, Column, CreateTable
     >>> from sqlalchemy.types import String
     >>> t = Table('t', MetaData(), Column('x', String(), server_default="hi ' there"))
-    >>> print CreateTable(t)
+    >>> print(CreateTable(t))
 
     CREATE TABLE t (
         x VARCHAR DEFAULT 'hi '' there'

@@ -716,7 +716,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         class as_utc(GenericFunction):
             type = DateTime
 
-        print select([func.as_utc()])
+        print(select([func.as_utc()]))
 
     User-defined generic functions can be organized into
     packages by specifying the "package" attribute when defining
@@ -733,7 +733,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     The above function would be available from :data:`.func`
     using the package name ``time``::
 
-        print select([func.time.as_utc()])
+        print(select([func.time.as_utc()]))
 
     A final option is to allow the function to be accessed
     from one name in :data:`.func` but to render as a different name.

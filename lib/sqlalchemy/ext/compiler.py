@@ -32,7 +32,7 @@ when the object is compiled to a string::
     from sqlalchemy import select
 
     s = select([MyColumn('x'), MyColumn('y')])
-    print str(s)
+    print(str(s))
 
 Produces::
 
@@ -90,7 +90,7 @@ method which can be used for compilation of embedded attributes::
         )
 
     insert = InsertFromSelect(t1, select([t1]).where(t1.c.x>5))
-    print insert
+    print(insert)
 
 Produces::
 
