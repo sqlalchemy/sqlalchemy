@@ -1296,7 +1296,9 @@ class InheritanceTest(_Polymorphic):
         super(InheritanceTest, cls).setup_mappers()
         from sqlalchemy import inspect
 
-        inspect(Company).add_property("managers", relationship(Manager))
+        inspect(Company).add_property(
+            "managers", relationship(Manager, viewonly=True)
+        )
 
     def test_load_only_subclass(self):
         s = Session()

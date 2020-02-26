@@ -833,10 +833,16 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     Address, lazy="selectin", order_by=addresses.c.id
                 ),
                 open_orders=relationship(
-                    open_mapper, lazy="selectin", order_by=open_mapper.id
+                    open_mapper,
+                    lazy="selectin",
+                    order_by=open_mapper.id,
+                    overlaps="closed_orders",
                 ),
                 closed_orders=relationship(
-                    closed_mapper, lazy="selectin", order_by=closed_mapper.id
+                    closed_mapper,
+                    lazy="selectin",
+                    order_by=closed_mapper.id,
+                    overlaps="open_orders",
                 ),
             ),
         )
@@ -900,6 +906,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="selectin",
                     order_by=open_mapper.id,
+                    viewonly=True,
                 ),
                 closed_orders=relationship(
                     closed_mapper,
@@ -909,6 +916,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="selectin",
                     order_by=closed_mapper.id,
+                    viewonly=True,
                 ),
             ),
         )
@@ -969,6 +977,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="selectin",
                     order_by=orders.c.id,
+                    overlaps="closed_orders",
                 ),
                 closed_orders=relationship(
                     Order,
@@ -977,6 +986,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="selectin",
                     order_by=orders.c.id,
+                    overlaps="open_orders",
                 ),
             ),
         )
@@ -3108,7 +3118,7 @@ class M2OWDegradeTest(
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey("b.id"))
             b = relationship("B")
-            b_no_omit_join = relationship("B", omit_join=False)
+            b_no_omit_join = relationship("B", omit_join=False, overlaps="b")
             q = Column(Integer)
 
         class B(fixtures.ComparableEntity, Base):

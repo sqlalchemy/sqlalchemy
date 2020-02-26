@@ -1786,6 +1786,7 @@ class OneToManyTest(_fixtures.FixtureTest):
                         users.c.id == addresses.c.user_id,
                         addresses.c.email_address.like("%boston%"),
                     ),
+                    overlaps="newyork_addresses",
                 ),
                 "newyork_addresses": relationship(
                     m2,
@@ -1793,6 +1794,7 @@ class OneToManyTest(_fixtures.FixtureTest):
                         users.c.id == addresses.c.user_id,
                         addresses.c.email_address.like("%newyork%"),
                     ),
+                    overlaps="boston_addresses",
                 ),
             },
         )

@@ -771,6 +771,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="joined",
                     order_by=open_mapper.id,
+                    viewonly=True,
                 ),
                 closed_orders=relationship(
                     closed_mapper,
@@ -780,6 +781,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="joined",
                     order_by=closed_mapper.id,
+                    viewonly=True,
                 ),
             ),
         )
@@ -906,6 +908,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="joined",
                     order_by=orders.c.id,
+                    viewonly=True,
                 ),
                 closed_orders=relationship(
                     Order,
@@ -914,9 +917,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="joined",
                     order_by=orders.c.id,
+                    viewonly=True,
                 ),
             ),
         )
+
         self._run_double_test()
 
     def _run_double_test(self, no_items=False):
@@ -3119,7 +3124,7 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         b_np = aliased(B, weird_selectable, flat=True)
 
         a_mapper = inspect(A)
-        a_mapper.add_property("bs_np", relationship(b_np))
+        a_mapper.add_property("bs_np", relationship(b_np, viewonly=True))
 
         s = Session()
 

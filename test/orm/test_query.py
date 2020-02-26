@@ -5083,6 +5083,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
                         users.c.id == addresses.c.user_id,
                         users.c.name == addresses.c.email_address,
                     ),
+                    viewonly=True,
                 ),
             },
         )

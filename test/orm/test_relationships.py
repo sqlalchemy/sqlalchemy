@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
@@ -649,6 +650,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         add_b_amember=False,
         add_bsub1_a=False,
         add_bsub2_a_viewonly=False,
+        add_b_a_overlaps=None,
     ):
 
         Base = declarative_base(metadata=self.metadata)
@@ -689,7 +691,9 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             # writes to B.a_id, which conflicts with BSub2.a_member,
             # so should warn
             if add_b_a:
-                a = relationship("A", viewonly=add_b_a_viewonly)
+                a = relationship(
+                    "A", viewonly=add_b_a_viewonly, overlaps=add_b_a_overlaps
+                )
 
             # if added, this relationship writes to B.a_id, which conflicts
             # with BSub1.a
@@ -718,6 +722,88 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         self.metadata.create_all()
 
         return A, AMember, B, BSub1, BSub2
+
+    def _fixture_two(self, setup_backrefs=False, setup_overlaps=False):
+
+        Base = declarative_base(metadata=self.metadata)
+
+        # purposely using the comma to make sure parsing the comma works
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+            children = relationship(
+                "Child",
+                back_populates=("parent" if setup_backrefs else None),
+                overlaps="foo, bar, parent" if setup_overlaps else None,
+            )
+
+        class Child(Base):
+            __tablename__ = "child"
+            id = Column(Integer, primary_key=True)
+            num = Column(Integer)
+            parent_id = Column(
+                Integer, ForeignKey("parent.id"), nullable=False
+            )
+            parent = relationship(
+                "Parent",
+                back_populates=("children" if setup_backrefs else None),
+                overlaps="bar, bat, children" if setup_overlaps else None,
+            )
+
+        configure_mappers()
+
+    def _fixture_three(self, use_same_mappers, setup_overlaps):
+        Base = declarative_base(metadata=self.metadata)
+
+        class Child(Base):
+            __tablename__ = "child"
+            id = Column(Integer, primary_key=True)
+            num = Column(Integer)
+            parent_id = Column(
+                Integer, ForeignKey("parent.id"), nullable=False
+            )
+
+        if not use_same_mappers:
+            c1 = aliased(Child)
+            c2 = aliased(Child)
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+            if use_same_mappers:
+                child1 = relationship(
+                    Child,
+                    primaryjoin=lambda: and_(
+                        Child.parent_id == Parent.id, Child.num == 1
+                    ),
+                    overlaps="child2" if setup_overlaps else None,
+                )
+                child2 = relationship(
+                    Child,
+                    primaryjoin=lambda: and_(
+                        Child.parent_id == Parent.id, Child.num == 2
+                    ),
+                    overlaps="child1" if setup_overlaps else None,
+                )
+            else:
+                child1 = relationship(
+                    c1,
+                    primaryjoin=lambda: and_(
+                        c1.parent_id == Parent.id, c1.num == 1
+                    ),
+                    overlaps="child2" if setup_overlaps else None,
+                )
+
+                child2 = relationship(
+                    c2,
+                    primaryjoin=lambda: and_(
+                        c2.parent_id == Parent.id, c2.num == 1
+                    ),
+                    overlaps="child1" if setup_overlaps else None,
+                )
+
+        configure_mappers()
 
     @testing.provide_metadata
     def _test_fixture_one_run(self, **kw):
@@ -748,6 +834,8 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
 
         session.commit()
         assert bsub1.a is a2  # because bsub1.a_member is not a relationship
+
+        assert BSub2.__mapper__.attrs.a.viewonly
         assert bsub2.a is a1  # because bsub2.a is viewonly=True
 
         # everyone has a B.a relationship
@@ -755,6 +843,46 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             session.query(B, A).outerjoin(B.a).order_by(B.id).all(),
             [(bsub1, a2), (bsub2, a1)],
         )
+
+    @testing.provide_metadata
+    def test_simple_warn(self):
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship '(?:Child.parent|Parent.children)' will copy "
+            r"column parent.id to column child.parent_id, which conflicts "
+            r"with relationship\(s\): '(?:Parent.children|Child.parent)' "
+            r"\(copies parent.id to child.parent_id\).",
+            self._fixture_two,
+            setup_backrefs=False,
+        )
+
+    @testing.provide_metadata
+    def test_simple_backrefs_works(self):
+        self._fixture_two(setup_backrefs=True)
+
+    @testing.provide_metadata
+    def test_simple_overlaps_works(self):
+        self._fixture_two(setup_overlaps=True)
+
+    @testing.provide_metadata
+    def test_double_rel_same_mapper_warns(self):
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship 'Parent.child[12]' will copy column parent.id to "
+            r"column child.parent_id, which conflicts with relationship\(s\): "
+            r"'Parent.child[12]' \(copies parent.id to child.parent_id\)",
+            self._fixture_three,
+            use_same_mappers=True,
+            setup_overlaps=False,
+        )
+
+    @testing.provide_metadata
+    def test_double_rel_same_mapper_overlaps_works(self):
+        self._fixture_three(use_same_mappers=True, setup_overlaps=True)
+
+    @testing.provide_metadata
+    def test_double_rel_aliased_mapper_works(self):
+        self._fixture_three(use_same_mappers=False, setup_overlaps=False)
 
     @testing.provide_metadata
     def test_warn_one(self):
@@ -791,6 +919,17 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         )
 
     @testing.provide_metadata
+    def test_warn_four(self):
+        assert_raises_message(
+            exc.SAWarning,
+            r"relationship '(?:B.a|BSub2.a_member|B.a)' will copy column "
+            r"(?:a.id|a_member.a_id) to column b.a_id",
+            self._fixture_one,
+            add_bsub2_a_viewonly=True,
+            add_b_a=True,
+        )
+
+    @testing.provide_metadata
     def test_works_one(self):
         self._test_fixture_one_run(
             add_b_a=True, add_b_a_viewonly=True, add_bsub1_a=True
@@ -798,7 +937,10 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_works_two(self):
-        self._test_fixture_one_run(add_b_a=True, add_bsub2_a_viewonly=True)
+        # doesn't actually work with real FKs beacuse it creates conflicts :)
+        self._fixture_one(
+            add_b_a=True, add_b_a_overlaps="a_member", add_bsub1_a=True
+        )
 
 
 class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
