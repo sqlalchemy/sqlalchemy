@@ -3495,7 +3495,7 @@ class PGDialect(default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                match_without_newlines = ''.join(m.group(1).splitlines())
+                match_without_newlines = ' '.join(m.group(1).splitlines()).strip()
                 sqltext = re.sub(r"^\((.+)\)$", r"\1", match_without_newlines)
             entry = {"name": name, "sqltext": sqltext}
             if m and m.group(2):

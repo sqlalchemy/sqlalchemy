@@ -1583,7 +1583,11 @@ class ReflectionTest(fixtures.TestBase):
                 testing.db.dialect.get_check_constraints(conn, "foo")
 
     def test_reflect_extra_newlines(self):
-        rows = [("some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)")]
+        rows = [
+            ("some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)"),
+            ("some other name", "CHECK ((b\nIS\nNOT\nNULL))"),
+            ("some CRLF name", "CHECK ((c\r\n\r\nIS\r\nNOT\r\nNULL))"),
+        ]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
                 fetchall=lambda: rows, __iter__=lambda self: iter(rows)
@@ -1600,7 +1604,15 @@ class ReflectionTest(fixtures.TestBase):
                 [
                     {
                         "name": "some name",
-                        "sqltext": "a IS NOT NULL",
+                        "sqltext": "a  IS  NOT   NULL ",
+                    },
+                    {
+                        "name": "some other name",
+                        "sqltext": "b IS NOT NULL",
+                    },
+                    {
+                        "name": "some CRLF name",
+                        "sqltext": "c  IS NOT NULL",
                     }
                 ],
             )
