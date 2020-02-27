@@ -3488,12 +3488,15 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
             # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
             # "CHECK (some_boolean_function(a))"
-            m = re.match(r"^CHECK *\((.+)\)( NOT VALID)?$", src)
+            # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+
+            m = re.match(r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL)
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.sub(r"^\((.+)\)$", r"\1", m.group(1))
+                match_without_newlines = ''.join(m.group(1).splitlines())
+                sqltext = re.sub(r"^\((.+)\)$", r"\1", match_without_newlines)
             entry = {"name": name, "sqltext": sqltext}
             if m and m.group(2):
                 entry["dialect_options"] = {"not_valid": True}

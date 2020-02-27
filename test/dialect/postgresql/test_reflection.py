@@ -1582,6 +1582,29 @@ class ReflectionTest(fixtures.TestBase):
             ):
                 testing.db.dialect.get_check_constraints(conn, "foo")
 
+    def test_reflect_extra_newlines(self):
+        rows = [("some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)")]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        with mock.patch.object(
+            testing.db.dialect, "get_table_oid", lambda *arg, **kw: 1
+        ):
+            check_constraints = testing.db.dialect.get_check_constraints(
+                conn, "foo"
+            )
+            eq_(
+                check_constraints,
+                [
+                    {
+                        "name": "some name",
+                        "sqltext": "a IS NOT NULL",
+                    }
+                ],
+            )
+
     def test_reflect_with_not_valid_check_constraint(self):
         rows = [("some name", "CHECK ((a IS NOT NULL)) NOT VALID")]
         conn = mock.Mock(
