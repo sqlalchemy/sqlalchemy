@@ -273,17 +273,17 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
     # INSERT..RETURNING
     result = table.insert().returning(table.c.col1, table.c.col2).\
         values(name='foo')
-    print result.fetchall()
+    print(result.fetchall())
 
     # UPDATE..RETURNING
     result = table.update().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo').values(name='bar')
-    print result.fetchall()
+    print(result.fetchall())
 
     # DELETE..RETURNING
     result = table.delete().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo')
-    print result.fetchall()
+    print(result.fetchall())
 
 .. _postgresql_insert_on_conflict:
 
@@ -567,7 +567,7 @@ syntaxes. It uses SQLAlchemy's hints mechanism::
 
     # SELECT ... FROM ONLY ...
     result = table.select().with_hint(table, 'ONLY', 'postgresql')
-    print result.fetchall()
+    print(result.fetchall())
 
     # UPDATE ONLY ...
     table.update(values=dict(foo='bar')).with_hint('ONLY',

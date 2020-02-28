@@ -177,7 +177,7 @@ class String(Concatenable, TypeEngine):
           E.g.::
 
             >>> from sqlalchemy import cast, select, String
-            >>> print select([cast('some string', String(collation='utf8'))])
+            >>> print(select([cast('some string', String(collation='utf8'))]))
             SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
         :param convert_unicode: When set to ``True``, the
