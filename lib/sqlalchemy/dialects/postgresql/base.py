@@ -3491,13 +3491,15 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
 
             m = re.match(
-                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL)
+                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+            )
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                match_without_newlines = ' '.join(
-                    m.group(1).splitlines()).strip()
+                match_without_newlines = " ".join(
+                    m.group(1).splitlines()
+                ).strip()
                 sqltext = re.sub(r"^\((.+)\)$", r"\1", match_without_newlines)
             entry = {"name": name, "sqltext": sqltext}
             if m and m.group(2):

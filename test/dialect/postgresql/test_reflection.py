@@ -1602,18 +1602,9 @@ class ReflectionTest(fixtures.TestBase):
             eq_(
                 check_constraints,
                 [
-                    {
-                        "name": "some name",
-                        "sqltext": "a  IS  NOT   NULL ",
-                    },
-                    {
-                        "name": "some other name",
-                        "sqltext": "b IS NOT NULL",
-                    },
-                    {
-                        "name": "some CRLF name",
-                        "sqltext": "c  IS NOT NULL",
-                    }
+                    {"name": "some name", "sqltext": "a  IS  NOT   NULL ",},
+                    {"name": "some other name", "sqltext": "b IS NOT NULL",},
+                    {"name": "some CRLF name", "sqltext": "c  IS NOT NULL",},
                 ],
             )
 
