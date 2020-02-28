@@ -13,7 +13,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types
 from sqlalchemy import util
-from sqlalchemy.databases import mssql
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
 from sqlalchemy.dialects.mssql.information_schema import tables

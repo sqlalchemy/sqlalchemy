@@ -17,7 +17,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import update
 from sqlalchemy import VARCHAR
-from sqlalchemy.databases import firebird
+from sqlalchemy.dialects.firebird import base as firebird
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
