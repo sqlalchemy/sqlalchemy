@@ -3542,6 +3542,12 @@ class DDLCompiler(Compiled):
         else:
             return None
 
+    def visit_table_or_column_check_constraint(self, constraint, **kw):
+        if constraint.is_column_level:
+            return self.visit_column_check_constraint(constraint)
+        else:
+            return self.visit_check_constraint(constraint)
+
     def visit_check_constraint(self, constraint):
         text = ""
         if constraint.name is not None:
