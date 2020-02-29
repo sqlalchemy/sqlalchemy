@@ -536,11 +536,14 @@ class StrategizedProperty(MapperProperty):
         try:
             return self._strategies[key]
         except KeyError:
-            cls = self._strategy_lookup(self, *key)
-            self._strategies[key] = self._strategies[cls] = strategy = cls(
-                self, key
-            )
-            return strategy
+            pass
+
+        # run outside to prevent transfer of exception context
+        cls = self._strategy_lookup(self, *key)
+        self._strategies[key] = self._strategies[cls] = strategy = cls(
+            self, key
+        )
+        return strategy
 
     def setup(self, context, query_entity, path, adapter, **kwargs):
         loader = self._get_context_loader(context, path)

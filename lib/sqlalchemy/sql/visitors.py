@@ -86,8 +86,11 @@ def _generate_dispatch(cls):
             def _compiler_dispatch(self, visitor, **kw):
                 try:
                     meth = getter(visitor)
-                except AttributeError:
-                    raise exc.UnsupportedCompilationError(visitor, cls)
+                except AttributeError as err:
+                    util.raise_(
+                        exc.UnsupportedCompilationError(visitor, cls),
+                        replace_context=err,
+                    )
                 else:
                     return meth(self, **kw)
 
@@ -99,8 +102,11 @@ def _generate_dispatch(cls):
                 visit_attr = "visit_%s" % self.__visit_name__
                 try:
                     meth = getattr(visitor, visit_attr)
-                except AttributeError:
-                    raise exc.UnsupportedCompilationError(visitor, cls)
+                except AttributeError as err:
+                    util.raise_(
+                        exc.UnsupportedCompilationError(visitor, cls),
+                        replace_context=err,
+                    )
                 else:
                     return meth(self, **kw)
 

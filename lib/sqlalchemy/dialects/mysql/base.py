@@ -2922,7 +2922,7 @@ class MySQLDialect(default.DefaultDialect):
             ).execute(st)
         except exc.DBAPIError as e:
             if self._extract_error_code(e.orig) == 1146:
-                raise exc.NoSuchTableError(full_name)
+                util.raise_(exc.NoSuchTableError(full_name), replace_context=e)
             else:
                 raise
         row = self._compat_first(rp, charset=charset)
@@ -2948,11 +2948,16 @@ class MySQLDialect(default.DefaultDialect):
             except exc.DBAPIError as e:
                 code = self._extract_error_code(e.orig)
                 if code == 1146:
-                    raise exc.NoSuchTableError(full_name)
+                    util.raise_(
+                        exc.NoSuchTableError(full_name), replace_context=e
+                    )
                 elif code == 1356:
-                    raise exc.UnreflectableTableError(
-                        "Table or view named %s could not be "
-                        "reflected: %s" % (full_name, e)
+                    util.raise_(
+                        exc.UnreflectableTableError(
+                            "Table or view named %s could not be "
+                            "reflected: %s" % (full_name, e)
+                        ),
+                        replace_context=e,
                     )
                 else:
                     raise

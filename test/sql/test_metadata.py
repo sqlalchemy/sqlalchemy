@@ -4015,16 +4015,11 @@ class DialectKWArgTest(fixtures.TestBase):
 
     def test_unknown_dialect_warning(self):
         with self._fixture():
-            assert_raises_message(
-                exc.SAWarning,
+            with testing.expect_warnings(
                 "Can't validate argument 'unknown_y'; can't locate "
                 "any SQLAlchemy dialect named 'unknown'",
-                Index,
-                "a",
-                "b",
-                "c",
-                unknown_y=True,
-            )
+            ):
+                Index("a", "b", "c", unknown_y=True)
 
     def test_participating_bad_kw(self):
         with self._fixture():

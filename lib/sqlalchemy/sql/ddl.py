@@ -907,7 +907,7 @@ class SchemaDropper(DDLBase):
                 )
                 collection = [(t, ()) for t in unsorted_tables]
             else:
-                util.raise_from_cause(
+                util.raise_(
                     exc.CircularDependencyError(
                         err2.args[0],
                         err2.cycles,
@@ -924,7 +924,8 @@ class SchemaDropper(DDLBase):
                                 sorted([t.fullname for t in err2.cycles])
                             )
                         ),
-                    )
+                    ),
+                    from_=err2,
                 )
 
         seq_coll = [

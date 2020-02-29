@@ -60,8 +60,8 @@ class _DialectArgView(util.collections_abc.MutableMapping):
     def _key(self, key):
         try:
             dialect, value_key = key.split("_", 1)
-        except ValueError:
-            raise KeyError(key)
+        except ValueError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return dialect, value_key
 
@@ -70,17 +70,20 @@ class _DialectArgView(util.collections_abc.MutableMapping):
 
         try:
             opt = self.obj.dialect_options[dialect]
-        except exc.NoSuchModuleError:
-            raise KeyError(key)
+        except exc.NoSuchModuleError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return opt[value_key]
 
     def __setitem__(self, key, value):
         try:
             dialect, value_key = self._key(key)
-        except KeyError:
-            raise exc.ArgumentError(
-                "Keys must be of the form <dialectname>_<argname>"
+        except KeyError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "Keys must be of the form <dialectname>_<argname>"
+                ),
+                replace_context=err,
             )
         else:
             self.obj.dialect_options[dialect][value_key] = value

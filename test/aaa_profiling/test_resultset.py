@@ -110,7 +110,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
             "some other column", Integer
         )
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(variance=0.10)
         def go():
             c1 in row
 

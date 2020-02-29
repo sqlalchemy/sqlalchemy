@@ -294,7 +294,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
         record = PyDict_GetItem((PyObject *)self->keymap, key);
         if (record == NULL) {
             record = PyObject_CallMethod(self->parent, "_key_fallback",
-                                         "O", key);
+                                         "OO", key, Py_None);
             if (record == NULL)
                 return NULL;
             key_fallback = 1;

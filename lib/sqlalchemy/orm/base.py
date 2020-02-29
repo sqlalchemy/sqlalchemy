@@ -397,9 +397,12 @@ def _entity_descriptor(entity, key):
 
     try:
         return getattr(entity, key)
-    except AttributeError:
-        raise sa_exc.InvalidRequestError(
-            "Entity '%s' has no property '%s'" % (description, key)
+    except AttributeError as err:
+        util.raise_(
+            sa_exc.InvalidRequestError(
+                "Entity '%s' has no property '%s'" % (description, key)
+            ),
+            replace_context=err,
         )
 
 

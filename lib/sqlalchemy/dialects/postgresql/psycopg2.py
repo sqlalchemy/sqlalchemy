@@ -764,11 +764,14 @@ class PGDialect_psycopg2(PGDialect):
     def set_isolation_level(self, connection, level):
         try:
             level = self._isolation_lookup[level.replace("_", " ")]
-        except KeyError:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
+        except KeyError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "Invalid value '%s' for isolation_level. "
+                    "Valid isolation levels for %s are %s"
+                    % (level, self.name, ", ".join(self._isolation_lookup))
+                ),
+                replace_context=err,
             )
 
         connection.set_isolation_level(level)

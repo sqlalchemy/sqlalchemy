@@ -59,8 +59,10 @@ def _interpret_as_from(element):
             _no_text_coercion(element)
     try:
         return insp.selectable
-    except AttributeError:
-        raise exc.ArgumentError("FROM expression expected")
+    except AttributeError as err:
+        util.raise_(
+            exc.ArgumentError("FROM expression expected"), replace_context=err
+        )
 
 
 def _interpret_as_select(element):
@@ -108,10 +110,13 @@ def _offset_or_limit_clause_asint(clause, attrname):
         return None
     try:
         value = clause._limit_offset_value
-    except AttributeError:
-        raise exc.CompileError(
-            "This SELECT structure does not use a simple "
-            "integer value for %s" % attrname
+    except AttributeError as err:
+        util.raise_(
+            exc.CompileError(
+                "This SELECT structure does not use a simple "
+                "integer value for %s" % attrname
+            ),
+            replace_context=err,
         )
     else:
         return util.asint(value)
@@ -1330,9 +1335,13 @@ class Alias(FromClause):
     def as_scalar(self):
         try:
             return self.element.as_scalar()
-        except AttributeError:
-            raise AttributeError(
-                "Element %s does not support " "'as_scalar()'" % self.element
+        except AttributeError as err:
+            util.raise_(
+                AttributeError(
+                    "Element %s does not support "
+                    "'as_scalar()'" % self.element
+                ),
+                replace_context=err,
             )
 
     def is_derived_from(self, fromclause):
@@ -2983,10 +2992,13 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         try:
             cols_present = bool(columns)
-        except TypeError:
-            raise exc.ArgumentError(
-                "columns argument to select() must "
-                "be a Python list or other iterable"
+        except TypeError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "columns argument to select() must "
+                    "be a Python list or other iterable"
+                ),
+                replace_context=err,
             )
 
         if cols_present:

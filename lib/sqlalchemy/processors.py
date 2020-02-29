@@ -32,10 +32,13 @@ def str_to_datetime_processor_factory(regexp, type_):
         else:
             try:
                 m = rmatch(value)
-            except TypeError:
-                raise ValueError(
-                    "Couldn't parse %s string '%r' "
-                    "- value is not a string." % (type_.__name__, value)
+            except TypeError as err:
+                util.raise_(
+                    ValueError(
+                        "Couldn't parse %s string '%r' "
+                        "- value is not a string." % (type_.__name__, value)
+                    ),
+                    from_=err,
                 )
             if m is None:
                 raise ValueError(

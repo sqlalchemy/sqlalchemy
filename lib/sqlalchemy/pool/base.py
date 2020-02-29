@@ -653,8 +653,8 @@ class _ConnectionRecord(object):
             pool.logger.debug("Created new connection %r", connection)
             self.connection = connection
         except Exception as e:
-            pool.logger.debug("Error on connect(): %s", e)
-            raise
+            with util.safe_reraise():
+                pool.logger.debug("Error on connect(): %s", e)
         else:
             if first_connect_check:
                 pool.dispatch.first_connect.for_modify(

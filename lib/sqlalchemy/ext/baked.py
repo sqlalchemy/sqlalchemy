@@ -502,9 +502,12 @@ class Result(object):
         """
         try:
             ret = self.one_or_none()
-        except orm_exc.MultipleResultsFound:
-            raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one()"
+        except orm_exc.MultipleResultsFound as err:
+            util.raise_(
+                orm_exc.MultipleResultsFound(
+                    "Multiple rows were found for one()"
+                ),
+                replace_context=err,
             )
         else:
             if ret is None:

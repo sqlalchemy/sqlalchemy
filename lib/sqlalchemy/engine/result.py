@@ -83,8 +83,8 @@ except ImportError:
         def __getitem__(self, key):
             try:
                 processor, obj, index = self._keymap[key]
-            except KeyError:
-                processor, obj, index = self._parent._key_fallback(key)
+            except KeyError as err:
+                processor, obj, index = self._parent._key_fallback(key, err)
             except TypeError:
                 if isinstance(key, slice):
                     l = []
@@ -112,7 +112,7 @@ except ImportError:
             try:
                 return self[name]
             except KeyError as e:
-                raise AttributeError(e.args[0])
+                util.raise_(AttributeError(e.args[0]), replace_context=e)
 
 
 class RowProxy(BaseRowProxy):
@@ -639,7 +639,7 @@ class ResultMetaData(object):
                 d[key] = rec
         return d
 
-    def _key_fallback(self, key, raiseerr=True):
+    def _key_fallback(self, key, err, raiseerr=True):
         map_ = self._keymap
         result = None
         if isinstance(key, util.string_types):
@@ -678,9 +678,12 @@ class ResultMetaData(object):
                     result = None
         if result is None:
             if raiseerr:
-                raise exc.NoSuchColumnError(
-                    "Could not locate column in row for column '%s'"
-                    % expression._string_or_unprintable(key)
+                util.raise_(
+                    exc.NoSuchColumnError(
+                        "Could not locate column in row for column '%s'"
+                        % expression._string_or_unprintable(key)
+                    ),
+                    replace_context=err,
                 )
             else:
                 return None
@@ -692,21 +695,24 @@ class ResultMetaData(object):
         if key in self._keymap:
             return True
         else:
-            return self._key_fallback(key, False) is not None
+            return self._key_fallback(key, None, False) is not None
 
     def _getter(self, key, raiseerr=True):
         if key in self._keymap:
             processor, obj, index = self._keymap[key]
         else:
-            ret = self._key_fallback(key, raiseerr)
+            ret = self._key_fallback(key, None, raiseerr)
             if ret is None:
                 return None
             processor, obj, index = ret
 
         if index is None:
-            raise exc.InvalidRequestError(
-                "Ambiguous column name '%s' in "
-                "result set column descriptions" % obj
+            util.raise_(
+                exc.InvalidRequestError(
+                    "Ambiguous column name '%s' in "
+                    "result set column descriptions" % obj
+                ),
+                from_=None,
             )
 
         return operator.itemgetter(index)
@@ -771,16 +777,16 @@ class ResultProxy(object):
     def _getter(self, key, raiseerr=True):
         try:
             getter = self._metadata._getter
-        except AttributeError:
-            return self._non_result(None)
+        except AttributeError as err:
+            return self._non_result(None, err)
         else:
             return getter(key, raiseerr)
 
     def _has_key(self, key):
         try:
             has_key = self._metadata._has_key
-        except AttributeError:
-            return self._non_result(None)
+        except AttributeError as err:
+            return self._non_result(None, err)
         else:
             return has_key(key)
 
@@ -1196,8 +1202,8 @@ class ResultProxy(object):
     def _fetchone_impl(self):
         try:
             return self.cursor.fetchone()
-        except AttributeError:
-            return self._non_result(None)
+        except AttributeError as err:
+            return self._non_result(None, err)
 
     def _fetchmany_impl(self, size=None):
         try:
@@ -1205,23 +1211,29 @@ class ResultProxy(object):
                 return self.cursor.fetchmany()
             else:
                 return self.cursor.fetchmany(size)
-        except AttributeError:
-            return self._non_result([])
+        except AttributeError as err:
+            return self._non_result([], err)
 
     def _fetchall_impl(self):
         try:
             return self.cursor.fetchall()
-        except AttributeError:
-            return self._non_result([])
+        except AttributeError as err:
+            return self._non_result([], err)
 
-    def _non_result(self, default):
+    def _non_result(self, default, err=None):
         if self._metadata is None:
-            raise exc.ResourceClosedError(
-                "This result object does not return rows. "
-                "It has been closed automatically."
+            util.raise_(
+                exc.ResourceClosedError(
+                    "This result object does not return rows. "
+                    "It has been closed automatically."
+                ),
+                replace_context=err,
             )
         elif self.closed:
-            raise exc.ResourceClosedError("This result object is closed.")
+            util.raise_(
+                exc.ResourceClosedError("This result object is closed."),
+                replace_context=err,
+            )
         else:
             return default
 
