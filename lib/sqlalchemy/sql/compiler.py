@@ -1074,7 +1074,7 @@ class SQLCompiler(Compiled):
                 col = only_froms[element.element]
             else:
                 col = with_cols[element.element]
-        except KeyError:
+        except KeyError as err:
             coercions._no_text_coercion(
                 element.element,
                 extra=(
@@ -1082,6 +1082,7 @@ class SQLCompiler(Compiled):
                     "GROUP BY / DISTINCT etc."
                 ),
                 exc_cls=exc.CompileError,
+                err=err,
             )
         else:
             kwargs["render_label_as_label"] = col
@@ -1671,8 +1672,11 @@ class SQLCompiler(Compiled):
         else:
             try:
                 opstring = OPERATORS[operator_]
-            except KeyError:
-                raise exc.UnsupportedCompilationError(self, operator_)
+            except KeyError as err:
+                util.raise_(
+                    exc.UnsupportedCompilationError(self, operator_),
+                    replace_context=err,
+                )
             else:
                 return self._generate_generic_binary(
                     binary, opstring, from_linter=from_linter, **kw
@@ -3286,11 +3290,12 @@ class DDLCompiler(Compiled):
                 if column.primary_key:
                     first_pk = True
             except exc.CompileError as ce:
-                util.raise_from_cause(
+                util.raise_(
                     exc.CompileError(
                         util.u("(in table '%s', column '%s'): %s")
                         % (table.description, column.name, ce.args[0])
-                    )
+                    ),
+                    from_=ce,
                 )
 
         const = self.create_table_constraints(

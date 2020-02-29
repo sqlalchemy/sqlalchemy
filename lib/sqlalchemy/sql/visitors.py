@@ -62,9 +62,10 @@ def _generate_compiler_dispatch(cls):
         "def _compiler_dispatch(self, visitor, **kw):\n"
         "    try:\n"
         "        meth = visitor.visit_%(name)s\n"
-        "    except AttributeError:\n"
-        "        util.raise_from_cause(\n"
-        "            exc.UnsupportedCompilationError(visitor, cls))\n"
+        "    except AttributeError as err:\n"
+        "        util.raise_(\n"
+        "            exc.UnsupportedCompilationError(visitor, cls), \n"
+        "            replace_context=err)\n"
         "    else:\n"
         "        return meth(self, **kw)\n"
     ) % {"name": visit_name}

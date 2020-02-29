@@ -24,6 +24,7 @@ from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -596,13 +597,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         testing.db.dialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
-            assert_raises(sa.exc.SAWarning, Table, "test", m2, autoload=True)
 
-            @testing.emits_warning("Did not recognize type")
-            def warns():
-                m3 = MetaData(testing.db)
-                t3 = Table("test", m3, autoload=True)
-                assert t3.c.foo.type.__class__ == sa.types.NullType
+            with testing.expect_warnings("Did not recognize type"):
+                t3 = Table("test", m2, autoload_with=testing.db)
+                is_(t3.c.foo.type.__class__, sa.types.NullType)
 
         finally:
             testing.db.dialect.ischema_names = ischema_names

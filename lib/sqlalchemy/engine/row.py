@@ -84,8 +84,8 @@ except ImportError:
         def _subscript_impl(self, key, ismapping):
             try:
                 rec = self._keymap[key]
-            except KeyError:
-                rec = self._parent._key_fallback(key)
+            except KeyError as ke:
+                rec = self._parent._key_fallback(key, ke)
             except TypeError:
                 # the non-C version detects a slice using TypeError.
                 # this is pretty inefficient for the slice use case
@@ -119,7 +119,7 @@ except ImportError:
             try:
                 return self._get_by_key_impl_mapping(name)
             except KeyError as e:
-                raise AttributeError(e.args[0])
+                util.raise_(AttributeError(e.args[0]), replace_context=e)
 
 
 class Row(BaseRow, collections_abc.Sequence):

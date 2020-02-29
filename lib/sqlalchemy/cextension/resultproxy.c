@@ -288,7 +288,7 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key, int asmapping)
 
     if (record == NULL) {
         record = PyObject_CallMethod(self->parent, "_key_fallback",
-                                     "O", key);
+                                     "OO", key, Py_None);
         if (record == NULL)
             return NULL;
         key_fallback = 1;  // boolean to indicate record is a new reference

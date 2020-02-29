@@ -1483,11 +1483,14 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                 # it to mapped ColumnProperty
                 try:
                     self.polymorphic_on = self._props[self.polymorphic_on]
-                except KeyError:
-                    raise sa_exc.ArgumentError(
-                        "Can't determine polymorphic_on "
-                        "value '%s' - no attribute is "
-                        "mapped to this name." % self.polymorphic_on
+                except KeyError as err:
+                    util.raise_(
+                        sa_exc.ArgumentError(
+                            "Can't determine polymorphic_on "
+                            "value '%s' - no attribute is "
+                            "mapped to this name." % self.polymorphic_on
+                        ),
+                        replace_context=err,
                     )
 
             if self.polymorphic_on in self._columntoproperty:
@@ -1987,9 +1990,12 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         try:
             return self._props[key]
-        except KeyError:
-            raise sa_exc.InvalidRequestError(
-                "Mapper '%s' has no property '%s'" % (self, key)
+        except KeyError as err:
+            util.raise_(
+                sa_exc.InvalidRequestError(
+                    "Mapper '%s' has no property '%s'" % (self, key)
+                ),
+                replace_context=err,
             )
 
     def get_property_by_column(self, column):

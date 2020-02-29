@@ -65,7 +65,9 @@ class safe_reraise(object):
             exc_type, exc_value, exc_tb = self._exc_info
             self._exc_info = None  # remove potential circular references
             if not self.warn_only:
-                compat.reraise(exc_type, exc_value, exc_tb)
+                compat.raise_(
+                    exc_value, with_traceback=exc_tb,
+                )
         else:
             if not compat.py3k and self._exc_info and self._exc_info[1]:
                 # emulate Py3K's behavior of telling us when an exception
@@ -76,7 +78,7 @@ class safe_reraise(object):
                     "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1])
                 )
             self._exc_info = None  # remove potential circular references
-            compat.reraise(type_, value, traceback)
+            compat.raise_(value, with_traceback=traceback)
 
 
 def string_or_unprintable(element):

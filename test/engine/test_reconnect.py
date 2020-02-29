@@ -14,6 +14,7 @@ from sqlalchemy import util
 from sqlalchemy.engine import url
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_raises_message_context_ok
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -255,7 +256,7 @@ class PrePingMockTest(fixtures.TestBase):
 
         self.dbapi.shutdown("execute", stop=True)
 
-        assert_raises_message(
+        assert_raises_message_context_ok(
             MockDisconnect, "database is stopped", pool.connect
         )
 
@@ -835,7 +836,7 @@ class CursorErrTest(fixtures.TestBase):
 
     def test_cursor_shutdown_in_initialize(self):
         db = self._fixture(True, True)
-        assert_raises_message(
+        assert_raises_message_context_ok(
             exc.SAWarning, "Exception attempting to detect", db.connect
         )
         eq_(

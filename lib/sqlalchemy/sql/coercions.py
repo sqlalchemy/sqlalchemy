@@ -133,7 +133,13 @@ class RoleImpl(object):
         self._raise_for_expected(element, argname, resolved)
 
     def _raise_for_expected(
-        self, element, argname=None, resolved=None, advice=None, code=None
+        self,
+        element,
+        argname=None,
+        resolved=None,
+        advice=None,
+        code=None,
+        err=None,
     ):
         if argname:
             msg = "%s expected for argument %r; got %r." % (
@@ -147,7 +153,7 @@ class RoleImpl(object):
         if advice:
             msg += " " + advice
 
-        raise exc.ArgumentError(msg, code=code)
+        util.raise_(exc.ArgumentError(msg, code=code), replace_context=err)
 
 
 class _Deannotate(object):
@@ -201,16 +207,19 @@ class _ColumnCoercions(object):
 
 
 def _no_text_coercion(
-    element, argname=None, exc_cls=exc.ArgumentError, extra=None
+    element, argname=None, exc_cls=exc.ArgumentError, extra=None, err=None
 ):
-    raise exc_cls(
-        "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
-        "explicitly declared as text(%(expr)r)"
-        % {
-            "expr": util.ellipses_string(element),
-            "argname": "for argument %s" % (argname,) if argname else "",
-            "extra": "%s " % extra if extra else "",
-        }
+    util.raise_(
+        exc_cls(
+            "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
+            "explicitly declared as text(%(expr)r)"
+            % {
+                "expr": util.ellipses_string(element),
+                "argname": "for argument %s" % (argname,) if argname else "",
+                "extra": "%s " % extra if extra else "",
+            }
+        ),
+        replace_context=err,
     )
 
 
@@ -290,8 +299,8 @@ class ExpressionElementImpl(
                 return elements.BindParameter(
                     name, element, type_, unique=True
                 )
-            except exc.ArgumentError:
-                self._raise_for_expected(element)
+            except exc.ArgumentError as err:
+                self._raise_for_expected(element, err=err)
 
 
 class BinaryElementImpl(
@@ -302,8 +311,8 @@ class BinaryElementImpl(
     ):
         try:
             return expr._bind_param(operator, element, type_=bindparam_type)
-        except exc.ArgumentError:
-            self._raise_for_expected(element)
+        except exc.ArgumentError as err:
+            self._raise_for_expected(element, err=err)
 
     def _post_coercion(self, resolved, expr, **kw):
         if (
