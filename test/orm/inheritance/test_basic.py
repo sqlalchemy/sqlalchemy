@@ -1229,7 +1229,9 @@ class EagerLazyTest(fixtures.MappedTest):
         foos = mapper(Foo, foo)
         bars = mapper(Bar, bar, inherits=foos)
         bars.add_property("lazy", relationship(foos, bar_foo, lazy="select"))
-        bars.add_property("eager", relationship(foos, bar_foo, lazy="joined"))
+        bars.add_property(
+            "eager", relationship(foos, bar_foo, lazy="joined", viewonly=True)
+        )
 
         foo.insert().execute(data="foo1")
         bar.insert().execute(id=1, data="bar1")

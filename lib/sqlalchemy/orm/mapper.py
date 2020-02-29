@@ -2557,6 +2557,17 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return self.base_mapper is other.base_mapper
 
+    def is_sibling(self, other):
+        """return true if the other mapper is an inheriting sibling to this
+        one.  common parent but different branch
+
+        """
+        return (
+            self.base_mapper is other.base_mapper
+            and not self.isa(other)
+            and not other.isa(self)
+        )
+
     def _canload(self, state, allow_subtypes):
         s = self.primary_mapper()
         if self.polymorphic_on is not None or allow_subtypes:

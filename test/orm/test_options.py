@@ -242,7 +242,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             inherits=Address,
             properties={
                 "sub_attr": column_property(address_table.c.email_address),
-                "dings": relationship(Dingaling),
+                "dings": relationship(Dingaling, viewonly=True),
             },
         )
 
@@ -585,7 +585,7 @@ class OptionsTest(PathTest, QueryTest):
         mapper(
             SubAddr,
             inherits=Address,
-            properties={"flub": relationship(Dingaling)},
+            properties={"flub": relationship(Dingaling, viewonly=True)},
         )
 
         q = sess.query(Address)
@@ -604,7 +604,7 @@ class OptionsTest(PathTest, QueryTest):
         mapper(
             SubAddr,
             inherits=Address,
-            properties={"flub": relationship(Dingaling)},
+            properties={"flub": relationship(Dingaling, viewonly=True)},
         )
 
         q = sess.query(SubAddr)
@@ -623,7 +623,7 @@ class OptionsTest(PathTest, QueryTest):
         mapper(
             SubAddr,
             inherits=Address,
-            properties={"flub": relationship(Dingaling)},
+            properties={"flub": relationship(Dingaling, viewonly=True)},
         )
 
         q = sess.query(Address)
@@ -708,7 +708,7 @@ class OptionsTest(PathTest, QueryTest):
         mapper(
             SubAddr,
             inherits=Address,
-            properties={"flub": relationship(Dingaling)},
+            properties={"flub": relationship(Dingaling, viewonly=True)},
         )
 
         q = sess.query(User)

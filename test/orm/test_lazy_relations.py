@@ -645,6 +645,7 @@ class LazyTest(_fixtures.FixtureTest):
                         users.c.id == open_mapper.user_id,
                     ),
                     lazy="select",
+                    overlaps="closed_orders",
                 ),
                 closed_orders=relationship(
                     closed_mapper,
@@ -653,6 +654,7 @@ class LazyTest(_fixtures.FixtureTest):
                         users.c.id == closed_mapper.user_id,
                     ),
                     lazy="select",
+                    overlaps="open_orders",
                 ),
             ),
         )

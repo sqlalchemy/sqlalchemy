@@ -3123,6 +3123,7 @@ class CustomJoinTest(QueryTest):
                         orders.c.isopen == 1, users.c.id == orders.c.user_id
                     ),
                     lazy="select",
+                    viewonly=True,
                 ),
                 closed_orders=relationship(
                     Order,
@@ -3130,6 +3131,7 @@ class CustomJoinTest(QueryTest):
                         orders.c.isopen == 0, users.c.id == orders.c.user_id
                     ),
                     lazy="select",
+                    viewonly=True,
                 ),
             ),
         )

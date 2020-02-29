@@ -1142,7 +1142,9 @@ class RelationshipToSingleTest(
         mapper(
             Company,
             companies,
-            properties={"engineers": relationship(Engineer)},
+            properties={
+                "engineers": relationship(Engineer, back_populates="company")
+            },
         )
         mapper(
             Employee,

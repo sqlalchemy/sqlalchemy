@@ -6,6 +6,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import mapper
@@ -791,6 +792,8 @@ class MiscTest(fixtures.ORMTest):
             session.add(b)
             assert a in session, "base is %s" % base
 
+            clear_mappers()
+
     def test_compileonattr_rel_backref_b(self):
         m = MetaData()
         t1 = Table(
@@ -832,3 +835,4 @@ class MiscTest(fixtures.ORMTest):
             session = create_session()
             session.add(a)
             assert b in session, "base: %s" % base
+            clear_mappers()

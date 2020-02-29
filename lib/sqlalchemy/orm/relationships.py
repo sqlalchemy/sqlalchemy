@@ -16,6 +16,7 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 from __future__ import absolute_import
 
 import collections
+import re
 import weakref
 
 from . import attributes
@@ -131,6 +132,7 @@ class RelationshipProperty(StrategizedProperty):
         order_by=False,
         backref=None,
         back_populates=None,
+        overlaps=None,
         post_update=False,
         cascade=False,
         viewonly=False,
@@ -319,6 +321,18 @@ class RelationshipProperty(StrategizedProperty):
 
             :paramref:`~.relationship.backref` - alternative form
             of backref specification.
+
+        :param overlaps:
+           A string name or comma-delimited set of names of other relationships
+           on either this mapper, a descendant mapper, or a target mapper with
+           which this relationship may write to the same foreign keys upon
+           persistence.   The only effect this has is to eliminate the
+           warning that this relationship will conflict with another upon
+           persistence.   This is used for such relationships that are truly
+           capable of conflicting with each other on write, but the application
+           will ensure that no such conflicts occur.
+
+           .. versionadded:: 1.4
 
         :param bake_queries=True:
           Use the :class:`.BakedQuery` cache to cache the construction of SQL
@@ -916,6 +930,10 @@ class RelationshipProperty(StrategizedProperty):
         self.strategy_key = (("lazy", self.lazy),)
 
         self._reverse_property = set()
+        if overlaps:
+            self._overlaps = set(re.split(r"\s*,\s*", overlaps))
+        else:
+            self._overlaps = ()
 
         if cascade is not False:
             self.cascade = cascade
@@ -3120,8 +3138,6 @@ class JoinCondition(object):
             # if multiple relationships overlap foreign() directly, but
             # we're going to assume it's typically a ForeignKeyConstraint-
             # level configuration that benefits from this warning.
-            if len(to_.foreign_keys) < 2:
-                continue
 
             if to_ not in self._track_overlapping_sync_targets:
                 self._track_overlapping_sync_targets[
@@ -3134,12 +3150,15 @@ class JoinCondition(object):
                 for pr, fr_ in prop_to_from.items():
                     if (
                         pr.mapper in mapperlib._mapper_registry
-                        and (
-                            self.prop._persists_for(pr.parent)
-                            or pr._persists_for(self.prop.parent)
-                        )
-                        and fr_ is not from_
                         and pr not in self.prop._reverse_property
+                        and pr.key not in self.prop._overlaps
+                        and self.prop.key not in pr._overlaps
+                        and not self.prop.parent.is_sibling(pr.parent)
+                        and not self.prop.mapper.is_sibling(pr.mapper)
+                        and (
+                            self.prop.key != pr.key
+                            or not self.prop.parent.common_parent(pr.parent)
+                        )
                     ):
 
                         other_props.append((pr, fr_))
@@ -3148,10 +3167,16 @@ class JoinCondition(object):
                     util.warn(
                         "relationship '%s' will copy column %s to column %s, "
                         "which conflicts with relationship(s): %s. "
-                        "Consider applying "
-                        "viewonly=True to read-only relationships, or provide "
-                        "a primaryjoin condition marking writable columns "
-                        "with the foreign() annotation."
+                        "If this is not the intention, consider if these "
+                        "relationships should be linked with "
+                        "back_populates, or if viewonly=True should be "
+                        "applied to one or more if they are read-only. "
+                        "For the less common case that foreign key "
+                        "constraints are partially overlapping, the "
+                        "orm.foreign() "
+                        "annotation can be used to isolate the columns that "
+                        "should be written towards.   The 'overlaps' "
+                        "parameter may be used to remove this warning."
                         % (
                             self.prop,
                             from_,

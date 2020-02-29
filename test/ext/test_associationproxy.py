@@ -101,6 +101,9 @@ class AutoFlushTest(fixtures.TablesTest):
             Column("name", String(50)),
         )
 
+    def teardown(self):
+        clear_mappers()
+
     def _fixture(self, collection_class, is_dict=False):
         class Parent(object):
             collection = association_proxy("_collection", "child")
@@ -1596,8 +1599,10 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             Keyword,
             keywords,
             properties={
-                "user_keyword": relationship(UserKeyword, uselist=False),
-                "user_keywords": relationship(UserKeyword),
+                "user_keyword": relationship(
+                    UserKeyword, uselist=False, back_populates="keyword"
+                ),
+                "user_keywords": relationship(UserKeyword, viewonly=True),
             },
         )
 
@@ -1606,7 +1611,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             userkeywords,
             properties={
                 "user": relationship(User, backref="user_keywords"),
-                "keyword": relationship(Keyword),
+                "keyword": relationship(
+                    Keyword, back_populates="user_keyword"
+                ),
             },
         )
         mapper(
@@ -3426,7 +3433,7 @@ class ScopeBehaviorTest(fixtures.DeclarativeMappedTest):
             data = Column(String(50))
             bs = relationship("B")
 
-            b_dyn = relationship("B", lazy="dynamic")
+            b_dyn = relationship("B", lazy="dynamic", viewonly=True)
 
             b_data = association_proxy("bs", "data")
 
