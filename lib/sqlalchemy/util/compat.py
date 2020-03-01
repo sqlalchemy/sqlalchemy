@@ -369,41 +369,6 @@ else:
     import collections as collections_abc  # noqa
 
 
-@contextlib.contextmanager
-def nested(*managers):
-    """Implement contextlib.nested, mostly for unit tests.
-
-    As tests still need to run on py2.6 we can't use multiple-with yet.
-
-    Function is removed in py3k but also emits deprecation warning in 2.7
-    so just roll it here for everyone.
-
-    """
-
-    exits = []
-    vars_ = []
-    exc = (None, None, None)
-    try:
-        for mgr in managers:
-            exit_ = mgr.__exit__
-            enter = mgr.__enter__
-            vars_.append(enter())
-            exits.append(exit_)
-        yield vars_
-    except:
-        exc = sys.exc_info()
-    finally:
-        while exits:
-            exit_ = exits.pop()  # noqa
-            try:
-                if exit_(*exc):
-                    exc = (None, None, None)
-            except:
-                exc = sys.exc_info()
-        if exc != (None, None, None):
-            reraise(exc[0], exc[1], exc[2])
-
-
 def raise_from_cause(exception, exc_info=None):
     if exc_info is None:
         exc_info = sys.exc_info()
