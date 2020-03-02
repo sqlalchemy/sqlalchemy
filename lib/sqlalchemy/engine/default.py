@@ -305,17 +305,7 @@ class DefaultDialect(interfaces.Dialect):
         self.do_rollback(connection.connection)
 
     def on_connect(self):
-        """return a callable which sets up a newly created DBAPI connection.
-
-        This is used to set dialect-wide per-connection options such as
-        isolation modes, unicode modes, etc.
-
-        If a callable is returned, it will be assembled into a pool listener
-        that receives the direct DBAPI connection, with all wrappers removed.
-
-        If None is returned, no listener will be generated.
-
-        """
+        # inherits the docstring from interfaces.Dialect.on_connect
         return None
 
     def _check_unicode_returns(self, connection, additional_tests=None):
@@ -434,9 +424,11 @@ class DefaultDialect(interfaces.Dialect):
             )
 
     def connect(self, *cargs, **cparams):
+        # inherits the docstring from interfaces.Dialect.connect
         return self.dbapi.connect(*cargs, **cparams)
 
     def create_connect_args(self, url):
+        # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)
         return [[], opts]
