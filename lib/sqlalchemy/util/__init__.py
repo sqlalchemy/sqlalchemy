@@ -58,7 +58,6 @@ from .compat import iterbytes  # noqa
 from .compat import itertools_filter  # noqa
 from .compat import itertools_filterfalse  # noqa
 from .compat import namedtuple  # noqa
-from .compat import nested  # noqa
 from .compat import next  # noqa
 from .compat import parse_qsl  # noqa
 from .compat import pickle  # noqa

@@ -47,7 +47,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import nested
 
 
 users, metadata, users_autoinc = None, None, None
@@ -348,16 +347,14 @@ class ExecuteTest(fixtures.TestBase):
         class NonStandardException(OperationalError):
             pass
 
-        with nested(
-            patch.object(testing.db.dialect, "dbapi", Mock(Error=DBAPIError)),
-            patch.object(
-                testing.db.dialect, "is_disconnect", lambda *arg: False
-            ),
-            patch.object(
-                testing.db.dialect,
-                "do_execute",
-                Mock(side_effect=NonStandardException),
-            ),
+        with patch.object(
+            testing.db.dialect, "dbapi", Mock(Error=DBAPIError)
+        ), patch.object(
+            testing.db.dialect, "is_disconnect", lambda *arg: False
+        ), patch.object(
+            testing.db.dialect,
+            "do_execute",
+            Mock(side_effect=NonStandardException),
         ):
             with testing.db.connect() as conn:
                 assert_raises(
