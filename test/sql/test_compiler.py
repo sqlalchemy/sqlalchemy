@@ -3642,16 +3642,17 @@ class UnsupportedTest(fixtures.TestBase):
     def test_unsupported_element_meth_visit_name(self):
         from sqlalchemy.sql.expression import ClauseElement
 
-        class SomeElement(ClauseElement):
-            @classmethod
-            def __visit_name__(cls):
-                return "some_element"
+        def go():
+            class SomeElement(ClauseElement):
+                @classmethod
+                def __visit_name__(cls):
+                    return "some_element"
 
         assert_raises_message(
-            exc.UnsupportedCompilationError,
-            r"Compiler <sqlalchemy.sql.compiler.StrSQLCompiler .*"
-            r"can't render element of type <class '.*SomeElement'>",
-            SomeElement().compile,
+            exc.InvalidRequestError,
+            r"__visit_name__ on class SomeElement must be a string at "
+            r"the class level",
+            go,
         )
 
     def test_unsupported_operator(self):

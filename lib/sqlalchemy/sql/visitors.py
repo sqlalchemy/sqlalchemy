@@ -24,7 +24,6 @@ http://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
 """
 
 from collections import deque
-import operator
 
 from .. import exc
 from .. import util
@@ -53,32 +52,26 @@ def _generate_compiler_dispatch(cls):
     """
     visit_name = cls.__visit_name__
 
-    if isinstance(visit_name, util.compat.string_types):
-        # There is an optimization opportunity here because the
-        # the string name of the class's __visit_name__ is known at
-        # this early stage (import time) so it can be pre-constructed.
-        getter = operator.attrgetter("visit_%s" % visit_name)
+    if not isinstance(visit_name, util.compat.string_types):
+        raise exc.InvalidRequestError(
+            "__visit_name__ on class %s must be a string at the class level"
+            % cls.__name__
+        )
 
-        def _compiler_dispatch(self, visitor, **kw):
-            try:
-                meth = getter(visitor)
-            except AttributeError:
-                raise exc.UnsupportedCompilationError(visitor, cls)
-            else:
-                return meth(self, **kw)
+    code = (
+        "def _compiler_dispatch(self, visitor, **kw):\n"
+        "    try:\n"
+        "        meth = visitor.visit_%(name)s\n"
+        "    except AttributeError:\n"
+        "        util.raise_from_cause(\n"
+        "            exc.UnsupportedCompilationError(visitor, cls))\n"
+        "    else:\n"
+        "        return meth(self, **kw)\n"
+    ) % {"name": visit_name}
 
-    else:
-        # The optimization opportunity is lost for this case because the
-        # __visit_name__ is not yet a string. As a result, the visit
-        # string has to be recalculated with each compilation.
-        def _compiler_dispatch(self, visitor, **kw):
-            visit_attr = "visit_%s" % self.__visit_name__
-            try:
-                meth = getattr(visitor, visit_attr)
-            except AttributeError:
-                raise exc.UnsupportedCompilationError(visitor, cls)
-            else:
-                return meth(self, **kw)
+    _compiler_dispatch = langhelpers._exec_code_in_env(
+        code, {"exc": exc, "cls": cls, "util": util}, "_compiler_dispatch"
+    )
 
     _compiler_dispatch.__doc__ = """Look for an attribute named "visit_"
         + self.__visit_name__ on the visitor, and call it with the same

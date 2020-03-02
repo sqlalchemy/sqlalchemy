@@ -2238,14 +2238,6 @@ class ColumnDefault(DefaultGenerator):
                 "positional arguments"
             )
 
-    def _visit_name(self):
-        if self.for_update:
-            return "column_onupdate"
-        else:
-            return "column_default"
-
-    __visit_name__ = property(_visit_name)
-
     def __repr__(self):
         return "ColumnDefault(%r)" % (self.arg,)
 
@@ -2861,6 +2853,8 @@ class CheckConstraint(ColumnCollectionConstraint):
 
     _allow_multiple_tables = True
 
+    __visit_name__ = "table_or_column_check_constraint"
+
     @_document_text_coercion(
         "sqltext",
         ":class:`.CheckConstraint`",
@@ -2925,13 +2919,9 @@ class CheckConstraint(ColumnCollectionConstraint):
         if table is not None:
             self._set_parent_with_dispatch(table)
 
-    def __visit_name__(self):
-        if isinstance(self.parent, Table):
-            return "check_constraint"
-        else:
-            return "column_check_constraint"
-
-    __visit_name__ = property(__visit_name__)
+    @property
+    def is_column_level(self):
+        return not isinstance(self.parent, Table)
 
     def copy(self, target_table=None, **kw):
         if target_table is not None:
