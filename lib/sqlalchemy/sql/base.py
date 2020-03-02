@@ -128,8 +128,8 @@ class _DialectArgView(util.collections_abc.MutableMapping):
     def _key(self, key):
         try:
             dialect, value_key = key.split("_", 1)
-        except ValueError:
-            raise KeyError(key)
+        except ValueError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return dialect, value_key
 
@@ -138,17 +138,20 @@ class _DialectArgView(util.collections_abc.MutableMapping):
 
         try:
             opt = self.obj.dialect_options[dialect]
-        except exc.NoSuchModuleError:
-            raise KeyError(key)
+        except exc.NoSuchModuleError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return opt[value_key]
 
     def __setitem__(self, key, value):
         try:
             dialect, value_key = self._key(key)
-        except KeyError:
-            raise exc.ArgumentError(
-                "Keys must be of the form <dialectname>_<argname>"
+        except KeyError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "Keys must be of the form <dialectname>_<argname>"
+                ),
+                replace_context=err,
             )
         else:
             self.obj.dialect_options[dialect][value_key] = value
@@ -634,17 +637,17 @@ class ColumnCollection(object):
     def __getitem__(self, key):
         try:
             return self._index[key]
-        except KeyError:
+        except KeyError as err:
             if isinstance(key, util.int_types):
-                raise IndexError(key)
+                util.raise_(IndexError(key), replace_context=err)
             else:
                 raise
 
     def __getattr__(self, key):
         try:
             return self._index[key]
-        except KeyError:
-            raise AttributeError(key)
+        except KeyError as err:
+            util.raise_(AttributeError(key), replace_context=err)
 
     def __contains__(self, key):
         if key not in self._index:

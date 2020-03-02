@@ -99,9 +99,9 @@ def instances(query, cursor, context):
 
             if not query._yield_per:
                 break
-    except Exception as err:
-        cursor.close()
-        util.raise_from_cause(err)
+    except Exception:
+        with util.safe_reraise():
+            cursor.close()
 
 
 @util.dependencies("sqlalchemy.orm.query")

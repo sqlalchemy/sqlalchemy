@@ -1019,15 +1019,18 @@ class Query(Generative):
                     for prop in mapper._identity_key_props
                 )
 
-            except KeyError:
-                raise sa_exc.InvalidRequestError(
-                    "Incorrect names of values in identifier to formulate "
-                    "primary key for query.get(); primary key attribute names"
-                    " are %s"
-                    % ",".join(
-                        "'%s'" % prop.key
-                        for prop in mapper._identity_key_props
-                    )
+            except KeyError as err:
+                util.raise_(
+                    sa_exc.InvalidRequestError(
+                        "Incorrect names of values in identifier to formulate "
+                        "primary key for query.get(); primary key attribute "
+                        "names are %s"
+                        % ",".join(
+                            "'%s'" % prop.key
+                            for prop in mapper._identity_key_props
+                        )
+                    ),
+                    replace_context=err,
                 )
 
         if (
@@ -3292,9 +3295,12 @@ class Query(Generative):
         """
         try:
             ret = self.one_or_none()
-        except orm_exc.MultipleResultsFound:
-            raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one()"
+        except orm_exc.MultipleResultsFound as err:
+            util.raise_(
+                orm_exc.MultipleResultsFound(
+                    "Multiple rows were found for one()"
+                ),
+                replace_context=err,
             )
         else:
             if ret is None:

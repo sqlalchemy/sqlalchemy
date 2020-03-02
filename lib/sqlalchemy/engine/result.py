@@ -53,11 +53,11 @@ class ResultMetaData(object):
     def _has_key(self, key):
         return key in self._keymap
 
-    def _key_fallback(self, key):
+    def _key_fallback(self, key, err):
         if isinstance(key, int):
-            raise IndexError(key)
+            util.raise_(IndexError(key), replace_context=err)
         else:
-            raise KeyError(key)
+            util.raise_(KeyError(key), replace_context=err)
 
 
 class SimpleResultMetaData(ResultMetaData):
@@ -546,11 +546,14 @@ class CursorResultMetaData(ResultMetaData):
         ) in self._colnames_from_description(context, cursor_description):
             yield idx, colname, sqltypes.NULLTYPE, coltype, None, untranslated
 
-    def _key_fallback(self, key, raiseerr=True):
+    def _key_fallback(self, key, err, raiseerr=True):
         if raiseerr:
-            raise exc.NoSuchColumnError(
-                "Could not locate column in row for column '%s'"
-                % util.string_or_unprintable(key)
+            util.raise_(
+                exc.NoSuchColumnError(
+                    "Could not locate column in row for column '%s'"
+                    % util.string_or_unprintable(key)
+                ),
+                replace_context=err,
             )
         else:
             return None
@@ -570,8 +573,8 @@ class CursorResultMetaData(ResultMetaData):
     def _getter(self, key, raiseerr=True):
         try:
             rec = self._keymap[key]
-        except KeyError:
-            rec = self._key_fallback(key, raiseerr)
+        except KeyError as ke:
+            rec = self._key_fallback(key, ke, raiseerr)
             if rec is None:
                 return None
 
@@ -598,8 +601,8 @@ class CursorResultMetaData(ResultMetaData):
         for key in keys:
             try:
                 rec = self._keymap[key]
-            except KeyError:
-                rec = self._key_fallback(key, raiseerr)
+            except KeyError as ke:
+                rec = self._key_fallback(key, ke, raiseerr)
                 if rec is None:
                     return None
 
@@ -656,9 +659,9 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
             )
             return True
         else:
-            return self._key_fallback(key, False) is not None
+            return self._key_fallback(key, None, False) is not None
 
-    def _key_fallback(self, key, raiseerr=True):
+    def _key_fallback(self, key, err, raiseerr=True):
         map_ = self._keymap
         result = None
 
@@ -714,9 +717,12 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
                     )
         if result is None:
             if raiseerr:
-                raise exc.NoSuchColumnError(
-                    "Could not locate column in row for column '%s'"
-                    % util.string_or_unprintable(key)
+                util.raise_(
+                    exc.NoSuchColumnError(
+                        "Could not locate column in row for column '%s'"
+                        % util.string_or_unprintable(key)
+                    ),
+                    replace_context=err,
                 )
             else:
                 return None
@@ -736,7 +742,7 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
         if key in self._keymap:
             return True
         else:
-            return self._key_fallback(key, False) is not None
+            return self._key_fallback(key, None, False) is not None
 
 
 class CursorFetchStrategy(object):
@@ -807,9 +813,12 @@ class NoCursorDQLFetchStrategy(CursorFetchStrategy):
     def fetchall(self):
         return self._non_result([])
 
-    def _non_result(self, default):
+    def _non_result(self, default, err=None):
         if self.closed:
-            raise exc.ResourceClosedError("This result object is closed.")
+            util.raise_(
+                exc.ResourceClosedError("This result object is closed."),
+                replace_context=err,
+            )
         else:
             return default
 
@@ -843,10 +852,13 @@ class NoCursorDMLFetchStrategy(CursorFetchStrategy):
     def fetchall(self):
         return self._non_result([])
 
-    def _non_result(self, default):
-        raise exc.ResourceClosedError(
-            "This result object does not return rows. "
-            "It has been closed automatically."
+    def _non_result(self, default, err=None):
+        util.raise_(
+            exc.ResourceClosedError(
+                "This result object does not return rows. "
+                "It has been closed automatically."
+            ),
+            replace_context=err,
         )
 
 
@@ -1123,24 +1135,24 @@ class BaseResult(object):
     def _getter(self, key, raiseerr=True):
         try:
             getter = self._metadata._getter
-        except AttributeError:
-            return self.cursor_strategy._non_result(None)
+        except AttributeError as err:
+            return self.cursor_strategy._non_result(None, err)
         else:
             return getter(key, raiseerr)
 
     def _tuple_getter(self, key, raiseerr=True):
         try:
             getter = self._metadata._tuple_getter
-        except AttributeError:
-            return self.cursor_strategy._non_result(None)
+        except AttributeError as err:
+            return self.cursor_strategy._non_result(None, err)
         else:
             return getter(key, raiseerr)
 
     def _has_key(self, key):
         try:
             has_key = self._metadata._has_key
-        except AttributeError:
-            return self.cursor_strategy._non_result(None)
+        except AttributeError as err:
+            return self.cursor_strategy._non_result(None, err)
         else:
             return has_key(key)
 

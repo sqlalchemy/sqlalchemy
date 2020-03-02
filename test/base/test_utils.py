@@ -3,7 +3,6 @@
 import copy
 import datetime
 import inspect
-import sys
 
 from sqlalchemy import exc
 from sqlalchemy import sql
@@ -2899,20 +2898,7 @@ class ReraiseTest(fixtures.TestBase):
         except MyException as err:
             is_(err.__cause__, None)
 
-    def test_reraise_disallow_same_cause(self):
-        class MyException(Exception):
-            pass
-
-        def go():
-            try:
-                raise MyException("exc one")
-            except Exception as err:
-                type_, value, tb = sys.exc_info()
-                util.reraise(type_, err, tb, value)
-
-        assert_raises_message(AssertionError, "Same cause emitted", go)
-
-    def test_raise_from_cause(self):
+    def test_raise_from_cause_legacy(self):
         class MyException(Exception):
             pass
 
@@ -2926,6 +2912,28 @@ class ReraiseTest(fixtures.TestBase):
                 raise me
             except Exception:
                 util.raise_from_cause(MyOtherException("exc two"))
+
+        try:
+            go()
+            assert False
+        except MyOtherException as moe:
+            if testing.requires.python3.enabled:
+                is_(moe.__cause__, me)
+
+    def test_raise_from(self):
+        class MyException(Exception):
+            pass
+
+        class MyOtherException(Exception):
+            pass
+
+        me = MyException("exc on")
+
+        def go():
+            try:
+                raise me
+            except Exception as err:
+                util.raise_(MyOtherException("exc two"), from_=err)
 
         try:
             go()

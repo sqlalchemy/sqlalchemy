@@ -709,12 +709,13 @@ class ExecuteTest(fixtures.TestBase):
                     return super(MockCursor, self).execute(stmt, params, **kw)
 
         eng = engines.proxying_engine(cursor_cls=MockCursor)
-        assert_raises_message(
-            tsa.exc.SAWarning,
-            "Exception attempting to detect unicode returns",
-            eng.connect,
-        )
-        assert eng.dialect.returns_unicode_strings in (True, False)
+        with testing.expect_warnings(
+            "Exception attempting to detect unicode returns"
+        ):
+            eng.connect()
+
+        # because plain varchar passed, we don't know the correct answer
+        eq_(eng.dialect.returns_unicode_strings, "conditional")
         eng.dispose()
 
     def test_works_after_dispose(self):

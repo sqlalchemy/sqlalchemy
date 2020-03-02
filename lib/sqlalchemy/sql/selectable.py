@@ -2620,10 +2620,13 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             return None
         try:
             value = clause._limit_offset_value
-        except AttributeError:
-            raise exc.CompileError(
-                "This SELECT structure does not use a simple "
-                "integer value for %s" % attrname
+        except AttributeError as err:
+            util.raise_(
+                exc.CompileError(
+                    "This SELECT structure does not use a simple "
+                    "integer value for %s" % attrname
+                ),
+                replace_context=err,
             )
         else:
             return util.asint(value)
@@ -3489,10 +3492,13 @@ class Select(
 
         try:
             cols_present = bool(columns)
-        except TypeError:
-            raise exc.ArgumentError(
-                "columns argument to select() must "
-                "be a Python list or other iterable"
+        except TypeError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "columns argument to select() must "
+                    "be a Python list or other iterable"
+                ),
+                from_=err,
             )
 
         if cols_present:

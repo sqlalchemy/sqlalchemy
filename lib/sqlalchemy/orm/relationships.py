@@ -2484,50 +2484,64 @@ class JoinCondition(object):
                         a_subset=self.parent_local_selectable,
                         consider_as_foreign_keys=consider_as_foreign_keys,
                     )
-        except sa_exc.NoForeignKeysError:
+        except sa_exc.NoForeignKeysError as nfe:
             if self.secondary is not None:
-                raise sa_exc.NoForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are no foreign keys "
-                    "linking these tables via secondary table '%s'.  "
-                    "Ensure that referencing columns are associated "
-                    "with a ForeignKey or ForeignKeyConstraint, or "
-                    "specify 'primaryjoin' and 'secondaryjoin' "
-                    "expressions." % (self.prop, self.secondary)
+                util.raise_(
+                    sa_exc.NoForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are no foreign keys "
+                        "linking these tables via secondary table '%s'.  "
+                        "Ensure that referencing columns are associated "
+                        "with a ForeignKey or ForeignKeyConstraint, or "
+                        "specify 'primaryjoin' and 'secondaryjoin' "
+                        "expressions." % (self.prop, self.secondary)
+                    ),
+                    from_=nfe,
                 )
             else:
-                raise sa_exc.NoForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are no foreign keys "
-                    "linking these tables.  "
-                    "Ensure that referencing columns are associated "
-                    "with a ForeignKey or ForeignKeyConstraint, or "
-                    "specify a 'primaryjoin' expression." % self.prop
+                util.raise_(
+                    sa_exc.NoForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are no foreign keys "
+                        "linking these tables.  "
+                        "Ensure that referencing columns are associated "
+                        "with a ForeignKey or ForeignKeyConstraint, or "
+                        "specify a 'primaryjoin' expression." % self.prop
+                    ),
+                    from_=nfe,
                 )
-        except sa_exc.AmbiguousForeignKeysError:
+        except sa_exc.AmbiguousForeignKeysError as afe:
             if self.secondary is not None:
-                raise sa_exc.AmbiguousForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are multiple foreign key "
-                    "paths linking the tables via secondary table '%s'.  "
-                    "Specify the 'foreign_keys' "
-                    "argument, providing a list of those columns which "
-                    "should be counted as containing a foreign key "
-                    "reference from the secondary table to each of the "
-                    "parent and child tables." % (self.prop, self.secondary)
+                util.raise_(
+                    sa_exc.AmbiguousForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are multiple foreign key "
+                        "paths linking the tables via secondary table '%s'.  "
+                        "Specify the 'foreign_keys' "
+                        "argument, providing a list of those columns which "
+                        "should be counted as containing a foreign key "
+                        "reference from the secondary table to each of the "
+                        "parent and child tables."
+                        % (self.prop, self.secondary)
+                    ),
+                    from_=afe,
                 )
             else:
-                raise sa_exc.AmbiguousForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are multiple foreign key "
-                    "paths linking the tables.  Specify the "
-                    "'foreign_keys' argument, providing a list of those "
-                    "columns which should be counted as containing a "
-                    "foreign key reference to the parent table." % self.prop
+                util.raise_(
+                    sa_exc.AmbiguousForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are multiple foreign key "
+                        "paths linking the tables.  Specify the "
+                        "'foreign_keys' argument, providing a list of those "
+                        "columns which should be counted as containing a "
+                        "foreign key reference to the parent table."
+                        % self.prop
+                    ),
+                    from_=afe,
                 )
 
     @property
