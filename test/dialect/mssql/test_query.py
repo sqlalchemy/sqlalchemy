@@ -16,7 +16,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.databases import mssql
+from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import AssertsCompiledSQL

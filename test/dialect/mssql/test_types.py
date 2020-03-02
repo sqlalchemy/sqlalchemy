@@ -32,7 +32,7 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy import util
-from sqlalchemy.databases import mssql
+from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
 from sqlalchemy.dialects.mssql.base import _MSDate

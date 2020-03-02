@@ -397,10 +397,10 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         ), "Expected reflected column to be nullable."
 
     def test_unknown_types(self):
-        from sqlalchemy.databases import postgresql
+        from sqlalchemy.dialects.postgresql import base
 
-        ischema_names = postgresql.PGDialect.ischema_names
-        postgresql.PGDialect.ischema_names = {}
+        ischema_names = base.PGDialect.ischema_names
+        base.PGDialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
             assert_raises(exc.SAWarning, Table, "testtable", m2, autoload=True)
@@ -412,7 +412,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 assert t3.c.answer.type.__class__ == sa.types.NullType
 
         finally:
-            postgresql.PGDialect.ischema_names = ischema_names
+            base.PGDialect.ischema_names = ischema_names
 
 
 class ReflectionTest(fixtures.TestBase):
