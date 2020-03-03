@@ -42,8 +42,10 @@ def _setup_crud_params(compiler, stmt, local_stmt_type, **kw):
     restore_isdelete = compiler.isdelete
 
     should_restore = (
-        restore_isinsert or restore_isupdate or restore_isdelete
-    ) or len(compiler.stack) > 1
+        (restore_isinsert or restore_isupdate or restore_isdelete)
+        or len(compiler.stack) > 1
+        or "visiting_cte" in kw
+    )
 
     if local_stmt_type is ISINSERT:
         compiler.isupdate = False
