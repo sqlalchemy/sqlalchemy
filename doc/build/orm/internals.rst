@@ -20,7 +20,6 @@ sections, are listed here.
 
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
-    :inherited-members:
 
 .. autoclass:: sqlalchemy.orm.properties.ComparableProperty
     :members:
