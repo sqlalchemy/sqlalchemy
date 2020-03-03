@@ -870,6 +870,35 @@ class Dialect(object):
         return cls
 
     @classmethod
+    def load_provisioning(cls):
+        """set up the provision.py module for this dialect.
+
+        For dialects that include a provision.py module that sets up
+        provisioning followers, this method should initiate that process.
+
+        A typical implementation would be::
+
+            @classmethod
+            def load_provisioning(cls):
+                __import__("mydialect.provision")
+
+        The default method assumes a module named ``provision.py`` inside
+        the owning package of the current dialect, based on the ``__module__``
+        attribute::
+
+            @classmethod
+            def load_provisioning(cls):
+                package = ".".join(cls.__module__.split(".")[0:-1])
+                try:
+                    __import__(package + ".provision")
+                except ImportError:
+                    pass
+
+        .. versionadded:: 1.3.14
+
+        """
+
+    @classmethod
     def engine_created(cls, engine):
         """A convenience hook called before returning the final :class:`.Engine`.
 

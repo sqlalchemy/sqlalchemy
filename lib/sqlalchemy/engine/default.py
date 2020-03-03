@@ -294,6 +294,14 @@ class DefaultDialect(interfaces.Dialect):
     def get_pool_class(cls, url):
         return getattr(cls, "poolclass", pool.QueuePool)
 
+    @classmethod
+    def load_provisioning(cls):
+        package = ".".join(cls.__module__.split(".")[0:-1])
+        try:
+            __import__(package + ".provision")
+        except ImportError:
+            pass
+
     def initialize(self, connection):
         try:
             self.server_version_info = self._get_server_version_info(

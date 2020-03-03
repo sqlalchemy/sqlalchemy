@@ -19,7 +19,6 @@ from . import util as testutil
 from .exclusions import db_spec
 from .util import fail
 from .. import exc as sa_exc
-from .. import orm
 from .. import pool
 from .. import schema
 from .. import types as sqltypes
@@ -412,6 +411,8 @@ class AssertsCompiledSQL(object):
 
         if literal_binds:
             compile_kwargs["literal_binds"] = True
+
+        from sqlalchemy import orm
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()
