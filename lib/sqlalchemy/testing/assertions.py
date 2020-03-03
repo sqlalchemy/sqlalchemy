@@ -19,7 +19,6 @@ from . import mock
 from .exclusions import db_spec
 from .util import fail
 from .. import exc as sa_exc
-from .. import orm
 from .. import schema
 from .. import types as sqltypes
 from .. import util
@@ -385,6 +384,8 @@ class AssertsCompiledSQL(object):
 
         if render_postcompile:
             compile_kwargs["render_postcompile"] = True
+
+        from sqlalchemy import orm
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()

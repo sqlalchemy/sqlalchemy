@@ -59,7 +59,6 @@ from ..sql.base import Generative
 from ..sql.selectable import ForUpdateArg
 from ..util import collections_abc
 
-
 __all__ = ["Query", "QueryContext", "aliased"]
 
 
