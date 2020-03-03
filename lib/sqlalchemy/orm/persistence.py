@@ -1630,9 +1630,12 @@ def _sort_states(mapper, states):
             persistent, key=mapper._persistent_sortkey_fn
         )
     except TypeError as err:
-        raise sa_exc.InvalidRequestError(
-            "Could not sort objects by primary key; primary key "
-            "values must be sortable in Python (was: %s)" % err
+        util.raise_(
+            sa_exc.InvalidRequestError(
+                "Could not sort objects by primary key; primary key "
+                "values must be sortable in Python (was: %s)" % err
+            ),
+            replace_context=err,
         )
     return (
         sorted(pending, key=operator.attrgetter("insert_order"))
@@ -1676,10 +1679,13 @@ class BulkUD(object):
     def _factory(cls, lookup, synchronize_session, *arg):
         try:
             klass = lookup[synchronize_session]
-        except KeyError:
-            raise sa_exc.ArgumentError(
-                "Valid strategies for session synchronization "
-                "are %s" % (", ".join(sorted(repr(x) for x in lookup)))
+        except KeyError as err:
+            util.raise_(
+                sa_exc.ArgumentError(
+                    "Valid strategies for session synchronization "
+                    "are %s" % (", ".join(sorted(repr(x) for x in lookup)))
+                ),
+                replace_context=err,
             )
         else:
             return klass(*arg)
@@ -1763,10 +1769,13 @@ class BulkEvaluate(BulkUD):
             self._additional_evaluators(evaluator_compiler)
 
         except evaluator.UnevaluatableError as err:
-            raise sa_exc.InvalidRequestError(
-                'Could not evaluate current criteria in Python: "%s". '
-                "Specify 'fetch' or False for the "
-                "synchronize_session parameter." % err
+            util.raise_(
+                sa_exc.InvalidRequestError(
+                    'Could not evaluate current criteria in Python: "%s". '
+                    "Specify 'fetch' or False for the "
+                    "synchronize_session parameter." % err
+                ),
+                from_=err,
             )
 
         # TODO: detect when the where clause is a trivial primary key match

@@ -227,11 +227,14 @@ class Load(Generative, MapperOption):
                 # use getattr on the class to work around
                 # synonyms, hybrids, etc.
                 attr = getattr(ent.class_, attr)
-            except AttributeError:
+            except AttributeError as err:
                 if raiseerr:
-                    raise sa_exc.ArgumentError(
-                        'Can\'t find property named "%s" on '
-                        "%s in this Query." % (attr, ent)
+                    util.raise_(
+                        sa_exc.ArgumentError(
+                            'Can\'t find property named "%s" on '
+                            "%s in this Query." % (attr, ent)
+                        ),
+                        replace_context=err,
                     )
                 else:
                     return None

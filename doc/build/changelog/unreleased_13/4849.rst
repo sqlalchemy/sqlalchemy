@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, general, py3k
+    :tickets: 4849
+
+    Applied an explicit "cause" to most if not all internally raised exceptions
+    that are raised from within an internal exception catch, to avoid
+    misleading stacktraces that suggest an error within the handling of an
+    exception.  While it would be preferable to suppress the internally caught
+    exception in the way that the ``__suppress_context__`` attribute would,
+    there does not as yet seem to be a way to do this without suppressing an
+    enclosing user constructed context, so for now it exposes the internally
+    caught exception as the cause so that full information about the context
+    of the error is maintained.

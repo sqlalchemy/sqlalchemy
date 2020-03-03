@@ -976,8 +976,10 @@ class Connection(Connectable):
             return self._execute_text(object_, multiparams, params)
         try:
             meth = object_._execute_on_connection
-        except AttributeError:
-            raise exc.ObjectNotExecutableError(object_)
+        except AttributeError as err:
+            util.raise_(
+                exc.ObjectNotExecutableError(object_), replace_context=err
+            )
         else:
             return meth(self, multiparams, params)
 
@@ -1369,7 +1371,7 @@ class Connection(Connectable):
         invalidate_pool_on_disconnect = not is_exit_exception
 
         if self._reentrant_error:
-            util.raise_from_cause(
+            util.raise_(
                 exc.DBAPIError.instance(
                     statement,
                     parameters,
@@ -1381,7 +1383,8 @@ class Connection(Connectable):
                     if context is not None
                     else None,
                 ),
-                exc_info,
+                with_traceback=exc_info[2],
+                from_=e,
             )
         self._reentrant_error = True
         try:
@@ -1471,11 +1474,13 @@ class Connection(Connectable):
                     self._autorollback()
 
             if newraise:
-                util.raise_from_cause(newraise, exc_info)
+                util.raise_(newraise, with_traceback=exc_info[2], from_=e)
             elif should_wrap:
-                util.raise_from_cause(sqlalchemy_exception, exc_info)
+                util.raise_(
+                    sqlalchemy_exception, with_traceback=exc_info[2], from_=e
+                )
             else:
-                util.reraise(*exc_info)
+                util.raise_(exc_info[1], with_traceback=exc_info[2])
 
         finally:
             del self._reentrant_error
@@ -1542,11 +1547,13 @@ class Connection(Connectable):
                 ) = ctx.is_disconnect
 
         if newraise:
-            util.raise_from_cause(newraise, exc_info)
+            util.raise_(newraise, with_traceback=exc_info[2], from_=e)
         elif should_wrap:
-            util.raise_from_cause(sqlalchemy_exception, exc_info)
+            util.raise_(
+                sqlalchemy_exception, with_traceback=exc_info[2], from_=e
+            )
         else:
-            util.reraise(*exc_info)
+            util.raise_(exc_info[1], with_traceback=exc_info[2])
 
     def transaction(self, callable_, *args, **kwargs):
         r"""Execute the given function within a transaction boundary.
@@ -2280,7 +2287,9 @@ class Engine(Connectable, log.Identified):
                     e, dialect, self
                 )
             else:
-                util.reraise(*sys.exc_info())
+                util.raise_(
+                    sys.exc_info()[1], with_traceback=sys.exc_info()[2]
+                )
 
     def raw_connection(self, _connection=None):
         """Return a "raw" DBAPI connection from the connection pool.

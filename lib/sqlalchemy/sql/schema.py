@@ -106,12 +106,13 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
             if item is not None:
                 try:
                     spwd = item._set_parent_with_dispatch
-                except AttributeError:
-                    util.raise_from_cause(
+                except AttributeError as err:
+                    util.raise_(
                         exc.ArgumentError(
                             "'SchemaItem' object, such as a 'Column' or a "
                             "'Constraint' expected, got %r" % item
-                        )
+                        ),
+                        replace_context=err,
                     )
                 else:
                     spwd(self)
@@ -1615,15 +1616,16 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 _proxies=[self],
                 *fk
             )
-        except TypeError:
-            util.raise_from_cause(
+        except TypeError as err:
+            util.raise_(
                 TypeError(
                     "Could not create a copy of this %r object.  "
                     "Ensure the class includes a _constructor() "
                     "attribute or method which accepts the "
                     "standard Column constructor arguments, or "
                     "references the Column class itself." % self.__class__
-                )
+                ),
+                from_=err,
             )
 
         c.table = selectable
@@ -3280,10 +3282,13 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         try:
             ColumnCollectionConstraint._set_parent(self, table)
         except KeyError as ke:
-            raise exc.ArgumentError(
-                "Can't create ForeignKeyConstraint "
-                "on table '%s': no column "
-                "named '%s' is present." % (table.description, ke.args[0])
+            util.raise_(
+                exc.ArgumentError(
+                    "Can't create ForeignKeyConstraint "
+                    "on table '%s': no column "
+                    "named '%s' is present." % (table.description, ke.args[0])
+                ),
+                from_=ke,
             )
 
         for col, fk in zip(self.columns, self.elements):

@@ -710,10 +710,13 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     def comparator(self):
         try:
             comparator_factory = self.type.comparator_factory
-        except AttributeError:
-            raise TypeError(
-                "Object %r associated with '.type' attribute "
-                "is not a TypeEngine class or object" % self.type
+        except AttributeError as err:
+            util.raise_(
+                TypeError(
+                    "Object %r associated with '.type' attribute "
+                    "is not a TypeEngine class or object" % self.type
+                ),
+                replace_context=err,
             )
         else:
             return comparator_factory(self)
@@ -721,10 +724,17 @@ class ColumnElement(operators.ColumnOperators, ClauseElement):
     def __getattr__(self, key):
         try:
             return getattr(self.comparator, key)
-        except AttributeError:
-            raise AttributeError(
-                "Neither %r object nor %r object has an attribute %r"
-                % (type(self).__name__, type(self.comparator).__name__, key)
+        except AttributeError as err:
+            util.raise_(
+                AttributeError(
+                    "Neither %r object nor %r object has an attribute %r"
+                    % (
+                        type(self).__name__,
+                        type(self.comparator).__name__,
+                        key,
+                    )
+                ),
+                replace_context=err,
             )
 
     def operate(self, op, *other, **kwargs):
@@ -1614,10 +1624,13 @@ class TextClause(Executable, ClauseElement):
                 # a unique/anonymous key in any case, so use the _orig_key
                 # so that a text() construct can support unique parameters
                 existing = new_params[bind._orig_key]
-            except KeyError:
-                raise exc.ArgumentError(
-                    "This text() construct doesn't define a "
-                    "bound parameter named %r" % bind._orig_key
+            except KeyError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "This text() construct doesn't define a "
+                        "bound parameter named %r" % bind._orig_key
+                    ),
+                    replace_context=err,
                 )
             else:
                 new_params[existing._orig_key] = bind
@@ -1625,10 +1638,13 @@ class TextClause(Executable, ClauseElement):
         for key, value in names_to_values.items():
             try:
                 existing = new_params[key]
-            except KeyError:
-                raise exc.ArgumentError(
-                    "This text() construct doesn't define a "
-                    "bound parameter named %r" % key
+            except KeyError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "This text() construct doesn't define a "
+                        "bound parameter named %r" % key
+                    ),
+                    replace_context=err,
                 )
             else:
                 new_params[key] = existing._with_value(value)
@@ -3450,9 +3466,12 @@ class Over(ColumnElement):
         else:
             try:
                 lower = int(range_[0])
-            except ValueError:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
+            except ValueError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "Integer or None expected for range value"
+                    ),
+                    replace_context=err,
                 )
             else:
                 if lower == 0:
@@ -3463,9 +3482,12 @@ class Over(ColumnElement):
         else:
             try:
                 upper = int(range_[1])
-            except ValueError:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
+            except ValueError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "Integer or None expected for range value"
+                    ),
+                    replace_context=err,
                 )
             else:
                 if upper == 0:
@@ -4613,14 +4635,19 @@ def _no_column_coercion(element):
     )
 
 
-def _no_text_coercion(element, exc_cls=exc.ArgumentError, extra=None):
-    raise exc_cls(
-        "%(extra)sTextual SQL expression %(expr)r should be "
-        "explicitly declared as text(%(expr)r)"
-        % {
-            "expr": util.ellipses_string(element),
-            "extra": "%s " % extra if extra else "",
-        }
+def _no_text_coercion(
+    element, exc_cls=exc.ArgumentError, extra=None, err=None
+):
+    util.raise_(
+        exc_cls(
+            "%(extra)sTextual SQL expression %(expr)r should be "
+            "explicitly declared as text(%(expr)r)"
+            % {
+                "expr": util.ellipses_string(element),
+                "extra": "%s " % extra if extra else "",
+            }
+        ),
+        replace_context=err,
     )
 
 

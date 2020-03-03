@@ -997,9 +997,12 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 self.extract_map[extract.field],
                 self.process(extract.expr, **kw),
             )
-        except KeyError:
-            raise exc.CompileError(
-                "%s is not a valid extract argument." % extract.field
+        except KeyError as err:
+            util.raise_(
+                exc.CompileError(
+                    "%s is not a valid extract argument." % extract.field
+                ),
+                replace_context=err,
             )
 
     def limit_clause(self, select, **kw):
@@ -1531,11 +1534,14 @@ class SQLiteDialect(default.DefaultDialect):
     def set_isolation_level(self, connection, level):
         try:
             isolation_level = self._isolation_lookup[level.replace("_", " ")]
-        except KeyError:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
+        except KeyError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "Invalid value '%s' for isolation_level. "
+                    "Valid isolation levels for %s are %s"
+                    % (level, self.name, ", ".join(self._isolation_lookup))
+                ),
+                replace_context=err,
             )
         cursor = connection.cursor()
         cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)

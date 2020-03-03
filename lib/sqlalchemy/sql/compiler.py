@@ -792,12 +792,13 @@ class SQLCompiler(Compiled):
                 col = only_froms[element.element]
             else:
                 col = with_cols[element.element]
-        except KeyError:
+        except KeyError as ke:
             elements._no_text_coercion(
                 element.element,
                 exc.CompileError,
                 "Can't resolve label reference for ORDER BY / "
                 "GROUP BY / DISTINCT etc.",
+                err=ke,
             )
         else:
             kwargs["render_label_as_label"] = col
@@ -1313,8 +1314,11 @@ class SQLCompiler(Compiled):
         else:
             try:
                 opstring = OPERATORS[operator_]
-            except KeyError:
-                raise exc.UnsupportedCompilationError(self, operator_)
+            except KeyError as err:
+                util.raise_(
+                    exc.UnsupportedCompilationError(self, operator_),
+                    replace_context=err,
+                )
             else:
                 return self._generate_generic_binary(binary, opstring, **kw)
 
@@ -2896,11 +2900,12 @@ class DDLCompiler(Compiled):
                 if column.primary_key:
                     first_pk = True
             except exc.CompileError as ce:
-                util.raise_from_cause(
+                util.raise_(
                     exc.CompileError(
                         util.u("(in table '%s', column '%s'): %s")
                         % (table.description, column.name, ce.args[0])
-                    )
+                    ),
+                    from_=ce,
                 )
 
         const = self.create_table_constraints(

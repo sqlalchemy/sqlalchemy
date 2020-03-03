@@ -225,16 +225,19 @@ class QueryableAttribute(
     def __getattr__(self, key):
         try:
             return getattr(self.comparator, key)
-        except AttributeError:
-            raise AttributeError(
-                "Neither %r object nor %r object associated with %s "
-                "has an attribute %r"
-                % (
-                    type(self).__name__,
-                    type(self.comparator).__name__,
-                    self,
-                    key,
-                )
+        except AttributeError as err:
+            util.raise_(
+                AttributeError(
+                    "Neither %r object nor %r object associated with %s "
+                    "has an attribute %r"
+                    % (
+                        type(self).__name__,
+                        type(self.comparator).__name__,
+                        self,
+                        key,
+                    )
+                ),
+                replace_context=err,
             )
 
     def __str__(self):
@@ -367,31 +370,39 @@ def create_proxied_attribute(descriptor):
             comparator."""
             try:
                 return getattr(descriptor, attribute)
-            except AttributeError:
+            except AttributeError as err:
                 if attribute == "comparator":
-                    raise AttributeError("comparator")
+                    util.raise_(
+                        AttributeError("comparator"), replace_context=err
+                    )
                 try:
                     # comparator itself might be unreachable
                     comparator = self.comparator
-                except AttributeError:
-                    raise AttributeError(
-                        "Neither %r object nor unconfigured comparator "
-                        "object associated with %s has an attribute %r"
-                        % (type(descriptor).__name__, self, attribute)
+                except AttributeError as err2:
+                    util.raise_(
+                        AttributeError(
+                            "Neither %r object nor unconfigured comparator "
+                            "object associated with %s has an attribute %r"
+                            % (type(descriptor).__name__, self, attribute)
+                        ),
+                        replace_context=err2,
                     )
                 else:
                     try:
                         return getattr(comparator, attribute)
-                    except AttributeError:
-                        raise AttributeError(
-                            "Neither %r object nor %r object "
-                            "associated with %s has an attribute %r"
-                            % (
-                                type(descriptor).__name__,
-                                type(comparator).__name__,
-                                self,
-                                attribute,
-                            )
+                    except AttributeError as err3:
+                        util.raise_(
+                            AttributeError(
+                                "Neither %r object nor %r object "
+                                "associated with %s has an attribute %r"
+                                % (
+                                    type(descriptor).__name__,
+                                    type(comparator).__name__,
+                                    self,
+                                    attribute,
+                                )
+                            ),
+                            replace_context=err3,
                         )
 
     Proxy.__name__ = type(descriptor).__name__ + "Proxy"
@@ -716,12 +727,15 @@ class AttributeImpl(object):
                 elif value is ATTR_WAS_SET:
                     try:
                         return dict_[key]
-                    except KeyError:
+                    except KeyError as err:
                         # TODO: no test coverage here.
-                        raise KeyError(
-                            "Deferred loader for attribute "
-                            "%r failed to populate "
-                            "correctly" % key
+                        util.raise_(
+                            KeyError(
+                                "Deferred loader for attribute "
+                                "%r failed to populate "
+                                "correctly" % key
+                            ),
+                            replace_context=err,
                         )
                 elif value is not ATTR_EMPTY:
                     return self.set_committed_value(state, dict_, value)

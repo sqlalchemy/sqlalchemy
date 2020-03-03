@@ -1477,7 +1477,7 @@ class Enum(Emulated, String, SchemaType):
     def _db_value_for_elem(self, elem):
         try:
             return self._valid_lookup[elem]
-        except KeyError:
+        except KeyError as err:
             # for unknown string values, we return as is.  While we can
             # validate these if we wanted, that does not allow for lesser-used
             # end-user use cases, such as using a LIKE comparison with an enum,
@@ -1491,8 +1491,11 @@ class Enum(Emulated, String, SchemaType):
             ):
                 return elem
             else:
-                raise LookupError(
-                    '"%s" is not among the defined enum values' % elem
+                util.raise_(
+                    LookupError(
+                        '"%s" is not among the defined enum values' % elem
+                    ),
+                    replace_context=err,
                 )
 
     class Comparator(String.Comparator):
@@ -1511,9 +1514,12 @@ class Enum(Emulated, String, SchemaType):
     def _object_value_for_elem(self, elem):
         try:
             return self._object_lookup[elem]
-        except KeyError:
-            raise LookupError(
-                '"%s" is not among the defined enum values' % elem
+        except KeyError as err:
+            util.raise_(
+                LookupError(
+                    '"%s" is not among the defined enum values' % elem
+                ),
+                replace_context=err,
             )
 
     def __repr__(self):

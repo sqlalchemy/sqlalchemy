@@ -10,6 +10,7 @@ from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_context_ok
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1258,7 +1259,7 @@ class QueuePoolTest(PoolTestBase):
             eq_(p.checkedout(), 0)
             eq_(p._overflow, 0)
             dbapi.shutdown(True)
-            assert_raises(Exception, p.connect)
+            assert_raises_context_ok(Exception, p.connect)
             eq_(p._overflow, 0)
             eq_(p.checkedout(), 0)  # and not 1
 
