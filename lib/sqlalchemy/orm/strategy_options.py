@@ -1258,11 +1258,6 @@ def joinedload(*keys, **kw):
     return _UnboundLoad._from_keys(_UnboundLoad.joinedload, keys, False, kw)
 
 
-@joinedload._add_unbound_all_fn
-def joinedload_all(*keys, **kw):
-    return _UnboundLoad._from_keys(_UnboundLoad.joinedload, keys, True, kw)
-
-
 @loader_option()
 def subqueryload(loadopt, attr):
     """Indicate that the given attribute should be loaded using
@@ -1299,11 +1294,6 @@ def subqueryload(loadopt, attr):
 @subqueryload._add_unbound_fn
 def subqueryload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.subqueryload, keys, False, {})
-
-
-@subqueryload._add_unbound_all_fn
-def subqueryload_all(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.subqueryload, keys, True, {})
 
 
 @loader_option()
@@ -1345,11 +1335,6 @@ def selectinload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.selectinload, keys, False, {})
 
 
-@selectinload._add_unbound_all_fn
-def selectinload_all(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.selectinload, keys, True, {})
-
-
 @loader_option()
 def lazyload(loadopt, attr):
     """Indicate that the given attribute should be loaded using "lazy"
@@ -1371,11 +1356,6 @@ def lazyload(loadopt, attr):
 @lazyload._add_unbound_fn
 def lazyload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.lazyload, keys, False, {})
-
-
-@lazyload._add_unbound_all_fn
-def lazyload_all(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.lazyload, keys, True, {})
 
 
 @loader_option()
