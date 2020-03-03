@@ -723,6 +723,7 @@ class SQLCompiler(Compiled):
         # a map which tracks "truncated" names based on
         # dialect.label_length or dialect.max_identifier_length
         self.truncated_names = {}
+
         Compiled.__init__(self, dialect, statement, **kwargs)
 
         if (
