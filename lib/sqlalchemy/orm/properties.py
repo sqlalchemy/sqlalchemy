@@ -42,13 +42,16 @@ class ColumnProperty(StrategizedProperty):
         '_mapped_by_synonym', '_deferred_column_loader')
 
     def __init__(self, *columns, **kwargs):
-        r"""Provide a column-level property for use with a Mapper.
+        r"""Provide a column-level property for use with a mapping.
 
         Column-based properties can normally be applied to the mapper's
         ``properties`` dictionary using the :class:`.Column` element directly.
         Use this function when the given column is not directly present within
         the mapper's selectable; examples include SQL expressions, functions,
         and scalar SELECT queries.
+
+        The :func:`.orm.column_property` function returns an instance of
+        :class:`.ColumnProperty`.
 
         Columns that aren't present in the mapper's selectable won't be
         persisted by the mapper and are effectively "read-only" attributes.
@@ -113,6 +116,14 @@ class ColumnProperty(StrategizedProperty):
                 :paramref:`.column_property.extension` parameter will be
                 removed in a future release.
 
+        .. seealso::
+
+            :ref:`column_property_options` - to map columns while including
+            mapping options
+
+            :ref:`mapper_column_property_sql_expressions` - to map SQL
+            expressions
+
         """
         super(ColumnProperty, self).__init__()
         self._orig_columns = [expression._labeled(c) for c in columns]
@@ -164,6 +175,21 @@ class ColumnProperty(StrategizedProperty):
     @property
     def expression(self):
         """Return the primary column or expression for this ColumnProperty.
+
+        E.g.::
+
+
+            class File(Base):
+                # ...
+
+                name = Column(String(64))
+                extension = Column(String(8))
+                filename = column_property(name + '.' + extension)
+                path = column_property('C:/' + filename.expression)
+
+        .. seealso::
+
+            :ref:`mapper_column_property_sql_expressions_composed`
 
         """
         return self.columns[0]
