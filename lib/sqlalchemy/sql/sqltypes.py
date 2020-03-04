@@ -1604,7 +1604,7 @@ class PickleType(TypeDecorator):
 
         :param pickler: defaults to cPickle.pickle or pickle.pickle if
           cPickle is not available.  May be any object with
-          pickle-compatible ``dumps` and ``loads`` methods.
+          pickle-compatible ``dumps`` and ``loads`` methods.
 
         :param comparator: a 2-arg callable predicate used
           to compare values of this type.  If left as ``None``,
