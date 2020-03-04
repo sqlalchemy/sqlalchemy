@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, performance
+    :tickets: 5180
+
+    Revised an internal change to the test system added as a result of
+    :ticket:`5085` where a testing-related module per dialect would be loaded
+    unconditionally upon making use of that dialect, pulling in SQLAlchemy's
+    testing framework as well as the ORM into the module import space.   This
+    would only impact initial startup time and memory to a modest extent,
+    however it's best that these additional modules aren't reverse-dependent on
+    straight Core usage.
