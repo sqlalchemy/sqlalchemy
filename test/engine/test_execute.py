@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
@@ -2321,6 +2322,74 @@ class HandleErrorTest(fixtures.TestBase):
                 Mock(side_effect=ProgrammingError("random error")),
             ):
                 assert_raises(MySpecialException, conn.get_isolation_level)
+
+    @testing.only_on("sqlite")
+    def test_cursor_close_resultset_failed_connectionless(self):
+        engine = engines.testing_engine()
+
+        the_conn = []
+        the_cursor = []
+
+        @event.listens_for(engine, "after_cursor_execute")
+        def go(
+            connection, cursor, statement, parameters, context, executemany
+        ):
+            the_cursor.append(cursor)
+            the_conn.append(connection)
+
+        with mock.patch(
+            "sqlalchemy.engine.result.BaseResult.__init__",
+            Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
+        ):
+            assert_raises(
+                tsa.exc.InvalidRequestError, engine.execute, text("select 1"),
+            )
+
+        # cursor is closed
+        assert_raises_message(
+            engine.dialect.dbapi.ProgrammingError,
+            "Cannot operate on a closed cursor",
+            the_cursor[0].execute,
+            "select 1",
+        )
+
+        # connection is closed
+        assert the_conn[0].closed
+
+    @testing.only_on("sqlite")
+    def test_cursor_close_resultset_failed_explicit(self):
+        engine = engines.testing_engine()
+
+        the_cursor = []
+
+        @event.listens_for(engine, "after_cursor_execute")
+        def go(
+            connection, cursor, statement, parameters, context, executemany
+        ):
+            the_cursor.append(cursor)
+
+        conn = engine.connect()
+
+        with mock.patch(
+            "sqlalchemy.engine.result.BaseResult.__init__",
+            Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
+        ):
+            assert_raises(
+                tsa.exc.InvalidRequestError, conn.execute, text("select 1"),
+            )
+
+        # cursor is closed
+        assert_raises_message(
+            engine.dialect.dbapi.ProgrammingError,
+            "Cannot operate on a closed cursor",
+            the_cursor[0].execute,
+            "select 1",
+        )
+
+        # connection not closed
+        assert not conn.closed
+
+        conn.close()
 
 
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):
