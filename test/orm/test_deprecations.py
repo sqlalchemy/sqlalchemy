@@ -25,7 +25,6 @@ from sqlalchemy.orm import foreign
 from sqlalchemy.orm import identity
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import PropComparator
 from sqlalchemy.orm import relationship
@@ -1393,57 +1392,6 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
             message,
             create_session().query(*entity_list).options,
             *options
-        )
-
-    def test_option_against_nonexistent_twolevel_all(self):
-        self._mapper_fixture_one()
-        Item = self.classes.Item
-        with testing.expect_deprecated(
-            r"The joinedload_all\(\) function is deprecated, and "
-            "will be removed in a future release.  "
-            r"Please use method chaining with joinedload\(\)"
-        ):
-            self._assert_eager_with_entity_exception(
-                [Item],
-                (joinedload_all("keywords.foo"),),
-                'Can\'t find property named \\"foo\\" on mapped class '
-                "Keyword->keywords in this Query.",
-            )
-
-    def test_all_path_vs_chained(self):
-        self._mapper_fixture_one()
-        User = self.classes.User
-        Order = self.classes.Order
-        Item = self.classes.Item
-
-        with testing.expect_deprecated(
-            r"The joinedload_all\(\) function is deprecated, and "
-            "will be removed in a future release.  "
-            r"Please use method chaining with joinedload\(\)"
-        ):
-            l1 = joinedload_all("orders.items.keywords")
-
-        sess = Session()
-        q = sess.query(User)
-        self._assert_path_result(
-            l1,
-            q,
-            [
-                (User, "orders"),
-                (User, "orders", Order, "items"),
-                (User, "orders", Order, "items", Item, "keywords"),
-            ],
-        )
-
-        l2 = joinedload("orders").joinedload("items").joinedload("keywords")
-        self._assert_path_result(
-            l2,
-            q,
-            [
-                (User, "orders"),
-                (User, "orders", Order, "items"),
-                (User, "orders", Order, "items", Item, "keywords"),
-            ],
         )
 
     def test_subqueryload_mapper_order_by(self):

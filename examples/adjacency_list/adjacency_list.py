@@ -5,7 +5,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import joinedload_all
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -108,7 +108,10 @@ if __name__ == "__main__":
     node = (
         session.query(TreeNode)
         .options(
-            joinedload_all("children", "children", "children", "children")
+            joinedload("children")
+            .joinedload("children")
+            .joinedload("children")
+            .joinedload("children")
         )
         .filter(TreeNode.name == "rootnode")
         .first()
