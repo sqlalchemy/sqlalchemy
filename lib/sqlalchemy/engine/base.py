@@ -1247,45 +1247,47 @@ class Connection(Connectable):
                     self.dialect.do_execute(
                         cursor, statement, parameters, context
                     )
+
+            if self._has_events or self.engine._has_events:
+                self.dispatch.after_cursor_execute(
+                    self,
+                    cursor,
+                    statement,
+                    parameters,
+                    context,
+                    context.executemany,
+                )
+
+            if context.compiled:
+                context.post_exec()
+
+            if context.is_crud or context.is_text:
+                result = context._setup_crud_result_proxy()
+            else:
+                result = context.get_result_proxy()
+                if result._metadata is None:
+                    result._soft_close()
+
+            if context.should_autocommit and self._root.__transaction is None:
+                self._root._commit_impl(autocommit=True)
+
+            # for "connectionless" execution, we have to close this
+            # Connection after the statement is complete.
+            if self.should_close_with_result:
+                # ResultProxy already exhausted rows / has no rows.
+                # close us now
+                if result._soft_closed:
+                    self.close()
+                else:
+                    # ResultProxy will close this Connection when no more
+                    # rows to fetch.
+                    result._autoclose_connection = True
+
         except BaseException as e:
             self._handle_dbapi_exception(
                 e, statement, parameters, cursor, context
             )
 
-        if self._has_events or self.engine._has_events:
-            self.dispatch.after_cursor_execute(
-                self,
-                cursor,
-                statement,
-                parameters,
-                context,
-                context.executemany,
-            )
-
-        if context.compiled:
-            context.post_exec()
-
-        if context.is_crud or context.is_text:
-            result = context._setup_crud_result_proxy()
-        else:
-            result = context.get_result_proxy()
-            if result._metadata is None:
-                result._soft_close()
-
-        if context.should_autocommit and self._root.__transaction is None:
-            self._root._commit_impl(autocommit=True)
-
-        # for "connectionless" execution, we have to close this
-        # Connection after the statement is complete.
-        if self.should_close_with_result:
-            # ResultProxy already exhausted rows / has no rows.
-            # close us now
-            if result._soft_closed:
-                self.close()
-            else:
-                # ResultProxy will close this Connection when no more
-                # rows to fetch.
-                result._autoclose_connection = True
         return result
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
