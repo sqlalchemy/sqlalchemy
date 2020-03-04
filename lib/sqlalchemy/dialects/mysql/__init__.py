@@ -11,7 +11,6 @@ from . import gaerdbms  # noqa
 from . import mysqlconnector  # noqa
 from . import mysqldb  # noqa
 from . import oursql  # noqa
-from . import provision  # noqa
 from . import pymysql  # noqa
 from . import pyodbc  # noqa
 from . import zxjdbc  # noqa

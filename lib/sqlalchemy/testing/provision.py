@@ -6,7 +6,6 @@ from . import engines
 from ..engine import url as sa_url
 from ..util import compat
 
-
 log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
@@ -51,7 +50,9 @@ def setup_config(db_url, options, file_config, follower_ident):
     # load the dialect, which should also have it set up its provision
     # hooks
 
-    sa_url.make_url(db_url).get_dialect()
+    dialect = sa_url.make_url(db_url).get_dialect()
+    dialect.load_provisioning()
+
     if follower_ident:
         db_url = follower_url_from_main(db_url, follower_ident)
     db_opts = {}
