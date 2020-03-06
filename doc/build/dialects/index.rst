@@ -43,26 +43,61 @@ External Dialects
 
 Currently maintained external dialect projects for SQLAlchemy include:
 
++---------------------------------------+-----------------------+
+| Database                              | Dialect               |
++=======================================+=======================+
+| Amazon Redshift (via psycopg2)        | sqlalchemy-redshift_  |
++---------------------------------------+-----------------------+
+| Apache Drill                          | sqlalchemy-drill_     |
++---------------------------------------+-----------------------+
+| Apache Druid                          | pydruid_              |
++---------------------------------------+-----------------------+
+| Apache Hive and Presto                | PyHive_               |
++---------------------------------------+-----------------------+
+| Apache Solr                           | sqlalchemy-solr_      |
++---------------------------------------+-----------------------+
+| CrateDB                               | crate-python_         |
++---------------------------------------+-----------------------+
+| EXASolution                           | sqlalchemy_exasol_    |
++---------------------------------------+-----------------------+
+| Elasticsearch (readonly)              | elasticsearch-dbapi_  |
++---------------------------------------+-----------------------+
+| Google BigQuery                       | pybigquery_           |
++---------------------------------------+-----------------------+
+| Google Sheets                         | gsheets_              |
++---------------------------------------+-----------------------+
+| IBM DB2 and Informix                  | ibm-db-sa_            |
++---------------------------------------+-----------------------+
+| Microsoft Access (via pyodbc)         | sqlalchemy-access_    |
++---------------------------------------+-----------------------+
+| Microsoft SQL Server (via python-tds) | sqlalchemy-tds_       |
++---------------------------------------+-----------------------+
+| MonetDB                               | sqlalchemy-monetdb_   |
++---------------------------------------+-----------------------+
+| SAP Hana                              | sqlalchemy-hana_      |
++---------------------------------------+-----------------------+
+| SAP Sybase SQL Anywhere               | sqlalchemy-sqlany_    |
++---------------------------------------+-----------------------+
+| Snowflake                             | snowflake-sqlalchemy_ |
++---------------------------------------+-----------------------+
+| Teradata Vantage                      | teradatasqlalchemy_   |
++---------------------------------------+-----------------------+
 
-* `ibm_db_sa <http://code.google.com/p/ibm-db/wiki/README>`_ - driver for IBM DB2 and Informix.
-* `PyHive <https://github.com/dropbox/PyHive#sqlalchemy>`_ - driver for `Apache Hive <https://hive.apache.org/>`_ and `Presto <https://prestodb.github.io/>`_.
-* `teradatasqlalchemy <https://pypi.org/project/teradatasqlalchemy/>`_ - driver for Teradata Vantage.
-* `pybigquery <https://github.com/mxmzdlv/pybigquery/>`_ - driver for Google BigQuery.
-* `sqlalchemy-redshift <https://pypi.python.org/pypi/sqlalchemy-redshift>`_ - driver for Amazon Redshift, adapts
-  the existing PostgreSQL/psycopg2 driver.
-* `sqlalchemy-drill <https://github.com/JohnOmernik/sqlalchemy-drill>`_ - driver for Apache Drill.
-* `sqlalchemy-hana <https://github.com/SAP/sqlalchemy-hana>`_ - driver for SAP Hana.
-* `sqlalchemy-solr <https://github.com/aadel/sqlalchemy-solr>`_ - driver for Apache Solr.
-* `sqlalchemy_exasol <https://github.com/blue-yonder/sqlalchemy_exasol>`_ - driver for EXASolution.
-* `sqlalchemy-sqlany <https://github.com/sqlanywhere/sqlalchemy-sqlany>`_ - driver for SAP Sybase SQL
-  Anywhere, developed by SAP.
-* `sqlalchemy-monetdb <https://github.com/gijzelaerr/sqlalchemy-monetdb>`_ - driver for MonetDB.
-* `snowflake-sqlalchemy <https://github.com/snowflakedb/snowflake-sqlalchemy>`_ - driver for `Snowflake <https://www.snowflake.net/>`_.
-* `sqlalchemy-tds <https://github.com/m32/sqlalchemy-tds>`_ - driver for MS-SQL,
-  on top of `python-tds <https://github.com/denisenkom/pytds>`_.
-* `crate <https://github.com/crate/crate-python>`_ - driver for `CrateDB <https://crate.io/>`_.
-* `sqlalchemy-access <https://pypi.org/project/sqlalchemy-access/>`_ - driver for Microsoft Access,
-  on top of `pyodbc <https://pypi.org/project/pyodbc/>`_.
-* `elasticsearch-dbapi <https://github.com/preset-io/elasticsearch-dbapi/>`_ - readonly driver for Elasticsearch.
-* `pydruid <https://github.com/druid-io/pydruid>`_ - driver for Apache Druid.
-* `gsheets <https://github.com/betodealmeida/gsheets-db-api>`_ - driver for Google Sheets.
+.. _ibm-db-sa: https://pypi.org/project/ibm-db-sa/
+.. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
+.. _teradatasqlalchemy: https://pypi.org/project/teradatasqlalchemy/
+.. _pybigquery: https://github.com/mxmzdlv/pybigquery/
+.. _sqlalchemy-redshift: https://pypi.python.org/pypi/sqlalchemy-redshift
+.. _sqlalchemy-drill: https://github.com/JohnOmernik/sqlalchemy-drill
+.. _sqlalchemy-hana: https://github.com/SAP/sqlalchemy-hana
+.. _sqlalchemy-solr: https://github.com/aadel/sqlalchemy-solr
+.. _sqlalchemy_exasol: https://github.com/blue-yonder/sqlalchemy_exasol
+.. _sqlalchemy-sqlany: https://github.com/sqlanywhere/sqlalchemy-sqlany
+.. _sqlalchemy-monetdb: https://github.com/gijzelaerr/sqlalchemy-monetdb
+.. _snowflake-sqlalchemy: https://github.com/snowflakedb/snowflake-sqlalchemy
+.. _sqlalchemy-tds: https://github.com/m32/sqlalchemy-tds
+.. _crate-python: https://github.com/crate/crate-python
+.. _sqlalchemy-access: https://pypi.org/project/sqlalchemy-access/
+.. _elasticsearch-dbapi: https://github.com/preset-io/elasticsearch-dbapi/
+.. _pydruid: https://github.com/druid-io/pydruid
+.. _gsheets: https://github.com/betodealmeida/gsheets-db-api
