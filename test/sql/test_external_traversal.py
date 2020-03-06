@@ -1005,8 +1005,10 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select(
             [literal_column("*")], from_obj=[t1alias, t2alias]
         ).scalar_subquery()
-        assert t2alias in s._froms
-        assert t1alias in s._froms
+
+        froms = list(s._iterate_from_elements())
+        assert t2alias in froms
+        assert t1alias in froms
 
         self.assert_compile(
             select([literal_column("*")], t2alias.c.col1 == s),
@@ -1016,8 +1018,9 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         s = vis.traverse(s)
 
-        assert t2alias in s._froms  # present because it was not cloned
-        assert t1alias in s._froms  # present because the adapter placed
+        froms = list(s._iterate_from_elements())
+        assert t2alias in froms  # present because it was not cloned
+        assert t1alias in froms  # present because the adapter placed
         # it there and was also not cloned
 
         # correlate list on "s" needs to take into account the full
@@ -1853,7 +1856,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT table1.col1, table1.col2, "
             "table1.col3 FROM table1, table2",
         )
-        assert s._froms is not select_copy._froms
+
         self.assert_compile(
             s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
         )
@@ -1961,13 +1964,13 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_add_kwarg(self):
         i = t1.insert()
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         eq_(compile_state._dict_parameters, None)
         i = i.values(col1=5)
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         self._compare_param_dict(compile_state._dict_parameters, {"col1": 5})
         i = i.values(col2=7)
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         self._compare_param_dict(
             compile_state._dict_parameters, {"col1": 5, "col2": 7}
         )
@@ -1975,11 +1978,11 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_via_tuple_single(self):
         i = t1.insert()
 
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         eq_(compile_state._dict_parameters, None)
 
         i = i.values((5, 6, 7))
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
 
         self._compare_param_dict(
             compile_state._dict_parameters, {"col1": 5, "col2": 6, "col3": 7},
@@ -1997,11 +2000,11 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_via_tuple_multi(self):
         i = t1.insert()
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         eq_(compile_state._dict_parameters, None)
 
         i = i.values([(5, 6, 7), (8, 9, 10)])
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         eq_(
             compile_state._dict_parameters, {"col1": 5, "col2": 6, "col3": 7},
         )
@@ -2017,7 +2020,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_inline_values_single(self):
         i = t1.insert(values={"col1": 5})
 
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
 
         self._compare_param_dict(compile_state._dict_parameters, {"col1": 5})
         is_(compile_state._has_multi_parameters, False)
@@ -2025,7 +2028,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_inline_values_multi(self):
         i = t1.insert(values=[{"col1": 5}, {"col1": 6}])
 
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
 
         # multiparams are not converted to bound parameters
         eq_(compile_state._dict_parameters, {"col1": 5})
@@ -2050,25 +2053,25 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_add_dictionary(self):
         i = t1.insert()
 
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
 
         eq_(compile_state._dict_parameters, None)
         i = i.values({"col1": 5})
 
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
 
         self._compare_param_dict(compile_state._dict_parameters, {"col1": 5})
         is_(compile_state._has_multi_parameters, False)
 
         i = i.values({"col1": 6})
         # note replaces
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
 
         self._compare_param_dict(compile_state._dict_parameters, {"col1": 6})
         is_(compile_state._has_multi_parameters, False)
 
         i = i.values({"col2": 7})
-        compile_state = i._compile_state_cls(i, None, isinsert=True)
+        compile_state = i._compile_state_factory(i, None)
         self._compare_param_dict(
             compile_state._dict_parameters, {"col1": 6, "col2": 7}
         )

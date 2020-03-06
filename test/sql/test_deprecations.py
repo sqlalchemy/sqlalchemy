@@ -112,20 +112,6 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert t1t2.onclause.compare(join_cond)
 
-    def test_select_autocommit(self):
-        with testing.expect_deprecated(
-            "The select.autocommit parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            select([column("x")], autocommit=True)
-
-    def test_select_for_update(self):
-        with testing.expect_deprecated(
-            "The select.for_update parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            select([column("x")], for_update=True)
-
     def test_empty_and_or(self):
         with testing.expect_deprecated(
             r"Invoking and_\(\) without arguments is deprecated, and "
@@ -195,63 +181,6 @@ class ConvertUnicodeDeprecationTest(fixtures.TestBase):
 
         utfdata = unicodedata.encode("utf8")
         eq_(proc(utfdata), unicodedata.encode("ascii", "ignore").decode())
-
-
-class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = "default"
-
-    def _assert_legacy(self, leg, read=False, nowait=False):
-        t = table("t", column("c"))
-
-        with testing.expect_deprecated(
-            "The select.for_update parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            s1 = select([t], for_update=leg)
-
-        if leg is False:
-            assert s1._for_update_arg is None
-            assert s1.for_update is None
-        else:
-            eq_(s1._for_update_arg.read, read)
-            eq_(s1._for_update_arg.nowait, nowait)
-            eq_(s1.for_update, leg)
-
-    def test_false_legacy(self):
-        self._assert_legacy(False)
-
-    def test_plain_true_legacy(self):
-        self._assert_legacy(True)
-
-    def test_read_legacy(self):
-        self._assert_legacy("read", read=True)
-
-    def test_nowait_legacy(self):
-        self._assert_legacy("nowait", nowait=True)
-
-    def test_read_nowait_legacy(self):
-        self._assert_legacy("read_nowait", read=True, nowait=True)
-
-    def test_unknown_mode(self):
-        t = table("t", column("c"))
-
-        with testing.expect_deprecated(
-            "The select.for_update parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            assert_raises_message(
-                exc.ArgumentError,
-                "Unknown for_update argument: 'unknown_mode'",
-                t.select,
-                t.c.c == 7,
-                for_update="unknown_mode",
-            )
-
-    def test_legacy_setter(self):
-        t = table("t", column("c"))
-        s = select([t])
-        s.for_update = "nowait"
-        eq_(s._for_update_arg.nowait, True)
 
 
 class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -605,12 +534,6 @@ class TextTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             },
         )
-
-    def test_autocommit(self):
-        with testing.expect_deprecated(
-            "The text.autocommit parameter is deprecated"
-        ):
-            text("select id, name from user", autocommit=True)
 
 
 class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1723,7 +1646,7 @@ class DefaultTest(fixtures.TestBase):
 
         metadata.create_all(testing.db)
         with testing.db.connect() as conn:
-            with testing.expect_deprecated(
+            with testing.expect_deprecated_20(
                 r"The .close\(\) method on a so-called 'branched' "
                 r"connection is deprecated as of 1.4, as are "
                 r"'branched' connections overall"

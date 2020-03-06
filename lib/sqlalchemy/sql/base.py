@@ -47,6 +47,17 @@ class Immutable(object):
         pass
 
 
+class SingletonConstant(Immutable):
+    def __new__(cls, *arg, **kw):
+        return cls._singleton
+
+    @classmethod
+    def _create_singleton(cls):
+        obj = object.__new__(cls)
+        obj.__init__()
+        cls._singleton = obj
+
+
 class HasMemoized(object):
     def _reset_memoizations(self):
         self._memoized_property.expire_instance(self)
@@ -60,7 +71,19 @@ class HasMemoized(object):
 
 
 def _from_objects(*elements):
-    return itertools.chain(*[element._from_objects for element in elements])
+    return itertools.chain.from_iterable(
+        [element._from_objects for element in elements]
+    )
+
+
+def _select_iterables(elements):
+    """expand tables into individual columns in the
+    given list of column expressions.
+
+    """
+    return itertools.chain.from_iterable(
+        [c._select_iterable for c in elements]
+    )
 
 
 def _generative(fn):
@@ -420,6 +443,19 @@ class CompileState(object):
 
     __slots__ = ("statement",)
 
+    @classmethod
+    def _create(cls, statement, compiler, **kw):
+        # factory construction.
+
+        # specific CompileState classes here will look for
+        # "plugins" in the given statement.  From there they will invoke
+        # the appropriate plugin constructor if one is found and return
+        # the alternate CompileState object.
+
+        c = cls.__new__(cls)
+        c.__init__(statement, compiler, **kw)
+        return c
+
     def __init__(self, statement, compiler, **kw):
         self.statement = statement
 
@@ -433,11 +469,44 @@ class Generative(object):
         s.__dict__ = self.__dict__.copy()
         return s
 
+    def options(self, *options):
+        """Apply options to this statement.
+
+        In the general sense, options are any kind of Python object
+        that can be interpreted by the SQL compiler for the statement.
+        These options can be consumed by specific dialects or specific kinds
+        of compilers.
+
+        The most commonly known kind of option are the ORM level options
+        that apply "eager load" and other loading behaviors to an ORM
+        query.   However, options can theoretically be used for many other
+        purposes.
+
+        For background on specific kinds of options for specific kinds of
+        statements, refer to the documentation for those option objects.
+
+        .. versionchanged:: 1.4 - added :meth:`.Generative.options` to
+           Core statement objects towards the goal of allowing unified
+           Core / ORM querying capabilities.
+
+        .. seealso::
+
+            :ref:`deferred_options` - refers to options specific to the usage
+            of ORM queries
+
+            :ref:`relationship_loader_options` - refers to options specific
+            to the usage of ORM queries
+
+        """
+        self._options += options
+
 
 class HasCompileState(Generative):
     """A class that has a :class:`.CompileState` associated with it."""
 
-    _compile_state_cls = CompileState
+    _compile_state_factory = CompileState._create
+
+    _compile_state_plugin = None
 
 
 class Executable(Generative):
@@ -510,6 +579,13 @@ class Executable(Generative):
         """
         return self._execution_options
 
+    @util.deprecated_20(
+        ":meth:`.Executable.execute`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`.",
+    )
     def execute(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`."""
         e = self.bind
@@ -523,6 +599,14 @@ class Executable(Generative):
             raise exc.UnboundExecutionError(msg)
         return e._execute_clauseelement(self, multiparams, params)
 
+    @util.deprecated_20(
+        ":meth:`.Executable.scalar`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
+        "used to return a scalar result.",
+    )
     def scalar(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`, returning the
         result's scalar representation.
