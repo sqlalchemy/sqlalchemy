@@ -8,4 +8,4 @@
 from .. import util as _sa_util
 
 
-_sa_util.dependencies.resolve_all("sqlalchemy.ext")
+_sa_util.preloaded.import_prefix("sqlalchemy.ext")

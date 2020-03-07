@@ -183,8 +183,10 @@ class InstanceEvents(event.Events):
         _InstanceEventsHold.populate(class_, classmanager)
 
     @classmethod
-    @util.dependencies("sqlalchemy.orm")
-    def _accept_with(cls, orm, target):
+    @util.preload_module("sqlalchemy.orm")
+    def _accept_with(cls, target):
+        orm = util.preloaded.orm
+
         if isinstance(target, instrumentation.ClassManager):
             return target
         elif isinstance(target, mapperlib.Mapper):
@@ -665,8 +667,10 @@ class MapperEvents(event.Events):
         _MapperEventsHold.populate(class_, mapper)
 
     @classmethod
-    @util.dependencies("sqlalchemy.orm")
-    def _accept_with(cls, orm, target):
+    @util.preload_module("sqlalchemy.orm")
+    def _accept_with(cls, target):
+        orm = util.preloaded.orm
+
         if target is orm.mapper:
             return mapperlib.Mapper
         elif isinstance(target, type):

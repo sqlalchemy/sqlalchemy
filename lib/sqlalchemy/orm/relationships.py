@@ -20,8 +20,6 @@ import re
 import weakref
 
 from . import attributes
-from . import dependency
-from . import mapper as mapperlib
 from .base import state_str
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -96,7 +94,6 @@ def foreign(expr):
 
 
 @log.class_logger
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -1514,7 +1511,9 @@ class RelationshipProperty(StrategizedProperty):
                 return _orm_annotate(self.__negated_contains_or_equals(other))
 
         @util.memoized_property
+        @util.preload_module("sqlalchemy.orm.mapper")
         def property(self):
+            mapperlib = util.preloaded.orm_mapper
             if mapperlib.Mapper._new_mappers:
                 mapperlib.Mapper._configure_all()
             return self.prop
@@ -1903,11 +1902,13 @@ class RelationshipProperty(StrategizedProperty):
             )
 
     @util.memoized_property
+    @util.preload_module("sqlalchemy.orm.mapper")
     def entity(self):  # type: () -> Union[AliasedInsp, mapperlib.Mapper]
         """Return the target mapped entity, which is an inspect() of the
         class or aliased class that is referred towards.
 
         """
+        mapperlib = util.preloaded.orm_mapper
         if callable(self.argument) and not isinstance(
             self.argument, (type, mapperlib.Mapper)
         ):
@@ -2045,10 +2046,11 @@ class RelationshipProperty(StrategizedProperty):
         self._calculated_foreign_keys = jc.foreign_key_columns
         self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
 
+    @util.preload_module("sqlalchemy.orm.mapper")
     def _check_conflicts(self):
         """Test that this relationship is legal, warn about
         inheritance conflicts."""
-
+        mapperlib = util.preloaded.orm_mapper
         if self.parent.non_primary and not mapperlib.class_mapper(
             self.parent.class_, configure=False
         ).has_property(self.key):
@@ -2233,7 +2235,10 @@ class RelationshipProperty(StrategizedProperty):
         if self.back_populates:
             self._add_reverse_property(self.back_populates)
 
+    @util.preload_module("sqlalchemy.orm.dependency")
     def _post_init(self):
+        dependency = util.preloaded.orm_dependency
+
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
@@ -3132,7 +3137,9 @@ class JoinCondition(object):
 
     _track_overlapping_sync_targets = weakref.WeakKeyDictionary()
 
+    @util.preload_module("sqlalchemy.orm.mapper")
     def _warn_for_conflicting_sync_targets(self):
+        mapperlib = util.preloaded.orm_mapper
         if not self.support_sync:
             return
 

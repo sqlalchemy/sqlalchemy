@@ -110,7 +110,6 @@ from .langhelpers import constructor_key  # noqa
 from .langhelpers import counter  # noqa
 from .langhelpers import decode_slice  # noqa
 from .langhelpers import decorator  # noqa
-from .langhelpers import dependencies  # noqa
 from .langhelpers import dictlike_iteritems  # noqa
 from .langhelpers import duck_type_collection  # noqa
 from .langhelpers import ellipses_string  # noqa
@@ -137,6 +136,8 @@ from .langhelpers import NoneType  # noqa
 from .langhelpers import only_once  # noqa
 from .langhelpers import PluginLoader  # noqa
 from .langhelpers import portable_instancemethod  # noqa
+from .langhelpers import preloaded  # noqa
+from .langhelpers import preload_module  # noqa
 from .langhelpers import quoted_token_parser  # noqa
 from .langhelpers import safe_reraise  # noqa
 from .langhelpers import set_creation_order  # noqa

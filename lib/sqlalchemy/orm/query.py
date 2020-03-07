@@ -26,7 +26,6 @@ from . import exc as orm_exc
 from . import interfaces
 from . import loading
 from . import persistence
-from . import properties
 from .base import _assertions
 from .base import _entity_descriptor
 from .base import _is_aliased_class
@@ -1120,6 +1119,7 @@ class Query(Generative):
         """
         self._invoke_all_eagers = value
 
+    @util.preload_module("sqlalchemy.orm.relationships")
     def with_parent(self, instance, property=None, from_entity=None):  # noqa
         """Add filtering criterion that relates the given instance
         to a child object or collection, using its attribute state
@@ -1146,6 +1146,7 @@ class Query(Generative):
           "zero" entity of the :class:`.Query` itself.
 
         """
+        relationships = util.preloaded.orm_relationships
 
         if from_entity:
             entity_zero = inspect(from_entity)
@@ -1157,7 +1158,7 @@ class Query(Generative):
 
             for prop in mapper.iterate_properties:
                 if (
-                    isinstance(prop, properties.RelationshipProperty)
+                    isinstance(prop, relationships.RelationshipProperty)
                     and prop.mapper is entity_zero.mapper
                 ):
                     property = prop  # noqa
@@ -4089,7 +4090,7 @@ class Query(Generative):
 
 class LockmodeArg(ForUpdateArg):
     @classmethod
-    def parse_legacy_query(self, mode):
+    def parse_legacy_query(cls, mode):
         if mode in (None, False):
             return None
 

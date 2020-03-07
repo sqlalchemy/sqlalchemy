@@ -64,13 +64,15 @@ class TypeEngine(Traversible):
             self.expr = expr
             self.type = expr.type
 
-        @util.dependencies("sqlalchemy.sql.default_comparator")
-        def operate(self, default_comparator, op, *other, **kwargs):
+        @util.preload_module("sqlalchemy.sql.default_comparator")
+        def operate(self, op, *other, **kwargs):
+            default_comparator = util.preloaded.sql_default_comparator
             o = default_comparator.operator_lookup[op.__name__]
             return o[0](self.expr, op, *(other + o[1:]), **kwargs)
 
-        @util.dependencies("sqlalchemy.sql.default_comparator")
-        def reverse_operate(self, default_comparator, op, other, **kwargs):
+        @util.preload_module("sqlalchemy.sql.default_comparator")
+        def reverse_operate(self, op, other, **kwargs):
+            default_comparator = util.preloaded.sql_default_comparator
             o = default_comparator.operator_lookup[op.__name__]
             return o[0](self.expr, op, other, reverse=True, *o[1:], **kwargs)
 
@@ -613,8 +615,9 @@ class TypeEngine(Traversible):
 
         return dialect.type_compiler.process(self)
 
-    @util.dependencies("sqlalchemy.engine.default")
-    def _default_dialect(self, default):
+    @util.preload_module("sqlalchemy.engine.default")
+    def _default_dialect(self):
+        default = util.preloaded.engine_default
         if self.__class__.__module__.startswith("sqlalchemy.dialects"):
             tokens = self.__class__.__module__.split(".")[0:3]
             mod = ".".join(tokens)

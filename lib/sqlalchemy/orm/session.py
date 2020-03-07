@@ -71,14 +71,14 @@ class _SessionClassMethods(object):
         close_all_sessions()
 
     @classmethod
-    @util.dependencies("sqlalchemy.orm.util")
-    def identity_key(cls, orm_util, *args, **kwargs):
+    @util.preload_module("sqlalchemy.orm.util")
+    def identity_key(cls, *args, **kwargs):
         """Return an identity key.
 
         This is an alias of :func:`.util.identity_key`.
 
         """
-        return orm_util.identity_key(*args, **kwargs)
+        return util.perload.orm_util.identity_key(*args, **kwargs)
 
     @classmethod
     def object_session(cls, instance):

@@ -2193,8 +2193,10 @@ class ColumnDefault(DefaultGenerator):
         )
 
     @util.memoized_property
-    @util.dependencies("sqlalchemy.sql.sqltypes")
-    def _arg_is_typed(self, sqltypes):
+    @util.preload_module("sqlalchemy.sql.sqltypes")
+    def _arg_is_typed(self):
+        sqltypes = util.preloaded.sql_sqltypes
+
         if self.is_clause_element:
             return not isinstance(self.arg.type, sqltypes.NullType)
         else:
@@ -2440,14 +2442,16 @@ class Sequence(roles.StatementRole, DefaultGenerator):
     def is_clause_element(self):
         return False
 
-    @util.dependencies("sqlalchemy.sql.functions.func")
-    def next_value(self, func):
+    @util.preload_module("sqlalchemy.sql.functions")
+    def next_value(self):
         """Return a :class:`.next_value` function element
         which will render the appropriate increment function
         for this :class:`.Sequence` within any SQL expression.
 
         """
-        return func.next_value(self, bind=self.bind)
+        return util.preloaded.sql_functions.func.next_value(
+            self, bind=self.bind
+        )
 
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
@@ -3925,10 +3929,10 @@ class MetaData(SchemaItem):
         """
         return self._bind
 
-    @util.dependencies("sqlalchemy.engine.url")
-    def _bind_to(self, url, bind):
+    @util.preload_module("sqlalchemy.engine.url")
+    def _bind_to(self, bind):
         """Bind this MetaData to an Engine, Connection, string or URL."""
-
+        url = util.preloaded.engine_url
         if isinstance(bind, util.string_types + (url.URL,)):
             self._bind = sqlalchemy.create_engine(bind)
         else:
@@ -4231,10 +4235,10 @@ class ThreadLocalMetaData(MetaData):
 
         return getattr(self.context, "_engine", None)
 
-    @util.dependencies("sqlalchemy.engine.url")
-    def _bind_to(self, url, bind):
+    @util.preload_module("sqlalchemy.engine.url")
+    def _bind_to(self, bind):
         """Bind to a Connectable in the caller's thread."""
-
+        url = util.preloaded.engine_url
         if isinstance(bind, util.string_types + (url.URL,)):
             try:
                 self.context._engine = self.__engines[bind]

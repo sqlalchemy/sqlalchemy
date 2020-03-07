@@ -17,7 +17,7 @@ from . import exc as orm_exc
 from . import interfaces
 from . import object_mapper
 from . import object_session
-from . import properties
+from . import relationships
 from . import strategies
 from . import util as orm_util
 from .query import Query
@@ -27,7 +27,7 @@ from .. import util
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy="dynamic")
+@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True

@@ -14,8 +14,13 @@ mapped attributes.
 from __future__ import absolute_import
 
 from . import attributes
+from .descriptor_props import ComparableProperty
+from .descriptor_props import CompositeProperty
+from .descriptor_props import ConcreteInheritedProperty
+from .descriptor_props import SynonymProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
+from .relationships import RelationshipProperty
 from .util import _orm_full_deannotate
 from .. import log
 from .. import util
@@ -23,7 +28,14 @@ from ..sql import coercions
 from ..sql import roles
 
 
-__all__ = ["ColumnProperty"]
+__all__ = [
+    "ColumnProperty",
+    "ComparableProperty",
+    "CompositeProperty",
+    "ConcreteInheritedProperty",
+    "RelationshipProperty",
+    "SynonymProperty",
+]
 
 
 @log.class_logger
@@ -190,16 +202,20 @@ class ColumnProperty(StrategizedProperty):
         if self.raiseload:
             self.strategy_key += (("raiseload", True),)
 
-    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
-    def _memoized_attr__deferred_column_loader(self, state, strategies):
+    @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__deferred_column_loader(self):
+        state = util.preloaded.orm_state
+        strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key),
             self.key,
         )
 
-    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
-    def _memoized_attr__raise_column_loader(self, state, strategies):
+    @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__raise_column_loader(self):
+        state = util.preloaded.orm_state
+        strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key, True),

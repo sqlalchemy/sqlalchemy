@@ -1022,9 +1022,10 @@ class SQLCompiler(Compiled):
 
         return expanded_state
 
-    @util.dependencies("sqlalchemy.engine.result")
-    def _create_result_map(self, result):
+    @util.preload_module("sqlalchemy.engine.result")
+    def _create_result_map(self):
         """utility method used for unit tests only."""
+        result = util.preloaded.engine_result
         return result.CursorResultMetaData._create_description_match_map(
             self._result_columns
         )
@@ -4127,8 +4128,10 @@ class IdentifierPreparer(object):
             ident = self.quote_identifier(ident)
         return ident
 
-    @util.dependencies("sqlalchemy.sql.naming")
-    def format_constraint(self, naming, constraint, _alembic_quote=True):
+    @util.preload_module("sqlalchemy.sql.naming")
+    def format_constraint(self, constraint, _alembic_quote=True):
+        naming = util.preloaded.sql_naming
+
         if isinstance(constraint.name, elements._defer_name):
             name = naming._constraint_name_for_table(
                 constraint, constraint.table

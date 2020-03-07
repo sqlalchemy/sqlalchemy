@@ -597,9 +597,9 @@ class _GetChildren(InternalTraversal):
 _get_children = _GetChildren()
 
 
-@util.dependencies("sqlalchemy.sql.elements")
-def _resolve_name_for_compare(elements, element, name, anon_map, **kw):
-    if isinstance(name, elements._anonymous_label):
+@util.preload_module("sqlalchemy.sql.elements")
+def _resolve_name_for_compare(element, name, anon_map, **kw):
+    if isinstance(name, util.preloaded.sql_elements._anonymous_label):
         name = name.apply_map(anon_map)
 
     return name
