@@ -17,6 +17,7 @@ from . import sqltypes
 from . import util as sqlutil
 from .base import ColumnCollection
 from .base import Executable
+from .base import HasMemoized
 from .elements import _type_from_args
 from .elements import BinaryExpression
 from .elements import BindParameter
@@ -85,8 +86,6 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     _has_args = False
 
-    _memoized_property = FromClause._memoized_property
-
     def __init__(self, *clauses, **kwargs):
         r"""Construct a :class:`.FunctionElement`.
 
@@ -141,7 +140,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         col = self.label(None)
         return ColumnCollection(columns=[(col.key, col)])
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def clauses(self):
         """Return the underlying :class:`.ClauseList` which contains
         the arguments for this :class:`.FunctionElement`.

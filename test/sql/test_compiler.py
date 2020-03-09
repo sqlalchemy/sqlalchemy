@@ -3344,6 +3344,116 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             _group_number=2,
         )
 
+    @testing.combinations(
+        (
+            select([table1]).where(table1.c.myid == 5),
+            select([table1]).where(table1.c.myid == 10),
+            {"myid_1": 5},
+            {"myid_1": 10},
+            None,
+            None,
+        ),
+        (
+            select([table1]).where(
+                table1.c.myid
+                == bindparam(None, unique=True, callable_=lambda: 5)
+            ),
+            select([table1]).where(
+                table1.c.myid
+                == bindparam(None, unique=True, callable_=lambda: 10)
+            ),
+            {"param_1": 5},
+            {"param_1": 10},
+            None,
+            None,
+        ),
+        (
+            table1.update()
+            .where(table1.c.myid == 5)
+            .values(name="n1", description="d1"),
+            table1.update()
+            .where(table1.c.myid == 10)
+            .values(name="n2", description="d2"),
+            {"description": "d1", "myid_1": 5, "name": "n1"},
+            {"description": "d2", "myid_1": 10, "name": "n2"},
+            None,
+            None,
+        ),
+        (
+            table1.update().where(table1.c.myid == 5),
+            table1.update().where(table1.c.myid == 10),
+            {"description": "d1", "myid_1": 5, "name": "n1"},
+            {"description": "d2", "myid_1": 10, "name": "n2"},
+            {"description": "d1", "name": "n1"},
+            {"description": "d2", "name": "n2"},
+        ),
+        (
+            table1.update().where(
+                table1.c.myid
+                == bindparam(None, unique=True, callable_=lambda: 5)
+            ),
+            table1.update().where(
+                table1.c.myid
+                == bindparam(None, unique=True, callable_=lambda: 10)
+            ),
+            {"description": "d1", "param_1": 5, "name": "n1"},
+            {"description": "d2", "param_1": 10, "name": "n2"},
+            {"description": "d1", "name": "n1"},
+            {"description": "d2", "name": "n2"},
+        ),
+        (
+            union(
+                select([table1]).where(table1.c.myid == 5),
+                select([table1]).where(table1.c.myid == 12),
+            ),
+            union(
+                select([table1]).where(table1.c.myid == 5),
+                select([table1]).where(table1.c.myid == 15),
+            ),
+            {"myid_1": 5, "myid_2": 12},
+            {"myid_1": 5, "myid_2": 15},
+            None,
+            None,
+        ),
+    )
+    def test_construct_params_combine_extracted(
+        self, stmt1, stmt2, param1, param2, extparam1, extparam2
+    ):
+
+        if extparam1:
+            keys = list(extparam1)
+        else:
+            keys = []
+
+        s1_cache_key = stmt1._generate_cache_key()
+        s1_compiled = stmt1.compile(cache_key=s1_cache_key, column_keys=keys)
+
+        s2_cache_key = stmt2._generate_cache_key()
+
+        eq_(s1_compiled.construct_params(params=extparam1), param1)
+        eq_(
+            s1_compiled.construct_params(
+                params=extparam1, extracted_parameters=s1_cache_key[1]
+            ),
+            param1,
+        )
+
+        eq_(
+            s1_compiled.construct_params(
+                params=extparam2, extracted_parameters=s2_cache_key[1]
+            ),
+            param2,
+        )
+
+        s1_compiled_no_cache_key = stmt1.compile()
+        assert_raises_message(
+            exc.CompileError,
+            "This compiled object has no original cache key; can't pass "
+            "extracted_parameters to construct_params",
+            s1_compiled_no_cache_key.construct_params,
+            extracted_parameters=s1_cache_key[1],
+        )
+
     def test_tuple_expanding_in_no_values(self):
         expr = tuple_(table1.c.myid, table1.c.name).in_(
             [(1, "foo"), (5, "bar")]
@@ -5021,7 +5131,7 @@ class ResultMapTest(fixtures.TestBase):
         stmt = select([t.c.x, t.c.y, l1, t.c.y, l2, t.c.x, l3])
 
         # so the statement has 7 inner columns...
-        eq_(len(list(stmt.inner_columns)), 7)
+        eq_(len(list(stmt.selected_columns)), 7)
 
         # 7 are exposed as of 1.4, no more deduping
         eq_(len(stmt.subquery().c), 7)

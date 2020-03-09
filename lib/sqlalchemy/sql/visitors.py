@@ -331,6 +331,17 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     """
 
+    dp_annotations_key = symbol("AK")
+    """Visit the _annotations_cache_key element.
+
+    This is a dictionary of additional information about a ClauseElement
+    that modifies its role.  It should be included when comparing or caching
+    objects, however generating this key is relatively expensive.   Visitors
+    should check the "_annotations" dict for non-None first before creating
+    this key.
+
+    """
+
     dp_plain_obj = symbol("PO")
     """Visit a plain python object.
 

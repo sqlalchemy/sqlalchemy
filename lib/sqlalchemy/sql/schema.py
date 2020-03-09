@@ -1412,7 +1412,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 "assign a non-blank .name before adding to a Table."
             )
 
-        Column._memoized_property.expire_instance(self)
+        self._reset_memoizations()
 
         if self.key is None:
             self.key = self.name

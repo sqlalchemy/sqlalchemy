@@ -468,9 +468,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)",
         )
 
+        f1 = func.my_func(1, 2, None, 3)
+        f1._generate_cache_key()
+
         # test pickling
         self.assert_compile(
-            util.pickle.loads(util.pickle.dumps(func.my_func(1, 2, None, 3))),
+            util.pickle.loads(util.pickle.dumps(f1)),
             "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)",
         )
 

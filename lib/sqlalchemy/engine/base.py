@@ -1000,7 +1000,8 @@ class Connection(Connectable):
             tuple or scalar positional parameters.
 
         """
-        if isinstance(object_, util.string_types[0]):
+
+        if isinstance(object_, util.string_types):
             util.warn_deprecated_20(
                 "Passing a string to Connection.execute() is "
                 "deprecated and will be removed in version 2.0.  Use the "
@@ -1098,26 +1099,33 @@ class Connection(Connectable):
             keys = []
 
         dialect = self.dialect
+
         if "compiled_cache" in self._execution_options:
+            elem_cache_key, extracted_params = elem._generate_cache_key()
             key = (
                 dialect,
-                elem,
+                elem_cache_key,
                 tuple(sorted(keys)),
                 bool(self._schema_translate_map),
                 len(distilled_params) > 1,
             )
-            compiled_sql = self._execution_options["compiled_cache"].get(key)
+            cache = self._execution_options["compiled_cache"]
+            compiled_sql = cache.get(key)
+
             if compiled_sql is None:
                 compiled_sql = elem.compile(
                     dialect=dialect,
+                    cache_key=(elem_cache_key, extracted_params),
                     column_keys=keys,
                     inline=len(distilled_params) > 1,
                     schema_translate_map=self._schema_translate_map,
                     linting=self.dialect.compiler_linting
                     | compiler.WARN_LINTING,
                 )
-                self._execution_options["compiled_cache"][key] = compiled_sql
+                cache[key] = compiled_sql
+
         else:
+            extracted_params = None
             compiled_sql = elem.compile(
                 dialect=dialect,
                 column_keys=keys,
@@ -1133,6 +1141,8 @@ class Connection(Connectable):
             distilled_params,
             compiled_sql,
             distilled_params,
+            elem,
+            extracted_params,
         )
         if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(self, elem, multiparams, params, ret)
@@ -1156,6 +1166,8 @@ class Connection(Connectable):
             parameters,
             compiled,
             parameters,
+            None,
+            None,
         )
         if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(

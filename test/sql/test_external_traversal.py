@@ -172,7 +172,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
 
         vis = Vis()
         s2 = vis.traverse(s1)
-        eq_(list(s2.inner_columns)[0].anon_label, c1.anon_label)
+        eq_(list(s2.selected_columns)[0].anon_label, c1.anon_label)
 
     def test_change_in_place(self):
         struct = B(

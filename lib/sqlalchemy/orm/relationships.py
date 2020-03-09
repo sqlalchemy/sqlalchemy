@@ -1412,13 +1412,14 @@ class RelationshipProperty(StrategizedProperty):
             if self.property.direction == MANYTOONE:
                 state = attributes.instance_state(other)
 
-                def state_bindparam(x, state, col):
+                def state_bindparam(local_col, state, remote_col):
                     dict_ = state.dict
                     return sql.bindparam(
-                        x,
+                        local_col.key,
+                        type_=local_col.type,
                         unique=True,
                         callable_=self.property._get_attr_w_warn_on_none(
-                            self.property.mapper, state, dict_, col
+                            self.property.mapper, state, dict_, remote_col
                         ),
                     )
 

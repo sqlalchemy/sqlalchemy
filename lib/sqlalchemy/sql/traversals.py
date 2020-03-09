@@ -7,6 +7,7 @@ from .visitors import ExtendedInternalTraversal
 from .visitors import InternalTraversal
 from .. import util
 from ..inspection import inspect
+from ..util import HasMemoized
 
 SKIP_TRAVERSE = util.symbol("skip_traverse")
 COMPARE_FAILED = False
@@ -26,7 +27,7 @@ def compare(obj1, obj2, **kw):
     return strategy.compare(obj1, obj2, **kw)
 
 
-class HasCacheKey(object):
+class HasCacheKey(HasMemoized):
     _cache_key_traversal = NO_CACHE
 
     __slots__ = ()
@@ -105,6 +106,14 @@ class HasCacheKey(object):
                         attrname,
                         obj._gen_cache_key(anon_map, bindparams),
                     )
+                elif meth is InternalTraversal.dp_annotations_key:
+                    # obj is here is the _annotations dict.   however,
+                    # we want to use the memoized cache key version of it.
+                    # for Columns, this should be long lived.   For select()
+                    # statements, not so much, but they usually won't have
+                    # annotations.
+                    if obj:
+                        result += self._annotations_cache_key
                 elif meth is InternalTraversal.dp_clauseelement_list:
                     if obj:
                         result += (
@@ -130,6 +139,7 @@ class HasCacheKey(object):
 
         return result
 
+    @HasMemoized.memoized_instancemethod
     def _generate_cache_key(self):
         """return a cache key.
 
@@ -161,6 +171,7 @@ class HasCacheKey(object):
         will return None, indicating no cache key is available.
 
         """
+
         bindparams = []
 
         _anon_map = anon_map()
@@ -178,6 +189,36 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
     def __eq__(self, other):
         return self.key == other.key
 
+    def __str__(self):
+        stack = [self.key]
+
+        output = []
+        sentinel = object()
+        indent = -1
+        while stack:
+            elem = stack.pop(0)
+            if elem is sentinel:
+                output.append((" " * (indent * 2)) + "),")
+                indent -= 1
+            elif isinstance(elem, tuple):
+                if not elem:
+                    output.append((" " * ((indent + 1) * 2)) + "()")
+                else:
+                    indent += 1
+                    stack = list(elem) + [sentinel] + stack
+                    output.append((" " * (indent * 2)) + "(")
+            else:
+                if isinstance(elem, HasCacheKey):
+                    repr_ = "<%s object at %s>" % (
+                        type(elem).__name__,
+                        hex(id(elem)),
+                    )
+                else:
+                    repr_ = repr(elem)
+                output.append((" " * (indent * 2)) + "  " + repr_ + ", ")
+
+        return "CacheKey(key=%s)" % ("\n".join(output),)
+
 
 def _clone(element, **kw):
     return element._clone()
@@ -189,6 +230,8 @@ class _CacheKey(ExtendedInternalTraversal):
 
     visit_has_cache_key = visit_clauseelement = CALL_GEN_CACHE_KEY
     visit_clauseelement_list = InternalTraversal.dp_clauseelement_list
+    visit_annotations_key = InternalTraversal.dp_annotations_key
+
     visit_string = (
         visit_boolean
     ) = visit_operator = visit_plain_obj = CACHE_IN_PLACE
@@ -690,8 +733,8 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
                 fillvalue=(None, None),
             ):
                 if not compare_annotations and (
-                    (left_attrname == "_annotations_cache_key")
-                    or (right_attrname == "_annotations_cache_key")
+                    (left_attrname == "_annotations")
+                    or (right_attrname == "_annotations")
                 ):
                     continue
 
@@ -826,6 +869,17 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
         self, left_parent, left, right_parent, right, **kw
     ):
         return left == right
+
+    def visit_annotations_key(
+        self, left_parent, left, right_parent, right, **kw
+    ):
+        if left and right:
+            return (
+                left_parent._annotations_cache_key
+                == right_parent._annotations_cache_key
+            )
+        else:
+            return left == right
 
     def visit_plain_obj(self, left_parent, left, right_parent, right, **kw):
         return left == right

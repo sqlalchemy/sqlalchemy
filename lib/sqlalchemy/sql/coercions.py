@@ -320,11 +320,7 @@ class BinaryElementImpl(
             self._raise_for_expected(element, err=err)
 
     def _post_coercion(self, resolved, expr, **kw):
-        if (
-            isinstance(resolved, (elements.Grouping, elements.BindParameter))
-            and resolved.type._isnull
-            and not expr.type._isnull
-        ):
+        if resolved.type._isnull and not expr.type._isnull:
             resolved = resolved._with_binary_element_type(expr.type)
         return resolved
 

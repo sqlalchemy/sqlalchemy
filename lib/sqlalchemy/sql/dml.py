@@ -14,6 +14,7 @@ from . import coercions
 from . import roles
 from .base import _from_objects
 from .base import _generative
+from .base import ColumnCollection
 from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
@@ -363,6 +364,28 @@ class UpdateBase(
 
         """
         self._returning = cols
+
+    def _exported_columns_iterator(self):
+        """Return the RETURNING columns as a sequence for this statement.
+
+        .. versionadded:: 1.4
+
+        """
+
+        return self._returning or ()
+
+    @property
+    def exported_columns(self):
+        """Return the RETURNING columns as a column collection for this
+        statement.
+
+        .. versionadded:: 1.4
+
+        """
+        # TODO: no coverage here
+        return ColumnCollection(
+            (c.key, c) for c in self._exported_columns_iterator()
+        ).as_immutable()
 
     @_generative
     def with_hint(self, text, selectable=None, dialect_name="*"):

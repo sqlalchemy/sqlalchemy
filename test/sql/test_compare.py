@@ -61,6 +61,7 @@ from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import random_choices
@@ -173,6 +174,14 @@ class CoreFixtures(object):
             ),
             table_a.c.a._annotate(
                 {"orm": True, "parententity": MyEntity("b", select([table_a]))}
+            ),
+            table_a.c.a._annotate(
+                {
+                    "orm": True,
+                    "parententity": MyEntity(
+                        "b", select([table_a]).where(table_a.c.a == 5)
+                    ),
+                }
             ),
         ),
         lambda: (
@@ -758,6 +767,43 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
 
         f1._copy_internals()
         f2._copy_internals()
+
+    def test_generative_cache_key_regen(self):
+        t1 = table("t1", column("a"), column("b"))
+
+        s1 = select([t1])
+
+        ck1 = s1._generate_cache_key()
+
+        s2 = s1.where(t1.c.a == 5)
+
+        ck2 = s2._generate_cache_key()
+
+        ne_(ck1, ck2)
+        is_not_(ck1, None)
+        is_not_(ck2, None)
+
+    def test_generative_cache_key_regen_w_del(self):
+        t1 = table("t1", column("a"), column("b"))
+
+        s1 = select([t1])
+
+        ck1 = s1._generate_cache_key()
+
+        s2 = s1.where(t1.c.a == 5)
+
+        del s1
+
+        # there is now a good chance that id(s3) == id(s1), make sure
+        # cache key is regenerated
+
+        s3 = s2.order_by(t1.c.b)
+
+        ck3 = s3._generate_cache_key()
+
+        ne_(ck1, ck3)
+        is_not_(ck1, None)
+        is_not_(ck3, None)
 
 
 class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):

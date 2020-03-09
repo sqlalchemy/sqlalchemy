@@ -13,6 +13,7 @@ associations.
 
 from . import operators
 from .base import HasCacheKey
+from .traversals import anon_map
 from .visitors import InternalTraversal
 from .. import util
 
@@ -20,12 +21,13 @@ from .. import util
 class SupportsAnnotations(object):
     @util.memoized_property
     def _annotations_cache_key(self):
+        anon_map_ = anon_map()
         return (
             "_annotations",
             tuple(
                 (
                     key,
-                    value._gen_cache_key(None, [])
+                    value._gen_cache_key(anon_map_, [])
                     if isinstance(value, HasCacheKey)
                     else value,
                 )
@@ -38,7 +40,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
     _annotations = util.immutabledict()
 
     _clone_annotations_traverse_internals = [
-        ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
+        ("_annotations", InternalTraversal.dp_annotations_key)
     ]
 
     def _annotate(self, values):
@@ -133,6 +135,8 @@ class Annotated(object):
 
     """
 
+    _is_column_operators = False
+
     def __new__(cls, *args):
         if not args:
             # clone constructor
@@ -200,7 +204,7 @@ class Annotated(object):
         return self._hash
 
     def __eq__(self, other):
-        if isinstance(self.__element, operators.ColumnOperators):
+        if self._is_column_operators:
             return self.__element.__class__.__eq__(self, other)
         else:
             return hash(other) == hash(self)
@@ -208,7 +212,9 @@ class Annotated(object):
 
 # hard-generate Annotated subclasses.  this technique
 # is used instead of on-the-fly types (i.e. type.__new__())
-# so that the resulting objects are pickleable.
+# so that the resulting objects are pickleable; additionally, other
+# decisions can be made up front about the type of object being annotated
+# just once per class rather than per-instance.
 annotated_classes = {}
 
 
@@ -310,8 +316,11 @@ def _new_annotation_type(cls, base_cls):
 
     if "_traverse_internals" in cls.__dict__:
         anno_cls._traverse_internals = list(cls._traverse_internals) + [
-            ("_annotations_cache_key", InternalTraversal.dp_plain_obj)
+            ("_annotations", InternalTraversal.dp_annotations_key)
         ]
+
+    anno_cls._is_column_operators = issubclass(cls, operators.ColumnOperators)
+
     return anno_cls
 
 

@@ -1276,8 +1276,9 @@ class CycleTest(_fixtures.FixtureTest):
 
         s = Session()
 
-        # cycles here are due to ClauseElement._cloned_set
-        @assert_cycles(3)
+        # cycles here are due to ClauseElement._cloned_set, others
+        # as of cache key
+        @assert_cycles(4)
         def go():
             s.query(User).join(User.addresses).all()
 
@@ -1291,8 +1292,9 @@ class CycleTest(_fixtures.FixtureTest):
         def generate():
             s.query(User).options(joinedload(User.addresses)).all()
 
-        # cycles here are due to ClauseElement._cloned_set and Load.context
-        @assert_cycles(28)
+        # cycles here are due to ClauseElement._cloned_set and Load.context,
+        # others as of cache key
+        @assert_cycles(29)
         def go():
             generate()
 
@@ -1310,8 +1312,9 @@ class CycleTest(_fixtures.FixtureTest):
     def test_plain_join_select(self):
         users, addresses = self.tables("users", "addresses")
 
-        # cycles here are due to ClauseElement._cloned_set
-        @assert_cycles(6)
+        # cycles here are due to ClauseElement._cloned_set, others
+        # as of cache key
+        @assert_cycles(7)
         def go():
             s = select([users]).select_from(users.join(addresses))
             state = s._compile_state_factory(s, None)

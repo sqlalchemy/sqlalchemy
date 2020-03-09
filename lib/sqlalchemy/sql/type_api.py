@@ -1414,6 +1414,17 @@ class Variant(TypeDecorator):
         self.impl = base
         self.mapping = mapping
 
+    @util.memoized_property
+    def _static_cache_key(self):
+        # TODO: needs tests in test/sql/test_compare.py
+        return (self.__class__,) + (
+            self.impl._static_cache_key,
+            tuple(
+                (key, self.mapping[key]._static_cache_key)
+                for key in sorted(self.mapping)
+            ),
+        )
+
     def coerce_compared_value(self, operator, value):
         result = self.impl.coerce_compared_value(operator, value)
         if result is self.impl:

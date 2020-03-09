@@ -175,7 +175,7 @@ def not_(clause):
 
 @inspection._self_inspects
 class ClauseElement(
-    roles.SQLRole, SupportsWrappingAnnotations, HasCacheKey, Traversible
+    roles.SQLRole, SupportsWrappingAnnotations, HasCacheKey, Traversible,
 ):
     """Base class for elements of a programmatically constructed SQL
     expression.
@@ -215,10 +215,9 @@ class ClauseElement(
         the _copy_internals() method.
 
         """
+        skip = self._memoized_keys
         c = self.__class__.__new__(self.__class__)
-        c.__dict__ = self.__dict__.copy()
-        ClauseElement._cloned_set._reset(c)
-        ColumnElement.comparator._reset(c)
+        c.__dict__ = {k: v for k, v in self.__dict__.items() if k not in skip}
 
         # this is a marker that helps to "equate" clauses to each other
         # when a Select returns its list of FROM clauses.  the cloning
@@ -250,7 +249,7 @@ class ClauseElement(
         """
         return self.__class__
 
-    @util.memoized_property
+    @HasMemoized.memoized_attribute
     def _cloned_set(self):
         """Return the set consisting all cloned ancestors of this
         ClauseElement.
@@ -276,6 +275,7 @@ class ClauseElement(
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop("_is_clone_of", None)
+        d.pop("_generate_cache_key", None)
         return d
 
     def _execute_on_connection(self, connection, multiparams, params):
@@ -740,15 +740,7 @@ class ColumnElement(
     def type(self):
         return type_api.NULLTYPE
 
-    def _with_binary_element_type(self, type_):
-        cloned = self._clone()
-        cloned._copy_internals(
-            clone=lambda element: element._with_binary_element_type(type_)
-        )
-        cloned.type = type_
-        return cloned
-
-    @util.memoized_property
+    @HasMemoized.memoized_attribute
     def comparator(self):
         try:
             comparator_factory = self.type.comparator_factory
@@ -1022,6 +1014,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
     _is_crud = False
     _expanding_in_types = ()
     _is_bind_parameter = True
+    _key_is_anon = False
 
     def __init__(
         self,
@@ -1273,9 +1266,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
 
         """
-        if isinstance(key, ColumnClause):
-            type_ = key.type
-            key = key.key
         if required is NO_ARG:
             required = value is NO_ARG and callable_ is None
         if value is NO_ARG:
@@ -1297,8 +1287,12 @@ class BindParameter(roles.InElementRole, ColumnElement):
                     else "param",
                 )
             )
+            self._key_is_anon = True
+        elif key:
+            self.key = key
         else:
-            self.key = key or _anonymous_label("%%(%d param)s" % id(self))
+            self.key = _anonymous_label("%%(%d param)s" % id(self))
+            self._key_is_anon = True
 
         # identifying key that won't change across
         # clones, used to identify the bind's logical
@@ -1366,6 +1360,11 @@ class BindParameter(roles.InElementRole, ColumnElement):
         else:
             return self.value
 
+    def _with_binary_element_type(self, type_):
+        c = ClauseElement._clone(self)
+        c.type = type_
+        return c
+
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:
@@ -1390,7 +1389,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
             id_,
             self.__class__,
             self.type._static_cache_key,
-            traversals._resolve_name_for_compare(self, self.key, anon_map),
+            self.key % anon_map if self._key_is_anon else self.key,
         )
 
     def _convert_to_unique(self):
@@ -2790,7 +2789,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
         return self.clause
 
 
-class TypeCoerce(HasMemoized, WrapsColumnExpression, ColumnElement):
+class TypeCoerce(WrapsColumnExpression, ColumnElement):
     """Represent a Python-side type-coercion wrapper.
 
     :class:`.TypeCoerce` supplies the :func:`.expression.type_coerce`
@@ -2814,8 +2813,6 @@ class TypeCoerce(HasMemoized, WrapsColumnExpression, ColumnElement):
         ("clause", InternalTraversal.dp_clauseelement),
         ("type", InternalTraversal.dp_type),
     ]
-
-    _memoized_property = util.group_expirable_memoized_property()
 
     def __init__(self, expression, type_):
         r"""Associate a SQL expression with a particular type, without rendering
@@ -2889,7 +2886,7 @@ class TypeCoerce(HasMemoized, WrapsColumnExpression, ColumnElement):
     def _from_objects(self):
         return self.clause._from_objects
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def typed_expression(self):
         if isinstance(self.clause, BindParameter):
             bp = self.clause._clone()
@@ -3435,7 +3432,7 @@ class BinaryExpression(ColumnElement):
         # refer to BinaryExpression directly and pass strings
         if isinstance(operator, util.string_types):
             operator = operators.custom_op(operator)
-        self._orig = (hash(left), hash(right))
+        self._orig = (left.__hash__(), right.__hash__())
         self.left = left.self_group(against=operator)
         self.right = right.self_group(against=operator)
         self.operator = operator
@@ -3450,7 +3447,7 @@ class BinaryExpression(ColumnElement):
 
     def __bool__(self):
         if self.operator in (operator.eq, operator.ne):
-            return self.operator(self._orig[0], self._orig[1])
+            return self.operator(*self._orig)
         else:
             raise TypeError("Boolean value of this clause is not defined")
 
@@ -3545,6 +3542,9 @@ class Grouping(GroupedElement, ColumnElement):
     def __init__(self, element):
         self.element = element
         self.type = getattr(element, "type", type_api.NULLTYPE)
+
+    def _with_binary_element_type(self, type_):
+        return Grouping(self.element._with_binary_element_type(type_))
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
@@ -4015,7 +4015,7 @@ class FunctionFilter(ColumnElement):
         )
 
 
-class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
+class Label(roles.LabeledColumnExprRole, ColumnElement):
     """Represents a column label (AS).
 
     Represent a label, as typically applied to any column-level
@@ -4030,8 +4030,6 @@ class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
         ("_type", InternalTraversal.dp_type),
         ("_element", InternalTraversal.dp_clauseelement),
     ]
-
-    _memoized_property = util.group_expirable_memoized_property()
 
     def __init__(self, name, element, type_=None):
         """Return a :class:`Label` object for the
@@ -4075,7 +4073,7 @@ class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
     def _is_implicitly_boolean(self):
         return self.element._is_implicitly_boolean
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def _allow_label_resolve(self):
         return self.element._allow_label_resolve
 
@@ -4089,7 +4087,7 @@ class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
             self._type or getattr(self._element, "type", None)
         )
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def element(self):
         return self._element.self_group(against=operators.as_)
 
@@ -4116,7 +4114,6 @@ class Label(HasMemoized, roles.LabeledColumnExprRole, ColumnElement):
         return self.element.foreign_keys
 
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
-        self._reset_memoizations()
         self._element = clone(self._element, **kw)
         if anonymize_labels:
             self.name = self._resolve_label = _anonymous_label(
@@ -4193,8 +4190,6 @@ class ColumnClause(
     onupdate = default = server_default = server_onupdate = None
 
     _is_multiparam_column = False
-
-    _memoized_property = util.group_expirable_memoized_property()
 
     def __init__(self, text, type_=None, is_literal=False, _selectable=None):
         """Produce a :class:`.ColumnClause` object.
@@ -4312,7 +4307,7 @@ class ColumnClause(
         else:
             return []
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def _from_objects(self):
         t = self.table
         if t is not None:
@@ -4327,18 +4322,18 @@ class ColumnClause(
         else:
             return self.name.encode("ascii", "backslashreplace")
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def _key_label(self):
         if self.key != self.name:
             return self._gen_label(self.key)
         else:
             return self._label
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def _label(self):
         return self._gen_label(self.name)
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def _render_label_in_columns_clause(self):
         return self.table is not None
 
@@ -4599,14 +4594,14 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
 class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
-        ColumnElement.comparator._reset(self)
+        self.__dict__.pop("comparator", None)
         for attr in ("name", "key", "table"):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
 
     def _with_annotations(self, values):
         clone = super(AnnotatedColumnElement, self)._with_annotations(values)
-        ColumnElement.comparator._reset(clone)
+        clone.__dict__.pop("comparator", None)
         return clone
 
     @util.memoized_property

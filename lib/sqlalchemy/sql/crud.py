@@ -16,7 +16,6 @@ from . import coercions
 from . import dml
 from . import elements
 from . import roles
-from .elements import ClauseElement
 from .. import exc
 from .. import util
 
@@ -198,11 +197,8 @@ def _handle_values_anonymous_param(compiler, col, value, name, **kw):
     if value.type._isnull:
         # either unique parameter, or other bound parameters that were
         # passed in directly
-        # clone using base ClauseElement to retain unique key
-        value = ClauseElement._clone(value)
-
         # set type to that of the column unconditionally
-        value.type = col.type
+        value = value._with_binary_element_type(col.type)
 
     return value._compiler_dispatch(compiler, **kw)
 

@@ -1036,6 +1036,36 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         mapper(Dingaling, self.tables.dingalings)
         return User, Address, Dingaling
 
+    def _o2m_threelevel_fixture(self, lazy="select", **kw):
+        Order = self.classes.Order
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+
+        mapper(
+            Order, self.tables.orders, properties={"user": relationship(User)}
+        )
+
+        mapper(
+            User,
+            self.tables.users,
+            properties={
+                "addresses": relationship(
+                    Address,
+                    order_by=self.tables.addresses.c.id,
+                    lazy=lazy,
+                    **kw
+                )
+            },
+        )
+        mapper(
+            Address,
+            self.tables.addresses,
+            properties={"dingalings": relationship(Dingaling, lazy=lazy)},
+        )
+        mapper(Dingaling, self.tables.dingalings)
+        return Order, User, Address, Dingaling
+
     def _m2o_fixture(self):
         User = self.classes.User
         Address = self.classes.Address
@@ -1047,6 +1077,61 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             properties={"user": relationship(User)},
         )
         return User, Address
+
+    def test_same_lazyload_multiple_paths(self):
+        """this is an initial test that requires the presence of
+        the ResultMetaData._adapt_to_context method.
+
+        Both queries emit a lazyload against User.addresses that then
+        includes a subqueryload against Address.dingalings.
+
+        The subqueryload produces an adapted query that has anonymized
+        columns.  for these to be locatable in the result, the columns in
+        the adapted query have to match up to the result map, which is not
+        the case if the statement is pulled from the cache.
+
+        The query is done in two different ways so that one lazyload will not
+        have a state.load_path on User, and the other one will. this means
+        there will be two different baked queries that both produce the same
+        Core SELECT statement. Using logical cache keys in Core, rather than
+        based on identity, means two different BakedContext objects will use
+        the same Core context.   For this reason, at result fetch time the
+        ResultMetaData._adapt_to_context step is required so that the ORM can
+        still locate the columns.
+
+        This will all be done differently with direct ORM results, however this
+        same issue that ResultMetaData has to be adapted to the live statement
+        will exist indepndently of baked queries.  More statement-level caching
+        tests need to be added which test with complex statements that include
+        anonymous columns.
+
+        """
+        Order, User, Address, Dingaling = self._o2m_threelevel_fixture()
+
+        sess = Session()
+        from sqlalchemy.orm import joinedload
+
+        o1 = (
+            sess.query(Order)
+            .options(
+                joinedload(Order.user)
+                .lazyload(User.addresses)
+                .subqueryload(Address.dingalings)
+            )
+            .filter(Order.id == 2)
+            .first()
+        )
+        assert o1.user.addresses[0].dingalings
+
+        sess.expire_all()
+
+        u1 = (
+            sess.query(User)
+            .options(lazyload(User.addresses).subqueryload(Address.dingalings))
+            .filter(User.id == 9)
+            .first()
+        )
+        assert u1.addresses[0].dingalings
 
     def test_no_cache_for_event(self, modify_query_fixture):
 

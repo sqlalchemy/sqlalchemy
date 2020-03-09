@@ -750,7 +750,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     @classmethod
     def _init_compiled(
-        cls, dialect, connection, dbapi_connection, compiled, parameters
+        cls,
+        dialect,
+        connection,
+        dbapi_connection,
+        compiled,
+        parameters,
+        invoked_statement,
+        extracted_parameters,
     ):
         """Initialize execution context for a Compiled construct."""
 
@@ -758,7 +765,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.root_connection = connection
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
-
+        self.extracted_parameters = extracted_parameters
+        self.invoked_statement = invoked_statement
         self.compiled = compiled
 
         # this should be caught in the engine before
@@ -778,7 +786,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             compiled._textual_ordered_columns,
             compiled._loose_column_name_matching,
         )
-
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
@@ -792,10 +799,18 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             )
 
         if not parameters:
-            self.compiled_parameters = [compiled.construct_params()]
+            self.compiled_parameters = [
+                compiled.construct_params(
+                    extracted_parameters=extracted_parameters
+                )
+            ]
         else:
             self.compiled_parameters = [
-                compiled.construct_params(m, _group_number=grp)
+                compiled.construct_params(
+                    m,
+                    _group_number=grp,
+                    extracted_parameters=extracted_parameters,
+                )
                 for grp, m in enumerate(parameters)
             ]
 

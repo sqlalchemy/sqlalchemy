@@ -52,12 +52,11 @@ from ..sql import operators
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..util import HasMemoized
 
 
 _mapper_registry = weakref.WeakKeyDictionary()
 _already_compiling = False
-
-_memoized_configured_property = util.group_expirable_memoized_property()
 
 
 # a constant returned by _get_attr_by_column to indicate
@@ -1635,14 +1634,14 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
     _validate_polymorphic_identity = None
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _version_id_prop(self):
         if self.version_id_col is not None:
             return self._columntoproperty[self.version_id_col]
         else:
             return None
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _acceptable_polymorphic_identities(self):
         identities = set()
 
@@ -1655,7 +1654,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return identities
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _prop_set(self):
         return frozenset(self._props.values())
 
@@ -1708,7 +1707,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     col = m.local_table.corresponding_column(prop.columns[0])
                     if col is not None:
                         for m2 in path:
-                            m2.persist_selectable._reset_exported()
+                            m2.persist_selectable._refresh_for_new_column(col)
                         col = self.persist_selectable.corresponding_column(
                             prop.columns[0]
                         )
@@ -1859,7 +1858,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                         # mapped table, this corresponds to adding a
                         # column after the fact to the local table.
                         # [ticket:1523]
-                        self.persist_selectable._reset_exported()
+                        self.persist_selectable._refresh_for_new_column(mc)
                     mc = self.persist_selectable.corresponding_column(c)
                     if mc is None:
                         raise sa_exc.ArgumentError(
@@ -1929,7 +1928,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
     def _expire_memoizations(self):
         for mapper in self.iterate_to_root():
-            _memoized_configured_property.expire_instance(mapper)
+            mapper._reset_memoizations()
 
     @property
     def _log_desc(self):
@@ -2078,7 +2077,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return from_obj
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _single_table_criterion(self):
         if self.single and self.inherits and self.polymorphic_on is not None:
             return self.polymorphic_on._annotate({"parentmapper": self}).in_(
@@ -2087,7 +2086,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         else:
             return None
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _with_polymorphic_mappers(self):
         if Mapper._new_mappers:
             configure_mappers()
@@ -2095,7 +2094,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             return []
         return self._mappers_from_spec(*self.with_polymorphic)
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
             return self.persist_selectable
@@ -2114,7 +2113,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
     """
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _insert_cols_evaluating_none(self):
         return dict(
             (
@@ -2126,7 +2125,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, columns in self._cols_by_table.items()
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _insert_cols_as_none(self):
         return dict(
             (
@@ -2143,7 +2142,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, columns in self._cols_by_table.items()
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _propkey_to_col(self):
         return dict(
             (
@@ -2155,14 +2154,14 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, columns in self._cols_by_table.items()
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _pk_keys_by_table(self):
         return dict(
             (table, frozenset([col.key for col in pks]))
             for table, pks in self._pks_by_table.items()
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _pk_attr_keys_by_table(self):
         return dict(
             (
@@ -2172,7 +2171,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, pks in self._pks_by_table.items()
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _server_default_cols(self):
         return dict(
             (
@@ -2188,7 +2187,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             for table, columns in self._cols_by_table.items()
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _server_default_plus_onupdate_propkeys(self):
         result = set()
 
@@ -2202,7 +2201,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return result
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _server_onupdate_default_cols(self):
         return dict(
             (
@@ -2258,7 +2257,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         else:
             return mappers, self._selectable_from_mappers(mappers, innerjoin)
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _polymorphic_properties(self):
         return list(
             self._iterate_polymorphic_properties(
@@ -2294,7 +2293,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     continue
                 yield c
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def attrs(self):
         """A namespace of all :class:`.MapperProperty` objects
         associated this mapper.
@@ -2332,7 +2331,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             configure_mappers()
         return util.ImmutableProperties(self._props)
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def all_orm_descriptors(self):
         """A namespace of all :class:`.InspectionAttr` attributes associated
         with the mapped class.
@@ -2379,7 +2378,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             dict(self.class_manager._all_sqla_attributes())
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def synonyms(self):
         """Return a namespace of all :class:`.SynonymProperty`
@@ -2395,7 +2394,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return self._filter_properties(descriptor_props.SynonymProperty)
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def column_attrs(self):
         """Return a namespace of all :class:`.ColumnProperty`
         properties maintained by this :class:`.Mapper`.
@@ -2409,7 +2408,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         return self._filter_properties(properties.ColumnProperty)
 
     @util.preload_module("sqlalchemy.orm.relationships")
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def relationships(self):
         """A namespace of all :class:`.RelationshipProperty` properties
         maintained by this :class:`.Mapper`.
@@ -2436,7 +2435,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             util.preloaded.orm_relationships.RelationshipProperty
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def composites(self):
         """Return a namespace of all :class:`.CompositeProperty`
@@ -2461,7 +2460,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             )
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _get_clause(self):
         """create a "get clause" based on the primary key.  this is used
         by query.get() and many-to-one lazyloads to load this item
@@ -2477,7 +2476,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             util.column_dict(params),
         )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _equivalent_columns(self):
         """Create a map of all equivalent columns, based on
         the determination of column pairs that are equated to
@@ -2610,7 +2609,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             yield m
             m = m.inherits
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def self_and_descendants(self):
         """The collection including this mapper and all descendant mappers.
 
@@ -2737,7 +2736,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         )
         return identity_key[1]
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _persistent_sortkey_fn(self):
         key_fns = [col.type.sort_key_function for col in self.primary_key]
 
@@ -2756,25 +2755,25 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return key
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _identity_key_props(self):
         return [self._columntoproperty[col] for col in self.primary_key]
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _all_pk_props(self):
         collection = set()
         for table in self.tables:
             collection.update(self._pks_by_table[table])
         return collection
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _should_undefer_in_wildcard(self):
         cols = set(self.primary_key)
         if self.polymorphic_on is not None:
             cols.add(self.polymorphic_on)
         return cols
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _primary_key_propkeys(self):
         return {prop.key for prop in self._all_pk_props}
 
@@ -2993,7 +2992,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return q, enable_opt, disable_opt
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _subclass_load_via_in_mapper(self):
         return self._subclass_load_via_in(self)
 
@@ -3074,11 +3073,11 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                     )
                 )
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _compiled_cache(self):
         return util.LRUCache(self._compiled_cache_size)
 
-    @_memoized_configured_property
+    @HasMemoized.memoized_attribute
     def _sorted_tables(self):
         table_to_mapper = {}
 

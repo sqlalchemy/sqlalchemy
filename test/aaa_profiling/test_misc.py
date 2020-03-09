@@ -106,7 +106,17 @@ class CacheKeyTest(fixtures.TestBase):
         ]
 
     @profiling.function_call_count(variance=0.15, warmup=2)
-    def test_statement_one(self, stmt_fixture_one):
+    def test_statement_key_is_cached(self, stmt_fixture_one):
+        current_key = None
+        for stmt in stmt_fixture_one:
+            key = stmt._generate_cache_key()
+            if current_key:
+                eq_(key, current_key)
+            else:
+                current_key = key
+
+    @profiling.function_call_count(variance=0.15, warmup=0)
+    def test_statement_key_is_not_cached(self, stmt_fixture_one):
         current_key = None
         for stmt in stmt_fixture_one:
             key = stmt._generate_cache_key()

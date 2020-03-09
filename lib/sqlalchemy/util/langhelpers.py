@@ -924,27 +924,56 @@ def memoized_instancemethod(fn):
     return update_wrapper(oneshot, fn)
 
 
-class group_expirable_memoized_property(object):
-    """A family of @memoized_properties that can be expired in tandem."""
+class HasMemoized(object):
+    """A class that maintains the names of memoized elements in a
+    collection for easy cache clearing, generative, etc.
 
-    def __init__(self, attributes=()):
-        self.attributes = []
-        if attributes:
-            self.attributes.extend(attributes)
+    """
 
-    def expire_instance(self, instance):
-        """Expire all memoized properties for *instance*."""
-        stash = instance.__dict__
-        for attribute in self.attributes:
-            stash.pop(attribute, None)
+    _memoized_keys = frozenset()
 
-    def __call__(self, fn):
-        self.attributes.append(fn.__name__)
-        return memoized_property(fn)
+    def _reset_memoizations(self):
+        for elem in self._memoized_keys:
+            self.__dict__.pop(elem, None)
 
-    def method(self, fn):
-        self.attributes.append(fn.__name__)
-        return memoized_instancemethod(fn)
+    def _assert_no_memoizations(self):
+        for elem in self._memoized_keys:
+            assert elem not in self.__dict__
+
+    class memoized_attribute(object):
+        """A read-only @property that is only evaluated once."""
+
+        def __init__(self, fget, doc=None):
+            self.fget = fget
+            self.__doc__ = doc or fget.__doc__
+            self.__name__ = fget.__name__
+
+        def __get__(self, obj, cls):
+            if obj is None:
+                return self
+            obj.__dict__[self.__name__] = result = self.fget(obj)
+            obj._memoized_keys |= {self.__name__}
+            return result
+
+    @classmethod
+    def memoized_instancemethod(cls, fn):
+        """Decorate a method memoize its return value.
+
+        """
+
+        def oneshot(self, *args, **kw):
+            result = fn(self, *args, **kw)
+
+            def memo(*a, **kw):
+                return result
+
+            memo.__name__ = fn.__name__
+            memo.__doc__ = fn.__doc__
+            self.__dict__[fn.__name__] = memo
+            self._memoized_keys |= {fn.__name__}
+            return result
+
+        return update_wrapper(oneshot, fn)
 
 
 class MemoizedSlots(object):

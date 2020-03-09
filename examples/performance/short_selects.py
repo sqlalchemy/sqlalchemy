@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy.ext import baked
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import Session
 from . import Profiler
@@ -117,6 +118,20 @@ def test_core_new_stmt_each_time(n):
 
 
 @Profiler.profile
+def test_core_new_stmt_each_time_compiled_cache(n):
+    """test core, creating a new statement each time, but using the cache."""
+
+    compiled_cache = {}
+    with engine.connect().execution_options(
+        compiled_cache=compiled_cache
+    ) as conn:
+        for id_ in random.sample(ids, n):
+            stmt = select([Customer.__table__]).where(Customer.id == id_)
+            row = conn.execute(stmt).first()
+            tuple(row)
+
+
+@Profiler.profile
 def test_core_reuse_stmt(n):
     """test core, reusing the same statement (but recompiling each time)."""
 
@@ -132,14 +147,24 @@ def test_core_reuse_stmt(n):
 def test_core_reuse_stmt_compiled_cache(n):
     """test core, reusing the same statement + compiled cache."""
 
-    compiled_cache = {}
     stmt = select([Customer.__table__]).where(Customer.id == bindparam("id"))
+    compiled_cache = {}
     with engine.connect().execution_options(
         compiled_cache=compiled_cache
     ) as conn:
         for id_ in random.sample(ids, n):
             row = conn.execute(stmt, id=id_).first()
             tuple(row)
+
+
+@Profiler.profile
+def test_core_just_statement_construct_plus_cache_key(n):
+    for i in range(n):
+        stmt = future_select(Customer.__table__).where(
+            Customer.id == bindparam("id")
+        )
+
+        stmt._generate_cache_key()
 
 
 if __name__ == "__main__":

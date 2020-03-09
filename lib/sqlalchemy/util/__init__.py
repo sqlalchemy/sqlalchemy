@@ -119,7 +119,7 @@ from .langhelpers import get_callable_argspec  # noqa
 from .langhelpers import get_cls_kwargs  # noqa
 from .langhelpers import get_func_kwargs  # noqa
 from .langhelpers import getargspec_init  # noqa
-from .langhelpers import group_expirable_memoized_property  # noqa
+from .langhelpers import HasMemoized  # noqa
 from .langhelpers import hybridmethod  # noqa
 from .langhelpers import hybridproperty  # noqa
 from .langhelpers import iterate_attributes  # noqa
@@ -134,8 +134,8 @@ from .langhelpers import NoneType  # noqa
 from .langhelpers import only_once  # noqa
 from .langhelpers import PluginLoader  # noqa
 from .langhelpers import portable_instancemethod  # noqa
-from .langhelpers import preloaded  # noqa
 from .langhelpers import preload_module  # noqa
+from .langhelpers import preloaded  # noqa
 from .langhelpers import quoted_token_parser  # noqa
 from .langhelpers import safe_reraise  # noqa
 from .langhelpers import set_creation_order  # noqa

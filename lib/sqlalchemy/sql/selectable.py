@@ -106,6 +106,45 @@ class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
     def selectable(self):
         raise NotImplementedError()
 
+    def _exported_columns_iterator(self):
+        """An iterator of column objects that represents the "exported"
+        columns of this :class:`.ReturnsRows`.
+
+        This is the same set of columns as are returned by
+        :meth:`.ReturnsRows.exported_columns` except they are returned
+        as a simple iterator or sequence, rather than as a
+        :class:`.ColumnCollection` namespace.
+
+        Subclasses should re-implement this method to bypass the interim
+        creation of the :class:`.ColumnCollection` if appropriate.
+
+        """
+        return iter(self.exported_columns)
+
+    @property
+    def exported_columns(self):
+        """A :class:`.ColumnCollection` that represents the "exported"
+        columns of this :class:`.ReturnsRows`.
+
+        The "exported" columns represent the collection of
+        :class:`.ColumnElement` expressions that are rendered by this SQL
+        construct.   There are primary varieties which are the
+        "FROM clause columns" of a FROM clause, such as a table, join,
+        or subquery, the "SELECTed columns", which are the columns in
+        the "columns clause" of a SELECT statement, and the RETURNING
+        columns in a DML statement..
+
+        .. versionadded:: 1.4
+
+        .. seealso:
+
+            :attr:`.FromClause.exported_columns`
+
+            :attr:`.SelectBase.exported_columns`
+        """
+
+        raise NotImplementedError()
+
 
 class Selectable(ReturnsRows):
     """mark a class as being selectable.
@@ -119,29 +158,6 @@ class Selectable(ReturnsRows):
     @property
     def selectable(self):
         return self
-
-    @property
-    def exported_columns(self):
-        """A :class:`.ColumnCollection` that represents the "exported"
-        columns of this :class:`.Selectable`.
-
-        The "exported" columns represent the collection of
-        :class:`.ColumnElement` expressions that are rendered by this SQL
-        construct.   There are two primary varieties which are the
-        "FROM clause columns" of a FROM clause, such as a table, join,
-        or subquery, and the "SELECTed columns", which are the columns in
-        the "columns clause" of a SELECT statement.
-
-        .. versionadded:: 1.4
-
-        .. seealso:
-
-            :attr:`.FromClause.exported_columns`
-
-            :attr:`.SelectBase.exported_columns`
-        """
-
-        raise NotImplementedError()
 
     def _refresh_for_new_column(self, column):
         raise NotImplementedError()
@@ -312,7 +328,7 @@ class HasSuffixes(object):
         )
 
 
-class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
+class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
@@ -349,8 +365,6 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
     _is_join = False
 
     _use_schema_map = False
-
-    _memoized_property = util.group_expirable_memoized_property(["_columns"])
 
     @util.deprecated(
         "1.1",
@@ -571,7 +585,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
         """
         return self.columns
 
-    @_memoized_property
+    @util.memoized_property
     def columns(self):
         """A named-based collection of :class:`.ColumnElement` objects
         maintained by this :class:`.FromClause`.
@@ -589,7 +603,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
             self._populate_column_collection()
         return self._columns.as_immutable()
 
-    @_memoized_property
+    @util.memoized_property
     def primary_key(self):
         """Return the collection of Column objects which comprise the
         primary key of this FromClause."""
@@ -598,7 +612,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
         self._populate_column_collection()
         return self.primary_key
 
-    @_memoized_property
+    @util.memoized_property
     def foreign_keys(self):
         """Return the collection of ForeignKey objects which this
         FromClause references."""
@@ -606,6 +620,23 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
         self._init_collections()
         self._populate_column_collection()
         return self.foreign_keys
+
+    def _reset_column_collection(self):
+        """Reset the attributes linked to the FromClause.c attribute.
+
+        This collection is separate from all the other memoized things
+        as it has shown to be sensitive to being cleared out in situations
+        where enclosing code, typically in a replacement traversal scenario,
+        has already established strong relationships
+        with the exported columns.
+
+        The collection is cleared for the case where a table is having a
+        column added to it as well as within a Join during copy internals.
+
+        """
+
+        for key in ["_columns", "columns", "primary_key", "foreign_keys"]:
+            self.__dict__.pop(key, None)
 
     c = property(
         attrgetter("columns"),
@@ -659,7 +690,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
         derivations.
 
         """
-        self._reset_exported()
+        self._reset_column_collection()
 
 
 class Join(FromClause):
@@ -1239,7 +1270,7 @@ class AliasedReturnsRows(NoInit, FromClause):
         # same object.  don't reset exported .c. collections and other
         # memoized details if nothing changed
         if element is not self.element:
-            self._reset_exported()
+            self._reset_column_collection()
             self.element = element
 
     @property
@@ -2141,7 +2172,6 @@ class SelectBase(
     roles.DMLSelectRole,
     roles.CompoundElementRole,
     roles.InElementRole,
-    HasMemoized,
     HasCTE,
     Executable,
     SupportsCloneAnnotations,
@@ -2157,8 +2187,6 @@ class SelectBase(
     """
 
     _is_select_statement = True
-
-    _memoized_property = util.group_expirable_memoized_property()
 
     def _generate_fromclause_column_proxies(self, fromclause):
         # type: (FromClause) -> None
@@ -2254,7 +2282,7 @@ class SelectBase(
     def outerjoin(self, *arg, **kw):
         return self._implicit_subquery.outerjoin(*arg, **kw)
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def _implicit_subquery(self):
         return self.subquery()
 
@@ -2314,15 +2342,6 @@ class SelectBase(
 
         """
         return Lateral._factory(self, name)
-
-    def _generate(self):
-        """Override the default _generate() method to also clear out
-        exported collections."""
-
-        s = self.__class__.__new__(self.__class__)
-        s.__dict__ = self.__dict__.copy()
-        s._reset_memoizations()
-        return s
 
     @property
     def _from_objects(self):
@@ -2430,6 +2449,9 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
     def _generate_proxy_for_new_column(self, column, subquery):
         return self.element._generate_proxy_for_new_column(subquery)
+
+    def _exported_columns_iterator(self):
+        return self.element._exported_columns_iterator()
 
     @property
     def selected_columns(self):
@@ -3046,6 +3068,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         for select in self.selects:
             select._refresh_for_new_column(column)
 
+    def _exported_columns_iterator(self):
+        return self.selects[0]._exported_columns_iterator()
+
     @property
     def selected_columns(self):
         """A :class:`.ColumnCollection` representing the columns that
@@ -3339,8 +3364,6 @@ class Select(
     _from_obj = ()
     _auto_correlate = True
 
-    _memoized_property = SelectBase._memoized_property
-
     _traverse_internals = (
         [
             ("_from_obj", InternalTraversal.dp_clauseelement_list),
@@ -3400,8 +3423,7 @@ class Select(
 
         self = cls.__new__(cls)
         self._raw_columns = [
-            coercions.expect(roles.ColumnsClauseRole, ent)
-            for ent in util.to_list(entities)
+            coercions.expect(roles.ColumnsClauseRole, ent) for ent in entities
         ]
 
         GenerativeSelect.__init__(self)
@@ -3739,8 +3761,12 @@ class Select(
         """an iterator of all ColumnElement expressions which would
         be rendered into the columns clause of the resulting SELECT statement.
 
+        This method is legacy as of 1.4 and is superseded by the
+        :attr:`.Select.exported_columns` collection.
+
         """
-        return _select_iterables(self._raw_columns)
+
+        return self._exported_columns_iterator()
 
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:
@@ -3786,7 +3812,10 @@ class Select(
             clone=clone, omit_attrs=("_from_obj",), **kw
         )
 
-        self._reset_memoizations()
+        # memoizations should be cleared here as of
+        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
+        # is the case for now.
+        self._assert_no_memoizations()
 
     def get_children(self, **kwargs):
         return list(set(self._iterate_from_elements())) + super(
@@ -3809,7 +3838,10 @@ class Select(
             :class:`.Select` object.
 
         """
-        self._reset_memoizations()
+        # memoizations should be cleared here as of
+        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
+        # is the case for now.
+        self._assert_no_memoizations()
 
         self._raw_columns = self._raw_columns + [
             coercions.expect(roles.ColumnsClauseRole, column,)
@@ -3861,7 +3893,7 @@ class Select(
         """
         return self.with_only_columns(
             util.preloaded.sql_util.reduce_columns(
-                self.inner_columns,
+                self._exported_columns_iterator(),
                 only_synonyms=only_synonyms,
                 *(self._where_criteria + self._from_obj)
             )
@@ -3935,7 +3967,12 @@ class Select(
         being asked to select both from ``table1`` as well as itself.
 
         """
-        self._reset_memoizations()
+
+        # memoizations should be cleared here as of
+        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
+        # is the case for now.
+        self._assert_no_memoizations()
+
         rc = []
         for c in columns:
             c = coercions.expect(roles.ColumnsClauseRole, c,)
@@ -4112,7 +4149,7 @@ class Select(
                 coercions.expect(roles.FromClauseRole, f) for f in fromclauses
             )
 
-    @_memoized_property
+    @HasMemoized.memoized_attribute
     def selected_columns(self):
         """A :class:`.ColumnCollection` representing the columns that
         this SELECT statement or similar construct returns in its result set.
@@ -4166,6 +4203,9 @@ class Select(
             collection.append((name, c))
 
         return ColumnCollection(collection).as_immutable()
+
+    def _exported_columns_iterator(self):
+        return _select_iterables(self._raw_columns)
 
     def _ensure_disambiguated_names(self):
         if self._label_style is LABEL_STYLE_NONE:
@@ -4558,7 +4598,7 @@ class TextualSelect(SelectBase):
         ]
         self.positional = positional
 
-    @SelectBase._memoized_property
+    @HasMemoized.memoized_attribute
     def selected_columns(self):
         """A :class:`.ColumnCollection` representing the columns that
         this SELECT statement or similar construct returns in its result set.

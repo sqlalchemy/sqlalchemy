@@ -584,7 +584,6 @@ def splice_joins(left, right, stop_on=None):
         (right, prevright) = stack.pop()
         if isinstance(right, Join) and right is not stop_on:
             right = right._clone()
-            right._reset_exported()
             right.onclause = adapter.traverse(right.onclause)
             stack.append((right.left, right))
         else:

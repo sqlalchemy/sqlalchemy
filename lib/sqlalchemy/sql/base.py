@@ -19,6 +19,7 @@ from .visitors import ClauseVisitor
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
+from ..util import HasMemoized
 
 if util.TYPE_CHECKING:
     from types import ModuleType
@@ -56,18 +57,6 @@ class SingletonConstant(Immutable):
         obj = object.__new__(cls)
         obj.__init__()
         cls._singleton = obj
-
-
-class HasMemoized(object):
-    def _reset_memoizations(self):
-        self._memoized_property.expire_instance(self)
-
-    def _reset_exported(self):
-        self._memoized_property.expire_instance(self)
-
-    def _copy_internals(self, **kw):
-        super(HasMemoized, self)._copy_internals(**kw)
-        self._reset_memoizations()
 
 
 def _from_objects(*elements):
@@ -461,13 +450,14 @@ class CompileState(object):
         self.statement = statement
 
 
-class Generative(object):
+class Generative(HasMemoized):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator."""
 
     def _generate(self):
+        skip = self._memoized_keys
         s = self.__class__.__new__(self.__class__)
-        s.__dict__ = self.__dict__.copy()
+        s.__dict__ = {k: v for k, v in self.__dict__.items() if k not in skip}
         return s
 
 

@@ -1973,10 +1973,10 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
         )
         s1 = select([t1, t2])
         s2 = s1.reduce_columns(only_synonyms=False)
-        eq_(set(s2.inner_columns), set([t1.c.x, t1.c.y, t2.c.q]))
+        eq_(set(s2.selected_columns), set([t1.c.x, t1.c.y, t2.c.q]))
 
         s2 = s1.reduce_columns()
-        eq_(set(s2.inner_columns), set([t1.c.x, t1.c.y, t2.c.z, t2.c.q]))
+        eq_(set(s2.selected_columns), set([t1.c.x, t1.c.y, t2.c.z, t2.c.q]))
 
     def test_reduce_only_synonym_fk(self):
         m = MetaData()
@@ -2019,7 +2019,7 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
         s1 = select([t1]).subquery()
         s2 = select([t1, s1]).where(t1.c.x == s1.c.x).where(s1.c.y == t1.c.z)
         eq_(
-            set(s2.reduce_columns().inner_columns),
+            set(s2.reduce_columns().selected_columns),
             set([t1.c.x, t1.c.y, t1.c.z, s1.c.y, s1.c.z]),
         )
 
@@ -2027,7 +2027,7 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
         s1 = select([t1]).subquery()
         s2 = select([s1, t1]).where(t1.c.x == s1.c.x).where(s1.c.y == t1.c.z)
         eq_(
-            set(s2.reduce_columns().inner_columns),
+            set(s2.reduce_columns().selected_columns),
             set([s1.c.x, t1.c.y, t1.c.z, s1.c.y, s1.c.z]),
         )
 

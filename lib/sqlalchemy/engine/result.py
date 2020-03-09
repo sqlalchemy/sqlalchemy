@@ -114,6 +114,44 @@ class CursorResultMetaData(ResultMetaData):
         "keys",
     )
 
+    def _adapt_to_context(self, context):
+        """When using a cached result metadata against a new context,
+        we need to rewrite the _keymap so that it has the specific
+        Column objects in the new context inside of it.  this accommodates
+        for select() constructs that contain anonymized columns and
+        are cached.
+
+        """
+        if not context.compiled._result_columns:
+            return self
+
+        compiled_statement = context.compiled.statement
+        invoked_statement = context.invoked_statement
+
+        # same statement was invoked as the one we cached against,
+        # return self
+        if compiled_statement is invoked_statement:
+            return self
+
+        # make a copy and add the columns from the invoked statement
+        # to the result map.
+        md = self.__class__.__new__(self.__class__)
+
+        md._keymap = self._keymap.copy()
+
+        # match up new columns positionally to the result columns
+        for existing, new in zip(
+            context.compiled._result_columns,
+            invoked_statement._exported_columns_iterator(),
+        ):
+            md._keymap[new] = md._keymap[existing[RM_NAME]]
+
+        md.case_sensitive = self.case_sensitive
+        md.matched_on_name = self.matched_on_name
+        md._processors = self._processors
+        md.keys = self.keys
+        return md
+
     def __init__(self, parent, cursor_description):
         context = parent.context
         dialect = context.dialect
@@ -1107,7 +1145,9 @@ class BaseResult(object):
         if strat.cursor_description is not None:
             if self.context.compiled:
                 if self.context.compiled._cached_metadata:
-                    self._metadata = self.context.compiled._cached_metadata
+                    cached_md = self.context.compiled._cached_metadata
+                    self._metadata = cached_md._adapt_to_context(self.context)
+
                 else:
                     self._metadata = (
                         self.context.compiled._cached_metadata
