@@ -49,6 +49,8 @@ create table %(test_schema)s.parent(
     data varchar2(50)
 );
 
+COMMENT ON TABLE %(test_schema)s.parent IS 'my table comment';
+
 create table %(test_schema)s.child(
     id integer primary key,
     data varchar2(50),
@@ -188,6 +190,9 @@ drop synonym %(test_schema)s.local_table;
         select([parent, child]).select_from(
             parent.join(child)
         ).execute().fetchall()
+
+        # check table comment (#5146)
+        eq_(parent.comment, "my table comment")
 
     def test_reflect_local_to_remote(self):
         testing.db.execute(

@@ -1714,7 +1714,7 @@ class OracleDialect(default.DefaultDialect):
 
         COMMENT_SQL = """
             SELECT comments
-            FROM user_tab_comments
+            FROM all_tab_comments
             WHERE table_name = :table_name
         """
 

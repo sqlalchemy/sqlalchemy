@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 5146
+
+    Fixed a reflection bug where table comments could only be retrieved for
+    tables actually owned by the user but not for tables visible to the user
+    but owned by someone else.  Pull request courtesy Dave Hirschfeld.
