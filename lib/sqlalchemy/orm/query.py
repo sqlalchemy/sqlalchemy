@@ -2530,14 +2530,18 @@ class Query(Generative):
                 raise sa_exc.InvalidRequestError(
                     "Can't determine which FROM clause to join "
                     "from, there are multiple FROMS which can "
-                    "join to this entity. Try adding an explicit ON clause "
-                    "to help resolve the ambiguity."
+                    "join to this entity. Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
-                    "Don't know how to join to %s; please use "
-                    "an ON clause to more clearly establish the left "
-                    "side of this join" % (right,)
+                    "Don't know how to join to %r. "
+                    "Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity." % (right,)
                 )
 
         elif self._entities:
@@ -2572,14 +2576,18 @@ class Query(Generative):
                 raise sa_exc.InvalidRequestError(
                     "Can't determine which FROM clause to join "
                     "from, there are multiple FROMS which can "
-                    "join to this entity. Try adding an explicit ON clause "
-                    "to help resolve the ambiguity."
+                    "join to this entity. Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
-                    "Don't know how to join to %s; please use "
-                    "an ON clause to more clearly establish the left "
-                    "side of this join" % (right,)
+                    "Don't know how to join to %r. "
+                    "Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity." % (right,)
                 )
         else:
             raise sa_exc.InvalidRequestError(
