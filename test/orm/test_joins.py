@@ -1338,9 +1338,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Don't know how to join to .*Item.*; "
-            "please use an ON clause to more clearly establish the "
-            "left side of this join",
+            "Don't know how to join to .*Item.*. "
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             q.join,
             Item,
         )
@@ -1353,9 +1353,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Don't know how to join to .*Item.*; "
-            "please use an ON clause to more clearly establish the "
-            "left side of this join",
+            "Don't know how to join to .*Item.*. "
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             q.join,
             Item,
         )
@@ -1375,9 +1375,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Don't know how to join to .*Item.*; "
-            "please use an ON clause to more clearly establish the "
-            "left side of this join",
+            "Don't know how to join to .*Item.*. "
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             q.join,
             Item,
         )
@@ -1473,7 +1473,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa.exc.InvalidRequestError,
             "Can't determine which FROM clause to join from, there are "
             "multiple FROMS which can join to this entity. "
-            "Try adding an explicit ON clause to help resolve the ambiguity.",
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             q.join,
             a1,
         )
@@ -1529,7 +1530,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa.exc.InvalidRequestError,
             "Can't determine which FROM clause to join from, there are "
             "multiple FROMS which can join to this entity. "
-            "Try adding an explicit ON clause to help resolve the ambiguity.",
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             q.join,
             a1,
         )
@@ -1580,7 +1582,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sa.exc.InvalidRequestError,
             "Can't determine which FROM clause to join from, there are "
             "multiple FROMS which can join to this entity. "
-            "Try adding an explicit ON clause to help resolve the ambiguity.",
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             q.outerjoin,
             a1,
         )
@@ -2369,14 +2372,18 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Don't know how to join to .*User.* please use an ON clause to ",
+            "Don't know how to join to .*User.*. "
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             sess.query(users.c.id).join,
             User,
         )
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Don't know how to join to .*User.* please use an ON clause to ",
+            "Don't know how to join to .*User.* "
+            r"Please use the .select_from\(\) "
+            "method to establish an explicit left side, as well as",
             sess.query(users.c.id).select_from(users).join,
             User,
         )

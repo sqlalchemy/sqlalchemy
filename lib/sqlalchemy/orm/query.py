@@ -2585,14 +2585,18 @@ class Query(object):
                 raise sa_exc.InvalidRequestError(
                     "Can't determine which FROM clause to join "
                     "from, there are multiple FROMS which can "
-                    "join to this entity. Try adding an explicit ON clause "
-                    "to help resolve the ambiguity."
+                    "join to this entity. Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
-                    "Don't know how to join to %s; please use "
-                    "an ON clause to more clearly establish the left "
-                    "side of this join" % (right,)
+                    "Don't know how to join to %r. "
+                    "Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity." % (right,)
                 )
 
         elif self._entities:
@@ -2627,14 +2631,18 @@ class Query(object):
                 raise sa_exc.InvalidRequestError(
                     "Can't determine which FROM clause to join "
                     "from, there are multiple FROMS which can "
-                    "join to this entity. Try adding an explicit ON clause "
-                    "to help resolve the ambiguity."
+                    "join to this entity. Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
-                    "Don't know how to join to %s; please use "
-                    "an ON clause to more clearly establish the left "
-                    "side of this join" % (right,)
+                    "Don't know how to join to %r. "
+                    "Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity." % (right,)
                 )
         else:
             raise sa_exc.InvalidRequestError(
@@ -4599,7 +4607,8 @@ class _ColumnEntity(_QueryEntity):
         # of FROMs for the overall expression - this helps
         # subqueries which were built from ORM constructs from
         # leaking out their entities into the main select construct
-        self.actual_froms = actual_froms = set(column._from_objects)
+        self.actual_froms = list(column._from_objects)
+        actual_froms = set(self.actual_froms)
 
         if not search_entities:
             self.entity_zero = _entity
@@ -4652,7 +4661,7 @@ class _ColumnEntity(_QueryEntity):
         if self.entity_zero is not None:
             return self.entity_zero
         elif self.actual_froms:
-            return list(self.actual_froms)[0]
+            return self.actual_froms[0]
         else:
             return None
 
@@ -4666,7 +4675,9 @@ class _ColumnEntity(_QueryEntity):
         if "selectable" not in self.__dict__:
             self.selectable = ext_info.selectable
 
-        if self.actual_froms.intersection(ext_info.selectable._from_objects):
+        if set(self.actual_froms).intersection(
+            ext_info.selectable._from_objects
+        ):
             self.froms.add(ext_info.selectable)
 
     def corresponds_to(self, entity):
