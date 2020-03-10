@@ -422,8 +422,8 @@ class ClauseElement(
 
         return self
 
-    @util.dependencies("sqlalchemy.engine.default")
-    def compile(self, default, bind=None, dialect=None, **kw):
+    @util.preload_module("sqlalchemy.engine.default")
+    def compile(self, bind=None, dialect=None, **kw):
         """Compile this SQL expression.
 
         The return value is a :class:`~.Compiled` object.
@@ -477,6 +477,7 @@ class ClauseElement(
 
         """
 
+        default = util.preloaded.engine_default
         if not dialect:
             if bind:
                 dialect = bind.dialect
@@ -1782,8 +1783,8 @@ class TextClause(
             else:
                 new_params[key] = existing._with_value(value)
 
-    @util.dependencies("sqlalchemy.sql.selectable")
-    def columns(self, selectable, *cols, **types):
+    @util.preload_module("sqlalchemy.sql.selectable")
+    def columns(self, *cols, **types):
         r"""Turn this :class:`.TextClause` object into a
         :class:`.TextualSelect` object that serves the same role as a SELECT
         statement.
@@ -1888,6 +1889,7 @@ class TextClause(
          argument as it also indicates positional ordering.
 
         """
+        selectable = util.preloaded.sql_selectable
         positional_input_cols = [
             ColumnClause(col.key, types.pop(col.key))
             if col.key in types

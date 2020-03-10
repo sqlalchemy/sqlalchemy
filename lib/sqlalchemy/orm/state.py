@@ -227,11 +227,11 @@ class InstanceState(interfaces.InspectionAttrInfo):
         return self.key is not None and not self._attached
 
     @property
-    @util.dependencies("sqlalchemy.orm.session")
-    def _attached(self, sessionlib):
+    @util.preload_module("sqlalchemy.orm.session")
+    def _attached(self):
         return (
             self.session_id is not None
-            and self.session_id in sessionlib._sessions
+            and self.session_id in util.preloaded.orm_session._sessions
         )
 
     def _track_last_known_value(self, key):
@@ -247,8 +247,8 @@ class InstanceState(interfaces.InspectionAttrInfo):
             self._last_known_values[key] = NO_VALUE
 
     @property
-    @util.dependencies("sqlalchemy.orm.session")
-    def session(self, sessionlib):
+    @util.preload_module("sqlalchemy.orm.session")
+    def session(self):
         """Return the owning :class:`.Session` for this instance,
         or ``None`` if none available.
 
@@ -260,7 +260,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
         fully detached under normal circumstances.
 
         """
-        return sessionlib._state_session(self)
+        return util.preloaded.orm_session._state_session(self)
 
     @property
     def object(self):

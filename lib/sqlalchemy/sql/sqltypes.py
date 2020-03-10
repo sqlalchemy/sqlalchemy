@@ -1539,8 +1539,9 @@ class Enum(Emulated, String, SchemaType):
             not self.native_enum or not compiler.dialect.supports_native_enum
         )
 
-    @util.dependencies("sqlalchemy.sql.schema")
-    def _set_table(self, schema, column, table):
+    @util.preload_module("sqlalchemy.sql.schema")
+    def _set_table(self, column, table):
+        schema = util.preloaded.sql_schema
         SchemaType._set_table(self, column, table)
 
         if not self.create_constraint:
@@ -1738,8 +1739,9 @@ class Boolean(Emulated, TypeEngine, SchemaType):
             and compiler.dialect.non_native_boolean_check_constraint
         )
 
-    @util.dependencies("sqlalchemy.sql.schema")
-    def _set_table(self, schema, column, table):
+    @util.preload_module("sqlalchemy.sql.schema")
+    def _set_table(self, column, table):
+        schema = util.preloaded.sql_schema
         if not self.create_constraint:
             return
 
@@ -2228,8 +2230,7 @@ class JSON(Indexable, TypeEngine):
     class Comparator(Indexable.Comparator, Concatenable.Comparator):
         """Define comparison operations for :class:`.types.JSON`."""
 
-        @util.dependencies("sqlalchemy.sql.default_comparator")
-        def _setup_getitem(self, default_comparator, index):
+        def _setup_getitem(self, index):
             if not isinstance(index, util.string_types) and isinstance(
                 index, compat.collections_abc.Sequence
             ):
@@ -2553,8 +2554,8 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 "ARRAY type; please use the dialect-specific ARRAY type"
             )
 
-        @util.dependencies("sqlalchemy.sql.elements")
-        def any(self, elements, other, operator=None):
+        @util.preload_module("sqlalchemy.sql.elements")
+        def any(self, other, operator=None):
             """Return ``other operator ANY (array)`` clause.
 
             Argument places are switched, because ANY requires array
@@ -2582,14 +2583,15 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 :meth:`.types.ARRAY.Comparator.all`
 
             """
+            elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
             return operator(
                 coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_any(self.expr),
             )
 
-        @util.dependencies("sqlalchemy.sql.elements")
-        def all(self, elements, other, operator=None):
+        @util.preload_module("sqlalchemy.sql.elements")
+        def all(self, other, operator=None):
             """Return ``other operator ALL (array)`` clause.
 
             Argument places are switched, because ALL requires array
@@ -2617,6 +2619,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 :meth:`.types.ARRAY.Comparator.any`
 
             """
+            elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
             return operator(
                 coercions.expect(roles.ExpressionElementRole, other),

@@ -209,6 +209,14 @@ class _DialectArgDict(util.collections_abc.MutableMapping):
         del self._non_defaults[key]
 
 
+@util.preload_module("sqlalchemy.dialects")
+def _kw_reg_for_dialect(dialect_name):
+    dialect_cls = util.preloaded.dialects.registry.load(dialect_name)
+    if dialect_cls.construct_arguments is None:
+        return None
+    return dict(dialect_cls.construct_arguments)
+
+
 class DialectKWArgs(object):
     """Establish the ability for a class to have dialect-specific arguments
     with defaults and constructor validation.
@@ -306,13 +314,6 @@ class DialectKWArgs(object):
     def kwargs(self):
         """A synonym for :attr:`.DialectKWArgs.dialect_kwargs`."""
         return self.dialect_kwargs
-
-    @util.dependencies("sqlalchemy.dialects")
-    def _kw_reg_for_dialect(dialects, dialect_name):
-        dialect_cls = dialects.registry.load(dialect_name)
-        if dialect_cls.construct_arguments is None:
-            return None
-        return dict(dialect_cls.construct_arguments)
 
     _kw_registry = util.PopulateDict(_kw_reg_for_dialect)
 

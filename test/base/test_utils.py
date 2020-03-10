@@ -3,6 +3,7 @@
 import copy
 import datetime
 import inspect
+import sys
 
 from sqlalchemy import exc
 from sqlalchemy import sql
@@ -3209,3 +3210,35 @@ class TimezoneTest(fixtures.TestBase):
             repr(timezone(datetime.timedelta(hours=5))),
             "sqlalchemy.util.timezone(%r)" % (datetime.timedelta(hours=5)),
         )
+
+
+class TestModuleRegistry(fixtures.TestBase):
+    def test_modules_are_loaded(self):
+        to_restore = []
+        for m in ("xml.dom", "wsgiref.simple_server"):
+            to_restore.append((m, sys.modules.pop(m, None)))
+        try:
+            mr = langhelpers._ModuleRegistry()
+
+            ret = mr.preload_module(
+                "xml.dom", "wsgiref.simple_server", "sqlalchemy.sql.util"
+            )
+            o = object()
+            is_(ret(o), o)
+
+            is_false(hasattr(mr, "xml_dom"))
+            mr.import_prefix("xml")
+            is_true("xml.dom" in sys.modules)
+            is_(sys.modules["xml.dom"], mr.xml_dom)
+
+            is_true("wsgiref.simple_server" not in sys.modules)
+            mr.import_prefix("wsgiref")
+            is_true("wsgiref.simple_server" in sys.modules)
+            is_(sys.modules["wsgiref.simple_server"], mr.wsgiref_simple_server)
+
+            mr.import_prefix("sqlalchemy")
+            is_(sys.modules["sqlalchemy.sql.util"], mr.sql_util)
+        finally:
+            for name, mod in to_restore:
+                if mod is not None:
+                    sys.modules[name] = mod

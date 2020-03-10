@@ -278,8 +278,8 @@ def __go(lcls):
         if not (name.startswith("_") or _inspect.ismodule(obj))
     )
 
-    _sa_util.dependencies.resolve_all("sqlalchemy.orm")
-    _sa_util.dependencies.resolve_all("sqlalchemy.ext")
+    _sa_util.preloaded.import_prefix("sqlalchemy.orm")
+    _sa_util.preloaded.import_prefix("sqlalchemy.ext")
 
 
 __go(locals())

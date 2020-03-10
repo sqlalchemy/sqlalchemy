@@ -16,10 +16,10 @@ from ... import exc
 from ... import inspection
 from ... import util
 from ...orm import class_mapper
+from ...orm import ColumnProperty
 from ...orm import interfaces
-from ...orm.properties import ColumnProperty
-from ...orm.properties import RelationshipProperty
-from ...orm.properties import SynonymProperty
+from ...orm import RelationshipProperty
+from ...orm import SynonymProperty
 from ...schema import _get_table_key
 
 

@@ -23,7 +23,7 @@ from ...orm import attributes
 from ...orm import comparable_property
 from ...orm import exc as orm_exc
 from ...orm import interfaces
-from ...orm import properties
+from ...orm import relationships
 from ...orm import synonym as _orm_synonym
 from ...orm.base import _inspect_mapped_class
 from ...orm.base import _mapper_or_none
@@ -761,7 +761,7 @@ class DeferredReflection(object):
             metadata = mapper.class_.metadata
             for rel in mapper._props.values():
                 if (
-                    isinstance(rel, properties.RelationshipProperty)
+                    isinstance(rel, relationships.RelationshipProperty)
                     and rel.secondary is not None
                 ):
                     if isinstance(rel.secondary, Table):

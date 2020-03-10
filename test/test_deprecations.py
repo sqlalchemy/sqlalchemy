@@ -9,4 +9,4 @@ class DeprecationWarningsTest(fixtures.TestBase):
         with expect_deprecated_20(
             "The `database` package is deprecated and will be removed in v2.0 "
         ):
-            import_('sqlalchemy.databases')
+            import_("sqlalchemy.databases")

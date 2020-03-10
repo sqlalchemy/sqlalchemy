@@ -164,14 +164,13 @@ class Selectable(ReturnsRows):
         "deprecated, and will be removed in a future release.  Similar "
         "functionality is available via the sqlalchemy.sql.visitors module.",
     )
-    @util.dependencies("sqlalchemy.sql.util")
-    def replace_selectable(self, sqlutil, old, alias):
+    @util.preload_module("sqlalchemy.sql.util")
+    def replace_selectable(self, old, alias):
         """replace all occurrences of FromClause 'old' with the given Alias
         object, returning a copy of this :class:`.FromClause`.
 
         """
-
-        return sqlutil.ClauseAdapter(alias).traverse(self)
+        return util.preloaded.sql_util.ClauseAdapter(alias).traverse(self)
 
     def corresponding_column(self, column, require_embedded=False):
         """Given a :class:`.ColumnElement`, return the exported
@@ -358,8 +357,8 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
         ":class:`.functions.count` function available from the "
         ":attr:`.func` namespace.",
     )
-    @util.dependencies("sqlalchemy.sql.functions")
-    def count(self, functions, whereclause=None, **params):
+    @util.preload_module("sqlalchemy.sql.functions")
+    def count(self, whereclause=None, **params):
         """return a SELECT COUNT generated against this
         :class:`.FromClause`.
 
@@ -368,7 +367,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
             :class:`.functions.count`
 
         """
-
+        functions = util.preloaded.sql_functions
         if self.primary_key:
             col = list(self.primary_key)[0]
         else:
@@ -801,8 +800,9 @@ class Join(FromClause):
     def self_group(self, against=None):
         return FromGrouping(self)
 
-    @util.dependencies("sqlalchemy.sql.util")
-    def _populate_column_collection(self, sqlutil):
+    @util.preload_module("sqlalchemy.sql.util")
+    def _populate_column_collection(self):
+        sqlutil = util.preloaded.sql_util
         columns = [c for c in self.left.columns] + [
             c for c in self.right.columns
         ]
@@ -1033,8 +1033,8 @@ class Join(FromClause):
     def bind(self):
         return self.left.bind or self.right.bind
 
-    @util.dependencies("sqlalchemy.sql.util")
-    def alias(self, sqlutil, name=None, flat=False):
+    @util.preload_module("sqlalchemy.sql.util")
+    def alias(self, name=None, flat=False):
         r"""return an alias of this :class:`.Join`.
 
         The default behavior here is to first produce a SELECT
@@ -1134,6 +1134,7 @@ class Join(FromClause):
             :func:`~.expression.alias`
 
         """
+        sqlutil = util.preloaded.sql_util
         if flat:
             assert name is None, "Can't send name argument with flat"
             left_a, right_a = (
@@ -1458,8 +1459,9 @@ class TableSample(AliasedReturnsRows):
         self.seed = seed
         super(TableSample, self)._init(selectable, name=name)
 
-    @util.dependencies("sqlalchemy.sql.functions")
-    def _get_method(self, functions):
+    @util.preload_module("sqlalchemy.sql.functions")
+    def _get_method(self):
+        functions = util.preloaded.sql_functions
         if isinstance(self.sampling, functions.Function):
             return self.sampling
         else:
@@ -1929,8 +1931,8 @@ class TableClause(Immutable, FromClause):
         self._columns.add(c)
         c.table = self
 
-    @util.dependencies("sqlalchemy.sql.dml")
-    def insert(self, dml, values=None, inline=False, **kwargs):
+    @util.preload_module("sqlalchemy.sql.dml")
+    def insert(self, values=None, inline=False, **kwargs):
         """Generate an :func:`.insert` construct against this
         :class:`.TableClause`.
 
@@ -1941,13 +1943,12 @@ class TableClause(Immutable, FromClause):
         See :func:`.insert` for argument and usage information.
 
         """
+        return util.preloaded.sql_dml.Insert(
+            self, values=values, inline=inline, **kwargs
+        )
 
-        return dml.Insert(self, values=values, inline=inline, **kwargs)
-
-    @util.dependencies("sqlalchemy.sql.dml")
-    def update(
-        self, dml, whereclause=None, values=None, inline=False, **kwargs
-    ):
+    @util.preload_module("sqlalchemy.sql.dml")
+    def update(self, whereclause=None, values=None, inline=False, **kwargs):
         """Generate an :func:`.update` construct against this
         :class:`.TableClause`.
 
@@ -1958,8 +1959,7 @@ class TableClause(Immutable, FromClause):
         See :func:`.update` for argument and usage information.
 
         """
-
-        return dml.Update(
+        return util.preloaded.sql_dml.Update(
             self,
             whereclause=whereclause,
             values=values,
@@ -1967,8 +1967,8 @@ class TableClause(Immutable, FromClause):
             **kwargs
         )
 
-    @util.dependencies("sqlalchemy.sql.dml")
-    def delete(self, dml, whereclause=None, **kwargs):
+    @util.preload_module("sqlalchemy.sql.dml")
+    def delete(self, whereclause=None, **kwargs):
         """Generate a :func:`.delete` construct against this
         :class:`.TableClause`.
 
@@ -1979,8 +1979,7 @@ class TableClause(Immutable, FromClause):
         See :func:`.delete` for argument and usage information.
 
         """
-
-        return dml.Delete(self, whereclause, **kwargs)
+        return util.preloaded.sql_dml.Delete(self, whereclause, **kwargs)
 
     @property
     def _from_objects(self):
@@ -3864,8 +3863,8 @@ class Select(
         """
         return self.add_columns(column)
 
-    @util.dependencies("sqlalchemy.sql.util")
-    def reduce_columns(self, sqlutil, only_synonyms=True):
+    @util.preload_module("sqlalchemy.sql.util")
+    def reduce_columns(self, only_synonyms=True):
         """Return a new :func`.select` construct with redundantly
         named, equivalently-valued columns removed from the columns clause.
 
@@ -3887,7 +3886,7 @@ class Select(
 
         """
         return self.with_only_columns(
-            sqlutil.reduce_columns(
+            util.preloaded.sql_util.reduce_columns(
                 self.inner_columns,
                 only_synonyms=only_synonyms,
                 *(self._whereclause,) + tuple(self._from_obj)

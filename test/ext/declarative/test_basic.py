@@ -26,10 +26,10 @@ from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import descriptor_props
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import properties
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.events import MapperEvents
@@ -1144,7 +1144,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert ASub.brap.property is A.data.property
         assert isinstance(
-            ASub.brap.original_property, properties.SynonymProperty
+            ASub.brap.original_property, descriptor_props.SynonymProperty
         )
 
     def test_alt_name_attr_subclass_relationship_inline(self):
@@ -1166,7 +1166,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert ASub.brap.property is A.b.property
         assert isinstance(
-            ASub.brap.original_property, properties.SynonymProperty
+            ASub.brap.original_property, descriptor_props.SynonymProperty
         )
         ASub(brap=B())
 
@@ -1179,7 +1179,9 @@ class DeclarativeTest(DeclarativeTestBase):
 
         A.brap = A.data
         assert A.brap.property is A.data.property
-        assert isinstance(A.brap.original_property, properties.SynonymProperty)
+        assert isinstance(
+            A.brap.original_property, descriptor_props.SynonymProperty
+        )
 
     def test_alt_name_attr_subclass_relationship_attrset(self):
         # [ticket:2900]
@@ -1196,7 +1198,9 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column("id", Integer, primary_key=True)
 
         assert A.brap.property is A.b.property
-        assert isinstance(A.brap.original_property, properties.SynonymProperty)
+        assert isinstance(
+            A.brap.original_property, descriptor_props.SynonymProperty
+        )
         A(brap=B())
 
     def test_eager_order_by(self):

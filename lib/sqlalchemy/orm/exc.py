@@ -67,8 +67,10 @@ class DetachedInstanceError(sa_exc.SQLAlchemyError):
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
 
-    @util.dependencies("sqlalchemy.orm.base")
-    def __init__(self, base, obj, msg=None):
+    @util.preload_module("sqlalchemy.orm.base")
+    def __init__(self, obj, msg=None):
+        base = util.preloaded.orm_base
+
         if not msg:
             try:
                 base.class_mapper(type(obj))
@@ -124,8 +126,10 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
 
     """
 
-    @util.dependencies("sqlalchemy.orm.base")
-    def __init__(self, base, state, msg=None):
+    @util.preload_module("sqlalchemy.orm.base")
+    def __init__(self, state, msg=None):
+        base = util.preloaded.orm_base
+
         if not msg:
             msg = (
                 "Instance '%s' has been deleted, or its "
@@ -192,8 +196,10 @@ def _safe_cls_name(cls):
     return cls_name
 
 
-@util.dependencies("sqlalchemy.orm.base")
-def _default_unmapped(base, cls):
+@util.preload_module("sqlalchemy.orm.base")
+def _default_unmapped(cls):
+    base = util.preloaded.orm_base
+
     try:
         mappers = base.manager_of_class(cls).mappers
     except NO_STATE:

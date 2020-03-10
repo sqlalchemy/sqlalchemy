@@ -1710,8 +1710,9 @@ class BulkUD(object):
     def _do_before_compile(self):
         raise NotImplementedError()
 
-    @util.dependencies("sqlalchemy.orm.query")
-    def _do_pre(self, querylib):
+    @util.preload_module("sqlalchemy.orm.query")
+    def _do_pre(self):
+        querylib = util.preloaded.orm_query
         query = self.query
 
         self.context = querylib.QueryContext(query)
