@@ -11,6 +11,10 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.3.15
+    :include_notes_from: unreleased_13
+
+.. changelog::
     :version: 1.3.14
     :released: March 10, 2020
 
