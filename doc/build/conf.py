@@ -123,9 +123,9 @@ copyright = u"2007-2020, the SQLAlchemy authors and contributors"  # noqa
 # The short X.Y version.
 version = "1.3"
 # The full version, including alpha/beta/rc tags.
-release = "1.3.13"
+release = "1.3.14"
 
-release_date = "January 22, 2020"
+release_date = "March 10, 2020"
 
 site_base = os.environ.get("RTD_SITE_BASE", "http://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"

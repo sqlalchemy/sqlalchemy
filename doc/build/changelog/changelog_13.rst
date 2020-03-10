@@ -12,7 +12,183 @@
 
 .. changelog::
     :version: 1.3.14
-    :include_notes_from: unreleased_13
+    :released: March 10, 2020
+
+    .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 5181
+
+        Fixed bug where a CTE of an INSERT/UPDATE/DELETE that also uses RETURNING
+        could then not be SELECTed from directly, as the internal state of the
+        compiler would try to treat the outer SELECT as a DELETE statement itself
+        and access nonexistent state.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5110
+
+        Fixed regression caused in 1.3.13 by :ticket:`5056` where a refactor of the
+        ORM path registry system made it such that a path could no longer be
+        compared to an empty tuple, which can occur in a particular kind of joined
+        eager loading path.   The "empty tuple" use case has been resolved so that
+        the path registry is compared to a path registry in all cases;  the
+        :class:`.PathRegistry` object itself now implements ``__eq__()`` and
+        ``__ne__()`` methods which will take place for all equality comparisons and
+        continue to succeed in the not anticipated case that a non-
+        :class:`.PathRegistry` object is compared, while emitting a warning that
+        this object should not be the subject of the comparison.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5149
+
+        Setting a relationship to viewonly=True which is also the target of a
+        back_populates or backref configuration will now emit a warning and
+        eventually be disallowed. back_populates refers specifically to mutation
+        of an attribute or collection, which is disallowed when the attribute is
+        subject to viewonly=True.   The viewonly attribute is not subject to
+        persistence behaviors which means it will not reflect correct results
+        when it is locally mutated.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5146
+
+        Fixed a reflection bug where table comments could only be retrieved for
+        tables actually owned by the user but not for tables visible to the user
+        but owned by someone else.  Pull request courtesy Dave Hirschfeld.
+
+    .. change::
+        :tags: bug, performance
+        :tickets: 5180
+
+        Revised an internal change to the test system added as a result of
+        :ticket:`5085` where a testing-related module per dialect would be loaded
+        unconditionally upon making use of that dialect, pulling in SQLAlchemy's
+        testing framework as well as the ORM into the module import space.   This
+        would only impact initial startup time and memory to a modest extent,
+        however it's best that these additional modules aren't reverse-dependent on
+        straight Core usage.
+
+    .. change::
+        :tags: bug, installation
+        :tickets: 5138
+
+        Vendored the ``inspect.formatannotation`` function inside of
+        ``sqlalchemy.util.compat``, which is needed for the vendored version of
+        ``inspect.formatargspec``.  The function is not documented in cPython and
+        is not guaranteed to be available in future Python versions.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5132
+
+        Fixed issue where the :class:`.mssql.DATETIMEOFFSET` type would not
+        accommodate for the ``None`` value, introduced as part of the series of
+        fixes for this type first introduced in :ticket:`4983`, :ticket:`5045`.
+        Additionally, added support for passing a backend-specific date formatted
+        string through this type, as is typically allowed for date/time types on
+        most other DBAPIs.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5182
+
+        Expanded the scope of cursor/connection cleanup when a statement is
+        executed to include when the result object fails to be constructed, or an
+        after_cursor_execute() event raises an error, or autocommit / autoclose
+        fails.  This allows the DBAPI cursor to be cleaned up on failure and for
+        connectionless execution allows the connection to be closed out and
+        returned to the connection pool, where previously it waiting until garbage
+        collection would trigger a pool return.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5158
+
+        Fixed issue where the "schema_translate_map" feature would not work with a
+        PostgreSQL native enumeration type (i.e. :class:`.Enum`,
+        :class:`.postgresql.ENUM`) in that while the "CREATE TYPE" statement would
+        be emitted with the correct schema, the schema would not be rendered in
+        the CREATE TABLE statement at the point at which the enumeration was
+        referenced.
+
+
+    .. change::
+        :tags: usecase, ext
+        :tickets: 5114
+
+        Added keyword arguments to the :meth:`.MutableList.sort` function so that a
+        key function as well as the "reverse" keyword argument can be provided.
+
+
+    .. change::
+        :tags: bug, general, py3k
+        :tickets: 4849
+
+        Applied an explicit "cause" to most if not all internally raised exceptions
+        that are raised from within an internal exception catch, to avoid
+        misleading stacktraces that suggest an error within the handling of an
+        exception.  While it would be preferable to suppress the internally caught
+        exception in the way that the ``__suppress_context__`` attribute would,
+        there does not as yet seem to be a way to do this without suppressing an
+        enclosing user constructed context, so for now it exposes the internally
+        caught exception as the cause so that full information about the context
+        of the error is maintained.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 5121
+
+        Fixed an additional regression in the same area as that of :ticket:`5080`
+        introduced in 1.3.0b3 via :ticket:`4468` where the ability to create a
+        joined option across a :func:`.with_polymorphic` into a relationship
+        against the base class of that with_polymorphic, and then further into
+        regular mapped relationships would fail as the base class component would
+        not add itself to the load path in a way that could be located by the
+        loader strategy. The changes applied in :ticket:`5080` have been further
+        refined to also accommodate this scenario.
+
+    .. change::
+        :tags: bug, postgresql, reflection
+        :tickets: 5170
+
+        Fixed bug where PostgreSQL reflection of CHECK constraints would fail to
+        parse the constraint if the SQL text contained newline characters. The
+        regular expression has been adjusted to accommodate for this case. Pull
+        request courtesy Eric Borczuk.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 5129
+
+        Added a new flag :paramref:`.InstanceEvents.restore_load_context` and
+        :paramref:`.SessionEvents.restore_load_context` which apply to the
+        :meth:`.InstanceEvents.load`, :meth:`.InstanceEvents.refresh`, and
+        :meth:`.SessionEvents.loaded_as_persistent` events, which when set will
+        restore the "load context" of the object after the event hook has been
+        called.  This ensures that the object remains within the "loader context"
+        of the load operation that is already ongoing, rather than the object being
+        transferred to a new load context due to refresh operations which may have
+        occurred in the event. A warning is now emitted when this condition occurs,
+        which recommends use of the flag to resolve this case.  The flag is
+        "opt-in" so that there is no risk introduced to existing applications.
+
+        The change additionally adds support for the ``raw=True`` flag to
+        session lifecycle events.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5173
+
+        Fixed issue in MySQL :meth:`.mysql.Insert.on_duplicate_key_update` construct
+        where using a SQL function or other composed expression for a column argument
+        would not properly render the ``VALUES`` keyword surrounding the column
+        itself.
 
 .. changelog::
     :version: 1.3.13

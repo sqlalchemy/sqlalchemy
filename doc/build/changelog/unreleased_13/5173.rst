@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 5173
-
-    Fixed issue in MySQL :meth:`.mysql.Insert.on_duplicate_key_update` construct
-    where using a SQL function or other composed expression for a column argument
-    would not properly render the ``VALUES`` keyword surrounding the column
-    itself.

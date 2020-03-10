@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql, reflection
-    :tickets: 5170
-
-    Fixed bug where PostgreSQL reflection of CHECK constraints would fail to
-    parse the constraint if the SQL text contained newline characters. The
-    regular expression has been adjusted to accommodate for this case. Pull
-    request courtesy Eric Borczuk.

@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql, postgresql
-    :tickets: 5181
-
-    Fixed bug where a CTE of an INSERT/UPDATE/DELETE that also uses RETURNING
-    could then not be SELECTed from directly, as the internal state of the
-    compiler would try to treat the outer SELECT as a DELETE statement itself
-    and access nonexistent state.
-
