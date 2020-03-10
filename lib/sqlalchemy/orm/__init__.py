@@ -97,6 +97,7 @@ def create_session(bind=None, **kwargs):
 relationship = public_factory(RelationshipProperty, ".orm.relationship")
 
 
+@_sa_util.deprecated_20("relation", "Please use :func:`.relationship`.")
 def relation(*arg, **kw):
     """A synonym for :func:`relationship`."""
 
@@ -254,6 +255,7 @@ defaultload = strategy_options.defaultload._unbound_fn
 selectin_polymorphic = strategy_options.selectin_polymorphic._unbound_fn
 
 
+@_sa_util.deprecated_20("relation", "Please use :func:`joinedload`.")
 def eagerload(*args, **kwargs):
     """A synonym for :func:`joinedload()`."""
     return joinedload(*args, **kwargs)

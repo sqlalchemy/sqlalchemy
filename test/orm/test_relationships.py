@@ -25,7 +25,6 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import selectinload
@@ -5580,7 +5579,7 @@ class RelationDeprecationTest(fixtures.MappedTest):
             ),
         )
 
-    def test_relation(self):
+    def test_relationship(self):
         addresses_table, User, users_table, Address = (
             self.tables.addresses_table,
             self.classes.User,
@@ -5591,7 +5590,7 @@ class RelationDeprecationTest(fixtures.MappedTest):
         mapper(
             User,
             users_table,
-            properties=dict(addresses=relation(Address, backref="user")),
+            properties=dict(addresses=relationship(Address, backref="user")),
         )
         mapper(Address, addresses_table)
 

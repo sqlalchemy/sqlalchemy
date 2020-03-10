@@ -21,12 +21,14 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import eagerload
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import identity
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import PropComparator
+from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -2331,3 +2333,13 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert self.static.user_order_result == result
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class TestDeprecation20(fixtures.TestBase):
+    def test_relation(self):
+        with testing.expect_deprecated_20(".*relationship"):
+            relation("foo")
+
+    def test_eagerloading(self):
+        with testing.expect_deprecated_20(".*joinedload"):
+            eagerload("foo")
