@@ -449,6 +449,29 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         is_true(sess.autoflush)
 
+    def test_autoflush_exception_addition(self):
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
+
+        s = Session(testing.db)
+
+        u1 = User(name="first")
+
+        s.add(u1)
+        s.commit()
+
+        u1.addresses.append(Address(email=None))
+
+        # will raise for null email address
+        assert_raises_message(
+            sa.exc.DBAPIError,
+            ".*raised as a result of Query-invoked autoflush; consider using "
+            "a session.no_autoflush block.*",
+            s.query(User).first,
+        )
+
     def test_deleted_flag(self):
         users, User = self.tables.users, self.classes.User
 
