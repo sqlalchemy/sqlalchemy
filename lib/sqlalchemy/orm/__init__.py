@@ -175,7 +175,7 @@ def query_expression():
 
     .. seealso::
 
-        :ref:`mapper_query_expression`
+        :ref:`mapper_querytime_expression`
 
     """
     prop = ColumnProperty(_sql.null())
