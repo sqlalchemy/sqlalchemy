@@ -48,6 +48,27 @@ Error conditions which fall under this category include:
 
 * To be continued...
 
+.. _change_4656:
+
+Repaired internal importing conventions such that code linters may work correctly
+---------------------------------------------------------------------------------
+
+SQLAlchemy has for a long time used a parameter-injecting decorator to help resolve
+mutually-dependent module imports, like this::
+
+    @util.dependency_for("sqlalchemy.sql.dml")
+    def insert(self, dml, *args, **kw):
+
+Where the above function would be rewritten to no longer have the ``dml`` parameter
+on the outside.  This would confuse code-linting tools into seeing a missing parameter
+to functions.  A new approach has been implemented internally such that the function's
+signature is no longer modified and the module object is procured inside the function
+instead.
+
+
+:ticket:`4656`
+
+:ticket:`4689`
 
 API Changes - Core
 ==================
