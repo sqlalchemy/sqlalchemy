@@ -1599,7 +1599,7 @@ class Session(_SessionClassMethods):
                     "consider using a session.no_autoflush block if this "
                     "flush is occurring prematurely"
                 )
-                util.raise_(e, with_traceback=sys.exc_info[2])
+                util.raise_(e, with_traceback=sys.exc_info()[2])
 
     def refresh(
         self,
