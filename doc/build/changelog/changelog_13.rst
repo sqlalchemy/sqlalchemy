@@ -12,7 +12,28 @@
 
 .. changelog::
     :version: 1.3.15
-    :include_notes_from: unreleased_13
+    :released: March 11, 2020
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5194
+
+        Adjusted the error message emitted by :meth:`.Query.join` when a left hand
+        side can't be located that the :meth:`.Query.select_from` method is the
+        best way to resolve the issue.  Also, within the 1.3 series, used a
+        deterministic ordering when determining the FROM clause from a given column
+        entity passed to :class:`.Query` so that the same expression is determined
+        each time.
+
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 5196
+
+        Fixed regression in 1.3.14 due to :ticket:`4849` where a sys.exc_info()
+        call failed to be invoked correctly when a flush error would occur. Test
+        coverage has been added for this exception case.
+
 
 .. changelog::
     :version: 1.3.14
