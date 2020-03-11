@@ -31,6 +31,7 @@ from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
 from .base import PARSE_AUTOCOMMIT
+from .base import SingletonConstant
 from .coercions import _document_text_coercion
 from .traversals import _copy_internals
 from .traversals import _get_children
@@ -338,7 +339,7 @@ class ClauseElement(
         """
         return traversals.compare(self, other, **kw)
 
-    def _copy_internals(self, **kw):
+    def _copy_internals(self, omit_attrs=(), **kw):
         """Reassign internal elements to be clones of themselves.
 
         Called during a copy-and-traverse operation on newly
@@ -358,12 +359,15 @@ class ClauseElement(
         for attrname, obj, meth in _copy_internals.run_generated_dispatch(
             self, traverse_internals, "_generated_copy_internals_traversal"
         ):
+            if attrname in omit_attrs:
+                continue
+
             if obj is not None:
                 result = meth(self, obj, **kw)
                 if result is not None:
                     setattr(self, attrname, result)
 
-    def get_children(self, omit_attrs=None, **kw):
+    def get_children(self, omit_attrs=(), **kw):
         r"""Return immediate child :class:`.Traversible` elements of this
         :class:`.Traversible`.
 
@@ -385,7 +389,7 @@ class ClauseElement(
         for attrname, obj, meth in _get_children.run_generated_dispatch(
             self, traverse_internals, "_generated_get_children_traversal"
         ):
-            if obj is None or omit_attrs and attrname in omit_attrs:
+            if obj is None or attrname in omit_attrs:
                 continue
             result.extend(meth(obj, **kw))
         return result
@@ -942,7 +946,8 @@ class ColumnElement(
 
     @util.memoized_property
     def _dedupe_label_anon_label(self):
-        return self._anon_label(getattr(self, "_label", "anon") + "_")
+        label = getattr(self, "_label", None) or "anon"
+        return self._anon_label(label + "_")
 
 
 class WrapsColumnExpression(object):
@@ -1482,6 +1487,8 @@ class TextClause(
     )
     _is_implicitly_boolean = False
 
+    _render_label_in_columns_clause = False
+
     def __and__(self, other):
         # support use in select.where(), query.filter()
         return and_(self, other)
@@ -1514,14 +1521,6 @@ class TextClause(
 
     @classmethod
     @util.deprecated_params(
-        autocommit=(
-            "0.6",
-            "The :paramref:`.text.autocommit` parameter is deprecated and "
-            "will be removed in a future release.  Please use the "
-            ":paramref:`.Connection.execution_options.autocommit` parameter "
-            "in conjunction with the :meth:`.Executable.execution_options` "
-            "method.",
-        ),
         bindparams=(
             "0.9",
             "The :paramref:`.text.bindparams` parameter "
@@ -1537,7 +1536,7 @@ class TextClause(
     )
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
     def _create_text(
-        self, text, bind=None, bindparams=None, typemap=None, autocommit=None
+        self, text, bind=None, bindparams=None, typemap=None,
     ):
         r"""Construct a new :class:`.TextClause` clause, representing
         a textual SQL string directly.
@@ -1614,9 +1613,6 @@ class TextClause(
           to specify bind parameters; they will be compiled to their
           engine-specific format.
 
-        :param autocommit: whether or not to set the "autocommit" execution
-          option for this :class:`.TextClause` object.
-
         :param bind:
           an optional connection or engine to be used for this text query.
 
@@ -1651,8 +1647,6 @@ class TextClause(
             stmt = stmt.bindparams(*bindparams)
         if typemap:
             stmt = stmt.columns(**typemap)
-        if autocommit is not None:
-            stmt = stmt.execution_options(autocommit=autocommit)
 
         return stmt
 
@@ -1922,7 +1916,7 @@ class TextClause(
             return self
 
 
-class Null(roles.ConstExprRole, ColumnElement):
+class Null(SingletonConstant, roles.ConstExprRole, ColumnElement):
     """Represent the NULL keyword in a SQL statement.
 
     :class:`.Null` is accessed as a constant via the
@@ -1945,7 +1939,10 @@ class Null(roles.ConstExprRole, ColumnElement):
         return Null()
 
 
-class False_(roles.ConstExprRole, ColumnElement):
+Null._create_singleton()
+
+
+class False_(SingletonConstant, roles.ConstExprRole, ColumnElement):
     """Represent the ``false`` keyword, or equivalent, in a SQL statement.
 
     :class:`.False_` is accessed as a constant via the
@@ -2002,7 +1999,10 @@ class False_(roles.ConstExprRole, ColumnElement):
         return False_()
 
 
-class True_(roles.ConstExprRole, ColumnElement):
+False_._create_singleton()
+
+
+class True_(SingletonConstant, roles.ConstExprRole, ColumnElement):
     """Represent the ``true`` keyword, or equivalent, in a SQL statement.
 
     :class:`.True_` is accessed as a constant via the
@@ -2067,6 +2067,9 @@ class True_(roles.ConstExprRole, ColumnElement):
         return True_()
 
 
+True_._create_singleton()
+
+
 class ClauseList(
     roles.InElementRole,
     roles.OrderByRole,
@@ -2107,6 +2110,17 @@ class ClauseList(
                 for clause in clauses
             ]
         self._is_implicitly_boolean = operators.is_boolean(self.operator)
+
+    @classmethod
+    def _construct_raw(cls, operator, clauses=None):
+        self = cls.__new__(cls)
+        self.clauses = clauses if clauses else []
+        self.group = True
+        self.operator = operator
+        self.group_contents = True
+        self._tuple_values = False
+        self._is_implicitly_boolean = False
+        return self
 
     def __iter__(self):
         return iter(self.clauses)
@@ -2153,46 +2167,58 @@ class BooleanClauseList(ClauseList, ColumnElement):
         )
 
     @classmethod
-    def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
-
+    def _process_clauses_for_boolean(
+        cls, operator, continue_on, skip_on, clauses
+    ):
         has_continue_on = None
-        special_elements = (continue_on, skip_on)
+
         convert_clauses = []
-
-        for clause in util.coerce_generator_arg(clauses):
-            clause = coercions.expect(roles.WhereHavingRole, clause)
-
-            # elements that are not the continue/skip are the most
-            # common, try to have only one isinstance() call for that case.
-            if not isinstance(clause, special_elements):
-                convert_clauses.append(clause)
-            elif isinstance(clause, skip_on):
-                # instance of skip_on, e.g. and_(x, y, False, z), cancels
-                # the rest out
-                return clause.self_group(against=operators._asbool)
-            elif has_continue_on is None:
+        for clause in clauses:
+            if clause is continue_on:
                 # instance of continue_on, like and_(x, y, True, z), store it
                 # if we didn't find one already, we will use it if there
                 # are no other expressions here.
                 has_continue_on = clause
+            elif clause is skip_on:
+                # instance of skip_on, e.g. and_(x, y, False, z), cancels
+                # the rest out
+                convert_clauses = [clause]
+                break
+            else:
+                convert_clauses.append(clause)
+
+        if not convert_clauses and has_continue_on is not None:
+            convert_clauses = [has_continue_on]
 
         lcc = len(convert_clauses)
 
         if lcc > 1:
+            against = operator
+        else:
+            against = operators._asbool
+        return lcc, [c.self_group(against=against) for c in convert_clauses]
+
+    @classmethod
+    def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
+
+        lcc, convert_clauses = cls._process_clauses_for_boolean(
+            operator,
+            continue_on,
+            skip_on,
+            [
+                coercions.expect(roles.WhereHavingRole, clause)
+                for clause in util.coerce_generator_arg(clauses)
+            ],
+        )
+
+        if lcc > 1:
             # multiple elements.  Return regular BooleanClauseList
             # which will link elements against the operator.
-            return cls._construct_raw(
-                operator,
-                [c.self_group(against=operator) for c in convert_clauses],
-            )
+            return cls._construct_raw(operator, convert_clauses)
         elif lcc == 1:
             # just one element.  return it as a single boolean element,
             # not a list and discard the operator.
-            return convert_clauses[0].self_group(against=operators._asbool)
-        elif not lcc and has_continue_on is not None:
-            # no elements but we had a "continue", just return the continue
-            # as a boolean element, discard the operator.
-            return has_continue_on.self_group(against=operators._asbool)
+            return convert_clauses[0]
         else:
             # no elements period.  deprecated use case.  return an empty
             # ClauseList construct that generates nothing unless it has
@@ -2203,7 +2229,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
                 "%(name)s() construct, use %(name)s(%(continue_on)s, *args)."
                 % {
                     "name": operator.__name__,
-                    "continue_on": "True" if continue_on is True_ else "False",
+                    "continue_on": "True"
+                    if continue_on is True_._singleton
+                    else "False",
                 }
             )
             return cls._construct_raw(operator)
@@ -2277,7 +2305,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
             :func:`.or_`
 
         """
-        return cls._construct(operators.and_, True_, False_, *clauses)
+        return cls._construct(
+            operators.and_, True_._singleton, False_._singleton, *clauses
+        )
 
     @classmethod
     def or_(cls, *clauses):
@@ -2328,7 +2358,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
             :func:`.and_`
 
         """
-        return cls._construct(operators.or_, False_, True_, *clauses)
+        return cls._construct(
+            operators.or_, False_._singleton, True_._singleton, *clauses
+        )
 
     @property
     def _select_iterable(self):
@@ -4530,14 +4562,6 @@ class quoted_name(util.MemoizedSlots, util.text_type):
             return "'%s'" % backslashed
         else:
             return str.__repr__(self)
-
-
-def _select_iterables(elements):
-    """expand tables into individual columns in the
-    given list of column expressions.
-
-    """
-    return itertools.chain(*[c._select_iterable for c in elements])
 
 
 def _find_columns(clause):

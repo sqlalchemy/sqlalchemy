@@ -102,14 +102,6 @@ class Connection(Connectable):
             self.__transaction = None
             self.__savepoint_seq = 0
             self.should_close_with_result = close_with_result
-            if close_with_result:
-                util.warn_deprecated_20(
-                    '"Connectionless" execution, which refers to running '
-                    "SQL commands using the Engine.execute() (or "
-                    "some_statement.execute()) method without "
-                    "calling .connect() or .begin() to get a Connection, is "
-                    "deprecated and will be removed SQLAlchemy 2.0"
-                )
 
             self.__invalid = False
             self.__can_reconnect = True
@@ -894,12 +886,13 @@ class Connection(Connectable):
 
         """
         if self.__branch_from:
-            util.warn_deprecated(
+            util.warn_deprecated_20(
                 "The .close() method on a so-called 'branched' connection is "
                 "deprecated as of 1.4, as are 'branched' connections overall, "
                 "and will be removed in a future release.  If this is a "
                 "default-handling function, don't close the connection."
             )
+
             try:
                 del self.__connection
             except AttributeError:
@@ -2243,6 +2236,13 @@ class Engine(Connectable, log.Identified):
         with self.connect() as conn:
             conn._run_ddl_visitor(visitorcallable, element, **kwargs)
 
+    @util.deprecated_20(
+        ":meth:`.Engine.execute`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`.",
+    )
     def execute(self, statement, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`.
 
@@ -2261,6 +2261,14 @@ class Engine(Connectable, log.Identified):
         connection = self.connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
 
+    @util.deprecated_20(
+        ":meth:`.Engine.scalar`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
+        "used to return a scalar result.",
+    )
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 

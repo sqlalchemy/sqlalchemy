@@ -1133,12 +1133,14 @@ class SelectableTest(
 
         s3 = sql_util.ClauseAdapter(ta).traverse(s2)
 
-        assert s1 not in s3._froms
+        froms = list(s3._iterate_from_elements())
+
+        assert s1 not in froms
 
         # these are new assumptions with the newer approach that
         # actively swaps out whereclause and others
         assert s3._whereclause.left.table is not s1
-        assert s3._whereclause.left.table in s3._froms
+        assert s3._whereclause.left.table in froms
 
 
 class RefreshForNewColTest(fixtures.TestBase):
@@ -2540,7 +2542,8 @@ class AnnotationsTest(fixtures.TestBase):
         ):
             # the columns clause isn't changed at all
             assert sel._raw_columns[0].table is a1
-            assert sel._froms[0].element is sel._froms[1].left.element
+            froms = list(sel._iterate_from_elements())
+            assert froms[0].element is froms[1].left.element
 
             eq_(str(s), str(sel))
 
@@ -2551,7 +2554,8 @@ class AnnotationsTest(fixtures.TestBase):
             sql_util._deep_deannotate(s, {"foo": "bar"}),
             sql_util._deep_annotate(s, {"foo": "bar"}),
         ):
-            assert sel._froms[0] is not sel._froms[1].left
+            froms = list(sel._iterate_from_elements())
+            assert froms[0] is not froms[1].left
 
             # but things still work out due to
             # re49563072578

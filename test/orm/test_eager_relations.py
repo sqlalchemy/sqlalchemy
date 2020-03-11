@@ -3434,6 +3434,8 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             .scalar_subquery()
         )
         # test a different unary operator
+        # TODO: there is no test in Core that asserts what is happening
+        # here as far as the label generation for the ORDER BY
         self.assert_compile(
             create_session()
             .query(A)

@@ -84,6 +84,7 @@ __all__ = [
 
 
 from .base import _from_objects  # noqa
+from .base import _select_iterables  # noqa
 from .base import ColumnCollection  # noqa
 from .base import Executable  # noqa
 from .base import PARSE_AUTOCOMMIT  # noqa
@@ -92,7 +93,6 @@ from .dml import Insert  # noqa
 from .dml import Update  # noqa
 from .dml import UpdateBase  # noqa
 from .dml import ValuesBase  # noqa
-from .elements import _select_iterables  # noqa
 from .elements import _truncated_label  # noqa
 from .elements import between  # noqa
 from .elements import BinaryExpression  # noqa

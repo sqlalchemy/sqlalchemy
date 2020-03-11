@@ -1106,6 +1106,7 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_empty_clauses(self, op, str_op, str_continue):
         # these warning classes will change to ArgumentError when the
         # deprecated behavior is disabled
+
         assert_raises_message(
             exc.SADeprecationWarning,
             r"Invoking %(str_op)s\(\) without arguments is deprecated, and "
@@ -1199,21 +1200,35 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             select([x]).where(~null()), "SELECT x WHERE NOT NULL"
         )
 
-    def test_constant_non_singleton(self):
-        is_not_(null(), null())
-        is_not_(false(), false())
-        is_not_(true(), true())
+    def test_constants_are_singleton(self):
+        is_(null(), null())
+        is_(false(), false())
+        is_(true(), true())
 
     def test_constant_render_distinct(self):
         self.assert_compile(
-            select([null(), null()]), "SELECT NULL AS anon_1, NULL AS anon_2"
+            select([null(), null()]), "SELECT NULL AS anon_1, NULL AS anon__1"
         )
         self.assert_compile(
-            select([true(), true()]), "SELECT true AS anon_1, true AS anon_2"
+            select([true(), true()]), "SELECT true AS anon_1, true AS anon__1"
         )
         self.assert_compile(
             select([false(), false()]),
-            "SELECT false AS anon_1, false AS anon_2",
+            "SELECT false AS anon_1, false AS anon__1",
+        )
+
+    def test_constant_render_distinct_use_labels(self):
+        self.assert_compile(
+            select([null(), null()]).apply_labels(),
+            "SELECT NULL AS anon_1, NULL AS anon__1",
+        )
+        self.assert_compile(
+            select([true(), true()]).apply_labels(),
+            "SELECT true AS anon_1, true AS anon__1",
+        )
+        self.assert_compile(
+            select([false(), false()]).apply_labels(),
+            "SELECT false AS anon_1, false AS anon__1",
         )
 
     def test_is_true_literal(self):

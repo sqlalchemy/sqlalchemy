@@ -459,6 +459,11 @@ class _CopyInternals(InternalTraversal):
     def visit_clauseelement_list(self, parent, element, clone=_clone, **kw):
         return [clone(clause, **kw) for clause in element]
 
+    def visit_clauseelement_unordered_set(
+        self, parent, element, clone=_clone, **kw
+    ):
+        return {clone(clause, **kw) for clause in element}
+
     def visit_clauseelement_tuples(self, parent, element, clone=_clone, **kw):
         return [
             tuple(clone(tup_elem, **kw) for tup_elem in elem)

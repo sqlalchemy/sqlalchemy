@@ -4863,7 +4863,7 @@ class ResultMapTest(fixtures.TestBase):
                     with self._nested_result() as nested:
                         contexts[stmt2.element] = nested
                         text = super(MyCompiler, self).visit_select(
-                            stmt2.element
+                            stmt2.element,
                         )
                         self._add_to_result_map("k1", "k1", (1, 2, 3), int_)
                 else:
@@ -4970,7 +4970,7 @@ class ResultMapTest(fixtures.TestBase):
         eq_(len(stmt.subquery().c), 7)
 
         # will render 7 as well
-        eq_(len(stmt._columns_plus_names), 7)
+        eq_(len(stmt._compile_state_factory(stmt, None).columns_plus_names), 7)
 
         wrapped = stmt._generate()
         wrapped = wrapped.add_columns(

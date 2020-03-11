@@ -1314,7 +1314,8 @@ class CycleTest(_fixtures.FixtureTest):
         @assert_cycles(6)
         def go():
             s = select([users]).select_from(users.join(addresses))
-            s._froms
+            state = s._compile_state_factory(s, None)
+            state.froms
 
         go()
 

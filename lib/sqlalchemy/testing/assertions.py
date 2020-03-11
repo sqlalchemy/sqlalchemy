@@ -151,6 +151,7 @@ def _expect_warnings(
             exception = arg[0]
         else:
             exception = None
+
         if not exception or not issubclass(exception, exc_cls):
             return real_warn(msg, *arg, **kw)
 

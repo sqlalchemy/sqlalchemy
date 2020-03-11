@@ -37,6 +37,18 @@ class DMLState(CompileState):
     isdelete = False
     isinsert = False
 
+    @classmethod
+    def _create_insert(cls, statement, compiler, **kw):
+        return DMLState(statement, compiler, isinsert=True, **kw)
+
+    @classmethod
+    def _create_update(cls, statement, compiler, **kw):
+        return DMLState(statement, compiler, isupdate=True, **kw)
+
+    @classmethod
+    def _create_delete(cls, statement, compiler, **kw):
+        return DMLState(statement, compiler, isdelete=True, **kw)
+
     def __init__(
         self,
         statement,
@@ -180,8 +192,6 @@ class UpdateBase(
     )
     _hints = util.immutabledict()
     named_with_column = False
-
-    _compile_state_cls = DMLState
 
     @classmethod
     def _constructor_20_deprecations(cls, fn_name, clsname, names):
@@ -717,6 +727,8 @@ class Insert(ValuesBase):
 
     _supports_multi_parameters = True
 
+    _compile_state_factory = DMLState._create_insert
+
     select = None
     include_insert_from_select_defaults = False
 
@@ -914,6 +926,8 @@ class Update(DMLWhereBase, ValuesBase):
     """
 
     __visit_name__ = "update"
+
+    _compile_state_factory = DMLState._create_update
 
     _traverse_internals = (
         [
@@ -1152,6 +1166,8 @@ class Delete(DMLWhereBase, UpdateBase):
     """
 
     __visit_name__ = "delete"
+
+    _compile_state_factory = DMLState._create_delete
 
     _traverse_internals = (
         [
