@@ -1713,7 +1713,7 @@ def with_expression(loadopt, key, expression):
 
     .. seealso::
 
-        :ref:`mapper_query_expression`
+        :ref:`mapper_querytime_expression`
 
     """
 
