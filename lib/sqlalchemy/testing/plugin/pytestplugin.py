@@ -162,6 +162,11 @@ def pytest_collection_modifyitems(session, config, items):
             if sub_cls is not test_class.cls:
                 per_cls_dict = rebuilt_items[test_class.cls]
 
+                # in pytest 5.4.0
+                # for inst in pytest.Class.from_parent(
+                #     test_class.parent.parent, name=sub_cls.__name__
+                # ).collect():
+
                 for inst in pytest.Class(
                     sub_cls.__name__, parent=test_class.parent.parent
                 ).collect():
@@ -190,6 +195,14 @@ def pytest_collection_modifyitems(session, config, items):
 def pytest_pycollect_makeitem(collector, name, obj):
 
     if inspect.isclass(obj) and plugin_base.want_class(name, obj):
+
+        # in pytest 5.4.0
+        # return [
+        #     pytest.Class.from_parent(collector,
+        # name=parametrize_cls.__name__)
+        #     for parametrize_cls in _parametrize_cls(collector.module, obj)
+        # ]
+
         return [
             pytest.Class(parametrize_cls.__name__, parent=collector)
             for parametrize_cls in _parametrize_cls(collector.module, obj)

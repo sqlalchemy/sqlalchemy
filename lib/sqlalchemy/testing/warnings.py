@@ -38,6 +38,15 @@ def setup_filters():
         "ignore", category=DeprecationWarning, message=".*inspect.getargspec"
     )
 
+    try:
+        import pytest
+    except ImportError:
+        pass
+    else:
+        warnings.filterwarnings(
+            "once", category=pytest.PytestDeprecationWarning
+        )
+
 
 def assert_warnings(fn, warning_msgs, regex=False):
     """Assert that each of the given warnings are emitted by fn.
