@@ -4,6 +4,7 @@ from .. import assert_raises
 from .. import config
 from .. import eq_
 from .. import fixtures
+from .. import ne_
 from .. import provide_metadata
 from ..config import requirements
 from ..schema import Column
@@ -79,6 +80,46 @@ class ExceptionTest(fixtures.TablesTest):
                 assert isinstance(err_str, str)
 
 
+class IsolationLevelTest(fixtures.TestBase):
+    __backend__ = True
+
+    __requires__ = ("isolation_level",)
+
+    def _get_non_default_isolation_level(self):
+        levels = requirements.get_isolation_levels(config)
+
+        default = levels["default"]
+        supported = levels["supported"]
+
+        s = set(supported).difference(["AUTOCOMMIT", default])
+        if s:
+            return s.pop()
+        else:
+            config.skip_test("no non-default isolation level available")
+
+    def test_default_isolation_level(self):
+        eq_(
+            config.db.dialect.default_isolation_level,
+            requirements.get_isolation_levels(config)["default"],
+        )
+
+    def test_non_default_isolation_level(self):
+        non_default = self._get_non_default_isolation_level()
+
+        with config.db.connect() as conn:
+            existing = conn.get_isolation_level()
+
+            ne_(existing, non_default)
+
+            conn.execution_options(isolation_level=non_default)
+
+            eq_(conn.get_isolation_level(), non_default)
+
+            conn.dialect.reset_isolation_level(conn.connection)
+
+            eq_(conn.get_isolation_level(), existing)
+
+
 class AutocommitTest(fixtures.TablesTest):
 
     run_deletes = "each"
@@ -115,11 +156,25 @@ class AutocommitTest(fixtures.TablesTest):
         conn = config.db.connect()
         c2 = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(c2, True)
-        conn.invalidate()
+
+        c2.dialect.reset_isolation_level(c2.connection)
+
         self._test_conn_autocommits(conn, False)
 
     def test_autocommit_off(self):
         conn = config.db.connect()
+        self._test_conn_autocommits(conn, False)
+
+    def test_turn_autocommit_off_via_default_iso_level(self):
+        conn = config.db.connect()
+        conn.execution_options(isolation_level="AUTOCOMMIT")
+        self._test_conn_autocommits(conn, True)
+
+        conn.execution_options(
+            isolation_level=requirements.get_isolation_levels(config)[
+                "default"
+            ]
+        )
         self._test_conn_autocommits(conn, False)
 
 

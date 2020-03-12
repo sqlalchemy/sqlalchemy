@@ -369,19 +369,42 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def isolation_level(self):
         return only_on(
-            ("postgresql", "sqlite", "mysql", "mssql"),
+            ("postgresql", "sqlite", "mysql", "mssql", "oracle"),
             "DBAPI has no isolation level support",
         ) + fails_on(
             "postgresql+pypostgresql",
             "pypostgresql bombs on multiple isolation level calls",
         )
 
+    def get_isolation_levels(self, config):
+        levels = set(config.db.dialect._isolation_lookup)
+
+        if against(config, "sqlite"):
+            default = "SERIALIZABLE"
+        elif against(config, "postgresql"):
+            default = "READ COMMITTED"
+            levels.add("AUTOCOMMIT")
+        elif against(config, "mysql"):
+            default = "REPEATABLE READ"
+            levels.add("AUTOCOMMIT")
+        elif against(config, "mssql"):
+            default = "READ COMMITTED"
+            levels.add("AUTOCOMMIT")
+        elif against(config, "oracle"):
+            default = "READ COMMITTED"
+            levels.add("AUTOCOMMIT")
+        else:
+            raise NotImplementedError()
+
+        return {"default": default, "supported": levels}
+
     @property
     def autocommit(self):
         """target dialect supports 'AUTOCOMMIT' as an isolation_level"""
-        return only_on(
-            ("postgresql", "mysql", "mssql+pyodbc", "mssql+pymssql"),
-            "dialect does not support AUTOCOMMIT isolation mode",
+
+        return self.isolation_level + only_if(
+            lambda config: "AUTOCOMMIT"
+            in self.get_isolation_levels(config)["supported"]
         )
 
     @property

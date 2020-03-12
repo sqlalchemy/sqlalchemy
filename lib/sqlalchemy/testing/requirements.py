@@ -703,6 +703,42 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def isolation_level(self):
+        """target dialect supports general isolation level settings.
+
+        Note that this requirement, when enabled, also requires that
+        the get_isolation_levels() method be implemented.
+
+        """
+        return exclusions.closed()
+
+    def get_isolation_levels(self, config):
+        """Return a structure of supported isolation levels for the current
+        testing dialect.
+
+        The structure indicates to the testing suite what the expected
+        "default" isolation should be, as well as the other values that
+        are accepted.  The dictionary has two keys, "default" and "supported".
+        The "supported" key refers to a list of all supported levels and
+        it should include AUTOCOMMIT if the dialect supports it.
+
+        If the :meth:`.DefaultRequirements.isolation_level` requirement is
+        not open, then this method has no return value.
+
+        E.g.::
+
+            >>> testing.requirements.get_isolation_levels()
+            {
+                "default": "READ_COMMITED",
+                "supported": [
+                    "SERIALIZABLE", "READ UNCOMMITTED",
+                    "READ COMMITTED", "REPEATABLE READ",
+                    "AUTOCOMMIT"
+                ]
+            }
+        """
+
+    @property
     def json_type(self):
         """target platform implements a native JSON type."""
 

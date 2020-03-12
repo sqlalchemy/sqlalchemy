@@ -882,28 +882,19 @@ class IsolationLevelTest(fixtures.TestBase):
     __backend__ = True
 
     def _default_isolation_level(self):
-        if testing.against("sqlite"):
-            return "SERIALIZABLE"
-        elif testing.against("postgresql"):
-            return "READ COMMITTED"
-        elif testing.against("mysql"):
-            return "REPEATABLE READ"
-        elif testing.against("mssql"):
-            return "READ COMMITTED"
-        else:
-            assert False, "default isolation level not known"
+        return testing.requires.get_isolation_levels(testing.config)["default"]
 
     def _non_default_isolation_level(self):
-        if testing.against("sqlite"):
-            return "READ UNCOMMITTED"
-        elif testing.against("postgresql"):
-            return "SERIALIZABLE"
-        elif testing.against("mysql"):
-            return "SERIALIZABLE"
-        elif testing.against("mssql"):
-            return "SERIALIZABLE"
+        levels = testing.requires.get_isolation_levels(testing.config)
+
+        default = levels["default"]
+        supported = levels["supported"]
+
+        s = set(supported).difference(["AUTOCOMMIT", default])
+        if s:
+            return s.pop()
         else:
-            assert False, "non default isolation level not known"
+            assert False, "no non-default isolation level available"
 
     def test_engine_param_stays(self):
 
