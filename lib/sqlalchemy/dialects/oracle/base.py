@@ -53,6 +53,36 @@ This step is also required when using table reflection, i.e. autoload=True::
         autoload=True
   )
 
+Transaction Isolation Level / Autocommit
+----------------------------------------
+
+The Oracle database supports "READ COMMITTED" and "SERIALIZABLE" modes
+of isolation, however the SQLAlchemy Oracle dialect currently only has
+explicit support for "READ COMMITTED".  It is possible to emit a
+"SET TRANSACTION" statement on a connection in order to use SERIALIZABLE
+isolation, however the SQLAlchemy dialect will remain unaware of this setting,
+such as if the :meth:`.Connection.get_isolation_level` method is used;
+this method is hardcoded to return "READ COMMITTED" right now.
+
+The AUTOCOMMIT isolation level is also supported by the cx_Oracle dialect.
+
+To set using per-connection execution options::
+
+    connection = engine.connect()
+    connection = connection.execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
+
+Valid values for ``isolation_level`` include:
+
+* ``READ COMMITTED``
+* ``AUTOCOMMIT``
+
+
+.. versionadded:: 1.3.16 added support for AUTOCOMMIT to the cx_oracle dialect
+   as well as the notion of a default isolation level, currently harcoded
+   to "READ COMMITTED".
+
 Identifier Casing
 -----------------
 
@@ -1352,6 +1382,20 @@ class OracleDialect(default.DefaultDialect):
         return super(OracleDialect, self)._check_unicode_returns(
             connection, additional_tests
         )
+
+    _isolation_lookup = ["READ COMMITTED"]
+
+    def get_isolation_level(self, connection):
+        return "READ COMMITTED"
+
+    def set_isolation_level(self, connection, level):
+        # prior to adding AUTOCOMMIT support for cx_Oracle, the Oracle dialect
+        # had no notion of setting the isolation level.  As Oracle
+        # does not have a straightforward way of getting the isolation level
+        # if a server-side transaction is not yet in progress, we currently
+        # hardcode to only support "READ COMMITTED" and "AUTOCOMMIT" at the
+        # cx_oracle level.  See #5200.
+        pass
 
     def has_table(self, connection, table_name, schema=None):
         if not schema:

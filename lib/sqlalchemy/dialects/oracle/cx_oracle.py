@@ -1152,5 +1152,18 @@ class OracleDialect_cx_oracle(OracleDialect):
     def do_recover_twophase(self, connection):
         connection.info.pop("cx_oracle_prepared", None)
 
+    def set_isolation_level(self, connection, level):
+        if hasattr(connection, "connection"):
+            dbapi_connection = connection.connection
+        else:
+            dbapi_connection = connection
+        if level == "AUTOCOMMIT":
+            dbapi_connection.autocommit = True
+        else:
+            dbapi_connection.autocommit = False
+            super(OracleDialect_cx_oracle, self).set_isolation_level(
+                dbapi_connection, level
+            )
+
 
 dialect = OracleDialect_cx_oracle
