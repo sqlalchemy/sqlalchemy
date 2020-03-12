@@ -34,6 +34,15 @@ def setup_filters():
     # ignore 2.0 warnings unless we are explicitly testing for them
     warnings.filterwarnings("ignore", category=sa_exc.RemovedIn20Warning)
 
+    try:
+        import pytest
+    except ImportError:
+        pass
+    else:
+        warnings.filterwarnings(
+            "once", category=pytest.PytestDeprecationWarning
+        )
+
 
 def assert_warnings(fn, warning_msgs, regex=False):
     """Assert that each of the given warnings are emitted by fn.

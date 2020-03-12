@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 5201
+
+    Fixed an issue that prevented the test suite from running with the
+    recently released py.test 5.4.0.
+
