@@ -194,6 +194,32 @@ drop synonym %(test_schema)s.local_table;
         # check table comment (#5146)
         eq_(parent.comment, "my table comment")
 
+    @testing.provide_metadata
+    def test_reflect_table_comment(self):
+        local_parent = Table(
+            "parent",
+            self.metadata,
+            Column("q", Integer),
+            comment="my local comment",
+        )
+
+        local_parent.create(testing.db)
+
+        insp = inspect(testing.db)
+        eq_(
+            insp.get_table_comment(
+                "parent", schema=testing.config.test_schema
+            ),
+            {"text": "my table comment"},
+        )
+        eq_(insp.get_table_comment("parent",), {"text": "my local comment"})
+        eq_(
+            insp.get_table_comment(
+                "parent", schema=testing.db.dialect.default_schema_name
+            ),
+            {"text": "my local comment"},
+        )
+
     def test_reflect_local_to_remote(self):
         testing.db.execute(
             "CREATE TABLE localtable (id INTEGER "

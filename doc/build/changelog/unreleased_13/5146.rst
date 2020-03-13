@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, oracle, reflection
+    :tickets: 5146
+
+    Fixed regression / incorrect fix caused by fix for :ticket:`5146` where the
+    Oracle dialect reads from the "all_tab_comments" view to get table comments
+    but fails to accommodate for the current owner of the table being
+    requested, causing it to read the wrong comment if multiple tables of the
+    same name exist in multiple schemas.
+
