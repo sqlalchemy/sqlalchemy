@@ -1758,13 +1758,18 @@ class OracleDialect(default.DefaultDialect):
             info_cache=info_cache,
         )
 
+        if not schema:
+            schema = self.default_schema_name
+
         COMMENT_SQL = """
             SELECT comments
             FROM all_tab_comments
-            WHERE table_name = :table_name
+            WHERE table_name = :table_name AND owner = :schema_name
         """
 
-        c = connection.execute(sql.text(COMMENT_SQL), table_name=table_name)
+        c = connection.execute(
+            sql.text(COMMENT_SQL), table_name=table_name, schema_name=schema
+        )
         return {"text": c.scalar()}
 
     @reflection.cache
