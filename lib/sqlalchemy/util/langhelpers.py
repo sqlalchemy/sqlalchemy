@@ -1026,10 +1026,7 @@ class _ModuleRegistry:
         for module in self.module_registry:
             key = module.split("sqlalchemy.")[-1].replace(".", "_")
             if module.startswith(path) and key not in self.__dict__:
-                tokens = module.split(".")
-                compat.import_(
-                    ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]]
-                )
+                compat.import_(module, globals(), locals())
                 self.__dict__[key] = sys.modules[module]
 
 
