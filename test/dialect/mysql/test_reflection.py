@@ -493,12 +493,14 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.metadata.create_all()
 
         with testing.db.connect() as conn:
-            conn.execute("CREATE VIEW v1 AS SELECT * FROM x")
-            conn.execute("CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x")
-            conn.execute(
+            conn.exec_driver_sql("CREATE VIEW v1 AS SELECT * FROM x")
+            conn.exec_driver_sql(
+                "CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x"
+            )
+            conn.exec_driver_sql(
                 "CREATE ALGORITHM=UNDEFINED VIEW v3 AS SELECT * FROM x"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x"
             )
 
@@ -506,7 +508,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         def cleanup(*arg, **kw):
             with testing.db.connect() as conn:
                 for v in ["v1", "v2", "v3", "v4"]:
-                    conn.execute("DROP VIEW %s" % v)
+                    conn.exec_driver_sql("DROP VIEW %s" % v)
 
         insp = inspect(testing.db)
         for v in ["v1", "v2", "v3", "v4"]:
@@ -523,15 +525,17 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         @event.listens_for(self.metadata, "before_drop")
         def cleanup(*arg, **kw):
             with testing.db.connect() as conn:
-                conn.execute("DROP TABLE IF EXISTS test_t1")
-                conn.execute("DROP TABLE IF EXISTS test_t2")
-                conn.execute("DROP VIEW IF EXISTS test_v")
+                conn.exec_driver_sql("DROP TABLE IF EXISTS test_t1")
+                conn.exec_driver_sql("DROP TABLE IF EXISTS test_t2")
+                conn.exec_driver_sql("DROP VIEW IF EXISTS test_v")
 
         with testing.db.connect() as conn:
-            conn.execute("CREATE TABLE test_t1 (id INTEGER)")
-            conn.execute("CREATE TABLE test_t2 (id INTEGER)")
-            conn.execute("CREATE VIEW test_v AS SELECT id FROM test_t1")
-            conn.execute("DROP TABLE test_t1")
+            conn.exec_driver_sql("CREATE TABLE test_t1 (id INTEGER)")
+            conn.exec_driver_sql("CREATE TABLE test_t2 (id INTEGER)")
+            conn.exec_driver_sql(
+                "CREATE VIEW test_v AS SELECT id FROM test_t1"
+            )
+            conn.exec_driver_sql("DROP TABLE test_t1")
 
             m = MetaData()
             with expect_warnings(
@@ -567,10 +571,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # this is ideally one table, but older MySQL versions choke
         # on the multiple TIMESTAMP columns
-
-        row = testing.db.execute(
-            "show variables like '%%explicit_defaults_for_timestamp%%'"
-        ).first()
+        with testing.db.connect() as c:
+            row = c.exec_driver_sql(
+                "show variables like '%%explicit_defaults_for_timestamp%%'"
+            ).first()
         explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
 
         reflected = []
@@ -591,14 +595,15 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             Table("nn_t%d" % idx, meta)  # to allow DROP
 
-            testing.db.execute(
-                """
-                CREATE TABLE nn_t%d (
-                    %s
+            with testing.db.connect() as c:
+                c.exec_driver_sql(
+                    """
+                        CREATE TABLE nn_t%d (
+                            %s
+                        )
+                    """
+                    % (idx, ", \n".join(cols))
                 )
-            """
-                % (idx, ", \n".join(cols))
-            )
 
             reflected.extend(
                 {

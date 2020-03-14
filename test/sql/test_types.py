@@ -1520,7 +1520,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             eq_(conn.scalar(select([non_native_enum_table.c.someenum])), None)
 
     @testing.requires.enforces_check_constraints
-    def test_check_constraint(self):
+    def test_check_constraint(self, connection):
         assert_raises(
             (
                 exc.IntegrityError,
@@ -1530,7 +1530,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 # https://github.com/PyMySQL/PyMySQL/issues/607 is resolved
                 exc.InternalError,
             ),
-            testing.db.execute,
+            connection.exec_driver_sql,
             "insert into non_native_enum_table "
             "(id, someenum) values(1, 'four')",
         )
@@ -1563,10 +1563,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             self.metadata.create_all(conn)
             assert_raises(
                 (exc.DBAPIError,),
-                conn.execute,
+                conn.exec_driver_sql,
                 "insert into my_table " "(data) values('four')",
             )
-            conn.execute("insert into my_table (data) values ('two')")
+            conn.exec_driver_sql("insert into my_table (data) values ('two')")
 
     @testing.requires.enforces_check_constraints
     @testing.provide_metadata
@@ -1596,19 +1596,21 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             self.metadata.create_all(conn)
             assert_raises(
                 (exc.DBAPIError,),
-                conn.execute,
+                conn.exec_driver_sql,
                 "insert into my_table " "(data) values('two')",
             )
-            conn.execute("insert into my_table (data) values ('four')")
+            conn.exec_driver_sql("insert into my_table (data) values ('four')")
 
     def test_skip_check_constraint(self):
         with testing.db.connect() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 "insert into non_native_enum_table "
                 "(id, someotherenum) values(1, 'four')"
             )
             eq_(
-                conn.scalar("select someotherenum from non_native_enum_table"),
+                conn.exec_driver_sql(
+                    "select someotherenum from non_native_enum_table"
+                ).scalar(),
                 "four",
             )
             assert_raises_message(
@@ -2275,11 +2277,14 @@ class ExpressionTest(
     def teardown_class(cls):
         meta.drop_all()
 
-    def test_control(self):
-        assert testing.db.execute("select avalue from test").scalar() == 250
+    def test_control(self, connection):
+        assert (
+            connection.exec_driver_sql("select avalue from test").scalar()
+            == 250
+        )
 
         eq_(
-            test_table.select().execute().fetchall(),
+            connection.execute(test_table.select()).fetchall(),
             [
                 (
                     1,
@@ -2787,35 +2792,35 @@ class NumericRawSQLTest(fixtures.TestBase):
 
     @testing.fails_on("sqlite", "Doesn't provide Decimal results natively")
     @testing.provide_metadata
-    def test_decimal_fp(self):
+    def test_decimal_fp(self, connection):
         metadata = self.metadata
         self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45.5"))
-        val = testing.db.execute("select val from t").scalar()
+        val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45.5"))
 
     @testing.fails_on("sqlite", "Doesn't provide Decimal results natively")
     @testing.provide_metadata
-    def test_decimal_int(self):
+    def test_decimal_int(self, connection):
         metadata = self.metadata
         self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45"))
-        val = testing.db.execute("select val from t").scalar()
+        val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45"))
 
     @testing.provide_metadata
-    def test_ints(self):
+    def test_ints(self, connection):
         metadata = self.metadata
         self._fixture(metadata, Integer, 45)
-        val = testing.db.execute("select val from t").scalar()
+        val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, util.int_types)
         eq_(val, 45)
 
     @testing.provide_metadata
-    def test_float(self):
+    def test_float(self, connection):
         metadata = self.metadata
         self._fixture(metadata, Float, 46.583)
-        val = testing.db.execute("select val from t").scalar()
+        val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, float)
 
         # some DBAPIs have unusual float handling
@@ -2936,16 +2941,16 @@ class BooleanTest(
     )
     @testing.fails_on("mssql", "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
-    def test_constraint(self):
+    def test_constraint(self, connection):
         assert_raises(
             (exc.IntegrityError, exc.ProgrammingError),
-            testing.db.execute,
+            connection.exec_driver_sql,
             "insert into boolean_table (id, value) values(1, 5)",
         )
 
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
-    def test_unconstrained(self):
-        testing.db.execute(
+    def test_unconstrained(self, connection):
+        connection.exec_driver_sql(
             "insert into boolean_table (id, unconstrained_value)"
             "values (1, 5)"
         )
@@ -2993,13 +2998,16 @@ class BooleanTest(
     def test_nonnative_processor_coerces_integer_to_boolean(self):
         boolean_table = self.tables.boolean_table
         with testing.db.connect() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 "insert into boolean_table (id, unconstrained_value) "
                 "values (1, 5)"
             )
 
             eq_(
-                conn.scalar("select unconstrained_value from boolean_table"), 5
+                conn.exec_driver_sql(
+                    "select unconstrained_value from boolean_table"
+                ).scalar(),
+                5,
             )
 
             eq_(

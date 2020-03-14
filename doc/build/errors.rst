@@ -246,7 +246,7 @@ The pattern looks like::
     transaction2 = connection.begin()
     transaction2.rollback()
 
-    connection.execute("select 1")  # we are rolled back; will now raise
+    connection.execute(text("select 1"))  # we are rolled back; will now raise
 
     transaction.rollback()
 

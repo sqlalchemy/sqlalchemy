@@ -126,6 +126,8 @@ source will be fully annotated, as well as that ORM level integrations for
 SQLAlchemy 2.0 itself, and support for this new system in full is expected
 to occur over the course of many major releases.
 
+.. _migration_20_autocommit:
+
 Library-level (but not driver level) "Autocommit" removed from both Core and ORM
 ================================================================================
 
@@ -168,7 +170,7 @@ Nor will this autocommit::
     conn = engine.connect()
 
     # won't autocommit in 2.0
-    conn.execute("INSERT INTO table (foo) VALUES ('bar')")
+    conn.execute(text("INSERT INTO table (foo) VALUES ('bar')"))
 
 The options to force "autocommit" for specific connections or statements
 are also removed::
@@ -205,7 +207,7 @@ method::
         conn.execute(some_table.insert().values(foo='bar'))
         conn.commit()
 
-        conn.execute("some other SQL")
+        conn.execute(text("some other SQL"))
         conn.rollback()
 
 For the ORM, the above two patterns are already more or less how the
@@ -242,7 +244,7 @@ returned to the pool normally where an implicit (yes, still need this one)
 rollback will occur.  This is the case already for Core and ORM::
 
     with engine.connect() as conn:
-        results = conn.execute("select * from some_table")
+        results = conn.execute(text("select * from some_table"))
         return results
 
         # connection is returned to the pool, transaction is implicitly
@@ -277,12 +279,13 @@ driver.
 To use a connection in autocommit mode::
 
    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-       result = conn.execute(...)
+       result = conn.execute(stmt)
 
 The above code is already available in current SQLAlchemy releases.   Driver
 support is available for PostgreSQL, MySQL, SQL Server, and newer releases
 will include support for Oracle and SQLite as well.
 
+.. _migration_20_implicit_execution:
 
 "Implicit" and "Connectionless" execution, "bound metadata" removed
 ====================================================================

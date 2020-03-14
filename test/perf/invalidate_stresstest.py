@@ -31,7 +31,7 @@ def worker():
         try:
             conn.begin()
             for i in range(5):
-                conn.execute("SELECT 1+1")
+                conn.exec_driver_sql("SELECT 1+1")
                 gevent.sleep(random.random() * 1.01)
 
         except Exception:
@@ -49,8 +49,8 @@ def main():
     gevent.sleep(3)
 
     while True:
-        result = list(engine.execute("show processlist"))
-        engine.execute("kill %d" % result[-2][0])
+        result = list(engine.exec_driver_sql("show processlist"))
+        engine.exec_driver_sql("kill %d" % result[-2][0])
         print("\n\n\n BOOM!!!!! \n\n\n")
         gevent.sleep(5)
         print(engine.pool.status())

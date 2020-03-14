@@ -322,7 +322,7 @@ ourselves. This is achieved using two event listeners::
     @event.listens_for(engine, "begin")
     def do_begin(conn):
         # emit our own BEGIN
-        conn.execute("BEGIN")
+        conn.exec_driver_sql("BEGIN")
 
 Above, we intercept a new pysqlite connection and disable any transactional
 integration.   Then, at the point at which SQLAlchemy knows that transaction
@@ -335,7 +335,7 @@ by adding the desired locking mode to our ``"BEGIN"``::
 
     @event.listens_for(engine, "begin")
     def do_begin(conn):
-        conn.execute("BEGIN EXCLUSIVE")
+        conn.exec_driver_sql("BEGIN EXCLUSIVE")
 
 .. seealso::
 

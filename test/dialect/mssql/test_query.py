@@ -325,7 +325,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         )
         meta.create_all()
         con = testing.db.connect()
-        con.execute(
+        con.exec_driver_sql(
             """create trigger paj on t1 for insert as
             insert into t2 (descr) select descr from inserted"""
         )
@@ -339,7 +339,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
 
         finally:
             tr.commit()
-            con.execute("""drop trigger paj""")
+            con.exec_driver_sql("""drop trigger paj""")
             meta.drop_all()
 
     @testing.provide_metadata
@@ -431,11 +431,11 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         )
         meta.bind = eng
         con = eng.connect()
-        con.execute("create schema paj")
+        con.exec_driver_sql("create schema paj")
 
         @event.listens_for(meta, "after_drop")
         def cleanup(target, connection, **kw):
-            connection.execute("drop schema paj")
+            connection.exec_driver_sql("drop schema paj")
 
         tbl = Table(
             "test", meta, Column("id", Integer, primary_key=True), schema="paj"
@@ -450,11 +450,11 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         eng = engines.testing_engine(options=dict(legacy_schema_aliasing=True))
         meta.bind = eng
         con = eng.connect()
-        con.execute("create schema paj")
+        con.exec_driver_sql("create schema paj")
 
         @event.listens_for(meta, "after_drop")
         def cleanup(target, connection, **kw):
-            connection.execute("drop schema paj")
+            connection.exec_driver_sql("drop schema paj")
 
         tbl = Table(
             "test", meta, Column("id", Integer, primary_key=True), schema="paj"
@@ -489,11 +489,11 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         )
         meta.bind = eng
         con = eng.connect()
-        con.execute("create schema paj")
+        con.exec_driver_sql("create schema paj")
 
         @event.listens_for(meta, "after_drop")
         def cleanup(target, connection, **kw):
-            connection.execute("drop schema paj")
+            connection.exec_driver_sql("drop schema paj")
 
         tbl = Table(
             "test", meta, Column("id", Integer, primary_key=True), schema="paj"
@@ -510,11 +510,11 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         eng = engines.testing_engine(options=dict(legacy_schema_aliasing=True))
         meta.bind = eng
         con = eng.connect()
-        con.execute("create schema paj")
+        con.exec_driver_sql("create schema paj")
 
         @event.listens_for(meta, "after_drop")
         def cleanup(target, connection, **kw):
-            connection.execute("drop schema paj")
+            connection.exec_driver_sql("drop schema paj")
 
         tbl = Table(
             "test", meta, Column("id", Integer, primary_key=True), schema="paj"
@@ -548,7 +548,9 @@ def full_text_search_missing():
     try:
         connection = testing.db.connect()
         try:
-            connection.execute("CREATE FULLTEXT CATALOG Catalog AS " "DEFAULT")
+            connection.exec_driver_sql(
+                "CREATE FULLTEXT CATALOG Catalog AS " "DEFAULT"
+            )
             return False
         except Exception:
             return True
@@ -621,7 +623,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     def teardown_class(cls):
         metadata.drop_all()
         connection = testing.db.connect()
-        connection.execute("DROP FULLTEXT CATALOG Catalog")
+        connection.exec_driver_sql("DROP FULLTEXT CATALOG Catalog")
         connection.close()
 
     def test_expression(self):

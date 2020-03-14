@@ -181,6 +181,43 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["firebird", "mssql+mxodbc"], "not supported by driver")
 
     @property
+    def qmark_paramstyle(self):
+        return only_on(
+            ["firebird", "sqlite", "+pyodbc", "+mxodbc", "mysql+oursql"]
+        )
+
+    @property
+    def named_paramstyle(self):
+        return only_on(["sqlite", "oracle+cx_oracle"])
+
+    @property
+    def format_paramstyle(self):
+        return only_on(
+            [
+                "mysql+mysqldb",
+                "mysql+pymysql",
+                "mysql+cymysql",
+                "mysql+mysqlconnector",
+                "postgresql",
+            ]
+        )
+
+    @property
+    def pyformat_paramstyle(self):
+        return only_on(
+            [
+                "postgresql+psycopg2",
+                "postgresql+psycopg2cffi",
+                "postgresql+pypostgresql",
+                "postgresql+pygresql",
+                "mysql+mysqlconnector",
+                "mysql+pymysql",
+                "mysql+cymysql",
+                "mssql+pymssql",
+            ]
+        )
+
+    @property
     def no_quoting_special_bind_names(self):
         """Target database will quote bound parameter names, doesn't support
         EXPANDING"""
@@ -876,10 +913,10 @@ class DefaultRequirements(SuiteRequirements):
             with config.db.connect() as conn:
                 try:
                     return (
-                        conn.scalar(
+                        conn.exec_driver_sql(
                             """select json_extract('{"foo": "bar"}', """
                             """'$."foo"')"""
-                        )
+                        ).scalar()
                         == "bar"
                     )
                 except exc.DBAPIError:
@@ -1160,9 +1197,13 @@ class DefaultRequirements(SuiteRequirements):
         def check(config):
             if not against(config, "postgresql"):
                 return False
-            count = config.db.scalar(
-                "SELECT count(*) FROM pg_extension "
-                "WHERE extname='%s'" % name
+            count = (
+                config.db.connect(close_with_result=True)
+                .exec_driver_sql(
+                    "SELECT count(*) FROM pg_extension "
+                    "WHERE extname='%s'" % name
+                )
+                .scalar()
             )
             return bool(count)
 
@@ -1184,7 +1225,9 @@ class DefaultRequirements(SuiteRequirements):
             ):
                 return False
             try:
-                config.db.scalar("select '[1,2)'::int4range;")
+                config.db.connect(close_with_result=True).exec_driver_sql(
+                    "select '[1,2)'::int4range;"
+                ).scalar()
                 return True
             except Exception:
                 return False
@@ -1383,7 +1426,11 @@ class DefaultRequirements(SuiteRequirements):
             if not against(config, "mysql"):
                 return False
 
-            row = config.db.execute("show variables like 'sql_mode'").first()
+            row = (
+                config.db.connect(close_with_result=True)
+                .exec_driver_sql("show variables like 'sql_mode'")
+                .first()
+            )
             return not row or "NO_ZERO_DATE" not in row[1]
 
         return only_if(check)
@@ -1394,7 +1441,11 @@ class DefaultRequirements(SuiteRequirements):
             if not against(config, "mysql"):
                 return False
 
-            row = config.db.execute("show variables like 'sql_mode'").first()
+            row = (
+                config.db.connect(close_with_result=True)
+                .exec_driver_sql("show variables like 'sql_mode'")
+                .first()
+            )
             return not row or "STRICT_TRANS_TABLES" not in row[1]
 
         return only_if(check)
@@ -1483,9 +1534,14 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def postgresql_utf8_server_encoding(self):
+
         return only_if(
             lambda config: against(config, "postgresql")
-            and config.db.scalar("show server_encoding").lower() == "utf8"
+            and config.db.connect(close_with_result=True)
+            .exec_driver_sql("show server_encoding")
+            .scalar()
+            .lower()
+            == "utf8"
         )
 
     @property

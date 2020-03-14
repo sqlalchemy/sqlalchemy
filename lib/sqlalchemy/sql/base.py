@@ -470,6 +470,28 @@ class Generative(object):
         s.__dict__ = self.__dict__.copy()
         return s
 
+
+class HasCompileState(Generative):
+    """A class that has a :class:`.CompileState` associated with it."""
+
+    _compile_state_factory = CompileState._create
+
+    _compile_state_plugin = None
+
+
+class Executable(Generative):
+    """Mark a ClauseElement as supporting execution.
+
+    :class:`.Executable` is a superclass for all "statement" types
+    of objects, including :func:`select`, :func:`delete`, :func:`update`,
+    :func:`insert`, :func:`text`.
+
+    """
+
+    supports_execution = True
+    _execution_options = util.immutabledict()
+    _bind = None
+
     def options(self, *options):
         """Apply options to this statement.
 
@@ -500,28 +522,6 @@ class Generative(object):
 
         """
         self._options += options
-
-
-class HasCompileState(Generative):
-    """A class that has a :class:`.CompileState` associated with it."""
-
-    _compile_state_factory = CompileState._create
-
-    _compile_state_plugin = None
-
-
-class Executable(Generative):
-    """Mark a ClauseElement as supporting execution.
-
-    :class:`.Executable` is a superclass for all "statement" types
-    of objects, including :func:`select`, :func:`delete`, :func:`update`,
-    :func:`insert`, :func:`text`.
-
-    """
-
-    supports_execution = True
-    _execution_options = util.immutabledict()
-    _bind = None
 
     @_generative
     def execution_options(self, **kw):

@@ -177,7 +177,7 @@ class RowVersionTest(fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             conn.execute(t.insert().values(data="foo"))
-            last_ts_1 = conn.scalar("SELECT @@DBTS")
+            last_ts_1 = conn.exec_driver_sql("SELECT @@DBTS").scalar()
 
             if convert_int:
                 last_ts_1 = int(codecs.encode(last_ts_1, "hex"), 16)
@@ -187,7 +187,7 @@ class RowVersionTest(fixtures.TablesTest):
             conn.execute(
                 t.update().values(data="bar").where(t.c.data == "foo")
             )
-            last_ts_2 = conn.scalar("SELECT @@DBTS")
+            last_ts_2 = conn.exec_driver_sql("SELECT @@DBTS").scalar()
             if convert_int:
                 last_ts_2 = int(codecs.encode(last_ts_2, "hex"), 16)
 

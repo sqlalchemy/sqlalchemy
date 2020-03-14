@@ -331,19 +331,20 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
 
     @classmethod
     def setup_class(cls):
-        testing.db.execute(
-            """
-        create or replace procedure foo(x_in IN number, x_out OUT number,
-        y_out OUT number, z_out OUT varchar) IS
-        retval number;
-        begin
-            retval := 6;
-            x_out := 10;
-            y_out := x_in * 15;
-            z_out := NULL;
-        end;
-        """
-        )
+        with testing.db.connect() as c:
+            c.exec_driver_sql(
+                """
+create or replace procedure foo(x_in IN number, x_out OUT number,
+y_out OUT number, z_out OUT varchar) IS
+retval number;
+begin
+    retval := 6;
+    x_out := 10;
+    y_out := x_in * 15;
+    z_out := NULL;
+end;
+                """
+            )
 
     def test_out_params(self):
         result = testing.db.execute(
@@ -362,7 +363,7 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
 
     @classmethod
     def teardown_class(cls):
-        testing.db.execute("DROP PROCEDURE foo")
+        testing.db.execute(text("DROP PROCEDURE foo"))
 
 
 class QuotedBindRoundTripTest(fixtures.TestBase):
@@ -511,7 +512,9 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         dialect = self._dialect((12, 2, 0))
         conn = mock.Mock(
-            execute=mock.Mock(return_value=mock.Mock(scalar=lambda: "12.2.0"))
+            exec_driver_sql=mock.Mock(
+                return_value=mock.Mock(scalar=lambda: "12.2.0")
+            )
         )
         dialect.initialize(conn)
         eq_(dialect.server_version_info, (12, 2, 0))
@@ -524,7 +527,9 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = self._dialect((12, 2, 0))
 
         conn = mock.Mock(
-            execute=mock.Mock(return_value=mock.Mock(scalar=lambda: "12.2.0"))
+            exec_driver_sql=mock.Mock(
+                return_value=mock.Mock(scalar=lambda: "12.2.0")
+            )
         )
         dialect.initialize(conn)
         eq_(dialect.server_version_info, (12, 2, 0))
@@ -540,7 +545,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = self._dialect((11, 2, 0))
 
         conn = mock.Mock(
-            execute=mock.Mock(return_value=mock.Mock(scalar="11.0.0"))
+            exec_driver_sql=mock.Mock(return_value=mock.Mock(scalar="11.0.0"))
         )
         dialect.initialize(conn)
         eq_(dialect.server_version_info, (11, 2, 0))
@@ -553,7 +558,9 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = self._dialect((12, 2, 0))
 
         conn = mock.Mock(
-            execute=mock.Mock(return_value=mock.Mock(scalar=lambda: "11.0.0"))
+            exec_driver_sql=mock.Mock(
+                return_value=mock.Mock(scalar=lambda: "11.0.0")
+            )
         )
         dialect.initialize(conn)
         eq_(dialect.server_version_info, (12, 2, 0))
@@ -571,7 +578,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
         conn = mock.Mock(
-            execute=mock.Mock(return_value=mock.Mock(scalar=c122))
+            exec_driver_sql=mock.Mock(return_value=mock.Mock(scalar=c122))
         )
         dialect.initialize(conn)
         eq_(dialect.server_version_info, (12, 2, 0))
@@ -590,7 +597,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
             return "12.thisiscrap.0"
 
         conn = mock.Mock(
-            execute=mock.Mock(return_value=mock.Mock(scalar=c122))
+            exec_driver_sql=mock.Mock(return_value=mock.Mock(scalar=c122))
         )
         dialect.initialize(conn)
         eq_(dialect.server_version_info, (12, 2, 0))
@@ -609,12 +616,13 @@ class ExecuteTest(fixtures.TestBase):
     __backend__ = True
 
     def test_basic(self):
-        eq_(
-            testing.db.execute(
-                "/*+ this is a comment */ SELECT 1 FROM " "DUAL"
-            ).fetchall(),
-            [(1,)],
-        )
+        with testing.db.connect() as conn:
+            eq_(
+                conn.exec_driver_sql(
+                    "/*+ this is a comment */ SELECT 1 FROM " "DUAL"
+                ).fetchall(),
+                [(1,)],
+            )
 
     def test_sequences_are_integers(self):
         seq = Sequence("foo_seq")

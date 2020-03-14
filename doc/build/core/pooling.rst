@@ -313,7 +313,7 @@ illustrated by the code example below::
 
     try:
         # suppose the database has been restarted.
-        c.execute("SELECT * FROM table")
+        c.execute(text("SELECT * FROM table"))
         c.close()
     except exc.DBAPIError, e:
         # an exception is raised, Connection is invalidated.
@@ -323,7 +323,7 @@ illustrated by the code example below::
     # after the invalidate event, a new connection
     # starts with a new Pool
     c = e.connect()
-    c.execute("SELECT * FROM table")
+    c.execute(text("SELECT * FROM table"))
 
 The above example illustrates that no special intervention is needed to
 refresh the pool, which continues normally after a disconnection event is
@@ -457,7 +457,7 @@ should be adapted to the style of forking in use::
       engine.dispose()
 
       with engine.connect() as conn:
-          conn.execute("...")
+          conn.execute(text("..."))
 
     p = Process(target=run_in_process)
 

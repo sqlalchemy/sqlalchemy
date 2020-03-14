@@ -255,7 +255,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.flush()
         sess.close()
         assert not c.in_transaction()
-        assert c.scalar("select count(1) from users") == 0
+        assert c.exec_driver_sql("select count(1) from users").scalar() == 0
 
         sess = create_session(bind=c, autocommit=False)
         u = User(name="u2")
@@ -263,9 +263,9 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.flush()
         sess.commit()
         assert not c.in_transaction()
-        assert c.scalar("select count(1) from users") == 1
-        c.execute("delete from users")
-        assert c.scalar("select count(1) from users") == 0
+        assert c.exec_driver_sql("select count(1) from users").scalar() == 1
+        c.exec_driver_sql("delete from users")
+        assert c.exec_driver_sql("select count(1) from users").scalar() == 0
 
         c = testing.db.connect()
 
@@ -277,7 +277,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         assert c.in_transaction()
         trans.commit()
         assert not c.in_transaction()
-        assert c.scalar("select count(1) from users") == 1
+        assert c.exec_driver_sql("select count(1) from users").scalar() == 1
 
 
 class SessionBindTest(fixtures.MappedTest):

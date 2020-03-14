@@ -400,7 +400,15 @@ class FastExecutemanyTest(fixtures.TestBase):
 
 
 class VersionDetectionTest(fixtures.TestBase):
-    def test_pymssql_version(self):
+    @testing.fixture
+    def mock_conn_scalar(self):
+        return lambda text: Mock(
+            exec_driver_sql=Mock(
+                return_value=Mock(scalar=Mock(return_value=text))
+            )
+        )
+
+    def test_pymssql_version(self, mock_conn_scalar):
         dialect = pymssql.MSDialect_pymssql()
 
         for vers in [
@@ -410,13 +418,13 @@ class VersionDetectionTest(fixtures.TestBase):
             "Microsoft SQL Azure (RTM) - 11.0.9216.62 \n"
             "Jul 18 2014 22:00:21 \nCopyright (c) Microsoft Corporation",
         ]:
-            conn = Mock(scalar=Mock(return_value=vers))
+            conn = mock_conn_scalar(vers)
             eq_(dialect._get_server_version_info(conn), (11, 0, 9216, 62))
 
-    def test_pyodbc_version_productversion(self):
+    def test_pyodbc_version_productversion(self, mock_conn_scalar):
         dialect = pyodbc.MSDialect_pyodbc()
 
-        conn = Mock(scalar=Mock(return_value="11.0.9216.62"))
+        conn = mock_conn_scalar("11.0.9216.62")
         eq_(dialect._get_server_version_info(conn), (11, 0, 9216, 62))
 
     def test_pyodbc_version_fallback(self):
@@ -429,8 +437,12 @@ class VersionDetectionTest(fixtures.TestBase):
             ("Not SQL Server Version 10.5", (5,)),
         ]:
             conn = Mock(
-                scalar=Mock(
-                    side_effect=exc.DBAPIError("stmt", "params", None)
+                exec_driver_sql=Mock(
+                    return_value=Mock(
+                        scalar=Mock(
+                            side_effect=exc.DBAPIError("stmt", "params", None)
+                        )
+                    )
                 ),
                 connection=Mock(getinfo=Mock(return_value=vers)),
             )
@@ -462,7 +474,7 @@ class RealIsolationLevelTest(fixtures.TestBase):
             with testing.db.connect() as c:
                 c.execution_options(isolation_level=value)
 
-                c.execute("SELECT TOP 10 * FROM test")
+                c.exec_driver_sql("SELECT TOP 10 * FROM test")
 
                 eq_(
                     testing.db.dialect.get_isolation_level(c.connection), value

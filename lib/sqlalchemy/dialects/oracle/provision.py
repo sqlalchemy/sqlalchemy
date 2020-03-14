@@ -17,13 +17,13 @@ def _oracle_create_db(cfg, eng, ident):
     # similar, so that the default tablespace is not "system"; reflection will
     # fail otherwise
     with eng.connect() as conn:
-        conn.execute("create user %s identified by xe" % ident)
-        conn.execute("create user %s_ts1 identified by xe" % ident)
-        conn.execute("create user %s_ts2 identified by xe" % ident)
-        conn.execute("grant dba to %s" % (ident,))
-        conn.execute("grant unlimited tablespace to %s" % ident)
-        conn.execute("grant unlimited tablespace to %s_ts1" % ident)
-        conn.execute("grant unlimited tablespace to %s_ts2" % ident)
+        conn.exec_driver_sql("create user %s identified by xe" % ident)
+        conn.exec_driver_sql("create user %s_ts1 identified by xe" % ident)
+        conn.exec_driver_sql("create user %s_ts2 identified by xe" % ident)
+        conn.exec_driver_sql("grant dba to %s" % (ident,))
+        conn.exec_driver_sql("grant unlimited tablespace to %s" % ident)
+        conn.exec_driver_sql("grant unlimited tablespace to %s_ts1" % ident)
+        conn.exec_driver_sql("grant unlimited tablespace to %s_ts2" % ident)
 
 
 @configure_follower.for_db("oracle")
@@ -34,7 +34,7 @@ def _oracle_configure_follower(config, ident):
 
 def _ora_drop_ignore(conn, dbname):
     try:
-        conn.execute("drop user %s cascade" % dbname)
+        conn.exec_driver_sql("drop user %s cascade" % dbname)
         log.info("Reaped db: %s", dbname)
         return True
     except exc.DatabaseError as err:
@@ -68,7 +68,7 @@ def _reap_oracle_dbs(url, idents):
 
         log.info("identifiers in file: %s", ", ".join(idents))
 
-        to_reap = conn.execute(
+        to_reap = conn.exec_driver_sql(
             "select u.username from all_users u where username "
             "like 'TEST_%' and not exists (select username "
             "from v$session where username=u.username)"

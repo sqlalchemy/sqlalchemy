@@ -15,6 +15,7 @@ from ... import sql
 from ... import String
 from ... import testing
 from ... import text
+from ... import util
 
 
 class RowFetchTest(fixtures.TablesTest):
@@ -287,7 +288,10 @@ class ServerSideCursorsTest(
     ):
         engine = self._fixture(engine_ss_arg)
         with engine.begin() as conn:
-            result = conn.execute(statement)
+            if isinstance(statement, util.string_types):
+                result = conn.exec_driver_sql(statement)
+            else:
+                result = conn.execute(statement)
             eq_(self._is_server_side(result.cursor), cursor_ss_status)
             result.close()
 
@@ -298,7 +302,7 @@ class ServerSideCursorsTest(
         result = (
             engine.connect()
             .execution_options(stream_results=True)
-            .execute("select 1")
+            .exec_driver_sql("select 1")
         )
         assert self._is_server_side(result.cursor)
 

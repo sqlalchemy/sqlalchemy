@@ -918,7 +918,7 @@ class BufferedRowCursorFetchStrategy(DefaultCursorFetchStrategy):
 
             result = conn.execution_options(
                 stream_results=True, max_row_buffer=50
-                ).execute("select * from table")
+                ).execute(text("select * from table"))
 
     .. versionadded:: 1.4 ``max_row_buffer`` may now exceed 1000 rows.
 

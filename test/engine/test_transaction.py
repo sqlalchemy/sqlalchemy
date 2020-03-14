@@ -60,7 +60,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
 
         transaction = connection.begin()
-        result = connection.execute("select * from query_users")
+        result = connection.exec_driver_sql("select * from query_users")
         assert len(result.fetchall()) == 3
         transaction.commit()
         connection.close()
@@ -74,7 +74,7 @@ class TransactionTest(fixtures.TestBase):
         connection.execute(users.insert(), user_id=2, user_name="user2")
         connection.execute(users.insert(), user_id=3, user_name="user3")
         transaction.rollback()
-        result = connection.execute("select * from query_users")
+        result = connection.exec_driver_sql("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
 
@@ -92,7 +92,7 @@ class TransactionTest(fixtures.TestBase):
             print("Exception: ", e)
             transaction.rollback()
 
-        result = connection.execute("select * from query_users")
+        result = connection.exec_driver_sql("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
 
@@ -150,7 +150,7 @@ class TransactionTest(fixtures.TestBase):
             assert_raises_message(
                 exc.InvalidRequestError,
                 "This connection is on an inactive transaction.  Please",
-                connection.execute,
+                connection.exec_driver_sql,
                 "select 1",
             )
 
@@ -189,7 +189,12 @@ class TransactionTest(fixtures.TestBase):
             assert branched.in_transaction()
             branched.execute(users.insert(), user_id=2, user_name="user2")
             nested.rollback()
-            eq_(connection.scalar("select count(*) from query_users"), 1)
+            eq_(
+                connection.exec_driver_sql(
+                    "select count(*) from query_users"
+                ).scalar(),
+                1,
+            )
 
         finally:
             connection.close()
@@ -201,7 +206,12 @@ class TransactionTest(fixtures.TestBase):
             branched.execute(users.insert(), user_id=1, user_name="user1")
         finally:
             connection.close()
-        eq_(testing.db.scalar("select count(*) from query_users"), 1)
+        eq_(
+            testing.db.execute(
+                text("select count(*) from query_users")
+            ).scalar(),
+            1,
+        )
 
     @testing.requires.savepoints
     def test_branch_savepoint_rollback(self):
@@ -216,7 +226,12 @@ class TransactionTest(fixtures.TestBase):
             nested.rollback()
             assert connection.in_transaction()
             trans.commit()
-            eq_(connection.scalar("select count(*) from query_users"), 1)
+            eq_(
+                connection.exec_driver_sql(
+                    "select count(*) from query_users"
+                ).scalar(),
+                1,
+            )
 
         finally:
             connection.close()
@@ -232,7 +247,12 @@ class TransactionTest(fixtures.TestBase):
             branched.execute(users.insert(), user_id=2, user_name="user2")
             nested.rollback()
             assert not connection.in_transaction()
-            eq_(connection.scalar("select count(*) from query_users"), 1)
+            eq_(
+                connection.exec_driver_sql(
+                    "select count(*) from query_users"
+                ).scalar(),
+                1,
+            )
 
         finally:
             connection.close()
@@ -267,7 +287,12 @@ class TransactionTest(fixtures.TestBase):
             conn2 = connection.execution_options(dummy=True)
             conn2.execute(users.insert(), user_id=2, user_name="user2")
             transaction.rollback()
-            eq_(connection.scalar("select count(*) from query_users"), 0)
+            eq_(
+                connection.exec_driver_sql(
+                    "select count(*) from query_users"
+                ).scalar(),
+                0,
+            )
         finally:
             connection.close()
 
@@ -283,9 +308,12 @@ class TransactionTest(fixtures.TestBase):
         trans2.commit()
         transaction.rollback()
         self.assert_(
-            connection.scalar("select count(*) from " "query_users") == 0
+            connection.exec_driver_sql(
+                "select count(*) from " "query_users"
+            ).scalar()
+            == 0
         )
-        result = connection.execute("select * from query_users")
+        result = connection.exec_driver_sql("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
 
@@ -301,7 +329,10 @@ class TransactionTest(fixtures.TestBase):
 
         assert not trans.is_active
         self.assert_(
-            connection.scalar("select count(*) from " "query_users") == 0
+            connection.exec_driver_sql(
+                "select count(*) from " "query_users"
+            ).scalar()
+            == 0
         )
 
         trans = connection.begin()
@@ -309,7 +340,10 @@ class TransactionTest(fixtures.TestBase):
         trans.__exit__(None, None, None)
         assert not trans.is_active
         self.assert_(
-            connection.scalar("select count(*) from " "query_users") == 1
+            connection.exec_driver_sql(
+                "select count(*) from " "query_users"
+            ).scalar()
+            == 1
         )
         connection.close()
 
@@ -328,9 +362,12 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
         assert not connection.in_transaction()
         self.assert_(
-            connection.scalar("select count(*) from " "query_users") == 5
+            connection.exec_driver_sql(
+                "select count(*) from " "query_users"
+            ).scalar()
+            == 5
         )
-        result = connection.execute("select * from query_users")
+        result = connection.exec_driver_sql("select * from query_users")
         assert len(result.fetchall()) == 5
         connection.close()
 
@@ -349,9 +386,12 @@ class TransactionTest(fixtures.TestBase):
         transaction.close()
         assert not connection.in_transaction()
         self.assert_(
-            connection.scalar("select count(*) from " "query_users") == 0
+            connection.exec_driver_sql(
+                "select count(*) from " "query_users"
+            ).scalar()
+            == 0
         )
-        result = connection.execute("select * from query_users")
+        result = connection.exec_driver_sql("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
 
@@ -406,7 +446,7 @@ class TransactionTest(fixtures.TestBase):
         assert_raises_message(
             exc.InvalidRequestError,
             "This connection is on an inactive savepoint transaction.",
-            connection.execute,
+            connection.exec_driver_sql,
             "select 1",
         )
         trans2.rollback()
@@ -701,7 +741,7 @@ class AutoRollbackTest(fixtures.TestBase):
             test_needs_acid=True,
         )
         users.create(conn1)
-        conn1.execute("select * from deadlock_users")
+        conn1.exec_driver_sql("select * from deadlock_users")
         conn1.close()
 
         # without auto-rollback in the connection pool's return() logic,
@@ -732,20 +772,23 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("data", String(100)),
         )
-        metadata.create_all()
-        testing.db.execute(
-            "create function insert_foo(varchar) "
-            "returns integer as 'insert into foo(data) "
-            "values ($1);select 1;' language sql"
-        )
+        with testing.db.connect() as conn:
+            metadata.create_all(conn)
+            conn.exec_driver_sql(
+                "create function insert_foo(varchar) "
+                "returns integer as 'insert into foo(data) "
+                "values ($1);select 1;' language sql"
+            )
 
     def teardown(self):
-        foo.delete().execute().close()
+        with testing.db.connect() as conn:
+            conn.execute(foo.delete())
 
     @classmethod
     def teardown_class(cls):
-        testing.db.execute("drop function insert_foo(varchar)")
-        metadata.drop_all()
+        with testing.db.connect() as conn:
+            conn.exec_driver_sql("drop function insert_foo(varchar)")
+            metadata.drop_all(conn)
 
     def test_control(self):
 

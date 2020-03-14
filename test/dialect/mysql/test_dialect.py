@@ -184,9 +184,9 @@ class DialectTest(fixtures.TestBase):
                 statement = "SELECT 1 FROM DUAL WHERE 1=0"
             return real_exec(self, statement, *args, **kw)
 
-        real_exec = engine._connection_cls._execute_text
+        real_exec = engine._connection_cls.exec_driver_sql
         with mock.patch.object(
-            engine._connection_cls, "_execute_text", my_execute
+            engine._connection_cls, "exec_driver_sql", my_execute
         ):
             with expect_warnings(
                 "Could not retrieve SQL_MODE; please ensure the "
@@ -198,10 +198,10 @@ class DialectTest(fixtures.TestBase):
         c = testing.db.connect().execution_options(
             isolation_level="AUTOCOMMIT"
         )
-        assert c.execute("SELECT @@autocommit;").scalar()
+        assert c.exec_driver_sql("SELECT @@autocommit;").scalar()
 
         c = c.execution_options(isolation_level="READ COMMITTED")
-        assert not c.execute("SELECT @@autocommit;").scalar()
+        assert not c.exec_driver_sql("SELECT @@autocommit;").scalar()
 
     def test_isolation_level(self):
         values = [

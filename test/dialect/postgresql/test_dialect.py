@@ -56,7 +56,7 @@ class DialectTest(fixtures.TestBase):
     def test_version_parsing(self):
         def mock_conn(res):
             return mock.Mock(
-                execute=mock.Mock(
+                exec_driver_sql=mock.Mock(
                     return_value=mock.Mock(scalar=mock.Mock(return_value=res))
                 )
             )
@@ -615,7 +615,7 @@ class MiscBackendTest(
             conn = testing.db.connect()
             trans = conn.begin()
             try:
-                conn.execute(
+                conn.exec_driver_sql(
                     """
 CREATE OR REPLACE FUNCTION note(message varchar) RETURNS integer AS $$
 BEGIN
@@ -625,8 +625,8 @@ END;
 $$ LANGUAGE plpgsql;
 """
                 )
-                conn.execute("SELECT note('hi there')")
-                conn.execute("SELECT note('another note')")
+                conn.exec_driver_sql("SELECT note('hi there')")
+                conn.exec_driver_sql("SELECT note('another note')")
             finally:
                 trans.rollback()
         finally:
@@ -643,7 +643,9 @@ $$ LANGUAGE plpgsql;
     @engines.close_open_connections
     def test_client_encoding(self):
         c = testing.db.connect()
-        current_encoding = c.execute("show client_encoding").fetchone()[0]
+        current_encoding = c.exec_driver_sql(
+            "show client_encoding"
+        ).fetchone()[0]
         c.close()
 
         # attempt to use an encoding that's not
@@ -655,7 +657,7 @@ $$ LANGUAGE plpgsql;
 
         e = engines.testing_engine(options={"client_encoding": test_encoding})
         c = e.connect()
-        new_encoding = c.execute("show client_encoding").fetchone()[0]
+        new_encoding = c.exec_driver_sql("show client_encoding").fetchone()[0]
         eq_(new_encoding, test_encoding)
 
     @testing.requires.psycopg2_or_pg8000_compatibility
@@ -671,7 +673,7 @@ $$ LANGUAGE plpgsql;
         assert_raises_message(
             exc.ProgrammingError,
             'prepared transaction with identifier "gilberte" does not exist',
-            c.execute,
+            c.exec_driver_sql,
             "commit prepared 'gilberte'",
         )
 
@@ -697,7 +699,7 @@ $$ LANGUAGE plpgsql;
         seq = Sequence("fooseq")
         t = Table("mytable", meta1, Column("col1", Integer, seq))
         seq.drop()
-        testing.db.execute("CREATE SEQUENCE fooseq")
+        testing.db.execute(text("CREATE SEQUENCE fooseq"))
         t.create(checkfirst=True)
 
     @testing.provide_metadata
@@ -766,7 +768,8 @@ $$ LANGUAGE plpgsql;
         try:
             meta = MetaData(testing.db)
             testing.db.execute(
-                """
+                text(
+                    """
              CREATE TABLE speedy_users
              (
                  speedy_user_id   SERIAL     PRIMARY KEY,
@@ -775,6 +778,7 @@ $$ LANGUAGE plpgsql;
                  user_password    VARCHAR    NOT NULL
              );
             """
+                )
             )
             t = Table("speedy_users", meta, autoload=True)
             r = t.insert().execute(user_name="user", user_password="lala")
@@ -782,7 +786,7 @@ $$ LANGUAGE plpgsql;
             result = t.select().execute().fetchall()
             assert result == [(1, "user", "lala")]
         finally:
-            testing.db.execute("drop table speedy_users")
+            testing.db.execute(text("drop table speedy_users"))
 
     @testing.requires.psycopg2_or_pg8000_compatibility
     def test_numeric_raise(self):

@@ -1075,7 +1075,7 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                     )
                 )
 
-                eq_(conn.scalar(literal_sql), expected)
+                eq_(conn.exec_driver_sql(literal_sql).scalar(), expected)
 
     def test_string_cast_crit_spaces_in_key(self):
         name = self.tables.data_table.c.name

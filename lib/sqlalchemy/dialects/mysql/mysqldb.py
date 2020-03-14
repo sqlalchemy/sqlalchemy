@@ -154,15 +154,14 @@ class MySQLDialect_mysqldb(MySQLDialect):
         # https://github.com/farcepest/MySQLdb1/commit/cd44524fef63bd3fcb71947392326e9742d520e8
         # specific issue w/ the utf8mb4_bin collation and unicode returns
 
-        has_utf8mb4_bin = self.server_version_info > (
-            5,
-        ) and connection.scalar(
+        collation = connection.exec_driver_sql(
             "show collation where %s = 'utf8mb4' and %s = 'utf8mb4_bin'"
             % (
                 self.identifier_preparer.quote("Charset"),
                 self.identifier_preparer.quote("Collation"),
             )
-        )
+        ).scalar()
+        has_utf8mb4_bin = self.server_version_info > (5,) and collation
         if has_utf8mb4_bin:
             additional_tests = [
                 sql.collate(

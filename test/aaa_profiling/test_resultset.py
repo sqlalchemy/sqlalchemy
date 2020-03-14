@@ -69,16 +69,17 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
         # warm up type caches
-        t.select().execute().fetchall()
-        t2.select().execute().fetchall()
-        testing.db.execute(
-            "SELECT %s FROM table1"
-            % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
-        ).fetchall()
-        testing.db.execute(
-            "SELECT %s FROM table2"
-            % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
-        ).fetchall()
+        with testing.db.connect() as conn:
+            conn.execute(t.select()).fetchall()
+            conn.execute(t2.select()).fetchall()
+            conn.exec_driver_sql(
+                "SELECT %s FROM table1"
+                % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
+            ).fetchall()
+            conn.exec_driver_sql(
+                "SELECT %s FROM table2"
+                % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
+            ).fetchall()
 
     def teardown(self):
         metadata.drop_all()
@@ -96,14 +97,16 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         stmt = "SELECT %s FROM table1" % (
             ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
         )
-        [tuple(row) for row in testing.db.execute(stmt).fetchall()]
+        with testing.db.connect() as conn:
+            [tuple(row) for row in conn.exec_driver_sql(stmt).fetchall()]
 
     @profiling.function_call_count(variance=0.10)
     def test_raw_unicode(self):
         stmt = "SELECT %s FROM table2" % (
             ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
         )
-        [tuple(row) for row in testing.db.execute(stmt).fetchall()]
+        with testing.db.connect() as conn:
+            [tuple(row) for row in conn.exec_driver_sql(stmt).fetchall()]
 
     def test_contains_doesnt_compile(self):
         row = t.select().execute().first()
@@ -126,11 +129,11 @@ class ExecutionTest(fixtures.TestBase):
         e = create_engine("sqlite://")
         c = e.connect()
         # ensure initial connect activities complete
-        c.execute("select 1")
+        c.exec_driver_sql("select 1")
 
         @profiling.function_call_count()
         def go():
-            c.execute("select 1")
+            c.exec_driver_sql("select 1")
 
         try:
             go()
@@ -141,11 +144,14 @@ class ExecutionTest(fixtures.TestBase):
         # create an engine without any instrumentation.
         e = create_engine("sqlite://")
         # ensure initial connect activities complete
-        e.execute("select 1")
+
+        with e.connect() as conn:
+            conn.exec_driver_sql("select 1")
 
         @profiling.function_call_count()
         def go():
-            e.execute("select 1")
+            with e.connect() as conn:
+                conn.exec_driver_sql("select 1")
 
         go()
 

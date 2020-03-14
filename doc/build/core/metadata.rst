@@ -233,13 +233,14 @@ To enable the "check first for the table existing" logic, add the
 Altering Schemas through Migrations
 -----------------------------------
 
-While SQLAlchemy directly supports emitting CREATE and DROP statements for schema
-constructs, the ability to alter those constructs, usually via the ALTER statement
-as well as other database-specific constructs, is outside of the scope of SQLAlchemy
-itself.  While it's easy enough to emit ALTER statements and similar by hand,
-such as by passing a string to :meth:`.Connection.execute` or by using the
-:class:`.DDL` construct, it's a common practice to automate the maintenance of
-database schemas in relation to application code using schema migration tools.
+While SQLAlchemy directly supports emitting CREATE and DROP statements for
+schema constructs, the ability to alter those constructs, usually via the ALTER
+statement as well as other database-specific constructs, is outside of the
+scope of SQLAlchemy itself.  While it's easy enough to emit ALTER statements
+and similar by hand, such as by passing a :func:`.text` construct to
+:meth:`.Connection.execute` or by using the :class:`.DDL` construct, it's a
+common practice to automate the maintenance of database schemas in relation to
+application code using schema migration tools.
 
 There are two major migration tools available for SQLAlchemy:
 

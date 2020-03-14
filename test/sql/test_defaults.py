@@ -1654,9 +1654,11 @@ class SequenceAsServerDefaultTest(
 
     def test_default_textual_w_default(self):
         with testing.db.connect() as conn:
-            conn.execute("insert into t_seq_test (data) values ('some data')")
+            conn.exec_driver_sql(
+                "insert into t_seq_test (data) values ('some data')"
+            )
 
-            eq_(conn.scalar("select id from t_seq_test"), 1)
+            eq_(conn.exec_driver_sql("select id from t_seq_test").scalar(), 1)
 
     def test_default_core_w_default(self):
         t_seq_test = self.tables.t_seq_test
@@ -1667,11 +1669,13 @@ class SequenceAsServerDefaultTest(
 
     def test_default_textual_server_only(self):
         with testing.db.connect() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 "insert into t_seq_test_2 (data) values ('some data')"
             )
 
-            eq_(conn.scalar("select id from t_seq_test_2"), 1)
+            eq_(
+                conn.exec_driver_sql("select id from t_seq_test_2").scalar(), 1
+            )
 
     def test_default_core_server_only(self):
         t_seq_test = self.tables.t_seq_test_2

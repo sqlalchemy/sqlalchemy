@@ -41,7 +41,7 @@ hang until other transactions are released.  SQLAlchemy does its best
 to release transactions as quickly as possible.  The most common cause
 of hanging transactions is a non-fully consumed result set, i.e.::
 
-    result = engine.execute("select * from table")
+    result = engine.execute(text("select * from table"))
     row = result.fetchone()
     return
 
@@ -679,7 +679,9 @@ class FBDialect(default.DefaultDialect):
                       FROM rdb$relations
                       WHERE rdb$relation_name=?)
         """
-        c = connection.execute(tblqry, [self.denormalize_name(table_name)])
+        c = connection.exec_driver_sql(
+            tblqry, [self.denormalize_name(table_name)]
+        )
         return c.first() is not None
 
     def has_sequence(self, connection, sequence_name, schema=None):
@@ -691,7 +693,9 @@ class FBDialect(default.DefaultDialect):
                       FROM rdb$generators
                       WHERE rdb$generator_name=?)
         """
-        c = connection.execute(genqry, [self.denormalize_name(sequence_name)])
+        c = connection.exec_driver_sql(
+            genqry, [self.denormalize_name(sequence_name)]
+        )
         return c.first() is not None
 
     @reflection.cache
@@ -714,7 +718,10 @@ class FBDialect(default.DefaultDialect):
         # FROM rdb$relation_fields
         # WHERE rdb$system_flag=0 AND rdb$view_context IS NULL
 
-        return [self.normalize_name(row[0]) for row in connection.execute(s)]
+        return [
+            self.normalize_name(row[0])
+            for row in connection.exec_driver_sql(s)
+        ]
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
@@ -725,7 +732,10 @@ class FBDialect(default.DefaultDialect):
         where rdb$view_blr is not null
         and (rdb$system_flag is null or rdb$system_flag = 0);
         """
-        return [self.normalize_name(row[0]) for row in connection.execute(s)]
+        return [
+            self.normalize_name(row[0])
+            for row in connection.exec_driver_sql(s)
+        ]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
@@ -734,7 +744,9 @@ class FBDialect(default.DefaultDialect):
         FROM rdb$relations
         WHERE rdb$relation_name=?
         """
-        rp = connection.execute(qry, [self.denormalize_name(view_name)])
+        rp = connection.exec_driver_sql(
+            qry, [self.denormalize_name(view_name)]
+        )
         row = rp.first()
         if row:
             return row["view_source"]
@@ -752,7 +764,7 @@ class FBDialect(default.DefaultDialect):
         """
         tablename = self.denormalize_name(table_name)
         # get primary key fields
-        c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
+        c = connection.exec_driver_sql(keyqry, ["PRIMARY KEY", tablename])
         pkfields = [self.normalize_name(r["fname"]) for r in c.fetchall()]
         return {"constrained_columns": pkfields, "name": None}
 
@@ -780,7 +792,7 @@ class FBDialect(default.DefaultDialect):
            FROM rdb$dependencies trigdep2
            WHERE trigdep2.rdb$dependent_name = trigdep.rdb$dependent_name) = 2
         """
-        genr = connection.execute(genqry, [tablename, colname]).first()
+        genr = connection.exec_driver_sql(genqry, [tablename, colname]).first()
         if genr is not None:
             return dict(name=self.normalize_name(genr["fgenerator"]))
 
@@ -814,7 +826,7 @@ class FBDialect(default.DefaultDialect):
 
         tablename = self.denormalize_name(table_name)
         # get all of the fields for this table
-        c = connection.execute(tblqry, [tablename])
+        c = connection.exec_driver_sql(tblqry, [tablename])
         cols = []
         while True:
             row = c.fetchone()
@@ -905,7 +917,7 @@ class FBDialect(default.DefaultDialect):
         """
         tablename = self.denormalize_name(table_name)
 
-        c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
+        c = connection.exec_driver_sql(fkqry, ["FOREIGN KEY", tablename])
         fks = util.defaultdict(
             lambda: {
                 "name": None,
@@ -944,7 +956,9 @@ class FBDialect(default.DefaultDialect):
           AND rdb$relation_constraints.rdb$constraint_type IS NULL
         ORDER BY index_name, ic.rdb$field_position
         """
-        c = connection.execute(qry, [self.denormalize_name(table_name)])
+        c = connection.exec_driver_sql(
+            qry, [self.denormalize_name(table_name)]
+        )
 
         indexes = util.defaultdict(dict)
         for row in c:

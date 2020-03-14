@@ -99,13 +99,13 @@ class TransScopingTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         c = testing.db.connect()
-        c.execute("select * from users")
+        c.exec_driver_sql("select * from users")
 
         mapper(User, users)
         s = create_session(bind=c)
         s.add(User(name="first"))
         s.flush()
-        c.execute("select * from users")
+        c.exec_driver_sql("select * from users")
 
     def test_close(self):
         """close() doesn't close a connection the session didn't open"""
@@ -113,15 +113,15 @@ class TransScopingTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         c = testing.db.connect()
-        c.execute("select * from users")
+        c.exec_driver_sql("select * from users")
 
         mapper(User, users)
         s = create_session(bind=c)
         s.add(User(name="first"))
         s.flush()
-        c.execute("select * from users")
+        c.exec_driver_sql("select * from users")
         s.close()
-        c.execute("select * from users")
+        c.exec_driver_sql("select * from users")
 
     def test_autobegin_execute(self):
         # test the new autobegin behavior introduced in #5074
@@ -192,13 +192,21 @@ class TransScopingTest(_fixtures.FixtureTest):
         u = User(name="x")
         sess.add(u)
         sess.flush()
-        assert conn1.execute("select count(1) from users").scalar() == 1
-        assert conn2.execute("select count(1) from users").scalar() == 0
+        assert (
+            conn1.exec_driver_sql("select count(1) from users").scalar() == 1
+        )
+        assert (
+            conn2.exec_driver_sql("select count(1) from users").scalar() == 0
+        )
         sess.commit()
-        assert conn1.execute("select count(1) from users").scalar() == 1
+        assert (
+            conn1.exec_driver_sql("select count(1) from users").scalar() == 1
+        )
 
         assert (
-            testing.db.connect().execute("select count(1) from users").scalar()
+            testing.db.connect()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
             == 1
         )
         sess.close()
@@ -412,11 +420,16 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.add(u)
         u2 = sess.query(User).filter_by(name="ed").one()
         assert u2 is u
-        eq_(conn1.execute("select count(1) from users").scalar(), 1)
-        eq_(conn2.execute("select count(1) from users").scalar(), 0)
+        eq_(conn1.exec_driver_sql("select count(1) from users").scalar(), 1)
+        eq_(conn2.exec_driver_sql("select count(1) from users").scalar(), 0)
         sess.commit()
-        eq_(conn1.execute("select count(1) from users").scalar(), 1)
-        eq_(bind.connect().execute("select count(1) from users").scalar(), 1)
+        eq_(conn1.exec_driver_sql("select count(1) from users").scalar(), 1)
+        eq_(
+            bind.connect()
+            .exec_driver_sql("select count(1) from users")
+            .scalar(),
+            1,
+        )
         sess.close()
 
     def test_with_no_autoflush(self):
@@ -556,7 +569,7 @@ class SessionStateTest(_fixtures.FixtureTest):
             )
             assert (
                 testing.db.connect()
-                .execute("select count(1) from users")
+                .exec_driver_sql("select count(1) from users")
                 .scalar()
                 == 0
             )
@@ -569,7 +582,7 @@ class SessionStateTest(_fixtures.FixtureTest):
             )
             assert (
                 testing.db.connect()
-                .execute("select count(1) from users")
+                .exec_driver_sql("select count(1) from users")
                 .scalar()
                 == 1
             )
@@ -589,9 +602,13 @@ class SessionStateTest(_fixtures.FixtureTest):
         u.name = "ed"
         sess.add(u)
         sess.commit()
-        assert conn1.execute("select count(1) from users").scalar() == 1
         assert (
-            testing.db.connect().execute("select count(1) from users").scalar()
+            conn1.exec_driver_sql("select count(1) from users").scalar() == 1
+        )
+        assert (
+            testing.db.connect()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
             == 1
         )
         sess.commit()

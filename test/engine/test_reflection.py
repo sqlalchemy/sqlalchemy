@@ -1016,7 +1016,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         indexes"""
 
         with testing.db.begin() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 CREATE TABLE book (
                     id INTEGER NOT NULL,
@@ -1056,7 +1056,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         """test reflection of a composite primary key"""
 
         with testing.db.begin() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 CREATE TABLE book (
                     id INTEGER NOT NULL,
@@ -2045,19 +2045,21 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.requires.denormalized_names
     def setup(self):
-        testing.db.execute(
+        with testing.db.connect() as conn:
+            conn.exec_driver_sql(
+                """
+            CREATE TABLE weird_casing(
+                    col1 char(20),
+                    "Col2" char(20),
+                    "col3" char(20)
+            )
             """
-        CREATE TABLE weird_casing(
-                col1 char(20),
-                "Col2" char(20),
-                "col3" char(20)
-        )
-        """
-        )
+            )
 
     @testing.requires.denormalized_names
     def teardown(self):
-        testing.db.execute("drop table weird_casing")
+        with testing.db.connect() as conn:
+            conn.exec_driver_sql("drop table weird_casing")
 
     @testing.requires.denormalized_names
     def test_direct_quoting(self):

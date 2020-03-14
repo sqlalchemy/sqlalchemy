@@ -59,6 +59,11 @@ from sqlalchemy.util import u
 from sqlalchemy.util import ue
 
 
+def exec_sql(engine, sql, *args, **kwargs):
+    conn = engine.connect(close_with_result=True)
+    return conn.exec_driver_sql(sql, *args, **kwargs)
+
+
 class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "sqlite"
@@ -77,23 +82,29 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         try:
             meta.create_all()
-            testing.db.execute(
-                "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');"
+            exec_sql(
+                testing.db,
+                "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');",
             )
-            testing.db.execute(
-                "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');"
+            exec_sql(
+                testing.db,
+                "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');",
             )
-            testing.db.execute(
-                "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');"
+            exec_sql(
+                testing.db,
+                "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');",
             )
-            testing.db.execute(
-                "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');"
+            exec_sql(
+                testing.db,
+                "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');",
             )
-            testing.db.execute(
-                "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);"
+            exec_sql(
+                testing.db,
+                "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);",
             )
-            testing.db.execute(
-                "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);"
+            exec_sql(
+                testing.db,
+                "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);",
             )
             eq_(
                 t.select(t.c.boo).order_by(t.c.id).execute().fetchall(),
@@ -176,9 +187,11 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         testing.db.execute(
             t.insert().values(d=datetime.datetime(2010, 10, 15, 12, 37, 0))
         )
-        testing.db.execute("insert into t (d) values ('2004-05-21T00:00:00')")
+        exec_sql(
+            testing.db, "insert into t (d) values ('2004-05-21T00:00:00')"
+        )
         eq_(
-            testing.db.execute("select * from t order by d").fetchall(),
+            exec_sql(testing.db, "select * from t order by d").fetchall(),
             [("2004-05-21T00:00:00",), ("2010-10-15T12:37:00",)],
         )
         eq_(
@@ -201,9 +214,9 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         testing.db.execute(
             t.insert().values(d=datetime.datetime(2010, 10, 15, 12, 37, 0))
         )
-        testing.db.execute("insert into t (d) values ('20040521000000')")
+        exec_sql(testing.db, "insert into t (d) values ('20040521000000')")
         eq_(
-            testing.db.execute("select * from t order by d").fetchall(),
+            exec_sql(testing.db, "select * from t order by d").fetchall(),
             [("20040521000000",), ("20101015123700",)],
         )
         eq_(
@@ -223,9 +236,9 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(testing.db)
         testing.db.execute(t.insert().values(d=datetime.date(2010, 10, 15)))
-        testing.db.execute("insert into t (d) values ('20040521')")
+        exec_sql(testing.db, "insert into t (d) values ('20040521')")
         eq_(
-            testing.db.execute("select * from t order by d").fetchall(),
+            exec_sql(testing.db, "select * from t order by d").fetchall(),
             [("20040521",), ("20101015",)],
         )
         eq_(
@@ -243,9 +256,9 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(testing.db)
         testing.db.execute(t.insert().values(d=datetime.date(2010, 10, 15)))
-        testing.db.execute("insert into t (d) values ('2004|05|21')")
+        exec_sql(testing.db, "insert into t (d) values ('2004|05|21')")
         eq_(
-            testing.db.execute("select * from t order by d").fetchall(),
+            exec_sql(testing.db, "select * from t order by d").fetchall(),
             [("2004|05|21",), ("2010|10|15",)],
         )
         eq_(
@@ -499,12 +512,12 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             val INTEGER NOT NULL DEFAULT 0
             )"""
         try:
-            db.execute(table)
+            exec_sql(db, table)
             rt = Table("r_defaults", m, autoload=True)
             for i, reflected in enumerate(rt.c):
                 eq_(str(reflected.server_default.arg), expected[i])
         finally:
-            db.execute("DROP TABLE r_defaults")
+            exec_sql(db, "DROP TABLE r_defaults")
 
     def test_default_reflection_3(self):
         db = testing.db
@@ -513,10 +526,10 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             val INTEGER NOT NULL DEFAULT 0
             )"""
         try:
-            db.execute(table)
+            exec_sql(db, table)
             m1 = MetaData(db)
             t1 = Table("r_defaults", m1, autoload=True)
-            db.execute("DROP TABLE r_defaults")
+            exec_sql(db, "DROP TABLE r_defaults")
             t1.create()
             m2 = MetaData(db)
             t2 = Table("r_defaults", m2, autoload=True)
@@ -527,7 +540,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
                 "NOT NULL)",
             )
         finally:
-            db.execute("DROP TABLE r_defaults")
+            exec_sql(db, "DROP TABLE r_defaults")
 
     @testing.provide_metadata
     def test_boolean_default(self):
@@ -633,14 +646,16 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         """Tests autoload of tables created with quoted column names."""
 
         metadata = self.metadata
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             """CREATE TABLE "django_content_type" (
             "id" integer NOT NULL PRIMARY KEY,
             "django_stuff" text NULL
         )
-        """
+        """,
         )
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             """
         CREATE TABLE "django_admin_log" (
             "id" integer NOT NULL PRIMARY KEY,
@@ -650,7 +665,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             "object_id" text NULL,
             "change_message" text NOT NULL
         )
-        """
+        """,
         )
         table1 = Table("django_admin_log", metadata, autoload=True)
         table2 = Table("django_content_type", metadata, autoload=True)
@@ -670,16 +685,17 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         """
 
         metadata = self.metadata
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             r'''CREATE TABLE """a""" (
             """id""" integer NOT NULL PRIMARY KEY
         )
-        '''
+        ''',
         )
 
         # unfortunately, still can't do this; sqlite quadruples
         # up the quotes on the table name here for pragma foreign_key_list
-        # testing.db.execute(r'''
+        # exec_sql(testing.db,r'''
         # CREATE TABLE """b""" (
         #    """id""" integer NOT NULL PRIMARY KEY,
         #    """aid""" integer NULL
@@ -884,7 +900,7 @@ class AttachedDBTest(fixtures.TestBase):
         eq_(insp.get_schema_names(), ["main", "test_schema"])
 
         # implicitly creates a "temp" schema
-        self.conn.execute("select * from sqlite_temp_master")
+        self.conn.exec_driver_sql("select * from sqlite_temp_master")
 
         # we're not including it
         insp = inspect(self.conn)
@@ -1475,8 +1491,8 @@ def full_text_search_missing():
     it is and True otherwise."""
 
     try:
-        testing.db.execute("CREATE VIRTUAL TABLE t using FTS3;")
-        testing.db.execute("DROP TABLE t;")
+        exec_sql(testing.db, "CREATE VIRTUAL TABLE t using FTS3;")
+        exec_sql(testing.db, "DROP TABLE t;")
         return False
     except Exception:
         return True
@@ -1494,17 +1510,19 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup_class(cls):
         global metadata, cattable, matchtable
         metadata = MetaData(testing.db)
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             """
         CREATE VIRTUAL TABLE cattable using FTS3 (
             id INTEGER NOT NULL,
             description VARCHAR(50),
             PRIMARY KEY (id)
         )
-        """
+        """,
         )
         cattable = Table("cattable", metadata, autoload=True)
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             """
         CREATE VIRTUAL TABLE matchtable using FTS3 (
             id INTEGER NOT NULL,
@@ -1512,7 +1530,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             category_id INTEGER NOT NULL,
             PRIMARY KEY (id)
         )
-        """
+        """,
         )
         matchtable = Table("matchtable", metadata, autoload=True)
         metadata.create_all()
@@ -1678,16 +1696,16 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
     __only_on__ = "sqlite"
 
     def setup(self):
-        testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
+        exec_sql(testing.db, "CREATE TABLE a (id INTEGER PRIMARY KEY)")
         # this syntax actually works on other DBs perhaps we'd want to add
         # tests to test_reflection
-        testing.db.execute(
-            "CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)"
+        exec_sql(
+            testing.db, "CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)"
         )
 
     def teardown(self):
-        testing.db.execute("drop table b")
-        testing.db.execute("drop table a")
+        exec_sql(testing.db, "drop table b")
+        exec_sql(testing.db, "drop table a")
 
     def test_reflect_tables_fk_no_colref(self):
         meta = MetaData()
@@ -1703,17 +1721,21 @@ class KeywordInDatabaseNameTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         with testing.db.begin() as conn:
-            conn.execute('ATTACH %r AS "default"' % conn.engine.url.database)
-            conn.execute('CREATE TABLE "default".a (id INTEGER PRIMARY KEY)')
+            conn.exec_driver_sql(
+                'ATTACH %r AS "default"' % conn.engine.url.database
+            )
+            conn.exec_driver_sql(
+                'CREATE TABLE "default".a (id INTEGER PRIMARY KEY)'
+            )
 
     @classmethod
     def teardown_class(cls):
         with testing.db.begin() as conn:
             try:
-                conn.execute('drop table "default".a')
+                conn.exec_driver_sql('drop table "default".a')
             except Exception:
                 pass
-            conn.execute('DETACH DATABASE "default"')
+            conn.exec_driver_sql('DETACH DATABASE "default"')
 
     def test_reflect(self):
         with testing.db.begin() as conn:
@@ -1729,72 +1751,72 @@ class ConstraintReflectionTest(fixtures.TestBase):
     def setup_class(cls):
         with testing.db.begin() as conn:
 
-            conn.execute("CREATE TABLE a1 (id INTEGER PRIMARY KEY)")
-            conn.execute("CREATE TABLE a2 (id INTEGER PRIMARY KEY)")
-            conn.execute(
+            conn.exec_driver_sql("CREATE TABLE a1 (id INTEGER PRIMARY KEY)")
+            conn.exec_driver_sql("CREATE TABLE a2 (id INTEGER PRIMARY KEY)")
+            conn.exec_driver_sql(
                 "CREATE TABLE b (id INTEGER PRIMARY KEY, "
                 "FOREIGN KEY(id) REFERENCES a1(id),"
                 "FOREIGN KEY(id) REFERENCES a2(id)"
                 ")"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE c (id INTEGER, "
                 "CONSTRAINT bar PRIMARY KEY(id),"
                 "CONSTRAINT foo1 FOREIGN KEY(id) REFERENCES a1(id),"
                 "CONSTRAINT foo2 FOREIGN KEY(id) REFERENCES a2(id)"
                 ")"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 # the lower casing + inline is intentional here
                 "CREATE TABLE d (id INTEGER, x INTEGER unique)"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 # the lower casing + inline is intentional here
                 "CREATE TABLE d1 "
                 '(id INTEGER, "some ( STUPID n,ame" INTEGER unique)'
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 # the lower casing + inline is intentional here
                 'CREATE TABLE d2 ( "some STUPID n,ame" INTEGER unique)'
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 # the lower casing + inline is intentional here
                 'CREATE TABLE d3 ( "some STUPID n,ame" INTEGER NULL unique)'
             )
 
-            conn.execute(
+            conn.exec_driver_sql(
                 # lower casing + inline is intentional
                 "CREATE TABLE e (id INTEGER, x INTEGER references a2(id))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 'CREATE TABLE e1 (id INTEGER, "some ( STUPID n,ame" INTEGER '
                 'references a2   ("some ( STUPID n,ame"))'
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE e2 (id INTEGER, "
                 '"some ( STUPID n,ame" INTEGER NOT NULL  '
                 'references a2   ("some ( STUPID n,ame"))'
             )
 
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE f (x INTEGER, CONSTRAINT foo_fx UNIQUE(x))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TEMPORARY TABLE g "
                 "(x INTEGER, CONSTRAINT foo_gx UNIQUE(x))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 # intentional broken casing
                 "CREATE TABLE h (x INTEGER, COnstraINT foo_hx unIQUE(x))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE i (x INTEGER, y INTEGER, PRIMARY KEY(x, y))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE j (id INTEGER, q INTEGER, p INTEGER, "
                 "PRIMARY KEY(id), FOreiGN KEY(q,p) REFERENCes  i(x,y))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE k (id INTEGER, q INTEGER, p INTEGER, "
                 "PRIMARY KEY(id), "
                 "conSTRAINT my_fk FOreiGN KEY (  q  , p  )   "
@@ -1833,8 +1855,10 @@ class ConstraintReflectionTest(fixtures.TestBase):
             meta.create_all(conn)
 
             # will contain an "autoindex"
-            conn.execute("create table o (foo varchar(20) primary key)")
-            conn.execute(
+            conn.exec_driver_sql(
+                "create table o (foo varchar(20) primary key)"
+            )
+            conn.exec_driver_sql(
                 "CREATE TABLE onud_test (id INTEGER PRIMARY KEY, "
                 "c1 INTEGER, c2 INTEGER, c3 INTEGER, c4 INTEGER, "
                 "CONSTRAINT fk1 FOREIGN KEY (c1) REFERENCES a1(id) "
@@ -1847,30 +1871,30 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "ON UPDATE NO ACTION)"
             )
 
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE cp ("
                 "q INTEGER check (q > 1 AND q < 6),\n"
                 "CONSTRAINT cq CHECK (q == 1 OR (q > 2 AND q < 5))\n"
                 ")"
             )
 
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE implicit_referred (pk integer primary key)"
             )
             # single col foreign key with no referred column given,
             # must assume primary key of referred table
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE implicit_referrer "
                 "(id integer REFERENCES implicit_referred)"
             )
 
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE implicit_referred_comp "
                 "(pk1 integer, pk2 integer, primary key (pk1, pk2))"
             )
             # composite foreign key with no referred columns given,
             # must assume primary key of referred table
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE implicit_referrer_comp "
                 "(id1 integer, id2 integer, foreign key(id1, id2) "
                 "REFERENCES implicit_referred_comp)"
@@ -1878,7 +1902,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             # worst case - FK that refers to nonexistent table so we cant
             # get pks.  requires FK pragma is turned off
-            conn.execute(
+            conn.exec_driver_sql(
                 "CREATE TABLE implicit_referrer_comp_fake "
                 "(id1 integer, id2 integer, foreign key(id1, id2) "
                 "REFERENCES fake_table)"
@@ -1912,7 +1936,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "a2",
             ]:
                 try:
-                    conn.execute("drop table %s" % name)
+                    conn.exec_driver_sql("drop table %s" % name)
                 except Exception:
                     pass
 
@@ -2199,7 +2223,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
     def test_foreign_key_options_unnamed_inline(self):
         with testing.db.connect() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 "create table foo (id integer, "
                 "foreign key (id) references bar (id) on update cascade)"
             )
@@ -2365,7 +2389,7 @@ class SavepointTest(fixtures.TablesTest):
         @event.listens_for(engine, "begin")
         def do_begin(conn):
             # emit our own BEGIN
-            conn.execute("BEGIN")
+            conn.exec_driver_sql("BEGIN")
 
         return engine
 
@@ -2536,7 +2560,7 @@ class TypeReflectionTest(fixtures.TestBase):
         conn = testing.db.connect()
         for from_, to_ in self._fixture_as_string(fixture):
             inspector = inspect(conn)
-            conn.execute("CREATE TABLE foo (data %s)" % from_)
+            conn.exec_driver_sql("CREATE TABLE foo (data %s)" % from_)
             try:
                 if warnings:
 
@@ -2559,7 +2583,7 @@ class TypeReflectionTest(fixtures.TestBase):
                             getattr(to_, attr, None),
                         )
             finally:
-                conn.execute("DROP TABLE foo")
+                conn.exec_driver_sql("DROP TABLE foo")
 
     def test_lookup_direct_lookup(self):
         self._test_lookup_direct(self._fixed_lookup_fixture())

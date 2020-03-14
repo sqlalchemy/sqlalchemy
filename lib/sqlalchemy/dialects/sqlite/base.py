@@ -518,14 +518,14 @@ to filter these out::
     eng = create_engine("sqlite://")
     conn = eng.connect()
 
-    conn.execute("create table x (a integer, b integer)")
-    conn.execute("insert into x (a, b) values (1, 1)")
-    conn.execute("insert into x (a, b) values (2, 2)")
+    conn.exec_driver_sql("create table x (a integer, b integer)")
+    conn.exec_driver_sql("insert into x (a, b) values (1, 1)")
+    conn.exec_driver_sql("insert into x (a, b) values (2, 2)")
 
-    result = conn.execute("select x.a, x.b from x")
+    result = conn.exec_driver_sql("select x.a, x.b from x")
     assert result.keys() == ["a", "b"]
 
-    result = conn.execute('''
+    result = conn.exec_driver_sql('''
         select x.a, x.b from x where a=1
         union
         select x.a, x.b from x where a=2
@@ -553,7 +553,7 @@ contain dots, and the functionality of :meth:`.ResultProxy.keys` and
 the ``sqlite_raw_colnames`` execution option may be provided, either on a
 per-:class:`.Connection` basis::
 
-    result = conn.execution_options(sqlite_raw_colnames=True).execute('''
+    result = conn.execution_options(sqlite_raw_colnames=True).exec_driver_sql('''
         select x.a, x.b from x where a=1
         union
         select x.a, x.b from x where a=2
@@ -1588,7 +1588,7 @@ class SQLiteDialect(default.DefaultDialect):
     @reflection.cache
     def get_schema_names(self, connection, **kw):
         s = "PRAGMA database_list"
-        dl = connection.execute(s)
+        dl = connection.exec_driver_sql(s)
 
         return [db[1] for db in dl if db[1] != "temp"]
 
@@ -1602,7 +1602,7 @@ class SQLiteDialect(default.DefaultDialect):
         s = ("SELECT name FROM %s " "WHERE type='table' ORDER BY name") % (
             master,
         )
-        rs = connection.execute(s)
+        rs = connection.exec_driver_sql(s)
         return [row[0] for row in rs]
 
     @reflection.cache
@@ -1611,7 +1611,7 @@ class SQLiteDialect(default.DefaultDialect):
             "SELECT name FROM sqlite_temp_master "
             "WHERE type='table' ORDER BY name "
         )
-        rs = connection.execute(s)
+        rs = connection.exec_driver_sql(s)
 
         return [row[0] for row in rs]
 
@@ -1621,7 +1621,7 @@ class SQLiteDialect(default.DefaultDialect):
             "SELECT name FROM sqlite_temp_master "
             "WHERE type='view' ORDER BY name "
         )
-        rs = connection.execute(s)
+        rs = connection.exec_driver_sql(s)
 
         return [row[0] for row in rs]
 
@@ -1641,7 +1641,7 @@ class SQLiteDialect(default.DefaultDialect):
         s = ("SELECT name FROM %s " "WHERE type='view' ORDER BY name") % (
             master,
         )
-        rs = connection.execute(s)
+        rs = connection.exec_driver_sql(s)
 
         return [row[0] for row in rs]
 
@@ -1654,7 +1654,7 @@ class SQLiteDialect(default.DefaultDialect):
                 master,
                 view_name,
             )
-            rs = connection.execute(s)
+            rs = connection.exec_driver_sql(s)
         else:
             try:
                 s = (
@@ -1664,13 +1664,13 @@ class SQLiteDialect(default.DefaultDialect):
                     "WHERE name = '%s' "
                     "AND type='view'"
                 ) % view_name
-                rs = connection.execute(s)
+                rs = connection.exec_driver_sql(s)
             except exc.DBAPIError:
                 s = (
                     "SELECT sql FROM sqlite_master WHERE name = '%s' "
                     "AND type='view'"
                 ) % view_name
-                rs = connection.execute(s)
+                rs = connection.exec_driver_sql(s)
 
         result = rs.fetchall()
         if result:
@@ -2070,7 +2070,7 @@ class SQLiteDialect(default.DefaultDialect):
                 "AND type = 'table'"
                 % {"schema": schema_expr, "table": table_name}
             )
-            rs = connection.execute(s)
+            rs = connection.exec_driver_sql(s)
         except exc.DBAPIError:
             s = (
                 "SELECT sql FROM %(schema)ssqlite_master "
@@ -2078,7 +2078,7 @@ class SQLiteDialect(default.DefaultDialect):
                 "AND type = 'table'"
                 % {"schema": schema_expr, "table": table_name}
             )
-            rs = connection.execute(s)
+            rs = connection.exec_driver_sql(s)
         return rs.scalar()
 
     def _get_table_pragma(self, connection, pragma, table_name, schema=None):
@@ -2095,7 +2095,7 @@ class SQLiteDialect(default.DefaultDialect):
         qtable = quote(table_name)
         for statement in statements:
             statement = "%s%s(%s)" % (statement, pragma, qtable)
-            cursor = connection.execute(statement)
+            cursor = connection.exec_driver_sql(statement)
             if not cursor._soft_closed:
                 # work around SQLite issue whereby cursor.description
                 # is blank when PRAGMA returns no rows:
