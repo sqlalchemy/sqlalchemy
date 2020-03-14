@@ -1,0 +1,8 @@
+.. change::
+    :tags: schema, reflection
+    :tickets: 5063
+
+    Added support for reflection of "computed" columns, which are now returned
+    as part of the structure returned by :meth:`.Inspector.get_columns`.
+    When reflecting full :class:`.Table` objects, computed columns will
+    be represented using the :class:`.Computed` construct.

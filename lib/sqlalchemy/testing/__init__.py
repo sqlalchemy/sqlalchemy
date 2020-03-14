@@ -26,6 +26,7 @@ from .assertions import expect_warnings  # noqa
 from .assertions import in_  # noqa
 from .assertions import is_  # noqa
 from .assertions import is_false  # noqa
+from .assertions import is_instance_of  # noqa
 from .assertions import is_not_  # noqa
 from .assertions import is_true  # noqa
 from .assertions import le_  # noqa

@@ -673,6 +673,7 @@ from ...engine import default
 from ...engine import reflection
 from ...sql import compiler
 from ...sql import expression
+from ...sql import func
 from ...sql import quoted_name
 from ...sql import util as sql_util
 from ...types import BIGINT
@@ -2556,42 +2557,57 @@ class MSDialect(default.DefaultDialect):
     def get_columns(self, connection, tablename, dbname, owner, schema, **kw):
         # Get base columns
         columns = ischema.columns
+        computed_cols = ischema.computed_columns
         if owner:
             whereclause = sql.and_(
                 columns.c.table_name == tablename,
                 columns.c.table_schema == owner,
             )
+            table_fullname = "%s.%s" % (owner, tablename)
+            concat = func.concat(
+                columns.c.table_schema, ".", columns.c.table_name
+            )
+            join_on = computed_cols.c.object_id == func.object_id(concat)
         else:
             whereclause = columns.c.table_name == tablename
+            table_fullname = tablename
+            join_on = computed_cols.c.object_id == func.object_id(
+                columns.c.table_name
+            )
+
+        join_on = sql.and_(
+            join_on, columns.c.column_name == computed_cols.c.name
+        )
+        join = columns.join(computed_cols, onclause=join_on, isouter=True)
         s = sql.select(
-            [columns], whereclause, order_by=[columns.c.ordinal_position]
+            [
+                columns,
+                computed_cols.c.definition,
+                computed_cols.c.is_persisted,
+            ],
+            whereclause,
+            from_obj=join,
+            order_by=[columns.c.ordinal_position],
         )
 
         c = connection.execute(s)
         cols = []
+
         while True:
             row = c.fetchone()
             if row is None:
                 break
-            (
-                name,
-                type_,
-                nullable,
-                charlen,
-                numericprec,
-                numericscale,
-                default,
-                collation,
-            ) = (
-                row[columns.c.column_name],
-                row[columns.c.data_type],
-                row[columns.c.is_nullable] == "YES",
-                row[columns.c.character_maximum_length],
-                row[columns.c.numeric_precision],
-                row[columns.c.numeric_scale],
-                row[columns.c.column_default],
-                row[columns.c.collation_name],
-            )
+            name = row[columns.c.column_name]
+            type_ = row[columns.c.data_type]
+            nullable = row[columns.c.is_nullable] == "YES"
+            charlen = row[columns.c.character_maximum_length]
+            numericprec = row[columns.c.numeric_precision]
+            numericscale = row[columns.c.numeric_scale]
+            default = row[columns.c.column_default]
+            collation = row[columns.c.collation_name]
+            definition = row[computed_cols.c.definition]
+            is_persisted = row[computed_cols.c.is_persisted]
+
             coltype = self.ischema_names.get(type_, None)
 
             kwargs = {}
@@ -2633,6 +2649,13 @@ class MSDialect(default.DefaultDialect):
                 "default": default,
                 "autoincrement": False,
             }
+
+            if definition is not None and is_persisted is not None:
+                cdict["computed"] = {
+                    "sqltext": definition,
+                    "persisted": is_persisted,
+                }
+
             cols.append(cdict)
         # autoincrement and identity
         colmap = {}

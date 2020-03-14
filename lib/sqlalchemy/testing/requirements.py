@@ -1040,4 +1040,27 @@ class SuiteRequirements(Requirements):
 
     @property
     def computed_columns(self):
+        "Supports computed columns"
+        return exclusions.closed()
+
+    @property
+    def computed_columns_stored(self):
+        "Supports computed columns with `persisted=True`"
+        return exclusions.closed()
+
+    @property
+    def computed_columns_virtual(self):
+        "Supports computed columns with `persisted=False`"
+        return exclusions.closed()
+
+    @property
+    def computed_columns_default_persisted(self):
+        """If the default persistence is virtual or stored when `persisted`
+        is omitted"""
+        return exclusions.closed()
+
+    @property
+    def computed_columns_reflect_persisted(self):
+        """If persistence information is returned by the reflection of
+        computed columns"""
         return exclusions.closed()

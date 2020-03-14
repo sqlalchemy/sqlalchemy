@@ -1676,7 +1676,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             ("my_custom_type(ARG1, ARG2)", ("ARG1", "ARG2")),
         ]:
             column_info = dialect._get_column_info(
-                "colname", sch, None, False, {}, {}, "public", None
+                "colname", sch, None, False, {}, {}, "public", None, ""
             )
             assert isinstance(column_info["type"], self.CustomType)
             eq_(column_info["type"].arg1, args[0])
