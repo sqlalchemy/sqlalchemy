@@ -1673,13 +1673,14 @@ class OracleDialect(default.DefaultDialect):
         text = """
             SELECT col.column_name, col.data_type, col.%(char_length_col)s,
               col.data_precision, col.data_scale, col.nullable,
-              col.data_default, com.comments\
-            FROM all_tab_columns%(dblink)s col
+              col.data_default, com.comments, col.virtual_column\
+            FROM all_tab_cols%(dblink)s col
             LEFT JOIN all_col_comments%(dblink)s com
             ON col.table_name = com.table_name
             AND col.column_name = com.column_name
             AND col.owner = com.owner
             WHERE col.table_name = :table_name
+            AND col.hidden_column = 'NO'
         """
         if schema is not None:
             params["owner"] = schema
@@ -1699,6 +1700,7 @@ class OracleDialect(default.DefaultDialect):
             nullable = row[5] == "Y"
             default = row[6]
             comment = row[7]
+            generated = row[8]
 
             if coltype == "NUMBER":
                 if precision is None and scale == 0:
@@ -1723,6 +1725,12 @@ class OracleDialect(default.DefaultDialect):
                     )
                     coltype = sqltypes.NULLTYPE
 
+            if generated == "YES":
+                computed = dict(sqltext=default)
+                default = None
+            else:
+                computed = None
+
             cdict = {
                 "name": colname,
                 "type": coltype,
@@ -1733,6 +1741,8 @@ class OracleDialect(default.DefaultDialect):
             }
             if orig_colname.lower() == orig_colname:
                 cdict["quote"] = True
+            if computed is not None:
+                cdict["computed"] = computed
 
             columns.append(cdict)
         return columns

@@ -1509,3 +1509,19 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def python_profiling_backend(self):
         return only_on([self._sqlite_memory_db])
+
+    @property
+    def computed_columns_stored(self):
+        return self.computed_columns + skip_if(["oracle", "firebird"])
+
+    @property
+    def computed_columns_virtual(self):
+        return self.computed_columns + skip_if(["postgresql", "firebird"])
+
+    @property
+    def computed_columns_default_persisted(self):
+        return self.computed_columns + only_if("postgresql")
+
+    @property
+    def computed_columns_reflect_persisted(self):
+        return self.computed_columns + skip_if("oracle")

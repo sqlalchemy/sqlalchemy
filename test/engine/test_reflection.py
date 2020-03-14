@@ -1,6 +1,7 @@
 import unicodedata
 
 import sqlalchemy as sa
+from sqlalchemy import Computed
 from sqlalchemy import DefaultClause
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
@@ -26,6 +27,8 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_instance_of
+from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in_
@@ -2263,3 +2266,36 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
             eq_(str(table.c.x.server_default.arg), "1")
 
         self._do_test("x", {"default": my_default}, assert_text_of_one)
+
+
+class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
+    def check_table_column(self, table, name, text, persisted):
+        is_true(name in table.columns)
+        col = table.columns[name]
+        is_not_(col.computed, None)
+        is_instance_of(col.computed, Computed)
+
+        eq_(self.normalize(str(col.computed.sqltext)), text)
+        if testing.requires.computed_columns_reflect_persisted.enabled:
+            eq_(col.computed.persisted, persisted)
+        else:
+            is_(col.computed.persisted, None)
+
+    def test_table_reflection(self):
+        meta = MetaData()
+        table = Table("computed_column_table", meta, autoload_with=config.db)
+
+        self.check_table_column(
+            table,
+            "computed_no_flag",
+            "normal+42",
+            testing.requires.computed_columns_default_persisted.enabled,
+        )
+        if testing.requires.computed_columns_virtual.enabled:
+            self.check_table_column(
+                table, "computed_virtual", "normal+2", False,
+            )
+        if testing.requires.computed_columns_stored.enabled:
+            self.check_table_column(
+                table, "computed_stored", "normal-42", True,
+            )

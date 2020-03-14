@@ -162,7 +162,7 @@ and MySQL they are schemas.   The requirement applies to all backends
 except SQLite and Firebird.  The names are::
 
     test_schema
-    test_schema_2 (only used on PostgreSQL)
+    test_schema_2 (only used on PostgreSQL and mssql)
 
 Please refer to your vendor documentation for the proper syntax to create
 these namespaces - the database user must have permission to create and drop

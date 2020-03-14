@@ -2826,7 +2826,14 @@ class PGDialect(default.DefaultDialect):
         table_oid = self.get_table_oid(
             connection, table_name, schema, info_cache=kw.get("info_cache")
         )
-        SQL_COLS = """
+
+        generated = (
+            "a.attgenerated as generated"
+            if self.server_version_info >= (12,)
+            else "NULL as generated"
+        )
+        SQL_COLS = (
+            """
             SELECT a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
               (SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
@@ -2835,7 +2842,8 @@ class PGDialect(default.DefaultDialect):
                AND a.atthasdef)
               AS DEFAULT,
               a.attnotnull, a.attnum, a.attrelid as table_oid,
-              pgd.description as comment
+              pgd.description as comment,
+              %s
             FROM pg_catalog.pg_attribute a
             LEFT JOIN pg_catalog.pg_description pgd ON (
                 pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
@@ -2843,6 +2851,8 @@ class PGDialect(default.DefaultDialect):
             AND a.attnum > 0 AND NOT a.attisdropped
             ORDER BY a.attnum
         """
+            % generated
+        )
         s = (
             sql.text(SQL_COLS)
             .bindparams(sql.bindparam("table_oid", type_=sqltypes.Integer))
@@ -2875,6 +2885,7 @@ class PGDialect(default.DefaultDialect):
             attnum,
             table_oid,
             comment,
+            generated,
         ) in rows:
             column_info = self._get_column_info(
                 name,
@@ -2885,6 +2896,7 @@ class PGDialect(default.DefaultDialect):
                 enums,
                 schema,
                 comment,
+                generated,
             )
             columns.append(column_info)
         return columns
@@ -2899,6 +2911,7 @@ class PGDialect(default.DefaultDialect):
         enums,
         schema,
         comment,
+        generated,
     ):
         def _handle_array_type(attype):
             return (
@@ -3009,6 +3022,15 @@ class PGDialect(default.DefaultDialect):
                 "Did not recognize type '%s' of column '%s'" % (attype, name)
             )
             coltype = sqltypes.NULLTYPE
+
+        # If a zero byte (''), then not a generated column.
+        # Otherwise, s = stored. (Other values might be added in the future.)
+        if generated:
+            computed = dict(sqltext=default, persisted=generated == "s")
+            default = None
+        else:
+            computed = None
+
         # adjust the default value
         autoincrement = False
         if default is not None:
@@ -3038,6 +3060,8 @@ class PGDialect(default.DefaultDialect):
             autoincrement=autoincrement,
             comment=comment,
         )
+        if computed is not None:
+            column_info["computed"] = computed
         return column_info
 
     @reflection.cache

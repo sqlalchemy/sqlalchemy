@@ -15,6 +15,7 @@ from ... import Table
 from ... import util
 from ...ext.compiler import compiles
 from ...sql import expression
+from ...types import Boolean
 from ...types import Integer
 from ...types import String
 from ...types import TypeDecorator
@@ -160,4 +161,15 @@ views = Table(
     Column("CHECK_OPTION", String, key="check_option"),
     Column("IS_UPDATABLE", String, key="is_updatable"),
     schema="INFORMATION_SCHEMA",
+)
+
+computed_columns = Table(
+    "computed_columns",
+    ischema,
+    Column("object_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("is_computed", Boolean),
+    Column("is_persisted", Boolean),
+    Column("definition", CoerceUnicode),
+    schema="sys",
 )
