@@ -22,9 +22,9 @@ from ...orm import synonym
 from ...orm.attributes import QueryableAttribute
 from ...orm.base import _is_mapped_class
 from ...orm.base import InspectionAttr
+from ...orm.descriptor_props import CompositeProperty
 from ...orm.interfaces import MapperProperty
 from ...orm.properties import ColumnProperty
-from ...orm.properties import CompositeProperty
 from ...schema import Column
 from ...schema import Table
 from ...sql import expression

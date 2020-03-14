@@ -25,7 +25,6 @@ from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.dialects.postgresql import TSRANGE
-from sqlalchemy.engine import reflection
 from sqlalchemy.sql.schema import CheckConstraint
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -398,10 +397,10 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         ), "Expected reflected column to be nullable."
 
     def test_unknown_types(self):
-        from sqlalchemy.databases import postgresql
+        from sqlalchemy.dialects.postgresql import base
 
-        ischema_names = postgresql.PGDialect.ischema_names
-        postgresql.PGDialect.ischema_names = {}
+        ischema_names = base.PGDialect.ischema_names
+        base.PGDialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
             assert_raises(exc.SAWarning, Table, "testtable", m2, autoload=True)
@@ -413,7 +412,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 assert t3.c.answer.type.__class__ == sa.types.NullType
 
         finally:
-            postgresql.PGDialect.ischema_names = ischema_names
+            base.PGDialect.ischema_names = ischema_names
 
 
 class ReflectionTest(fixtures.TestBase):
@@ -1199,7 +1198,7 @@ class ReflectionTest(fixtures.TestBase):
             metadata=self.metadata,
         )
         enum_type.create(conn)
-        inspector = reflection.Inspector.from_engine(conn.engine)
+        inspector = inspect(conn)
         eq_(
             inspector.get_enums("test_schema"),
             [
@@ -1218,7 +1217,7 @@ class ReflectionTest(fixtures.TestBase):
             "cat", "dog", "rat", name="pet", metadata=self.metadata
         )
         enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_enums(),
             [
@@ -1356,7 +1355,7 @@ class ReflectionTest(fixtures.TestBase):
         )
         enum_type.create(testing.db)
         schema_enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
 
         eq_(
             inspector.get_enums(),
@@ -1392,7 +1391,7 @@ class ReflectionTest(fixtures.TestBase):
     def test_inspect_enum_empty(self):
         enum_type = postgresql.ENUM(name="empty", metadata=self.metadata)
         enum_type.create(testing.db)
-        inspector = reflection.Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
 
         eq_(
             inspector.get_enums(),
@@ -1544,9 +1543,11 @@ class ReflectionTest(fixtures.TestBase):
             "pgsql_cc",
             meta,
             Column("a", Integer()),
+            Column("b", String),
             CheckConstraint("a > 1 AND a < 5", name="cc1"),
             CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
             CheckConstraint("is_positive(a)", name="cc3"),
+            CheckConstraint("b != 'hi\nim a name   \nyup\n'", name="cc4"),
         )
 
         meta.create_all()
@@ -1565,6 +1566,7 @@ class ReflectionTest(fixtures.TestBase):
                 u"cc1": u"(a > 1) AND (a < 5)",
                 u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
                 u"cc3": u"is_positive(a)",
+                u"cc4": u"(b)::text <> 'hi\nim a name   \nyup\n'::text",
             },
         )
 
@@ -1582,6 +1584,40 @@ class ReflectionTest(fixtures.TestBase):
                 "Could not parse CHECK constraint text: 'NOTCHECK foobar'"
             ):
                 testing.db.dialect.get_check_constraints(conn, "foo")
+
+    def test_reflect_extra_newlines(self):
+        rows = [
+            ("some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)"),
+            ("some other name", "CHECK ((b\nIS\nNOT\nNULL))"),
+            ("some CRLF name", "CHECK ((c\r\n\r\nIS\r\nNOT\r\nNULL))"),
+            ("some name", "CHECK (c != 'hi\nim a name\n')"),
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        with mock.patch.object(
+            testing.db.dialect, "get_table_oid", lambda *arg, **kw: 1
+        ):
+            check_constraints = testing.db.dialect.get_check_constraints(
+                conn, "foo"
+            )
+            eq_(
+                check_constraints,
+                [
+                    {
+                        "name": "some name",
+                        "sqltext": "a \nIS\n NOT\n\n NULL\n",
+                    },
+                    {"name": "some other name", "sqltext": "b\nIS\nNOT\nNULL"},
+                    {
+                        "name": "some CRLF name",
+                        "sqltext": "c\r\n\r\nIS\r\nNOT\r\nNULL",
+                    },
+                    {"name": "some name", "sqltext": "c != 'hi\nim a name\n'"},
+                ],
+            )
 
     def test_reflect_with_not_valid_check_constraint(self):
         rows = [("some name", "CHECK ((a IS NOT NULL)) NOT VALID")]

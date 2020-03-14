@@ -1258,13 +1258,9 @@ Relationship Loader API
 
 .. autofunction:: eagerload
 
-.. autofunction:: eagerload_all
-
 .. autofunction:: immediateload
 
 .. autofunction:: joinedload
-
-.. autofunction:: joinedload_all
 
 .. autofunction:: lazyload
 
@@ -1276,8 +1272,4 @@ Relationship Loader API
 
 .. autofunction:: selectinload
 
-.. autofunction:: selectinload_all
-
 .. autofunction:: subqueryload
-
-.. autofunction:: subqueryload_all

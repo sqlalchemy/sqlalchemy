@@ -158,20 +158,61 @@ to add an additional property after the fact::
                 where(Address.user_id==User.id)
         )
 
-For many-to-many relationships, use :func:`.and_` to join the fields of the
-association table to both tables in a relation, illustrated
-here with a classical mapping::
+For a :func:`.column_property` that refers to columns linked from a
+many-to-many relationship, use :func:`.and_` to join the fields of the
+association table to both tables in a relationship::
 
     from sqlalchemy import and_
 
-    mapper(Author, authors, properties={
-        'book_count': column_property(
-                            select([func.count(books.c.id)],
-                                and_(
-                                    book_authors.c.author_id==authors.c.id,
-                                    book_authors.c.book_id==books.c.id
-                                )))
-        })
+    class Author(Base):
+        # ...
+
+        book_count = column_property(
+            select(
+                [func.count(books.c.id)]
+            ).where(
+                and_(
+                    book_authors.c.author_id==authors.c.id,
+                    book_authors.c.book_id==books.c.id
+                )
+            )
+        )
+
+.. _mapper_column_property_sql_expressions_composed:
+
+Composing from Column Properties at Mapping Time
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to create mappings that combine multiple
+:class:`.ColumnProperty` objects together.  The :class:`.ColumnProperty` will
+be interpreted as a SQL expression when used in a Core expression context,
+provided that it is targeted by an existing expression object; this works by
+the Core detecting that the object has a ``__clause_element__()`` method which
+returns a SQL expression.   However, if the :class:`.ColumnProperty` is used as
+a lead object in an expression where there is no other Core SQL expression
+object to target it, the :attr:`.ColumnProperty.expression` attribute will
+return the underlying SQL expression so that it can be used to build SQL
+expressions consistently.  Below, the ``File`` class contains an attribute
+``File.path`` that concatenates a string token to the ``File.filename``
+attribute, which is itself a :class:`.ColumnProperty`::
+
+
+    class File(Base):
+        __tablename__ = 'file'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String(64))
+        extension = Column(String(8))
+        filename = column_property(name + '.' + extension)
+        path = column_property('C:/' + filename.expression)
+
+When the ``File`` class is used in expressions normally, the attributes
+assigned to ``filename`` and ``path`` are usable directly.  The use of the
+:attr:`.ColumnProperty.expression` attribute is only necessary when using
+the :class:`.ColumnProperty` directly within the mapping definition::
+
+    q = session.query(File.path).filter(File.filename == 'foo.txt')
+
 
 Using a plain descriptor
 ------------------------

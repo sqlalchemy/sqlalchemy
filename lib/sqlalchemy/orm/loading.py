@@ -28,6 +28,7 @@ from .util import aliased
 from .util import state_str
 from .. import exc as sa_exc
 from .. import util
+from ..engine import result_tuple
 from ..sql import util as sql_util
 
 
@@ -56,7 +57,7 @@ def instances(query, cursor, context):
                 )
 
     try:
-        (process, labels) = list(
+        (process, labels, extra) = list(
             zip(
                 *[
                     query_entity.row_processor(query, context, cursor)
@@ -66,7 +67,7 @@ def instances(query, cursor, context):
         )
 
         if not single_entity:
-            keyed_tuple = util.lightweight_named_tuple("result", labels)
+            keyed_tuple = result_tuple(labels, extra)
 
         while True:
             context.partials = {}
@@ -98,14 +99,15 @@ def instances(query, cursor, context):
 
             if not query._yield_per:
                 break
-    except Exception as err:
-        cursor.close()
-        util.raise_from_cause(err)
+    except Exception:
+        with util.safe_reraise():
+            cursor.close()
 
 
-@util.dependencies("sqlalchemy.orm.query")
-def merge_result(querylib, query, iterator, load=True):
+@util.preload_module("sqlalchemy.orm.query")
+def merge_result(query, iterator, load=True):
     """Merge a result into this :class:`.Query` object's Session."""
+    querylib = util.preloaded.orm_query
 
     session = query.session
     if load:
@@ -138,7 +140,9 @@ def merge_result(querylib, query, iterator, load=True):
             ]
             result = []
             keys = [ent._label_name for ent in query._entities]
-            keyed_tuple = util.lightweight_named_tuple("result", keys)
+            keyed_tuple = result_tuple(
+                keys, [ent.entities for ent in query._entities]
+            )
             for row in iterator:
                 newrow = list(row)
                 for i in mapped_entities:
@@ -190,7 +194,6 @@ def load_on_ident(
     query, key, refresh_state=None, with_for_update=None, only_load_props=None
 ):
     """Load the given identity key from the database."""
-
     if key is not None:
         ident = key[1]
         identity_token = key[2]
@@ -452,9 +455,18 @@ def _instance_processor(
     instance_state = attributes.instance_state
     instance_dict = attributes.instance_dict
     session_id = context.session.hash_key
-    version_check = context.version_check
     runid = context.runid
     identity_token = context.identity_token
+
+    version_check = context.version_check
+    if version_check:
+        version_id_col = mapper.version_id_col
+        if version_id_col is not None:
+            if adapter:
+                version_id_col = adapter.columns[version_id_col]
+            version_id_getter = result._getter(version_id_col)
+        else:
+            version_id_getter = None
 
     if not refresh_state and _polymorphic_from is not None:
         key = ("loader", path.path)
@@ -539,8 +551,10 @@ def _instance_processor(
                 currentload = not isnew
                 loaded_instance = False
 
-                if version_check and not currentload:
-                    _validate_version_id(mapper, state, dict_, row, adapter)
+                if version_check and version_id_getter and not currentload:
+                    _validate_version_id(
+                        mapper, state, dict_, row, version_id_getter
+                    )
 
             else:
                 # create a new instance
@@ -667,7 +681,7 @@ def _instance_processor(
         def ensure_no_pk(row):
             identitykey = (
                 identity_class,
-                tuple([row[column] for column in pk_cols]),
+                tuple_getter(row),
                 identity_token,
             )
             if not is_not_primary_key(identitykey[1]):
@@ -812,20 +826,11 @@ def _populate_partial(
     return to_load
 
 
-def _validate_version_id(mapper, state, dict_, row, adapter):
+def _validate_version_id(mapper, state, dict_, row, getter):
 
-    version_id_col = mapper.version_id_col
-
-    if version_id_col is None:
-        return
-
-    if adapter:
-        version_id_col = adapter.columns[version_id_col]
-
-    if (
-        mapper._get_state_attr_by_column(state, dict_, mapper.version_id_col)
-        != row[version_id_col]
-    ):
+    if mapper._get_state_attr_by_column(
+        state, dict_, mapper.version_id_col
+    ) != getter(row):
         raise orm_exc.StaleDataError(
             "Instance '%s' has version id '%s' which "
             "does not match database-loaded version id '%s'."
@@ -834,7 +839,7 @@ def _validate_version_id(mapper, state, dict_, row, adapter):
                 mapper._get_state_attr_by_column(
                     state, dict_, mapper.version_id_col
                 ),
-                row[version_id_col],
+                getter(row),
             )
         )
 

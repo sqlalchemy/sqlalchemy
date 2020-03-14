@@ -1483,11 +1483,14 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                 # it to mapped ColumnProperty
                 try:
                     self.polymorphic_on = self._props[self.polymorphic_on]
-                except KeyError:
-                    raise sa_exc.ArgumentError(
-                        "Can't determine polymorphic_on "
-                        "value '%s' - no attribute is "
-                        "mapped to this name." % self.polymorphic_on
+                except KeyError as err:
+                    util.raise_(
+                        sa_exc.ArgumentError(
+                            "Can't determine polymorphic_on "
+                            "value '%s' - no attribute is "
+                            "mapped to this name." % self.polymorphic_on
+                        ),
+                        replace_context=err,
                     )
 
             if self.polymorphic_on in self._columntoproperty:
@@ -1656,7 +1659,10 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
     def _prop_set(self):
         return frozenset(self._props.values())
 
+    @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _adapt_inherited_property(self, key, prop, init):
+        descriptor_props = util.preloaded.orm_descriptor_props
+
         if not self.concrete:
             self._configure_property(key, prop, init=False, setparent=False)
         elif key not in self._props:
@@ -1677,12 +1683,14 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             ):
                 self._configure_property(
                     key,
-                    properties.ConcreteInheritedProperty(),
+                    descriptor_props.ConcreteInheritedProperty(),
                     init=init,
                     setparent=True,
                 )
 
+    @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _configure_property(self, key, prop, init=True, setparent=True):
+        descriptor_props = util.preloaded.orm_descriptor_props
         self._log("_configure_property(%s, %s)", key, prop.__class__.__name__)
 
         if not isinstance(prop, MapperProperty):
@@ -1766,7 +1774,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                 self._props[key],
                 (
                     properties.ColumnProperty,
-                    properties.ConcreteInheritedProperty,
+                    descriptor_props.ConcreteInheritedProperty,
                 ),
             )
         ):
@@ -1793,10 +1801,11 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         if self.configured:
             self._expire_memoizations()
 
+    @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _property_from_column(self, key, prop):
-        """generate/update a :class:`.ColumnProprerty` given a
+        """generate/update a :class:`.ColumnProperty` given a
         :class:`.Column` object. """
-
+        descriptor_props = util.preloaded.orm_descriptor_props
         # we were passed a Column or a list of Columns;
         # generate a properties.ColumnProperty
         columns = util.to_list(prop)
@@ -1838,7 +1847,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             )
             return prop
         elif prop is None or isinstance(
-            prop, properties.ConcreteInheritedProperty
+            prop, descriptor_props.ConcreteInheritedProperty
         ):
             mapped_column = []
             for c in columns:
@@ -1987,9 +1996,12 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         try:
             return self._props[key]
-        except KeyError:
-            raise sa_exc.InvalidRequestError(
-                "Mapper '%s' has no property '%s'" % (self, key)
+        except KeyError as err:
+            util.raise_(
+                sa_exc.InvalidRequestError(
+                    "Mapper '%s' has no property '%s'" % (self, key)
+                ),
+                replace_context=err,
             )
 
     def get_property_by_column(self, column):
@@ -2368,6 +2380,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         )
 
     @_memoized_configured_property
+    @util.preload_module("sqlalchemy.orm.descriptor_props")
     def synonyms(self):
         """Return a namespace of all :class:`.SynonymProperty`
         properties maintained by this :class:`.Mapper`.
@@ -2378,7 +2391,9 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             objects.
 
         """
-        return self._filter_properties(properties.SynonymProperty)
+        descriptor_props = util.preloaded.orm_descriptor_props
+
+        return self._filter_properties(descriptor_props.SynonymProperty)
 
     @_memoized_configured_property
     def column_attrs(self):
@@ -2393,6 +2408,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         """
         return self._filter_properties(properties.ColumnProperty)
 
+    @util.preload_module("sqlalchemy.orm.relationships")
     @_memoized_configured_property
     def relationships(self):
         """A namespace of all :class:`.RelationshipProperty` properties
@@ -2416,9 +2432,12 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             objects.
 
         """
-        return self._filter_properties(properties.RelationshipProperty)
+        return self._filter_properties(
+            util.preloaded.orm_relationships.RelationshipProperty
+        )
 
     @_memoized_configured_property
+    @util.preload_module("sqlalchemy.orm.descriptor_props")
     def composites(self):
         """Return a namespace of all :class:`.CompositeProperty`
         properties maintained by this :class:`.Mapper`.
@@ -2429,7 +2448,9 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
             objects.
 
         """
-        return self._filter_properties(properties.CompositeProperty)
+        return self._filter_properties(
+            util.preloaded.orm_descriptor_props.CompositeProperty
+        )
 
     def _filter_properties(self, type_):
         if Mapper._new_mappers:
@@ -2557,6 +2578,17 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return self.base_mapper is other.base_mapper
 
+    def is_sibling(self, other):
+        """return true if the other mapper is an inheriting sibling to this
+        one.  common parent but different branch
+
+        """
+        return (
+            self.base_mapper is other.base_mapper
+            and not self.isa(other)
+            and not other.isa(self)
+        )
+
     def _canload(self, state, allow_subtypes):
         s = self.primary_mapper()
         if self.polymorphic_on is not None or allow_subtypes:
@@ -2631,7 +2663,7 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
 
-        :param row: A :class:`.RowProxy` instance.  The columns which are
+        :param row: A :class:`.Row` instance.  The columns which are
          mapped by this :class:`.Mapper` should be locatable in the row,
          preferably via the :class:`.Column` object directly (as is the case
          when a :func:`.select` construct is executed), or via string names of
@@ -2899,14 +2931,17 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         return None
 
-    @util.dependencies(
+    @util.preload_module(
         "sqlalchemy.ext.baked", "sqlalchemy.orm.strategy_options"
     )
-    def _subclass_load_via_in(self, baked, strategy_options, entity):
+    def _subclass_load_via_in(self, entity):
         """Assemble a BakedQuery that can load the columns local to
         this subclass as a SELECT with IN.
 
         """
+        strategy_options = util.preloaded.orm_strategy_options
+        baked = util.preloaded.ext_baked
+
         assert self.inherits
 
         polymorphic_prop = self._columntoproperty[self.polymorphic_on]

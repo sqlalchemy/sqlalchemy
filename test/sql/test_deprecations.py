@@ -22,6 +22,7 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
@@ -34,6 +35,7 @@ from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -110,20 +112,6 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert t1t2.onclause.compare(join_cond)
 
-    def test_select_autocommit(self):
-        with testing.expect_deprecated(
-            "The select.autocommit parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            select([column("x")], autocommit=True)
-
-    def test_select_for_update(self):
-        with testing.expect_deprecated(
-            "The select.for_update parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            select([column("x")], for_update=True)
-
     def test_empty_and_or(self):
         with testing.expect_deprecated(
             r"Invoking and_\(\) without arguments is deprecated, and "
@@ -193,63 +181,6 @@ class ConvertUnicodeDeprecationTest(fixtures.TestBase):
 
         utfdata = unicodedata.encode("utf8")
         eq_(proc(utfdata), unicodedata.encode("ascii", "ignore").decode())
-
-
-class ForUpdateTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = "default"
-
-    def _assert_legacy(self, leg, read=False, nowait=False):
-        t = table("t", column("c"))
-
-        with testing.expect_deprecated(
-            "The select.for_update parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            s1 = select([t], for_update=leg)
-
-        if leg is False:
-            assert s1._for_update_arg is None
-            assert s1.for_update is None
-        else:
-            eq_(s1._for_update_arg.read, read)
-            eq_(s1._for_update_arg.nowait, nowait)
-            eq_(s1.for_update, leg)
-
-    def test_false_legacy(self):
-        self._assert_legacy(False)
-
-    def test_plain_true_legacy(self):
-        self._assert_legacy(True)
-
-    def test_read_legacy(self):
-        self._assert_legacy("read", read=True)
-
-    def test_nowait_legacy(self):
-        self._assert_legacy("nowait", nowait=True)
-
-    def test_read_nowait_legacy(self):
-        self._assert_legacy("read_nowait", read=True, nowait=True)
-
-    def test_unknown_mode(self):
-        t = table("t", column("c"))
-
-        with testing.expect_deprecated(
-            "The select.for_update parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            assert_raises_message(
-                exc.ArgumentError,
-                "Unknown for_update argument: 'unknown_mode'",
-                t.select,
-                t.c.c == 7,
-                for_update="unknown_mode",
-            )
-
-    def test_legacy_setter(self):
-        t = table("t", column("c"))
-        s = select([t])
-        s.for_update = "nowait"
-        eq_(s._for_update_arg.nowait, True)
 
 
 class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -603,12 +534,6 @@ class TextTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             },
         )
-
-    def test_autocommit(self):
-        with testing.expect_deprecated(
-            "The text.autocommit parameter is deprecated"
-        ):
-            text("select id, name from user", autocommit=True)
 
 
 class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1282,15 +1207,24 @@ class ResultProxyTest(fixtures.TablesTest):
 
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
-            "with only matching names"
+            "with only matching names",
+            "Using non-integer/slice indices on Row is "
+            "deprecated and will be removed in version 2.0",
         ):
             eq_(r[users.c.user_id], 2)
+
+        r._keymap.pop(users.c.user_id)  # reset lookup
+        with testing.expect_deprecated(
+            "Retreiving row values using Column objects "
+            "with only matching names"
+        ):
+            eq_(r._mapping[users.c.user_id], 2)
 
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(r[users.c.user_name], "jack")
+            eq_(r._mapping[users.c.user_name], "jack")
 
     def test_column_accessor_basic_text(self):
         users = self.tables.users
@@ -1300,16 +1234,34 @@ class ResultProxyTest(fixtures.TablesTest):
         ).first()
 
         with testing.expect_deprecated(
+            "Using non-integer/slice indices on Row is deprecated "
+            "and will be removed in version 2.0",
             "Retreiving row values using Column objects "
-            "with only matching names"
+            "with only matching names",
         ):
             eq_(r[users.c.user_id], 2)
 
+        r._keymap.pop(users.c.user_id)
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
+            eq_(r._mapping[users.c.user_id], 2)
+
+        with testing.expect_deprecated(
+            "Using non-integer/slice indices on Row is deprecated "
+            "and will be removed in version 2.0",
+            "Retreiving row values using Column objects "
+            "with only matching names",
+        ):
             eq_(r[users.c.user_name], "jack")
+
+        r._keymap.pop(users.c.user_name)
+        with testing.expect_deprecated(
+            "Retreiving row values using Column objects "
+            "with only matching names"
+        ):
+            eq_(r._mapping[users.c.user_name], "jack")
 
     @testing.provide_metadata
     def test_column_label_overlap_fallback(self):
@@ -1319,7 +1271,7 @@ class ResultProxyTest(fixtures.TablesTest):
         testing.db.execute(content.insert().values(type="t1"))
 
         row = testing.db.execute(content.select(use_labels=True)).first()
-        in_(content.c.type, row)
+        in_(content.c.type, row._mapping)
         not_in_(bar.c.content_type, row)
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
@@ -1387,17 +1339,37 @@ class ResultProxyTest(fixtures.TablesTest):
                         "Retreiving row values using Column objects "
                         "from a row that was unpickled"
                     ):
-                        eq_(result[0][users.c.user_id], 7)
+                        eq_(result[0]._mapping[users.c.user_id], 7)
+
+                    result[0]._keymap.pop(users.c.user_id)
                     with testing.expect_deprecated(
                         "Retreiving row values using Column objects "
                         "from a row that was unpickled"
                     ):
-                        eq_(result[0][users.c.user_name], "jack")
+                        eq_(result[0]._mapping[users.c.user_id], 7)
+
+                    with testing.expect_deprecated(
+                        "Retreiving row values using Column objects "
+                        "from a row that was unpickled"
+                    ):
+                        eq_(result[0]._mapping[users.c.user_name], "jack")
+
+                    result[0]._keymap.pop(users.c.user_name)
+                    with testing.expect_deprecated(
+                        "Retreiving row values using Column objects "
+                        "from a row that was unpickled"
+                    ):
+                        eq_(result[0]._mapping[users.c.user_name], "jack")
 
                 if not pickle or use_labels:
                     assert_raises(
                         exc.NoSuchColumnError,
                         lambda: result[0][addresses.c.user_id],
+                    )
+
+                    assert_raises(
+                        exc.NoSuchColumnError,
+                        lambda: result[0]._mapping[addresses.c.user_id],
                     )
                 else:
                     # test with a different table.  name resolution is
@@ -1406,12 +1378,159 @@ class ResultProxyTest(fixtures.TablesTest):
                         "Retreiving row values using Column objects "
                         "from a row that was unpickled"
                     ):
-                        eq_(result[0][addresses.c.user_id], 7)
+                        eq_(result[0]._mapping[addresses.c.user_id], 7)
+
+                    result[0]._keymap.pop(addresses.c.user_id)
+                    with testing.expect_deprecated(
+                        "Retreiving row values using Column objects "
+                        "from a row that was unpickled"
+                    ):
+                        eq_(result[0]._mapping[addresses.c.user_id], 7)
 
                 assert_raises(
                     exc.NoSuchColumnError,
                     lambda: result[0][addresses.c.address_id],
                 )
+
+                assert_raises(
+                    exc.NoSuchColumnError,
+                    lambda: result[0]._mapping[addresses.c.address_id],
+                )
+
+    @testing.requires.duplicate_names_in_cursor_description
+    def test_ambiguous_column_case_sensitive(self):
+        with testing.expect_deprecated(
+            "The create_engine.case_sensitive parameter is deprecated"
+        ):
+            eng = engines.testing_engine(options=dict(case_sensitive=False))
+
+        row = eng.execute(
+            select(
+                [
+                    literal_column("1").label("SOMECOL"),
+                    literal_column("1").label("SOMECOL"),
+                ]
+            )
+        ).first()
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: row._mapping["somecol"],
+        )
+
+    def test_row_getitem_string(self):
+        with testing.db.connect() as conn:
+            col = literal_column("1").label("foo")
+            row = conn.execute(select([col])).first()
+
+            with testing.expect_deprecated(
+                "Using non-integer/slice indices on Row is deprecated "
+                "and will be removed in version 2.0;"
+            ):
+                eq_(row["foo"], 1)
+
+            eq_(row._mapping["foo"], 1)
+
+    def test_row_getitem_column(self):
+        with testing.db.connect() as conn:
+            col = literal_column("1").label("foo")
+            row = conn.execute(select([col])).first()
+
+            with testing.expect_deprecated(
+                "Using non-integer/slice indices on Row is deprecated "
+                "and will be removed in version 2.0;"
+            ):
+                eq_(row[col], 1)
+
+            eq_(row._mapping[col], 1)
+
+    def test_row_case_insensitive(self):
+        with testing.expect_deprecated(
+            "The create_engine.case_sensitive parameter is deprecated"
+        ):
+            ins_db = engines.testing_engine(options={"case_sensitive": False})
+        row = ins_db.execute(
+            select(
+                [
+                    literal_column("1").label("case_insensitive"),
+                    literal_column("2").label("CaseSensitive"),
+                ]
+            )
+        ).first()
+
+        eq_(list(row._mapping.keys()), ["case_insensitive", "CaseSensitive"])
+
+        in_("case_insensitive", row._keymap)
+        in_("CaseSensitive", row._keymap)
+        in_("casesensitive", row._keymap)
+
+        eq_(row._mapping["case_insensitive"], 1)
+        eq_(row._mapping["CaseSensitive"], 2)
+        eq_(row._mapping["Case_insensitive"], 1)
+        eq_(row._mapping["casesensitive"], 2)
+
+    def test_row_case_insensitive_unoptimized(self):
+        with testing.expect_deprecated(
+            "The create_engine.case_sensitive parameter is deprecated"
+        ):
+            ins_db = engines.testing_engine(options={"case_sensitive": False})
+        row = ins_db.execute(
+            select(
+                [
+                    literal_column("1").label("case_insensitive"),
+                    literal_column("2").label("CaseSensitive"),
+                    text("3 AS screw_up_the_cols"),
+                ]
+            )
+        ).first()
+
+        eq_(
+            list(row._mapping.keys()),
+            ["case_insensitive", "CaseSensitive", "screw_up_the_cols"],
+        )
+
+        in_("case_insensitive", row._keymap)
+        in_("CaseSensitive", row._keymap)
+        in_("casesensitive", row._keymap)
+
+        eq_(row._mapping["case_insensitive"], 1)
+        eq_(row._mapping["CaseSensitive"], 2)
+        eq_(row._mapping["screw_up_the_cols"], 3)
+        eq_(row._mapping["Case_insensitive"], 1)
+        eq_(row._mapping["casesensitive"], 2)
+        eq_(row._mapping["screw_UP_the_cols"], 3)
+
+    def test_row_keys_deprecated(self):
+        r = testing.db.execute(
+            text("select * from users where user_id=2")
+        ).first()
+
+        with testing.expect_deprecated_20(
+            r"The Row.keys\(\) function/method is considered legacy "
+        ):
+            eq_(r.keys(), ["user_id", "user_name"])
+
+    def test_row_contains_key_deprecated(self):
+        r = testing.db.execute(
+            text("select * from users where user_id=2")
+        ).first()
+
+        with testing.expect_deprecated(
+            "Using the 'in' operator to test for string or column keys, or "
+            "integer indexes, .* is deprecated"
+        ):
+            in_("user_name", r)
+
+        # no warning if the key is not there
+        not_in_("foobar", r)
+
+        # this seems to happen only with Python BaseRow
+        # with testing.expect_deprecated(
+        #    "Using the 'in' operator to test for string or column keys, or "
+        #   "integer indexes, .* is deprecated"
+        # ):
+        #    in_(1, r)
 
 
 class PositionalTextTest(fixtures.TablesTest):
@@ -1452,7 +1571,7 @@ class PositionalTextTest(fixtures.TablesTest):
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(row[text1.c.a], "a1")
+            eq_(row._mapping[text1.c.a], "a1")
 
     def test_anon_aliased_unique(self):
         text1 = self.tables.text1
@@ -1466,10 +1585,10 @@ class PositionalTextTest(fixtures.TablesTest):
         result = testing.db.execute(stmt)
         row = result.first()
 
-        eq_(row[c1], "a1")
-        eq_(row[c2], "b1")
-        eq_(row[c3], "c1")
-        eq_(row[c4], "d1")
+        eq_(row._mapping[c1], "a1")
+        eq_(row._mapping[c2], "b1")
+        eq_(row._mapping[c3], "c1")
+        eq_(row._mapping[c4], "d1")
 
         # key fallback rules still match this to a column
         # unambiguously based on its name
@@ -1477,7 +1596,7 @@ class PositionalTextTest(fixtures.TablesTest):
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(row[text1.c.a], "a1")
+            eq_(row._mapping[text1.c.a], "a1")
 
         # key fallback rules still match this to a column
         # unambiguously based on its name
@@ -1485,7 +1604,7 @@ class PositionalTextTest(fixtures.TablesTest):
             "Retreiving row values using Column objects "
             "with only matching names"
         ):
-            eq_(row[text1.c.d], "d1")
+            eq_(row._mapping[text1.c.d], "d1")
 
         # text1.c.b goes nowhere....because we hit key fallback
         # but the text1.c.b doesn't derive from text1.c.c
@@ -1493,4 +1612,210 @@ class PositionalTextTest(fixtures.TablesTest):
             exc.NoSuchColumnError,
             "Could not locate column in row for column 'text1.b'",
             lambda: row[text1.c.b],
+        )
+
+        assert_raises_message(
+            exc.NoSuchColumnError,
+            "Could not locate column in row for column 'text1.b'",
+            lambda: row._mapping[text1.c.b],
+        )
+
+
+class DefaultTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.provide_metadata
+    def test_close_on_branched(self):
+        metadata = self.metadata
+
+        def mydefault_using_connection(ctx):
+            conn = ctx.connection
+            try:
+                return conn.execute(select([text("12")])).scalar()
+            finally:
+                # ensure a "close()" on this connection does nothing,
+                # since its a "branched" connection
+                conn.close()
+
+        table = Table(
+            "foo",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer, default=mydefault_using_connection),
+        )
+
+        metadata.create_all(testing.db)
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated_20(
+                r"The .close\(\) method on a so-called 'branched' "
+                r"connection is deprecated as of 1.4, as are "
+                r"'branched' connections overall"
+            ):
+                conn.execute(table.insert().values(x=5))
+
+            eq_(conn.execute(select([table])).first(), (5, 12))
+
+
+class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_insert_inline_kw_defaults(self):
+        m = MetaData()
+        foo = Table("foo", m, Column("id", Integer))
+
+        t = Table(
+            "test",
+            m,
+            Column("col1", Integer, default=func.foo(1)),
+            Column(
+                "col2",
+                Integer,
+                default=select([func.coalesce(func.max(foo.c.id))]),
+            ),
+        )
+
+        with testing.expect_deprecated_20(
+            "The insert.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = t.insert(inline=True, values={})
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
+            "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
+            "foo))",
+            inline_flag=True,
+        )
+
+    def test_insert_inline_kw_default(self):
+        metadata = MetaData()
+        table = Table(
+            "sometable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foo", Integer, default=func.foobar()),
+        )
+
+        with testing.expect_deprecated_20(
+            "The insert.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = table.insert(values={}, inline=True)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            inline_flag=True,
+        )
+
+        with testing.expect_deprecated_20(
+            "The insert.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = table.insert(inline=True)
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            params={},
+            inline_flag=True,
+        )
+
+    def test_update_inline_kw_defaults(self):
+        m = MetaData()
+        foo = Table("foo", m, Column("id", Integer))
+
+        t = Table(
+            "test",
+            m,
+            Column("col1", Integer, onupdate=func.foo(1)),
+            Column(
+                "col2",
+                Integer,
+                onupdate=select([func.coalesce(func.max(foo.c.id))]),
+            ),
+            Column("col3", String(30)),
+        )
+
+        with testing.expect_deprecated_20(
+            "The update.inline parameter will be removed in SQLAlchemy 2.0."
+        ):
+            stmt = t.update(inline=True, values={"col3": "foo"})
+
+        self.assert_compile(
+            stmt,
+            "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
+            "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
+            "col3=:col3",
+            inline_flag=True,
+        )
+
+    def test_update_dialect_kwargs(self):
+        t = table("foo", column("bar"))
+
+        with testing.expect_deprecated_20("Passing dialect keyword arguments"):
+            stmt = t.update(mysql_limit=10)
+
+        self.assert_compile(
+            stmt, "UPDATE foo SET bar=%s LIMIT 10", dialect="mysql"
+        )
+
+    @testing.fixture()
+    def update_from_fixture(self):
+        metadata = MetaData()
+
+        mytable = Table(
+            "mytable",
+            metadata,
+            Column("myid", Integer),
+            Column("name", String(30)),
+            Column("description", String(50)),
+        )
+        myothertable = Table(
+            "myothertable",
+            metadata,
+            Column("otherid", Integer),
+            Column("othername", String(30)),
+        )
+        return mytable, myothertable
+
+    def test_correlated_update_two(self, update_from_fixture):
+        table1, t2 = update_from_fixture
+
+        mt = table1.alias()
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar subquery in a column-expression "
+            "context is deprecated"
+        ):
+            u = update(
+                table1,
+                values={
+                    table1.c.name: select(
+                        [mt.c.name], mt.c.myid == table1.c.myid
+                    )
+                },
+            )
+        self.assert_compile(
+            u,
+            "UPDATE mytable SET name=(SELECT mytable_1.name FROM "
+            "mytable AS mytable_1 WHERE "
+            "mytable_1.myid = mytable.myid)",
+        )
+
+    def test_correlated_update_three(self, update_from_fixture):
+        table1, table2 = update_from_fixture
+
+        # test against a regular constructed subquery
+        s = select([table2], table2.c.otherid == table1.c.myid)
+        with testing.expect_deprecated(
+            "coercing SELECT object to scalar subquery in a column-expression "
+            "context is deprecated"
+        ):
+            u = update(
+                table1, table1.c.name == "jack", values={table1.c.name: s}
+            )
+        self.assert_compile(
+            u,
+            "UPDATE mytable SET name=(SELECT myothertable.otherid, "
+            "myothertable.othername FROM myothertable WHERE "
+            "myothertable.otherid = mytable.myid) "
+            "WHERE mytable.name = :name_1",
         )

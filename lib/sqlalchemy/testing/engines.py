@@ -158,7 +158,7 @@ def close_open_connections(fn, *args, **kw):
 
 
 def all_dialects(exclude=None):
-    import sqlalchemy.databases as d
+    import sqlalchemy.dialects as d
 
     for name in d.__all__:
         # TEMPORARY
@@ -167,7 +167,7 @@ def all_dialects(exclude=None):
         mod = getattr(d, name, None)
         if not mod:
             mod = getattr(
-                __import__("sqlalchemy.databases.%s" % name).databases, name
+                __import__("sqlalchemy.dialects.%s" % name).databases, name
             )
         yield mod.dialect()
 

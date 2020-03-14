@@ -103,6 +103,7 @@ This approach is uncommon in modern usage.   For dealing with reflected
 tables, a more flexible approach is to use that described in
 :ref:`mapper_automated_reflection_schemes`.
 
+.. _column_property_options:
 
 Using column_property for column level options
 ----------------------------------------------

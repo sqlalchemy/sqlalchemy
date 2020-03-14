@@ -177,7 +177,7 @@ class String(Concatenable, TypeEngine):
           E.g.::
 
             >>> from sqlalchemy import cast, select, String
-            >>> print select([cast('some string', String(collation='utf8'))])
+            >>> print(select([cast('some string', String(collation='utf8'))]))
             SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
         :param convert_unicode: When set to ``True``, the
@@ -1462,7 +1462,7 @@ class Enum(Emulated, String, SchemaType):
     def _db_value_for_elem(self, elem):
         try:
             return self._valid_lookup[elem]
-        except KeyError:
+        except KeyError as err:
             # for unknown string values, we return as is.  While we can
             # validate these if we wanted, that does not allow for lesser-used
             # end-user use cases, such as using a LIKE comparison with an enum,
@@ -1476,8 +1476,11 @@ class Enum(Emulated, String, SchemaType):
             ):
                 return elem
             else:
-                raise LookupError(
-                    '"%s" is not among the defined enum values' % elem
+                util.raise_(
+                    LookupError(
+                        '"%s" is not among the defined enum values' % elem
+                    ),
+                    replace_context=err,
                 )
 
     class Comparator(String.Comparator):
@@ -1496,9 +1499,12 @@ class Enum(Emulated, String, SchemaType):
     def _object_value_for_elem(self, elem):
         try:
             return self._object_lookup[elem]
-        except KeyError:
-            raise LookupError(
-                '"%s" is not among the defined enum values' % elem
+        except KeyError as err:
+            util.raise_(
+                LookupError(
+                    '"%s" is not among the defined enum values' % elem
+                ),
+                replace_context=err,
             )
 
     def __repr__(self):
@@ -1533,8 +1539,9 @@ class Enum(Emulated, String, SchemaType):
             not self.native_enum or not compiler.dialect.supports_native_enum
         )
 
-    @util.dependencies("sqlalchemy.sql.schema")
-    def _set_table(self, schema, column, table):
+    @util.preload_module("sqlalchemy.sql.schema")
+    def _set_table(self, column, table):
+        schema = util.preloaded.sql_schema
         SchemaType._set_table(self, column, table)
 
         if not self.create_constraint:
@@ -1622,7 +1629,7 @@ class PickleType(TypeDecorator):
 
         :param pickler: defaults to cPickle.pickle or pickle.pickle if
           cPickle is not available.  May be any object with
-          pickle-compatible ``dumps` and ``loads`` methods.
+          pickle-compatible ``dumps`` and ``loads`` methods.
 
         :param comparator: a 2-arg callable predicate used
           to compare values of this type.  If left as ``None``,
@@ -1732,8 +1739,9 @@ class Boolean(Emulated, TypeEngine, SchemaType):
             and compiler.dialect.non_native_boolean_check_constraint
         )
 
-    @util.dependencies("sqlalchemy.sql.schema")
-    def _set_table(self, schema, column, table):
+    @util.preload_module("sqlalchemy.sql.schema")
+    def _set_table(self, column, table):
+        schema = util.preloaded.sql_schema
         if not self.create_constraint:
             return
 
@@ -2222,8 +2230,7 @@ class JSON(Indexable, TypeEngine):
     class Comparator(Indexable.Comparator, Concatenable.Comparator):
         """Define comparison operations for :class:`.types.JSON`."""
 
-        @util.dependencies("sqlalchemy.sql.default_comparator")
-        def _setup_getitem(self, default_comparator, index):
+        def _setup_getitem(self, index):
             if not isinstance(index, util.string_types) and isinstance(
                 index, compat.collections_abc.Sequence
             ):
@@ -2547,8 +2554,8 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 "ARRAY type; please use the dialect-specific ARRAY type"
             )
 
-        @util.dependencies("sqlalchemy.sql.elements")
-        def any(self, elements, other, operator=None):
+        @util.preload_module("sqlalchemy.sql.elements")
+        def any(self, other, operator=None):
             """Return ``other operator ANY (array)`` clause.
 
             Argument places are switched, because ANY requires array
@@ -2576,14 +2583,15 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 :meth:`.types.ARRAY.Comparator.all`
 
             """
+            elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
             return operator(
                 coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_any(self.expr),
             )
 
-        @util.dependencies("sqlalchemy.sql.elements")
-        def all(self, elements, other, operator=None):
+        @util.preload_module("sqlalchemy.sql.elements")
+        def all(self, other, operator=None):
             """Return ``other operator ALL (array)`` clause.
 
             Argument places are switched, because ALL requires array
@@ -2611,6 +2619,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 :meth:`.types.ARRAY.Comparator.any`
 
             """
+            elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
             return operator(
                 coercions.expect(roles.ExpressionElementRole, other),

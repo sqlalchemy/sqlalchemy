@@ -364,14 +364,14 @@ class RoundTripTestBase(object):
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
         row = testing.db.execute(select([self.tables.test_table])).first()
-        eq_(row[self.tables.test_table.c.y], "Y1")
+        eq_(row._mapping[self.tables.test_table.c.y], "Y1")
 
     def test_targeting_by_string(self):
         testing.db.execute(
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
         row = testing.db.execute(select([self.tables.test_table])).first()
-        eq_(row["y"], "Y1")
+        eq_(row._mapping["y"], "Y1")
 
     def test_targeting_apply_labels(self):
         testing.db.execute(
@@ -380,7 +380,7 @@ class RoundTripTestBase(object):
         row = testing.db.execute(
             select([self.tables.test_table]).apply_labels()
         ).first()
-        eq_(row[self.tables.test_table.c.y], "Y1")
+        eq_(row._mapping[self.tables.test_table.c.y], "Y1")
 
     def test_targeting_individual_labels(self):
         testing.db.execute(
@@ -394,7 +394,7 @@ class RoundTripTestBase(object):
                 ]
             )
         ).first()
-        eq_(row[self.tables.test_table.c.y], "Y1")
+        eq_(row._mapping[self.tables.test_table.c.y], "Y1")
 
 
 class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):

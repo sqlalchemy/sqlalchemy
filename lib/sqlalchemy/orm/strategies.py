@@ -18,6 +18,7 @@ from . import interfaces
 from . import loading
 from . import properties
 from . import query
+from . import relationships
 from . import unitofwork
 from . import util as orm_util
 from .base import _DEFER_FOR_STATE
@@ -486,7 +487,7 @@ class AbstractRelationshipLoader(LoaderStrategy):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(do_nothing=True)
+@relationships.RelationshipProperty.strategy_for(do_nothing=True)
 class DoNothingLoader(LoaderStrategy):
     """Relationship loader that makes no change to the object's state.
 
@@ -498,8 +499,8 @@ class DoNothingLoader(LoaderStrategy):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy="noload")
-@properties.RelationshipProperty.strategy_for(lazy=None)
+@relationships.RelationshipProperty.strategy_for(lazy="noload")
+@relationships.RelationshipProperty.strategy_for(lazy=None)
 class NoLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=None".
@@ -531,11 +532,11 @@ class NoLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy=True)
-@properties.RelationshipProperty.strategy_for(lazy="select")
-@properties.RelationshipProperty.strategy_for(lazy="raise")
-@properties.RelationshipProperty.strategy_for(lazy="raise_on_sql")
-@properties.RelationshipProperty.strategy_for(lazy="baked_select")
+@relationships.RelationshipProperty.strategy_for(lazy=True)
+@relationships.RelationshipProperty.strategy_for(lazy="select")
+@relationships.RelationshipProperty.strategy_for(lazy="raise")
+@relationships.RelationshipProperty.strategy_for(lazy="raise_on_sql")
+@relationships.RelationshipProperty.strategy_for(lazy="baked_select")
 class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     with "lazy=True", that is loads when first accessed.
@@ -799,14 +800,12 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             for pk in self.mapper.primary_key
         ]
 
-    @util.dependencies("sqlalchemy.ext.baked")
-    def _memoized_attr__bakery(self, baked):
-        return baked.bakery(size=50)
+    @util.preload_module("sqlalchemy.ext.baked")
+    def _memoized_attr__bakery(self):
+        return util.preloaded.ext_baked.bakery(size=50)
 
-    @util.dependencies("sqlalchemy.orm.strategy_options")
-    def _emit_lazyload(
-        self, strategy_options, session, state, primary_key_identity, passive
-    ):
+    @util.preload_module("sqlalchemy.orm.strategy_options")
+    def _emit_lazyload(self, session, state, primary_key_identity, passive):
         # emit lazy load now using BakedQuery, to cut way down on the overhead
         # of generating queries.
         # there are two big things we are trying to guard against here:
@@ -830,6 +829,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         # lazy loaders.   Currently the LRU cache is local to the LazyLoader,
         # however add ourselves to the initial cache key just to future
         # proof in case it moves
+        strategy_options = util.preloaded.orm_strategy_options
         q = self._bakery(lambda session: session.query(self.entity), self)
 
         q.add_criteria(
@@ -1008,7 +1008,7 @@ class PostLoader(AbstractRelationshipLoader):
         )
 
 
-@properties.RelationshipProperty.strategy_for(lazy="immediate")
+@relationships.RelationshipProperty.strategy_for(lazy="immediate")
 class ImmediateLoader(PostLoader):
     __slots__ = ()
 
@@ -1040,7 +1040,7 @@ class ImmediateLoader(PostLoader):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy="subquery")
+@relationships.RelationshipProperty.strategy_for(lazy="subquery")
 class SubqueryLoader(PostLoader):
     __slots__ = ("join_depth",)
 
@@ -1492,8 +1492,8 @@ class SubqueryLoader(PostLoader):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy="joined")
-@properties.RelationshipProperty.strategy_for(lazy=False)
+@relationships.RelationshipProperty.strategy_for(lazy="joined")
+@relationships.RelationshipProperty.strategy_for(lazy=False)
 class JoinedLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     using joined eager loading.
@@ -2144,7 +2144,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@properties.RelationshipProperty.strategy_for(lazy="selectin")
+@relationships.RelationshipProperty.strategy_for(lazy="selectin")
 class SelectInLoader(PostLoader, util.MemoizedSlots):
     __slots__ = (
         "join_depth",
@@ -2255,9 +2255,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
 
-    @util.dependencies("sqlalchemy.ext.baked")
-    def _memoized_attr__bakery(self, baked):
-        return baked.bakery(size=50)
+    @util.preload_module("sqlalchemy.ext.baked")
+    def _memoized_attr__bakery(self):
+        return util.preloaded.ext_baked.bakery(size=50)
 
     def create_row_processor(
         self, context, path, loadopt, mapper, result, adapter, populators
@@ -2313,11 +2313,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             effective_entity,
         )
 
-    @util.dependencies("sqlalchemy.ext.baked")
     def _load_for_path(
-        self, baked, context, path, states, load_only, effective_entity
+        self, context, path, states, load_only, effective_entity
     ):
-
         if load_only and self.key not in load_only:
             return
 

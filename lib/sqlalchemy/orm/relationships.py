@@ -16,11 +16,10 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 from __future__ import absolute_import
 
 import collections
+import re
 import weakref
 
 from . import attributes
-from . import dependency
-from . import mapper as mapperlib
 from .base import state_str
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -95,7 +94,6 @@ def foreign(expr):
 
 
 @log.class_logger
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -131,6 +129,7 @@ class RelationshipProperty(StrategizedProperty):
         order_by=False,
         backref=None,
         back_populates=None,
+        overlaps=None,
         post_update=False,
         cascade=False,
         viewonly=False,
@@ -319,6 +318,18 @@ class RelationshipProperty(StrategizedProperty):
 
             :paramref:`~.relationship.backref` - alternative form
             of backref specification.
+
+        :param overlaps:
+           A string name or comma-delimited set of names of other relationships
+           on either this mapper, a descendant mapper, or a target mapper with
+           which this relationship may write to the same foreign keys upon
+           persistence.   The only effect this has is to eliminate the
+           warning that this relationship will conflict with another upon
+           persistence.   This is used for such relationships that are truly
+           capable of conflicting with each other on write, but the application
+           will ensure that no such conflicts occur.
+
+           .. versionadded:: 1.4
 
         :param bake_queries=True:
           Use the :class:`.BakedQuery` cache to cache the construction of SQL
@@ -916,6 +927,10 @@ class RelationshipProperty(StrategizedProperty):
         self.strategy_key = (("lazy", self.lazy),)
 
         self._reverse_property = set()
+        if overlaps:
+            self._overlaps = set(re.split(r"\s*,\s*", overlaps))
+        else:
+            self._overlaps = ()
 
         if cascade is not False:
             self.cascade = cascade
@@ -1496,7 +1511,9 @@ class RelationshipProperty(StrategizedProperty):
                 return _orm_annotate(self.__negated_contains_or_equals(other))
 
         @util.memoized_property
+        @util.preload_module("sqlalchemy.orm.mapper")
         def property(self):
+            mapperlib = util.preloaded.orm_mapper
             if mapperlib.Mapper._new_mappers:
                 mapperlib.Mapper._configure_all()
             return self.prop
@@ -1885,11 +1902,13 @@ class RelationshipProperty(StrategizedProperty):
             )
 
     @util.memoized_property
+    @util.preload_module("sqlalchemy.orm.mapper")
     def entity(self):  # type: () -> Union[AliasedInsp, mapperlib.Mapper]
         """Return the target mapped entity, which is an inspect() of the
         class or aliased class that is referred towards.
 
         """
+        mapperlib = util.preloaded.orm_mapper
         if callable(self.argument) and not isinstance(
             self.argument, (type, mapperlib.Mapper)
         ):
@@ -2027,10 +2046,11 @@ class RelationshipProperty(StrategizedProperty):
         self._calculated_foreign_keys = jc.foreign_key_columns
         self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
 
+    @util.preload_module("sqlalchemy.orm.mapper")
     def _check_conflicts(self):
         """Test that this relationship is legal, warn about
         inheritance conflicts."""
-
+        mapperlib = util.preloaded.orm_mapper
         if self.parent.non_primary and not mapperlib.class_mapper(
             self.parent.class_, configure=False
         ).has_property(self.key):
@@ -2215,7 +2235,10 @@ class RelationshipProperty(StrategizedProperty):
         if self.back_populates:
             self._add_reverse_property(self.back_populates)
 
+    @util.preload_module("sqlalchemy.orm.dependency")
     def _post_init(self):
+        dependency = util.preloaded.orm_dependency
+
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
@@ -2466,50 +2489,64 @@ class JoinCondition(object):
                         a_subset=self.parent_local_selectable,
                         consider_as_foreign_keys=consider_as_foreign_keys,
                     )
-        except sa_exc.NoForeignKeysError:
+        except sa_exc.NoForeignKeysError as nfe:
             if self.secondary is not None:
-                raise sa_exc.NoForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are no foreign keys "
-                    "linking these tables via secondary table '%s'.  "
-                    "Ensure that referencing columns are associated "
-                    "with a ForeignKey or ForeignKeyConstraint, or "
-                    "specify 'primaryjoin' and 'secondaryjoin' "
-                    "expressions." % (self.prop, self.secondary)
+                util.raise_(
+                    sa_exc.NoForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are no foreign keys "
+                        "linking these tables via secondary table '%s'.  "
+                        "Ensure that referencing columns are associated "
+                        "with a ForeignKey or ForeignKeyConstraint, or "
+                        "specify 'primaryjoin' and 'secondaryjoin' "
+                        "expressions." % (self.prop, self.secondary)
+                    ),
+                    from_=nfe,
                 )
             else:
-                raise sa_exc.NoForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are no foreign keys "
-                    "linking these tables.  "
-                    "Ensure that referencing columns are associated "
-                    "with a ForeignKey or ForeignKeyConstraint, or "
-                    "specify a 'primaryjoin' expression." % self.prop
+                util.raise_(
+                    sa_exc.NoForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are no foreign keys "
+                        "linking these tables.  "
+                        "Ensure that referencing columns are associated "
+                        "with a ForeignKey or ForeignKeyConstraint, or "
+                        "specify a 'primaryjoin' expression." % self.prop
+                    ),
+                    from_=nfe,
                 )
-        except sa_exc.AmbiguousForeignKeysError:
+        except sa_exc.AmbiguousForeignKeysError as afe:
             if self.secondary is not None:
-                raise sa_exc.AmbiguousForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are multiple foreign key "
-                    "paths linking the tables via secondary table '%s'.  "
-                    "Specify the 'foreign_keys' "
-                    "argument, providing a list of those columns which "
-                    "should be counted as containing a foreign key "
-                    "reference from the secondary table to each of the "
-                    "parent and child tables." % (self.prop, self.secondary)
+                util.raise_(
+                    sa_exc.AmbiguousForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are multiple foreign key "
+                        "paths linking the tables via secondary table '%s'.  "
+                        "Specify the 'foreign_keys' "
+                        "argument, providing a list of those columns which "
+                        "should be counted as containing a foreign key "
+                        "reference from the secondary table to each of the "
+                        "parent and child tables."
+                        % (self.prop, self.secondary)
+                    ),
+                    from_=afe,
                 )
             else:
-                raise sa_exc.AmbiguousForeignKeysError(
-                    "Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s - there are multiple foreign key "
-                    "paths linking the tables.  Specify the "
-                    "'foreign_keys' argument, providing a list of those "
-                    "columns which should be counted as containing a "
-                    "foreign key reference to the parent table." % self.prop
+                util.raise_(
+                    sa_exc.AmbiguousForeignKeysError(
+                        "Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are multiple foreign key "
+                        "paths linking the tables.  Specify the "
+                        "'foreign_keys' argument, providing a list of those "
+                        "columns which should be counted as containing a "
+                        "foreign key reference to the parent table."
+                        % self.prop
+                    ),
+                    from_=afe,
                 )
 
     @property
@@ -3100,7 +3137,9 @@ class JoinCondition(object):
 
     _track_overlapping_sync_targets = weakref.WeakKeyDictionary()
 
+    @util.preload_module("sqlalchemy.orm.mapper")
     def _warn_for_conflicting_sync_targets(self):
+        mapperlib = util.preloaded.orm_mapper
         if not self.support_sync:
             return
 
@@ -3120,8 +3159,6 @@ class JoinCondition(object):
             # if multiple relationships overlap foreign() directly, but
             # we're going to assume it's typically a ForeignKeyConstraint-
             # level configuration that benefits from this warning.
-            if len(to_.foreign_keys) < 2:
-                continue
 
             if to_ not in self._track_overlapping_sync_targets:
                 self._track_overlapping_sync_targets[
@@ -3134,12 +3171,15 @@ class JoinCondition(object):
                 for pr, fr_ in prop_to_from.items():
                     if (
                         pr.mapper in mapperlib._mapper_registry
-                        and (
-                            self.prop._persists_for(pr.parent)
-                            or pr._persists_for(self.prop.parent)
-                        )
-                        and fr_ is not from_
                         and pr not in self.prop._reverse_property
+                        and pr.key not in self.prop._overlaps
+                        and self.prop.key not in pr._overlaps
+                        and not self.prop.parent.is_sibling(pr.parent)
+                        and not self.prop.mapper.is_sibling(pr.mapper)
+                        and (
+                            self.prop.key != pr.key
+                            or not self.prop.parent.common_parent(pr.parent)
+                        )
                     ):
 
                         other_props.append((pr, fr_))
@@ -3148,10 +3188,16 @@ class JoinCondition(object):
                     util.warn(
                         "relationship '%s' will copy column %s to column %s, "
                         "which conflicts with relationship(s): %s. "
-                        "Consider applying "
-                        "viewonly=True to read-only relationships, or provide "
-                        "a primaryjoin condition marking writable columns "
-                        "with the foreign() annotation."
+                        "If this is not the intention, consider if these "
+                        "relationships should be linked with "
+                        "back_populates, or if viewonly=True should be "
+                        "applied to one or more if they are read-only. "
+                        "For the less common case that foreign key "
+                        "constraints are partially overlapping, the "
+                        "orm.foreign() "
+                        "annotation can be used to isolate the columns that "
+                        "should be written towards.   The 'overlaps' "
+                        "parameter may be used to remove this warning."
                         % (
                             self.prop,
                             from_,

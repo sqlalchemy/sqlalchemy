@@ -919,6 +919,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="subquery",
                     order_by=open_mapper.id,
+                    overlaps="closed_orders",
                 ),
                 closed_orders=relationship(
                     closed_mapper,
@@ -928,6 +929,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="subquery",
                     order_by=closed_mapper.id,
+                    overlaps="open_orders",
                 ),
             ),
         )
@@ -988,6 +990,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="subquery",
                     order_by=orders.c.id,
+                    viewonly=True,
                 ),
                 closed_orders=relationship(
                     Order,
@@ -996,6 +999,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ),
                     lazy="subquery",
                     order_by=orders.c.id,
+                    viewonly=True,
                 ),
             ),
         )

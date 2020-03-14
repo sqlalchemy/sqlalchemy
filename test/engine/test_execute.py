@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
@@ -47,7 +48,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import nested
 
 
 users, metadata, users_autoinc = None, None, None
@@ -348,16 +348,14 @@ class ExecuteTest(fixtures.TestBase):
         class NonStandardException(OperationalError):
             pass
 
-        with nested(
-            patch.object(testing.db.dialect, "dbapi", Mock(Error=DBAPIError)),
-            patch.object(
-                testing.db.dialect, "is_disconnect", lambda *arg: False
-            ),
-            patch.object(
-                testing.db.dialect,
-                "do_execute",
-                Mock(side_effect=NonStandardException),
-            ),
+        with patch.object(
+            testing.db.dialect, "dbapi", Mock(Error=DBAPIError)
+        ), patch.object(
+            testing.db.dialect, "is_disconnect", lambda *arg: False
+        ), patch.object(
+            testing.db.dialect,
+            "do_execute",
+            Mock(side_effect=NonStandardException),
         ):
             with testing.db.connect() as conn:
                 assert_raises(
@@ -712,12 +710,13 @@ class ExecuteTest(fixtures.TestBase):
                     return super(MockCursor, self).execute(stmt, params, **kw)
 
         eng = engines.proxying_engine(cursor_cls=MockCursor)
-        assert_raises_message(
-            tsa.exc.SAWarning,
-            "Exception attempting to detect unicode returns",
-            eng.connect,
-        )
-        assert eng.dialect.returns_unicode_strings in (True, False)
+        with testing.expect_warnings(
+            "Exception attempting to detect unicode returns"
+        ):
+            eng.connect()
+
+        # because plain varchar passed, we don't know the correct answer
+        eq_(eng.dialect.returns_unicode_strings, "conditional")
         eng.dispose()
 
     def test_works_after_dispose(self):
@@ -1261,14 +1260,6 @@ class ExecutionOptionsTest(fixtures.TestBase):
         c2 = e2.connect()
         eq_(c1._execution_options, {"foo": "bar"})
         eq_(c2._execution_options, {"foo": "bar", "bat": "hoho"})
-
-    def test_branched_connection_execution_options(self):
-        engine = testing_engine("sqlite://")
-
-        conn = engine.connect()
-        c2 = conn.execution_options(foo="bar")
-        c2_branch = c2.connect()
-        eq_(c2_branch._execution_options, {"foo": "bar"})
 
     def test_get_engine_execution_options(self):
         engine = testing_engine("sqlite://")
@@ -2332,6 +2323,74 @@ class HandleErrorTest(fixtures.TestBase):
             ):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
+    @testing.only_on("sqlite")
+    def test_cursor_close_resultset_failed_connectionless(self):
+        engine = engines.testing_engine()
+
+        the_conn = []
+        the_cursor = []
+
+        @event.listens_for(engine, "after_cursor_execute")
+        def go(
+            connection, cursor, statement, parameters, context, executemany
+        ):
+            the_cursor.append(cursor)
+            the_conn.append(connection)
+
+        with mock.patch(
+            "sqlalchemy.engine.result.BaseResult.__init__",
+            Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
+        ):
+            assert_raises(
+                tsa.exc.InvalidRequestError, engine.execute, text("select 1"),
+            )
+
+        # cursor is closed
+        assert_raises_message(
+            engine.dialect.dbapi.ProgrammingError,
+            "Cannot operate on a closed cursor",
+            the_cursor[0].execute,
+            "select 1",
+        )
+
+        # connection is closed
+        assert the_conn[0].closed
+
+    @testing.only_on("sqlite")
+    def test_cursor_close_resultset_failed_explicit(self):
+        engine = engines.testing_engine()
+
+        the_cursor = []
+
+        @event.listens_for(engine, "after_cursor_execute")
+        def go(
+            connection, cursor, statement, parameters, context, executemany
+        ):
+            the_cursor.append(cursor)
+
+        conn = engine.connect()
+
+        with mock.patch(
+            "sqlalchemy.engine.result.BaseResult.__init__",
+            Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
+        ):
+            assert_raises(
+                tsa.exc.InvalidRequestError, conn.execute, text("select 1"),
+            )
+
+        # cursor is closed
+        assert_raises_message(
+            engine.dialect.dbapi.ProgrammingError,
+            "Cannot operate on a closed cursor",
+            the_cursor[0].execute,
+            "select 1",
+        )
+
+        # connection not closed
+        assert not conn.closed
+
+        conn.close()
+
 
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):
     __requires__ = ("sqlite",)
@@ -2779,11 +2838,14 @@ class AutocommitTextTest(fixtures.TestBase):
             options={"_initialize": False, "pool_reset_on_return": None}
         )
         engine.dialect.dbapi = dbapi
-        engine.execute("%s something table something" % keyword)
-        if expected:
-            eq_(dbapi.connect().mock_calls, [call.cursor(), call.commit()])
-        else:
-            eq_(dbapi.connect().mock_calls, [call.cursor()])
+
+        with engine.connect() as conn:
+            conn.execute("%s something table something" % keyword)
+
+            if expected:
+                eq_(dbapi.connect().mock_calls, [call.cursor(), call.commit()])
+            else:
+                eq_(dbapi.connect().mock_calls, [call.cursor()])
 
     def test_update(self):
         self._test_keyword("UPDATE")

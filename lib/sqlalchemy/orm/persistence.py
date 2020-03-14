@@ -506,9 +506,8 @@ def _collect_insert_commands(
             col = propkey_to_col[propkey]
             if value is None and col not in eval_none and not render_nulls:
                 continue
-            elif (
-                not bulk
-                and hasattr(value, "__clause_element__")
+            elif not bulk and (
+                hasattr(value, "__clause_element__")
                 or isinstance(value, sql.ClauseElement)
             ):
                 value_params[col] = (
@@ -1522,7 +1521,7 @@ def _postfetch(
     if returning_cols:
         row = result.context.returned_defaults
         if row is not None:
-            for col in returning_cols:
+            for row_value, col in zip(row, returning_cols):
                 # pk cols returned from insert are handled
                 # distinctly, don't step on the values here
                 if col.primary_key and result.context.isinsert:
@@ -1534,7 +1533,7 @@ def _postfetch(
                 # when using declarative w/ single table inheritance
                 prop = mapper._columntoproperty.get(col)
                 if prop:
-                    dict_[prop.key] = row[col]
+                    dict_[prop.key] = row_value
                     if refresh_flush:
                         load_evt_attrs.append(prop.key)
 
@@ -1636,9 +1635,12 @@ def _sort_states(mapper, states):
             persistent, key=mapper._persistent_sortkey_fn
         )
     except TypeError as err:
-        raise sa_exc.InvalidRequestError(
-            "Could not sort objects by primary key; primary key "
-            "values must be sortable in Python (was: %s)" % err
+        util.raise_(
+            sa_exc.InvalidRequestError(
+                "Could not sort objects by primary key; primary key "
+                "values must be sortable in Python (was: %s)" % err
+            ),
+            replace_context=err,
         )
     return (
         sorted(pending, key=operator.attrgetter("insert_order"))
@@ -1682,10 +1684,13 @@ class BulkUD(object):
     def _factory(cls, lookup, synchronize_session, *arg):
         try:
             klass = lookup[synchronize_session]
-        except KeyError:
-            raise sa_exc.ArgumentError(
-                "Valid strategies for session synchronization "
-                "are %s" % (", ".join(sorted(repr(x) for x in lookup)))
+        except KeyError as err:
+            util.raise_(
+                sa_exc.ArgumentError(
+                    "Valid strategies for session synchronization "
+                    "are %s" % (", ".join(sorted(repr(x) for x in lookup)))
+                ),
+                replace_context=err,
             )
         else:
             return klass(*arg)
@@ -1705,8 +1710,9 @@ class BulkUD(object):
     def _do_before_compile(self):
         raise NotImplementedError()
 
-    @util.dependencies("sqlalchemy.orm.query")
-    def _do_pre(self, querylib):
+    @util.preload_module("sqlalchemy.orm.query")
+    def _do_pre(self):
+        querylib = util.preloaded.orm_query
         query = self.query
 
         self.context = querylib.QueryContext(query)
@@ -1769,10 +1775,13 @@ class BulkEvaluate(BulkUD):
             self._additional_evaluators(evaluator_compiler)
 
         except evaluator.UnevaluatableError as err:
-            raise sa_exc.InvalidRequestError(
-                'Could not evaluate current criteria in Python: "%s". '
-                "Specify 'fetch' or False for the "
-                "synchronize_session parameter." % err
+            util.raise_(
+                sa_exc.InvalidRequestError(
+                    'Could not evaluate current criteria in Python: "%s". '
+                    "Specify 'fetch' or False for the "
+                    "synchronize_session parameter." % err
+                ),
+                from_=err,
             )
 
         # TODO: detect when the where clause is a trivial primary key match

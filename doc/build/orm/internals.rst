@@ -20,9 +20,8 @@ sections, are listed here.
 
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
-    :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.properties.ComparableProperty
+.. autoclass:: sqlalchemy.orm.descriptor_props.ComparableProperty
     :members:
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
@@ -85,7 +84,7 @@ sections, are listed here.
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.properties.RelationshipProperty
+.. autoclass:: sqlalchemy.orm.relationships.RelationshipProperty
     :members:
     :inherited-members:
 

@@ -26,14 +26,6 @@ class BindTest(fixtures.TestBase):
             assert not conn.closed
         assert conn.closed
 
-    def test_bind_close_conn(self):
-        e = testing.db
-        conn = e.connect()
-        with conn.connect() as c2:
-            assert not c2.closed
-        assert not conn.closed
-        assert c2.closed
-
     def test_create_drop_explicit(self):
         metadata = MetaData()
         table = Table("test_table", metadata, Column("foo", Integer))

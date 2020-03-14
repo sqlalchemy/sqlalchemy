@@ -105,7 +105,7 @@ class CacheKeyTest(fixtures.TestBase):
             for i in range(100)
         ]
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=0.15, warmup=2)
     def test_statement_one(self, stmt_fixture_one):
         current_key = None
         for stmt in stmt_fixture_one:

@@ -9,6 +9,7 @@ from __future__ import absolute_import
 
 import contextlib
 import re
+import sys
 import warnings
 
 from . import assertsql
@@ -18,7 +19,6 @@ from . import mock
 from .exclusions import db_spec
 from .util import fail
 from .. import exc as sa_exc
-from .. import orm
 from .. import schema
 from .. import types as sqltypes
 from .. import util
@@ -79,6 +79,10 @@ def emits_warning(*messages):
 
 def expect_deprecated(*messages, **kw):
     return _expect_warnings(sa_exc.SADeprecationWarning, messages, **kw)
+
+
+def expect_deprecated_20(*messages, **kw):
+    return _expect_warnings(sa_exc.RemovedIn20Warning, messages, **kw)
 
 
 def emits_warning_on(db, *messages):
@@ -147,6 +151,7 @@ def _expect_warnings(
             exception = arg[0]
         else:
             exception = None
+
         if not exception or not issubclass(exception, exc_cls):
             return real_warn(msg, *arg, **kw)
 
@@ -254,41 +259,80 @@ def eq_ignore_whitespace(a, b, msg=None):
     assert a == b, msg or "%r != %r" % (a, b)
 
 
-def assert_raises(except_cls, callable_, *args, **kw):
-    try:
-        callable_(*args, **kw)
-        success = False
-    except except_cls:
-        success = True
+def _assert_proper_exception_context(exception):
+    """assert that any exception we're catching does not have a __context__
+    without a __cause__, and that __suppress_context__ is never set.
 
-    # assert outside the block so it works for AssertionError too !
-    assert success, "Callable did not raise an exception"
+    Python 3 will report nested as exceptions as "during the handling of
+    error X, error Y occurred". That's not what we want to do.  we want
+    these exceptions in a cause chain.
+
+    """
+
+    if not util.py3k:
+        return
+
+    if (
+        exception.__context__ is not exception.__cause__
+        and not exception.__suppress_context__
+    ):
+        assert False, (
+            "Exception %r was correctly raised but did not set a cause, "
+            "within context %r as its cause."
+            % (exception, exception.__context__)
+        )
+
+
+def assert_raises(except_cls, callable_, *args, **kw):
+    _assert_raises(except_cls, callable_, args, kw, check_context=True)
+
+
+def assert_raises_context_ok(except_cls, callable_, *args, **kw):
+    _assert_raises(
+        except_cls, callable_, args, kw,
+    )
 
 
 def assert_raises_return(except_cls, callable_, *args, **kw):
-    ret_err = None
-    try:
-        callable_(*args, **kw)
-        success = False
-    except except_cls as err:
-        success = True
-        ret_err = err
-
-    # assert outside the block so it works for AssertionError too !
-    assert success, "Callable did not raise an exception"
-    return ret_err
+    return _assert_raises(except_cls, callable_, args, kw, check_context=True)
 
 
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
+    _assert_raises(
+        except_cls, callable_, args, kwargs, msg=msg, check_context=True
+    )
+
+
+def assert_raises_message_context_ok(
+    except_cls, msg, callable_, *args, **kwargs
+):
+    _assert_raises(except_cls, callable_, args, kwargs, msg=msg)
+
+
+def _assert_raises(
+    except_cls, callable_, args, kwargs, msg=None, check_context=False
+):
+    ret_err = None
+    if check_context:
+        are_we_already_in_a_traceback = sys.exc_info()[0]
     try:
         callable_(*args, **kwargs)
-        assert False, "Callable did not raise an exception"
-    except except_cls as e:
-        assert re.search(msg, util.text_type(e), re.UNICODE), "%r !~ %s" % (
-            msg,
-            e,
-        )
-        print(util.text_type(e).encode("utf-8"))
+        success = False
+    except except_cls as err:
+        ret_err = err
+        success = True
+        if msg is not None:
+            assert re.search(
+                msg, util.text_type(err), re.UNICODE
+            ), "%r !~ %s" % (msg, err,)
+        if check_context and not are_we_already_in_a_traceback:
+            _assert_proper_exception_context(err)
+        print(util.text_type(err).encode("utf-8"))
+
+    # assert outside the block so it works for AssertionError too !
+    assert success, "Callable did not raise an exception"
+
+    return ret_err
 
 
 class AssertsCompiledSQL(object):
@@ -308,6 +352,7 @@ class AssertsCompiledSQL(object):
         literal_binds=False,
         render_postcompile=False,
         schema_translate_map=None,
+        inline_flag=None,
     ):
         if use_default_dialect:
             dialect = default.DefaultDialect()
@@ -340,6 +385,8 @@ class AssertsCompiledSQL(object):
 
         if render_postcompile:
             compile_kwargs["render_postcompile"] = True
+
+        from sqlalchemy import orm
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()
@@ -398,6 +445,8 @@ class AssertsCompiledSQL(object):
                 },
                 check_post_param,
             )
+        if inline_flag is not None:
+            eq_(c.inline, inline_flag)
 
 
 class ComparesTables(object):

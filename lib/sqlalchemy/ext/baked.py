@@ -25,6 +25,7 @@ from ..orm.session import Session
 from ..sql import func
 from ..sql import literal_column
 from ..sql import util as sql_util
+from ..util import collections_abc
 
 
 log = logging.getLogger(__name__)
@@ -472,7 +473,7 @@ class Result(object):
         """
         try:
             ret = self.one()
-            if not isinstance(ret, tuple):
+            if not isinstance(ret, collections_abc.Sequence):
                 return ret
             return ret[0]
         except orm_exc.NoResultFound:
@@ -503,9 +504,12 @@ class Result(object):
         """
         try:
             ret = self.one_or_none()
-        except orm_exc.MultipleResultsFound:
-            raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one()"
+        except orm_exc.MultipleResultsFound as err:
+            util.raise_(
+                orm_exc.MultipleResultsFound(
+                    "Multiple rows were found for one()"
+                ),
+                replace_context=err,
             )
         else:
             if ret is None:

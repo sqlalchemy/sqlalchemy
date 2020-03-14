@@ -21,13 +21,14 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import eagerload
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import identity
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import joinedload_all
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import PropComparator
+from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -444,6 +445,30 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 .all(),
                 [User(id=7), User(id=8), User(id=9), User(id=10)],
             )
+
+    def test_text_as_column(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        # TODO: this works as of "use rowproxy for ORM keyed tuple"
+        # Ieb9085e9bcff564359095b754da9ae0af55679f0
+        # but im not sure how this relates to things here
+        q = s.query(User.id, text("users.name"))
+        self.assert_compile(
+            q, "SELECT users.id AS users_id, users.name FROM users"
+        )
+        eq_(q.all(), [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")])
+
+        # same here, this was "passing string names to Query.columns"
+        # deprecation message, that's gone here?
+        assert_raises_message(
+            exc.ArgumentError,
+            "Textual column expression 'name' should be explicitly",
+            s.query,
+            User.id,
+            "name",
+        )
 
     def test_query_as_scalar(self):
         User = self.classes.User
@@ -1369,57 +1394,6 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
             message,
             create_session().query(*entity_list).options,
             *options
-        )
-
-    def test_option_against_nonexistent_twolevel_all(self):
-        self._mapper_fixture_one()
-        Item = self.classes.Item
-        with testing.expect_deprecated(
-            r"The joinedload_all\(\) function is deprecated, and "
-            "will be removed in a future release.  "
-            r"Please use method chaining with joinedload\(\)"
-        ):
-            self._assert_eager_with_entity_exception(
-                [Item],
-                (joinedload_all("keywords.foo"),),
-                'Can\'t find property named \\"foo\\" on mapped class '
-                "Keyword->keywords in this Query.",
-            )
-
-    def test_all_path_vs_chained(self):
-        self._mapper_fixture_one()
-        User = self.classes.User
-        Order = self.classes.Order
-        Item = self.classes.Item
-
-        with testing.expect_deprecated(
-            r"The joinedload_all\(\) function is deprecated, and "
-            "will be removed in a future release.  "
-            r"Please use method chaining with joinedload\(\)"
-        ):
-            l1 = joinedload_all("orders.items.keywords")
-
-        sess = Session()
-        q = sess.query(User)
-        self._assert_path_result(
-            l1,
-            q,
-            [
-                (User, "orders"),
-                (User, "orders", Order, "items"),
-                (User, "orders", Order, "items", Item, "keywords"),
-            ],
-        )
-
-        l2 = joinedload("orders").joinedload("items").joinedload("keywords")
-        self._assert_path_result(
-            l2,
-            q,
-            [
-                (User, "orders"),
-                (User, "orders", Order, "items"),
-                (User, "orders", Order, "items", Item, "keywords"),
-            ],
         )
 
     def test_subqueryload_mapper_order_by(self):
@@ -2359,3 +2333,13 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert self.static.user_order_result == result
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class TestDeprecation20(fixtures.TestBase):
+    def test_relation(self):
+        with testing.expect_deprecated_20(".*relationship"):
+            relation("foo")
+
+    def test_eagerloading(self):
+        with testing.expect_deprecated_20(".*joinedload"):
+            eagerload("foo")

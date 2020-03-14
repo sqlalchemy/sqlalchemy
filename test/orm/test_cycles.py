@@ -71,13 +71,16 @@ class SelfReferentialTest(fixtures.MappedTest):
             C1,
             t1,
             properties={
-                "c1s": relationship(C1, cascade="all"),
+                "c1s": relationship(
+                    C1, cascade="all", back_populates="parent"
+                ),
                 "parent": relationship(
                     C1,
                     primaryjoin=t1.c.parent_c1 == t1.c.c1,
                     remote_side=t1.c.c1,
                     lazy="select",
                     uselist=False,
+                    back_populates="c1s",
                 ),
             },
         )

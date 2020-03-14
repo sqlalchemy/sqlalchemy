@@ -617,7 +617,7 @@ is expressed as tuples:
     fred Fred Flintstone
 
 The tuples returned by :class:`~sqlalchemy.orm.query.Query` are *named*
-tuples, supplied by the :class:`.KeyedTuple` class, and can be treated much like an
+tuples, supplied by the :class:`.Row` class, and can be treated much like an
 ordinary Python object. The names are
 the same as the attribute's name for an attribute, and the class name for a
 class:
@@ -991,29 +991,21 @@ method:
 
 To use an entirely string-based statement, a :func:`.text` construct
 representing a complete statement can be passed to
-:meth:`~sqlalchemy.orm.query.Query.from_statement()`.  Without additional
-specifiers, the columns in the string SQL are matched to the model columns
-based on name, such as below where we use just an asterisk to represent
-loading all columns:
+:meth:`~sqlalchemy.orm.query.Query.from_statement()`.   Without further
+specification, the ORM will match columns in the ORM mapping to the result
+returned by the SQL statement based on column name::
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).from_statement(
-    ...                     text("SELECT * FROM users where name=:name")).\
-    ...                     params(name='ed').all()
+    ...  text("SELECT * FROM users where name=:name")).params(name='ed').all()
     SELECT * FROM users where name=?
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
-Matching columns on name works for simple cases but can become unwieldy when
-dealing with complex statements that contain duplicate column names or when
-using anonymized ORM constructs that don't easily match to specific names.
-Additionally, there is typing behavior present in our mapped columns that
-we might find necessary when handling result rows.  For these cases,
-the :func:`~.expression.text` construct allows us to link its textual SQL
-to Core or ORM-mapped column expressions positionally; we can achieve this
-by passing column expressions as positional arguments to the
-:meth:`.TextClause.columns` method:
+For better targeting of mapped columns to a textual SELECT, as well as  to
+match on a specific subset of columns in arbitrary order, individual mapped
+columns are passed in the desired order to :meth:`.TextClause.columns`:
 
 .. sourcecode:: python+sql
 
@@ -1024,13 +1016,6 @@ by passing column expressions as positional arguments to the
     SELECT name, id, fullname, nickname FROM users where name=?
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
-
-.. versionadded:: 1.1
-
-    The :meth:`.TextClause.columns` method now accepts column expressions
-    which will be matched positionally to a plain text SQL result set,
-    eliminating the need for column names to match or even be unique in the
-    SQL statement.
 
 When selecting from a :func:`~.expression.text` construct, the :class:`.Query`
 may still specify what columns and entities are to be returned; instead of

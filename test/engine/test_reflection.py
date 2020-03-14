@@ -38,9 +38,6 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import ue
 
 
-metadata, users = None, None
-
-
 class ReflectionTest(fixtures.TestBase, ComparesTables):
     __backend__ = True
 
@@ -603,13 +600,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         testing.db.dialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
-            assert_raises(sa.exc.SAWarning, Table, "test", m2, autoload=True)
 
-            @testing.emits_warning("Did not recognize type")
-            def warns():
-                m3 = MetaData(testing.db)
-                t3 = Table("test", m3, autoload=True)
-                assert t3.c.foo.type.__class__ == sa.types.NullType
+            with testing.expect_warnings("Did not recognize type"):
+                t3 = Table("test", m2, autoload_with=testing.db)
+                is_(t3.c.foo.type.__class__, sa.types.NullType)
 
         finally:
             testing.db.dialect.ischema_names = ischema_names
@@ -910,15 +904,15 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             test_needs_fk=True,
         )
 
-        meta.create_all()
-        meta2 = MetaData(testing.db)
+        meta.create_all(testing.db)
+        meta2 = MetaData()
         a2 = Table(
             "addresses",
             meta2,
             Column("user_id", sa.Integer, sa.ForeignKey("users.id")),
-            autoload=True,
+            autoload_with=testing.db,
         )
-        u2 = Table("users", meta2, autoload=True)
+        u2 = Table("users", meta2, autoload_with=testing.db)
         s = sa.select([a2]).subquery()
 
         assert s.c.user_id is not None
@@ -930,19 +924,19 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
         assert u2.join(a2).onclause.compare(u2.c.id == a2.c.user_id)
 
-        meta2 = MetaData(testing.db)
+        meta2 = MetaData()
         u2 = Table(
             "users",
             meta2,
             Column("id", sa.Integer, primary_key=True),
-            autoload=True,
+            autoload_with=testing.db,
         )
         a2 = Table(
             "addresses",
             meta2,
             Column("id", sa.Integer, primary_key=True),
             Column("user_id", sa.Integer, sa.ForeignKey("users.id")),
-            autoload=True,
+            autoload_with=testing.db,
         )
         s = sa.select([a2]).subquery()
 
@@ -1016,29 +1010,28 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             for attr in test_attrs:
                 eq_(getattr(fk, attr), getattr(ref, attr))
 
+    @testing.provide_metadata
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique
         indexes"""
 
-        testing.db.execute(
-            """
-        CREATE TABLE book (
-            id INTEGER NOT NULL,
-            title VARCHAR(100) NOT NULL,
-            series INTEGER,
-            series_id INTEGER,
-            UNIQUE(series, series_id),
-            PRIMARY KEY(id)
-        )"""
-        )
-        try:
-            metadata = MetaData(bind=testing.db)
-            book = Table("book", metadata, autoload=True)
-            assert book.primary_key.contains_column(book.c.id)
-            assert not book.primary_key.contains_column(book.c.series)
-            assert len(book.primary_key) == 1
-        finally:
-            testing.db.execute("drop table book")
+        with testing.db.begin() as conn:
+            conn.execute(
+                """
+                CREATE TABLE book (
+                    id INTEGER NOT NULL,
+                    title VARCHAR(100) NOT NULL,
+                    series INTEGER,
+                    series_id INTEGER,
+                    UNIQUE(series, series_id),
+                    PRIMARY KEY(id)
+                )"""
+            )
+
+        book = Table("book", self.metadata, autoload_with=testing.db)
+        assert book.primary_key.contains_column(book.c.id)
+        assert not book.primary_key.contains_column(book.c.series)
+        eq_(len(book.primary_key), 1)
 
     def test_fk_error(self):
         metadata = MetaData(testing.db)
@@ -1058,30 +1051,28 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             metadata.create_all,
         )
 
+    @testing.provide_metadata
     def test_composite_pks(self):
         """test reflection of a composite primary key"""
 
-        testing.db.execute(
-            """
-        CREATE TABLE book (
-            id INTEGER NOT NULL,
-            isbn VARCHAR(50) NOT NULL,
-            title VARCHAR(100) NOT NULL,
-            series INTEGER NOT NULL,
-            series_id INTEGER NOT NULL,
-            UNIQUE(series, series_id),
-            PRIMARY KEY(id, isbn)
-        )"""
-        )
-        try:
-            metadata = MetaData(bind=testing.db)
-            book = Table("book", metadata, autoload=True)
-            assert book.primary_key.contains_column(book.c.id)
-            assert book.primary_key.contains_column(book.c.isbn)
-            assert not book.primary_key.contains_column(book.c.series)
-            assert len(book.primary_key) == 2
-        finally:
-            testing.db.execute("drop table book")
+        with testing.db.begin() as conn:
+            conn.execute(
+                """
+                CREATE TABLE book (
+                    id INTEGER NOT NULL,
+                    isbn VARCHAR(50) NOT NULL,
+                    title VARCHAR(100) NOT NULL,
+                    series INTEGER NOT NULL,
+                    series_id INTEGER NOT NULL,
+                    UNIQUE(series, series_id),
+                    PRIMARY KEY(id, isbn)
+                )"""
+            )
+        book = Table("book", self.metadata, autoload_with=testing.db)
+        assert book.primary_key.contains_column(book.c.id)
+        assert book.primary_key.contains_column(book.c.isbn)
+        assert not book.primary_key.contains_column(book.c.series)
+        eq_(len(book.primary_key), 2)
 
     @testing.exclude("mysql", "<", (4, 1, 1), "innodb funkiness")
     @testing.provide_metadata
@@ -1751,16 +1742,17 @@ class SchemaTest(fixtures.TestBase):
                 "dialect %s doesn't have a has_schema method"
                 % testing.db.dialect.name
             )
-        eq_(
-            testing.db.dialect.has_schema(
-                testing.db, testing.config.test_schema
-            ),
-            True,
-        )
-        eq_(
-            testing.db.dialect.has_schema(testing.db, "sa_fake_schema_123"),
-            False,
-        )
+        with testing.db.connect() as conn:
+            eq_(
+                testing.db.dialect.has_schema(
+                    conn, testing.config.test_schema
+                ),
+                True,
+            )
+            eq_(
+                testing.db.dialect.has_schema(conn, "sa_fake_schema_123"),
+                False,
+            )
 
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
@@ -2022,24 +2014,29 @@ def createIndexes(con, schema=None):
 
 @testing.requires.views
 def _create_views(con, schema=None):
-    for table_name in ("users", "email_addresses"):
-        fullname = table_name
-        if schema:
-            fullname = "%s.%s" % (schema, table_name)
-        view_name = fullname + "_v"
-        query = "CREATE VIEW %s AS SELECT * FROM %s" % (view_name, fullname)
-        con.execute(sa.sql.text(query))
+    with testing.db.connect() as conn:
+        for table_name in ("users", "email_addresses"):
+            fullname = table_name
+            if schema:
+                fullname = "%s.%s" % (schema, table_name)
+            view_name = fullname + "_v"
+            query = "CREATE VIEW %s AS SELECT * FROM %s" % (
+                view_name,
+                fullname,
+            )
+            conn.execute(sa.sql.text(query))
 
 
 @testing.requires.views
 def _drop_views(con, schema=None):
-    for table_name in ("email_addresses", "users"):
-        fullname = table_name
-        if schema:
-            fullname = "%s.%s" % (schema, table_name)
-        view_name = fullname + "_v"
-        query = "DROP VIEW %s" % view_name
-        con.execute(sa.sql.text(query))
+    with testing.db.connect() as conn:
+        for table_name in ("email_addresses", "users"):
+            fullname = table_name
+            if schema:
+                fullname = "%s.%s" % (schema, table_name)
+            view_name = fullname + "_v"
+            query = "DROP VIEW %s" % view_name
+            conn.execute(sa.sql.text(query))
 
 
 class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):

@@ -13,6 +13,7 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
@@ -135,10 +136,19 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            t.insert(inline=True, values={}),
+            t.insert().values({}),
             "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
             "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
             "foo))",
+            inline_flag=False,
+        )
+
+        self.assert_compile(
+            t.insert().inline().values({}),
+            "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
+            "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
+            "foo))",
+            inline_flag=True,
         )
 
     def test_generic_insert_bind_params_all_columns(self):
@@ -247,7 +257,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO mytable (myid, name) VALUES (:userid, :username)",
         )
 
-    def test_insert_values(self):
+    def test_insert_values_multiple(self):
         table1 = self.tables.mytable
 
         values1 = {table1.c.myid: bindparam("userid")}
@@ -290,14 +300,29 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table.insert(values={}, inline=True),
+            table.insert().values(),
             "INSERT INTO sometable (foo) VALUES (foobar())",
+            inline_flag=False,
         )
 
         self.assert_compile(
-            table.insert(inline=True),
+            table.insert(),
             "INSERT INTO sometable (foo) VALUES (foobar())",
             params={},
+            inline_flag=False,
+        )
+
+        self.assert_compile(
+            table.insert().values().inline(),
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            inline_flag=True,
+        )
+
+        self.assert_compile(
+            table.insert().inline(),
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            params={},
+            inline_flag=True,
         )
 
     def test_insert_returning_not_in_default(self):
@@ -937,7 +962,8 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-    def _test_insert_with_empty_collection_values(self, collection):
+    @testing.combinations(([],), ({},), ((),))
+    def test_insert_with_empty_collection_values(self, collection):
         table1 = self.tables.mytable
 
         ins = table1.insert().values(collection)
@@ -952,15 +978,6 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO mytable (myid) VALUES (:myid)",
             checkparams={"myid": 3},
         )
-
-    def test_insert_with_empty_list_values(self):
-        self._test_insert_with_empty_collection_values([])
-
-    def test_insert_with_empty_dict_values(self):
-        self._test_insert_with_empty_collection_values({})
-
-    def test_insert_with_empty_tuple_values(self):
-        self._test_insert_with_empty_collection_values(())
 
 
 class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
@@ -1097,6 +1114,62 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 crud._multiparam_column(table1.c.z, 1),
             ],
             dialect=dialect,
+        )
+
+    def test_mix_single_and_multi_single_first(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.insert().values(myid=1, name="d1")
+        stmt = stmt.values(
+            [{"myid": 2, "name": "d2"}, {"myid": 3, "name": "d3"}]
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Can't mix single and multiple VALUES formats in one "
+            "INSERT statement",
+            stmt.compile,
+        )
+
+    def test_mix_single_and_multi_multi_first(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.insert().values(
+            [{"myid": 2, "name": "d2"}, {"myid": 3, "name": "d3"}]
+        )
+
+        stmt = stmt.values(myid=1, name="d1")
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Can't mix single and multiple VALUES formats in one "
+            "INSERT statement",
+            stmt.compile,
+        )
+
+    def test_multi_multi(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.insert().values([{"myid": 1, "name": "d1"}])
+
+        stmt = stmt.values(
+            [{"myid": 2, "name": "d2"}, {"myid": 3, "name": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name) VALUES (%(myid_m0)s, "
+            "%(name_m0)s), (%(myid_m1)s, %(name_m1)s), (%(myid_m2)s, "
+            "%(name_m2)s)",
+            checkparams={
+                "myid_m0": 1,
+                "name_m0": "d1",
+                "myid_m1": 2,
+                "name_m1": "d2",
+                "myid_m2": 3,
+                "name_m2": "d3",
+            },
+            dialect=postgresql.dialect(),
         )
 
     def test_inline_default(self):

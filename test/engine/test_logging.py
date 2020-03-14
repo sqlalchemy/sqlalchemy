@@ -29,14 +29,16 @@ class LogParamsTest(fixtures.TestBase):
         self.no_param_engine = engines.testing_engine(
             options={"echo": True, "hide_parameters": True}
         )
-        self.eng.execute("create table foo (data string)")
-        self.no_param_engine.execute("create table foo (data string)")
+        self.eng.execute("create table if not exists foo (data string)")
+        self.no_param_engine.execute(
+            "create table if not exists foo (data string)"
+        )
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.addHandler(self.buf)
 
     def teardown(self):
-        self.eng.execute("drop table foo")
+        self.eng.execute("drop table if exists foo")
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.removeHandler(self.buf)
 

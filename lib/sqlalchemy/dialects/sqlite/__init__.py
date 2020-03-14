@@ -6,7 +6,6 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from . import base  # noqa
-from . import provision  # noqa
 from . import pysqlcipher  # noqa
 from . import pysqlite  # noqa
 from .base import BLOB

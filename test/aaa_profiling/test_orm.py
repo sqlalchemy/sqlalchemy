@@ -93,7 +93,7 @@ class MergeTest(fixtures.MappedTest):
 
         sess2.transaction  # autobegin
 
-        @profiling.function_call_count(variance=0.10)
+        @profiling.function_call_count(variance=0.20)
         def go1():
             return sess2.merge(p1, load=False)
 

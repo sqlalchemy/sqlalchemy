@@ -24,108 +24,6 @@ from .compat import threading
 EMPTY_SET = frozenset()
 
 
-class AbstractKeyedTuple(tuple):
-    __slots__ = ()
-
-    def keys(self):
-        """Return a list of string key names for this :class:`.KeyedTuple`.
-
-        .. seealso::
-
-            :attr:`.KeyedTuple._fields`
-
-        """
-
-        return list(self._fields)
-
-
-class KeyedTuple(AbstractKeyedTuple):
-    """``tuple`` subclass that adds labeled names.
-
-    E.g.::
-
-        >>> k = KeyedTuple([1, 2, 3], labels=["one", "two", "three"])
-        >>> k.one
-        1
-        >>> k.two
-        2
-
-    Result rows returned by :class:`.Query` that contain multiple
-    ORM entities and/or column expressions make use of this
-    class to return rows.
-
-    The :class:`.KeyedTuple` exhibits similar behavior to the
-    ``collections.namedtuple()`` construct provided in the Python
-    standard library, however is architected very differently.
-    Unlike ``collections.namedtuple()``, :class:`.KeyedTuple` is
-    does not rely on creation of custom subtypes in order to represent
-    a new series of keys, instead each :class:`.KeyedTuple` instance
-    receives its list of keys in place.   The subtype approach
-    of ``collections.namedtuple()`` introduces significant complexity
-    and performance overhead, which is not necessary for the
-    :class:`.Query` object's use case.
-
-    .. seealso::
-
-        :ref:`ormtutorial_querying`
-
-    """
-
-    def __new__(cls, vals, labels=None):
-        t = tuple.__new__(cls, vals)
-        if labels:
-            t.__dict__.update(zip(labels, vals))
-        else:
-            labels = []
-        t.__dict__["_labels"] = labels
-        return t
-
-    @property
-    def _fields(self):
-        """Return a tuple of string key names for this :class:`.KeyedTuple`.
-
-        This method provides compatibility with ``collections.namedtuple()``.
-
-        .. seealso::
-
-            :meth:`.KeyedTuple.keys`
-
-        """
-        return tuple([l for l in self._labels if l is not None])
-
-    def __setattr__(self, key, value):
-        raise AttributeError("Can't set attribute: %s" % key)
-
-    def _asdict(self):
-        """Return the contents of this :class:`.KeyedTuple` as a dictionary.
-
-        This method provides compatibility with ``collections.namedtuple()``,
-        with the exception that the dictionary returned is **not** ordered.
-
-        """
-        return {key: self.__dict__[key] for key in self.keys()}
-
-
-class _LW(AbstractKeyedTuple):
-    __slots__ = ()
-
-    def __new__(cls, vals):
-        return tuple.__new__(cls, vals)
-
-    def __reduce__(self):
-        # for pickling, degrade down to the regular
-        # KeyedTuple, thus avoiding anonymous class pickling
-        # difficulties
-        return KeyedTuple, (list(self), self._real_fields)
-
-    def _asdict(self):
-        """Return the contents of this :class:`.KeyedTuple` as a dictionary."""
-
-        d = dict(zip(self._real_fields, self))
-        d.pop(None, None)
-        return d
-
-
 class ImmutableContainer(object):
     def _immutable(self, *arg, **kw):
         raise TypeError("%s object is immutable" % self.__class__.__name__)
@@ -149,17 +47,10 @@ class immutabledict(ImmutableContainer, dict):
         return immutabledict, (dict(self),)
 
     def union(self, d):
-        if not d:
-            return self
-        elif not self:
-            if isinstance(d, immutabledict):
-                return d
-            else:
-                return immutabledict(d)
-        else:
-            d2 = immutabledict(self)
-            dict.update(d2, d)
-            return d2
+        new = dict.__new__(self.__class__)
+        dict.__init__(new, self)
+        dict.update(new, d)
+        return new
 
     def __repr__(self):
         return "immutabledict(%s)" % dict.__repr__(self)
@@ -963,35 +854,6 @@ class LRUCache(dict):
                         continue
         finally:
             self._mutex.release()
-
-
-_lw_tuples = LRUCache(100)
-
-
-def lightweight_named_tuple(name, fields):
-    hash_ = (name,) + tuple(fields)
-    tp_cls = _lw_tuples.get(hash_)
-    if tp_cls:
-        return tp_cls
-
-    tp_cls = type(
-        name,
-        (_LW,),
-        dict(
-            [
-                (field, _property_getters[idx])
-                for idx, field in enumerate(fields)
-                if field is not None
-            ]
-            + [("__slots__", ())]
-        ),
-    )
-
-    tp_cls._real_fields = fields
-    tp_cls._fields = tuple([f for f in fields if f is not None])
-
-    _lw_tuples[hash_] = tp_cls
-    return tp_cls
 
 
 class ScopedRegistry(object):

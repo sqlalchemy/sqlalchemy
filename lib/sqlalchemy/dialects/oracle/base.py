@@ -931,6 +931,12 @@ class OracleCompiler(compiler.SQLCompiler):
             binds.append(
                 self.bindparam_string(self._truncate_bindparam(outparam))
             )
+
+            # ensure the ExecutionContext.get_out_parameters() method is
+            # *not* called; the cx_Oracle dialect wants to handle these
+            # parameters separately
+            self.has_out_parameters = False
+
             columns.append(self.process(col_expr, within_columns_clause=False))
 
             self._add_to_result_map(
@@ -1454,9 +1460,11 @@ class OracleDialect(default.DefaultDialect):
 
         q += " AND ".join(clauses)
 
-        result = connection.execute(sql.text(q), **params)
+        result = connection.execution_options(future_result=True).execute(
+            sql.text(q), **params
+        )
         if desired_owner:
-            row = result.first()
+            row = result.mappings().first()
             if row:
                 return (
                     row["table_name"],
@@ -1467,7 +1475,7 @@ class OracleDialect(default.DefaultDialect):
             else:
                 return None, None, None, None
         else:
-            rows = result.fetchall()
+            rows = result.mappings().all()
             if len(rows) > 1:
                 raise AssertionError(
                     "There are multiple tables visible to the schema, you "
@@ -1621,8 +1629,10 @@ class OracleDialect(default.DefaultDialect):
 
         row = result.first()
         if row:
-            if "compression" in row and enabled.get(row.compression, False):
-                if "compress_for" in row:
+            if "compression" in row._fields and enabled.get(
+                row.compression, False
+            ):
+                if "compress_for" in row._fields:
                     options["oracle_compress"] = row.compress_for
                 else:
                     options["oracle_compress"] = True
@@ -1758,13 +1768,18 @@ class OracleDialect(default.DefaultDialect):
             info_cache=info_cache,
         )
 
+        if not schema:
+            schema = self.default_schema_name
+
         COMMENT_SQL = """
             SELECT comments
-            FROM user_tab_comments
-            WHERE table_name = :table_name
+            FROM all_tab_comments
+            WHERE table_name = :table_name AND owner = :schema_name
         """
 
-        c = connection.execute(sql.text(COMMENT_SQL), table_name=table_name)
+        c = connection.execute(
+            sql.text(COMMENT_SQL), table_name=table_name, schema_name=schema
+        )
         return {"text": c.scalar()}
 
     @reflection.cache

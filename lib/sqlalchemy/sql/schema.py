@@ -107,12 +107,13 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
             if item is not None:
                 try:
                     spwd = item._set_parent_with_dispatch
-                except AttributeError:
-                    util.raise_from_cause(
+                except AttributeError as err:
+                    util.raise_(
                         exc.ArgumentError(
                             "'SchemaItem' object, such as a 'Column' or a "
                             "'Constraint' expected, got %r" % item
-                        )
+                        ),
+                        replace_context=err,
                     )
                 else:
                     spwd(self)
@@ -431,7 +432,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     ]
 
     def _gen_cache_key(self, anon_map, bindparams):
-        return (self,)
+        return (self,) + self._annotations_cache_key
 
     @util.deprecated_params(
         useexisting=(
@@ -1412,6 +1413,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 "Column must be constructed with a non-blank name or "
                 "assign a non-blank .name before adding to a Table."
             )
+
+        Column._memoized_property.expire_instance(self)
+
         if self.key is None:
             self.key = self.name
 
@@ -1569,15 +1573,16 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 _proxies=[self],
                 *fk
             )
-        except TypeError:
-            util.raise_from_cause(
+        except TypeError as err:
+            util.raise_(
                 TypeError(
                     "Could not create a copy of this %r object.  "
                     "Ensure the class includes a _constructor() "
                     "attribute or method which accepts the "
                     "standard Column constructor arguments, or "
                     "references the Column class itself." % self.__class__
-                )
+                ),
+                from_=err,
             )
 
         c.table = selectable
@@ -2078,24 +2083,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             self._set_target_column(_column)
 
 
-class _NotAColumnExpr(object):
-    # the coercions system is not used in crud.py for the values passed in
-    # the insert().values() and update().values() methods, so the usual
-    # pathways to rejecting a coercion in the unlikely case of adding defaut
-    # generator objects to insert() or update() constructs aren't available;
-    # create a quick coercion rejection here that is specific to what crud.py
-    # calls on value objects.
-    def _not_a_column_expr(self):
-        raise exc.InvalidRequestError(
-            "This %s cannot be used directly "
-            "as a column expression." % self.__class__.__name__
-        )
-
-    self_group = lambda self: self._not_a_column_expr()  # noqa
-    _from_objects = property(lambda self: self._not_a_column_expr())
-
-
-class DefaultGenerator(_NotAColumnExpr, SchemaItem):
+class DefaultGenerator(SchemaItem):
     """Base class for column *default* values."""
 
     __visit_name__ = "default_generator"
@@ -2205,8 +2193,10 @@ class ColumnDefault(DefaultGenerator):
         )
 
     @util.memoized_property
-    @util.dependencies("sqlalchemy.sql.sqltypes")
-    def _arg_is_typed(self, sqltypes):
+    @util.preload_module("sqlalchemy.sql.sqltypes")
+    def _arg_is_typed(self):
+        sqltypes = util.preloaded.sql_sqltypes
+
         if self.is_clause_element:
             return not isinstance(self.arg.type, sqltypes.NullType)
         else:
@@ -2237,14 +2227,6 @@ class ColumnDefault(DefaultGenerator):
                 "ColumnDefault Python function takes zero or one "
                 "positional arguments"
             )
-
-    def _visit_name(self):
-        if self.for_update:
-            return "column_onupdate"
-        else:
-            return "column_default"
-
-    __visit_name__ = property(_visit_name)
 
     def __repr__(self):
         return "ColumnDefault(%r)" % (self.arg,)
@@ -2460,14 +2442,16 @@ class Sequence(roles.StatementRole, DefaultGenerator):
     def is_clause_element(self):
         return False
 
-    @util.dependencies("sqlalchemy.sql.functions.func")
-    def next_value(self, func):
+    @util.preload_module("sqlalchemy.sql.functions")
+    def next_value(self):
         """Return a :class:`.next_value` function element
         which will render the appropriate increment function
         for this :class:`.Sequence` within any SQL expression.
 
         """
-        return func.next_value(self, bind=self.bind)
+        return util.preloaded.sql_functions.func.next_value(
+            self, bind=self.bind
+        )
 
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
@@ -2511,7 +2495,7 @@ class Sequence(roles.StatementRole, DefaultGenerator):
 
 
 @inspection._self_inspects
-class FetchedValue(_NotAColumnExpr, SchemaEventTarget):
+class FetchedValue(SchemaEventTarget):
     """A marker for a transparent database-side default.
 
     Use :class:`.FetchedValue` when the database is configured
@@ -2534,6 +2518,7 @@ class FetchedValue(_NotAColumnExpr, SchemaEventTarget):
     is_server_default = True
     reflected = False
     has_argument = False
+    is_clause_element = False
 
     def __init__(self, for_update=False):
         self.for_update = for_update
@@ -2861,6 +2846,8 @@ class CheckConstraint(ColumnCollectionConstraint):
 
     _allow_multiple_tables = True
 
+    __visit_name__ = "table_or_column_check_constraint"
+
     @_document_text_coercion(
         "sqltext",
         ":class:`.CheckConstraint`",
@@ -2925,13 +2912,9 @@ class CheckConstraint(ColumnCollectionConstraint):
         if table is not None:
             self._set_parent_with_dispatch(table)
 
-    def __visit_name__(self):
-        if isinstance(self.parent, Table):
-            return "check_constraint"
-        else:
-            return "column_check_constraint"
-
-    __visit_name__ = property(__visit_name__)
+    @property
+    def is_column_level(self):
+        return not isinstance(self.parent, Table)
 
     def copy(self, target_table=None, **kw):
         if target_table is not None:
@@ -3197,10 +3180,13 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         try:
             ColumnCollectionConstraint._set_parent(self, table)
         except KeyError as ke:
-            raise exc.ArgumentError(
-                "Can't create ForeignKeyConstraint "
-                "on table '%s': no column "
-                "named '%s' is present." % (table.description, ke.args[0])
+            util.raise_(
+                exc.ArgumentError(
+                    "Can't create ForeignKeyConstraint "
+                    "on table '%s': no column "
+                    "named '%s' is present." % (table.description, ke.args[0])
+                ),
+                from_=ke,
             )
 
         for col, fk in zip(self.columns, self.elements):
@@ -3943,10 +3929,10 @@ class MetaData(SchemaItem):
         """
         return self._bind
 
-    @util.dependencies("sqlalchemy.engine.url")
-    def _bind_to(self, url, bind):
+    @util.preload_module("sqlalchemy.engine.url")
+    def _bind_to(self, bind):
         """Bind this MetaData to an Engine, Connection, string or URL."""
-
+        url = util.preloaded.engine_url
         if isinstance(bind, util.string_types + (url.URL,)):
             self._bind = sqlalchemy.create_engine(bind)
         else:
@@ -4095,9 +4081,7 @@ class MetaData(SchemaItem):
         if bind is None:
             bind = _bind_or_error(self)
 
-        with bind.connect() as conn:
-            insp = inspection.inspect(conn)
-
+        with inspection.inspect(bind)._inspection_context() as insp:
             reflect_opts = {
                 "autoload_with": insp,
                 "extend_existing": extend_existing,
@@ -4251,10 +4235,10 @@ class ThreadLocalMetaData(MetaData):
 
         return getattr(self.context, "_engine", None)
 
-    @util.dependencies("sqlalchemy.engine.url")
-    def _bind_to(self, url, bind):
+    @util.preload_module("sqlalchemy.engine.url")
+    def _bind_to(self, bind):
         """Bind to a Connectable in the caller's thread."""
-
+        url = util.preloaded.engine_url
         if isinstance(bind, util.string_types + (url.URL,)):
             try:
                 self.context._engine = self.__engines[bind]

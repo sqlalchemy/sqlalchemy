@@ -55,7 +55,10 @@ def expect(role, element, **kw):
     # elaborate logic up front if possible
     impl = _impl_lookup[role]
 
-    if not isinstance(element, (elements.ClauseElement, schema.SchemaItem)):
+    if not isinstance(
+        element,
+        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue),
+    ):
         resolved = impl._resolve_for_clause_element(element, **kw)
     else:
         resolved = element
@@ -133,7 +136,13 @@ class RoleImpl(object):
         self._raise_for_expected(element, argname, resolved)
 
     def _raise_for_expected(
-        self, element, argname=None, resolved=None, advice=None, code=None
+        self,
+        element,
+        argname=None,
+        resolved=None,
+        advice=None,
+        code=None,
+        err=None,
     ):
         if argname:
             msg = "%s expected for argument %r; got %r." % (
@@ -147,7 +156,7 @@ class RoleImpl(object):
         if advice:
             msg += " " + advice
 
-        raise exc.ArgumentError(msg, code=code)
+        util.raise_(exc.ArgumentError(msg, code=code), replace_context=err)
 
 
 class _Deannotate(object):
@@ -188,7 +197,9 @@ class _ColumnCoercions(object):
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
-        if resolved._is_select_statement:
+        if not resolved.is_clause_element:
+            self._raise_for_expected(original_element, argname, resolved)
+        elif resolved._is_select_statement:
             self._warn_for_scalar_subquery_coercion()
             return resolved.scalar_subquery()
         elif resolved._is_from_clause and isinstance(
@@ -201,16 +212,19 @@ class _ColumnCoercions(object):
 
 
 def _no_text_coercion(
-    element, argname=None, exc_cls=exc.ArgumentError, extra=None
+    element, argname=None, exc_cls=exc.ArgumentError, extra=None, err=None
 ):
-    raise exc_cls(
-        "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
-        "explicitly declared as text(%(expr)r)"
-        % {
-            "expr": util.ellipses_string(element),
-            "argname": "for argument %s" % (argname,) if argname else "",
-            "extra": "%s " % extra if extra else "",
-        }
+    util.raise_(
+        exc_cls(
+            "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
+            "explicitly declared as text(%(expr)r)"
+            % {
+                "expr": util.ellipses_string(element),
+                "argname": "for argument %s" % (argname,) if argname else "",
+                "extra": "%s " % extra if extra else "",
+            }
+        ),
+        replace_context=err,
     )
 
 
@@ -281,17 +295,17 @@ class ExpressionElementImpl(
     _ColumnCoercions, RoleImpl, roles.ExpressionElementRole
 ):
     def _literal_coercion(
-        self, element, name=None, type_=None, argname=None, **kw
+        self, element, name=None, type_=None, argname=None, is_crud=False, **kw
     ):
         if element is None:
             return elements.Null()
         else:
             try:
                 return elements.BindParameter(
-                    name, element, type_, unique=True
+                    name, element, type_, unique=True, _is_crud=is_crud
                 )
-            except exc.ArgumentError:
-                self._raise_for_expected(element)
+            except exc.ArgumentError as err:
+                self._raise_for_expected(element, err=err)
 
 
 class BinaryElementImpl(
@@ -302,8 +316,8 @@ class BinaryElementImpl(
     ):
         try:
             return expr._bind_param(operator, element, type_=bindparam_type)
-        except exc.ArgumentError:
-            self._raise_for_expected(element)
+        except exc.ArgumentError as err:
+            self._raise_for_expected(element, err=err)
 
     def _post_coercion(self, resolved, expr, **kw):
         if (

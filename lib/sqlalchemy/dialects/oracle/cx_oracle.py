@@ -569,9 +569,10 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                     param[toname] = param[fromname]
                     del param[fromname]
 
-    def _handle_out_parameters(self):
-        # if a single execute, check for outparams
-        if len(self.compiled_parameters) == 1:
+    def _generate_out_parameter_vars(self):
+        # check for has_out_parameters or RETURNING, create cx_Oracle.var
+        # objects if so
+        if self.compiled.returning or self.compiled.has_out_parameters:
             quoted_bind_names = self.compiled._quoted_bind_names
             for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
@@ -645,7 +646,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             include_types=self.dialect._include_setinputsizes,
         )
 
-        self._handle_out_parameters()
+        self._generate_out_parameter_vars()
 
         self._generate_cursor_outputtype_handler()
 
@@ -656,65 +657,50 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
         return c
 
-    def get_result_proxy(self):
-        if self.out_parameters and self.compiled.returning:
+    def get_out_parameter_values(self, out_param_names):
+        # this method should not be called when the compiler has
+        # RETURNING as we've turned the has_out_parameters flag set to
+        # False.
+        assert not self.compiled.returning
+
+        return [
+            self.dialect._paramval(self.out_parameters[name])
+            for name in out_param_names
+        ]
+
+    def get_result_cursor_strategy(self, result):
+        if self.compiled and self.out_parameters and self.compiled.returning:
+            # create a fake cursor result from the out parameters. unlike
+            # get_out_parameter_values(), the result-row handlers here will be
+            # applied at the Result level
             returning_params = [
                 self.dialect._returningval(self.out_parameters["ret_%d" % i])
                 for i in range(len(self.out_parameters))
             ]
-            return ReturningResultProxy(self, returning_params)
 
-        result = _result.ResultProxy(self)
-
-        if self.out_parameters:
-            if (
-                self.compiled_parameters is not None
-                and len(self.compiled_parameters) == 1
-            ):
-                result.out_parameters = out_parameters = {}
-
-                for bind, name in self.compiled.bind_names.items():
-                    if name in self.out_parameters:
-                        type_ = bind.type
-                        impl_type = type_.dialect_impl(self.dialect)
-                        dbapi_type = impl_type.get_dbapi_type(
-                            self.dialect.dbapi
-                        )
-                        result_processor = impl_type.result_processor(
-                            self.dialect, dbapi_type
-                        )
-                        if result_processor is not None:
-                            out_parameters[name] = result_processor(
-                                self.dialect._paramval(
-                                    self.out_parameters[name]
-                                )
-                            )
-                        else:
-                            out_parameters[name] = self.dialect._paramval(
-                                self.out_parameters[name]
-                            )
-            else:
-                result.out_parameters = dict(
-                    (k, self._dialect._paramval(v))
-                    for k, v in self.out_parameters.items()
-                )
-
-        return result
+            return ReturningResultStrategy(
+                result, result.cursor, returning_params
+            )
+        else:
+            return super(
+                OracleExecutionContext_cx_oracle, self
+            ).get_result_cursor_strategy(result)
 
 
-class ReturningResultProxy(_result.FullyBufferedResultProxy):
-    """Result proxy which stuffs the _returning clause + outparams
-    into the fetch."""
+class ReturningResultStrategy(_result.FullyBufferedCursorFetchStrategy):
+    __slots__ = ("_returning_params",)
 
-    def __init__(self, context, returning_params):
+    def __init__(self, result, dbapi_cursor, returning_params):
         self._returning_params = returning_params
-        super(ReturningResultProxy, self).__init__(context)
 
-    def _cursor_description(self):
-        returning = self.context.compiled.returning
-        return [
+        returning = result.context.compiled.returning
+        cursor_description = [
             (getattr(col, "name", col.anon_label), None) for col in returning
         ]
+
+        super(ReturningResultStrategy, self).__init__(
+            dbapi_cursor, cursor_description
+        )
 
     def _buffer_rows(self):
         return collections.deque([tuple(self._returning_params)])

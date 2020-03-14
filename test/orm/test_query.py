@@ -111,6 +111,7 @@ class OnlyReturnTuplesTest(QueryTest):
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
 
     def test_multiple_entity_false(self):
         User = self.classes.User
@@ -118,6 +119,7 @@ class OnlyReturnTuplesTest(QueryTest):
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
 
     def test_multiple_entity_true(self):
         User = self.classes.User
@@ -125,6 +127,7 @@ class OnlyReturnTuplesTest(QueryTest):
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
+        assert isinstance(row._mapping, collections_abc.Mapping)
 
 
 class RowTupleTest(QueryTest):
@@ -141,8 +144,48 @@ class RowTupleTest(QueryTest):
             .filter(User.id == 7)
             .first()
         )
-        assert row.id == 7
-        assert row.uname == "jack"
+
+        eq_(row.id, 7)
+        eq_(row.uname, "jack")
+
+    def test_entity_mapping_access(self):
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
+
+        s = Session()
+
+        row = s.query(User).only_return_tuples(True).first()
+        eq_(row._mapping[User], row[0])
+
+        row = s.query(User, Address).join(User.addresses).first()
+        eq_(row._mapping[User], row[0])
+        eq_(row._mapping[Address], row[1])
+        eq_(row._mapping["User"], row[0])
+        eq_(row._mapping["Address"], row[1])
+
+        u1 = aliased(User)
+        row = s.query(u1).only_return_tuples(True).first()
+        eq_(row._mapping[u1], row[0])
+        assert_raises(KeyError, lambda: row._mapping[User])
+
+        row = (
+            s.query(User.id, Address.email_address)
+            .join(User.addresses)
+            .first()
+        )
+
+        eq_(row._mapping[User.id], row[0])
+        eq_(row._mapping[User.id], row[0])
+        eq_(row._mapping["id"], row[0])
+        eq_(row._mapping[Address.email_address], row[1])
+        eq_(row._mapping["email_address"], row[1])
+        eq_(row._mapping[users.c.id], row[0])
+        eq_(row._mapping[addresses.c.email_address], row[1])
+        assert_raises(KeyError, lambda: row._mapping[User.name])
+        assert_raises(KeyError, lambda: row._mapping[users.c.name])
 
     def test_deep_entity(self):
         users, User = (self.tables.users, self.classes.User)
@@ -3908,7 +3951,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             ],
         )
         for row in q:
-            eq_(row.keys(), ["id", "foo", "id"])
+            eq_(row._mapping.keys(), ["id", "foo", "id"])
 
     def test_columns_augmented_sql_one(self):
         User, Address = self.classes.User, self.classes.Address
@@ -5040,6 +5083,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
                         users.c.id == addresses.c.user_id,
                         users.c.name == addresses.c.email_address,
                     ),
+                    viewonly=True,
                 ),
             },
         )

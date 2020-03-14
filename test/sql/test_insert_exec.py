@@ -112,7 +112,7 @@ class InsertExecTest(fixtures.TablesTest):
                 )
                 row = engine.execute(table_.select(criterion)).first()
                 for c in table_.c:
-                    ret[c.key] = row[c]
+                    ret[c.key] = row._mapping[c]
             return ret
 
         if testing.against("firebird", "postgresql", "oracle", "mssql"):
@@ -338,7 +338,7 @@ class InsertExecTest(fixtures.TablesTest):
 class TableInsertTest(fixtures.TablesTest):
 
     """test for consistent insert behavior across dialects
-    regarding the inline=True flag, lower-case 't' tables.
+    regarding the inline() method, lower-case 't' tables.
 
     """
 
@@ -410,7 +410,7 @@ class TableInsertTest(fixtures.TablesTest):
     def test_uppercase_inline(self):
         t = self.tables.foo
         self._test(
-            t.insert(inline=True).values(id=1, data="data", x=5),
+            t.insert().inline().values(id=1, data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=[1],
         )
@@ -422,7 +422,7 @@ class TableInsertTest(fixtures.TablesTest):
     def test_uppercase_inline_implicit(self):
         t = self.tables.foo
         self._test(
-            t.insert(inline=True).values(data="data", x=5),
+            t.insert().inline().values(data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=[None],
         )
@@ -501,7 +501,7 @@ class TableInsertTest(fixtures.TablesTest):
     def test_implicit_pk_inline(self):
         t = self._fixture()
         self._test(
-            t.insert(inline=True).values(data="data", x=5),
+            t.insert().inline().values(data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=[],
         )

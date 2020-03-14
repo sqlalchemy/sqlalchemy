@@ -31,6 +31,7 @@ from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
 from .base import PARSE_AUTOCOMMIT
+from .base import SingletonConstant
 from .coercions import _document_text_coercion
 from .traversals import _copy_internals
 from .traversals import _get_children
@@ -200,6 +201,7 @@ class ClauseElement(
     _is_from_container = False
     _is_select_container = False
     _is_select_statement = False
+    _is_bind_parameter = False
 
     _order_by_label_element = None
 
@@ -299,9 +301,9 @@ class ClauseElement(
         elements replaced with values taken from the given dictionary::
 
           >>> clause = column('x') + bindparam('foo')
-          >>> print clause.compile().params
+          >>> print(clause.compile().params)
           {'foo':None}
-          >>> print clause.params({'foo':7}).compile().params
+          >>> print(clause.params({'foo':7}).compile().params)
           {'foo':7}
 
         """
@@ -337,7 +339,7 @@ class ClauseElement(
         """
         return traversals.compare(self, other, **kw)
 
-    def _copy_internals(self, **kw):
+    def _copy_internals(self, omit_attrs=(), **kw):
         """Reassign internal elements to be clones of themselves.
 
         Called during a copy-and-traverse operation on newly
@@ -357,12 +359,15 @@ class ClauseElement(
         for attrname, obj, meth in _copy_internals.run_generated_dispatch(
             self, traverse_internals, "_generated_copy_internals_traversal"
         ):
+            if attrname in omit_attrs:
+                continue
+
             if obj is not None:
                 result = meth(self, obj, **kw)
                 if result is not None:
                     setattr(self, attrname, result)
 
-    def get_children(self, omit_attrs=None, **kw):
+    def get_children(self, omit_attrs=(), **kw):
         r"""Return immediate child :class:`.Traversible` elements of this
         :class:`.Traversible`.
 
@@ -384,7 +389,7 @@ class ClauseElement(
         for attrname, obj, meth in _get_children.run_generated_dispatch(
             self, traverse_internals, "_generated_get_children_traversal"
         ):
-            if obj is None or omit_attrs and attrname in omit_attrs:
+            if obj is None or attrname in omit_attrs:
                 continue
             result.extend(meth(obj, **kw))
         return result
@@ -421,8 +426,8 @@ class ClauseElement(
 
         return self
 
-    @util.dependencies("sqlalchemy.engine.default")
-    def compile(self, default, bind=None, dialect=None, **kw):
+    @util.preload_module("sqlalchemy.engine.default")
+    def compile(self, bind=None, dialect=None, **kw):
         """Compile this SQL expression.
 
         The return value is a :class:`~.Compiled` object.
@@ -466,7 +471,7 @@ class ClauseElement(
 
                 s = select([t]).where(t.c.x == 5)
 
-                print s.compile(compile_kwargs={"literal_binds": True})
+                print(s.compile(compile_kwargs={"literal_binds": True}))
 
             .. versionadded:: 0.9.0
 
@@ -476,6 +481,7 @@ class ClauseElement(
 
         """
 
+        default = util.preloaded.engine_default
         if not dialect:
             if bind:
                 dialect = bind.dialect
@@ -627,7 +633,7 @@ class ColumnElement(
         >>> from sqlalchemy.sql import column
         >>> column('a') + column('b')
         <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
-        >>> print column('a') + column('b')
+        >>> print(column('a') + column('b'))
         a + b
 
     .. seealso::
@@ -747,10 +753,13 @@ class ColumnElement(
     def comparator(self):
         try:
             comparator_factory = self.type.comparator_factory
-        except AttributeError:
-            raise TypeError(
-                "Object %r associated with '.type' attribute "
-                "is not a TypeEngine class or object" % self.type
+        except AttributeError as err:
+            util.raise_(
+                TypeError(
+                    "Object %r associated with '.type' attribute "
+                    "is not a TypeEngine class or object" % self.type
+                ),
+                replace_context=err,
             )
         else:
             return comparator_factory(self)
@@ -758,10 +767,17 @@ class ColumnElement(
     def __getattr__(self, key):
         try:
             return getattr(self.comparator, key)
-        except AttributeError:
-            raise AttributeError(
-                "Neither %r object nor %r object has an attribute %r"
-                % (type(self).__name__, type(self.comparator).__name__, key)
+        except AttributeError as err:
+            util.raise_(
+                AttributeError(
+                    "Neither %r object nor %r object has an attribute %r"
+                    % (
+                        type(self).__name__,
+                        type(self.comparator).__name__,
+                        key,
+                    )
+                ),
+                replace_context=err,
             )
 
     def operate(self, op, *other, **kwargs):
@@ -930,7 +946,8 @@ class ColumnElement(
 
     @util.memoized_property
     def _dedupe_label_anon_label(self):
-        return self._anon_label(getattr(self, "_label", "anon") + "_")
+        label = getattr(self, "_label", None) or "anon"
+        return self._anon_label(label + "_")
 
 
 class WrapsColumnExpression(object):
@@ -1000,6 +1017,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
     _is_crud = False
     _expanding_in_types = ()
+    _is_bind_parameter = True
 
     def __init__(
         self,
@@ -1015,6 +1033,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         literal_execute=False,
         _compared_to_operator=None,
         _compared_to_type=None,
+        _is_crud=False,
     ):
         r"""Produce a "bound expression".
 
@@ -1293,6 +1312,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.required = required
         self.expanding = expanding
         self.literal_execute = literal_execute
+        if _is_crud:
+            self._is_crud = True
         if type_ is None:
             if _compared_to_type is not None:
                 self.type = _compared_to_type.coerce_compared_value(
@@ -1466,6 +1487,8 @@ class TextClause(
     )
     _is_implicitly_boolean = False
 
+    _render_label_in_columns_clause = False
+
     def __and__(self, other):
         # support use in select.where(), query.filter()
         return and_(self, other)
@@ -1498,14 +1521,6 @@ class TextClause(
 
     @classmethod
     @util.deprecated_params(
-        autocommit=(
-            "0.6",
-            "The :paramref:`.text.autocommit` parameter is deprecated and "
-            "will be removed in a future release.  Please use the "
-            ":paramref:`.Connection.execution_options.autocommit` parameter "
-            "in conjunction with the :meth:`.Executable.execution_options` "
-            "method.",
-        ),
         bindparams=(
             "0.9",
             "The :paramref:`.text.bindparams` parameter "
@@ -1521,7 +1536,7 @@ class TextClause(
     )
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
     def _create_text(
-        self, text, bind=None, bindparams=None, typemap=None, autocommit=None
+        self, text, bind=None, bindparams=None, typemap=None,
     ):
         r"""Construct a new :class:`.TextClause` clause, representing
         a textual SQL string directly.
@@ -1598,9 +1613,6 @@ class TextClause(
           to specify bind parameters; they will be compiled to their
           engine-specific format.
 
-        :param autocommit: whether or not to set the "autocommit" execution
-          option for this :class:`.TextClause` object.
-
         :param bind:
           an optional connection or engine to be used for this text query.
 
@@ -1635,8 +1647,6 @@ class TextClause(
             stmt = stmt.bindparams(*bindparams)
         if typemap:
             stmt = stmt.columns(**typemap)
-        if autocommit is not None:
-            stmt = stmt.execution_options(autocommit=autocommit)
 
         return stmt
 
@@ -1742,10 +1752,13 @@ class TextClause(
                 # a unique/anonymous key in any case, so use the _orig_key
                 # so that a text() construct can support unique parameters
                 existing = new_params[bind._orig_key]
-            except KeyError:
-                raise exc.ArgumentError(
-                    "This text() construct doesn't define a "
-                    "bound parameter named %r" % bind._orig_key
+            except KeyError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "This text() construct doesn't define a "
+                        "bound parameter named %r" % bind._orig_key
+                    ),
+                    replace_context=err,
                 )
             else:
                 new_params[existing._orig_key] = bind
@@ -1753,16 +1766,19 @@ class TextClause(
         for key, value in names_to_values.items():
             try:
                 existing = new_params[key]
-            except KeyError:
-                raise exc.ArgumentError(
-                    "This text() construct doesn't define a "
-                    "bound parameter named %r" % key
+            except KeyError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "This text() construct doesn't define a "
+                        "bound parameter named %r" % key
+                    ),
+                    replace_context=err,
                 )
             else:
                 new_params[key] = existing._with_value(value)
 
-    @util.dependencies("sqlalchemy.sql.selectable")
-    def columns(self, selectable, *cols, **types):
+    @util.preload_module("sqlalchemy.sql.selectable")
+    def columns(self, *cols, **types):
         r"""Turn this :class:`.TextClause` object into a
         :class:`.TextualSelect` object that serves the same role as a SELECT
         statement.
@@ -1867,6 +1883,7 @@ class TextClause(
          argument as it also indicates positional ordering.
 
         """
+        selectable = util.preloaded.sql_selectable
         positional_input_cols = [
             ColumnClause(col.key, types.pop(col.key))
             if col.key in types
@@ -1899,7 +1916,7 @@ class TextClause(
             return self
 
 
-class Null(roles.ConstExprRole, ColumnElement):
+class Null(SingletonConstant, roles.ConstExprRole, ColumnElement):
     """Represent the NULL keyword in a SQL statement.
 
     :class:`.Null` is accessed as a constant via the
@@ -1922,7 +1939,10 @@ class Null(roles.ConstExprRole, ColumnElement):
         return Null()
 
 
-class False_(roles.ConstExprRole, ColumnElement):
+Null._create_singleton()
+
+
+class False_(SingletonConstant, roles.ConstExprRole, ColumnElement):
     """Represent the ``false`` keyword, or equivalent, in a SQL statement.
 
     :class:`.False_` is accessed as a constant via the
@@ -1947,23 +1967,23 @@ class False_(roles.ConstExprRole, ColumnElement):
         E.g.::
 
             >>> from sqlalchemy import false
-            >>> print select([t.c.x]).where(false())
+            >>> print(select([t.c.x]).where(false()))
             SELECT x FROM t WHERE false
 
         A backend which does not support true/false constants will render as
         an expression against 1 or 0::
 
-            >>> print select([t.c.x]).where(false())
+            >>> print(select([t.c.x]).where(false()))
             SELECT x FROM t WHERE 0 = 1
 
         The :func:`.true` and :func:`.false` constants also feature
         "short circuit" operation within an :func:`.and_` or :func:`.or_`
         conjunction::
 
-            >>> print select([t.c.x]).where(or_(t.c.x > 5, true()))
+            >>> print(select([t.c.x]).where(or_(t.c.x > 5, true())))
             SELECT x FROM t WHERE true
 
-            >>> print select([t.c.x]).where(and_(t.c.x > 5, false()))
+            >>> print(select([t.c.x]).where(and_(t.c.x > 5, false())))
             SELECT x FROM t WHERE false
 
         .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
@@ -1979,7 +1999,10 @@ class False_(roles.ConstExprRole, ColumnElement):
         return False_()
 
 
-class True_(roles.ConstExprRole, ColumnElement):
+False_._create_singleton()
+
+
+class True_(SingletonConstant, roles.ConstExprRole, ColumnElement):
     """Represent the ``true`` keyword, or equivalent, in a SQL statement.
 
     :class:`.True_` is accessed as a constant via the
@@ -2012,23 +2035,23 @@ class True_(roles.ConstExprRole, ColumnElement):
         E.g.::
 
             >>> from sqlalchemy import true
-            >>> print select([t.c.x]).where(true())
+            >>> print(select([t.c.x]).where(true()))
             SELECT x FROM t WHERE true
 
         A backend which does not support true/false constants will render as
         an expression against 1 or 0::
 
-            >>> print select([t.c.x]).where(true())
+            >>> print(select([t.c.x]).where(true()))
             SELECT x FROM t WHERE 1 = 1
 
         The :func:`.true` and :func:`.false` constants also feature
         "short circuit" operation within an :func:`.and_` or :func:`.or_`
         conjunction::
 
-            >>> print select([t.c.x]).where(or_(t.c.x > 5, true()))
+            >>> print(select([t.c.x]).where(or_(t.c.x > 5, true())))
             SELECT x FROM t WHERE true
 
-            >>> print select([t.c.x]).where(and_(t.c.x > 5, false()))
+            >>> print(select([t.c.x]).where(and_(t.c.x > 5, false())))
             SELECT x FROM t WHERE false
 
         .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
@@ -2042,6 +2065,9 @@ class True_(roles.ConstExprRole, ColumnElement):
         """
 
         return True_()
+
+
+True_._create_singleton()
 
 
 class ClauseList(
@@ -2084,6 +2110,17 @@ class ClauseList(
                 for clause in clauses
             ]
         self._is_implicitly_boolean = operators.is_boolean(self.operator)
+
+    @classmethod
+    def _construct_raw(cls, operator, clauses=None):
+        self = cls.__new__(cls)
+        self.clauses = clauses if clauses else []
+        self.group = True
+        self.operator = operator
+        self.group_contents = True
+        self._tuple_values = False
+        self._is_implicitly_boolean = False
+        return self
 
     def __iter__(self):
         return iter(self.clauses)
@@ -2130,46 +2167,58 @@ class BooleanClauseList(ClauseList, ColumnElement):
         )
 
     @classmethod
-    def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
-
+    def _process_clauses_for_boolean(
+        cls, operator, continue_on, skip_on, clauses
+    ):
         has_continue_on = None
-        special_elements = (continue_on, skip_on)
+
         convert_clauses = []
-
-        for clause in util.coerce_generator_arg(clauses):
-            clause = coercions.expect(roles.WhereHavingRole, clause)
-
-            # elements that are not the continue/skip are the most
-            # common, try to have only one isinstance() call for that case.
-            if not isinstance(clause, special_elements):
-                convert_clauses.append(clause)
-            elif isinstance(clause, skip_on):
-                # instance of skip_on, e.g. and_(x, y, False, z), cancels
-                # the rest out
-                return clause.self_group(against=operators._asbool)
-            elif has_continue_on is None:
+        for clause in clauses:
+            if clause is continue_on:
                 # instance of continue_on, like and_(x, y, True, z), store it
                 # if we didn't find one already, we will use it if there
                 # are no other expressions here.
                 has_continue_on = clause
+            elif clause is skip_on:
+                # instance of skip_on, e.g. and_(x, y, False, z), cancels
+                # the rest out
+                convert_clauses = [clause]
+                break
+            else:
+                convert_clauses.append(clause)
+
+        if not convert_clauses and has_continue_on is not None:
+            convert_clauses = [has_continue_on]
 
         lcc = len(convert_clauses)
 
         if lcc > 1:
+            against = operator
+        else:
+            against = operators._asbool
+        return lcc, [c.self_group(against=against) for c in convert_clauses]
+
+    @classmethod
+    def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
+
+        lcc, convert_clauses = cls._process_clauses_for_boolean(
+            operator,
+            continue_on,
+            skip_on,
+            [
+                coercions.expect(roles.WhereHavingRole, clause)
+                for clause in util.coerce_generator_arg(clauses)
+            ],
+        )
+
+        if lcc > 1:
             # multiple elements.  Return regular BooleanClauseList
             # which will link elements against the operator.
-            return cls._construct_raw(
-                operator,
-                [c.self_group(against=operator) for c in convert_clauses],
-            )
+            return cls._construct_raw(operator, convert_clauses)
         elif lcc == 1:
             # just one element.  return it as a single boolean element,
             # not a list and discard the operator.
-            return convert_clauses[0].self_group(against=operators._asbool)
-        elif not lcc and has_continue_on is not None:
-            # no elements but we had a "continue", just return the continue
-            # as a boolean element, discard the operator.
-            return has_continue_on.self_group(against=operators._asbool)
+            return convert_clauses[0]
         else:
             # no elements period.  deprecated use case.  return an empty
             # ClauseList construct that generates nothing unless it has
@@ -2180,7 +2229,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
                 "%(name)s() construct, use %(name)s(%(continue_on)s, *args)."
                 % {
                     "name": operator.__name__,
-                    "continue_on": "True" if continue_on is True_ else "False",
+                    "continue_on": "True"
+                    if continue_on is True_._singleton
+                    else "False",
                 }
             )
             return cls._construct_raw(operator)
@@ -2254,7 +2305,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
             :func:`.or_`
 
         """
-        return cls._construct(operators.and_, True_, False_, *clauses)
+        return cls._construct(
+            operators.and_, True_._singleton, False_._singleton, *clauses
+        )
 
     @classmethod
     def or_(cls, *clauses):
@@ -2305,7 +2358,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
             :func:`.and_`
 
         """
-        return cls._construct(operators.or_, False_, True_, *clauses)
+        return cls._construct(
+            operators.or_, False_._singleton, True_._singleton, *clauses
+        )
 
     @property
     def _select_iterable(self):
@@ -3315,7 +3370,7 @@ class BinaryExpression(ColumnElement):
         >>> from sqlalchemy.sql import column
         >>> column('a') + column('b')
         <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
-        >>> print column('a') + column('b')
+        >>> print(column('a') + column('b'))
         a + b
 
     """
@@ -3665,9 +3720,12 @@ class Over(ColumnElement):
         else:
             try:
                 lower = int(range_[0])
-            except ValueError:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
+            except ValueError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "Integer or None expected for range value"
+                    ),
+                    replace_context=err,
                 )
             else:
                 if lower == 0:
@@ -3678,9 +3736,12 @@ class Over(ColumnElement):
         else:
             try:
                 upper = int(range_[1])
-            except ValueError:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
+            except ValueError as err:
+                util.raise_(
+                    exc.ArgumentError(
+                        "Integer or None expected for range value"
+                    ),
+                    replace_context=err,
                 )
             else:
                 if upper == 0:
@@ -4242,20 +4303,11 @@ class ColumnClause(
         else:
             return other.proxy_set.intersection(self.proxy_set)
 
-    def _get_table(self):
-        return self.__dict__["table"]
-
-    def _set_table(self, table):
-        self._memoized_property.expire_instance(self)
-        self.__dict__["table"] = table
-
     def get_children(self, column_tables=False, **kw):
         if column_tables and self.table is not None:
             return [self.table]
         else:
             return []
-
-    table = property(_get_table, _set_table)
 
     @_memoized_property
     def _from_objects(self):
@@ -4510,14 +4562,6 @@ class quoted_name(util.MemoizedSlots, util.text_type):
             return "'%s'" % backslashed
         else:
             return str.__repr__(self)
-
-
-def _select_iterables(elements):
-    """expand tables into individual columns in the
-    given list of column expressions.
-
-    """
-    return itertools.chain(*[c._select_iterable for c in elements])
 
 
 def _find_columns(clause):

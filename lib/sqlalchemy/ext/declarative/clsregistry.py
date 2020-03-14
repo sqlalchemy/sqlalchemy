@@ -16,10 +16,10 @@ from ... import exc
 from ... import inspection
 from ... import util
 from ...orm import class_mapper
+from ...orm import ColumnProperty
 from ...orm import interfaces
-from ...orm.properties import ColumnProperty
-from ...orm.properties import RelationshipProperty
-from ...orm.properties import SynonymProperty
+from ...orm import RelationshipProperty
+from ...orm import SynonymProperty
 from ...schema import _get_table_key
 
 
@@ -298,12 +298,15 @@ class _class_resolver(object):
             else:
                 return x
         except NameError as n:
-            raise exc.InvalidRequestError(
-                "When initializing mapper %s, expression %r failed to "
-                "locate a name (%r). If this is a class name, consider "
-                "adding this relationship() to the %r class after "
-                "both dependent classes have been defined."
-                % (self.prop.parent, self.arg, n.args[0], self.cls)
+            util.raise_(
+                exc.InvalidRequestError(
+                    "When initializing mapper %s, expression %r failed to "
+                    "locate a name (%r). If this is a class name, consider "
+                    "adding this relationship() to the %r class after "
+                    "both dependent classes have been defined."
+                    % (self.prop.parent, self.arg, n.args[0], self.cls)
+                ),
+                from_=n,
             )
 
 

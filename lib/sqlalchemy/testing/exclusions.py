@@ -9,6 +9,7 @@
 import contextlib
 import operator
 import re
+import sys
 
 from . import config
 from .. import util
@@ -145,7 +146,7 @@ class compound(object):
                 )
                 break
         else:
-            util.raise_from_cause(ex)
+            util.raise_(ex, with_traceback=sys.exc_info()[2])
 
     def _expect_success(self, config, name="block"):
         if not self.fails:

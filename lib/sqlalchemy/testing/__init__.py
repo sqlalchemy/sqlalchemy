@@ -9,7 +9,9 @@
 from . import config  # noqa
 from . import mock  # noqa
 from .assertions import assert_raises  # noqa
+from .assertions import assert_raises_context_ok  # noqa
 from .assertions import assert_raises_message  # noqa
+from .assertions import assert_raises_message_context_ok  # noqa
 from .assertions import assert_raises_return  # noqa
 from .assertions import AssertsCompiledSQL  # noqa
 from .assertions import AssertsExecutionResults  # noqa
@@ -20,6 +22,7 @@ from .assertions import eq_  # noqa
 from .assertions import eq_ignore_whitespace  # noqa
 from .assertions import eq_regex  # noqa
 from .assertions import expect_deprecated  # noqa
+from .assertions import expect_deprecated_20  # noqa
 from .assertions import expect_warnings  # noqa
 from .assertions import in_  # noqa
 from .assertions import is_  # noqa

@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, ext
-    :tickets: 5114
-
-    Added keyword arguments to the :meth:`.MutableList.sort` function so that a
-    key function as well as the "reverse" keyword argument can be provided.
-

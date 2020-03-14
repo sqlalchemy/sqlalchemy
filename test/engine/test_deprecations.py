@@ -11,8 +11,8 @@ from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import text
 from sqlalchemy import TypeDecorator
+from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.testing import assert_raises
@@ -20,6 +20,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.mock import Mock
@@ -29,6 +30,88 @@ from sqlalchemy.testing.schema import Table
 
 class SomeException(Exception):
     pass
+
+
+class ConnectionlessDeprecationTest(fixtures.TestBase):
+    """test various things associated with "connectionless" executions."""
+
+    def test_inspector_constructor_engine(self):
+        with testing.expect_deprecated(
+            r"The __init__\(\) method on Inspector is deprecated and will "
+            r"be removed in a future release."
+        ):
+            i1 = reflection.Inspector(testing.db)
+
+        is_(i1.bind, testing.db)
+
+    def test_inspector_constructor_connection(self):
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated(
+                r"The __init__\(\) method on Inspector is deprecated and "
+                r"will be removed in a future release."
+            ):
+                i1 = reflection.Inspector(conn)
+
+            is_(i1.bind, conn)
+            is_(i1.engine, testing.db)
+
+    def test_inspector_from_engine(self):
+        with testing.expect_deprecated(
+            r"The from_engine\(\) method on Inspector is deprecated and will "
+            r"be removed in a future release."
+        ):
+            i1 = reflection.Inspector.from_engine(testing.db)
+
+        is_(i1.bind, testing.db)
+
+    def test_bind_close_conn(self):
+        e = testing.db
+        conn = e.connect()
+
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) function/method is considered",
+            r"The .close\(\) method on a so-called 'branched' connection is "
+            r"deprecated as of 1.4, as are 'branched' connections overall, "
+            r"and will be removed in a future release.",
+        ):
+            with conn.connect() as c2:
+                assert not c2.closed
+        assert not conn.closed
+        assert c2.closed
+
+    @testing.provide_metadata
+    def test_explicit_connectionless_execute(self):
+        table = Table("t", self.metadata, Column("a", Integer))
+        table.create(testing.db)
+
+        stmt = table.insert().values(a=1)
+        with testing.expect_deprecated_20(
+            r"The Engine.execute\(\) function/method is considered legacy",
+        ):
+            testing.db.execute(stmt)
+
+        stmt = select([table])
+        with testing.expect_deprecated_20(
+            r"The Engine.execute\(\) function/method is considered legacy",
+        ):
+            eq_(testing.db.execute(stmt).fetchall(), [(1,)])
+
+    @testing.provide_metadata
+    def test_implicit_execute(self):
+        table = Table("t", self.metadata, Column("a", Integer))
+        table.create(testing.db)
+
+        stmt = table.insert().values(a=1)
+        with testing.expect_deprecated_20(
+            r"The Executable.execute\(\) function/method is considered legacy",
+        ):
+            stmt.execute()
+
+        stmt = select([table])
+        with testing.expect_deprecated_20(
+            r"The Executable.execute\(\) function/method is considered legacy",
+        ):
+            eq_(stmt.execute().fetchall(), [(1,)])
 
 
 class CreateEngineTest(fixtures.TestBase):
@@ -286,75 +369,6 @@ class PoolTestBase(fixtures.TestBase):
         )
 
 
-class ExplicitAutoCommitDeprecatedTest(fixtures.TestBase):
-
-    """test the 'autocommit' flag on select() and text() objects.
-
-    Requires PostgreSQL so that we may define a custom function which
-    modifies the database. """
-
-    __only_on__ = "postgresql"
-
-    @classmethod
-    def setup_class(cls):
-        global metadata, foo
-        metadata = MetaData(testing.db)
-        foo = Table(
-            "foo",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("data", String(100)),
-        )
-        metadata.create_all()
-        testing.db.execute(
-            "create function insert_foo(varchar) "
-            "returns integer as 'insert into foo(data) "
-            "values ($1);select 1;' language sql"
-        )
-
-    def teardown(self):
-        foo.delete().execute().close()
-
-    @classmethod
-    def teardown_class(cls):
-        testing.db.execute("drop function insert_foo(varchar)")
-        metadata.drop_all()
-
-    def test_explicit_compiled(self):
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        with testing.expect_deprecated(
-            "The select.autocommit parameter is deprecated"
-        ):
-            conn1.execute(select([func.insert_foo("data1")], autocommit=True))
-        assert conn2.execute(select([foo.c.data])).fetchall() == [("data1",)]
-        with testing.expect_deprecated(
-            r"The SelectBase.autocommit\(\) method is deprecated,"
-        ):
-            conn1.execute(select([func.insert_foo("data2")]).autocommit())
-        assert conn2.execute(select([foo.c.data])).fetchall() == [
-            ("data1",),
-            ("data2",),
-        ]
-        conn1.close()
-        conn2.close()
-
-    def test_explicit_text(self):
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        with testing.expect_deprecated(
-            "The text.autocommit parameter is deprecated"
-        ):
-            conn1.execute(
-                text("select insert_foo('moredata')", autocommit=True)
-            )
-        assert conn2.execute(select([foo.c.data])).fetchall() == [
-            ("moredata",)
-        ]
-        conn1.close()
-        conn2.close()
-
-
 class DeprecatedEngineFeatureTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -512,3 +526,17 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
         ):
             table_names = testing.db.table_names()
         is_true(set(table_names).issuperset(metadata.tables))
+
+
+class ExecutionOptionsTest(fixtures.TestBase):
+    def test_branched_connection_execution_options(self):
+        engine = engines.testing_engine("sqlite://")
+
+        conn = engine.connect()
+        c2 = conn.execution_options(foo="bar")
+
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) function/method is considered "
+        ):
+            c2_branch = c2.connect()
+        eq_(c2_branch._execution_options, {"foo": "bar"})

@@ -1124,6 +1124,20 @@ class CycleTest(_fixtures.FixtureTest):
 
         go()
 
+    def test_raise_from(self):
+        @assert_cycles()
+        def go():
+            try:
+                try:
+                    raise KeyError("foo")
+                except KeyError as ke:
+
+                    util.raise_(Exception("oops"), from_=ke)
+            except Exception as err:  # noqa
+                pass
+
+        go()
+
     def test_query_alias(self):
         User, Address = self.classes("User", "Address")
         configure_mappers()
@@ -1300,7 +1314,8 @@ class CycleTest(_fixtures.FixtureTest):
         @assert_cycles(6)
         def go():
             s = select([users]).select_from(users.join(addresses))
-            s._froms
+            state = s._compile_state_factory(s, None)
+            state.froms
 
         go()
 

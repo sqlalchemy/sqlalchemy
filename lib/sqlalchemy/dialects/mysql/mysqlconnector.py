@@ -26,15 +26,9 @@ import re
 from .base import BIT
 from .base import MySQLCompiler
 from .base import MySQLDialect
-from .base import MySQLExecutionContext
 from .base import MySQLIdentifierPreparer
 from ... import processors
 from ... import util
-
-
-class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):
-    def get_lastrowid(self):
-        return self.cursor.lastrowid
 
 
 class MySQLCompiler_mysqlconnector(MySQLCompiler):
@@ -100,7 +94,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     supports_native_decimal = True
 
     default_paramstyle = "format"
-    execution_ctx_cls = MySQLExecutionContext_mysqlconnector
     statement_compiler = MySQLCompiler_mysqlconnector
 
     preparer = MySQLIdentifierPreparer_mysqlconnector

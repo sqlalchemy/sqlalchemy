@@ -244,6 +244,10 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         try:
             inst = class_.__dict__[self.key + "_inst"]
         except KeyError:
+            inst = None
+
+        # avoid exception context
+        if inst is None:
             owner = self._calc_owner(class_)
             if owner is not None:
                 inst = AssociationProxyInstance.for_proxy(self, owner, obj)
@@ -358,9 +362,12 @@ class AssociationProxyInstance(object):
 
         # this was never asserted before but this should be made clear.
         if not isinstance(prop, orm.RelationshipProperty):
-            raise NotImplementedError(
-                "association proxy to a non-relationship "
-                "intermediary is not supported"
+            util.raise_(
+                NotImplementedError(
+                    "association proxy to a non-relationship "
+                    "intermediary is not supported"
+                ),
+                replace_context=None,
             )
 
         target_class = prop.mapper.class_
@@ -1323,10 +1330,13 @@ class _AssociationDict(_AssociationCollection):
                 try:
                     for k, v in seq_or_map:
                         self[k] = v
-                except ValueError:
-                    raise ValueError(
-                        "dictionary update sequence "
-                        "requires 2-element tuples"
+                except ValueError as err:
+                    util.raise_(
+                        ValueError(
+                            "dictionary update sequence "
+                            "requires 2-element tuples"
+                        ),
+                        replace_context=err,
                     )
 
         for key, value in kw:

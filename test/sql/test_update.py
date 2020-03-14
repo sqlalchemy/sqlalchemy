@@ -148,7 +148,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         u = update(
             table1,
             values={
-                table1.c.name: select([mt.c.name], mt.c.myid == table1.c.myid)
+                table1.c.name: select(
+                    [mt.c.name], mt.c.myid == table1.c.myid
+                ).scalar_subquery()
             },
         )
         self.assert_compile(
@@ -163,7 +165,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table2 = self.tables.myothertable
 
         # test against a regular constructed subquery
-        s = select([table2], table2.c.otherid == table1.c.myid)
+        s = select(
+            [table2], table2.c.otherid == table1.c.myid
+        ).scalar_subquery()
         u = update(table1, table1.c.name == "jack", values={table1.c.name: s})
         self.assert_compile(
             u,
@@ -329,10 +333,19 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            t.update(inline=True, values={"col3": "foo"}),
+            t.update().values({"col3": "foo"}),
             "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
             "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
             "col3=:col3",
+            inline_flag=False,
+        )
+
+        self.assert_compile(
+            t.update().inline().values({"col3": "foo"}),
+            "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
+            "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
+            "col3=:col3",
+            inline_flag=True,
         )
 
     def test_update_1(self):
@@ -619,6 +632,45 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
             "mytable.name = :param_2 || mytable.name || :param_3",
+        )
+
+    def test_update_ordered_parameters_multiple(self):
+        table1 = self.tables.mytable
+
+        stmt = update(table1)
+
+        stmt = stmt.ordered_values(("name", "somename"))
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "This statement already has ordered values present",
+            stmt.ordered_values,
+            ("myid", 10),
+        )
+
+    def test_update_ordered_then_nonordered(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.update().ordered_values(("myid", 1), ("name", "d1"))
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "This statement already has ordered values present",
+            stmt.values,
+            {"myid": 2, "name": "d2"},
+        )
+
+    def test_update_no_multiple_parameters_allowed(self):
+        table1 = self.tables.mytable
+
+        stmt = table1.update().values(
+            [{"myid": 1, "name": "n1"}, {"myid": 2, "name": "n2"}]
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "UPDATE construct does not support multiple parameter sets.",
+            stmt.compile,
         )
 
     def test_update_ordered_parameters_fire_onupdate(self):

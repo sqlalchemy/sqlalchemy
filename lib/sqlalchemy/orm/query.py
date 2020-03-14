@@ -26,7 +26,6 @@ from . import exc as orm_exc
 from . import interfaces
 from . import loading
 from . import persistence
-from . import properties
 from .base import _assertions
 from .base import _entity_descriptor
 from .base import _is_aliased_class
@@ -47,6 +46,7 @@ from .. import inspection
 from .. import log
 from .. import sql
 from .. import util
+from ..engine import result_tuple
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
@@ -56,7 +56,7 @@ from ..sql.base import _generative
 from ..sql.base import ColumnCollection
 from ..sql.base import Generative
 from ..sql.selectable import ForUpdateArg
-
+from ..util import collections_abc
 
 __all__ = ["Query", "QueryContext", "aliased"]
 
@@ -1017,15 +1017,18 @@ class Query(Generative):
                     for prop in mapper._identity_key_props
                 )
 
-            except KeyError:
-                raise sa_exc.InvalidRequestError(
-                    "Incorrect names of values in identifier to formulate "
-                    "primary key for query.get(); primary key attribute names"
-                    " are %s"
-                    % ",".join(
-                        "'%s'" % prop.key
-                        for prop in mapper._identity_key_props
-                    )
+            except KeyError as err:
+                util.raise_(
+                    sa_exc.InvalidRequestError(
+                        "Incorrect names of values in identifier to formulate "
+                        "primary key for query.get(); primary key attribute "
+                        "names are %s"
+                        % ",".join(
+                            "'%s'" % prop.key
+                            for prop in mapper._identity_key_props
+                        )
+                    ),
+                    replace_context=err,
                 )
 
         if (
@@ -1116,6 +1119,7 @@ class Query(Generative):
         """
         self._invoke_all_eagers = value
 
+    @util.preload_module("sqlalchemy.orm.relationships")
     def with_parent(self, instance, property=None, from_entity=None):  # noqa
         """Add filtering criterion that relates the given instance
         to a child object or collection, using its attribute state
@@ -1142,6 +1146,7 @@ class Query(Generative):
           "zero" entity of the :class:`.Query` itself.
 
         """
+        relationships = util.preloaded.orm_relationships
 
         if from_entity:
             entity_zero = inspect(from_entity)
@@ -1153,7 +1158,7 @@ class Query(Generative):
 
             for prop in mapper.iterate_properties:
                 if (
-                    isinstance(prop, properties.RelationshipProperty)
+                    isinstance(prop, relationships.RelationshipProperty)
                     and prop.mapper is entity_zero.mapper
                 ):
                     property = prop  # noqa
@@ -2525,14 +2530,18 @@ class Query(Generative):
                 raise sa_exc.InvalidRequestError(
                     "Can't determine which FROM clause to join "
                     "from, there are multiple FROMS which can "
-                    "join to this entity. Try adding an explicit ON clause "
-                    "to help resolve the ambiguity."
+                    "join to this entity. Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
-                    "Don't know how to join to %s; please use "
-                    "an ON clause to more clearly establish the left "
-                    "side of this join" % (right,)
+                    "Don't know how to join to %r. "
+                    "Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity." % (right,)
                 )
 
         elif self._entities:
@@ -2567,14 +2576,18 @@ class Query(Generative):
                 raise sa_exc.InvalidRequestError(
                     "Can't determine which FROM clause to join "
                     "from, there are multiple FROMS which can "
-                    "join to this entity. Try adding an explicit ON clause "
-                    "to help resolve the ambiguity."
+                    "join to this entity. Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
-                    "Don't know how to join to %s; please use "
-                    "an ON clause to more clearly establish the left "
-                    "side of this join" % (right,)
+                    "Don't know how to join to %r. "
+                    "Please use the .select_from() "
+                    "method to establish an explicit left side, as well as "
+                    "providing an explcit ON clause if not present already to "
+                    "help resolve the ambiguity." % (right,)
                 )
         else:
             raise sa_exc.InvalidRequestError(
@@ -3290,9 +3303,12 @@ class Query(Generative):
         """
         try:
             ret = self.one_or_none()
-        except orm_exc.MultipleResultsFound:
-            raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one()"
+        except orm_exc.MultipleResultsFound as err:
+            util.raise_(
+                orm_exc.MultipleResultsFound(
+                    "Multiple rows were found for one()"
+                ),
+                replace_context=err,
             )
         else:
             if ret is None:
@@ -3320,7 +3336,7 @@ class Query(Generative):
         """
         try:
             ret = self.one()
-            if not isinstance(ret, tuple):
+            if not isinstance(ret, collections_abc.Sequence):
                 return ret
             return ret[0]
         except orm_exc.NoResultFound:
@@ -4082,7 +4098,7 @@ class Query(Generative):
 
 class LockmodeArg(ForUpdateArg):
     @classmethod
-    def parse_legacy_query(self, mode):
+    def parse_legacy_query(cls, mode):
         if mode in (None, False):
             return None
 
@@ -4259,7 +4275,7 @@ class _MapperEntity(_QueryEntity):
             polymorphic_discriminator=self._polymorphic_discriminator,
         )
 
-        return _instance, self._label_name
+        return _instance, self._label_name, self.entities
 
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
@@ -4414,7 +4430,7 @@ class Bundle(InspectionAttr):
             :ref:`bundles` - includes an example of subclassing.
 
         """
-        keyed_tuple = util.lightweight_named_tuple("result", labels)
+        keyed_tuple = result_tuple(labels, [() for l in labels])
 
         def proc(row):
             return keyed_tuple([proc(row) for proc in procs])
@@ -4517,7 +4533,7 @@ class _BundleEntity(_QueryEntity):
             ent.setup_context(query, context)
 
     def row_processor(self, query, context, result):
-        procs, labels = zip(
+        procs, labels, extra = zip(
             *[
                 ent.row_processor(query, context, result)
                 for ent in self._entities
@@ -4526,7 +4542,7 @@ class _BundleEntity(_QueryEntity):
 
         proc = self.bundle.create_row_processor(query, procs, labels)
 
-        return proc, self._label_name
+        return proc, self._label_name, ()
 
 
 class _ColumnEntity(_QueryEntity):
@@ -4675,7 +4691,8 @@ class _ColumnEntity(_QueryEntity):
             column = context.adapter.columns[column]
 
         getter = result._getter(column)
-        return getter, self._label_name
+
+        return getter, self._label_name, (self.expr, self.column)
 
     def setup_context(self, query, context):
         column = query._adapt_clause(self.column, False, True)

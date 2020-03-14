@@ -273,17 +273,17 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
     # INSERT..RETURNING
     result = table.insert().returning(table.c.col1, table.c.col2).\
         values(name='foo')
-    print result.fetchall()
+    print(result.fetchall())
 
     # UPDATE..RETURNING
     result = table.update().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo').values(name='bar')
-    print result.fetchall()
+    print(result.fetchall())
 
     # DELETE..RETURNING
     result = table.delete().returning(table.c.col1, table.c.col2).\
         where(table.c.name=='foo')
-    print result.fetchall()
+    print(result.fetchall())
 
 .. _postgresql_insert_on_conflict:
 
@@ -567,7 +567,7 @@ syntaxes. It uses SQLAlchemy's hints mechanism::
 
     # SELECT ... FROM ONLY ...
     result = table.select().with_hint(table, 'ONLY', 'postgresql')
-    print result.fetchall()
+    print(result.fetchall())
 
     # UPDATE ONLY ...
     table.update(values=dict(foo='bar')).with_hint('ONLY',
@@ -2245,9 +2245,6 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
 
 
 class PGInspector(reflection.Inspector):
-    def __init__(self, conn):
-        reflection.Inspector.__init__(self, conn)
-
     def get_table_oid(self, table_name, schema=None):
         """Return the OID for the given table name."""
 
@@ -3515,12 +3512,18 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
             # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
             # "CHECK (some_boolean_function(a))"
-            m = re.match(r"^CHECK *\((.+)\)( NOT VALID)?$", src)
+            # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+
+            m = re.match(
+                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+            )
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.sub(r"^\((.+)\)$", r"\1", m.group(1))
+                sqltext = re.compile(
+                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
+                ).sub(r"\1", m.group(1))
             entry = {"name": name, "sqltext": sqltext}
             if m and m.group(2):
                 entry["dialect_options"] = {"not_valid": True}
@@ -3565,18 +3568,18 @@ class PGDialect(default.DefaultDialect):
         enums = []
         enum_by_name = {}
         for enum in c.fetchall():
-            key = (enum["schema"], enum["name"])
+            key = (enum.schema, enum.name)
             if key in enum_by_name:
-                enum_by_name[key]["labels"].append(enum["label"])
+                enum_by_name[key]["labels"].append(enum.label)
             else:
                 enum_by_name[key] = enum_rec = {
-                    "name": enum["name"],
-                    "schema": enum["schema"],
-                    "visible": enum["visible"],
+                    "name": enum.name,
+                    "schema": enum.schema,
+                    "visible": enum.visible,
                     "labels": [],
                 }
-                if enum["label"] is not None:
-                    enum_rec["labels"].append(enum["label"])
+                if enum.label is not None:
+                    enum_rec["labels"].append(enum.label)
                 enums.append(enum_rec)
         return enums
 
@@ -3595,10 +3598,11 @@ class PGDialect(default.DefaultDialect):
         """
 
         s = sql.text(SQL_DOMAINS).columns(attname=sqltypes.Unicode)
-        c = connection.execute(s)
+        c = connection.execution_options(future_result=True).execute(s)
 
         domains = {}
-        for domain in c.fetchall():
+        for domain in c.mappings():
+            domain = domain
             # strip (30) from character varying(30)
             attype = re.search(r"([^\(]+)", domain["attype"]).group(1)
             # 'visible' just means whether or not the domain is in a

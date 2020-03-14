@@ -71,14 +71,14 @@ class _SessionClassMethods(object):
         close_all_sessions()
 
     @classmethod
-    @util.dependencies("sqlalchemy.orm.util")
-    def identity_key(cls, orm_util, *args, **kwargs):
+    @util.preload_module("sqlalchemy.orm.util")
+    def identity_key(cls, *args, **kwargs):
         """Return an identity key.
 
         This is an alias of :func:`.util.identity_key`.
 
         """
-        return orm_util.identity_key(*args, **kwargs)
+        return util.perload.orm_util.identity_key(*args, **kwargs)
 
     @classmethod
     def object_session(cls, instance):
@@ -575,7 +575,7 @@ class SessionTransaction(object):
             self._parent._rollback_exception = sys.exc_info()[1]
 
         if rollback_err:
-            util.reraise(*rollback_err)
+            util.raise_(rollback_err[1], with_traceback=rollback_err[2])
 
         sess.dispatch.after_soft_rollback(sess, self)
 
@@ -1190,7 +1190,7 @@ class Session(_SessionClassMethods):
         The second positional argument to :meth:`.Session.execute` is an
         optional parameter set.  Similar to that of
         :meth:`.Connection.execute`, whether this is passed as a single
-        dictionary, or a list of dictionaries, determines whether the DBAPI
+        dictionary, or a sequence of dictionaries, determines whether the DBAPI
         cursor's ``execute()`` or ``executemany()`` is used to execute the
         statement.   An INSERT construct may be invoked for a single row::
 
@@ -1362,10 +1362,13 @@ class Session(_SessionClassMethods):
     def _add_bind(self, key, bind):
         try:
             insp = inspect(key)
-        except sa_exc.NoInspectionAvailable:
+        except sa_exc.NoInspectionAvailable as err:
             if not isinstance(key, type):
-                raise sa_exc.ArgumentError(
-                    "Not an acceptable bind target: %s" % key
+                util.raise_(
+                    sa_exc.ArgumentError(
+                        "Not an acceptable bind target: %s" % key
+                    ),
+                    replace_context=err,
                 )
             else:
                 self.__binds[key] = bind
@@ -1515,9 +1518,11 @@ class Session(_SessionClassMethods):
         if mapper is not None:
             try:
                 mapper = inspect(mapper)
-            except sa_exc.NoInspectionAvailable:
+            except sa_exc.NoInspectionAvailable as err:
                 if isinstance(mapper, type):
-                    raise exc.UnmappedClassError(mapper)
+                    util.raise_(
+                        exc.UnmappedClassError(mapper), replace_context=err,
+                    )
                 else:
                     raise
 
@@ -1656,7 +1661,7 @@ class Session(_SessionClassMethods):
                     "consider using a session.no_autoflush block if this "
                     "flush is occurring prematurely"
                 )
-                util.raise_from_cause(e)
+                util.raise_(e, with_traceback=sys.exc_info()[2])
 
     def refresh(
         self,
@@ -1711,8 +1716,10 @@ class Session(_SessionClassMethods):
         """
         try:
             state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(instance), replace_context=err,
+            )
 
         self._expire_state(state, attribute_names)
 
@@ -1817,8 +1824,10 @@ class Session(_SessionClassMethods):
         """
         try:
             state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(instance), replace_context=err,
+            )
         self._expire_state(state, attribute_names)
 
     def _expire_state(self, state, attribute_names):
@@ -1872,8 +1881,10 @@ class Session(_SessionClassMethods):
         """
         try:
             state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(instance), replace_context=err,
+            )
         if state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
                 "Instance %s is not present in this Session" % state_str(state)
@@ -2024,8 +2035,10 @@ class Session(_SessionClassMethods):
 
         try:
             state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(instance), replace_context=err,
+            )
 
         self._save_or_update_state(state)
 
@@ -2059,8 +2072,10 @@ class Session(_SessionClassMethods):
 
         try:
             state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(instance), replace_context=err,
+            )
 
         self._delete_impl(state, instance, head=True)
 
@@ -2490,8 +2505,10 @@ class Session(_SessionClassMethods):
         """
         try:
             state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(instance), replace_context=err,
+            )
         return self._contains_state(state)
 
     def __iter__(self):
@@ -2586,8 +2603,11 @@ class Session(_SessionClassMethods):
             for o in objects:
                 try:
                     state = attributes.instance_state(o)
-                except exc.NO_STATE:
-                    raise exc.UnmappedInstanceError(o)
+
+                except exc.NO_STATE as err:
+                    util.raise_(
+                        exc.UnmappedInstanceError(o), replace_context=err,
+                    )
                 objset.add(state)
         else:
             objset = None
@@ -2716,7 +2736,7 @@ class Session(_SessionClassMethods):
             **before using this method, and fully test and confirm the
             functionality of all code developed using these systems.**
 
-        :param objects: a list of mapped object instances.  The mapped
+        :param objects: a sequence of mapped object instances.  The mapped
          objects are persisted as is, and are **not** associated with the
          :class:`.Session` afterwards.
 
@@ -2769,7 +2789,7 @@ class Session(_SessionClassMethods):
         def key(state):
             return (state.mapper, state.key is not None)
 
-        obj_states = tuple(attributes.instance_state(obj) for obj in objects)
+        obj_states = (attributes.instance_state(obj) for obj in objects)
         if not preserve_order:
             obj_states = sorted(obj_states, key=key)
 
@@ -2819,11 +2839,11 @@ class Session(_SessionClassMethods):
          representing the single kind of object represented within the mapping
          list.
 
-        :param mappings: a list of dictionaries, each one containing the state
-         of the mapped row to be inserted, in terms of the attribute names
-         on the mapped class.   If the mapping refers to multiple tables,
-         such as a joined-inheritance mapping, each dictionary must contain
-         all keys to be populated into all tables.
+        :param mappings: a sequence of dictionaries, each one containing the
+         state of the mapped row to be inserted, in terms of the attribute
+         names on the mapped class.   If the mapping refers to multiple tables,
+         such as a joined-inheritance mapping, each dictionary must contain all
+         keys to be populated into all tables.
 
         :param return_defaults: when True, rows that are missing values which
          generate defaults, namely integer primary key defaults and sequences,
@@ -2910,14 +2930,14 @@ class Session(_SessionClassMethods):
          representing the single kind of object represented within the mapping
          list.
 
-        :param mappings: a list of dictionaries, each one containing the state
-         of the mapped row to be updated, in terms of the attribute names
-         on the mapped class.   If the mapping refers to multiple tables,
-         such as a joined-inheritance mapping, each dictionary may contain
-         keys corresponding to all tables.   All those keys which are present
-         and are not part of the primary key are applied to the SET clause
-         of the UPDATE statement; the primary key values, which are required,
-         are applied to the WHERE clause.
+        :param mappings: a sequence of dictionaries, each one containing the
+         state of the mapped row to be updated, in terms of the attribute names
+         on the mapped class.   If the mapping refers to multiple tables, such
+         as a joined-inheritance mapping, each dictionary may contain keys
+         corresponding to all tables.   All those keys which are present and
+         are not part of the primary key are applied to the SET clause of the
+         UPDATE statement; the primary key values, which are required, are
+         applied to the WHERE clause.
 
 
         .. seealso::
@@ -3450,8 +3470,10 @@ def object_session(instance):
 
     try:
         state = attributes.instance_state(instance)
-    except exc.NO_STATE:
-        raise exc.UnmappedInstanceError(instance)
+    except exc.NO_STATE as err:
+        util.raise_(
+            exc.UnmappedInstanceError(instance), replace_context=err,
+        )
     else:
         return _state_session(state)
 

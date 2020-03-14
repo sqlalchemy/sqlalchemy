@@ -88,6 +88,11 @@ class ProfileStatsFile(object):
 
         dbapi_key = config.db.name + "_" + config.db.driver
 
+        if config.db.name == "sqlite" and config.db.dialect._is_url_file_db(
+            config.db.url
+        ):
+            dbapi_key += "_file"
+
         # keep it at 2.7, 3.1, 3.2, etc. for now.
         py_version = ".".join([str(v) for v in sys.version_info[0:2]])
 
@@ -289,7 +294,6 @@ def count_functions(variance=0.05):
     print(("Pstats calls: %d Expected %s" % (callcount, expected_count)))
     stats.sort_stats(_profile_stats.sort)
     stats.print_stats()
-
     if _profile_stats.force_write:
         _profile_stats.replace(callcount)
     elif expected_count:

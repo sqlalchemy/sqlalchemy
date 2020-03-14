@@ -7,7 +7,6 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -16,15 +15,14 @@ from sqlalchemy.util import u
 from sqlalchemy.util import ue
 
 
-class UnicodeSchemaTest(fixtures.TestBase):
+class UnicodeSchemaTest(fixtures.TablesTest):
     __requires__ = ("unicode_ddl",)
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global metadata, t1, t2, t3
+    def define_tables(cls, metadata):
+        global t1, t2, t3
 
-        metadata = MetaData(testing.db)
         t1 = Table(
             u("unitable1"),
             metadata,
@@ -86,109 +84,104 @@ class UnicodeSchemaTest(fixtures.TestBase):
                 Column(ue("\u6e2c\u8a66_self"), Integer),
                 test_needs_fk=True,
             )
-        metadata.create_all()
 
-    @engines.close_first
-    def teardown(self):
-        if metadata.tables:
-            t3.delete().execute()
-            t2.delete().execute()
-            t1.delete().execute()
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
-
-    def test_insert(self):
-        t1.insert().execute({u("méil"): 1, ue("\u6e2c\u8a66"): 5})
-        t2.insert().execute({u("a"): 1, u("b"): 1})
-        t3.insert().execute(
+    def test_insert(self, connection):
+        connection.execute(t1.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 5})
+        connection.execute(t2.insert(), {u("a"): 1, u("b"): 1})
+        connection.execute(
+            t3.insert(),
             {
                 ue("\u6e2c\u8a66_id"): 1,
                 ue("unitable1_\u6e2c\u8a66"): 5,
                 u("Unitéble2_b"): 1,
                 ue("\u6e2c\u8a66_self"): 1,
-            }
+            },
         )
 
-        assert t1.select().execute().fetchall() == [(1, 5)]
-        assert t2.select().execute().fetchall() == [(1, 1)]
-        assert t3.select().execute().fetchall() == [(1, 5, 1, 1)]
+        eq_(connection.execute(t1.select()).fetchall(), [(1, 5)])
+        eq_(connection.execute(t2.select()).fetchall(), [(1, 1)])
+        eq_(connection.execute(t3.select()).fetchall(), [(1, 5, 1, 1)])
 
-    def test_col_targeting(self):
-        t1.insert().execute({u("méil"): 1, ue("\u6e2c\u8a66"): 5})
-        t2.insert().execute({u("a"): 1, u("b"): 1})
-        t3.insert().execute(
+    def test_col_targeting(self, connection):
+        connection.execute(t1.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 5})
+        connection.execute(t2.insert(), {u("a"): 1, u("b"): 1})
+        connection.execute(
+            t3.insert(),
             {
                 ue("\u6e2c\u8a66_id"): 1,
                 ue("unitable1_\u6e2c\u8a66"): 5,
                 u("Unitéble2_b"): 1,
                 ue("\u6e2c\u8a66_self"): 1,
-            }
+            },
         )
 
-        row = t1.select().execute().first()
-        eq_(row[t1.c[u("méil")]], 1)
-        eq_(row[t1.c[ue("\u6e2c\u8a66")]], 5)
+        row = connection.execute(t1.select()).first()
+        eq_(row._mapping[t1.c[u("méil")]], 1)
+        eq_(row._mapping[t1.c[ue("\u6e2c\u8a66")]], 5)
 
-        row = t2.select().execute().first()
-        eq_(row[t2.c[u("a")]], 1)
-        eq_(row[t2.c[u("b")]], 1)
+        row = connection.execute(t2.select()).first()
+        eq_(row._mapping[t2.c[u("a")]], 1)
+        eq_(row._mapping[t2.c[u("b")]], 1)
 
-        row = t3.select().execute().first()
-        eq_(row[t3.c[ue("\u6e2c\u8a66_id")]], 1)
-        eq_(row[t3.c[ue("unitable1_\u6e2c\u8a66")]], 5)
-        eq_(row[t3.c[u("Unitéble2_b")]], 1)
-        eq_(row[t3.c[ue("\u6e2c\u8a66_self")]], 1)
+        row = connection.execute(t3.select()).first()
+        eq_(row._mapping[t3.c[ue("\u6e2c\u8a66_id")]], 1)
+        eq_(row._mapping[t3.c[ue("unitable1_\u6e2c\u8a66")]], 5)
+        eq_(row._mapping[t3.c[u("Unitéble2_b")]], 1)
+        eq_(row._mapping[t3.c[ue("\u6e2c\u8a66_self")]], 1)
 
-    def test_reflect(self):
-        t1.insert().execute({u("méil"): 2, ue("\u6e2c\u8a66"): 7})
-        t2.insert().execute({u("a"): 2, u("b"): 2})
-        t3.insert().execute(
+    def test_reflect(self, connection):
+        connection.execute(t1.insert(), {u("méil"): 2, ue("\u6e2c\u8a66"): 7})
+        connection.execute(t2.insert(), {u("a"): 2, u("b"): 2})
+        connection.execute(
+            t3.insert(),
             {
                 ue("\u6e2c\u8a66_id"): 2,
                 ue("unitable1_\u6e2c\u8a66"): 7,
                 u("Unitéble2_b"): 2,
                 ue("\u6e2c\u8a66_self"): 2,
-            }
+            },
         )
 
-        meta = MetaData(testing.db)
-        tt1 = Table(t1.name, meta, autoload=True)
-        tt2 = Table(t2.name, meta, autoload=True)
-        tt3 = Table(t3.name, meta, autoload=True)
+        meta = MetaData()
+        tt1 = Table(t1.name, meta, autoload_with=connection)
+        tt2 = Table(t2.name, meta, autoload_with=connection)
+        tt3 = Table(t3.name, meta, autoload_with=connection)
 
-        tt1.insert().execute({u("méil"): 1, ue("\u6e2c\u8a66"): 5})
-        tt2.insert().execute({u("méil"): 1, ue("\u6e2c\u8a66"): 1})
-        tt3.insert().execute(
+        connection.execute(tt1.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 5})
+        connection.execute(tt2.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 1})
+        connection.execute(
+            tt3.insert(),
             {
                 ue("\u6e2c\u8a66_id"): 1,
                 ue("unitable1_\u6e2c\u8a66"): 5,
                 u("Unitéble2_b"): 1,
                 ue("\u6e2c\u8a66_self"): 1,
-            }
+            },
         )
 
-        self.assert_(
-            tt1.select(order_by=desc(u("méil"))).execute().fetchall()
-            == [(2, 7), (1, 5)]
+        eq_(
+            connection.execute(
+                tt1.select(order_by=desc(u("méil")))
+            ).fetchall(),
+            [(2, 7), (1, 5)],
         )
-        self.assert_(
-            tt2.select(order_by=desc(u("méil"))).execute().fetchall()
-            == [(2, 2), (1, 1)]
+        eq_(
+            connection.execute(
+                tt2.select(order_by=desc(u("méil")))
+            ).fetchall(),
+            [(2, 2), (1, 1)],
         )
-        self.assert_(
-            tt3.select(order_by=desc(ue("\u6e2c\u8a66_id")))
-            .execute()
-            .fetchall()
-            == [(2, 7, 2, 2), (1, 5, 1, 1)]
+        eq_(
+            connection.execute(
+                tt3.select(order_by=desc(ue("\u6e2c\u8a66_id")))
+            ).fetchall(),
+            [(2, 7, 2, 2), (1, 5, 1, 1)],
         )
 
     def test_repr(self):
-
-        m = MetaData()
+        meta = MetaData()
         t = Table(
-            ue("\u6e2c\u8a66"), m, Column(ue("\u6e2c\u8a66_id"), Integer)
+            ue("\u6e2c\u8a66"), meta, Column(ue("\u6e2c\u8a66_id"), Integer)
         )
 
         if util.py2k:

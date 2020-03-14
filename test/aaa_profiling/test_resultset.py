@@ -8,6 +8,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Unicode
+from sqlalchemy.engine.result import LegacyRow
 from sqlalchemy.engine.result import Row
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
@@ -110,7 +111,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
             "some other column", Integer
         )
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(variance=0.10)
         def go():
             c1 in row
 
@@ -158,6 +159,9 @@ class RowTest(fixtures.TestBase):
             def __init__(self):
                 pass
 
+            def _warn_for_nonint(self, arg):
+                pass
+
         metadata = MockMeta()
 
         keymap = {}
@@ -167,7 +171,34 @@ class RowTest(fixtures.TestBase):
             keymap[index] = (index, key)
         return row_cls(metadata, processors, keymap, row)
 
-    def _test_getitem_value_refcounts(self, seq_factory):
+    def _test_getitem_value_refcounts_legacy(self, seq_factory):
+        col1, col2 = object(), object()
+
+        def proc1(value):
+            return value
+
+        value1, value2 = "x", "y"
+        row = self._rowproxy_fixture(
+            [(col1, "a"), (col2, "b")],
+            [proc1, None],
+            seq_factory([value1, value2]),
+            LegacyRow,
+        )
+
+        v1_refcount = sys.getrefcount(value1)
+        v2_refcount = sys.getrefcount(value2)
+        for i in range(10):
+            row[col1]
+            row["a"]
+            row[col2]
+            row["b"]
+            row[0]
+            row[1]
+            row[0:2]
+        eq_(sys.getrefcount(value1), v1_refcount)
+        eq_(sys.getrefcount(value2), v2_refcount)
+
+    def _test_getitem_value_refcounts_new(self, seq_factory):
         col1, col2 = object(), object()
 
         def proc1(value):
@@ -184,10 +215,10 @@ class RowTest(fixtures.TestBase):
         v1_refcount = sys.getrefcount(value1)
         v2_refcount = sys.getrefcount(value2)
         for i in range(10):
-            row[col1]
-            row["a"]
-            row[col2]
-            row["b"]
+            row._mapping[col1]
+            row._mapping["a"]
+            row._mapping[col2]
+            row._mapping["b"]
             row[0]
             row[1]
             row[0:2]
@@ -195,7 +226,8 @@ class RowTest(fixtures.TestBase):
         eq_(sys.getrefcount(value2), v2_refcount)
 
     def test_value_refcounts_pure_tuple(self):
-        self._test_getitem_value_refcounts(tuple)
+        self._test_getitem_value_refcounts_legacy(tuple)
+        self._test_getitem_value_refcounts_new(tuple)
 
     def test_value_refcounts_custom_seq(self):
         class CustomSeq(object):
@@ -208,4 +240,5 @@ class RowTest(fixtures.TestBase):
             def __iter__(self):
                 return iter(self.data)
 
-        self._test_getitem_value_refcounts(CustomSeq)
+        self._test_getitem_value_refcounts_legacy(CustomSeq)
+        self._test_getitem_value_refcounts_new(CustomSeq)

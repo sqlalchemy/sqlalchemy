@@ -140,7 +140,8 @@ all existing tables in the target database.
 The above paragraph changes somewhat when the multiprocessing option
 is used, in that separate databases will be created instead, however
 in the case of Postgresql, the starting database is used as a template,
-so the starting database must still be empty.
+so the starting database must still be empty.  See below for example
+configurations using docker.
 
 The test runner will by default create and drop tables within the default
 database that's in the database URL, *unless* the multiprocessing option is in
@@ -216,6 +217,71 @@ Additional steps specific to individual databases are as follows::
 
      ALTER DATABASE MyDatabase SET READ_COMMITTED_SNAPSHOT ON
 
+Docker Configurations
+---------------------
+
+The SQLAlchemy test can run against database running in Docker containers.
+This ensures that they are empty and that their configuration is not influenced
+by any local usage.
+
+The following configurations are just examples that developers can use to
+quickly set up a local environment for SQLAlchemy development. They are **NOT**
+intended for production use!
+
+**PostgreSQL configuration**::
+
+    # only needed if a local image of postgres is not already present
+    docker pull postgres:12
+
+    # create the container with the proper configuration for sqlalchemy
+    docker run --rm -e POSTGRES_USER='scott' -e POSTGRES_PASSWORD='tiger' -e POSTGRES_DB='test' -p 127.0.0.1:5432:5432 -d --name postgres postgres:12-alpine
+
+    # configure the database
+    sleep 10
+    docker exec -ti postgres psql -U scott -c 'CREATE SCHEMA test_schema; CREATE SCHEMA test_schema_2;' test
+    # this last command is optional
+    docker exec -ti postgres bash sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/g' /var/lib/postgresql/data/postgresql.conf
+
+    # To stop the container. It will also remove it.
+    docker stop postgres
+
+**MySQL configuration**::
+
+    # only needed if a local image of mysql is not already present
+    docker pull mysql:8
+
+    # create the container with the proper configuration for sqlalchemy
+    docker run --rm -e MYSQL_USER='scott' -e MYSQL_PASSWORD='tiger' -e MYSQL_DATABASE='test' -e MYSQL_ROOT_PASSWORD='password' -p 127.0.0.1:3306:3306 -d --name mysql mysql:8 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+    # configure the database
+    sleep 20
+    docker exec -ti mysql mysql -u root -ppassword -D test -w -e "GRANT ALL ON *.* TO scott@'%'; CREATE DATABASE test_schema CHARSET utf8mb4; CREATE DATABASE test_schema_2 CHARSET utf8mb4;"
+
+    # To stop the container. It will also remove it.
+    docker stop mysql
+
+**MSSQL configuration**::
+
+    # only needed if a local image of mssql is not already present
+    docker pull mcr.microsoft.com/mssql/server:2019-CU1-ubuntu-16.04
+
+    # create the container with the proper configuration for sqlalchemy
+    # it will use the Developer version
+    docker run --rm -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=yourStrong(!)Password' -p 127.0.0.1:1433:1433 -d --name mssql mcr.microsoft.com/mssql/server:2019-CU2-ubuntu-16.04
+
+    # configure the database
+    sleep 20
+    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -Q "sp_configure 'contained database authentication', 1; RECONFIGURE; CREATE DATABASE test CONTAINMENT = PARTIAL; ALTER DATABASE test SET ALLOW_SNAPSHOT_ISOLATION ON; ALTER DATABASE test SET READ_COMMITTED_SNAPSHOT ON"
+    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -d test -Q "CREATE SCHEMA test_schema"
+    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -d test -Q "CREATE SCHEMA test_schema_2"
+    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -d test -Q "CREATE USER scott WITH PASSWORD = 'tiger^5HHH'; GRANT CONTROL TO scott"
+
+    # To stop the container. It will also remove it.
+    docker stop mssql
+
+NOTE: with this configuration the url to use is not the default one configured
+in setup, but ``mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test``.  It can
+be used with py.test by using ``--db docker_mssql``.
 
 CONFIGURING LOGGING
 -------------------

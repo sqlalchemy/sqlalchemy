@@ -102,6 +102,7 @@ class Connection(Connectable):
             self.__transaction = None
             self.__savepoint_seq = 0
             self.should_close_with_result = close_with_result
+
             self.__invalid = False
             self.__can_reconnect = True
             self._echo = self.engine._should_log_info()
@@ -489,6 +490,7 @@ class Connection(Connectable):
 
         return self.connection.info
 
+    @util.deprecated_20(":meth:`.Connection.connect`")
     def connect(self, close_with_result=False):
         """Returns a branched version of this :class:`.Connection`.
 
@@ -884,6 +886,13 @@ class Connection(Connectable):
 
         """
         if self.__branch_from:
+            util.warn_deprecated_20(
+                "The .close() method on a so-called 'branched' connection is "
+                "deprecated as of 1.4, as are 'branched' connections overall, "
+                "and will be removed in a future release.  If this is a "
+                "default-handling function, don't close the connection."
+            )
+
             try:
                 del self.__connection
             except AttributeError:
@@ -980,8 +989,10 @@ class Connection(Connectable):
             return self._execute_text(object_, multiparams, params)
         try:
             meth = object_._execute_on_connection
-        except AttributeError:
-            raise exc.ObjectNotExecutableError(object_)
+        except AttributeError as err:
+            util.raise_(
+                exc.ObjectNotExecutableError(object_), replace_context=err
+            )
         else:
             return meth(self, multiparams, params)
 
@@ -1263,45 +1274,43 @@ class Connection(Connectable):
                     self.dialect.do_execute(
                         cursor, statement, parameters, context
                     )
+
+            if self._has_events or self.engine._has_events:
+                self.dispatch.after_cursor_execute(
+                    self,
+                    cursor,
+                    statement,
+                    parameters,
+                    context,
+                    context.executemany,
+                )
+
+            if context.compiled:
+                context.post_exec()
+
+            result = context._setup_result_proxy()
+
+            if context.should_autocommit and self._root.__transaction is None:
+                self._root._commit_impl(autocommit=True)
+
+            # for "connectionless" execution, we have to close this
+            # Connection after the statement is complete.
+            if self.should_close_with_result:
+                assert not context._is_future_result
+
+                # ResultProxy already exhausted rows / has no rows.
+                # close us now
+                if result._soft_closed:
+                    self.close()
+                else:
+                    # ResultProxy will close this Connection when no more
+                    # rows to fetch.
+                    result._autoclose_connection = True
         except BaseException as e:
             self._handle_dbapi_exception(
                 e, statement, parameters, cursor, context
             )
 
-        if self._has_events or self.engine._has_events:
-            self.dispatch.after_cursor_execute(
-                self,
-                cursor,
-                statement,
-                parameters,
-                context,
-                context.executemany,
-            )
-
-        if context.compiled:
-            context.post_exec()
-
-        if context.is_crud or context.is_text:
-            result = context._setup_crud_result_proxy()
-        else:
-            result = context.get_result_proxy()
-            if result._metadata is None:
-                result._soft_close()
-
-        if context.should_autocommit and self._root.__transaction is None:
-            self._root._commit_impl(autocommit=True)
-
-        # for "connectionless" execution, we have to close this
-        # Connection after the statement is complete.
-        if self.should_close_with_result:
-            # ResultProxy already exhausted rows / has no rows.
-            # close us now
-            if result._soft_closed:
-                self.close()
-            else:
-                # ResultProxy will close this Connection when no more
-                # rows to fetch.
-                result._autoclose_connection = True
         return result
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
@@ -1387,7 +1396,7 @@ class Connection(Connectable):
         invalidate_pool_on_disconnect = not is_exit_exception
 
         if self._reentrant_error:
-            util.raise_from_cause(
+            util.raise_(
                 exc.DBAPIError.instance(
                     statement,
                     parameters,
@@ -1399,7 +1408,8 @@ class Connection(Connectable):
                     if context is not None
                     else None,
                 ),
-                exc_info,
+                with_traceback=exc_info[2],
+                from_=e,
             )
         self._reentrant_error = True
         try:
@@ -1489,11 +1499,13 @@ class Connection(Connectable):
                     self._autorollback()
 
             if newraise:
-                util.raise_from_cause(newraise, exc_info)
+                util.raise_(newraise, with_traceback=exc_info[2], from_=e)
             elif should_wrap:
-                util.raise_from_cause(sqlalchemy_exception, exc_info)
+                util.raise_(
+                    sqlalchemy_exception, with_traceback=exc_info[2], from_=e
+                )
             else:
-                util.reraise(*exc_info)
+                util.raise_(exc_info[1], with_traceback=exc_info[2])
 
         finally:
             del self._reentrant_error
@@ -1560,11 +1572,13 @@ class Connection(Connectable):
                 ) = ctx.is_disconnect
 
         if newraise:
-            util.raise_from_cause(newraise, exc_info)
+            util.raise_(newraise, with_traceback=exc_info[2], from_=e)
         elif should_wrap:
-            util.raise_from_cause(sqlalchemy_exception, exc_info)
+            util.raise_(
+                sqlalchemy_exception, with_traceback=exc_info[2], from_=e
+            )
         else:
-            util.reraise(*exc_info)
+            util.raise_(exc_info[1], with_traceback=exc_info[2])
 
     def _run_ddl_visitor(self, visitorcallable, element, **kwargs):
         """run a DDL visitor.
@@ -2222,6 +2236,13 @@ class Engine(Connectable, log.Identified):
         with self.connect() as conn:
             conn._run_ddl_visitor(visitorcallable, element, **kwargs)
 
+    @util.deprecated_20(
+        ":meth:`.Engine.execute`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`.",
+    )
     def execute(self, statement, *multiparams, **params):
         """Executes the given construct and returns a :class:`.ResultProxy`.
 
@@ -2237,10 +2258,17 @@ class Engine(Connectable, log.Identified):
         resource to be returned to the connection pool.
 
         """
-
         connection = self.connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
 
+    @util.deprecated_20(
+        ":meth:`.Engine.scalar`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
+        "used to return a scalar result.",
+    )
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 
@@ -2317,7 +2345,9 @@ class Engine(Connectable, log.Identified):
                     e, dialect, self
                 )
             else:
-                util.reraise(*sys.exc_info())
+                util.raise_(
+                    sys.exc_info()[1], with_traceback=sys.exc_info()[2]
+                )
 
     def raw_connection(self, _connection=None):
         """Return a "raw" DBAPI connection from the connection pool.

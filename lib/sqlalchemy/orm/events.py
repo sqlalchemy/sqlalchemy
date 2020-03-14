@@ -134,7 +134,7 @@ class InstanceEvents(event.Events):
         from sqlalchemy import event
 
         def my_load_listener(target, context):
-            print "on load!"
+            print("on load!")
 
         event.listen(SomeClass, 'load', my_load_listener)
 
@@ -183,8 +183,10 @@ class InstanceEvents(event.Events):
         _InstanceEventsHold.populate(class_, classmanager)
 
     @classmethod
-    @util.dependencies("sqlalchemy.orm")
-    def _accept_with(cls, orm, target):
+    @util.preload_module("sqlalchemy.orm")
+    def _accept_with(cls, target):
+        orm = util.preloaded.orm
+
         if isinstance(target, instrumentation.ClassManager):
             return target
         elif isinstance(target, mapperlib.Mapper):
@@ -665,8 +667,10 @@ class MapperEvents(event.Events):
         _MapperEventsHold.populate(class_, mapper)
 
     @classmethod
-    @util.dependencies("sqlalchemy.orm")
-    def _accept_with(cls, orm, target):
+    @util.preload_module("sqlalchemy.orm")
+    def _accept_with(cls, target):
+        orm = util.preloaded.orm
+
         if target is orm.mapper:
             return mapperlib.Mapper
         elif isinstance(target, type):
@@ -1295,7 +1299,7 @@ class SessionEvents(event.Events):
         from sqlalchemy.orm import sessionmaker
 
         def my_before_commit(session):
-            print "before commit!"
+            print("before commit!")
 
         Session = sessionmaker()
 

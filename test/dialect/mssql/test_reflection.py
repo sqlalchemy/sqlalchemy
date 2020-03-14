@@ -13,11 +13,10 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types
 from sqlalchemy import util
-from sqlalchemy.databases import mssql
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
 from sqlalchemy.dialects.mssql.information_schema import tables
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import eq_
@@ -415,7 +414,7 @@ class ReflectHugeViewTest(fixtures.TestBase):
         self.metadata.drop_all()
 
     def test_inspect_view_definition(self):
-        inspector = Inspector.from_engine(testing.db)
+        inspector = inspect(testing.db)
         view_def = inspector.get_view_definition("huge_named_view")
         eq_(view_def, self.view_str)
 

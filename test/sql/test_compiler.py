@@ -3642,16 +3642,17 @@ class UnsupportedTest(fixtures.TestBase):
     def test_unsupported_element_meth_visit_name(self):
         from sqlalchemy.sql.expression import ClauseElement
 
-        class SomeElement(ClauseElement):
-            @classmethod
-            def __visit_name__(cls):
-                return "some_element"
+        def go():
+            class SomeElement(ClauseElement):
+                @classmethod
+                def __visit_name__(cls):
+                    return "some_element"
 
         assert_raises_message(
-            exc.UnsupportedCompilationError,
-            r"Compiler <sqlalchemy.sql.compiler.StrSQLCompiler .*"
-            r"can't render element of type <class '.*SomeElement'>",
-            SomeElement().compile,
+            exc.InvalidRequestError,
+            r"__visit_name__ on class SomeElement must be a string at "
+            r"the class level",
+            go,
         )
 
     def test_unsupported_operator(self):
@@ -4817,7 +4818,11 @@ class ResultMapTest(fixtures.TestBase):
         Table("t1", m, astring)
         t2 = Table("t2", m, aint)
 
-        stmt = t2.insert().values(a=select([astring])).returning(aint)
+        stmt = (
+            t2.insert()
+            .values(a=select([astring]).scalar_subquery())
+            .returning(aint)
+        )
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
             comp._create_result_map(),
@@ -4841,7 +4846,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_nested_api(self):
-        from sqlalchemy.engine.result import ResultMetaData
+        from sqlalchemy.engine.result import CursorResultMetaData
 
         stmt2 = select([table2]).subquery()
 
@@ -4858,7 +4863,7 @@ class ResultMapTest(fixtures.TestBase):
                     with self._nested_result() as nested:
                         contexts[stmt2.element] = nested
                         text = super(MyCompiler, self).visit_select(
-                            stmt2.element
+                            stmt2.element,
                         )
                         self._add_to_result_map("k1", "k1", (1, 2, 3), int_)
                 else:
@@ -4870,7 +4875,7 @@ class ResultMapTest(fixtures.TestBase):
 
         comp = MyCompiler(default.DefaultDialect(), stmt1)
         eq_(
-            ResultMetaData._create_description_match_map(
+            CursorResultMetaData._create_description_match_map(
                 contexts[stmt2.element][0]
             ),
             {
@@ -4965,7 +4970,7 @@ class ResultMapTest(fixtures.TestBase):
         eq_(len(stmt.subquery().c), 7)
 
         # will render 7 as well
-        eq_(len(stmt._columns_plus_names), 7)
+        eq_(len(stmt._compile_state_factory(stmt, None).columns_plus_names), 7)
 
         wrapped = stmt._generate()
         wrapped = wrapped.add_columns(

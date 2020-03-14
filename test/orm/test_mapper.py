@@ -2704,7 +2704,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        from sqlalchemy.orm.properties import RelationshipProperty
+        from sqlalchemy.orm.relationships import RelationshipProperty
 
         # NOTE: this API changed in 0.8, previously __clause_element__()
         # gave the parent selecatable, now it gives the

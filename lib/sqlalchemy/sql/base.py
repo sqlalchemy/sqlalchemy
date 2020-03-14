@@ -16,6 +16,7 @@ import re
 
 from .traversals import HasCacheKey  # noqa
 from .visitors import ClauseVisitor
+from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 
@@ -46,6 +47,17 @@ class Immutable(object):
         pass
 
 
+class SingletonConstant(Immutable):
+    def __new__(cls, *arg, **kw):
+        return cls._singleton
+
+    @classmethod
+    def _create_singleton(cls):
+        obj = object.__new__(cls)
+        obj.__init__()
+        cls._singleton = obj
+
+
 class HasMemoized(object):
     def _reset_memoizations(self):
         self._memoized_property.expire_instance(self)
@@ -59,7 +71,19 @@ class HasMemoized(object):
 
 
 def _from_objects(*elements):
-    return itertools.chain(*[element._from_objects for element in elements])
+    return itertools.chain.from_iterable(
+        [element._from_objects for element in elements]
+    )
+
+
+def _select_iterables(elements):
+    """expand tables into individual columns in the
+    given list of column expressions.
+
+    """
+    return itertools.chain.from_iterable(
+        [c._select_iterable for c in elements]
+    )
 
 
 def _generative(fn):
@@ -128,8 +152,8 @@ class _DialectArgView(util.collections_abc.MutableMapping):
     def _key(self, key):
         try:
             dialect, value_key = key.split("_", 1)
-        except ValueError:
-            raise KeyError(key)
+        except ValueError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return dialect, value_key
 
@@ -138,17 +162,20 @@ class _DialectArgView(util.collections_abc.MutableMapping):
 
         try:
             opt = self.obj.dialect_options[dialect]
-        except exc.NoSuchModuleError:
-            raise KeyError(key)
+        except exc.NoSuchModuleError as err:
+            util.raise_(KeyError(key), replace_context=err)
         else:
             return opt[value_key]
 
     def __setitem__(self, key, value):
         try:
             dialect, value_key = self._key(key)
-        except KeyError:
-            raise exc.ArgumentError(
-                "Keys must be of the form <dialectname>_<argname>"
+        except KeyError as err:
+            util.raise_(
+                exc.ArgumentError(
+                    "Keys must be of the form <dialectname>_<argname>"
+                ),
+                replace_context=err,
             )
         else:
             self.obj.dialect_options[dialect][value_key] = value
@@ -205,6 +232,14 @@ class _DialectArgDict(util.collections_abc.MutableMapping):
         del self._non_defaults[key]
 
 
+@util.preload_module("sqlalchemy.dialects")
+def _kw_reg_for_dialect(dialect_name):
+    dialect_cls = util.preloaded.dialects.registry.load(dialect_name)
+    if dialect_cls.construct_arguments is None:
+        return None
+    return dict(dialect_cls.construct_arguments)
+
+
 class DialectKWArgs(object):
     """Establish the ability for a class to have dialect-specific arguments
     with defaults and constructor validation.
@@ -217,6 +252,10 @@ class DialectKWArgs(object):
         :attr:`.DefaultDialect.construct_arguments`
 
     """
+
+    _dialect_kwargs_traverse_internals = [
+        ("dialect_options", InternalTraversal.dp_dialect_options)
+    ]
 
     @classmethod
     def argument_for(cls, dialect_name, argument_name, default):
@@ -299,13 +338,6 @@ class DialectKWArgs(object):
         """A synonym for :attr:`.DialectKWArgs.dialect_kwargs`."""
         return self.dialect_kwargs
 
-    @util.dependencies("sqlalchemy.dialects")
-    def _kw_reg_for_dialect(dialects, dialect_name):
-        dialect_cls = dialects.registry.load(dialect_name)
-        if dialect_cls.construct_arguments is None:
-            return None
-        return dict(dialect_cls.construct_arguments)
-
     _kw_registry = util.PopulateDict(_kw_reg_for_dialect)
 
     def _kw_reg_for_dialect_cls(self, dialect_name):
@@ -383,6 +415,52 @@ class DialectKWArgs(object):
                     construct_arg_dictionary[arg_name] = kwargs[k]
 
 
+class CompileState(object):
+    """Produces additional object state necessary for a statement to be
+    compiled.
+
+    the :class:`.CompileState` class is at the base of classes that assemble
+    state for a particular statement object that is then used by the
+    compiler.   This process is essentially an extension of the process that
+    the SQLCompiler.visit_XYZ() method takes, however there is an emphasis
+    on converting raw user intent into more organized structures rather than
+    producing string output.   The top-level :class:`.CompileState` for the
+    statement being executed is also accessible when the execution context
+    works with invoking the statement and collecting results.
+
+    The production of :class:`.CompileState` is specific to the compiler,  such
+    as within the :meth:`.SQLCompiler.visit_insert`,
+    :meth:`.SQLCompiler.visit_select` etc. methods.  These methods are also
+    responsible for associating the :class:`.CompileState` with the
+    :class:`.SQLCompiler` itself, if the statement is the "toplevel" statement,
+    i.e. the outermost SQL statement that's actually being executed.
+    There can be other :class:`.CompileState` objects that are not the
+    toplevel, such as when a SELECT subquery or CTE-nested
+    INSERT/UPDATE/DELETE is generated.
+
+    .. versionadded:: 1.4
+
+    """
+
+    __slots__ = ("statement",)
+
+    @classmethod
+    def _create(cls, statement, compiler, **kw):
+        # factory construction.
+
+        # specific CompileState classes here will look for
+        # "plugins" in the given statement.  From there they will invoke
+        # the appropriate plugin constructor if one is found and return
+        # the alternate CompileState object.
+
+        c = cls.__new__(cls)
+        c.__init__(statement, compiler, **kw)
+        return c
+
+    def __init__(self, statement, compiler, **kw):
+        self.statement = statement
+
+
 class Generative(object):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator."""
@@ -391,6 +469,45 @@ class Generative(object):
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
         return s
+
+    def options(self, *options):
+        """Apply options to this statement.
+
+        In the general sense, options are any kind of Python object
+        that can be interpreted by the SQL compiler for the statement.
+        These options can be consumed by specific dialects or specific kinds
+        of compilers.
+
+        The most commonly known kind of option are the ORM level options
+        that apply "eager load" and other loading behaviors to an ORM
+        query.   However, options can theoretically be used for many other
+        purposes.
+
+        For background on specific kinds of options for specific kinds of
+        statements, refer to the documentation for those option objects.
+
+        .. versionchanged:: 1.4 - added :meth:`.Generative.options` to
+           Core statement objects towards the goal of allowing unified
+           Core / ORM querying capabilities.
+
+        .. seealso::
+
+            :ref:`deferred_options` - refers to options specific to the usage
+            of ORM queries
+
+            :ref:`relationship_loader_options` - refers to options specific
+            to the usage of ORM queries
+
+        """
+        self._options += options
+
+
+class HasCompileState(Generative):
+    """A class that has a :class:`.CompileState` associated with it."""
+
+    _compile_state_factory = CompileState._create
+
+    _compile_state_plugin = None
 
 
 class Executable(Generative):
@@ -463,6 +580,13 @@ class Executable(Generative):
         """
         return self._execution_options
 
+    @util.deprecated_20(
+        ":meth:`.Executable.execute`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`.",
+    )
     def execute(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`."""
         e = self.bind
@@ -476,6 +600,14 @@ class Executable(Generative):
             raise exc.UnboundExecutionError(msg)
         return e._execute_clauseelement(self, multiparams, params)
 
+    @util.deprecated_20(
+        ":meth:`.Executable.scalar`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
+        "used to return a scalar result.",
+    )
     def scalar(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`, returning the
         result's scalar representation.
@@ -624,6 +756,9 @@ class ColumnCollection(object):
     def keys(self):
         return [k for (k, col) in self._collection]
 
+    def __bool__(self):
+        return bool(self._collection)
+
     def __len__(self):
         return len(self._collection)
 
@@ -634,17 +769,17 @@ class ColumnCollection(object):
     def __getitem__(self, key):
         try:
             return self._index[key]
-        except KeyError:
+        except KeyError as err:
             if isinstance(key, util.int_types):
-                raise IndexError(key)
+                util.raise_(IndexError(key), replace_context=err)
             else:
                 raise
 
     def __getattr__(self, key):
         try:
             return self._index[key]
-        except KeyError:
-            raise AttributeError(key)
+        except KeyError as err:
+            util.raise_(AttributeError(key), replace_context=err)
 
     def __contains__(self, key):
         if key not in self._index:

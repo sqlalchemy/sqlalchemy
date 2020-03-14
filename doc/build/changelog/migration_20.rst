@@ -126,8 +126,8 @@ source will be fully annotated, as well as that ORM level integrations for
 SQLAlchemy 2.0 itself, and support for this new system in full is expected
 to occur over the course of many major releases.
 
-"Autocommit" removed from both Core and ORM
-===========================================
+Library-level (but not driver level) "Autocommit" removed from both Core and ORM
+================================================================================
 
 .. admonition:: Certainty: almost definitely
 
@@ -138,7 +138,8 @@ to occur over the course of many major releases.
   execution going away as well, so once applications make sure they are
   checking out connections for their Core operations, they need only use
   ``engine.begin()`` instead of ``engine.connect()``, which is already the
-  canonically documented pattern in the 1.x docs.
+  canonically documented pattern in the 1.x docs.   For true "autocommit", the
+  "AUTOCOMMIT" isolation level remains available.
 
 SQLAlchemy's first releases were at odds with the spirit of the Python
 DBAPI (:pep:`249`) in that
@@ -255,6 +256,33 @@ rollback will occur.  This is the case already for Core and ORM::
     # connection is returned to the pool, transaction is implicitly
     # rolled back.
     session.close()
+
+Driver-level autocommit remains available
+-----------------------------------------
+
+Use cases for driver-level autocommit include some DDL patterns, particularly
+on PostgreSQL, which require that autocommit mode at the database level is
+set up.  Similarly, an "autocommit" mode can apply to an application that
+is oriented in a per-statement style of organization and perhaps wants
+statements individually handled by special proxy servers.
+
+Because the Python DBAPI enforces a non-autocommit API by default, these
+modes of operation can only be enabled by DBAPI-specific features that
+re-enable autocommit.  SQLAlchemy allows this for backends that support
+it using the "autocommit isolation level" setting.  Even though "autocommit"
+is not technically a database isolation level, it effectively supersedes any
+other isolation level; this concept was first inspired by the psycopg2 database
+driver.
+
+To use a connection in autocommit mode::
+
+   with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+       result = conn.execute(...)
+
+The above code is already available in current SQLAlchemy releases.   Driver
+support is available for PostgreSQL, MySQL, SQL Server, and newer releases
+will include support for Oracle and SQLite as well.
+
 
 "Implicit" and "Connectionless" execution, "bound metadata" removed
 ====================================================================
@@ -408,60 +436,49 @@ The above pattern, if we do it, will not be a prominently encouraged public
 API; it will be used for particular extensions like "dynamic" relationships and
 Flask-style queries only.
 
-
-New "Invocation" Stage Between statement construction and Execution
-===================================================================
+execute() method more strict, .execution_options() are available on ORM Session
+================================================================================
 
 .. admonition:: Certainty: tentative
 
   Pending further prototyping, this is part of a larger plan that impacts
   statement compilation, execution, and result processing.
 
-A new "invocation" object and invocation step is added to :class:`.Connection`
-as well as :class:`.orm.Session` that provides where options related to the
-execution of a statement should occur.  This step is optional and handled
-automatically when :meth:`.Connection.execute` or :meth:`.Session.execute` is
-called, however is used explcitly for many new purposes::
+The use of execution options is expected to be more prominent as the Core and
+ORM are largely unified at the statement handling level.   To suit this,
+the :class:`.orm.Session` will be able to receive execution options local
+to a series of statement executions in the same way as that of
+:class:`.Connection`::
 
-    with engine.begin() as conn:
-        stmt = table.insert()
+    session = Session()
 
-        conn.invoke(stmt).params(foo='bar').execute()
+    result = session.execution_options(stream_per=100).execute(stmt)
 
-        stmt = select(table)
+The calling signature for the ``.execute()`` method itself will work in
+a "positional only" spirit, since :pep:`570` is only available in
+Python 3.8 and SQLAlchemy will still support Python 3.6 and 3.7 for a little
+longer.   The signature "in spirit" would be::
 
-        result = conn.invoke(stmt).execution_options(stream_results=True).execute()
-        for chunk in result.chunks(size=1000):
-            process(chunk)
+    # execute() signature once minimum version is Python 3.8
+    def execute(self, statement, params=None, /, **options):
 
+The interim signature will be::
 
-        result = conn.invoke(stmt).execution_options(enable_cache=False).execute()
+    def execute(self, statement, _params=None, **options):
 
-Similarly for ORM use::
+That is, by naming "``_params``" with an underscore we suggest that this
+be passed positionally and not by name.
 
-    stmt = select(User).join(User.addresses).where(User.name == 'foo')
+The ``**options`` keywords will be another way of passing execution options.
+So that an execution may look like::
 
-    result = session.invoke(stmt).execution_options(keep_results=True).execute()
+    result = connection.execute(table.insert(), {"foo": "bar"}, isolation_level='AUTOCOMMIT')
 
-    user = result.one()
-
-
-When an ``.execute()`` method is called directly from :class:`.Connection`
-or :class:`.Session`, the "invocation" object is returned, which then
-serves as the basis for retrieving result rows::
-
-    with engine.begin() as conn:
-
-      stmt = select(table).where(table.c.foo == 'bar')
-
-      # equivalent to conn.invoke(stmt).execute()
-      result = conn.execute(stmt)
-
-      rows = result.all()
+    result = session.execute(stmt, stream_per=100)
 
 
-ResultProxy replaced with InvocationContext which has more refined methods
-==========================================================================
+ResultProxy replaced with Result which has more refined methods and behaviors
+=============================================================================
 
 .. admonition:: Certainty: tentative
 
@@ -477,18 +494,19 @@ upon, where the more refined ORM-like methods ``.all()``, ``.one()`` and
 ``.first()`` will now also be how Core retrieves rows, replacing the
 cursor-like ``.fetchall()``, ``.fetchone()`` methods.   The notion of
 receiving "chunks" of a result at a time will be standardized across both
-systems using a method ``.chunks()`` which will behave similarly to
+systems using new methods ``.partitions`` and ``.chunks()`` which will behave similarly to
 ``.fetchmany()``, but will work in terms of iterators.
 
-These new methods will be available from the "invocation" object introduced
-in the preceding section, which will be present both in Core and ORM equally::
+These new methods will be available from the "Result" object that is similar to
+the existing "ResultProxy" object, but will be present both in Core and ORM
+equally::
 
     with engine.begin() as conn:
         stmt = table.insert()
 
         result = conn.execute(stmt)
 
-        # InvocationContext against an INSERT DML
+        # Result against an INSERT DML
         result.inserted_primary_key
 
         stmt = select(table)
@@ -500,8 +518,13 @@ in the preceding section, which will be present both in Core and ORM equally::
         result.one_or_none()  # first row or none, if second row exists it raises
         result.first()  # first row (warns if additional rows remain?)
         result  # iterator
-        result.chunks(size=1000)  # iterator of lists of size N
-        result.chunk(size=1000) # list of rows of size N
+
+        result.partitions(size=1000)  # partition result into iterator of lists of size N
+
+        # same, but do it using a server side cursor if the driver supports
+        # it
+        result = conn.execution_options(stream_per=1000).chunks()
+
 
         # limiting columns
 
@@ -522,6 +545,41 @@ in the preceding section, which will be present both in Core and ORM equally::
         result[0].all()  # same as result.scalars().all()
         result[2:5].all()  # same as result.columns('c', 'd', 'e').all()
 
+Result rows unified between Core and ORM on named-tuple interface
+==================================================================
+
+Already part of 1.4, the previous ``KeyedTuple`` class that was used when
+selecting rows from the :class:`.Query` object has been replaced by the
+:class:`.Row` class, which is the base of the same :class:`.Row` that comes
+back with Core statement results (in 1.4 it is the :class:`.LegacyRow` class).
+
+This :class:`.Row` behaves like a named tuple, in that it acts as a sequence
+but also supports attribute name access, e.g. ``row.some_column``.  However,
+it also provides the previous "mapping" behavior via the special attribute
+``row._mapping``, which produces a Python mapping such that keyed access
+such as ``row["some_column"]`` can be used.
+
+In order to receive results as mappings up front, the ``mappings()`` modifier
+on the result can be used::
+
+    result = session.execute(stmt)
+    for row in result.mappings():
+        print("the user is: %s" % row["User"])
+
+The :class:`.Row` class as used by the ORM also supports access via entity
+or attribute::
+
+    stmt = select(User, Address).join(User.addresses)
+
+    for row in session.execute(stmt).mappings():
+        print("the user is: %s  the address is: %s" % (
+            row[User],
+            row[Address]
+        ))
+
+.. seealso::
+
+    :ref:`change_4710_core`
 
 Declarative becomes a first class API
 =====================================

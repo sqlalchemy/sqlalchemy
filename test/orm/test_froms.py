@@ -28,7 +28,6 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.util import join
@@ -791,7 +790,9 @@ class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
             polymorphic_identity="a",
             polymorphic_on=a.c.type,
             with_polymorphic=("*", None),
-            properties={"link": relation(B, uselist=False, backref="back")},
+            properties={
+                "link": relationship(B, uselist=False, backref="back")
+            },
         )
         mapper(
             B,
@@ -3123,6 +3124,7 @@ class CustomJoinTest(QueryTest):
                         orders.c.isopen == 1, users.c.id == orders.c.user_id
                     ),
                     lazy="select",
+                    viewonly=True,
                 ),
                 closed_orders=relationship(
                     Order,
@@ -3130,6 +3132,7 @@ class CustomJoinTest(QueryTest):
                         orders.c.isopen == 0, users.c.id == orders.c.user_id
                     ),
                     lazy="select",
+                    viewonly=True,
                 ),
             ),
         )

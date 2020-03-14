@@ -360,6 +360,8 @@ class _ConnectionRecord(object):
             self.__connect(first_connect_check=True)
         self.finalize_callback = deque()
 
+    fresh = False
+
     fairy_ref = None
 
     starttime = None
@@ -574,9 +576,10 @@ class _ConnectionRecord(object):
             connection = pool._invoke_creator(self)
             pool.logger.debug("Created new connection %r", connection)
             self.connection = connection
+            self.fresh = True
         except Exception as e:
-            pool.logger.debug("Error on connect(): %s", e)
-            raise
+            with util.safe_reraise():
+                pool.logger.debug("Error on connect(): %s", e)
         else:
             if first_connect_check:
                 pool.dispatch.first_connect.for_modify(
@@ -699,7 +702,6 @@ class _ConnectionFairy(object):
         if fairy.connection is None:
             raise exc.InvalidRequestError("This connection is closed")
         fairy._counter += 1
-
         if (
             not pool.dispatch.checkout and not pool._pre_ping
         ) or fairy._counter != 1:
@@ -712,22 +714,30 @@ class _ConnectionFairy(object):
         # here.
         attempts = 2
         while attempts > 0:
+            connection_is_fresh = fairy._connection_record.fresh
+            fairy._connection_record.fresh = False
             try:
                 if pool._pre_ping:
-                    if fairy._echo:
-                        pool.logger.debug(
-                            "Pool pre-ping on connection %s", fairy.connection
-                        )
-
-                    result = pool._dialect.do_ping(fairy.connection)
-                    if not result:
+                    if not connection_is_fresh:
                         if fairy._echo:
                             pool.logger.debug(
-                                "Pool pre-ping on connection %s failed, "
-                                "will invalidate pool",
+                                "Pool pre-ping on connection %s",
                                 fairy.connection,
                             )
-                        raise exc.InvalidatePoolError()
+                        result = pool._dialect.do_ping(fairy.connection)
+                        if not result:
+                            if fairy._echo:
+                                pool.logger.debug(
+                                    "Pool pre-ping on connection %s failed, "
+                                    "will invalidate pool",
+                                    fairy.connection,
+                                )
+                            raise exc.InvalidatePoolError()
+                    elif fairy._echo:
+                        pool.logger.debug(
+                            "Connection %s is fresh, skipping pre-ping",
+                            fairy.connection,
+                        )
 
                 pool.dispatch.checkout(
                     fairy.connection, fairy._connection_record, fairy

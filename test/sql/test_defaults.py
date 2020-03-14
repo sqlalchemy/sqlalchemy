@@ -163,12 +163,7 @@ class DefaultTest(fixtures.TestBase):
 
         def mydefault_using_connection(ctx):
             conn = ctx.connection
-            try:
-                return conn.execute(sa.select([sa.text("12")])).scalar()
-            finally:
-                # ensure a "close()" on this connection does nothing,
-                # since its a "branched" connection
-                conn.close()
+            return conn.execute(sa.select([sa.text("12")])).scalar()
 
         use_function_defaults = testing.against("postgresql", "mssql")
         is_oracle = testing.against("oracle")
@@ -465,7 +460,7 @@ class DefaultTest(fixtures.TestBase):
             set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]),
         )
 
-        r = t.insert(inline=True).execute()
+        r = t.insert().inline().execute()
         assert r.lastrow_has_defaults()
         eq_(
             set(r.context.postfetch_cols),
@@ -663,16 +658,18 @@ class DefaultTest(fixtures.TestBase):
                 [const],
             )
             assert_raises_message(
-                sa.exc.InvalidRequestError,
-                "cannot be used directly as a column expression.",
-                str,
-                t.insert().values(col4=const),
+                sa.exc.ArgumentError,
+                "SQL expression element expected, got %s"
+                % const.__class__.__name__,
+                t.insert().values,
+                col4=const,
             )
             assert_raises_message(
-                sa.exc.InvalidRequestError,
-                "cannot be used directly as a column expression.",
-                str,
-                t.update().values(col4=const),
+                sa.exc.ArgumentError,
+                "SQL expression element expected, got %s"
+                % const.__class__.__name__,
+                t.update().values,
+                col4=const,
             )
 
     def test_missing_many_param(self):
@@ -689,7 +686,7 @@ class DefaultTest(fixtures.TestBase):
     def test_insert_values(self):
         t.insert(values={"col3": 50}).execute()
         result = t.select().execute()
-        eq_(50, result.first()["col3"])
+        eq_(50, result.first()._mapping["col3"])
 
     @testing.fails_on("firebird", "Data type unknown")
     def test_updatemany(self):
@@ -798,7 +795,7 @@ class DefaultTest(fixtures.TestBase):
         t.update(t.c.col1 == pk, values={"col3": 55}).execute()
         result = t.select(t.c.col1 == pk).execute()
         result = result.first()
-        eq_(55, result["col3"])
+        eq_(55, result._mapping["col3"])
 
 
 class CTEDefaultTest(fixtures.TablesTest):

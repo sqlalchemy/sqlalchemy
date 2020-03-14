@@ -14,8 +14,13 @@ mapped attributes.
 from __future__ import absolute_import
 
 from . import attributes
+from .descriptor_props import ComparableProperty
+from .descriptor_props import CompositeProperty
+from .descriptor_props import ConcreteInheritedProperty
+from .descriptor_props import SynonymProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
+from .relationships import RelationshipProperty
 from .util import _orm_full_deannotate
 from .. import log
 from .. import util
@@ -23,7 +28,14 @@ from ..sql import coercions
 from ..sql import roles
 
 
-__all__ = ["ColumnProperty"]
+__all__ = [
+    "ColumnProperty",
+    "ComparableProperty",
+    "CompositeProperty",
+    "ConcreteInheritedProperty",
+    "RelationshipProperty",
+    "SynonymProperty",
+]
 
 
 @log.class_logger
@@ -58,13 +70,16 @@ class ColumnProperty(StrategizedProperty):
     )
 
     def __init__(self, *columns, **kwargs):
-        r"""Provide a column-level property for use with a Mapper.
+        r"""Provide a column-level property for use with a mapping.
 
         Column-based properties can normally be applied to the mapper's
         ``properties`` dictionary using the :class:`.Column` element directly.
         Use this function when the given column is not directly present within
         the mapper's selectable; examples include SQL expressions, functions,
         and scalar SELECT queries.
+
+        The :func:`.orm.column_property` function returns an instance of
+        :class:`.ColumnProperty`.
 
         Columns that aren't present in the mapper's selectable won't be
         persisted by the mapper and are effectively "read-only" attributes.
@@ -128,6 +143,14 @@ class ColumnProperty(StrategizedProperty):
 
                 :ref:`deferred_raiseload`
 
+        .. seealso::
+
+            :ref:`column_property_options` - to map columns while including
+            mapping options
+
+            :ref:`mapper_column_property_sql_expressions` - to map SQL
+            expressions
+
         """
         super(ColumnProperty, self).__init__()
         self._orig_columns = [
@@ -179,16 +202,20 @@ class ColumnProperty(StrategizedProperty):
         if self.raiseload:
             self.strategy_key += (("raiseload", True),)
 
-    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
-    def _memoized_attr__deferred_column_loader(self, state, strategies):
+    @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__deferred_column_loader(self):
+        state = util.preloaded.orm_state
+        strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key),
             self.key,
         )
 
-    @util.dependencies("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
-    def _memoized_attr__raise_column_loader(self, state, strategies):
+    @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
+    def _memoized_attr__raise_column_loader(self):
+        state = util.preloaded.orm_state
+        strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
             strategies.LoadDeferredColumns(self.key, True),
@@ -205,6 +232,21 @@ class ColumnProperty(StrategizedProperty):
     @property
     def expression(self):
         """Return the primary column or expression for this ColumnProperty.
+
+        E.g.::
+
+
+            class File(Base):
+                # ...
+
+                name = Column(String(64))
+                extension = Column(String(8))
+                filename = column_property(name + '.' + extension)
+                path = column_property('C:/' + filename.expression)
+
+        .. seealso::
+
+            :ref:`mapper_column_property_sql_expressions_composed`
 
         """
         return self.columns[0]

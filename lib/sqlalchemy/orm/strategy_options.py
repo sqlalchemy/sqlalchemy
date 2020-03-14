@@ -252,11 +252,14 @@ class Load(HasCacheKey, Generative, MapperOption):
                 # use getattr on the class to work around
                 # synonyms, hybrids, etc.
                 attr = getattr(ent.class_, attr)
-            except AttributeError:
+            except AttributeError as err:
                 if raiseerr:
-                    raise sa_exc.ArgumentError(
-                        'Can\'t find property named "%s" on '
-                        "%s in this Query." % (attr, ent)
+                    util.raise_(
+                        sa_exc.ArgumentError(
+                            'Can\'t find property named "%s" on '
+                            "%s in this Query." % (attr, ent)
+                        ),
+                        replace_context=err,
                     )
                 else:
                     return None
@@ -1255,11 +1258,6 @@ def joinedload(*keys, **kw):
     return _UnboundLoad._from_keys(_UnboundLoad.joinedload, keys, False, kw)
 
 
-@joinedload._add_unbound_all_fn
-def joinedload_all(*keys, **kw):
-    return _UnboundLoad._from_keys(_UnboundLoad.joinedload, keys, True, kw)
-
-
 @loader_option()
 def subqueryload(loadopt, attr):
     """Indicate that the given attribute should be loaded using
@@ -1296,11 +1294,6 @@ def subqueryload(loadopt, attr):
 @subqueryload._add_unbound_fn
 def subqueryload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.subqueryload, keys, False, {})
-
-
-@subqueryload._add_unbound_all_fn
-def subqueryload_all(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.subqueryload, keys, True, {})
 
 
 @loader_option()
@@ -1342,11 +1335,6 @@ def selectinload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.selectinload, keys, False, {})
 
 
-@selectinload._add_unbound_all_fn
-def selectinload_all(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.selectinload, keys, True, {})
-
-
 @loader_option()
 def lazyload(loadopt, attr):
     """Indicate that the given attribute should be loaded using "lazy"
@@ -1368,11 +1356,6 @@ def lazyload(loadopt, attr):
 @lazyload._add_unbound_fn
 def lazyload(*keys):
     return _UnboundLoad._from_keys(_UnboundLoad.lazyload, keys, False, {})
-
-
-@lazyload._add_unbound_all_fn
-def lazyload_all(*keys):
-    return _UnboundLoad._from_keys(_UnboundLoad.lazyload, keys, True, {})
 
 
 @loader_option()
@@ -1730,7 +1713,7 @@ def with_expression(loadopt, key, expression):
 
     .. seealso::
 
-        :ref:`mapper_query_expression`
+        :ref:`mapper_querytime_expression`
 
     """
 

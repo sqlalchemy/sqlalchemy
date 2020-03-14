@@ -14,10 +14,12 @@ from sqlalchemy import util
 from sqlalchemy.engine import url
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_raises_message_context_ok
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -149,7 +151,7 @@ class PrePingMockTest(fixtures.TestBase):
     def setup(self):
         self.dbapi = MockDBAPI()
 
-    def _pool_fixture(self, pre_ping):
+    def _pool_fixture(self, pre_ping, pool_kw=None):
         dialect = url.make_url(
             "postgresql://foo:bar@localhost/test"
         ).get_dialect()()
@@ -158,6 +160,7 @@ class PrePingMockTest(fixtures.TestBase):
             creator=lambda: self.dbapi.connect("foo.db"),
             pre_ping=pre_ping,
             dialect=dialect,
+            **(pool_kw if pool_kw else {})
         )
 
         dialect.is_disconnect = lambda e, conn, cursor: isinstance(
@@ -167,6 +170,66 @@ class PrePingMockTest(fixtures.TestBase):
 
     def teardown(self):
         self.dbapi.dispose()
+
+    def test_ping_not_on_first_connect(self):
+        pool = self._pool_fixture(
+            pre_ping=True, pool_kw=dict(pool_size=1, max_overflow=0)
+        )
+
+        conn = pool.connect()
+        dbapi_conn = conn.connection
+        eq_(dbapi_conn.mock_calls, [])
+        conn.close()
+
+        # no ping, so no cursor() call.
+        eq_(dbapi_conn.mock_calls, [call.rollback()])
+
+        conn = pool.connect()
+        is_(conn.connection, dbapi_conn)
+
+        # ping, so cursor() call.
+        eq_(dbapi_conn.mock_calls, [call.rollback(), call.cursor()])
+
+        conn.close()
+
+        conn = pool.connect()
+        is_(conn.connection, dbapi_conn)
+
+        # ping, so cursor() call.
+        eq_(
+            dbapi_conn.mock_calls,
+            [call.rollback(), call.cursor(), call.rollback(), call.cursor()],
+        )
+
+        conn.close()
+
+    def test_ping_not_on_reconnect(self):
+        pool = self._pool_fixture(
+            pre_ping=True, pool_kw=dict(pool_size=1, max_overflow=0)
+        )
+
+        conn = pool.connect()
+        dbapi_conn = conn.connection
+        conn_rec = conn._connection_record
+        eq_(dbapi_conn.mock_calls, [])
+        conn.close()
+
+        conn = pool.connect()
+        is_(conn.connection, dbapi_conn)
+        # ping, so cursor() call.
+        eq_(dbapi_conn.mock_calls, [call.rollback(), call.cursor()])
+
+        conn.invalidate()
+
+        is_(conn.connection, None)
+
+        # connect again, make sure we're on the same connection record
+        conn = pool.connect()
+        is_(conn._connection_record, conn_rec)
+
+        # no ping
+        dbapi_conn = conn.connection
+        eq_(dbapi_conn.mock_calls, [])
 
     def test_connect_across_restart(self):
         pool = self._pool_fixture(pre_ping=True)
@@ -193,7 +256,7 @@ class PrePingMockTest(fixtures.TestBase):
 
         self.dbapi.shutdown("execute", stop=True)
 
-        assert_raises_message(
+        assert_raises_message_context_ok(
             MockDisconnect, "database is stopped", pool.connect
         )
 
@@ -242,7 +305,17 @@ class PrePingMockTest(fixtures.TestBase):
         old_dbapi_conn = conn.connection
         conn.close()
 
-        eq_(old_dbapi_conn.mock_calls, [call.cursor(), call.rollback()])
+        # no cursor() because no pre ping
+        eq_(old_dbapi_conn.mock_calls, [call.rollback()])
+
+        conn = pool.connect()
+        conn.close()
+
+        # connect again, we see pre-ping
+        eq_(
+            old_dbapi_conn.mock_calls,
+            [call.rollback(), call.cursor(), call.rollback()],
+        )
 
         self.dbapi.shutdown("execute", stop=True)
         self.dbapi.restart()
@@ -253,13 +326,19 @@ class PrePingMockTest(fixtures.TestBase):
         gc_collect()
 
         # new connection was reset on return appropriately
-        eq_(dbapi_conn.mock_calls, [call.cursor(), call.rollback()])
+        eq_(dbapi_conn.mock_calls, [call.rollback()])
 
         # old connection was just closed - did not get an
         # erroneous reset on return
         eq_(
             old_dbapi_conn.mock_calls,
-            [call.cursor(), call.rollback(), call.cursor(), call.close()],
+            [
+                call.rollback(),
+                call.cursor(),
+                call.rollback(),
+                call.cursor(),
+                call.close(),
+            ],
         )
 
 
@@ -757,7 +836,7 @@ class CursorErrTest(fixtures.TestBase):
 
     def test_cursor_shutdown_in_initialize(self):
         db = self._fixture(True, True)
-        assert_raises_message(
+        assert_raises_message_context_ok(
             exc.SAWarning, "Exception attempting to detect", db.connect
         )
         eq_(

@@ -23,8 +23,6 @@ from ._collections import IdentitySet  # noqa
 from ._collections import ImmutableContainer  # noqa
 from ._collections import immutabledict  # noqa
 from ._collections import ImmutableProperties  # noqa
-from ._collections import KeyedTuple  # noqa
-from ._collections import lightweight_named_tuple  # noqa
 from ._collections import LRUCache  # noqa
 from ._collections import ordered_column_set  # noqa
 from ._collections import OrderedDict  # noqa
@@ -60,7 +58,6 @@ from .compat import iterbytes  # noqa
 from .compat import itertools_filter  # noqa
 from .compat import itertools_filterfalse  # noqa
 from .compat import namedtuple  # noqa
-from .compat import nested  # noqa
 from .compat import next  # noqa
 from .compat import parse_qsl  # noqa
 from .compat import pickle  # noqa
@@ -70,6 +67,7 @@ from .compat import py33  # noqa
 from .compat import py36  # noqa
 from .compat import py3k  # noqa
 from .compat import quote_plus  # noqa
+from .compat import raise_  # noqa
 from .compat import raise_from_cause  # noqa
 from .compat import reduce  # noqa
 from .compat import reraise  # noqa
@@ -89,6 +87,7 @@ from .compat import with_metaclass  # noqa
 from .compat import zip_longest  # noqa
 from .deprecations import deprecated  # noqa
 from .deprecations import deprecated_20  # noqa
+from .deprecations import deprecated_20_cls  # noqa
 from .deprecations import deprecated_cls  # noqa
 from .deprecations import deprecated_params  # noqa
 from .deprecations import inject_docstring_text  # noqa
@@ -111,7 +110,6 @@ from .langhelpers import constructor_key  # noqa
 from .langhelpers import counter  # noqa
 from .langhelpers import decode_slice  # noqa
 from .langhelpers import decorator  # noqa
-from .langhelpers import dependencies  # noqa
 from .langhelpers import dictlike_iteritems  # noqa
 from .langhelpers import duck_type_collection  # noqa
 from .langhelpers import ellipses_string  # noqa
@@ -138,6 +136,8 @@ from .langhelpers import NoneType  # noqa
 from .langhelpers import only_once  # noqa
 from .langhelpers import PluginLoader  # noqa
 from .langhelpers import portable_instancemethod  # noqa
+from .langhelpers import preloaded  # noqa
+from .langhelpers import preload_module  # noqa
 from .langhelpers import quoted_token_parser  # noqa
 from .langhelpers import safe_reraise  # noqa
 from .langhelpers import set_creation_order  # noqa

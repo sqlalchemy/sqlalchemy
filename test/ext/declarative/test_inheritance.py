@@ -1917,7 +1917,7 @@ class ConcreteExtensionConfigTest(
             @declared_attr
             def something_else(cls):
                 counter(cls, "something_else")
-                return relationship("Something")
+                return relationship("Something", viewonly=True)
 
         class ConcreteConcreteAbstraction(AbstractConcreteAbstraction):
             __tablename__ = "cca"

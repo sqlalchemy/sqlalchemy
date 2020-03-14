@@ -64,13 +64,15 @@ class TypeEngine(Traversible):
             self.expr = expr
             self.type = expr.type
 
-        @util.dependencies("sqlalchemy.sql.default_comparator")
-        def operate(self, default_comparator, op, *other, **kwargs):
+        @util.preload_module("sqlalchemy.sql.default_comparator")
+        def operate(self, op, *other, **kwargs):
+            default_comparator = util.preloaded.sql_default_comparator
             o = default_comparator.operator_lookup[op.__name__]
             return o[0](self.expr, op, *(other + o[1:]), **kwargs)
 
-        @util.dependencies("sqlalchemy.sql.default_comparator")
-        def reverse_operate(self, default_comparator, op, other, **kwargs):
+        @util.preload_module("sqlalchemy.sql.default_comparator")
+        def reverse_operate(self, op, other, **kwargs):
+            default_comparator = util.preloaded.sql_default_comparator
             o = default_comparator.operator_lookup[op.__name__]
             return o[0](self.expr, op, other, reverse=True, *o[1:], **kwargs)
 
@@ -479,9 +481,12 @@ class TypeEngine(Traversible):
         try:
             return dialect._type_memos[self]["literal"]
         except KeyError:
-            d = self._dialect_info(dialect)
-            d["literal"] = lp = d["impl"].literal_processor(dialect)
-            return lp
+            pass
+        # avoid KeyError context coming into literal_processor() function
+        # raises
+        d = self._dialect_info(dialect)
+        d["literal"] = lp = d["impl"].literal_processor(dialect)
+        return lp
 
     def _cached_bind_processor(self, dialect):
         """Return a dialect-specific bind processor for this type."""
@@ -489,9 +494,12 @@ class TypeEngine(Traversible):
         try:
             return dialect._type_memos[self]["bind"]
         except KeyError:
-            d = self._dialect_info(dialect)
-            d["bind"] = bp = d["impl"].bind_processor(dialect)
-            return bp
+            pass
+        # avoid KeyError context coming into bind_processor() function
+        # raises
+        d = self._dialect_info(dialect)
+        d["bind"] = bp = d["impl"].bind_processor(dialect)
+        return bp
 
     def _cached_result_processor(self, dialect, coltype):
         """Return a dialect-specific result processor for this type."""
@@ -499,21 +507,27 @@ class TypeEngine(Traversible):
         try:
             return dialect._type_memos[self][coltype]
         except KeyError:
-            d = self._dialect_info(dialect)
-            # key assumption: DBAPI type codes are
-            # constants.  Else this dictionary would
-            # grow unbounded.
-            d[coltype] = rp = d["impl"].result_processor(dialect, coltype)
-            return rp
+            pass
+        # avoid KeyError context coming into result_processor() function
+        # raises
+        d = self._dialect_info(dialect)
+        # key assumption: DBAPI type codes are
+        # constants.  Else this dictionary would
+        # grow unbounded.
+        d[coltype] = rp = d["impl"].result_processor(dialect, coltype)
+        return rp
 
     def _cached_custom_processor(self, dialect, key, fn):
         try:
             return dialect._type_memos[self][key]
         except KeyError:
-            d = self._dialect_info(dialect)
-            impl = d["impl"]
-            d[key] = result = fn(impl)
-            return result
+            pass
+        # avoid KeyError context coming into fn() function
+        # raises
+        d = self._dialect_info(dialect)
+        impl = d["impl"]
+        d[key] = result = fn(impl)
+        return result
 
     def _dialect_info(self, dialect):
         """Return a dialect-specific registry which
@@ -601,8 +615,9 @@ class TypeEngine(Traversible):
 
         return dialect.type_compiler.process(self)
 
-    @util.dependencies("sqlalchemy.engine.default")
-    def _default_dialect(self, default):
+    @util.preload_module("sqlalchemy.engine.default")
+    def _default_dialect(self):
+        default = util.preloaded.engine_default
         if self.__class__.__module__.startswith("sqlalchemy.dialects"):
             tokens = self.__class__.__module__.split(".")[0:3]
             mod = ".".join(tokens)

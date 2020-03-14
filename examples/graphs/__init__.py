@@ -6,7 +6,7 @@ and querying for lower- and upper- neighbors are illustrated::
     n2 = Node(2)
     n5 = Node(5)
     n2.add_neighbor(n5)
-    print n2.higher_neighbors()
+    print(n2.higher_neighbors())
 
 .. autosource::
 

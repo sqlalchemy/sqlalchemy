@@ -512,15 +512,22 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update(values={"col1": 123}), "UPDATE t SET col1=%s"
         )
         self.assert_compile(
-            t.update(values={"col1": 123}, mysql_limit=5),
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=5),
             "UPDATE t SET col1=%s LIMIT 5",
         )
         self.assert_compile(
-            t.update(values={"col1": 123}, mysql_limit=None),
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=None),
             "UPDATE t SET col1=%s",
         )
         self.assert_compile(
-            t.update(t.c.col2 == 456, values={"col1": 123}, mysql_limit=1),
+            t.update()
+            .where(t.c.col2 == 456)
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=1),
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1",
         )
 
@@ -928,3 +935,28 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             "ON DUPLICATE KEY UPDATE bar = %s"
         )
         self.assert_compile(stmt, expected_sql)
+
+    def test_update_sql_expr(self):
+        stmt = insert(self.table).values(
+            [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]
+        )
+        stmt = stmt.on_duplicate_key_update(
+            bar=func.coalesce(stmt.inserted.bar),
+            baz=stmt.inserted.baz + "some literal",
+        )
+        expected_sql = (
+            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) ON "
+            "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
+            "baz = (concat(VALUES(baz), %s))"
+        )
+        self.assert_compile(
+            stmt,
+            expected_sql,
+            checkparams={
+                "id_m0": 1,
+                "bar_m0": "ab",
+                "id_m1": 2,
+                "bar_m1": "b",
+                "baz_1": "some literal",
+            },
+        )

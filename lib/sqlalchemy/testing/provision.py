@@ -6,7 +6,6 @@ from . import engines
 from ..engine import url as sa_url
 from ..util import compat
 
-
 log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
@@ -51,7 +50,9 @@ def setup_config(db_url, options, file_config, follower_ident):
     # load the dialect, which should also have it set up its provision
     # hooks
 
-    sa_url.make_url(db_url).get_dialect()
+    dialect = sa_url.make_url(db_url).get_dialect()
+    dialect.load_provisioning()
+
     if follower_ident:
         db_url = follower_url_from_main(db_url, follower_ident)
     db_opts = {}
@@ -160,12 +161,16 @@ def reap_dbs(idents_file):
 
     urls = collections.defaultdict(set)
     idents = collections.defaultdict(set)
+    dialects = {}
 
     with open(idents_file) as file_:
         for line in file_:
             line = line.strip()
             db_name, db_url = line.split(" ")
             url_obj = sa_url.make_url(db_url)
+            if db_name not in dialects:
+                dialects[db_name] = url_obj.get_dialect()
+                dialects[db_name].load_provisioning()
             url_key = (url_obj.get_backend_name(), url_obj.host)
             urls[url_key].add(db_url)
             idents[url_key].add(db_name)

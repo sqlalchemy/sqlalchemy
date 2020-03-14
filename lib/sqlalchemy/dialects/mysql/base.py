@@ -743,6 +743,8 @@ from collections import defaultdict
 import re
 import sys
 
+from sqlalchemy import literal_column
+from sqlalchemy.sql import visitors
 from . import reflection as _reflection
 from .enumerated import ENUM
 from .enumerated import SET
@@ -1303,17 +1305,31 @@ class MySQLCompiler(compiler.SQLCompiler):
             if coercions._is_literal(val):
                 val = elements.BindParameter(None, val, type_=column.type)
                 value_text = self.process(val.self_group(), use_schema=False)
-            elif isinstance(val, elements.BindParameter) and val.type._isnull:
-                val = val._clone()
-                val.type = column.type
-                value_text = self.process(val.self_group(), use_schema=False)
-            elif (
-                isinstance(val, elements.ColumnClause)
-                and val.table is on_duplicate.inserted_alias
-            ):
-                value_text = "VALUES(" + self.preparer.quote(column.name) + ")"
             else:
+
+                def replace(obj):
+                    if (
+                        isinstance(obj, elements.BindParameter)
+                        and obj.type._isnull
+                    ):
+                        obj = obj._clone()
+                        obj.type = column.type
+                        return obj
+                    elif (
+                        isinstance(obj, elements.ColumnClause)
+                        and obj.table is on_duplicate.inserted_alias
+                    ):
+                        obj = literal_column(
+                            "VALUES(" + self.preparer.quote(column.name) + ")"
+                        )
+                        return obj
+                    else:
+                        # element is not replaced
+                        return None
+
+                val = visitors.replacement_traverse(val, {}, replace)
                 value_text = self.process(val.self_group(), use_schema=False)
+
             name_text = self.preparer.quote(column.name)
             clauses.append("%s = %s" % (name_text, value_text))
 
@@ -2968,7 +2984,7 @@ class MySQLDialect(default.DefaultDialect):
             ).execute(st)
         except exc.DBAPIError as e:
             if self._extract_error_code(e.orig) == 1146:
-                raise exc.NoSuchTableError(full_name)
+                util.raise_(exc.NoSuchTableError(full_name), replace_context=e)
             else:
                 raise
         row = self._compat_first(rp, charset=charset)
@@ -2992,11 +3008,16 @@ class MySQLDialect(default.DefaultDialect):
             except exc.DBAPIError as e:
                 code = self._extract_error_code(e.orig)
                 if code == 1146:
-                    raise exc.NoSuchTableError(full_name)
+                    util.raise_(
+                        exc.NoSuchTableError(full_name), replace_context=e
+                    )
                 elif code == 1356:
-                    raise exc.UnreflectableTableError(
-                        "Table or view named %s could not be "
-                        "reflected: %s" % (full_name, e)
+                    util.raise_(
+                        exc.UnreflectableTableError(
+                            "Table or view named %s could not be "
+                            "reflected: %s" % (full_name, e)
+                        ),
+                        replace_context=e,
                     )
                 else:
                     raise

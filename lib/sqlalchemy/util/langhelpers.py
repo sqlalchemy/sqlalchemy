@@ -65,7 +65,9 @@ class safe_reraise(object):
             exc_type, exc_value, exc_tb = self._exc_info
             self._exc_info = None  # remove potential circular references
             if not self.warn_only:
-                compat.reraise(exc_type, exc_value, exc_tb)
+                compat.raise_(
+                    exc_value, with_traceback=exc_tb,
+                )
         else:
             if not compat.py3k and self._exc_info and self._exc_info[1]:
                 # emulate Py3K's behavior of telling us when an exception
@@ -76,7 +78,7 @@ class safe_reraise(object):
                     "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1])
                 )
             self._exc_info = None  # remove potential circular references
-            compat.reraise(type_, value, traceback)
+            compat.raise_(value, with_traceback=traceback)
 
 
 def string_or_unprintable(element):
@@ -985,135 +987,54 @@ class MemoizedSlots(object):
             return self._fallback_getattr(key)
 
 
-def dependency_for(modulename, add_to_all=False):
-    def decorate(obj):
-        tokens = modulename.split(".")
-        mod = compat.import_(
-            ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]]
-        )
-        mod = getattr(mod, tokens[-1])
-        setattr(mod, obj.__name__, obj)
-        if add_to_all and hasattr(mod, "__all__"):
-            mod.__all__.append(obj.__name__)
-        return obj
+class _ModuleRegistry:
+    """Registry of modules to load in a package init file.
 
-    return decorate
+    To avoid potential thread safety issues for imports that are deferred
+    in a function, like https://bugs.python.org/issue38884, these modules
+    are added to the system module cache by importing them after the packages
+    has finished initialization.
 
+    A global instance is provided under the name :attr:`.preloaded`. Use
+    the function :func:`.preload_module` to register modules to load and
+    :meth:`.import_prefix` to load all the modules that start with the
+    given path.
 
-class dependencies(object):
-    """Apply imported dependencies as arguments to a function.
-
-    E.g.::
-
-        @util.dependencies(
-            "sqlalchemy.sql.widget",
-            "sqlalchemy.engine.default"
-        );
-        def some_func(self, widget, default, arg1, arg2, **kw):
-            # ...
-
-    Rationale is so that the impact of a dependency cycle can be
-    associated directly with the few functions that cause the cycle,
-    and not pollute the module-level namespace.
-
+    While the modules are loaded in the global module cache, it's advisable
+    to access them using :attr:`.preloaded` to ensure that it was actually
+    registered. Each registered module is added to the instance ``__dict__``
+    in the form `<package>_<module>`, omitting ``sqlalchemy`` from the package
+    name. Example: ``sqlalchemy.sql.util`` becomes ``preloaded.sql_util``.
     """
 
-    def __init__(self, *deps):
-        self.import_deps = []
-        for dep in deps:
-            tokens = dep.split(".")
-            self.import_deps.append(
-                dependencies._importlater(".".join(tokens[0:-1]), tokens[-1])
-            )
+    def __init__(self, prefix="sqlalchemy"):
+        self.module_registry = set()
 
-    def __call__(self, fn):
-        import_deps = self.import_deps
-        spec = compat.inspect_getfullargspec(fn)
+    def preload_module(self, *deps):
+        """Adds the specified modules to the list to load.
 
-        spec_zero = list(spec[0])
-        hasself = spec_zero[0] in ("self", "cls")
+        This method can be used both as a normal function and as a decorator.
+        No change is performed to the decorated object.
+        """
+        self.module_registry.update(deps)
+        return lambda fn: fn
 
-        for i in range(len(import_deps)):
-            spec[0][i + (1 if hasself else 0)] = "import_deps[%r]" % i
-
-        inner_spec = format_argspec_plus(spec, grouped=False)
-
-        for impname in import_deps:
-            del spec_zero[1 if hasself else 0]
-        spec[0][:] = spec_zero
-
-        outer_spec = format_argspec_plus(spec, grouped=False)
-
-        code = "lambda %(args)s: fn(%(apply_kw)s)" % {
-            "args": outer_spec["args"],
-            "apply_kw": inner_spec["apply_kw"],
-        }
-
-        decorated = eval(code, locals())
-        decorated.__defaults__ = getattr(fn, "im_func", fn).__defaults__
-        return update_wrapper(decorated, fn)
-
-    @classmethod
-    def resolve_all(cls, path):
-        for m in list(dependencies._unresolved):
-            if m._full_path.startswith(path):
-                m._resolve()
-
-    _unresolved = set()
-    _by_key = {}
-
-    class _importlater(object):
-        _unresolved = set()
-
-        _by_key = {}
-
-        def __new__(cls, path, addtl):
-            key = path + "." + addtl
-            if key in dependencies._by_key:
-                return dependencies._by_key[key]
-            else:
-                dependencies._by_key[key] = imp = object.__new__(cls)
-                return imp
-
-        def __init__(self, path, addtl):
-            self._il_path = path
-            self._il_addtl = addtl
-            dependencies._unresolved.add(self)
-
-        @property
-        def _full_path(self):
-            return self._il_path + "." + self._il_addtl
-
-        @memoized_property
-        def module(self):
-            if self in dependencies._unresolved:
-                raise ImportError(
-                    "importlater.resolve_all() hasn't "
-                    "been called (this is %s %s)"
-                    % (self._il_path, self._il_addtl)
+    def import_prefix(self, path):
+        """Resolve all the modules in the registry that start with the
+        specified path.
+        """
+        for module in self.module_registry:
+            key = module.split("sqlalchemy.")[-1].replace(".", "_")
+            if module.startswith(path) and key not in self.__dict__:
+                tokens = module.split(".")
+                compat.import_(
+                    ".".join(tokens[0:-1]), globals(), locals(), [tokens[-1]]
                 )
+                self.__dict__[key] = sys.modules[module]
 
-            return getattr(self._initial_import, self._il_addtl)
 
-        def _resolve(self):
-            dependencies._unresolved.discard(self)
-            self._initial_import = compat.import_(
-                self._il_path, globals(), locals(), [self._il_addtl]
-            )
-
-        def __getattr__(self, key):
-            if key == "module":
-                raise ImportError(
-                    "Could not resolve module %s" % self._full_path
-                )
-            try:
-                attr = getattr(self.module, key)
-            except AttributeError:
-                raise AttributeError(
-                    "Module %s has no attribute '%s'" % (self._full_path, key)
-                )
-            self.__dict__[key] = attr
-            return attr
+preloaded = _ModuleRegistry()
+preload_module = preloaded.preload_module
 
 
 # from paste.deploy.converters

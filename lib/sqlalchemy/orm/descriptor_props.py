@@ -12,7 +12,6 @@ as actively in the load/persist ORM loop.
 """
 
 from . import attributes
-from . import properties
 from . import query
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
@@ -85,7 +84,6 @@ class DescriptorProperty(MapperProperty):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class CompositeProperty(DescriptorProperty):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
@@ -463,7 +461,6 @@ class CompositeProperty(DescriptorProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class ConcreteInheritedProperty(DescriptorProperty):
     """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
@@ -517,7 +514,6 @@ class ConcreteInheritedProperty(DescriptorProperty):
         self.descriptor = NoninheritedConcreteProp()
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 class SynonymProperty(DescriptorProperty):
     def __init__(
         self,
@@ -672,7 +668,10 @@ class SynonymProperty(DescriptorProperty):
         attr = getattr(self.parent.class_, self.name)
         return attr.impl.get_history(*arg, **kw)
 
+    @util.preload_module("sqlalchemy.orm.properties")
     def set_parent(self, parent, init):
+        properties = util.preloaded.orm_properties
+
         if self.map_column:
             # implement the 'map_column' option.
             if self.key not in parent.persist_selectable.c:
@@ -708,7 +707,6 @@ class SynonymProperty(DescriptorProperty):
         self.parent = parent
 
 
-@util.langhelpers.dependency_for("sqlalchemy.orm.properties", add_to_all=True)
 @util.deprecated_cls(
     "0.7",
     ":func:`.comparable_property` is deprecated and will be removed in a "
@@ -764,7 +762,7 @@ class ComparableProperty(DescriptorProperty):
         A mapping like the above allows the ``word_insensitive`` attribute
         to render an expression like::
 
-            >>> print SearchWord.word_insensitive == "Trucks"
+            >>> print(SearchWord.word_insensitive == "Trucks")
             lower(search_word.word) = lower(:lower_1)
 
         :param comparator_factory:

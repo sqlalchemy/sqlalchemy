@@ -15,7 +15,6 @@ organizes them in order of dependency, and executes.
 
 from . import attributes
 from . import exc as orm_exc
-from . import persistence
 from . import util as orm_util
 from .. import event
 from .. import util
@@ -568,7 +567,9 @@ class PostUpdateAll(PostSortRec):
         self.mapper = mapper
         self.isdelete = isdelete
 
+    @util.preload_module("sqlalchemy.orm.persistence")
     def execute(self, uow):
+        persistence = util.preloaded.orm_persistence
         states, cols = uow.post_update_states[self.mapper]
         states = [s for s in states if uow.states[s][0] == self.isdelete]
 
@@ -582,8 +583,9 @@ class SaveUpdateAll(PostSortRec):
         self.mapper = mapper
         assert mapper is mapper.base_mapper
 
+    @util.preload_module("sqlalchemy.orm.persistence")
     def execute(self, uow):
-        persistence.save_obj(
+        util.preloaded.orm_persistence.save_obj(
             self.mapper,
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
             uow,
@@ -617,8 +619,9 @@ class DeleteAll(PostSortRec):
         self.mapper = mapper
         assert mapper is mapper.base_mapper
 
+    @util.preload_module("sqlalchemy.orm.persistence")
     def execute(self, uow):
-        persistence.delete_obj(
+        util.preloaded.orm_persistence.delete_obj(
             self.mapper,
             uow.states_for_mapper_hierarchy(self.mapper, True, False),
             uow,
@@ -687,7 +690,9 @@ class SaveUpdateState(PostSortRec):
         self.state = state
         self.mapper = state.mapper.base_mapper
 
+    @util.preload_module("sqlalchemy.orm.persistence")
     def execute_aggregate(self, uow, recs):
+        persistence = util.preloaded.orm_persistence
         cls_ = self.__class__
         mapper = self.mapper
         our_recs = [
@@ -712,7 +717,9 @@ class DeleteState(PostSortRec):
         self.state = state
         self.mapper = state.mapper.base_mapper
 
+    @util.preload_module("sqlalchemy.orm.persistence")
     def execute_aggregate(self, uow, recs):
+        persistence = util.preloaded.orm_persistence
         cls_ = self.__class__
         mapper = self.mapper
         our_recs = [
