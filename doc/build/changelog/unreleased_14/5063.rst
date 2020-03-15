@@ -1,0 +1,7 @@
+.. change::
+    :tags: schema, reflection
+    :tickets: 5063
+
+    Reflect the computed columns from the backend when using the method
+    :meth:`Inspector.get_columns`. The method :meth:`.Inspector.reflecttable`
+    uses the :class:`Computed` when initializing a computed column.

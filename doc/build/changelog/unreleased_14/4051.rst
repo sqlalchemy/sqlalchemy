@@ -1,0 +1,6 @@
+.. change::
+    :tags: docs
+    :tickets: 4051
+
+    Improve the documentation in :meth:`Inspector.get_columns`, correctly
+    listing all the returned keys.
