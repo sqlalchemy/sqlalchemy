@@ -328,7 +328,7 @@ when new elements are added to the dictionary::
             return 'Keyword(%s)' % repr(self.keyword)
 
 We illustrate the ``.keywords`` collection as a dictionary, mapping the
-``UserKeyword.string_key`` value to ``Keyword`` objects::
+``UserKeyword.special_key`` value to ``Keyword`` objects::
 
     >>> user = User('log')
 
