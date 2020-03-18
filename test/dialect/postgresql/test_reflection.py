@@ -1077,7 +1077,7 @@ class ReflectionTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_index_reflection_with_access_method(self):
-        """reflect indexes with storage options set"""
+        """reflect indexes with access method set"""
 
         metadata = self.metadata
 
