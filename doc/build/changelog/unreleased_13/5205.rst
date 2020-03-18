@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 5205
+
+    Fixed issue where a "covering" index, e.g. those which have an  INCLUDE
+    clause, would be reflected including all the columns in INCLUDE clause as
+    regular columns.  A warning is now emitted if these additional columns are
+    detected indicating that they are currently ignored.  Note that full
+    support for "covering" indexes is part of :ticket:`4458`.  Pull request
+    courtesy Marat Sharafutdinov.
