@@ -1,5 +1,8 @@
 .. change::
-    :tags: usecase, postgresql
+    :tags: bug, postgresql
     :tickets: 5205
 
-    Fixed reflection of covering indexes. They were added in PostgreSQL 11.
+    Fixed issue where a "covering" index, e.g. those which have an 
+    INCLUDE clause, would be reflected including all the columns in INCLUDE
+    clause as regular columns.  Note that full support for "covering"
+    indexes is part of :ticket:`4458`.  Pull request courtesy Marat Sharafutdinov.
