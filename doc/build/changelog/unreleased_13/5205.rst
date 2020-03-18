@@ -1,0 +1,5 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 5205
+
+    Fixed reflection of covering indexes. They were added in PostgreSQL 11.
