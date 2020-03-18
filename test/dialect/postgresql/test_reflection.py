@@ -1110,6 +1110,38 @@ class ReflectionTest(fixtures.TestBase):
                 "gin",
             )
 
+    @testing.skip_if("postgresql < 11.0", "indnkeyatts not supported")
+    @testing.provide_metadata
+    def test_index_reflection_with_include(self):
+        """reflect indexes with include set"""
+
+        metadata = self.metadata
+
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", ARRAY(Integer)),
+            Column("name", String(20)),
+        )
+        metadata.create_all()
+        with testing.db.connect() as conn:
+            conn.execute("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
+
+            # prior to #5205, this would return:
+            # [{'column_names': ['x', 'name'],
+            #  'name': 'idx1', 'unique': False}]
+
+            with testing.expect_warnings(
+                "INCLUDE columns for "
+                "covering index idx1 ignored during reflection"
+            ):
+                ind = testing.db.dialect.get_indexes(conn, "t", None)
+            eq_(
+                ind,
+                [{"unique": False, "column_names": ["x"], "name": "idx1"}],
+            )
+
     @testing.provide_metadata
     def test_foreign_key_option_inspection(self):
         metadata = self.metadata

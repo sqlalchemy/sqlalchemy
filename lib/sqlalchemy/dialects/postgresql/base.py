@@ -3259,7 +3259,8 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, NULL, ix.indkey%s,
-                  %s, %s, am.amname
+                  %s, %s, am.amname,
+                  NULL as indnkeyatts
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -3296,7 +3297,8 @@ class PGDialect(default.DefaultDialect):
                   i.relname as relname,
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
-                  ix.indoption::varchar, i.reloptions, am.amname
+                  ix.indoption::varchar, i.reloptions, am.amname,
+                  %s as indnkeyatts
               FROM
                   pg_class t
                         join pg_index ix on t.oid = ix.indrelid
@@ -3319,7 +3321,11 @@ class PGDialect(default.DefaultDialect):
               ORDER BY
                   t.relname,
                   i.relname
-            """
+            """ % (
+                "ix.indnkeyatts"
+                if self.server_version_info >= (11, 0)
+                else "NULL",
+            )
 
         t = sql.text(IDX_SQL).columns(
             relname=sqltypes.Unicode, attname=sqltypes.Unicode
@@ -3342,6 +3348,7 @@ class PGDialect(default.DefaultDialect):
                 idx_option,
                 options,
                 amname,
+                indnkeyatts,
             ) = row
 
             if expr:
@@ -3365,7 +3372,18 @@ class PGDialect(default.DefaultDialect):
             if col is not None:
                 index["cols"][col_num] = col
             if not has_idx:
-                index["key"] = [int(k.strip()) for k in idx_key.split()]
+                idx_keys = idx_key.split()
+                # "The number of key columns in the index, not counting any
+                # included columns, which are merely stored and do not
+                # participate in the index semantics"
+                if indnkeyatts and idx_keys[indnkeyatts:]:
+                    util.warn(
+                        "INCLUDE columns for covering index %s "
+                        "ignored during reflection" % (idx_name,)
+                    )
+                    idx_keys = idx_keys[:indnkeyatts]
+
+                index["key"] = [int(k.strip()) for k in idx_keys]
 
                 # (new in pg 8.3)
                 # "pg_index.indoption" is list of ints, one per column/expr.
