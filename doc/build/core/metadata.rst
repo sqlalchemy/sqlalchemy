@@ -241,16 +241,15 @@ such as by passing a string to :meth:`.Connection.execute` or by using the
 :class:`.DDL` construct, it's a common practice to automate the maintenance of
 database schemas in relation to application code using schema migration tools.
 
-There are two major migration tools available for SQLAlchemy:
+The SQLAlchemy project offers the  `Alembic <https://alembic.sqlalchemy.org>`_
+migration tool for this purpose.   Alembic features a highly customizable
+environment and a minimalistic usage pattern, supporting such features as
+transactional DDL, automatic generation of "candidate" migrations, an "offline"
+mode which generates SQL scripts, and support for branch resolution.
 
-* `Alembic <https://alembic.sqlalchemy.org>`_ - Written by the author of SQLAlchemy,
-  Alembic features a highly customizable environment and a minimalistic usage pattern,
-  supporting such features as transactional DDL, automatic generation of "candidate"
-  migrations, an "offline" mode which generates SQL scripts, and support for branch
-  resolution.
-* `SQLAlchemy-Migrate <https://github.com/openstack/sqlalchemy-migrate>`_ - The original
-  migration tool for SQLAlchemy, SQLAlchemy-Migrate is still used by projects
-  such as Openstack, however is being superseded by Alembic.
+Alembic supersedes the `SQLAlchemy-Migrate
+<https://github.com/openstack/sqlalchemy-migrate>`_   project, which is the
+original migration tool for SQLAlchemy and is now  considered legacy.
 
 
 Specifying the Schema Name
