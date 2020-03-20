@@ -32,14 +32,12 @@ which represents just one connection resource - the :class:`.Engine` is most
 efficient when created just once at the module level of an application, not
 per-object or per-function call.
 
-For a multiple-process application that uses the ``os.fork`` system call, or
-for example the Python ``multiprocessing`` module, it's usually required that a
-separate :class:`.Engine` be used for each child process. This is because the
-:class:`.Engine` maintains a reference to a connection pool that ultimately
-references DBAPI connections - these tend to not be portable across process
-boundaries. An :class:`.Engine` that is configured not to use pooling (which
-is achieved via the usage of :class:`.NullPool`) does not have this
-requirement.
+.. sidebar:: tip
+
+    When using an :class:`.Engine` with multiple Python processes, such as when
+    using ``os.fork`` or Python ``multiprocessing``, it's important that the
+    engine is initialized per process.  See :ref:`pooling_multiprocessing` for
+    details.
 
 The engine can be used directly to issue SQL to the database. The most generic
 way is first procure a connection resource, which you get via the

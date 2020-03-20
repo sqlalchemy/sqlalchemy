@@ -430,6 +430,7 @@ Note that the flag only applies to :class:`.QueuePool` use.
     :ref:`pool_disconnects`
 
 
+.. _pooling_multiprocessing:
 
 Using Connection Pools with Multiprocessing
 -------------------------------------------
