@@ -85,6 +85,8 @@ The example below illustrates this lifecycle::
         # invalid state is removed.
         session.close()
 
+
+
 .. _session_begin_nested:
 
 Using SAVEPOINT
@@ -165,7 +167,9 @@ complete.
     considered for new projects.   If autocommit mode is used, it is strongly
     advised that the application at least ensure that transaction scope
     is made present via the :meth:`.Session.begin` method, rather than
-    using the session in pure autocommit mode.
+    using the session in pure autocommit mode.   An upcoming release of
+    SQLAlchemy will include a new mode of usage that provides this pattern
+    as a first class feature.
 
     If the :meth:`.Session.begin` method is not used, and operations are allowed
     to proceed using ad-hoc connections with immediate autocommit, then the
