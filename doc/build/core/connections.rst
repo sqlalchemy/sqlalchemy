@@ -25,10 +25,10 @@ the :func:`.create_engine` call::
 
 The typical usage of :func:`.create_engine()` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
-:class:`.Engine` manages many individual DBAPI connections on behalf of the
-process and is intended to be called upon in a concurrent fashion. The
-:class:`.Engine` is **not** synonymous to the DBAPI ``connect`` function,
-which represents just one connection resource - the :class:`.Engine` is most
+:class:`.Engine` manages many individual :term:`DBAPI` connections on behalf of
+the process and is intended to be called upon in a concurrent fashion. The
+:class:`.Engine` is **not** synonymous to the DBAPI ``connect`` function, which
+represents just one connection resource - the :class:`.Engine` is most
 efficient when created just once at the module level of an application, not
 per-object or per-function call.
 
@@ -39,62 +39,39 @@ per-object or per-function call.
     engine is initialized per process.  See :ref:`pooling_multiprocessing` for
     details.
 
-The engine can be used directly to issue SQL to the database. The most generic
-way is first procure a connection resource, which you get via the
-:meth:`.Engine.connect` method::
 
-    connection = engine.connect()
-    result = connection.execute("select username from users")
-    for row in result:
-        print("username:", row['username'])
-    connection.close()
+The most basic function of the :class:`.Engine` is to provide access to a
+:class:`.Connection`, which can then invoke SQL statements.   To emit
+a textual statement to the database looks like::
 
-The connection is an instance of :class:`.Connection`,
-which is a **proxy** object for an actual DBAPI connection.  The DBAPI
-connection is retrieved from the connection pool at the point at which
-:class:`.Connection` is created.
+    with engine.connect() as connection:
+        result = connection.execute("select username from users")
+        for row in result:
+            print("username:", row['username'])
 
-The returned result is an instance of :class:`.ResultProxy`, which
-references a DBAPI cursor and provides a largely compatible interface
-with that of the DBAPI cursor.   The DBAPI cursor will be closed
+Above, the :meth:`.Engine.connect` method returns a :class:`.Connection`
+object, and by using it in a Python context manager (e.g. the ``with:``
+statement) the :meth:`.Connection.close` method is automatically invoked at the
+end of the block.  The :class:`.Connection`, is a **proxy** object for an
+actual DBAPI connection. The DBAPI connection is retrieved from the connection
+pool at the point at which :class:`.Connection` is created.
+
+The object returned is known as :class:`.ResultProxy`, which
+references a DBAPI cursor and provides methods for fetching rows
+similar to that of the DBAPI cursor.   The DBAPI cursor will be closed
 by the :class:`.ResultProxy` when all of its result rows (if any) are
 exhausted.  A :class:`.ResultProxy` that returns no rows, such as that of
 an UPDATE statement (without any returned rows),
 releases cursor resources immediately upon construction.
 
-When the :meth:`~.Connection.close` method is called, the referenced DBAPI
-connection is :term:`released` to the connection pool.   From the perspective
-of the database itself, nothing is actually "closed", assuming pooling is
-in use.  The pooling mechanism issues a ``rollback()`` call on the DBAPI
-connection so that any transactional state or locks are removed, and
-the connection is ready for its next usage.
-
-The above procedure can be performed in a shorthand way by using the
-:meth:`~.Engine.execute` method of :class:`.Engine` itself::
-
-    result = engine.execute("select username from users")
-    for row in result:
-        print("username:", row['username'])
-
-Where above, the :meth:`~.Engine.execute` method acquires a new
-:class:`.Connection` on its own, executes the statement with that object,
-and returns the :class:`.ResultProxy`.  In this case, the :class:`.ResultProxy`
-contains a special flag known as ``close_with_result``, which indicates
-that when its underlying DBAPI cursor is closed, the :class:`.Connection`
-object itself is also closed, which again returns the DBAPI connection
-to the connection pool, releasing transactional resources.
-
-If the :class:`.ResultProxy` potentially has rows remaining, it can be
-instructed to close out its resources explicitly::
-
-    result.close()
-
-If the :class:`.ResultProxy` has pending rows remaining and is dereferenced by
-the application without being closed, Python garbage collection will
-ultimately close out the cursor as well as trigger a return of the pooled
-DBAPI connection resource to the pool (SQLAlchemy achieves this by the usage
-of weakref callbacks - *never* the ``__del__`` method) - however it's never a
-good idea to rely upon Python garbage collection to manage resources.
+When the :class:`.Connection` is closed at the end of the ``with:`` block, the
+referenced DBAPI connection is :term:`released` to the connection pool.   From
+the perspective of the database itself, the connection pool will not actually
+"close" the connection assuming the pool has room to store this connection  for
+the next use.  When the connection is returned to the pool for re-use, the
+pooling mechanism issues a ``rollback()`` call on the DBAPI connection so that
+any transactional state or locks are removed, and the connection is ready for
+its next use.
 
 Our example above illustrated the execution of a textual SQL string.
 The :meth:`~.Connection.execute` method can of course accommodate more than
@@ -114,72 +91,66 @@ Using Transactions
   information.
 
 The :class:`~sqlalchemy.engine.Connection` object provides a :meth:`~.Connection.begin`
-method which returns a :class:`.Transaction` object.
-This object is usually used within a try/except clause so that it is
-guaranteed to invoke :meth:`.Transaction.rollback` or :meth:`.Transaction.commit`::
+method which returns a :class:`.Transaction` object.  Like the :class:`.Connection`
+itself, this object is usually used within a Python ``with:`` block so
+that its scope is managed::
 
-    connection = engine.connect()
-    trans = connection.begin()
-    try:
-        r1 = connection.execute(table1.select())
-        connection.execute(table1.insert(), col1=7, col2='this is some data')
-        trans.commit()
-    except:
-        trans.rollback()
-        raise
+    with engine.connect() as connection:
+        with connection.begin():
+            r1 = connection.execute(table1.select())
+            connection.execute(table1.insert(), {"col1": 7, "col2": "this is some data"})
 
-The above block can be created more succinctly using context
-managers, either given an :class:`.Engine`::
+The above block can be stated more simply by using the :meth:`.Engine.begin`
+method of :class:`.Engine`::
 
     # runs a transaction
     with engine.begin() as connection:
         r1 = connection.execute(table1.select())
-        connection.execute(table1.insert(), col1=7, col2='this is some data')
+        connection.execute(table1.insert(), {"col1": 7, "col2": "this is some data"})
 
-Or from the :class:`.Connection`, in which case the :class:`.Transaction` object
-is available as well::
+The block managed by each ``.begin()`` method has the behavior such that
+the transaction is committed when the block completes.   If an exception is
+raised, the transaction is instead rolled back, and the exception propagated
+outwards.
 
-    with connection.begin() as trans:
-        r1 = connection.execute(table1.select())
-        connection.execute(table1.insert(), col1=7, col2='this is some data')
+The underlying object used to represent the transaction is the
+:class:`.Transaction` object.  This object is returned by the
+:meth:`.Connection.begin` method and includes the methods
+:meth:`.Transaction.commit` and :meth:`.Transaction.rollback`.   The context
+manager calling form, which invokes these methods automatically, is recommended
+as a best practice.
 
 .. _connections_nested_transactions:
 
 Nesting of Transaction Blocks
 -----------------------------
 
-The :class:`.Transaction` object also handles "nested"
-behavior by keeping track of the outermost begin/commit pair. In this example,
-two functions both issue a transaction on a :class:`.Connection`, but only the outermost
+.. note:: The "transaction nesting" feature of SQLAlchemy is a legacy feature
+   that will be deprecated in an upcoming release.  New usage paradigms will
+   eliminate the need for it to be present.
+
+The :class:`.Transaction` object also handles "nested" behavior by keeping
+track of the outermost begin/commit pair. In this example, two functions both
+issue a transaction on a :class:`.Connection`, but only the outermost
 :class:`.Transaction` object actually takes effect when it is committed.
 
 .. sourcecode:: python+sql
 
     # method_a starts a transaction and calls method_b
     def method_a(connection):
-        trans = connection.begin() # open a transaction
-        try:
+        with connection.begin():  # open a transaction
             method_b(connection)
-            trans.commit()  # transaction is committed here
-        except:
-            trans.rollback() # this rolls back the transaction unconditionally
-            raise
 
     # method_b also starts a transaction
     def method_b(connection):
-        trans = connection.begin() # open a transaction - this runs in the context of method_a's transaction
-        try:
+        with connection.begin(): # open a transaction - this runs in the
+                                 # context of method_a's transaction
             connection.execute("insert into mytable values ('bat', 'lala')")
-            connection.execute(mytable.insert(), col1='bat', col2='lala')
-            trans.commit()  # transaction is not committed yet
-        except:
-            trans.rollback() # this rolls back the transaction unconditionally
-            raise
+            connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
 
     # open a Connection and call method_a
-    conn = engine.connect()
-    method_a(conn)
-    conn.close()
+    with engine.connect() as conn:
+        method_a(conn)
 
 Above, ``method_a`` is called first, which calls ``connection.begin()``. Then
 it calls ``method_b``. When ``method_b`` calls ``connection.begin()``, it just
@@ -198,6 +169,10 @@ one exists.
 
 Understanding Autocommit
 ========================
+
+.. note:: The "autocommit" feature of SQLAlchemy is a legacy feature that will
+   be deprecated in an upcoming release.  New usage paradigms will eliminate
+   the need for it to be present.
 
 The previous transaction example illustrates how to use :class:`.Transaction`
 so that several executions can take part in the same transaction. What happens
@@ -228,18 +203,22 @@ the ORM, as the :class:`.Session` object by default always maintains an
 ongoing :class:`.Transaction`.
 
 Full control of the "autocommit" behavior is available using the generative
-:meth:`.Connection.execution_options` method provided on :class:`.Connection`,
-:class:`.Engine`, :class:`.Executable`, using the "autocommit" flag which will
+:meth:`.Connection.execution_options` method provided on :class:`.Connection`
+and :class:`.Engine`, using the "autocommit" flag which will
 turn on or off the autocommit for the selected scope. For example, a
 :func:`.text` construct representing a stored procedure that commits might use
 it so that a SELECT statement will issue a COMMIT::
 
-    engine.execute(text("SELECT my_mutating_procedure()").execution_options(autocommit=True))
+    with engine.connect().execution_options(autocommit=True) as conn:
+        conn.execute(text("SELECT my_mutating_procedure()"))
 
 .. _dbengine_implicit:
 
 Connectionless Execution, Implicit Execution
 ============================================
+
+.. note:: "Connectionless" and "implicit" execution are legacy SQLAlchemy
+   features that will be deprecated in an upcoming release.
 
 Recall from the first section we mentioned executing with and without explicit
 usage of :class:`.Connection`. "Connectionless" execution
@@ -274,11 +253,10 @@ Explicit execution delivers the SQL text or constructed SQL expression to the
 .. sourcecode:: python+sql
 
     engine = create_engine('sqlite:///file.db')
-    connection = engine.connect()
-    result = connection.execute(users_table.select())
-    for row in result:
-        # ....
-    connection.close()
+    with engine.connect() as connection:
+        result = connection.execute(users_table.select())
+        for row in result:
+            # ....
 
 Explicit, connectionless execution delivers the expression to the
 :meth:`~.Engine.execute` method of :class:`~sqlalchemy.engine.Engine`:
