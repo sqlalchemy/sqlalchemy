@@ -774,7 +774,10 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             )
 
             if instance is not None:
-                return instance
+                if instance is attributes.PASSIVE_CLASS_MISMATCH:
+                    return None
+                else:
+                    return instance
             elif (
                 not passive & attributes.SQL_OK
                 or not passive & attributes.RELATED_OBJECT_OK
