@@ -155,7 +155,7 @@ def merge_result(querylib, query, iterator, load=True):
         session.autoflush = autoflush
 
 
-def get_from_identity(session, key, passive):
+def get_from_identity(session, mapper, key, passive):
     """Look up the given key in the given session's identity map,
     check the object for expired state if found.
 
@@ -164,6 +164,9 @@ def get_from_identity(session, key, passive):
     if instance is not None:
 
         state = attributes.instance_state(instance)
+
+        if mapper.inherits and not state.mapper.isa(mapper):
+            return attributes.PASSIVE_CLASS_MISMATCH
 
         # expired - ensure it still exists
         if state.expired:

@@ -1055,7 +1055,7 @@ class Query(object):
         key = mapper.identity_key_from_primary_key(
             primary_key_identity, identity_token=identity_token
         )
-        return loading.get_from_identity(self.session, key, passive)
+        return loading.get_from_identity(self.session, mapper, key, passive)
 
     def _get_impl(self, primary_key_identity, db_load_fn, identity_token=None):
         # convert composite types to individual args
@@ -1115,6 +1115,8 @@ class Query(object):
                 if not issubclass(instance.__class__, mapper.class_):
                     return None
                 return instance
+            elif instance is attributes.PASSIVE_CLASS_MISMATCH:
+                return None
 
         return db_load_fn(self, primary_key_identity)
 

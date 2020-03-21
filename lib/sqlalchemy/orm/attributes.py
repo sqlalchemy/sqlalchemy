@@ -34,6 +34,7 @@ from .base import NO_CHANGE  # noqa
 from .base import NO_RAISE
 from .base import NO_VALUE
 from .base import NON_PERSISTENT_OK  # noqa
+from .base import PASSIVE_CLASS_MISMATCH  # noqa
 from .base import PASSIVE_NO_FETCH
 from .base import PASSIVE_NO_FETCH_RELATED  # noqa
 from .base import PASSIVE_NO_INITIALIZE

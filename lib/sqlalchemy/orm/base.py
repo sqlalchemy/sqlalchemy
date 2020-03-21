@@ -26,6 +26,13 @@ PASSIVE_NO_RESULT = util.symbol(
     """,
 )
 
+PASSIVE_CLASS_MISMATCH = util.symbol(
+    "PASSIVE_CLASS_MISMATCH",
+    """Symbol indicating that an object is locally present for a given
+    primary key identity but it is not of the requested class.  The
+    return value is therefore None and no SQL should be emitted.""",
+)
+
 ATTR_WAS_SET = util.symbol(
     "ATTR_WAS_SET",
     """Symbol returned by a loader callable to indicate the

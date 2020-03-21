@@ -18,6 +18,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -2678,3 +2679,75 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             "seen AS seen_1 ON people.id = seen_1.id LEFT OUTER JOIN "
             "seen AS seen_2 ON people_1.id = seen_2.id",
         )
+
+
+class M2ODontLoadSiblingTest(fixtures.DeclarativeMappedTest):
+    """test for #5210"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base, ComparableEntity):
+            __tablename__ = "parents"
+
+            id = Column(Integer, primary_key=True)
+            child_type = Column(String(50), nullable=False)
+
+            __mapper_args__ = {
+                "polymorphic_on": child_type,
+            }
+
+        class Child1(Parent):
+            __tablename__ = "children_1"
+
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "child1",
+            }
+
+        class Child2(Parent):
+            __tablename__ = "children_2"
+
+            id = Column(Integer, ForeignKey(Parent.id), primary_key=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "child2",
+            }
+
+        class Other(Base):
+            __tablename__ = "others"
+
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(Integer, ForeignKey(Parent.id))
+
+            parent = relationship(Parent)
+            child2 = relationship(Child2, viewonly=True)
+
+    @classmethod
+    def insert_data(cls):
+        Other, Child1 = cls.classes("Other", "Child1")
+        s = Session()
+        obj = Other(parent=Child1())
+        s.add(obj)
+        s.commit()
+
+    def test_load_m2o_emit_query(self):
+        Other, Child1 = self.classes("Other", "Child1")
+        s = Session()
+
+        obj = s.query(Other).first()
+
+        is_(obj.child2, None)
+        eq_(obj.parent, Child1())
+
+    def test_load_m2o_use_get(self):
+        Other, Child1 = self.classes("Other", "Child1")
+        s = Session()
+
+        obj = s.query(Other).first()
+        c1 = s.query(Child1).first()
+
+        is_(obj.child2, None)
+        is_(obj.parent, c1)

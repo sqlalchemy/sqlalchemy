@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5210
+
+    Fixed issue where a lazyload that uses session-local "get" against a target
+    many-to-one relationship where an object with the correct primary key is
+    present, however it's an instance of a sibling class, does not correctly
+    return None as is the case when the lazy loader actually emits a load for
+    that row.
