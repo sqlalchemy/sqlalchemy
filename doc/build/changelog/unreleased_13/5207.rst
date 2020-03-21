@@ -1,0 +1,11 @@
+.. change::
+    :tags: installer
+    :tickets: 5207
+
+    Ensured that the "pyproject.toml" file is not included in builds, as the
+    presence of this file is a positive direction to pip that pep-517 should be
+    used. As this mode of operation is not well supported by current tools /
+    distros, we would like to explicitly disallow this mode of operation until
+    we have an actual pep517 installation module available.
+
+

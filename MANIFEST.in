@@ -11,3 +11,7 @@ recursive-include lib *.c *.txt
 
 include README* AUTHORS LICENSE CHANGES* tox.ini
 prune doc/build/output
+
+# don't include pyproject.toml until we
+# have explicitly built a pep-517 backend
+exclude pyproject.toml
