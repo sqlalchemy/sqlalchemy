@@ -2265,9 +2265,9 @@ def _db_plus_owner(fn):
 
 def _switch_db(dbname, connection, fn, *arg, **kw):
     if dbname:
-        current_db = connection.scalar("select db_name()")
+        current_db = connection.exec_driver_sql("select db_name()").scalar()
         if current_db != dbname:
-            connection.execute(
+            connection.exec_driver_sql(
                 "use %s"
                 % connection.dialect.identifier_preparer.quote_schema(dbname)
             )
@@ -2275,7 +2275,7 @@ def _switch_db(dbname, connection, fn, *arg, **kw):
         return fn(*arg, **kw)
     finally:
         if dbname and current_db != dbname:
-            connection.execute(
+            connection.exec_driver_sql(
                 "use %s"
                 % connection.dialect.identifier_preparer.quote_schema(
                     current_db
@@ -2387,7 +2387,7 @@ class MSDialect(default.DefaultDialect):
 
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
-        connection.execute("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
+        connection.exec_driver_sql("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
         super(MSDialect, self).do_savepoint(connection, name)
 
     def do_release_savepoint(self, connection, name):
@@ -2751,7 +2751,7 @@ class MSDialect(default.DefaultDialect):
         for col in cols:
             colmap[col["name"]] = col
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute(
+        cursor = connection.exec_driver_sql(
             "sp_columns @table_name = '%s', "
             "@table_owner = '%s'" % (tablename, owner)
         )
@@ -2773,7 +2773,7 @@ class MSDialect(default.DefaultDialect):
 
         if ic is not None and self.server_version_info >= MS_2005_VERSION:
             table_fullname = "%s.%s" % (owner, tablename)
-            cursor = connection.execute(
+            cursor = connection.exec_driver_sql(
                 "select ident_seed('%s'), ident_incr('%s')"
                 % (table_fullname, table_fullname)
             )

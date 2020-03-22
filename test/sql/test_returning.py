@@ -171,13 +171,13 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
     @testing.fails_on_everything_except("postgresql", "firebird")
-    def test_literal_returning(self):
+    def test_literal_returning(self, connection):
         if testing.against("postgresql"):
             literal_true = "true"
         else:
             literal_true = "1"
 
-        result4 = testing.db.execute(
+        result4 = connection.exec_driver_sql(
             'insert into tables (id, persons, "full") '
             "values (5, 10, %s) returning persons" % literal_true
         )

@@ -446,7 +446,7 @@ class AttachedFileShardTest(ShardTest, fixtures.TestBase):
         e = testing_engine("sqlite://")
         with e.connect() as conn:
             for i in range(1, 5):
-                conn.execute(
+                conn.exec_driver_sql(
                     'ATTACH DATABASE "shard%s_%s.db" AS shard%s'
                     % (i, provision.FOLLOWER_IDENT, i)
                 )

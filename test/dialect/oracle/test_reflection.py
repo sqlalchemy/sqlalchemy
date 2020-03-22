@@ -32,6 +32,11 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
+def exec_sql(engine, sql, *args, **kwargs):
+    with engine.connect() as conn:
+        return conn.exec_driver_sql(sql, *args, **kwargs)
+
+
 class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = "oracle"
     __backend__ = True
@@ -79,7 +84,7 @@ grant references on %(test_schema)s.child to public;
             % {"test_schema": testing.config.test_schema}
         ).split(";"):
             if stmt.strip():
-                testing.db.execute(stmt)
+                exec_sql(testing.db, stmt)
 
     @classmethod
     def teardown_class(cls):
@@ -97,7 +102,7 @@ drop synonym %(test_schema)s.local_table;
             % {"test_schema": testing.config.test_schema}
         ).split(";"):
             if stmt.strip():
-                testing.db.execute(stmt)
+                exec_sql(testing.db, stmt)
 
     @testing.provide_metadata
     def test_create_same_names_explicit_schema(self):
@@ -221,11 +226,12 @@ drop synonym %(test_schema)s.local_table;
         )
 
     def test_reflect_local_to_remote(self):
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             "CREATE TABLE localtable (id INTEGER "
             "PRIMARY KEY, parent_id INTEGER REFERENCES "
             "%(test_schema)s.parent(id))"
-            % {"test_schema": testing.config.test_schema}
+            % {"test_schema": testing.config.test_schema},
         )
         try:
             meta = MetaData(testing.db)
@@ -242,7 +248,7 @@ drop synonym %(test_schema)s.local_table;
                 parent.join(lcl)
             ).execute().fetchall()
         finally:
-            testing.db.execute("DROP TABLE localtable")
+            exec_sql(testing.db, "DROP TABLE localtable")
 
     def test_reflect_alt_owner_implicit(self):
         meta = MetaData(testing.db)
@@ -264,10 +270,11 @@ drop synonym %(test_schema)s.local_table;
         ).execute().fetchall()
 
     def test_reflect_alt_owner_synonyms(self):
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             "CREATE TABLE localtable (id INTEGER "
             "PRIMARY KEY, parent_id INTEGER REFERENCES "
-            "%s.ptable(id))" % testing.config.test_schema
+            "%s.ptable(id))" % testing.config.test_schema,
         )
         try:
             meta = MetaData(testing.db)
@@ -286,7 +293,7 @@ drop synonym %(test_schema)s.local_table;
                 parent.join(lcl)
             ).execute().fetchall()
         finally:
-            testing.db.execute("DROP TABLE localtable")
+            exec_sql(testing.db, "DROP TABLE localtable")
 
     def test_reflect_remote_synonyms(self):
         meta = MetaData(testing.db)
@@ -364,18 +371,19 @@ class SystemTableTablenamesTest(fixtures.TestBase):
     __backend__ = True
 
     def setup(self):
-        testing.db.execute("create table my_table (id integer)")
-        testing.db.execute(
-            "create global temporary table my_temp_table (id integer)"
+        exec_sql(testing.db, "create table my_table (id integer)")
+        exec_sql(
+            testing.db,
+            "create global temporary table my_temp_table (id integer)",
         )
-        testing.db.execute(
-            "create table foo_table (id integer) tablespace SYSTEM"
+        exec_sql(
+            testing.db, "create table foo_table (id integer) tablespace SYSTEM"
         )
 
     def teardown(self):
-        testing.db.execute("drop table my_temp_table")
-        testing.db.execute("drop table my_table")
-        testing.db.execute("drop table foo_table")
+        exec_sql(testing.db, "drop table my_temp_table")
+        exec_sql(testing.db, "drop table my_table")
+        exec_sql(testing.db, "drop table foo_table")
 
     def test_table_names_no_system(self):
         insp = inspect(testing.db)
@@ -404,7 +412,8 @@ class DontReflectIOTTest(fixtures.TestBase):
     __backend__ = True
 
     def setup(self):
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             """
         CREATE TABLE admin_docindex(
                 token char(20),
@@ -416,11 +425,11 @@ class DontReflectIOTTest(fixtures.TestBase):
             TABLESPACE users
             PCTTHRESHOLD 20
             OVERFLOW TABLESPACE users
-        """
+        """,
         )
 
     def teardown(self):
-        testing.db.execute("drop table admin_docindex")
+        exec_sql(testing.db, "drop table admin_docindex")
 
     def test_reflect_all(self):
         m = MetaData(testing.db)
@@ -443,8 +452,9 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        testing.db.execute(
-            "CREATE INDEX DATA_IDX ON " "TEST_INDEX_REFLECT (UPPER(DATA))"
+        exec_sql(
+            testing.db,
+            "CREATE INDEX DATA_IDX ON " "TEST_INDEX_REFLECT (UPPER(DATA))",
         )
         m2 = MetaData(testing.db)
         Table("test_index_reflect", m2, autoload=True)
@@ -452,9 +462,10 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
 
 def all_tables_compression_missing():
     try:
-        testing.db.execute("SELECT compression FROM all_tables")
-        if "Enterprise Edition" not in testing.db.scalar(
-            "select * from v$version"
+        exec_sql(testing.db, "SELECT compression FROM all_tables")
+        if (
+            "Enterprise Edition"
+            not in exec_sql(testing.db, "select * from v$version").scalar()
         ):
             return True
         return False
@@ -464,9 +475,10 @@ def all_tables_compression_missing():
 
 def all_tables_compress_for_missing():
     try:
-        testing.db.execute("SELECT compress_for FROM all_tables")
-        if "Enterprise Edition" not in testing.db.scalar(
-            "select * from v$version"
+        exec_sql(testing.db, "SELECT compress_for FROM all_tables")
+        if (
+            "Enterprise Edition"
+            not in exec_sql(testing.db, "select * from v$version").scalar()
         ):
             return True
         return False
@@ -628,11 +640,11 @@ class DBLinkReflectionTest(fixtures.TestBase):
         # when accessing via a different username as we do with the
         # multiprocess test suite, so testing here is minimal
         with testing.db.connect() as conn:
-            conn.execute(
+            conn.exec_driver_sql(
                 "create table test_table "
                 "(id integer primary key, data varchar2(50))"
             )
-            conn.execute(
+            conn.exec_driver_sql(
                 "create synonym test_table_syn "
                 "for test_table@%s" % cls.dblink
             )
@@ -640,8 +652,8 @@ class DBLinkReflectionTest(fixtures.TestBase):
     @classmethod
     def teardown_class(cls):
         with testing.db.connect() as conn:
-            conn.execute("drop synonym test_table_syn")
-            conn.execute("drop table test_table")
+            conn.exec_driver_sql("drop synonym test_table_syn")
+            conn.exec_driver_sql("drop table test_table")
 
     def test_reflection(self):
         """test the resolution of the synonym/dblink. """

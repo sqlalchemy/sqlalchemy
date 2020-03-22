@@ -195,10 +195,10 @@ in order to determine the remote schema name.  That is, if our ``search_path``
 were set to include ``test_schema``, and we invoked a table
 reflection process as follows::
 
-    >>> from sqlalchemy import Table, MetaData, create_engine
+    >>> from sqlalchemy import Table, MetaData, create_engine, text
     >>> engine = create_engine("postgresql://scott:tiger@localhost/test")
     >>> with engine.connect() as conn:
-    ...     conn.execute("SET search_path TO test_schema, public")
+    ...     conn.execute(text("SET search_path TO test_schema, public"))
     ...     meta = MetaData()
     ...     referring = Table('referring', meta,
     ...                       autoload=True, autoload_with=conn)
@@ -218,7 +218,7 @@ dialect-specific argument to both :class:`.Table` as well as
 :meth:`.MetaData.reflect`::
 
     >>> with engine.connect() as conn:
-    ...     conn.execute("SET search_path TO test_schema, public")
+    ...     conn.execute(text("SET search_path TO test_schema, public"))
     ...     meta = MetaData()
     ...     referring = Table('referring', meta, autoload=True,
     ...                       autoload_with=conn,
@@ -2464,9 +2464,11 @@ class PGDialect(default.DefaultDialect):
         # http://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)
 
+        std_string = connection.exec_driver_sql(
+            "show standard_conforming_strings"
+        ).scalar()
         self._backslash_escapes = (
-            self.server_version_info < (8, 2)
-            or connection.scalar("show standard_conforming_strings") == "off"
+            self.server_version_info < (8, 2) or std_string == "off"
         )
 
         self._supports_create_index_concurrently = (
@@ -2523,7 +2525,7 @@ class PGDialect(default.DefaultDialect):
         self.do_begin(connection.connection)
 
     def do_prepare_twophase(self, connection, xid):
-        connection.execute("PREPARE TRANSACTION '%s'" % xid)
+        connection.exec_driver_sql("PREPARE TRANSACTION '%s'" % xid)
 
     def do_rollback_twophase(
         self, connection, xid, is_prepared=True, recover=False
@@ -2534,9 +2536,9 @@ class PGDialect(default.DefaultDialect):
                 # context when committing recoverable transactions
                 # Must find out a way how to make the dbapi not
                 # open a transaction.
-                connection.execute("ROLLBACK")
-            connection.execute("ROLLBACK PREPARED '%s'" % xid)
-            connection.execute("BEGIN")
+                connection.exec_driver_sql("ROLLBACK")
+            connection.exec_driver_sql("ROLLBACK PREPARED '%s'" % xid)
+            connection.exec_driver_sql("BEGIN")
             self.do_rollback(connection.connection)
         else:
             self.do_rollback(connection.connection)
@@ -2546,9 +2548,9 @@ class PGDialect(default.DefaultDialect):
     ):
         if is_prepared:
             if recover:
-                connection.execute("ROLLBACK")
-            connection.execute("COMMIT PREPARED '%s'" % xid)
-            connection.execute("BEGIN")
+                connection.exec_driver_sql("ROLLBACK")
+            connection.exec_driver_sql("COMMIT PREPARED '%s'" % xid)
+            connection.exec_driver_sql("BEGIN")
             self.do_rollback(connection.connection)
         else:
             self.do_commit(connection.connection)
@@ -2560,7 +2562,7 @@ class PGDialect(default.DefaultDialect):
         return [row[0] for row in resultset]
 
     def _get_default_schema_name(self, connection):
-        return connection.scalar("select current_schema()")
+        return connection.exec_driver_sql("select current_schema()").scalar()
 
     def has_schema(self, connection, schema):
         query = (
@@ -2689,7 +2691,7 @@ class PGDialect(default.DefaultDialect):
         return bool(cursor.scalar())
 
     def _get_server_version_info(self, connection):
-        v = connection.execute("select version()").scalar()
+        v = connection.exec_driver_sql("select version()").scalar()
         m = re.match(
             r".*(?:PostgreSQL|EnterpriseDB) "
             r"(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel|beta)?",

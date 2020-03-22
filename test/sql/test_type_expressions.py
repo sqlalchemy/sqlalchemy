@@ -333,8 +333,8 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
 
 
 class RoundTripTestBase(object):
-    def test_round_trip(self):
-        testing.db.execute(
+    def test_round_trip(self, connection):
+        connection.execute(
             self.tables.test_table.insert(),
             {"x": "X1", "y": "Y1"},
             {"x": "X2", "y": "Y2"},
@@ -343,7 +343,7 @@ class RoundTripTestBase(object):
 
         # test insert coercion alone
         eq_(
-            testing.db.execute(
+            connection.exec_driver_sql(
                 "select * from test_table order by y"
             ).fetchall(),
             [("X1", "y1"), ("X2", "y2"), ("X3", "y3")],
@@ -351,7 +351,7 @@ class RoundTripTestBase(object):
 
         # conversion back to upper
         eq_(
-            testing.db.execute(
+            connection.execute(
                 select([self.tables.test_table]).order_by(
                     self.tables.test_table.c.y
                 )

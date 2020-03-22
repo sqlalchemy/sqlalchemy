@@ -40,17 +40,21 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     def setup_class(cls):
         con = testing.db.connect()
         try:
-            con.execute(
+            con.exec_driver_sql(
                 "CREATE DOMAIN int_domain AS INTEGER DEFAULT " "42 NOT NULL"
             )
-            con.execute("CREATE DOMAIN str_domain AS VARCHAR(255)")
-            con.execute("CREATE DOMAIN rem_domain AS BLOB SUB_TYPE TEXT")
-            con.execute("CREATE DOMAIN img_domain AS BLOB SUB_TYPE " "BINARY")
+            con.exec_driver_sql("CREATE DOMAIN str_domain AS VARCHAR(255)")
+            con.exec_driver_sql(
+                "CREATE DOMAIN rem_domain AS BLOB SUB_TYPE TEXT"
+            )
+            con.exec_driver_sql(
+                "CREATE DOMAIN img_domain AS BLOB SUB_TYPE " "BINARY"
+            )
         except ProgrammingError as e:
             if "attempt to store duplicate value" not in str(e):
                 raise e
-        con.execute("""CREATE GENERATOR gen_testtable_id""")
-        con.execute(
+        con.exec_driver_sql("""CREATE GENERATOR gen_testtable_id""")
+        con.exec_driver_sql(
             """CREATE TABLE testtable (question int_domain,
                                    answer str_domain DEFAULT 'no answer',
                                    remark rem_domain DEFAULT '',
@@ -60,12 +64,12 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                                    dt timestamp,
                                    redundant str_domain DEFAULT NULL)"""
         )
-        con.execute(
+        con.exec_driver_sql(
             "ALTER TABLE testtable "
             "ADD CONSTRAINT testtable_pk PRIMARY KEY "
             "(question)"
         )
-        con.execute(
+        con.exec_driver_sql(
             "CREATE TRIGGER testtable_autoid FOR testtable "
             "   ACTIVE BEFORE INSERT AS"
             "   BEGIN"
@@ -77,12 +81,12 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
-        con.execute("DROP TABLE testtable")
-        con.execute("DROP DOMAIN int_domain")
-        con.execute("DROP DOMAIN str_domain")
-        con.execute("DROP DOMAIN rem_domain")
-        con.execute("DROP DOMAIN img_domain")
-        con.execute("DROP GENERATOR gen_testtable_id")
+        con.exec_driver_sql("DROP TABLE testtable")
+        con.exec_driver_sql("DROP DOMAIN int_domain")
+        con.exec_driver_sql("DROP DOMAIN str_domain")
+        con.exec_driver_sql("DROP DOMAIN rem_domain")
+        con.exec_driver_sql("DROP DOMAIN img_domain")
+        con.exec_driver_sql("DROP GENERATOR gen_testtable_id")
 
     def test_table_is_reflected(self):
         from sqlalchemy.types import (
@@ -222,29 +226,29 @@ ID DOM_ID /* INTEGER NOT NULL */ default 0 )
     @classmethod
     def setup_class(cls):
         con = testing.db.connect()
-        con.execute(cls.AUTOINC_DM)
-        con.execute(cls.MONEY_DM)
-        con.execute(cls.NOSI_DM)
-        con.execute(cls.RIT_TESORERIA_CAPITOLO_DM)
-        con.execute(cls.DEF_ERROR_TB)
-        con.execute(cls.DEF_ERROR_NODOM_TB)
+        con.exec_driver_sql(cls.AUTOINC_DM)
+        con.exec_driver_sql(cls.MONEY_DM)
+        con.exec_driver_sql(cls.NOSI_DM)
+        con.exec_driver_sql(cls.RIT_TESORERIA_CAPITOLO_DM)
+        con.exec_driver_sql(cls.DEF_ERROR_TB)
+        con.exec_driver_sql(cls.DEF_ERROR_NODOM_TB)
 
-        con.execute(cls.DOM_ID)
-        con.execute(cls.TABLE_A)
-        con.execute(cls.TABLE_B)
+        con.exec_driver_sql(cls.DOM_ID)
+        con.exec_driver_sql(cls.TABLE_A)
+        con.exec_driver_sql(cls.TABLE_B)
 
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
-        con.execute("DROP TABLE a")
-        con.execute("DROP TABLE b")
-        con.execute("DROP DOMAIN dom_id")
-        con.execute("DROP TABLE def_error_nodom")
-        con.execute("DROP TABLE def_error")
-        con.execute("DROP DOMAIN rit_tesoreria_capitolo_dm")
-        con.execute("DROP DOMAIN nosi_dm")
-        con.execute("DROP DOMAIN money_dm")
-        con.execute("DROP DOMAIN autoinc_dm")
+        con.exec_driver_sql("DROP TABLE a")
+        con.exec_driver_sql("DROP TABLE b")
+        con.exec_driver_sql("DROP DOMAIN dom_id")
+        con.exec_driver_sql("DROP TABLE def_error_nodom")
+        con.exec_driver_sql("DROP TABLE def_error")
+        con.exec_driver_sql("DROP DOMAIN rit_tesoreria_capitolo_dm")
+        con.exec_driver_sql("DROP DOMAIN nosi_dm")
+        con.exec_driver_sql("DROP DOMAIN money_dm")
+        con.exec_driver_sql("DROP DOMAIN autoinc_dm")
 
     def test_tables_are_reflected_same_way(self):
         metadata = MetaData(testing.db)

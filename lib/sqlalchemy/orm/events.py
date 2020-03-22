@@ -603,9 +603,9 @@ class MapperEvents(event.Events):
         def my_before_insert_listener(mapper, connection, target):
             # execute a stored procedure upon INSERT,
             # apply the value to the row to be inserted
-            target.calculated_value = connection.scalar(
-                                        "select my_special_function(%d)"
-                                        % target.special_number)
+            target.calculated_value = connection.execute(
+                text("select my_special_function(%d)" % target.special_number)
+            ).scalar()
 
         # associate the listener function with SomeClass,
         # to execute during the "before_insert" hook

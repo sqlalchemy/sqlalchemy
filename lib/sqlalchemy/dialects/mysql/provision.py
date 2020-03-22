@@ -12,11 +12,13 @@ def _mysql_create_db(cfg, eng, ident):
         except Exception:
             pass
 
-        conn.execute("CREATE DATABASE %s CHARACTER SET utf8mb4" % ident)
-        conn.execute(
+        conn.exec_driver_sql(
+            "CREATE DATABASE %s CHARACTER SET utf8mb4" % ident
+        )
+        conn.exec_driver_sql(
             "CREATE DATABASE %s_test_schema CHARACTER SET utf8mb4" % ident
         )
-        conn.execute(
+        conn.exec_driver_sql(
             "CREATE DATABASE %s_test_schema_2 CHARACTER SET utf8mb4" % ident
         )
 
@@ -30,9 +32,9 @@ def _mysql_configure_follower(config, ident):
 @drop_db.for_db("mysql")
 def _mysql_drop_db(cfg, eng, ident):
     with eng.connect() as conn:
-        conn.execute("DROP DATABASE %s_test_schema" % ident)
-        conn.execute("DROP DATABASE %s_test_schema_2" % ident)
-        conn.execute("DROP DATABASE %s" % ident)
+        conn.exec_driver_sql("DROP DATABASE %s_test_schema" % ident)
+        conn.exec_driver_sql("DROP DATABASE %s_test_schema_2" % ident)
+        conn.exec_driver_sql("DROP DATABASE %s" % ident)
 
 
 @temp_table_keyword_args.for_db("mysql")

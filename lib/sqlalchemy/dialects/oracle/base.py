@@ -1340,7 +1340,7 @@ class OracleDialect(default.DefaultDialect):
         if self.server_version_info < (12, 2):
             return self.server_version_info
         try:
-            compat = connection.execute(
+            compat = connection.exec_driver_sql(
                 "SELECT value FROM v$parameter WHERE name = 'compatible'"
             ).scalar()
         except exc.DBAPIError:
@@ -1424,7 +1424,7 @@ class OracleDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return self.normalize_name(
-            connection.execute("SELECT USER FROM DUAL").scalar()
+            connection.exec_driver_sql("SELECT USER FROM DUAL").scalar()
         )
 
     def _resolve_synonym(
@@ -1535,7 +1535,7 @@ class OracleDialect(default.DefaultDialect):
     @reflection.cache
     def get_schema_names(self, connection, **kw):
         s = "SELECT username FROM all_users ORDER BY username"
-        cursor = connection.execute(s)
+        cursor = connection.exec_driver_sql(s)
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache

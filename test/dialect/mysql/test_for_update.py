@@ -60,7 +60,7 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     @contextlib.contextmanager
     def run_test(self):
         connection = testing.db.connect()
-        connection.execute("set innodb_lock_wait_timeout=1")
+        connection.exec_driver_sql("set innodb_lock_wait_timeout=1")
         main_trans = connection.begin()
         try:
             yield Session(bind=connection)
@@ -71,7 +71,7 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     def _assert_a_is_locked(self, should_be_locked):
         A = self.classes.A
         with testing.db.begin() as alt_trans:
-            alt_trans.execute("set innodb_lock_wait_timeout=1")
+            alt_trans.exec_driver_sql("set innodb_lock_wait_timeout=1")
             # set x/y > 10
             try:
                 alt_trans.execute(update(A).values(x=15, y=19))
@@ -84,7 +84,7 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     def _assert_b_is_locked(self, should_be_locked):
         B = self.classes.B
         with testing.db.begin() as alt_trans:
-            alt_trans.execute("set innodb_lock_wait_timeout=1")
+            alt_trans.exec_driver_sql("set innodb_lock_wait_timeout=1")
             # set x/y > 10
             try:
                 alt_trans.execute(update(B).values(x=15, y=19))

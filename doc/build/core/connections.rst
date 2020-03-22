@@ -39,13 +39,14 @@ per-object or per-function call.
     engine is initialized per process.  See :ref:`pooling_multiprocessing` for
     details.
 
-
 The most basic function of the :class:`.Engine` is to provide access to a
 :class:`.Connection`, which can then invoke SQL statements.   To emit
 a textual statement to the database looks like::
 
+    from sqlalchemy import text
+
     with engine.connect() as connection:
-        result = connection.execute("select username from users")
+        result = connection.execute(text("select username from users"))
         for row in result:
             print("username:", row['username'])
 
@@ -73,10 +74,15 @@ pooling mechanism issues a ``rollback()`` call on the DBAPI connection so that
 any transactional state or locks are removed, and the connection is ready for
 its next use.
 
-Our example above illustrated the execution of a textual SQL string.
-The :meth:`~.Connection.execute` method can of course accommodate more than
-that, including the variety of SQL expression constructs described
-in :ref:`sqlexpression_toplevel`.
+.. deprecated:: 2.0 The :class:`.ResultProxy` object is replaced in SQLAlchemy
+   2.0 with a newly refined object known as :class:`.Result`.
+
+Our example above illustrated the execution of a textual SQL string, which
+should be invoked by using the :func:`.text` construct to indicate that
+we'd like to use textual SQL.  The :meth:`~.Connection.execute` method can of
+course accommodate more than that, including the variety of SQL expression
+constructs described in :ref:`sqlexpression_toplevel`.
+
 
 Using Transactions
 ==================
@@ -145,7 +151,7 @@ issue a transaction on a :class:`.Connection`, but only the outermost
     def method_b(connection):
         with connection.begin(): # open a transaction - this runs in the
                                  # context of method_a's transaction
-            connection.execute("insert into mytable values ('bat', 'lala')")
+            connection.execute(text("insert into mytable values ('bat', 'lala')"))
             connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
 
     # open a Connection and call method_a
@@ -170,9 +176,9 @@ one exists.
 Understanding Autocommit
 ========================
 
-.. note:: The "autocommit" feature of SQLAlchemy is a legacy feature that will
-   be deprecated in an upcoming release.  New usage paradigms will eliminate
-   the need for it to be present.
+.. deprecated:: 2.0  The "autocommit" feature of SQLAlchemy Core is deprecated
+   and will not be present in version 2.0 of SQLAlchemy.
+   See :ref:`migration_20_autocommit` for background.
 
 The previous transaction example illustrates how to use :class:`.Transaction`
 so that several executions can take part in the same transaction. What happens
@@ -195,7 +201,7 @@ to detect INSERT, UPDATE, DELETE, as well as a variety of other commands
 for a particular backend::
 
     conn = engine.connect()
-    conn.execute("INSERT INTO users VALUES (1, 'john')")  # autocommits
+    conn.execute(text("INSERT INTO users VALUES (1, 'john')"))  # autocommits
 
 The "autocommit" feature is only in effect when no :class:`.Transaction` has
 otherwise been declared.   This means the feature is not generally used with
@@ -214,19 +220,21 @@ it so that a SELECT statement will issue a COMMIT::
 
 .. _dbengine_implicit:
 
+
 Connectionless Execution, Implicit Execution
 ============================================
 
-.. note:: "Connectionless" and "implicit" execution are legacy SQLAlchemy
-   features that will be deprecated in an upcoming release.
+.. deprecated:: 2.0 The features of "connectionless" and "implicit" execution
+   in SQLAlchemy are deprecated and will be removed in version 2.0.  See
+   :ref:`migration_20_implicit_execution` for background.
 
 Recall from the first section we mentioned executing with and without explicit
 usage of :class:`.Connection`. "Connectionless" execution
-refers to the usage of the ``execute()`` method on an object which is not a
-:class:`.Connection`.  This was illustrated using the :meth:`~.Engine.execute` method
-of :class:`.Engine`::
+refers to the usage of the ``execute()`` method on an object
+which is not a :class:`.Connection`.  This was illustrated using the
+:meth:`~.Engine.execute` method of :class:`.Engine`::
 
-    result = engine.execute("select username from users")
+    result = engine.execute(text("select username from users"))
     for row in result:
         print("username:", row['username'])
 
@@ -477,8 +485,34 @@ for guidelines on how to disable pooling.
 
 .. _dbapi_connections:
 
-Working with Raw DBAPI Connections
-==================================
+Working with Driver SQL and Raw DBAPI Connections
+=================================================
+
+The introduction on using :meth:`.Connection.execute` made use of the
+:func:`.sql.text` construct in order to illustrate how textual SQL statements
+may be invoked.  When working with SQLAlchemy, textual SQL is actually more
+of the exception rather than the norm, as the Core expression language
+and the ORM both abstract away the textual representation of SQL.  Hpwever, the
+:func:`.sql.text` construct itself also provides some abstraction of textual
+SQL in that it normalizes how bound parameters are passed, as well as that
+it supports datatyping behavior for parameters and result set rows.
+
+Invoking SQL strings directly to the driver
+--------------------------------------------
+
+For the use case where one wants to invoke textual SQL directly passed to the
+underlying driver (known as the :term:`DBAPI`) without any intervention
+from the :func:`.sql.text` construct, the :meth:`.Connection.exec_driver_sql`
+method may be used::
+
+    with engine.connect() as conn:
+        conn.exec_driver_sql("SET param='bar'")
+
+
+.. versionadded:: 1.4  Added the :meth:`.Connection.exec_driver_sql` method.
+
+Working with the DBAPI cursor directly
+--------------------------------------
 
 There are some cases where SQLAlchemy does not provide a genericized way
 at accessing some :term:`DBAPI` functions, such as calling stored procedures as well

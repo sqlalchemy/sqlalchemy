@@ -90,19 +90,23 @@ class QuoteExecTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_has_table_case_sensitive(self):
         preparer = testing.db.dialect.identifier_preparer
-        if testing.db.dialect.requires_name_normalize:
-            testing.db.execute("CREATE TABLE TAB1 (id INTEGER)")
-        else:
-            testing.db.execute("CREATE TABLE tab1 (id INTEGER)")
-        testing.db.execute(
-            "CREATE TABLE %s (id INTEGER)" % preparer.quote_identifier("tab2")
-        )
-        testing.db.execute(
-            "CREATE TABLE %s (id INTEGER)" % preparer.quote_identifier("TAB3")
-        )
-        testing.db.execute(
-            "CREATE TABLE %s (id INTEGER)" % preparer.quote_identifier("TAB4")
-        )
+        with testing.db.connect() as conn:
+            if conn.dialect.requires_name_normalize:
+                conn.exec_driver_sql("CREATE TABLE TAB1 (id INTEGER)")
+            else:
+                conn.exec_driver_sql("CREATE TABLE tab1 (id INTEGER)")
+            conn.exec_driver_sql(
+                "CREATE TABLE %s (id INTEGER)"
+                % preparer.quote_identifier("tab2")
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE %s (id INTEGER)"
+                % preparer.quote_identifier("TAB3")
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE %s (id INTEGER)"
+                % preparer.quote_identifier("TAB4")
+            )
 
         t1 = Table(
             "tab1", self.metadata, Column("id", Integer, primary_key=True)

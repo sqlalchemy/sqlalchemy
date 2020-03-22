@@ -49,7 +49,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             tran = s.transaction
             s.add(User(name="first"))
             s.flush()
-            c.execute("select * from users")
+            c.exec_driver_sql("select * from users")
             u = User(name="two")
             s.add(u)
             s.flush()
@@ -153,18 +153,24 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         session.begin_nested()
         session.connection().execute(users.insert().values(name="user2"))
         assert (
-            session.connection().execute("select count(1) from users").scalar()
+            session.connection()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
             == 2
         )
         session.rollback()
         assert (
-            session.connection().execute("select count(1) from users").scalar()
+            session.connection()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
             == 1
         )
         session.connection().execute(users.insert().values(name="user3"))
         session.commit()
         assert (
-            session.connection().execute("select count(1) from users").scalar()
+            session.connection()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
             == 2
         )
 

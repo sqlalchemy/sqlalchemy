@@ -240,7 +240,7 @@ intended for production use!
     sleep 10
     docker exec -ti postgres psql -U scott -c 'CREATE SCHEMA test_schema; CREATE SCHEMA test_schema_2;' test
     # this last command is optional
-    docker exec -ti postgres bash sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/g' /var/lib/postgresql/data/postgresql.conf
+    docker exec -ti postgres sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/g' /var/lib/postgresql/data/postgresql.conf
 
     # To stop the container. It will also remove it.
     docker stop postgres

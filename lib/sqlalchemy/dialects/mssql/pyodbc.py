@@ -353,9 +353,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         try:
             # "Version of the instance of SQL Server, in the form
             # of 'major.minor.build.revision'"
-            raw = connection.scalar(
+            raw = connection.exec_driver_sql(
                 "SELECT CAST(SERVERPROPERTY('ProductVersion') AS VARCHAR)"
-            )
+            ).scalar()
         except exc.DBAPIError:
             # SQL Server docs indicate this function isn't present prior to
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also

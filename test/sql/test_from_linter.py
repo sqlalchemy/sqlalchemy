@@ -219,7 +219,7 @@ class TestLinter(fixtures.TablesTest):
 
     def test_noop_for_unhandled_objects(self):
         with self.bind.connect() as conn:
-            conn.execute("SELECT 1;").fetchone()
+            conn.exec_driver_sql("SELECT 1;").fetchone()
 
     def test_does_not_modify_query(self):
         with self.bind.connect() as conn:

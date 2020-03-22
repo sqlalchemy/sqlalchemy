@@ -2371,7 +2371,7 @@ class MySQLDialect(default.DefaultDialect):
         connection.execute(sql.text("XA COMMIT :xid"), xid=xid)
 
     def do_recover_twophase(self, connection):
-        resultset = connection.execute("XA RECOVER")
+        resultset = connection.exec_driver_sql("XA RECOVER")
         return [row["data"][0 : row["gtrid_length"]] for row in resultset]
 
     def is_disconnect(self, e, connection, cursor):
@@ -2424,7 +2424,7 @@ class MySQLDialect(default.DefaultDialect):
         raise NotImplementedError()
 
     def _get_default_schema_name(self, connection):
-        return connection.execute("SELECT DATABASE()").scalar()
+        return connection.exec_driver_sql("SELECT DATABASE()").scalar()
 
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
@@ -2449,7 +2449,7 @@ class MySQLDialect(default.DefaultDialect):
             try:
                 rs = connection.execution_options(
                     skip_user_error_events=True
-                ).execute(st)
+                ).exec_driver_sql(st)
                 have = rs.fetchone() is not None
                 rs.close()
                 return have
@@ -2552,7 +2552,7 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
-        rp = connection.execute("SHOW schemas")
+        rp = connection.exec_driver_sql("SHOW schemas")
         return [r[0] for r in rp]
 
     @reflection.cache
@@ -2565,7 +2565,7 @@ class MySQLDialect(default.DefaultDialect):
 
         charset = self._connection_charset
         if self.server_version_info < (5, 0, 2):
-            rp = connection.execute(
+            rp = connection.exec_driver_sql(
                 "SHOW TABLES FROM %s"
                 % self.identifier_preparer.quote_identifier(current_schema)
             )
@@ -2573,7 +2573,7 @@ class MySQLDialect(default.DefaultDialect):
                 row[0] for row in self._compat_fetchall(rp, charset=charset)
             ]
         else:
-            rp = connection.execute(
+            rp = connection.exec_driver_sql(
                 "SHOW FULL TABLES FROM %s"
                 % self.identifier_preparer.quote_identifier(current_schema)
             )
@@ -2593,7 +2593,7 @@ class MySQLDialect(default.DefaultDialect):
         if self.server_version_info < (5, 0, 2):
             return self.get_table_names(connection, schema)
         charset = self._connection_charset
-        rp = connection.execute(
+        rp = connection.exec_driver_sql(
             "SHOW FULL TABLES FROM %s"
             % self.identifier_preparer.quote_identifier(schema)
         )
@@ -2905,7 +2905,9 @@ class MySQLDialect(default.DefaultDialect):
 
         charset = self._connection_charset
         row = self._compat_first(
-            connection.execute("SHOW VARIABLES LIKE 'lower_case_table_names'"),
+            connection.execute(
+                sql.text("SHOW VARIABLES LIKE 'lower_case_table_names'")
+            ),
             charset=charset,
         )
         if not row:
@@ -2933,14 +2935,14 @@ class MySQLDialect(default.DefaultDialect):
             pass
         else:
             charset = self._connection_charset
-            rs = connection.execute("SHOW COLLATION")
+            rs = connection.exec_driver_sql("SHOW COLLATION")
             for row in self._compat_fetchall(rs, charset):
                 collations[row[0]] = row[1]
         return collations
 
     def _detect_sql_mode(self, connection):
         row = self._compat_first(
-            connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
+            connection.exec_driver_sql("SHOW VARIABLES LIKE 'sql_mode'"),
             charset=self._connection_charset,
         )
 
@@ -2981,7 +2983,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             rp = connection.execution_options(
                 skip_user_error_events=True
-            ).execute(st)
+            ).exec_driver_sql(st)
         except exc.DBAPIError as e:
             if self._extract_error_code(e.orig) == 1146:
                 util.raise_(exc.NoSuchTableError(full_name), replace_context=e)
@@ -3004,7 +3006,7 @@ class MySQLDialect(default.DefaultDialect):
             try:
                 rp = connection.execution_options(
                     skip_user_error_events=True
-                ).execute(st)
+                ).exec_driver_sql(st)
             except exc.DBAPIError as e:
                 code = self._extract_error_code(e.orig)
                 if code == 1146:

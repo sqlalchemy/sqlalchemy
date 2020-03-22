@@ -586,8 +586,8 @@ class ResultProxyTest(fixtures.TablesTest):
             )
             trans.rollback()
 
-    def test_fetchone_til_end(self):
-        result = testing.db.execute("select * from users")
+    def test_fetchone_til_end(self, connection):
+        result = connection.exec_driver_sql("select * from users")
         eq_(result.fetchone(), None)
         eq_(result.fetchone(), None)
         eq_(result.fetchone(), None)
@@ -600,9 +600,10 @@ class ResultProxyTest(fixtures.TablesTest):
 
     def test_connectionless_autoclose_rows_exhausted(self):
         users = self.tables.users
-        users.insert().execute(dict(user_id=1, user_name="john"))
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), dict(user_id=1, user_name="john"))
 
-        result = testing.db.execute("select * from users")
+        result = testing.db.execute(text("select * from users"))
         connection = result.connection
         assert not connection.closed
         eq_(result.fetchone(), (1, "john"))
@@ -627,7 +628,7 @@ class ResultProxyTest(fixtures.TablesTest):
         assert connection.closed
 
     def test_connectionless_autoclose_no_rows(self):
-        result = testing.db.execute("select * from users")
+        result = testing.db.execute(text("select * from users"))
         connection = result.connection
         assert not connection.closed
         eq_(result.fetchone(), None)
@@ -635,7 +636,7 @@ class ResultProxyTest(fixtures.TablesTest):
 
     @testing.requires.updateable_autoincrement_pks
     def test_connectionless_autoclose_no_metadata(self):
-        result = testing.db.execute("update users set user_id=5")
+        result = testing.db.execute(text("update users set user_id=5"))
         connection = result.connection
         assert connection.closed
         assert_raises_message(
@@ -1071,16 +1072,18 @@ class ResultProxyTest(fixtures.TablesTest):
             [("user_id", 1), ("user_name", "foo")],
         )
 
-    def test_len(self):
+    def test_len(self, connection):
         users = self.tables.users
 
-        users.insert().execute(user_id=1, user_name="foo")
-        r = users.select().execute().first()
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
+        r = connection.execute(users.select()).first()
         eq_(len(r), 2)
 
-        r = testing.db.execute("select user_name, user_id from users").first()
+        r = connection.exec_driver_sql(
+            "select user_name, user_id from users"
+        ).first()
         eq_(len(r), 2)
-        r = testing.db.execute("select user_name from users").first()
+        r = connection.exec_driver_sql("select user_name from users").first()
         eq_(len(r), 1)
 
     def test_sorting_in_python(self):
@@ -1109,12 +1112,15 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_([x.lower() for x in r._fields], ["user_id", "user_name"])
         eq_(list(r._mapping.values()), [1, "foo"])
 
-    def test_column_order_with_text_query(self):
+    def test_column_order_with_text_query(self, connection):
         # should return values in query order
         users = self.tables.users
 
-        users.insert().execute(user_id=1, user_name="foo")
-        r = testing.db.execute("select user_name, user_id from users").first()
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
+
+        r = connection.exec_driver_sql(
+            "select user_name, user_id from users"
+        ).first()
         eq_(r[0], "foo")
         eq_(r[1], 1)
         eq_([x.lower() for x in r._fields], ["user_name", "user_id"])
@@ -1271,8 +1277,10 @@ class ResultProxyTest(fixtures.TablesTest):
         eq_(row[1:0:-1], ("Uno",))
 
     @testing.only_on("sqlite")
-    def test_row_getitem_indexes_raw(self):
-        row = testing.db.execute("select 'One' as key, 'Uno' as value").first()
+    def test_row_getitem_indexes_raw(self, connection):
+        row = connection.exec_driver_sql(
+            "select 'One' as key, 'Uno' as value"
+        ).first()
         eq_(row._mapping["key"], "One")
         eq_(row._mapping["value"], "Uno")
         eq_(row[0], "One")
@@ -1304,7 +1312,7 @@ class ResultProxyTest(fixtures.TablesTest):
         assert s.getvalue().strip() == "1,Test"
 
     @testing.requires.selectone
-    def test_empty_accessors(self):
+    def test_empty_accessors(self, connection):
         statements = [
             (
                 "select 1",
@@ -1339,7 +1347,10 @@ class ResultProxyTest(fixtures.TablesTest):
         ]
 
         for stmt, meths, msg in statements:
-            r = testing.db.execute(stmt)
+            if isinstance(stmt, str):
+                r = connection.exec_driver_sql(stmt)
+            else:
+                r = connection.execute(stmt)
             try:
                 for meth in meths:
                     assert_raises_message(

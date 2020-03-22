@@ -826,7 +826,7 @@ class CursorErrTest(fixtures.TestBase):
     def test_cursor_explode(self):
         db = self._fixture(False, False)
         conn = db.connect()
-        result = conn.execute("select foo")
+        result = conn.exec_driver_sql("select foo")
         result.close()
         conn.close()
         eq_(
@@ -1006,7 +1006,7 @@ class RealReconnectTest(fixtures.TestBase):
         engine = engines.testing_engine()
 
         def broken_initialize(connection):
-            connection.execute("select fake_stuff from _fake_table")
+            connection.exec_driver_sql("select fake_stuff from _fake_table")
 
         engine.dialect.initialize = broken_initialize
 
@@ -1020,7 +1020,7 @@ class RealReconnectTest(fixtures.TestBase):
         engine = engines.testing_engine()
 
         def broken_initialize(connection):
-            connection.execute("select fake_stuff from _fake_table")
+            connection.exec_driver_sql("select fake_stuff from _fake_table")
 
         engine.dialect.initialize = broken_initialize
 
@@ -1186,7 +1186,7 @@ class InvalidateDuringResultTest(fixtures.TestBase):
     )
     def test_invalidate_on_results(self):
         conn = self.engine.connect()
-        result = conn.execute("select * from sometable")
+        result = conn.exec_driver_sql("select * from sometable")
         for x in range(20):
             result.fetchone()
         self.engine.test_shutdown()

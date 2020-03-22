@@ -277,28 +277,32 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
         ]:
             try:
-                con.execute(ddl)
+                con.exec_driver_sql(ddl)
             except exc.DBAPIError as e:
                 if "already exists" not in str(e):
                     raise e
-        con.execute(
+        con.exec_driver_sql(
             "CREATE TABLE testtable (question integer, answer " "testdomain)"
         )
-        con.execute(
+        con.exec_driver_sql(
             "CREATE TABLE test_schema.testtable(question "
             "integer, answer test_schema.testdomain, anything "
             "integer)"
         )
-        con.execute(
+        con.exec_driver_sql(
             "CREATE TABLE crosschema (question integer, answer "
             "test_schema.testdomain)"
         )
 
-        con.execute("CREATE TABLE enum_test (id integer, data enumdomain)")
+        con.exec_driver_sql(
+            "CREATE TABLE enum_test (id integer, data enumdomain)"
+        )
 
-        con.execute("CREATE TABLE array_test (id integer, data arraydomain)")
+        con.exec_driver_sql(
+            "CREATE TABLE array_test (id integer, data arraydomain)"
+        )
 
-        con.execute(
+        con.exec_driver_sql(
             "CREATE TABLE quote_test "
             '(id integer, data "SomeSchema"."Quoted.Domain")'
         )
@@ -306,19 +310,19 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
-        con.execute("DROP TABLE testtable")
-        con.execute("DROP TABLE test_schema.testtable")
-        con.execute("DROP TABLE crosschema")
-        con.execute("DROP TABLE quote_test")
-        con.execute("DROP DOMAIN testdomain")
-        con.execute("DROP DOMAIN test_schema.testdomain")
-        con.execute("DROP TABLE enum_test")
-        con.execute("DROP DOMAIN enumdomain")
-        con.execute("DROP TYPE testtype")
-        con.execute("DROP TABLE array_test")
-        con.execute("DROP DOMAIN arraydomain")
-        con.execute('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
-        con.execute('DROP SCHEMA "SomeSchema"')
+        con.exec_driver_sql("DROP TABLE testtable")
+        con.exec_driver_sql("DROP TABLE test_schema.testtable")
+        con.exec_driver_sql("DROP TABLE crosschema")
+        con.exec_driver_sql("DROP TABLE quote_test")
+        con.exec_driver_sql("DROP DOMAIN testdomain")
+        con.exec_driver_sql("DROP DOMAIN test_schema.testdomain")
+        con.exec_driver_sql("DROP TABLE enum_test")
+        con.exec_driver_sql("DROP DOMAIN enumdomain")
+        con.exec_driver_sql("DROP TYPE testtype")
+        con.exec_driver_sql("DROP TABLE array_test")
+        con.exec_driver_sql("DROP DOMAIN arraydomain")
+        con.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
+        con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
 
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -485,9 +489,9 @@ class ReflectionTest(fixtures.TestBase):
         eq_(t2.c.id.server_default.arg.text, "nextval('t_id_seq'::regclass)")
         r = t2.insert().execute()
         eq_(r.inserted_primary_key, [1])
-        testing.db.connect().execution_options(autocommit=True).execute(
-            "alter table t_id_seq rename to foobar_id_seq"
-        )
+        testing.db.connect().execution_options(
+            autocommit=True
+        ).exec_driver_sql("alter table t_id_seq rename to foobar_id_seq")
         m3 = MetaData(testing.db)
         t3 = Table("t", m3, autoload=True, implicit_returning=False)
         eq_(
@@ -507,9 +511,9 @@ class ReflectionTest(fixtures.TestBase):
             Column("x", Integer),
         )
         metadata.create_all()
-        testing.db.connect().execution_options(autocommit=True).execute(
-            "alter table t alter column id type varchar(50)"
-        )
+        testing.db.connect().execution_options(
+            autocommit=True
+        ).exec_driver_sql("alter table t alter column id type varchar(50)")
         m2 = MetaData(testing.db)
         t2 = Table("t", m2, autoload=True)
         eq_(t2.c.id.autoincrement, False)
@@ -520,9 +524,9 @@ class ReflectionTest(fixtures.TestBase):
         metadata = self.metadata
         Table("t", metadata, Column("id", Integer, primary_key=True))
         metadata.create_all()
-        testing.db.connect().execution_options(autocommit=True).execute(
-            "alter table t rename id to t_id"
-        )
+        testing.db.connect().execution_options(
+            autocommit=True
+        ).exec_driver_sql("alter table t rename id to t_id")
         m2 = MetaData(testing.db)
         t2 = Table("t", m2, autoload=True)
         eq_([c.name for c in t2.primary_key], ["t_id"])
@@ -642,7 +646,7 @@ class ReflectionTest(fixtures.TestBase):
 
         conn = testing.db.connect()
         conn.detach()
-        conn.execute("SET search_path TO test_schema, test_schema_2")
+        conn.exec_driver_sql("SET search_path TO test_schema, test_schema_2")
         meta2 = MetaData(bind=conn)
         subject = Table(
             "subject",
@@ -727,7 +731,7 @@ class ReflectionTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             conn.detach()
 
-            conn.execute(
+            conn.exec_driver_sql(
                 "set search_path to test_schema_2, test_schema, public"
             )
 
@@ -792,7 +796,7 @@ class ReflectionTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             conn.detach()
 
-            conn.execute(
+            conn.exec_driver_sql(
                 "set search_path to test_schema_2, test_schema, public"
             )
             meta2 = MetaData(conn)
@@ -889,22 +893,17 @@ class ReflectionTest(fixtures.TestBase):
             Column("aname", String(20)),
         )
         metadata.create_all()
-        testing.db.execute(
-            """
-          create index idx1 on party ((id || name))
-        """
-        )
-        testing.db.execute(
-            """
-          create unique index idx2 on party (id) where name = 'test'
-        """
-        )
-        testing.db.execute(
-            """
-            create index idx3 on party using btree
-                (lower(name::text), lower(aname::text))
-        """
-        )
+        with testing.db.connect() as c:
+            c.exec_driver_sql("create index idx1 on party ((id || name))")
+            c.exec_driver_sql(
+                "create unique index idx2 on party (id) where name = 'test'"
+            )
+            c.exec_driver_sql(
+                """
+                create index idx3 on party using btree
+                    (lower(name::text), lower(aname::text))
+                """
+            )
 
         def go():
             m2 = MetaData(testing.db)
@@ -951,7 +950,7 @@ class ReflectionTest(fixtures.TestBase):
             t1.create(conn)
 
             # check ASC, DESC options alone
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 create index idx1 on party
                     (id, name ASC, aname DESC)
@@ -959,7 +958,7 @@ class ReflectionTest(fixtures.TestBase):
             )
 
             # check DESC w/ NULLS options
-            conn.execute(
+            conn.exec_driver_sql(
                 """
               create index idx2 on party
                     (name DESC NULLS FIRST, aname DESC NULLS LAST)
@@ -967,7 +966,7 @@ class ReflectionTest(fixtures.TestBase):
             )
 
             # check ASC w/ NULLS options
-            conn.execute(
+            conn.exec_driver_sql(
                 """
               create index idx3 on party
                     (name ASC NULLS FIRST, aname ASC NULLS LAST)
@@ -1028,8 +1027,8 @@ class ReflectionTest(fixtures.TestBase):
         )
         metadata.create_all()
         conn = testing.db.connect().execution_options(autocommit=True)
-        conn.execute("CREATE INDEX idx1 ON t (x)")
-        conn.execute("ALTER TABLE t RENAME COLUMN x to y")
+        conn.exec_driver_sql("CREATE INDEX idx1 ON t (x)")
+        conn.exec_driver_sql("ALTER TABLE t RENAME COLUMN x to y")
 
         ind = testing.db.dialect.get_indexes(conn, "t", None)
         eq_(ind, [{"unique": False, "column_names": ["y"], "name": "idx1"}])
@@ -1051,7 +1050,9 @@ class ReflectionTest(fixtures.TestBase):
         metadata.create_all()
 
         with testing.db.connect().execution_options(autocommit=True) as conn:
-            conn.execute("CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)")
+            conn.exec_driver_sql(
+                "CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)"
+            )
 
             ind = testing.db.dialect.get_indexes(conn, "t", None)
             eq_(
@@ -1089,7 +1090,7 @@ class ReflectionTest(fixtures.TestBase):
         )
         metadata.create_all()
         with testing.db.connect().execution_options(autocommit=True) as conn:
-            conn.execute("CREATE INDEX idx1 ON t USING gin (x)")
+            conn.exec_driver_sql("CREATE INDEX idx1 ON t USING gin (x)")
 
             ind = testing.db.dialect.get_indexes(conn, "t", None)
             eq_(

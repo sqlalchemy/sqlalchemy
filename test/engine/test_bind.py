@@ -133,7 +133,10 @@ class BindTest(fixtures.TestBase):
             trans.rollback()
             metadata.bind = None
             assert (
-                conn.execute("select count(*) from test_table").scalar() == 0
+                conn.exec_driver_sql(
+                    "select count(*) from test_table"
+                ).scalar()
+                == 0
             )
         finally:
             metadata.drop_all(bind=conn)

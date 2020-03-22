@@ -20,6 +20,11 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import lazy_gc
 
 
+def exec_sql(engine, sql, *args, **kwargs):
+    with engine.connect() as conn:
+        return conn.exec_driver_sql(sql, *args, **kwargs)
+
+
 class LogParamsTest(fixtures.TestBase):
     __only_on__ = "sqlite"
     __requires__ = ("ad_hoc_engines",)
@@ -29,21 +34,23 @@ class LogParamsTest(fixtures.TestBase):
         self.no_param_engine = engines.testing_engine(
             options={"echo": True, "hide_parameters": True}
         )
-        self.eng.execute("create table if not exists foo (data string)")
-        self.no_param_engine.execute(
-            "create table if not exists foo (data string)"
+        exec_sql(self.eng, "create table if not exists foo (data string)")
+        exec_sql(
+            self.no_param_engine,
+            "create table if not exists foo (data string)",
         )
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.addHandler(self.buf)
 
     def teardown(self):
-        self.eng.execute("drop table if exists foo")
+        exec_sql(self.eng, "drop table if exists foo")
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.removeHandler(self.buf)
 
     def test_log_large_list_of_dict(self):
-        self.eng.execute(
+        exec_sql(
+            self.eng,
             "INSERT INTO foo (data) values (:data)",
             [{"data": str(i)} for i in range(100)],
         )
@@ -71,7 +78,8 @@ class LogParamsTest(fixtures.TestBase):
         )
 
     def test_log_no_parameters(self):
-        self.no_param_engine.execute(
+        exec_sql(
+            self.no_param_engine,
             "INSERT INTO foo (data) values (:data)",
             [{"data": str(i)} for i in range(100)],
         )
@@ -81,7 +89,8 @@ class LogParamsTest(fixtures.TestBase):
         )
 
     def test_log_large_list_of_tuple(self):
-        self.eng.execute(
+        exec_sql(
+            self.eng,
             "INSERT INTO foo (data) values (?)",
             [(str(i),) for i in range(100)],
         )
@@ -210,7 +219,7 @@ class LogParamsTest(fixtures.TestBase):
 
         largeparam = "".join(chr(random.randint(52, 85)) for i in range(5000))
 
-        self.eng.execute("INSERT INTO foo (data) values (?)", (largeparam,))
+        exec_sql(self.eng, "INSERT INTO foo (data) values (?)", (largeparam,))
 
         eq_(
             self.buf.buffer[1].message,
@@ -225,7 +234,7 @@ class LogParamsTest(fixtures.TestBase):
         lp2 = "".join(chr(random.randint(52, 85)) for i in range(8))
         lp3 = "".join(chr(random.randint(52, 85)) for i in range(670))
 
-        self.eng.execute("SELECT ?, ?, ?", (lp1, lp2, lp3))
+        exec_sql(self.eng, "SELECT ?, ?, ?", (lp1, lp2, lp3))
 
         eq_(
             self.buf.buffer[1].message,
@@ -240,8 +249,10 @@ class LogParamsTest(fixtures.TestBase):
         lp2 = "".join(chr(random.randint(52, 85)) for i in range(200))
         lp3 = "".join(chr(random.randint(52, 85)) for i in range(670))
 
-        self.eng.execute(
-            "INSERT INTO foo (data) values (?)", [(lp1,), (lp2,), (lp3,)]
+        exec_sql(
+            self.eng,
+            "INSERT INTO foo (data) values (?)",
+            [(lp1,), (lp2,), (lp3,)],
         )
 
         eq_(
@@ -273,7 +284,8 @@ class LogParamsTest(fixtures.TestBase):
             tsa.exc.DBAPIError,
             r".*INSERT INTO nonexistent \(data\) values \(:data\)\]\n"
             r"\[SQL parameters hidden due to hide_parameters=True\]",
-            lambda: self.no_param_engine.execute(
+            lambda: exec_sql(
+                self.no_param_engine,
                 "INSERT INTO nonexistent (data) values (:data)",
                 [{"data": str(i)} for i in range(10)],
             ),
@@ -324,7 +336,7 @@ class LogParamsTest(fixtures.TestBase):
         largeparam = "".join(chr(random.randint(52, 85)) for i in range(5000))
 
         self.eng.echo = "debug"
-        result = self.eng.execute("SELECT ?", (largeparam,))
+        result = exec_sql(self.eng, "SELECT ?", (largeparam,))
 
         row = result.first()
 
@@ -370,7 +382,8 @@ class LogParamsTest(fixtures.TestBase):
             r"{'data': '6'}, {'data': '7'}  ... displaying 10 of "
             r"100 total bound parameter sets ...  {'data': '98'}, "
             r"{'data': '99'}\]",
-            lambda: self.eng.execute(
+            lambda: exec_sql(
+                self.eng,
                 "INSERT INTO nonexistent (data) values (:data)",
                 [{"data": str(i)} for i in range(100)],
             ),
@@ -385,7 +398,8 @@ class LogParamsTest(fixtures.TestBase):
             r"... displaying "
             r"10 of 100 total bound parameter sets ...  "
             r"\('98',\), \('99',\)\]",
-            lambda: self.eng.execute(
+            lambda: exec_sql(
+                self.eng,
                 "INSERT INTO nonexistent (data) values (?)",
                 [(str(i),) for i in range(100)],
             ),

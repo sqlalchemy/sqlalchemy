@@ -144,11 +144,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     @testing.provide_metadata
     def test_skip_types(self):
         metadata = self.metadata
-        testing.db.execute(
-            """
-            create table foo (id integer primary key, data xml)
-        """
-        )
+        with testing.db.connect() as c:
+            c.exec_driver_sql(
+                "create table foo (id integer primary key, data xml)"
+            )
         with mock.patch.object(
             testing.db.dialect, "ischema_names", {"int": mssql.INTEGER}
         ):
@@ -236,8 +235,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
         metadata.create_all()
 
-        dbname = testing.db.scalar("select db_name()")
-        owner = testing.db.scalar("SELECT user_name()")
+        with testing.db.connect() as c:
+            dbname = c.exec_driver_sql("select db_name()").scalar()
+            owner = c.exec_driver_sql("SELECT user_name()").scalar()
         referred_schema = "%(dbname)s.%(owner)s" % {
             "dbname": dbname,
             "owner": owner,
@@ -439,11 +439,21 @@ class OwnerPlusDBTest(fixtures.TestBase):
         schema, owner = base._owner_plus_db(dialect, identifier)
 
         mock_connection = mock.Mock(
-            dialect=dialect, scalar=mock.Mock(return_value="my_db")
+            dialect=dialect,
+            exec_driver_sql=mock.Mock(
+                return_value=mock.Mock(scalar=mock.Mock(return_value="my_db"))
+            ),
         )
         mock_lambda = mock.Mock()
         base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")
-        eq_(mock_connection.mock_calls, [mock.call.scalar("select db_name()")])
+        eq_(
+            mock_connection.mock_calls,
+            [mock.call.exec_driver_sql("select db_name()")],
+        )
+        eq_(
+            mock_connection.exec_driver_sql.return_value.mock_calls,
+            [mock.call.scalar()],
+        ),
         eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
 
     def test_owner_database_pairs_switch_for_different_db(self):
@@ -453,17 +463,24 @@ class OwnerPlusDBTest(fixtures.TestBase):
         schema, owner = base._owner_plus_db(dialect, identifier)
 
         mock_connection = mock.Mock(
-            dialect=dialect, scalar=mock.Mock(return_value="my_db")
+            dialect=dialect,
+            exec_driver_sql=mock.Mock(
+                return_value=mock.Mock(scalar=mock.Mock(return_value="my_db"))
+            ),
         )
         mock_lambda = mock.Mock()
         base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")
         eq_(
             mock_connection.mock_calls,
             [
-                mock.call.scalar("select db_name()"),
-                mock.call.execute("use my_other_db"),
-                mock.call.execute("use my_db"),
+                mock.call.exec_driver_sql("select db_name()"),
+                mock.call.exec_driver_sql("use my_other_db"),
+                mock.call.exec_driver_sql("use my_db"),
             ],
+            eq_(
+                mock_connection.exec_driver_sql.return_value.mock_calls,
+                [mock.call.scalar()],
+            ),
         )
         eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
 
@@ -496,7 +513,11 @@ class OwnerPlusDBTest(fixtures.TestBase):
 
             mock_connection = mock.Mock(
                 dialect=dialect,
-                scalar=mock.Mock(return_value="Some ] Database"),
+                exec_driver_sql=mock.Mock(
+                    return_value=mock.Mock(
+                        scalar=mock.Mock(return_value="Some ] Database")
+                    )
+                ),
             )
             mock_lambda = mock.Mock()
             base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")
@@ -506,9 +527,13 @@ class OwnerPlusDBTest(fixtures.TestBase):
                 eq_(
                     mock_connection.mock_calls,
                     [
-                        mock.call.scalar("select db_name()"),
-                        mock.call.execute(use_stmt),
-                        mock.call.execute("use [Some  Database]"),
+                        mock.call.exec_driver_sql("select db_name()"),
+                        mock.call.exec_driver_sql(use_stmt),
+                        mock.call.exec_driver_sql("use [Some  Database]"),
                     ],
+                )
+                eq_(
+                    mock_connection.exec_driver_sql.return_value.mock_calls,
+                    [mock.call.scalar()],
                 )
             eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])

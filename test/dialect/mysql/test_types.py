@@ -697,12 +697,12 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
                 return dt
 
         with testing.db.begin() as conn:
-            now = conn.scalar("select now()")
+            now = conn.exec_driver_sql("select now()").scalar()
             conn.execute(ts_table.insert(), {"t1": now, "t2": None})
             conn.execute(ts_table.insert(), {"t1": None, "t2": None})
             conn.execute(ts_table.insert(), {"t2": None})
 
-            new_now = conn.scalar("select now()")
+            new_now = conn.exec_driver_sql("select now()").scalar()
 
             eq_(
                 [

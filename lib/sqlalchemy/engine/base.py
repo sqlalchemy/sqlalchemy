@@ -563,7 +563,7 @@ class Connection(Connectable):
 
             with engine.connect() as conn:
                 conn.detach()
-                conn.execute("SET search_path TO schema1, schema2")
+                conn.execute(text("SET search_path TO schema1, schema2"))
 
                 # work with connection
 
@@ -933,7 +933,7 @@ class Connection(Connectable):
         :param object: The statement to be executed.  May be
          one of:
 
-         * a plain string
+         * a plain string (deprecated)
          * any :class:`.ClauseElement` construct that is also
            a subclass of :class:`.Executable`, such as a
            :func:`~.expression.select` construct
@@ -943,6 +943,13 @@ class Connection(Connectable):
          * a :class:`.DDLElement` object
          * a :class:`.DefaultGenerator` object
          * a :class:`.Compiled` object
+
+         .. deprecated:: 2.0 passing a string to :meth:`.Connection.execute` is
+            deprecated and will be removed in version 2.0.  Use the
+            :func:`~.expression.text` construct with
+            :meth:`.Connection.execute`, or the
+            :meth:`.Connection.exec_driver_sql` method to invoke a driver-level
+            SQL string.
 
         :param \*multiparams/\**params: represent bound parameter
          values to be used in the execution.   Typically,
@@ -984,9 +991,22 @@ class Connection(Connectable):
          To execute a textual SQL statement which uses bound parameters in a
          DBAPI-agnostic way, use the :func:`~.expression.text` construct.
 
+         .. deprecated:: 2.0 use of tuple or scalar positional parameters
+            is deprecated. All params should be dicts or sequences of dicts.
+            Use :meth:`.exec_driver_sql` to execute a plain string with
+            tuple or scalar positional parameters.
+
         """
         if isinstance(object_, util.string_types[0]):
-            return self._execute_text(object_, multiparams, params)
+            util.warn_deprecated_20(
+                "Passing a string to Connection.execute() is "
+                "deprecated and will be removed in version 2.0.  Use the "
+                "text() construct, "
+                "or the Connection.exec_driver_sql() method to invoke a "
+                "driver-level SQL string."
+            )
+            distilled_params = _distill_params(multiparams, params)
+            return self._exec_driver_sql_distilled(object_, distilled_params)
         try:
             meth = object_._execute_on_connection
         except AttributeError as err:
@@ -1147,17 +1167,15 @@ class Connection(Connectable):
             )
         return ret
 
-    def _execute_text(self, statement, multiparams, params):
-        """Execute a string SQL statement."""
+    def _exec_driver_sql_distilled(self, statement, parameters):
 
         if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
                 statement, multiparams, params = fn(
-                    self, statement, multiparams, params
+                    self, statement, parameters, {}
                 )
 
         dialect = self.dialect
-        parameters = _distill_params(multiparams, params)
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_statement,
@@ -1167,10 +1185,59 @@ class Connection(Connectable):
             parameters,
         )
         if self._has_events or self.engine._has_events:
-            self.dispatch.after_execute(
-                self, statement, multiparams, params, ret
-            )
+            self.dispatch.after_execute(self, statement, parameters, {})
         return ret
+
+    def exec_driver_sql(self, statement, parameters=None):
+        r"""Executes a SQL statement construct and returns a
+        :class:`.ResultProxy`.
+
+        :param statement: The statement str to be executed.   Bound parameters
+         must use the underlying DBAPI's paramstyle, such as "qmark",
+         "pyformat", "format", etc.
+
+        :param parameters: represent bound parameter values to be used in the
+         execution.  The format is one of:   a dictionary of named parameters,
+         a tuple of positional parameters, or a list containing either
+         dictionaries or tuples for multiple-execute support.
+
+         E.g. multiple dictionaries::
+
+
+             conn.exec_driver_sql(
+                 "INSERT INTO table (id, value) VALUES (%(id)s, %(value)s)",
+                 [{"id":1, "value":"v1"}, {"id":2, "value":"v2"}]
+             )
+
+         Single dictionary::
+
+             conn.exec_driver_sql(
+                 "INSERT INTO table (id, value) VALUES (%(id)s, %(value)s)",
+                 dict(id=1, value="v1")
+             )
+
+         Single tuple::
+
+             conn.exec_driver_sql(
+                 "INSERT INTO table (id, value) VALUES (?, ?)",
+                 (1, 'v1')
+             )
+
+         .. seealso::
+
+            :pep:`249`
+
+        """
+
+        if isinstance(parameters, list) and parameters:
+            if not isinstance(parameters[0], (dict, tuple)):
+                raise exc.ArgumentError(
+                    "List argument must consist only of tuples or dictionaries"
+                )
+        elif isinstance(parameters, (dict, tuple)):
+            parameters = [parameters]
+
+        return self._exec_driver_sql_distilled(statement, parameters or ())
 
     def _execute_context(
         self, dialect, constructor, statement, parameters, *args
@@ -1603,7 +1670,7 @@ class Connection(Connectable):
         e.g.::
 
             def do_something(conn, x, y):
-                conn.execute("some statement", {'x':x, 'y':y})
+                conn.execute(text("some statement"), {'x':x, 'y':y})
 
             conn.transaction(do_something, 5, 10)
 
@@ -1620,12 +1687,12 @@ class Connection(Connectable):
            be used with :meth:`.Connection.begin`::
 
                with conn.begin():
-                   conn.execute("some statement", {'x':5, 'y':10})
+                   conn.execute(text("some statement"), {'x':5, 'y':10})
 
            As well as with :meth:`.Engine.begin`::
 
                with engine.begin() as conn:
-                   conn.execute("some statement", {'x':5, 'y':10})
+                   conn.execute(text("some statement"), {'x':5, 'y':10})
 
         .. seealso::
 
@@ -1706,7 +1773,7 @@ class Transaction(object):
         engine = create_engine("postgresql://scott:tiger@localhost/test")
         connection = engine.connect()
         trans = connection.begin()
-        connection.execute("insert into x (a, b) values (1, 2)")
+        connection.execute(text("insert into x (a, b) values (1, 2)"))
         trans.commit()
 
     The object provides :meth:`.rollback` and :meth:`.commit`
@@ -1716,7 +1783,7 @@ class Transaction(object):
     :meth:`.Connection.begin` method::
 
         with connection.begin():
-            connection.execute("insert into x (a, b) values (1, 2)")
+            connection.execute(text("insert into x (a, b) values (1, 2)"))
 
     The Transaction object is **not** threadsafe.
 
@@ -2129,8 +2196,10 @@ class Engine(Connectable, log.Identified):
         E.g.::
 
             with engine.begin() as conn:
-                conn.execute("insert into table (x, y, z) values (1, 2, 3)")
-                conn.execute("my_special_procedure(5)")
+                conn.execute(
+                    text("insert into table (x, y, z) values (1, 2, 3)")
+                )
+                conn.execute(text("my_special_procedure(5)"))
 
         Upon successful operation, the :class:`.Transaction`
         is committed.  If an error is raised, the :class:`.Transaction`
@@ -2177,7 +2246,7 @@ class Engine(Connectable, log.Identified):
         e.g.::
 
             def do_something(conn, x, y):
-                conn.execute("some statement", {'x':x, 'y':y})
+                conn.execute(text("some statement"), {'x':x, 'y':y})
 
             engine.transaction(do_something, 5, 10)
 
@@ -2194,7 +2263,7 @@ class Engine(Connectable, log.Identified):
            be used with :meth:`.Engine.begin`::
 
                with engine.begin() as conn:
-                   conn.execute("some statement", {'x':5, 'y':10})
+                   conn.execute(text("some statement"), {'x':5, 'y':10})
 
         .. seealso::
 
@@ -2270,6 +2339,10 @@ class Engine(Connectable, log.Identified):
         "used to return a scalar result.",
     )
     def scalar(self, statement, *multiparams, **params):
+        """Executes and returns the first column of the first row.
+
+        The underlying result/cursor is closed after execution.
+        """
         return self.execute(statement, *multiparams, **params).scalar()
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):

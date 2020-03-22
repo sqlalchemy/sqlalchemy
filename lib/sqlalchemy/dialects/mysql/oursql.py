@@ -91,7 +91,7 @@ class MySQLDialect_oursql(MySQLDialect):
                 xid.encode(charset)
             ).decode(charset)
         arg = "'%s'" % arg
-        connection.execution_options(_oursql_plain_query=True).execute(
+        connection.execution_options(_oursql_plain_query=True).exec_driver_sql(
             query % arg
         )
 

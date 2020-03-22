@@ -114,7 +114,7 @@ class Inspector(object):
         return self
 
     def _init_legacy(self, bind):
-        if hasattr(bind, "engine"):
+        if hasattr(bind, "exec_driver_sql"):
             self._init_connection(bind)
         else:
             self._init_engine(bind)

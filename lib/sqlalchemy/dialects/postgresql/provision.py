@@ -18,12 +18,14 @@ def _pg_create_db(cfg, eng, ident):
         except Exception:
             pass
         if not template_db:
-            template_db = conn.scalar("select current_database()")
+            template_db = conn.exec_driver_sql(
+                "select current_database()"
+            ).scalar()
 
         attempt = 0
         while True:
             try:
-                conn.execute(
+                conn.exec_driver_sql(
                     "CREATE DATABASE %s TEMPLATE %s" % (ident, template_db)
                 )
             except exc.OperationalError as err:
@@ -56,7 +58,7 @@ def _pg_drop_db(cfg, eng, ident):
             ),
             dname=ident,
         )
-        conn.execute("DROP DATABASE %s" % ident)
+        conn.exec_driver_sql("DROP DATABASE %s" % ident)
 
 
 @temp_table_keyword_args.for_db("postgresql")

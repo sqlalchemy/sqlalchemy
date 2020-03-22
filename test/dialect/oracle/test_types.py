@@ -51,6 +51,11 @@ from sqlalchemy.util import py2k
 from sqlalchemy.util import u
 
 
+def exec_sql(engine, sql, *args, **kwargs):
+    with engine.connect() as conn:
+        return conn.exec_driver_sql(sql, *args, **kwargs)
+
+
 class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = oracle.OracleDialect()
 
@@ -371,8 +376,8 @@ class TypesTest(fixtures.TestBase):
         )
 
         eq_(
-            testing.db.execute(
-                "select numericcol from t1 order by intcol"
+            exec_sql(
+                testing.db, "select numericcol from t1 order by intcol"
             ).fetchall(),
             [(float("inf"),), (float("-inf"),)],
         )
@@ -403,8 +408,8 @@ class TypesTest(fixtures.TestBase):
         )
 
         eq_(
-            testing.db.execute(
-                "select numericcol from t1 order by intcol"
+            exec_sql(
+                testing.db, "select numericcol from t1 order by intcol"
             ).fetchall(),
             [(decimal.Decimal("Infinity"),), (decimal.Decimal("-Infinity"),)],
         )
@@ -439,8 +444,8 @@ class TypesTest(fixtures.TestBase):
         eq_(
             [
                 tuple(str(col) for col in row)
-                for row in testing.db.execute(
-                    "select numericcol from t1 order by intcol"
+                for row in exec_sql(
+                    testing.db, "select numericcol from t1 order by intcol"
                 )
             ],
             [("nan",), ("nan",)],
@@ -474,8 +479,8 @@ class TypesTest(fixtures.TestBase):
         )
 
         eq_(
-            testing.db.execute(
-                "select numericcol from t1 order by intcol"
+            exec_sql(
+                testing.db, "select numericcol from t1 order by intcol"
             ).fetchall(),
             [(decimal.Decimal("NaN"),), (decimal.Decimal("NaN"),)],
         )
@@ -515,7 +520,7 @@ class TypesTest(fixtures.TestBase):
 
         stmt = "SELECT idata, ndata, ndata2, nidata, fdata FROM foo"
 
-        row = testing.db.execute(stmt).fetchall()[0]
+        row = exec_sql(testing.db, stmt).fetchall()[0]
         eq_(
             [type(x) for x in row],
             [int, decimal.Decimal, decimal.Decimal, int, float],
@@ -551,7 +556,7 @@ class TypesTest(fixtures.TestBase):
             (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
         FROM dual
         """
-        row = testing.db.execute(stmt).fetchall()[0]
+        row = exec_sql(testing.db, stmt).fetchall()[0]
         eq_(
             [type(x) for x in row],
             [int, decimal.Decimal, int, int, decimal.Decimal],
@@ -608,7 +613,7 @@ class TypesTest(fixtures.TestBase):
         )
         WHERE ROWNUM >= 0) anon_1
         """
-        row = testing.db.execute(stmt).fetchall()[0]
+        row = exec_sql(testing.db, stmt).fetchall()[0]
         eq_(
             [type(x) for x in row],
             [int, decimal.Decimal, int, int, decimal.Decimal],
@@ -660,7 +665,7 @@ class TypesTest(fixtures.TestBase):
         engine = testing_engine(options=dict(coerce_to_decimal=False))
 
         # raw SQL no longer coerces to decimal
-        value = engine.scalar("SELECT 5.66 FROM DUAL")
+        value = exec_sql(engine, "SELECT 5.66 FROM DUAL").scalar()
         assert isinstance(value, float)
 
         # explicit typing still *does* coerce to decimal
@@ -673,7 +678,7 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(value, decimal.Decimal)
 
         # default behavior is raw SQL coerces to decimal
-        value = testing.db.scalar("SELECT 5.66 FROM DUAL")
+        value = exec_sql(testing.db, "SELECT 5.66 FROM DUAL").scalar()
         assert isinstance(value, decimal.Decimal)
 
     @testing.combinations(
@@ -713,7 +718,7 @@ class TypesTest(fixtures.TestBase):
             cx_oracle_result = cursor.fetchone()[0]
             cursor.close()
 
-            sqla_result = conn.scalar(stmt)
+            sqla_result = conn.exec_driver_sql(stmt).scalar()
 
             eq_(sqla_result, cx_oracle_result)
 
@@ -723,10 +728,10 @@ class TypesTest(fixtures.TestBase):
     )
     def test_coerce_to_unicode(self):
         engine = testing_engine(options=dict(coerce_to_unicode=False))
-        value = engine.scalar("SELECT 'hello' FROM DUAL")
+        value = exec_sql(engine, "SELECT 'hello' FROM DUAL").scalar()
         assert isinstance(value, util.binary_type)
 
-        value = testing.db.scalar("SELECT 'hello' FROM DUAL")
+        value = exec_sql(testing.db, "SELECT 'hello' FROM DUAL").scalar()
         assert isinstance(value, util.text_type)
 
     @testing.provide_metadata
@@ -865,21 +870,22 @@ class TypesTest(fixtures.TestBase):
 
     def test_longstring(self):
         metadata = MetaData(testing.db)
-        testing.db.execute(
+        exec_sql(
+            testing.db,
             """
         CREATE TABLE Z_TEST
         (
           ID        NUMERIC(22) PRIMARY KEY,
           ADD_USER  VARCHAR2(20)  NOT NULL
         )
-        """
+        """,
         )
         try:
             t = Table("z_test", metadata, autoload=True)
             t.insert().execute(id=1.0, add_user="foobar")
             assert t.select().execute().fetchall() == [(1, "foobar")]
         finally:
-            testing.db.execute("DROP TABLE Z_TEST")
+            exec_sql(testing.db, "DROP TABLE Z_TEST")
 
 
 class LOBFetchTest(fixtures.TablesTest):
@@ -943,7 +949,7 @@ class LOBFetchTest(fixtures.TablesTest):
         eq_(row["bindata"], b("this is binary 1"))
 
     def test_lobs_with_convert_raw(self):
-        row = testing.db.execute("select data, bindata from z_test").first()
+        row = exec_sql(testing.db, "select data, bindata from z_test").first()
         eq_(row["data"], "this is text 1")
         eq_(row["bindata"], b("this is binary 1"))
 
@@ -951,8 +957,8 @@ class LOBFetchTest(fixtures.TablesTest):
         engine = testing_engine(
             options=dict(auto_convert_lobs=False, arraysize=1)
         )
-        result = engine.execute(
-            "select id, data, bindata from z_test order by id"
+        result = exec_sql(
+            engine, "select id, data, bindata from z_test order by id"
         )
         results = result.fetchall()
 
@@ -985,8 +991,8 @@ class LOBFetchTest(fixtures.TablesTest):
         engine = testing_engine(
             options=dict(auto_convert_lobs=True, arraysize=1)
         )
-        result = engine.execute(
-            "select id, data, bindata from z_test order by id"
+        result = exec_sql(
+            engine, "select id, data, bindata from z_test order by id"
         )
         results = result.fetchall()
 
@@ -1090,7 +1096,10 @@ class EuroNumericTest(fixtures.TestBase):
                     {},
                 ),
             ]:
-                test_exp = conn.scalar(stmt, **kw)
+                if isinstance(stmt, util.string_types):
+                    test_exp = conn.exec_driver_sql(stmt, kw).scalar()
+                else:
+                    test_exp = conn.scalar(stmt, **kw)
                 eq_(test_exp, exp)
                 assert type(test_exp) is type(exp)
 

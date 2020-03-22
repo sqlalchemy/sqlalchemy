@@ -870,10 +870,10 @@ class OracleDialect_cx_oracle(OracleDialect):
         # NLS_TERRITORY or formatting behavior of the DB, we opt
         # to just look at it
 
-        self._decimal_char = connection.scalar(
+        self._decimal_char = connection.exec_driver_sql(
             "select value from nls_session_parameters "
             "where parameter = 'NLS_NUMERIC_CHARACTERS'"
-        )[0]
+        ).scalar()[0]
         if self._decimal_char != ".":
             _detect_decimal = self._detect_decimal
             _to_decimal = self._to_decimal

@@ -175,6 +175,10 @@ class LimitOffsetTest(fixtures.TablesTest):
     def _assert_result(self, select, result, params=()):
         eq_(config.db.execute(select, params).fetchall(), result)
 
+    def _assert_result_str(self, select, result, params=()):
+        conn = config.db.connect(close_with_result=True)
+        eq_(conn.exec_driver_sql(select, params).fetchall(), result)
+
     def test_simple_limit(self):
         table = self.tables.some_table
         self._assert_result(
@@ -209,7 +213,7 @@ class LimitOffsetTest(fixtures.TablesTest):
         )
         sql = str(sql)
 
-        self._assert_result(sql, [(2, 2, 3), (3, 3, 4)])
+        self._assert_result_str(sql, [(2, 2, 3), (3, 3, 4)])
 
     @testing.requires.bound_limit_offset
     def test_bound_limit(self):

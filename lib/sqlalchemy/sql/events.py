@@ -35,8 +35,9 @@ class DDLEvents(event.Events):
         some_table = Table('some_table', m, Column('data', Integer))
 
         def after_create(target, connection, **kw):
-            connection.execute("ALTER TABLE %s SET name=foo_%s" %
-                                    (target.name, target.name))
+            connection.execute(text(
+                "ALTER TABLE %s SET name=foo_%s" % (target.name, target.name)
+            ))
 
         event.listen(some_table, "after_create", after_create)
 
