@@ -1048,6 +1048,8 @@ class Query(Generative):
                 if not issubclass(instance.__class__, mapper.class_):
                     return None
                 return instance
+            elif instance is attributes.PASSIVE_CLASS_MISMATCH:
+                return None
 
         return db_load_fn(self, primary_key_identity)
 

@@ -1617,7 +1617,7 @@ class Session(_SessionClassMethods):
         key = mapper.identity_key_from_primary_key(
             primary_key_identity, identity_token=identity_token
         )
-        return loading.get_from_identity(self, key, passive)
+        return loading.get_from_identity(self, mapper, key, passive)
 
     @property
     @util.contextmanager
