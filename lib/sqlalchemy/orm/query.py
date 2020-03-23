@@ -1622,39 +1622,6 @@ class Query(Generative):
         self._execution_options = self._execution_options.union(kwargs)
 
     @_generative
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.Query.with_lockmode` method is deprecated and will "
-        "be removed in a future release.  Please refer to "
-        ":meth:`.Query.with_for_update`. ",
-    )
-    def with_lockmode(self, mode):
-        """Return a new :class:`.Query` object with the specified "locking mode",
-        which essentially refers to the ``FOR UPDATE`` clause.
-
-        :param mode: a string representing the desired locking mode.
-         Valid values are:
-
-         * ``None`` - translates to no lockmode
-
-         * ``'update'`` - translates to ``FOR UPDATE``
-           (standard SQL, supported by most dialects)
-
-         * ``'update_nowait'`` - translates to ``FOR UPDATE NOWAIT``
-           (supported by Oracle, PostgreSQL 8.1 upwards)
-
-         * ``'read'`` - translates to ``LOCK IN SHARE MODE`` (for MySQL),
-           and ``FOR SHARE`` (for PostgreSQL)
-
-        .. seealso::
-
-            :meth:`.Query.with_for_update` - improved API for
-            specifying the ``FOR UPDATE`` clause.
-
-        """
-        self._for_update_arg = LockmodeArg.parse_legacy_query(mode)
-
-    @_generative
     def with_for_update(
         self,
         read=False,
@@ -1681,16 +1648,13 @@ class Query(Generative):
 
             SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
 
-        .. versionadded:: 0.9.0 :meth:`.Query.with_for_update` supersedes
-           the :meth:`.Query.with_lockmode` method.
-
         .. seealso::
 
             :meth:`.GenerativeSelect.with_for_update` - Core level method with
             full argument and behavioral description.
 
         """
-        self._for_update_arg = LockmodeArg(
+        self._for_update_arg = ForUpdateArg(
             read=read,
             nowait=nowait,
             of=of,
@@ -4096,28 +4060,6 @@ class Query(Generative):
                 context.whereclause = sql.and_(
                     sql.True_._ifnone(context.whereclause), single_crit
                 )
-
-
-class LockmodeArg(ForUpdateArg):
-    @classmethod
-    def parse_legacy_query(cls, mode):
-        if mode in (None, False):
-            return None
-
-        if mode == "read":
-            read = True
-            nowait = False
-        elif mode == "update":
-            read = nowait = False
-        elif mode == "update_nowait":
-            nowait = True
-            read = False
-        else:
-            raise sa_exc.ArgumentError(
-                "Unknown with_lockmode argument: %r" % mode
-            )
-
-        return LockmodeArg(read=read, nowait=nowait)
 
 
 class _QueryEntity(object):

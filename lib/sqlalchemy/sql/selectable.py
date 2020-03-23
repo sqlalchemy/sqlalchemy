@@ -833,22 +833,8 @@ class Join(FromClause):
         return self._join_condition(left, right, a_subset=left_right)
 
     @classmethod
-    @util.deprecated_params(
-        ignore_nonexistent_tables=(
-            "0.9",
-            "The :paramref:`.join_condition.ignore_nonexistent_tables` "
-            "parameter is deprecated and will be removed in a future "
-            "release.  Tables outside of the two tables being handled "
-            "are no longer considered.",
-        )
-    )
     def _join_condition(
-        cls,
-        a,
-        b,
-        ignore_nonexistent_tables=False,
-        a_subset=None,
-        consider_as_foreign_keys=None,
+        cls, a, b, a_subset=None, consider_as_foreign_keys=None
     ):
         """create a join condition between two tables or selectables.
 
@@ -863,9 +849,6 @@ class Join(FromClause):
         The join is determined based on the foreign key relationships
         between the two selectables.   If there are multiple ways
         to join, or no way to join, an error is raised.
-
-        :param ignore_nonexistent_tables: unused - tables outside of the
-         two tables being handled are not considered.
 
         :param a_subset: An optional expression that is a sub-component
          of ``a``.  An attempt will be made to join to just this sub-component
@@ -1115,18 +1098,12 @@ class Join(FromClause):
         argument as a no-op, so that the argument can be passed to the
         ``alias()`` method of any selectable.
 
-        .. versionadded:: 0.9.0 Added the ``flat=True`` option to create
-          "aliases" of joins without enclosing inside of a SELECT
-          subquery.
-
         :param name: name given to the alias.
 
         :param flat: if True, produce an alias of the left and right
          sides of this :class:`.Join` and return the join of those
          two selectables.   This produces join expression that does not
          include an enclosing SELECT.
-
-         .. versionadded:: 0.9.0
 
         .. seealso::
 
@@ -1332,8 +1309,6 @@ class Alias(AliasedReturnsRows):
         :param flat: Will be passed through to if the given selectable
          is an instance of :class:`.Join` - see :meth:`.Join.alias`
          for details.
-
-         .. versionadded:: 0.9.0
 
         """
         return coercions.expect(
@@ -2021,8 +1996,6 @@ class ForUpdateArg(ClauseElement):
     ):
         """Represents arguments specified to :meth:`.Select.for_update`.
 
-        .. versionadded:: 0.9.0
-
         """
 
         self.nowait = nowait
@@ -2385,11 +2358,6 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     while it subclasses :class:`.SelectBase` and is also a SELECT construct,
     represents a fixed textual string which cannot be altered at this level,
     only wrapped as a subquery.
-
-    .. versionadded:: 0.9.0 :class:`.GenerativeSelect` was added to
-       provide functionality specific to :class:`.Select` and
-       :class:`.CompoundSelect` while allowing :class:`.SelectBase` to be
-       used for other SELECT-like objects, e.g. :class:`.TextualSelect`.
 
     """
 

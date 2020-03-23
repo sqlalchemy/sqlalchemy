@@ -29,7 +29,6 @@ from sqlalchemy.engine import default
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import roles
-from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
@@ -93,24 +92,6 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             "corresponding dialect-level"
         ):
             create_engine("mysql://", convert_unicode=True, module=mock.Mock())
-
-    def test_join_condition_ignore_nonexistent_tables(self):
-        m = MetaData()
-        t1 = Table("t1", m, Column("id", Integer))
-        t2 = Table(
-            "t2", m, Column("id", Integer), Column("t1id", ForeignKey("t1.id"))
-        )
-        with testing.expect_deprecated(
-            "The join_condition.ignore_nonexistent_tables "
-            "parameter is deprecated"
-        ):
-            join_cond = sql_util.join_condition(
-                t1, t2, ignore_nonexistent_tables=True
-            )
-
-        t1t2 = t1.join(t2)
-
-        assert t1t2.onclause.compare(join_cond)
 
     def test_empty_and_or(self):
         with testing.expect_deprecated(

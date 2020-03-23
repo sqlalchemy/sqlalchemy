@@ -1984,14 +1984,14 @@ class SessionInterface(fixtures.TestBase):
                 s.refresh(m1, with_for_update=False)
                 s.refresh(m1)
 
-            from sqlalchemy.orm.query import LockmodeArg
+            from sqlalchemy.orm.query import ForUpdateArg
 
             eq_(
                 [
                     call[-1]["with_for_update"]
                     for call in load_on_ident.mock_calls
                 ],
-                [LockmodeArg(read=True), LockmodeArg(), None, None],
+                [ForUpdateArg(read=True), ForUpdateArg(), None, None],
             )
 
 

@@ -1664,11 +1664,7 @@ class Session(_SessionClassMethods):
                 util.raise_(e, with_traceback=sys.exc_info()[2])
 
     def refresh(
-        self,
-        instance,
-        attribute_names=None,
-        with_for_update=None,
-        lockmode=None,
+        self, instance, attribute_names=None, with_for_update=None,
     ):
         """Expire and refresh the attributes on the given instance.
 
@@ -1701,10 +1697,6 @@ class Session(_SessionClassMethods):
 
           .. versionadded:: 1.2
 
-        :param lockmode: Passed to the :class:`~sqlalchemy.orm.query.Query`
-          as used by :meth:`~sqlalchemy.orm.query.Query.with_lockmode`.
-          Superseded by :paramref:`.Session.refresh.with_for_update`.
-
         .. seealso::
 
             :ref:`session_expire` - introductory material
@@ -1730,13 +1722,11 @@ class Session(_SessionClassMethods):
                 "A blank dictionary is ambiguous."
             )
 
-        if lockmode:
-            with_for_update = query.LockmodeArg.parse_legacy_query(lockmode)
-        elif with_for_update is not None:
+        if with_for_update is not None:
             if with_for_update is True:
-                with_for_update = query.LockmodeArg()
+                with_for_update = query.ForUpdateArg()
             elif with_for_update:
-                with_for_update = query.LockmodeArg(**with_for_update)
+                with_for_update = query.ForUpdateArg(**with_for_update)
             else:
                 with_for_update = None
 
