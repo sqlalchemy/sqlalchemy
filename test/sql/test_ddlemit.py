@@ -28,7 +28,8 @@ class EmitDDLTest(fixtures.TestBase):
                 has_index=Mock(side_effect=has_index),
                 supports_comments=True,
                 inline_comments=False,
-            )
+            ),
+            _schema_translate_map=None,
         )
 
     def _mock_create_fixture(

@@ -28,7 +28,6 @@ from .. import types as sqltypes
 from .. import util
 from ..sql import compiler
 from ..sql import expression
-from ..sql import schema
 from ..sql.elements import quoted_name
 
 AUTOCOMMIT_REGEXP = re.compile(
@@ -128,6 +127,8 @@ class DefaultDialect(interfaces.Dialect):
     supports_server_side_cursors = False
 
     server_version_info = None
+
+    default_schema_name = None
 
     construct_arguments = None
     """Optional set of argument specifiers for various SQLAlchemy
@@ -495,20 +496,18 @@ class DefaultDialect(interfaces.Dialect):
                     self._set_connection_isolation(connection, isolation_level)
 
         if "schema_translate_map" in opts:
-            getter = schema._schema_getter(opts["schema_translate_map"])
-            engine.schema_for_object = getter
+            engine._schema_translate_map = map_ = opts["schema_translate_map"]
 
             @event.listens_for(engine, "engine_connect")
             def set_schema_translate_map(connection, branch):
-                connection.schema_for_object = getter
+                connection._schema_translate_map = map_
 
     def set_connection_execution_options(self, connection, opts):
         if "isolation_level" in opts:
             self._set_connection_isolation(connection, opts["isolation_level"])
 
         if "schema_translate_map" in opts:
-            getter = schema._schema_getter(opts["schema_translate_map"])
-            connection.schema_for_object = getter
+            connection._schema_translate_map = opts["schema_translate_map"]
 
     def _set_connection_isolation(self, connection, level):
         if connection.in_transaction():
@@ -701,11 +700,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             self.execution_options = dict(self.execution_options)
             self.execution_options.update(connection._execution_options)
 
+        self.unicode_statement = util.text_type(compiled)
+        if compiled.schema_translate_map:
+            rst = compiled.preparer._render_schema_translates
+            self.unicode_statement = rst(
+                self.unicode_statement, connection._schema_translate_map
+            )
+
         if not dialect.supports_unicode_statements:
-            self.unicode_statement = util.text_type(compiled)
             self.statement = dialect._encoder(self.unicode_statement)[0]
         else:
-            self.statement = self.unicode_statement = util.text_type(compiled)
+            self.statement = self.unicode_statement
 
         self.cursor = self.create_cursor()
         self.compiled_parameters = []
@@ -806,6 +811,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             positiontup = expanded_state.positiontup
         elif compiled.positional:
             positiontup = self.compiled.positiontup
+
+        if compiled.schema_translate_map:
+            rst = compiled.preparer._render_schema_translates
+            self.unicode_statement = rst(
+                self.unicode_statement, connection._schema_translate_map
+            )
 
         # final self.unicode_statement is now assigned, encode if needed
         # by dialect

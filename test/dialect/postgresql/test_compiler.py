@@ -229,12 +229,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql.CreateEnumType(e1),
             "CREATE TYPE foo.somename AS ENUM ('x', 'y', 'z')",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
             postgresql.CreateEnumType(e2),
             "CREATE TYPE bar.somename AS ENUM ('x', 'y', 'z')",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
     def test_create_table_with_schema_type_schema_translate(self):
@@ -251,6 +253,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             CreateTable(table),
             "CREATE TABLE foo.some_table (q foo.somename, p bar.somename)",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
     def test_create_table_with_tablespace(self):

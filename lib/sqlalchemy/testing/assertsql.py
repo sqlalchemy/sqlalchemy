@@ -91,21 +91,23 @@ class CompiledSQL(SQLMatchRule):
 
         context = execute_observed.context
         compare_dialect = self._compile_dialect(execute_observed)
+
+        if "schema_translate_map" in context.execution_options:
+            map_ = context.execution_options["schema_translate_map"]
+        else:
+            map_ = None
+
         if isinstance(context.compiled.statement, _DDLCompiles):
+
             compiled = context.compiled.statement.compile(
-                dialect=compare_dialect,
-                schema_translate_map=context.execution_options.get(
-                    "schema_translate_map"
-                ),
+                dialect=compare_dialect, schema_translate_map=map_
             )
         else:
             compiled = context.compiled.statement.compile(
                 dialect=compare_dialect,
                 column_keys=context.compiled.column_keys,
                 inline=context.compiled.inline,
-                schema_translate_map=context.execution_options.get(
-                    "schema_translate_map"
-                ),
+                schema_translate_map=map_,
             )
         _received_statement = re.sub(r"[\n\t]", "", util.text_type(compiled))
         parameters = execute_observed.parameters

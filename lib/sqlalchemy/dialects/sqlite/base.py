@@ -1631,6 +1631,9 @@ class SQLiteDialect(default.DefaultDialect):
         )
         return bool(info)
 
+    def _get_default_schema_name(self, connection):
+        return "main"
+
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         if schema is not None:

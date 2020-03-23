@@ -346,8 +346,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
     _is_from_clause = True
     _is_join = False
 
-    def _translate_schema(self, effective_schema, map_):
-        return effective_schema
+    _use_schema_map = False
 
     _memoized_property = util.group_expirable_memoized_property(["_columns"])
 

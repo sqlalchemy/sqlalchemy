@@ -3960,20 +3960,39 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
+            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
             "CREATE TABLE z.t1 (q INTEGER)",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
             schema.CreateTable(t2),
+            "CREATE TABLE [SCHEMA_foo].t2 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t2),
             "CREATE TABLE bat.t2 (q INTEGER)",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE t3 (q INTEGER)",
+            "CREATE TABLE [SCHEMA_bar].t3 (q INTEGER)",
             schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE main.t3 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+            default_schema_name="main",
         )
 
     def test_schema_translate_map_sequence(self):
@@ -3985,19 +4004,19 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateSequence(s1),
-            "CREATE SEQUENCE z.s1",
+            "CREATE SEQUENCE [SCHEMA__none].s1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             schema.CreateSequence(s2),
-            "CREATE SEQUENCE bat.s2",
+            "CREATE SEQUENCE [SCHEMA_foo].s2",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             schema.CreateSequence(s3),
-            "CREATE SEQUENCE s3",
+            "CREATE SEQUENCE [SCHEMA_bar].s3",
             schema_translate_map=schema_translate_map,
         )
 
@@ -4135,6 +4154,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "bar.mytable.description FROM bar.mytable "
             "WHERE bar.mytable.name = :name_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
@@ -4143,6 +4163,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "foob.remotetable.value FROM foob.remotetable "
             "WHERE foob.remotetable.value = :value_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         schema_translate_map = {"remote_owner": "foob"}
@@ -4155,6 +4176,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "foob.remotetable.value FROM mytable JOIN foob.remotetable "
             "ON mytable.myid = foob.remotetable.rem_id",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
     def test_schema_translate_aliases(self):
@@ -4185,12 +4207,25 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
+            "SELECT [SCHEMA__none].myothertable.otherid, "
+            "[SCHEMA__none].myothertable.othername, "
+            "mytable_1.myid, mytable_1.name, mytable_1.description "
+            "FROM [SCHEMA__none].myothertable JOIN "
+            "[SCHEMA__none].mytable AS mytable_1 "
+            "ON [SCHEMA__none].myothertable.otherid = mytable_1.myid "
+            "WHERE mytable_1.name = :name_1",
+            schema_translate_map=schema_translate_map,
+        )
+
+        self.assert_compile(
+            stmt,
             "SELECT bar.myothertable.otherid, bar.myothertable.othername, "
             "mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM bar.myothertable JOIN bar.mytable AS mytable_1 "
             "ON bar.myothertable.otherid = mytable_1.myid "
             "WHERE mytable_1.name = :name_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
     def test_schema_translate_crud(self):
@@ -4209,6 +4244,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             table1.insert().values(description="foo"),
             "INSERT INTO bar.mytable (description) VALUES (:description)",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
@@ -4218,17 +4254,20 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE bar.mytable SET description=:description "
             "WHERE bar.mytable.name = :name_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
         self.assert_compile(
             table1.delete().where(table1.c.name == "hi"),
             "DELETE FROM bar.mytable WHERE bar.mytable.name = :name_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
             table4.insert().values(value="there"),
             "INSERT INTO foob.remotetable (value) VALUES (:value)",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
@@ -4238,6 +4277,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE foob.remotetable SET value=:value "
             "WHERE foob.remotetable.value = :value_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
         self.assert_compile(
@@ -4245,6 +4285,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "DELETE FROM foob.remotetable WHERE "
             "foob.remotetable.value = :value_1",
             schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
     def test_alias(self):

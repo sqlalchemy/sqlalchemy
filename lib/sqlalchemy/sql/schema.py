@@ -31,7 +31,6 @@ as components in SQL expressions.
 from __future__ import absolute_import
 
 import collections
-import operator
 
 import sqlalchemy
 from . import coercions
@@ -143,8 +142,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         schema_item.dispatch._update(self.dispatch)
         return schema_item
 
-    def _translate_schema(self, effective_schema, map_):
-        return map_.get(effective_schema, effective_schema)
+    _use_schema_map = True
 
 
 class Table(DialectKWArgs, SchemaItem, TableClause):
@@ -4268,59 +4266,6 @@ class ThreadLocalMetaData(MetaData):
         for e in self.__engines.values():
             if hasattr(e, "dispose"):
                 e.dispose()
-
-
-class _SchemaTranslateMap(object):
-    """Provide translation of schema names based on a mapping.
-
-    Also provides helpers for producing cache keys and optimized
-    access when no mapping is present.
-
-    Used by the :paramref:`.Connection.execution_options.schema_translate_map`
-    feature.
-
-    .. versionadded:: 1.1
-
-
-    """
-
-    __slots__ = "map_", "__call__", "hash_key", "is_default"
-
-    _default_schema_getter = operator.attrgetter("schema")
-
-    def __init__(self, map_):
-        self.map_ = map_
-        if map_ is not None:
-
-            def schema_for_object(obj):
-                effective_schema = self._default_schema_getter(obj)
-                effective_schema = obj._translate_schema(
-                    effective_schema, map_
-                )
-                return effective_schema
-
-            self.__call__ = schema_for_object
-            self.hash_key = ";".join(
-                "%s=%s" % (k, map_[k]) for k in sorted(map_, key=str)
-            )
-            self.is_default = False
-        else:
-            self.hash_key = 0
-            self.__call__ = self._default_schema_getter
-            self.is_default = True
-
-    @classmethod
-    def _schema_getter(cls, map_):
-        if map_ is None:
-            return _default_schema_map
-        elif isinstance(map_, _SchemaTranslateMap):
-            return map_
-        else:
-            return _SchemaTranslateMap(map_)
-
-
-_default_schema_map = _SchemaTranslateMap(None)
-_schema_getter = _SchemaTranslateMap._schema_getter
 
 
 class Computed(FetchedValue, SchemaItem):

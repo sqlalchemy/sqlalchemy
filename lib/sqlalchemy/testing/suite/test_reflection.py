@@ -360,7 +360,6 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schema_reflection
     def test_dialect_initialize(self):
         engine = engines.testing_engine()
-        assert not hasattr(engine.dialect, "default_schema_name")
         inspect(engine)
         assert hasattr(engine.dialect, "default_schema_name")
 

@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5004
+
+    Revised the :paramref:`.Connection.execution_options.schema_translate_map`
+    feature such that the processing of the SQL statement to receive a specific
+    schema name occurs within the execution phase of the statement, rather than
+    at the compile phase.   This is to support the statement being efficiently
+    cached.   Previously, the current schema being rendered into the statement
+    for a particular run would be considered as part of the cache key itself,
+    meaning that for a run against hundreds of schemas, there would be hundreds
+    of cache keys, rendering the cache much less performant.  The new behavior
+    is that the rendering is done in a similar  manner as the "post compile"
+    rendering added in 1.4 as part of :ticket:`4645`, :ticket:`4808`.
