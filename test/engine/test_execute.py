@@ -950,6 +950,13 @@ class CompiledCacheTest(fixtures.TestBase):
             eq_(conn.scalar(stmt), 2)
 
         with config.db.connect().execution_options(
+            compiled_cache=cache, schema_translate_map={None: None},
+        ) as conn:
+            # should use default schema again even though statement
+            # was compiled with test_schema in the map
+            eq_(conn.scalar(stmt), 1)
+
+        with config.db.connect().execution_options(
             compiled_cache=cache
         ) as conn:
             eq_(conn.scalar(stmt), 1)
@@ -1014,12 +1021,12 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
                 t1.drop(conn)
 
         asserter.assert_(
-            CompiledSQL("CREATE TABLE %s.t1 (x INTEGER)" % config.test_schema),
-            CompiledSQL("CREATE TABLE %s.t2 (x INTEGER)" % config.test_schema),
-            CompiledSQL("CREATE TABLE t3 (x INTEGER)"),
-            CompiledSQL("DROP TABLE t3"),
-            CompiledSQL("DROP TABLE %s.t2" % config.test_schema),
-            CompiledSQL("DROP TABLE %s.t1" % config.test_schema),
+            CompiledSQL("CREATE TABLE [SCHEMA__none].t1 (x INTEGER)"),
+            CompiledSQL("CREATE TABLE [SCHEMA_foo].t2 (x INTEGER)"),
+            CompiledSQL("CREATE TABLE [SCHEMA_bar].t3 (x INTEGER)"),
+            CompiledSQL("DROP TABLE [SCHEMA_bar].t3"),
+            CompiledSQL("DROP TABLE [SCHEMA_foo].t2"),
+            CompiledSQL("DROP TABLE [SCHEMA__none].t1"),
         )
 
     def _fixture(self):
@@ -1099,34 +1106,27 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
                 conn.execute(t3.delete())
 
         asserter.assert_(
+            CompiledSQL("INSERT INTO [SCHEMA__none].t1 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO [SCHEMA_foo].t2 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO [SCHEMA_bar].t3 (x) VALUES (:x)"),
             CompiledSQL(
-                "INSERT INTO %s.t1 (x) VALUES (:x)" % config.test_schema
+                "UPDATE [SCHEMA__none].t1 SET x=:x WHERE "
+                "[SCHEMA__none].t1.x = :x_1"
             ),
             CompiledSQL(
-                "INSERT INTO %s.t2 (x) VALUES (:x)" % config.test_schema
-            ),
-            CompiledSQL("INSERT INTO t3 (x) VALUES (:x)"),
-            CompiledSQL(
-                "UPDATE %s.t1 SET x=:x WHERE %s.t1.x = :x_1"
-                % (config.test_schema, config.test_schema)
+                "UPDATE [SCHEMA_foo].t2 SET x=:x WHERE "
+                "[SCHEMA_foo].t2.x = :x_1"
             ),
             CompiledSQL(
-                "UPDATE %s.t2 SET x=:x WHERE %s.t2.x = :x_1"
-                % (config.test_schema, config.test_schema)
+                "UPDATE [SCHEMA_bar].t3 SET x=:x WHERE "
+                "[SCHEMA_bar].t3.x = :x_1"
             ),
-            CompiledSQL("UPDATE t3 SET x=:x WHERE t3.x = :x_1"),
-            CompiledSQL(
-                "SELECT %s.t1.x FROM %s.t1"
-                % (config.test_schema, config.test_schema)
-            ),
-            CompiledSQL(
-                "SELECT %s.t2.x FROM %s.t2"
-                % (config.test_schema, config.test_schema)
-            ),
-            CompiledSQL("SELECT t3.x FROM t3"),
-            CompiledSQL("DELETE FROM %s.t1" % config.test_schema),
-            CompiledSQL("DELETE FROM %s.t2" % config.test_schema),
-            CompiledSQL("DELETE FROM t3"),
+            CompiledSQL("SELECT [SCHEMA__none].t1.x FROM [SCHEMA__none].t1"),
+            CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2"),
+            CompiledSQL("SELECT [SCHEMA_bar].t3.x FROM [SCHEMA_bar].t3"),
+            CompiledSQL("DELETE FROM [SCHEMA__none].t1"),
+            CompiledSQL("DELETE FROM [SCHEMA_foo].t2"),
+            CompiledSQL("DELETE FROM [SCHEMA_bar].t3"),
         )
 
     @testing.provide_metadata
@@ -1147,10 +1147,7 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             conn = eng.connect()
             conn.execute(select([t2.c.x]))
         asserter.assert_(
-            CompiledSQL(
-                "SELECT %s.t2.x FROM %s.t2"
-                % (config.test_schema, config.test_schema)
-            )
+            CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2")
         )
 
 

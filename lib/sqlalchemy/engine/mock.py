@@ -11,7 +11,6 @@ from . import base
 from . import url as _url
 from .. import util
 from ..sql import ddl
-from ..sql import schema
 
 
 class MockConnection(base.Connectable):
@@ -23,7 +22,8 @@ class MockConnection(base.Connectable):
     dialect = property(attrgetter("_dialect"))
     name = property(lambda s: s._dialect.name)
 
-    schema_for_object = schema._schema_getter(None)
+    def schema_for_object(self, obj):
+        return obj.schema
 
     def connect(self, **kwargs):
         return self

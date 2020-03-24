@@ -17,7 +17,6 @@ from .. import inspection
 from .. import log
 from .. import util
 from ..sql import compiler
-from ..sql import schema
 from ..sql import util as sql_util
 
 
@@ -51,21 +50,7 @@ class Connection(Connectable):
 
     """
 
-    schema_for_object = schema._schema_getter(None)
-    """Return the ".schema" attribute for an object.
-
-    Used for :class:`.Table`, :class:`.Sequence` and similar objects,
-    and takes into account
-    the :paramref:`.Connection.execution_options.schema_translate_map`
-    parameter.
-
-      .. versionadded:: 1.1
-
-      .. seealso::
-
-          :ref:`schema_translating`
-
-    """
+    _schema_translate_map = None
 
     def __init__(
         self,
@@ -92,7 +77,7 @@ class Connection(Connectable):
             self.should_close_with_result = False
             self.dispatch = _dispatch
             self._has_events = _branch_from._has_events
-            self.schema_for_object = _branch_from.schema_for_object
+            self._schema_translate_map = _branch_from._schema_translate_map
         else:
             self.__connection = (
                 connection
@@ -121,6 +106,24 @@ class Connection(Connectable):
 
         if self._has_events or self.engine._has_events:
             self.dispatch.engine_connect(self, self.__branch)
+
+    def schema_for_object(self, obj):
+        """return the schema name for the given schema item taking into
+        account current schema translate map.
+
+        """
+
+        name = obj.schema
+        schema_translate_map = self._schema_translate_map
+
+        if (
+            schema_translate_map
+            and name in schema_translate_map
+            and obj._use_schema_map
+        ):
+            return schema_translate_map[name]
+        else:
+            return name
 
     def _branch(self):
         """Return a new Connection which references this Connection's
@@ -1066,10 +1069,7 @@ class Connection(Connectable):
         dialect = self.dialect
 
         compiled = ddl.compile(
-            dialect=dialect,
-            schema_translate_map=self.schema_for_object
-            if not self.schema_for_object.is_default
-            else None,
+            dialect=dialect, schema_translate_map=self._schema_translate_map
         )
         ret = self._execute_context(
             dialect,
@@ -1103,7 +1103,7 @@ class Connection(Connectable):
                 dialect,
                 elem,
                 tuple(sorted(keys)),
-                self.schema_for_object.hash_key,
+                bool(self._schema_translate_map),
                 len(distilled_params) > 1,
             )
             compiled_sql = self._execution_options["compiled_cache"].get(key)
@@ -1112,9 +1112,7 @@ class Connection(Connectable):
                     dialect=dialect,
                     column_keys=keys,
                     inline=len(distilled_params) > 1,
-                    schema_translate_map=self.schema_for_object
-                    if not self.schema_for_object.is_default
-                    else None,
+                    schema_translate_map=self._schema_translate_map,
                     linting=self.dialect.compiler_linting
                     | compiler.WARN_LINTING,
                 )
@@ -1124,9 +1122,7 @@ class Connection(Connectable):
                 dialect=dialect,
                 column_keys=keys,
                 inline=len(distilled_params) > 1,
-                schema_translate_map=self.schema_for_object
-                if not self.schema_for_object.is_default
-                else None,
+                schema_translate_map=self._schema_translate_map,
                 linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
             )
 
@@ -1974,21 +1970,7 @@ class Engine(Connectable, log.Identified):
     _has_events = False
     _connection_cls = Connection
 
-    schema_for_object = schema._schema_getter(None)
-    """Return the ".schema" attribute for an object.
-
-    Used for :class:`.Table`, :class:`.Sequence` and similar objects,
-    and takes into account
-    the :paramref:`.Connection.execution_options.schema_translate_map`
-    parameter.
-
-      .. versionadded:: 1.1
-
-      .. seealso::
-
-          :ref:`schema_translating`
-
-    """
+    _schema_translate_map = None
 
     def __init__(
         self,

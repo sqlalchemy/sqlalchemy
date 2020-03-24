@@ -352,6 +352,8 @@ class AssertsCompiledSQL(object):
         literal_binds=False,
         render_postcompile=False,
         schema_translate_map=None,
+        render_schema_translate=False,
+        default_schema_name=None,
         inline_flag=None,
     ):
         if use_default_dialect:
@@ -371,6 +373,9 @@ class AssertsCompiledSQL(object):
             elif isinstance(dialect, util.string_types):
                 dialect = url.URL(dialect).get_dialect()()
 
+        if default_schema_name:
+            dialect.default_schema_name = default_schema_name
+
         kw = {}
         compile_kwargs = {}
 
@@ -385,6 +390,9 @@ class AssertsCompiledSQL(object):
 
         if render_postcompile:
             compile_kwargs["render_postcompile"] = True
+
+        if render_schema_translate:
+            kw["render_schema_translate"] = True
 
         from sqlalchemy import orm
 

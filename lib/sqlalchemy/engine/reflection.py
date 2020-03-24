@@ -701,7 +701,8 @@ class Inspector(object):
 
         dialect = self.bind.dialect
 
-        schema = self.bind.schema_for_object(table)
+        with self._operation_context() as conn:
+            schema = conn.schema_for_object(table)
 
         table_name = table.name
 
