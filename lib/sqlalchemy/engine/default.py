@@ -642,6 +642,26 @@ class DefaultDialect(interfaces.Dialect):
         return name
 
 
+class _RendersLiteral(object):
+    def literal_processor(self, dialect):
+        def process(value):
+            return "'%s'" % value
+
+        return process
+
+
+class _StrDateTime(_RendersLiteral, sqltypes.DateTime):
+    pass
+
+
+class _StrDate(_RendersLiteral, sqltypes.Date):
+    pass
+
+
+class _StrTime(_RendersLiteral, sqltypes.Time):
+    pass
+
+
 class StrCompileDialect(DefaultDialect):
 
     statement_compiler = compiler.StrSQLCompiler
@@ -657,6 +677,12 @@ class StrCompileDialect(DefaultDialect):
     supports_native_boolean = True
 
     supports_simple_order_by_label = True
+
+    colspecs = {
+        sqltypes.DateTime: _StrDateTime,
+        sqltypes.Date: _StrDate,
+        sqltypes.Time: _StrTime,
+    }
 
 
 class DefaultExecutionContext(interfaces.ExecutionContext):

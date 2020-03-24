@@ -3237,3 +3237,26 @@ class CallableTest(fixtures.TestBase):
         )
         assert isinstance(thang_table.c.name.type, Unicode)
         thang_table.create()
+
+
+class LiteralTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.combinations(
+        ("datetime", datetime.datetime.now()),
+        ("date", datetime.date.today()),
+        ("time", datetime.time()),
+        argnames="value",
+        id_="ia",
+    )
+    @testing.skip_if(lambda: testing.requires.datetime_literals)
+    def test_render_datetime(self, value):
+        lit = literal(value)
+
+        assert_raises_message(
+            NotImplementedError,
+            "Don't know how to literal-quote value.*",
+            lit.compile,
+            dialect=testing.db.dialect,
+            compile_kwargs={"literal_binds": True},
+        )
