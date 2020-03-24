@@ -1873,6 +1873,35 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "inherit_schema=True, native_enum=False)",
         )
 
+    def test_length_native(self):
+        e = Enum("x", "y", "long", length=42)
+
+        eq_(e.length, len("long"))
+
+        # no error is raised
+        e = Enum("x", "y", "long", length=1)
+        eq_(e.length, len("long"))
+
+    def test_length_raises(self):
+        assert_raises_message(
+            ValueError,
+            "When provided, length must be larger or equal.*",
+            Enum,
+            "x",
+            "y",
+            "long",
+            native_enum=False,
+            length=1,
+        )
+
+    def test_no_length_non_native(self):
+        e = Enum("x", "y", "long", native_enum=False)
+        eq_(e.length, len("long"))
+
+    def test_length_non_native(self):
+        e = Enum("x", "y", "long", native_enum=False, length=42)
+        eq_(e.length, 42)
+
 
 binary_table = MyPickleType = metadata = None
 
