@@ -537,6 +537,17 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
             ).compare(self._column_collection([("col1", c1), ("col2", c2)]))
         )
 
+    def test_str(self):
+        c1 = sql.column("col1")
+        c2 = c1.label("col2")
+        c3 = sql.column("col3")
+        cc = self._column_collection(
+            [("col1", c1), ("col2", c2), ("col3", c3)]
+        )
+
+        eq_(str(cc), "%s(%s, %s, %s)" % (type(cc).__name__, c1, c2, c3))
+        eq_(repr(cc), object.__repr__(cc))
+
 
 class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
     def _column_collection(self, columns=None):

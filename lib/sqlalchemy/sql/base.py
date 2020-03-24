@@ -676,7 +676,7 @@ class ColumnCollection(object):
         >>> from sqlalchemy import Column, Integer
         >>> from sqlalchemy.sql import ColumnCollection
         >>> x, y = Column('x', Integer), Column('y', Integer)
-        >>> cc = ColumnCollection(columns=[x, y])
+        >>> cc = ColumnCollection(columns=[(x.name, x), (y.name, y)])
         >>> cc.x
         Column('x', Integer(), table=None)
         >>> cc.y
@@ -707,7 +707,7 @@ class ColumnCollection(object):
     returned by key  access is **arbitrary**::
 
         >>> x1, x2 = Column('x', Integer), Column('x', Integer)
-        >>> cc = ColumnCollection(columns=[x1, x2])
+        >>> cc = ColumnCollection(columns=[(x1.name, x1), (x2.name, x2)])
         >>> list(cc)
         [Column('x', Integer(), table=None),
          Column('x', Integer(), table=None)]
@@ -808,7 +808,10 @@ class ColumnCollection(object):
             return default
 
     def __str__(self):
-        return repr([str(c) for c in self])
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ", ".join(str(c) for c in self),
+        )
 
     def __setitem__(self, key, value):
         raise NotImplementedError()
