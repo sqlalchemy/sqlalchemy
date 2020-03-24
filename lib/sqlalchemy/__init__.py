@@ -76,6 +76,7 @@ from .sql import type_coerce  # noqa
 from .sql import union  # noqa
 from .sql import union_all  # noqa
 from .sql import update  # noqa
+from .sql import values  # noqa
 from .sql import within_group  # noqa
 from .types import ARRAY  # noqa
 from .types import BIGINT  # noqa

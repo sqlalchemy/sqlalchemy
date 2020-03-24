@@ -46,6 +46,7 @@ from .elements import ColumnClause
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
+from .elements import Tuple
 from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
@@ -2008,6 +2009,127 @@ class ForUpdateArg(ClauseElement):
             ]
         else:
             self.of = None
+
+
+class Values(Generative, FromClause):
+    """represent a ``VALUES`` construct that can be used as a FROM element
+    in a statement.
+
+    The :class:`.Values` object is created from the
+    :func:`~.sql.expression.values` function.
+
+    .. versionadded:: 1.4
+
+    """
+
+    named_with_column = True
+    __visit_name__ = "values"
+
+    _data = ()
+
+    _traverse_internals = [
+        ("_column_args", InternalTraversal.dp_clauseelement_list,),
+        ("_data", InternalTraversal.dp_clauseelement_list),
+        ("name", InternalTraversal.dp_string),
+        ("literal_binds", InternalTraversal.dp_boolean),
+    ]
+
+    def __init__(self, *columns, **kw):
+        r"""Construct a :class:`.Values` construct.
+
+        The column expressions and the actual data for
+        :class:`.Values` are given in two separate steps.  The
+        constructor receives the column expressions typically as
+        :func:`.column` constructs, and the data is then passed via the
+        :meth:`.Values.data` method as a list, which can be called multiple
+        times to add more data, e.g.::
+
+            from sqlalchemy import column
+            from sqlalchemy import values
+
+            value_expr = values(
+                column('id', Integer),
+                column('name', Integer),
+                name="my_values"
+            ).data(
+                [(1, 'name1'), (2, 'name2'), (3, 'name3')]
+            )
+
+        :param \*columns: column expressions, typically composed using
+         :func:`.column` objects.
+
+        :param name: the name for this VALUES construct.  If omitted, the
+         VALUES construct will be unnamed in a SQL expression.   Different
+         backends may have different requirements here.
+
+        :param literal_binds: Defaults to False.  Whether or not to render
+         the data values inline in the SQL output, rather than using bound
+         parameters.
+
+        """
+
+        super(Values, self).__init__()
+        self._column_args = columns
+        self.name = kw.pop("name", None)
+        self.literal_binds = kw.pop("literal_binds", False)
+        self.named_with_column = self.name is not None
+
+    @_generative
+    def alias(self, name, **kw):
+        """Return a new :class:`.Values` construct that is a copy of this
+        one with the given name.
+
+        This method is a VALUES-specific specialization of the
+        :class:`.FromClause.alias` method.
+
+        .. seealso::
+
+            :ref:`core_tutorial_aliases`
+
+            :func:`~.expression.alias`
+
+        """
+        self.name = name
+        self.named_with_column = self.name is not None
+
+    @_generative
+    def lateral(self, name=None):
+        """Return a new :class:`.Values` with the lateral flag set, so that
+        it renders as LATERAL.
+
+        .. seealso::
+
+            :func:`~.expression.lateral`
+
+        """
+        self._is_lateral = True
+        if name is not None:
+            self.name = name
+
+    @_generative
+    def data(self, values):
+        """Return a new :class:`.Values` construct, adding the given data
+        to the data list.
+
+        E.g.::
+
+            my_values = my_values.data([(1, 'value 1'), (2, 'value2')])
+
+        :param values: a sequence (i.e. list) of tuples that map to the
+         column expressions given in the :class:`.Values` constructor.
+
+        """
+
+        self._data += tuple(Tuple(*row).self_group() for row in values)
+
+    def _populate_column_collection(self):
+        for c in self._column_args:
+            self._columns.add(c)
+            c.table = self
+
+    @property
+    def _from_objects(self):
+        return [self]
 
 
 class SelectBase(

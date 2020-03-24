@@ -2292,6 +2292,46 @@ class SQLCompiler(Compiled):
 
         return text
 
+    def visit_values(self, element, asfrom=False, from_linter=None, **kw):
+        v = "VALUES %s" % ", ".join(
+            self.process(elem, literal_binds=element.literal_binds)
+            for elem in element._data
+        )
+
+        if isinstance(element.name, elements._truncated_label):
+            name = self._truncated_identifier("values", element.name)
+        else:
+            name = element.name
+
+        if element._is_lateral:
+            lateral = "LATERAL "
+        else:
+            lateral = ""
+
+        if asfrom:
+            if from_linter:
+                from_linter.froms[element] = (
+                    name if name is not None else "(unnamed VALUES element)"
+                )
+
+            if name:
+                v = "%s(%s)%s (%s)" % (
+                    lateral,
+                    v,
+                    self.get_render_as_alias_suffix(self.preparer.quote(name)),
+                    (
+                        ", ".join(
+                            c._compiler_dispatch(
+                                self, include_table=False, **kw
+                            )
+                            for c in element.columns
+                        )
+                    ),
+                )
+            else:
+                v = "%s(%s)" % (lateral, v)
+        return v
+
     def get_render_as_alias_suffix(self, alias_name_text):
         return " AS " + alias_name_text
 
