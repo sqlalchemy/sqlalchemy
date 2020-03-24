@@ -3,6 +3,11 @@
 SQLAlchemy 2.0 Future (Core)
 ============================
 
+.. seealso::
+
+    :ref:`migration_20_toplevel` - Introduction to the 2.0 series of SQLAlchemy
+
+
 .. module:: sqlalchemy.future
 
 
