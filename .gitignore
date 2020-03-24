@@ -37,3 +37,4 @@ test/test_schema.db
 /.vscode/
 /.ipynb_checkpoints/
 *.ipynb
+/querytest.db
