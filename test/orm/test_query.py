@@ -3894,10 +3894,11 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         sess = create_session()
         q = (
-            sess.query(User)
+            sess.query(User, Address.email_address)
             .join("addresses")
             .distinct()
             .order_by(desc(Address.email_address))
+            .from_self(User)
         )
 
         eq_([User(id=7), User(id=9), User(id=8)], q.all())
@@ -3931,12 +3932,18 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         q = (
-            sess.query(User.id, User.name.label("foo"), Address.id)
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+                Address.email_address,
+            )
             .join(Address, true())
             .filter(User.name == "jack")
             .filter(User.id + Address.user_id > 0)
             .distinct()
             .order_by(User.id, User.name, Address.email_address)
+            .from_self(User.id, User.name.label("foo"), Address.id)
         )
 
         # even though columns are added, they aren't in the result
@@ -3959,9 +3966,15 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         q = (
-            sess.query(User.id, User.name.label("foo"), Address.id)
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+                Address.email_address,
+            )
             .distinct()
             .order_by(User.id, User.name, Address.email_address)
+            .from_self(User.id, User.name.label("foo"), Address.id)
         )
 
         # Address.email_address is added because of DISTINCT,
@@ -3969,10 +3982,14 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         # even though User.name is labeled
         self.assert_compile(
             q,
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.foo AS foo, "
+            "anon_1.addresses_id AS anon_1_addresses_id "
+            "FROM ("
             "SELECT DISTINCT users.id AS users_id, users.name AS foo, "
-            "addresses.id AS addresses_id, "
-            "addresses.email_address AS addresses_email_address FROM users, "
-            "addresses ORDER BY users.id, users.name, addresses.email_address",
+            "addresses.id AS addresses_id, addresses.email_address AS "
+            "addresses_email_address FROM users, addresses ORDER BY "
+            "users.id, users.name, addresses.email_address"
+            ") AS anon_1",
         )
 
     def test_columns_augmented_sql_two(self):

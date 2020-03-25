@@ -3071,15 +3071,18 @@ class Query(Generative):
 
         .. note::
 
-            The :meth:`.distinct` call includes logic that will automatically
-            add columns from the ORDER BY of the query to the columns
-            clause of the SELECT statement, to satisfy the common need
-            of the database backend that ORDER BY columns be part of the
-            SELECT list when DISTINCT is used.   These columns *are not*
-            added to the list of columns actually fetched by the
-            :class:`.Query`, however, so would not affect results.
-            The columns are passed through when using the
-            :attr:`.Query.statement` accessor, however.
+            The ORM-level :meth:`.distinct` call includes logic that will
+            automatically add columns from the ORDER BY of the query to the
+            columns clause of the SELECT statement, to satisfy the common need
+            of the database backend that ORDER BY columns be part of the SELECT
+            list when DISTINCT is used.   These columns *are not* added to the
+            list of columns actually fetched by the :class:`.Query`, however,
+            so would not affect results. The columns are passed through when
+            using the :attr:`.Query.statement` accessor, however.
+
+            .. deprecated:: 2.0  This logic is deprecated and will be removed
+               in SQLAlchemy 2.0.     See :ref:`migration_20_query_distinct`
+               for a description of this use case in 2.0.
 
         :param \*expr: optional column expressions.  When present,
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>)``
@@ -3994,9 +3997,18 @@ class Query(Generative):
             context.order_by = None
 
         if self._distinct is True and context.order_by:
-            context.primary_columns += (
-                sql_util.expand_column_list_from_order_by
-            )(context.primary_columns, context.order_by)
+            to_add = sql_util.expand_column_list_from_order_by(
+                context.primary_columns, context.order_by
+            )
+            if to_add:
+                util.warn_deprecated_20(
+                    "ORDER BY columns added implicitly due to "
+                    "DISTINCT is deprecated and will be removed in "
+                    "SQLAlchemy 2.0.  SELECT statements with DISTINCT "
+                    "should be written to explicitly include the appropriate "
+                    "columns in the columns clause"
+                )
+            context.primary_columns += to_add
         context.froms += tuple(context.eager_joins.values())
 
         statement = sql.select(
