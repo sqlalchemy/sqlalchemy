@@ -382,7 +382,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     dp_dml_multi_values = symbol("DML_MV")
     """visit the values() multi-valued list of dictionaries of an
-    :class:`.Insert` object.
+    :class:`~.sql.expression.Insert` object.
 
     """
 

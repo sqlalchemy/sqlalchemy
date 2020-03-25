@@ -845,7 +845,7 @@ INSERT from SELECT
 
 After literally years of pointless procrastination this relatively minor
 syntactical feature has been added, and is also backported to 0.8.3,
-so technically isn't "new" in 0.9.   A :func:`.select` construct or other
+so technically isn't "new" in 0.9.   A :func:`~.sql.expression.select` construct or other
 compatible construct can be passed to the new method :meth:`.Insert.from_select`
 where it will be used to render an ``INSERT .. SELECT`` construct::
 
@@ -1642,7 +1642,7 @@ The logic which "upgrades" a :func:`.bindparam` construct to take on the
 type of the enclosing expression has been improved in two ways.  First, the
 :func:`.bindparam` object is **copied** before the new type is assigned, so that
 the given :func:`.bindparam` is not mutated in place.  Secondly, this same
-operation occurs when an :class:`.Insert` or :class:`.Update` construct is compiled,
+operation occurs when an :class:`~.sql.expression.Insert` or :class:`.Update` construct is compiled,
 regarding the "values" that were set in the statement via the :meth:`.ValuesBase.values`
 method.
 
@@ -1659,7 +1659,7 @@ is of type ``String``, then ``expr.right``, that is the right side of the
 binary expression, will take on the ``String`` type.   Previously, ``bp`` itself
 would have been changed in place to have ``String`` as its type.
 
-Similarly, this operation occurs in an :class:`.Insert` or :class:`.Update`::
+Similarly, this operation occurs in an :class:`~.sql.expression.Insert` or :class:`.Update`::
 
     stmt = mytable.update().values(col=bp)
 
@@ -1678,7 +1678,7 @@ The potentially backwards-compatible changes involve two unlikely
 scenarios.  Since the bound parameter is
 **cloned**, users should not be relying upon making in-place changes to a
 :func:`.bindparam` construct once created.   Additionally, code which uses
-:func:`.bindparam` within an :class:`.Insert` or :class:`.Update` statement
+:func:`.bindparam` within an :class:`~.sql.expression.Insert` or :class:`.Update` statement
 which is relying on the fact that the :func:`.bindparam` is not typed according
 to the column being assigned towards will no longer function in that way.
 

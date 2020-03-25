@@ -82,9 +82,9 @@ This change is one of the larger conceptual changes in SQLAlchemy in many years,
 however it is hoped that the end user impact is relatively small, as the change
 more closely matches what databases like MySQL and PostgreSQL require in any case.
 
-The most immediate noticeable impact is that a :func:`.select` can no longer
-be embedded inside of another :func:`.select` directly, without explicitly
-turning the inner :func:`.select` into a subquery first.  This is historically
+The most immediate noticeable impact is that a :func:`~.sql.expression.select` can no longer
+be embedded inside of another :func:`~.sql.expression.select` directly, without explicitly
+turning the inner :func:`~.sql.expression.select` into a subquery first.  This is historically
 performed by using the :meth:`.SelectBase.alias` method, which remains, however
 is more explicitly suited by using a new method :meth:`.SelectBase.subquery`;
 both methods do the same thing.   The object returned is now :class:`.Subquery`,
@@ -116,10 +116,10 @@ ensure the subquery has a name.  The MySQL and PostgreSQL databases do not
 accept unnamed subqueries in the FROM clause and they are of limited use
 on other platforms; this is described further below.
 
-Along with the above change, the general capability of :func:`.select` and
+Along with the above change, the general capability of :func:`~.sql.expression.select` and
 related constructs to create unnamed subqueries, which means a FROM subquery
 that renders without any name i.e. "AS somename", has been removed, and the
-ability of the :func:`.select` construct to implicitly create subqueries
+ability of the :func:`~.sql.expression.select` construct to implicitly create subqueries
 without explicit calling code to do so is mostly deprecated.   In the above
 example, as has always been the case, using the :meth:`.SelectBase.alias`
 method as well as the new :meth:`.SelectBase.subquery` method without passing a
@@ -221,7 +221,7 @@ serves an entirely different purpose have a new name.
 In the bigger picture, the reason this change is being made now is towards the
 goal of unifying the ORM :class:`.Query` object into the :class:`.SelectBase`
 hierarchy in SQLAlchemy 2.0, so that the ORM will have a "``select()``"
-construct that extends directly from the existing :func:`.select` object,
+construct that extends directly from the existing :func:`~.sql.expression.select` object,
 having the same methods and behaviors except that it will have additional ORM
 functionality.   All statement objects in Core will also be fully cacheable
 using a new system that resembles "baked queries" except that it will work
@@ -1144,7 +1144,7 @@ where the JOIN keyword is not used and instead each FROM element is linked with
 another one via the WHERE clause.
 
 For some years there has been a recipe on the Wiki that applies a graph
-algorithm to a :func:`.select` construct at query execution time and inspects
+algorithm to a :func:`~.sql.expression.select` construct at query execution time and inspects
 the structure of the query for these un-linked FROM clauses, parsing through
 the WHERE clause and all JOIN clauses to determine how FROM elements are linked
 together and ensuring that all the FROM elements are connected in a single
@@ -1219,7 +1219,7 @@ Behavior Changes - Core
 SELECT objects and derived FROM clauses allow for duplicate columns and column labels
 -------------------------------------------------------------------------------------
 
-This change allows that the :func:`.select` construct now allows for duplicate
+This change allows that the :func:`~.sql.expression.select` construct now allows for duplicate
 column labels as well as duplicate column objects themselves, so that result
 tuples are organized and ordered in the identical way in that the columns were
 selected.  The ORM :class:`.Query` already works this way, so this change

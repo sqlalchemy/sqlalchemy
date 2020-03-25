@@ -399,10 +399,10 @@
         :tags: bug, sql
         :tickets: 5028
 
-        Fixed bug where "distinct" keyword passed to :func:`.select` would not
+        Fixed bug where "distinct" keyword passed to :func:`~.sql.expression.select` would not
         treat a string value as a "label reference" in the same way that the
         :meth:`.select.distinct` does; it would instead raise unconditionally. This
-        keyword argument and the others passed to :func:`.select` will ultimately
+        keyword argument and the others passed to :func:`~.sql.expression.select` will ultimately
         be deprecated for SQLAlchemy 2.0.
 
 
@@ -1115,7 +1115,7 @@
         supersedes the previous experimental ``use_batch_mode`` flag.
         ``executemany_mode`` supports both the "execute batch" and "execute values"
         functions provided by psycopg2, the latter which is used for compiled
-        :func:`.insert` constructs.   Pull request courtesy Yuval Dinari.
+        :func:`~.sql.expression.insert` constructs.   Pull request courtesy Yuval Dinari.
 
         .. seealso::
 
@@ -1393,7 +1393,7 @@
         and other :class:`.CompoundSelect` objects could return the wrong column in
         some overlapping column situtations, thus potentially impacting some ORM
         operations when set operations are in use, if the underlying
-        :func:`.select` constructs were used previously in other similar kinds of
+        :func:`~.sql.expression.select` constructs were used previously in other similar kinds of
         routines, due to a cached value not being cleared.
 
     .. change::
@@ -1966,7 +1966,7 @@
        :tickets: 4481
 
        Fully removed the behavior of strings passed directly as components of a
-       :func:`.select` or :class:`.Query` object being coerced to :func:`.text`
+       :func:`~.sql.expression.select` or :class:`.Query` object being coerced to :func:`.text`
        constructs automatically; the warning that has been emitted is now an
        ArgumentError or in the case of order_by() / group_by() a CompileError.
        This has emitted a warning since version 1.0 however its presence continues
@@ -2557,7 +2557,7 @@
         derivations from :attr:`.Query.statement` would not correctly be adapted
         when used in a new :class:`.Query` that required entity adaptation, such as
         when the query were turned into a union, or a from_self(), etc. The change
-        removes the "no adaptation" annotation from the :func:`.select` object
+        removes the "no adaptation" annotation from the :func:`~.sql.expression.select` object
         produced by the :attr:`.Query.statement` accessor.
 
     .. change::

@@ -632,7 +632,7 @@ domain of concrete inheritance, and we must build a special mapper against
 
     In SQLAlchemy, a mapper for a class always has to refer to some
     "selectable", which is normally a :class:`.Table` but may also refer to any
-    :func:`.select` object as well.   While it may appear that a "single table
+    :func:`~.sql.expression.select` object as well.   While it may appear that a "single table
     inheritance" mapper does not map to a table, these mappers in fact
     implicitly refer to the table that is mapped by a superclass.
 

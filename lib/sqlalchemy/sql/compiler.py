@@ -669,11 +669,12 @@ class SQLCompiler(Compiled):
     """Optional :class:`.CompileState` object that maintains additional
     state used by the compiler.
 
-    Major executable objects such as :class:`.Insert`, :class:`.Update`,
-    :class:`.Delete`, :class:`.Select` will generate this state when compiled
-    in order to calculate additional information about the object.   For the
-    top level object that is to be executed, the state can be stored here where
-    it can also have applicability towards result set processing.
+    Major executable objects such as :class:`~.sql.expression.Insert`,
+    :class:`.Update`, :class:`.Delete`, :class:`.Select` will generate this
+    state when compiled in order to calculate additional information about the
+    object.   For the top level object that is to be executed, the state can be
+    stored here where it can also have applicability towards result set
+    processing.
 
     .. versionadded:: 1.4
 

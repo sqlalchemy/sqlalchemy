@@ -534,7 +534,7 @@
         adaptation of this clause wasn't considered.   Note that in 1.2 only,
         a selectable introduced by :meth:`.Query.subquery` is still not adapted
         due to :ticket:`4304`; the selectable needs to be produced by the
-        :func:`.select` function to be the right side of the "lateral" join.
+        :func:`~.sql.expression.select` function to be the right side of the "lateral" join.
 
     .. change::
        :tags: bug, oracle
@@ -1258,7 +1258,7 @@
         :tickets: 4193
 
         Fixed 1.2 regression in ORM versioning feature where a mapping against a
-        :func:`.select` or :func:`.alias` that also used a versioning column
+        :func:`~.sql.expression.select` or :func:`.alias` that also used a versioning column
         against the underlying table would fail due to the check added as part of
         :ticket:`3673`.
 
@@ -2066,7 +2066,7 @@
 
         Changed the name of the ``.values`` attribute of the new MySQL
         INSERT..ON DUPLICATE KEY UPDATE construct to ``.inserted``, as
-        :class:`.Insert` already has a method called :meth:`.Insert.values`.
+        :class:`~.sql.expression.Insert` already has a method called :meth:`.Insert.values`.
         The ``.inserted`` attribute ultimately renders the MySQL ``VALUES()``
         function.
 
@@ -2545,7 +2545,7 @@
         The ``lazy="select"`` loader strategy now makes used of the
         :class:`.BakedQuery` query caching system in all cases.  This
         removes most overhead of generating a :class:`.Query` object and
-        running it into a :func:`.select` and then string SQL statement from
+        running it into a :func:`~.sql.expression.select` and then string SQL statement from
         the process of lazy-loading related collections and objects.  The
         "baked" lazy loader has also been improved such that it can now
         cache in most cases where query load options are used.

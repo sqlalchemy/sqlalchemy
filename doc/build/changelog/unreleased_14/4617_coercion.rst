@@ -9,5 +9,5 @@
     is internal and should have no impact on end users other than more specific
     error messages when the wrong kind of argument is passed to an expression
     object, however the change is part of a larger set of changes involving
-    the role and behavior of :func:`.select` objects.
+    the role and behavior of :func:`~.sql.expression.select` objects.
 

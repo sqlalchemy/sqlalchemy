@@ -959,7 +959,7 @@
         :tickets: 3880
 
         Fixed bug where literal_binds compiler flag was not honored by the
-        :class:`.Insert` construct for the "multiple values" feature; the
+        :class:`~.sql.expression.Insert` construct for the "multiple values" feature; the
         subsequent values are now rendered as literals.
 
     .. change:: 3877

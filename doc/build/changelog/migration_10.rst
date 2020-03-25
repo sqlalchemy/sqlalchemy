@@ -1853,7 +1853,7 @@ behavior of passing string values that become parameterized::
     stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
 
 The Core tutorial has long featured an example of the use of this technique,
-using a :func:`.select` construct where virtually all components of it
+using a :func:`~.sql.expression.select` construct where virtually all components of it
 are specified as straight strings.  However, despite this long-standing
 behavior and example, users are apparently surprised that this behavior
 exists, and when asking around the community, I was unable to find any user
@@ -1915,7 +1915,7 @@ about the text if we use :func:`.column` and :func:`.table`::
 Where note also that :func:`.table` and :func:`.column` can now
 be imported from "sqlalchemy" without the "sql" part.
 
-The behavior here applies to :func:`.select` as well as to key methods
+The behavior here applies to :func:`~.sql.expression.select` as well as to key methods
 on :class:`.Query`, including :meth:`.Query.filter`,
 :meth:`.Query.from_statement` and :meth:`.Query.having`.
 
@@ -1924,7 +1924,7 @@ ORDER BY and GROUP BY are special cases
 
 There is one case where usage of a string has special meaning, and as part
 of this change we have enhanced its functionality.  When we have a
-:func:`.select` or :class:`.Query` that refers to some column name or named
+:func:`~.sql.expression.select` or :class:`.Query` that refers to some column name or named
 label, we might want to GROUP BY and/or ORDER BY known columns or labels::
 
     stmt = select([
@@ -2079,7 +2079,7 @@ The INSERT...FROM SELECT construct now implies ``inline=True``
 --------------------------------------------------------------
 
 Using :meth:`.Insert.from_select` now implies ``inline=True``
-on :func:`.insert`.  This helps to fix a bug where an
+on :func:`~.sql.expression.insert`.  This helps to fix a bug where an
 INSERT...FROM SELECT construct would inadvertently be compiled
 as "implicit returning" on supporting backends, which would
 cause breakage in the case of an INSERT that inserts zero rows

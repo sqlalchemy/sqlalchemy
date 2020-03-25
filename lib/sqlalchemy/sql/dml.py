@@ -5,7 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 """
-Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
+Provide :class:`~.sql.expression.Insert`, :class:`.Update` and
+:class:`.Delete`.
 
 """
 from sqlalchemy.types import NullType
@@ -430,7 +431,8 @@ class ValuesBase(UpdateBase):
         r"""specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
-        Note that the :class:`.Insert` and :class:`.Update` constructs support
+        Note that the :class:`~.sql.expression.Insert` and :class:`.Update`
+        constructs support
         per-execution time formatting of the VALUES and/or SET clauses,
         based on the arguments passed to :meth:`.Connection.execute`.
         However, the :meth:`.ValuesBase.values` method can be used to "fix" a
@@ -456,28 +458,28 @@ class ValuesBase(UpdateBase):
          a dictionary, tuple, or list of dictionaries or tuples can be passed
          as a single positional argument in order to form the VALUES or
          SET clause of the statement.  The forms that are accepted vary
-         based on whether this is an :class:`.Insert` or an :class:`.Update`
-         construct.
+         based on whether this is an :class:`~.sql.expression.Insert` or an
+         :class:`.Update` construct.
 
-         For either an :class:`.Insert` or :class:`.Update` construct, a
-         single dictionary can be passed, which works the same as that of
-         the kwargs form::
+         For either an :class:`~.sql.expression.Insert` or :class:`.Update`
+         construct, a single dictionary can be passed, which works the same as
+         that of the kwargs form::
 
             users.insert().values({"name": "some name"})
 
             users.update().values({"name": "some new name"})
 
-         Also for either form but more typically for the :class:`.Insert`
-         construct, a tuple that contains an entry for every column in the
-         table is also accepted::
+         Also for either form but more typically for the
+         :class:`~.sql.expression.Insert` construct, a tuple that contains an
+         entry for every column in the table is also accepted::
 
             users.insert().values((5, "some name"))
 
-         The :class:`.Insert` construct also supports being passed a list
-         of dictionaries or full-table-tuples, which on the server will
-         render the less common SQL syntax of "multiple values" - this
-         syntax is supported on backends such as SQLite, PostgreSQL, MySQL,
-         but not necessarily others::
+         The :class:`~.sql.expression.Insert` construct also supports being
+         passed a list of dictionaries or full-table-tuples, which on the
+         server will render the less common SQL syntax of "multiple values" -
+         this syntax is supported on backends such as SQLite, PostgreSQL,
+         MySQL, but not necessarily others::
 
             users.insert().values([
                                 {"name": "some name"},
@@ -714,7 +716,7 @@ class ValuesBase(UpdateBase):
 class Insert(ValuesBase):
     """Represent an INSERT construct.
 
-    The :class:`.Insert` object is created using the
+    The :class:`~.sql.expression.Insert` object is created using the
     :func:`~.expression.insert()` function.
 
     .. seealso::
@@ -771,7 +773,7 @@ class Insert(ValuesBase):
         return_defaults=False,
         **dialect_kw
     ):
-        """Construct an :class:`.Insert` object.
+        """Construct an :class:`~.sql.expression.Insert` object.
 
         Similar functionality is available via the
         :meth:`~.TableClause.insert` method on
@@ -782,9 +784,9 @@ class Insert(ValuesBase):
 
         :param values: collection of values to be inserted; see
          :meth:`.Insert.values` for a description of allowed formats here.
-         Can be omitted entirely; a :class:`.Insert` construct will also
-         dynamically render the VALUES clause at execution time based on
-         the parameters passed to :meth:`.Connection.execute`.
+         Can be omitted entirely; a :class:`~.sql.expression.Insert` construct
+         will also dynamically render the VALUES clause at execution time
+         based on the parameters passed to :meth:`.Connection.execute`.
 
         :param inline: if True, no attempt will be made to retrieve the
          SQL-generated default values to be provided within the statement;
@@ -829,7 +831,7 @@ class Insert(ValuesBase):
 
     @_generative
     def inline(self):
-        """Make this :class:`.Insert` construct "inline" .
+        """Make this :class:`~.sql.expression.Insert` construct "inline" .
 
         When set, no attempt will be made to retrieve the
         SQL-generated default values to be provided within the statement;
@@ -848,7 +850,7 @@ class Insert(ValuesBase):
 
     @_generative
     def from_select(self, names, select, include_defaults=True):
-        """Return a new :class:`.Insert` construct which represents
+        """Return a new :class:`~.sql.expression.Insert` construct which represents
         an ``INSERT...FROM SELECT`` statement.
 
         e.g.::
@@ -858,7 +860,8 @@ class Insert(ValuesBase):
 
         :param names: a sequence of string column names or :class:`.Column`
          objects representing the target columns.
-        :param select: a :func:`.select` construct, :class:`.FromClause`
+        :param select: a :func:`~.sql.expression.select` construct,
+         :class:`.FromClause`
          or other construct which resolves into a :class:`.FromClause`,
          such as an ORM :class:`.Query` object, etc.  The order of
          columns returned from this FROM clause should correspond to the
@@ -1059,15 +1062,14 @@ class Update(DMLWhereBase, ValuesBase):
 
         * a literal data value (i.e. string, number, etc.)
         * a SQL expression, such as a related :class:`.Column`,
-          a scalar-returning :func:`.select` construct,
+          a scalar-returning :func:`~.sql.expression.select` construct,
           etc.
 
-        When combining :func:`.select` constructs within the values
-        clause of an :func:`.update` construct,
-        the subquery represented by the :func:`.select` should be
-        *correlated* to the parent table, that is, providing criterion
-        which links the table inside the subquery to the outer table
-        being updated::
+        when combining :func:`~.sql.expression.select` constructs within the
+        values clause of an :func:`.update` construct, the subquery represented
+        by the :func:`~.sql.expression.select` should be *correlated* to the
+        parent table, that is, providing criterion which links the table inside
+        the subquery to the outer table being updated::
 
             users.update().values(
                     name=select([addresses.c.email_address]).\

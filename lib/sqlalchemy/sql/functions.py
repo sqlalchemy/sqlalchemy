@@ -128,7 +128,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         an anonymously named column.
 
         An interim approach to providing named columns for a function
-        as a FROM clause is to build a :func:`.select` with the
+        as a FROM clause is to build a :func:`~.sql.expression.select` with the
         desired columns::
 
             from sqlalchemy.sql import column

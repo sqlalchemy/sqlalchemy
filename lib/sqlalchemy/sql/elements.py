@@ -398,15 +398,14 @@ class ClauseElement(
         # type: (Optional[Any]) -> ClauseElement
         """Apply a 'grouping' to this :class:`.ClauseElement`.
 
-        This method is overridden by subclasses to return a
-        "grouping" construct, i.e. parenthesis.   In particular
-        it's used by "binary" expressions to provide a grouping
-        around themselves when placed into a larger expression,
-        as well as by :func:`.select` constructs when placed into
-        the FROM clause of another :func:`.select`.  (Note that
-        subqueries should be normally created using the
-        :meth:`.Select.alias` method, as many platforms require
-        nested SELECT statements to be named).
+        This method is overridden by subclasses to return a "grouping"
+        construct, i.e. parenthesis.   In particular it's used by "binary"
+        expressions to provide a grouping around themselves when placed into a
+        larger expression, as well as by :func:`~.sql.expression.select`
+        constructs when placed into the FROM clause of another
+        :func:`~.sql.expression.select`.  (Note that subqueries should be
+        normally created using the :meth:`.Select.alias` method, as many
+        platforms require nested SELECT statements to be named).
 
         As expressions are composed together, the application of
         :meth:`self_group` is automatic - end-user code should never
@@ -1127,11 +1126,11 @@ class BindParameter(roles.InElementRole, ColumnElement):
         while the placeholder ``:name_1`` is rendered in the appropriate form
         for the target database, in this case the PostgreSQL database.
 
-        Similarly, :func:`.bindparam` is invoked automatically
-        when working with :term:`CRUD` statements as far as the "VALUES"
-        portion is concerned.   The :func:`.insert` construct produces an
-        ``INSERT`` expression which will, at statement execution time,
-        generate bound placeholders based on the arguments passed, as in::
+        Similarly, :func:`.bindparam` is invoked automatically when working
+        with :term:`CRUD` statements as far as the "VALUES" portion is
+        concerned.   The :func:`~.sql.expression.insert` construct produces an
+        ``INSERT`` expression which will, at statement execution time, generate
+        bound placeholders based on the arguments passed, as in::
 
             stmt = users_table.insert()
             result = connection.execute(stmt, name='Wendy')
@@ -1141,10 +1140,10 @@ class BindParameter(roles.InElementRole, ColumnElement):
             INSERT INTO "user" (name) VALUES (%(name)s)
             {'name': 'Wendy'}
 
-        The :class:`.Insert` construct, at compilation/execution time,
-        rendered a single :func:`.bindparam` mirroring the column
-        name ``name`` as a result of the single ``name`` parameter
-        we passed to the :meth:`.Connection.execute` method.
+        The :class:`~.sql.expression.Insert` construct, at
+        compilation/execution time, rendered a single :func:`.bindparam`
+        mirroring the column name ``name`` as a result of the single ``name``
+        parameter we passed to the :meth:`.Connection.execute` method.
 
         :param key:
           the key (e.g. the name) for this bind param.
@@ -4209,7 +4208,8 @@ class ColumnClause(
             SELECT id, name FROM user
 
         Once constructed, :func:`.column` may be used like any other SQL
-        expression element such as within :func:`.select` constructs::
+        expression element such as within :func:`~.sql.expression.select`
+        constructs::
 
             from sqlalchemy.sql import column
 

@@ -2403,8 +2403,8 @@ Support for INSERT..ON CONFLICT (DO UPDATE | DO NOTHING)
 
 The ``ON CONFLICT`` clause of ``INSERT`` added to PostgreSQL as of
 version 9.5 is now supported using a PostgreSQL-specific version of the
-:class:`.Insert` object, via :func:`sqlalchemy.dialects.postgresql.dml.insert`.
-This :class:`.Insert` subclass adds two new methods :meth:`.Insert.on_conflict_do_update`
+:class:`~.sql.expression.Insert` object, via :func:`sqlalchemy.dialects.postgresql.dml.insert`.
+This :class:`~.sql.expression.Insert` subclass adds two new methods :meth:`.Insert.on_conflict_do_update`
 and :meth:`.Insert.on_conflict_do_nothing` which implement the full syntax
 supported by PostgreSQL 9.5 in this area::
 

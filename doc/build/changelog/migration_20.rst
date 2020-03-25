@@ -698,7 +698,7 @@ ORM Query Unified with Core Select
   that a transition to 2.0 won't require a rewrite of every ``session.query()``
   call, however it will be a legacy pattern that may warn as such.
 
-Ever wonder why SQLAlchemy :func:`.select` uses :meth:`.Select.where` to add
+Ever wonder why SQLAlchemy :func:`~.sql.expression.select` uses :meth:`.Select.where` to add
 a WHERE clause and :class:`.Query` uses :meth:`.Query.filter` ?   Same here!
 The :class:`.Query` object was not part of SQLAlchemy's original concept.
 Originally, the idea was that the :class:`.Mapper` construct itself would
@@ -707,20 +707,20 @@ would be used to create the various criteria in a Core-style approach.   The
 :class:`.Query` was basically an extension that was proposed by a user who
 quite plainly had a better idea of how to build up SQL queries.   The
 "buildable" approach of :class:`.Query`, originally called ``SelectResults``,
-was also adapted to the Core SQL objects, so that :func:`.select` gained
+was also adapted to the Core SQL objects, so that :func:`~.sql.expression.select` gained
 methods like :meth:`.Select.where`, rather than being an all-at-once composed
 object.  Later on, ORM classes gained the ability to be used directly in
 constructing SQL criteria.    :class:`.Query` evolved over many years to
-eventually support production of all the SQL that :func:`.select` does, to
+eventually support production of all the SQL that :func:`~.sql.expression.select` does, to
 the point where having both forms has now become redundant.
 
 SQLAlchemy 2.0 will resolve the inconsistency here by promoting the concept
-of :func:`.select` to be the single way that one constructs a SELECT construct.
+of :func:`~.sql.expression.select` to be the single way that one constructs a SELECT construct.
 For Core usage, the ``select()`` works mostly as it does now, except that it
 gains a real working ``.join()`` method that will append JOIN conditions to the
 statement in the same way as works for :meth:`.Query.join` right now.
 
-For ORM use however, one can construct a :func:`.select` using ORM objects, and
+For ORM use however, one can construct a :func:`~.sql.expression.select` using ORM objects, and
 then when delivered to the ``.invoke()`` or ``.execute()`` method of
 :class:`.Session`, it will be interpreted appropriately::
 

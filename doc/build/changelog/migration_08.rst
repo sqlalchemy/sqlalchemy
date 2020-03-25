@@ -511,8 +511,8 @@ ORM Classes Now Accepted by Core Constructs
 
 While the SQL expressions used with :meth:`.Query.filter`,
 such as ``User.id == 5``, have always been compatible for
-use with core constructs such as :func:`.select`, the mapped
-class itself would not be recognized when passed to :func:`.select`,
+use with core constructs such as :func:`~.sql.expression.select`, the mapped
+class itself would not be recognized when passed to :func:`~.sql.expression.select`,
 :meth:`.Select.select_from`, or :meth:`.Select.correlate`.
 A new SQL registration system allows a mapped class to be
 accepted as a FROM clause within the core::
@@ -777,7 +777,7 @@ and ORM constructs.
 New Method :meth:`.Select.correlate_except`
 -------------------------------------------
 
-:func:`.select` now has a method :meth:`.Select.correlate_except`
+:func:`~.sql.expression.select` now has a method :meth:`.Select.correlate_except`
 which specifies "correlate on all FROM clauses except those
 specified".  It can be used for mapping scenarios where
 a related subquery should correlate normally, except
@@ -971,7 +971,7 @@ these constructs.   E.g.::
     stmt = table.update().prefix_with("LOW_PRIORITY", dialect="mysql")
 
 The method is new in addition to those which already existed
-on :func:`.insert`, :func:`.select` and :class:`.Query`.
+on :func:`~.sql.expression.insert`, :func:`~.sql.expression.select` and :class:`.Query`.
 
 .. seealso::
 
@@ -1297,7 +1297,7 @@ be no pending state change on an unloaded attribute.
 
 :ticket:`2320`
 
-:attr:`.Column.key` is honored in the :attr:`.Select.c` attribute of :func:`.select` with :meth:`.Select.apply_labels`
+:attr:`.Column.key` is honored in the :attr:`.Select.c` attribute of :func:`~.sql.expression.select` with :meth:`.Select.apply_labels`
 -----------------------------------------------------------------------------------------------------------------------
 
 Users of the expression system know that :meth:`.Select.apply_labels`

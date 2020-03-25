@@ -45,7 +45,7 @@ with a cache key representing the structure of the query; this cache key
 is then linked to the resulting string SQL statement so that subsequent use
 of another :class:`.BakedQuery` with the same structure will bypass all the
 overhead of building the :class:`.Query` object, building the core
-:func:`.select` object within, as well as the compilation of the :func:`.select`
+:func:`~.sql.expression.select` object within, as well as the compilation of the :func:`~.sql.expression.select`
 into a string, cutting out well the majority of function call overhead normally
 associated with constructing and emitting an ORM :class:`.Query` object.
 
@@ -1032,7 +1032,7 @@ Parameter helper for multi-valued INSERT with contextual default generator
 A default generation function, e.g. that described at
 :ref:`context_default_functions`, can look at the current parameters relevant
 to the statement via the :attr:`.DefaultExecutionContext.current_parameters`
-attribute.  However, in the case of a :class:`.Insert` construct that specifies
+attribute.  However, in the case of a :class:`~.sql.expression.Insert` construct that specifies
 multiple VALUES clauses via the :meth:`.Insert.values` method, the user-defined
 function is called multiple times, once for each parameter set, however there
 was no way to know which subset of keys in

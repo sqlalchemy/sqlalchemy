@@ -366,7 +366,7 @@ assumed that all subsequent argument dictionaries are compatible with that
 statement.
 
 The "executemany" style of invocation is available for each of the
-:func:`.insert`, :func:`.update` and :func:`.delete` constructs.
+:func:`~.sql.expression.insert`, :func:`.update` and :func:`.delete` constructs.
 
 
 .. _coretutorial_selecting:
@@ -377,7 +377,7 @@ Selecting
 We began with inserts just so that our test database had some data in it. The
 more interesting part of the data is selecting it! We'll cover UPDATE and
 DELETE statements later. The primary construct used to generate SELECT
-statements is the :func:`.select` function:
+statements is the :func:`~.sql.expression.select` function:
 
 .. sourcecode:: pycon+sql
 
@@ -388,7 +388,7 @@ statements is the :func:`.select` function:
     FROM users
     ()
 
-Above, we issued a basic :func:`.select` call, placing the ``users`` table
+Above, we issued a basic :func:`~.sql.expression.select` call, placing the ``users`` table
 within the COLUMNS clause of the select, and then executing. SQLAlchemy
 expanded the ``users`` table into the set of each of its columns, and also
 generated a FROM clause for us. The result returned is again a
@@ -537,9 +537,9 @@ the ``c`` attribute of the :class:`~sqlalchemy.schema.Table` object:
 
 Lets observe something interesting about the FROM clause. Whereas the
 generated statement contains two distinct sections, a "SELECT columns" part
-and a "FROM table" part, our :func:`.select` construct only has a list
+and a "FROM table" part, our :func:`~.sql.expression.select` construct only has a list
 containing columns. How does this work ? Let's try putting *two* tables into
-our :func:`.select` statement:
+our :func:`~.sql.expression.select` statement:
 
 .. sourcecode:: pycon+sql
 
@@ -578,7 +578,7 @@ WHERE clause.  We do that using :meth:`.Select.where`:
     (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org')
     (2, u'wendy', u'Wendy Williams', 4, 2, u'wendy@aol.com')
 
-So that looks a lot better, we added an expression to our :func:`.select`
+So that looks a lot better, we added an expression to our :func:`~.sql.expression.select`
 which had the effect of adding ``WHERE users.id = addresses.user_id`` to our
 statement, and our results were managed down so that the join of ``users`` and
 ``addresses`` rows made sense. But let's look at that expression? It's using
@@ -600,7 +600,7 @@ Wow, surprise ! This is neither a ``True`` nor a ``False``. Well what is it ?
     'users.id = addresses.user_id'
 
 As you can see, the ``==`` operator is producing an object that is very much
-like the :class:`~.expression.Insert` and :func:`.select`
+like the :class:`~.expression.Insert` and :func:`~.sql.expression.select`
 objects we've made so far, thanks to Python's ``__eq__()`` builtin; you call
 ``str()`` on it and it produces SQL. By now, one can see that everything we
 are working with is ultimately the same type of object. SQLAlchemy terms the
@@ -728,7 +728,7 @@ Conjunctions
 ============
 
 
-We'd like to show off some of our operators inside of :func:`.select`
+We'd like to show off some of our operators inside of :func:`~.sql.expression.select`
 constructs. But we need to lump them together a little more, so let's first
 introduce some conjunctions. Conjunctions are those little words like AND and
 OR that put things together. We'll also hit upon NOT. :func:`.and_`, :func:`.or_`,
@@ -834,7 +834,7 @@ A shortcut to using :func:`.and_` is to chain together multiple
     (', ', 'm', 'z', '%@aol.com', '%@msn.com')
     [(u'Wendy Williams, wendy@aol.com',)]
 
-The way that we can build up a :func:`.select` construct through successive
+The way that we can build up a :func:`~.sql.expression.select` construct through successive
 method calls is called :term:`method chaining`.
 
 .. _sqlexpression_text:
@@ -997,7 +997,7 @@ that can be freely within a
 :func:`~.expression.select` object, which accepts :func:`~.expression.text`
 objects as an argument for most of its builder functions.
 Below, we combine the usage of :func:`~.expression.text` within a
-:func:`.select` object.  The :func:`~.expression.select` construct provides the "geometry"
+:func:`~.sql.expression.select` object.  The :func:`~.expression.select` construct provides the "geometry"
 of the statement, and the :func:`~.expression.text` construct provides the
 textual content within this form.  We can build a statement without the
 need to refer to any pre-established :class:`.Table` metadata:
@@ -1025,7 +1025,7 @@ need to refer to any pre-established :class:`.Table` metadata:
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 .. versionchanged:: 1.0.0
-   The :func:`.select` construct emits warnings when string SQL
+   The :func:`~.sql.expression.select` construct emits warnings when string SQL
    fragments are coerced to :func:`.text`, and :func:`.text` should
    be used explicitly.  See :ref:`migration_2992` for background.
 
@@ -1086,7 +1086,7 @@ One place where we sometimes want to use a string as a shortcut is when
 our statement has some labeled column element that we want to refer to in
 a place such as the "ORDER BY" or "GROUP BY" clause; other candidates include
 fields within an "OVER" or "DISTINCT" clause.  If we have such a label
-in our :func:`.select` construct, we can refer to it directly by passing the
+in our :func:`~.sql.expression.select` construct, we can refer to it directly by passing the
 string straight into :meth:`.select.order_by` or :meth:`.select.group_by`,
 among others.  This will refer to the named label and also prevent the
 expression from being rendered twice.  Label names that resolve to columns
@@ -1175,7 +1175,7 @@ As an example, suppose we know that our user ``jack`` has two particular email
 addresses. How can we locate jack based on the combination of those two
 addresses?   To accomplish this, we'd use a join to the ``addresses`` table,
 once for each address.   We create two :class:`.Alias` constructs against
-``addresses``, and then use them both within a :func:`.select` construct:
+``addresses``, and then use them both within a :func:`~.sql.expression.select` construct:
 
 .. sourcecode:: pycon+sql
 
@@ -1221,7 +1221,7 @@ produces a :class:`.Subquery` construct; for ease of use, there is also a
 also a :class:`.FromClause` object that may be part of any enclosing SELECT
 using the same techniques one would use for a :class:`.Alias`.
 
-We can self-join the ``users`` table back to the :func:`.select` we've created
+We can self-join the ``users`` table back to the :func:`~.sql.expression.select` we've created
 by making :class:`.Subquery` of the entire statement:
 
 .. sourcecode:: pycon+sql
@@ -1250,7 +1250,7 @@ Using Joins
 We're halfway along to being able to construct any SELECT expression. The next
 cornerstone of the SELECT is the JOIN expression. We've already been doing
 joins in our examples, by just placing two tables in either the columns clause
-or the where clause of the :func:`.select` construct. But if we want to make a
+or the where clause of the :func:`~.sql.expression.select` construct. But if we want to make a
 real "JOIN" or "OUTERJOIN" construct, we use the :meth:`~.FromClause.join` and
 :meth:`~.FromClause.outerjoin` methods, most commonly accessed from the left table in the
 join:
@@ -1279,7 +1279,7 @@ username:
     ...  )
     users JOIN addresses ON addresses.email_address LIKE users.name || :name_1
 
-When we create a :func:`.select` construct, SQLAlchemy looks around at the
+When we create a :func:`~.sql.expression.select` construct, SQLAlchemy looks around at the
 tables we've mentioned and then places them in the FROM clause of the
 statement. When we use JOINs however, we know what FROM clause we want, so
 here we make use of the :meth:`~.Select.select_from` method:
@@ -1783,7 +1783,7 @@ column.  It can then be used as a column expression.  A scalar select
 is often a :term:`correlated subquery`, which relies upon the enclosing
 SELECT statement in order to acquire at least one of its FROM clauses.
 
-The :func:`.select` construct can be modified to act as a
+The :func:`~.sql.expression.select` construct can be modified to act as a
 column expression by calling either the :meth:`~.SelectBase.scalar_subquery`
 or :meth:`~.SelectBase.label` method:
 
@@ -1797,7 +1797,7 @@ The above construct is now a :class:`~.expression.ScalarSelect` object,
 which is an adapter around the original :class:`.~expression.Select`
 object; it participates within the :class:`~.expression.ColumnElement`
 family of expression constructs.  We can place this construct the same as any
-other column within another :func:`.select`:
+other column within another :func:`~.sql.expression.select`:
 
 .. sourcecode:: pycon+sql
 

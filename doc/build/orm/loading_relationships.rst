@@ -1142,7 +1142,7 @@ Advanced Usage with Arbitrary Statements
 
 The ``alias`` argument can be more creatively used, in that it can be made
 to represent any set of arbitrary names to match up into a statement.
-Below it is linked to a :func:`.select` which links a set of column objects
+Below it is linked to a :func:`~.sql.expression.select` which links a set of column objects
 to a string SQL statement::
 
     # label the columns of the addresses table

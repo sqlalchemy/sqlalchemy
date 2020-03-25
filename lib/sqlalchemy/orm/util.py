@@ -767,30 +767,31 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 
         session.query(MyClass, my_alias).filter(MyClass.id > my_alias.id)
 
-    The :func:`.aliased` function is used to create an ad-hoc mapping
-    of a mapped class to a new selectable.  By default, a selectable
-    is generated from the normally mapped selectable (typically a
-    :class:`.Table`) using the :meth:`.FromClause.alias` method.
-    However, :func:`.aliased` can also be used to link the class to
-    a new :func:`.select` statement.   Also, the :func:`.with_polymorphic`
-    function is a variant of :func:`.aliased` that is intended to specify
-    a so-called "polymorphic selectable", that corresponds to the union
-    of several joined-inheritance subclasses at once.
+    The :func:`.aliased` function is used to create an ad-hoc mapping of a
+    mapped class to a new selectable.  By default, a selectable is generated
+    from the normally mapped selectable (typically a :class:`.Table`) using the
+    :meth:`.FromClause.alias` method. However, :func:`.aliased` can also be
+    used to link the class to a new :func:`~.sql.expression.select` statement.
+    Also, the :func:`.with_polymorphic` function is a variant of
+    :func:`.aliased` that is intended to specify a so-called "polymorphic
+    selectable", that corresponds to the union of several joined-inheritance
+    subclasses at once.
 
     For convenience, the :func:`.aliased` function also accepts plain
     :class:`.FromClause` constructs, such as a :class:`.Table` or
-    :func:`.select` construct.   In those cases, the :meth:`.FromClause.alias`
-    method is called on the object and the new :class:`.Alias` object
-    returned.  The returned :class:`.Alias` is not ORM-mapped in this case.
+    :func:`~.sql.expression.select` construct.   In those cases, the
+    :meth:`.FromClause.alias` method is called on the object and the new
+    :class:`.Alias` object returned.  The returned :class:`.Alias` is not
+    ORM-mapped in this case.
 
     :param element: element to be aliased.  Is normally a mapped class,
      but for convenience can also be a :class:`.FromClause` element.
 
     :param alias: Optional selectable unit to map the element to.  This should
      normally be a :class:`.Alias` object corresponding to the :class:`.Table`
-     to which the class is mapped, or to a :func:`.select` construct that
-     is compatible with the mapping.   By default, a simple anonymous
-     alias of the mapped table is generated.
+     to which the class is mapped, or to a :func:`~.sql.expression.select`
+     construct that is compatible with the mapping.   By default, a simple
+     anonymous alias of the mapped table is generated.
 
     :param name: optional string name to use for the alias, if not specified
      by the ``alias`` parameter.  The name, among other things, forms the

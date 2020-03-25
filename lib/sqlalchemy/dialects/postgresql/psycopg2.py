@@ -178,13 +178,13 @@ Possible options for ``executemany_mode`` include:
   semicolon.   This is the same behavior as was provided by the
   ``use_batch_mode=True`` flag.
 
-* ``'values'``- For Core :func:`.insert` constructs only (including those
+* ``'values'``- For Core :func:`~.sql.expression.insert` constructs only (including those
   emitted by the ORM automatically), the ``psycopg2.extras.execute_values``
   extension is used so that multiple parameter sets are grouped into a single
   INSERT statement and joined together with multiple VALUES expressions.   This
   method requires that the string text of the VALUES clause inside the
   INSERT statement is manipulated, so is only supported with a compiled
-  :func:`.insert` construct where the format is predictable.  For all other
+  :func:`~.sql.expression.insert` construct where the format is predictable.  For all other
   constructs,  including plain textual INSERT statements not rendered  by the
   SQLAlchemy expression language compiler, the
   ``psycopg2.extras.execute_batch``  method is used.   It is therefore important

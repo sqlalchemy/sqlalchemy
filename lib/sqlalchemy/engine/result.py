@@ -1203,7 +1203,7 @@ class BaseResult(object):
         corresponding to the list of primary key columns
         in the target table.
 
-        This only applies to single row :func:`.insert`
+        This only applies to single row :func:`~.sql.expression.insert`
         constructs which did not explicitly specify
         :meth:`.Insert.returning`.
 

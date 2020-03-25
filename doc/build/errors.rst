@@ -628,7 +628,7 @@ Expected FROM clause, got Select.  To create a FROM clause, use the .subquery() 
 --------------------------------------------------------------------------------------
 
 This refers to a change made as of SQLAlchemy 1.4 where a SELECT statement as generated
-by a function such as :func:`.select`, but also including things like unions and textual
+by a function such as :func:`~.sql.expression.select`, but also including things like unions and textual
 SELECT expressions are no longer considered to be :class:`.FromClause` objects and
 can't be placed directly in the FROM clause of another SELECT statement without them
 being wrapped in a :class:`.Subquery` first.   This is a major conceptual change in the
