@@ -533,9 +533,9 @@ equally::
 
         result.scalar()  # first col of first row  (warns if additional rows remain?)
         result.scalars()  # iterator of first col of each row
+        result.scalars().all()  # same, as a list
         result.scalars(1)  # iterator of second col of each row
         result.scalars('a')  # iterator of the "a" col of each row
-        result.scalars().all()  # same, as a list
 
         result.columns('a', 'b').<anything>  # limit column tuples
         result.columns(table.c.a, table.c.b)  # using Column (or ORM attribute) objects
@@ -827,7 +827,7 @@ It is this automatic adaption of the filter criteria that is enormously
 complicated internally and almost never used in real world applications. The
 above pattern also leads to issues such as if filter criteria need to be added
 at each link in the chain; the pattern then must use the ``from_joinpoint``
-flag which SQLAlchemy developers could absolultely find no occurence of this
+flag which SQLAlchemy developers could absolutely find no occurrence of this
 parameter ever being used in real world applications::
 
   q = session.query(Node).\
@@ -938,7 +938,7 @@ like any other Core statement.  A similar "pre-result" step is associated
 with the execution which is where the plain result rows will be filtered
 into ORM rows.
 
-This is in constrast to the 1.3.x and earlier series of SQLAlchemy where the
+This is in contrast to the 1.3.x and earlier series of SQLAlchemy where the
 "post-construction" of the query and "pre-result" steps are instead
 "pre-execution" and  "post-result", that is, they occur outside of where Core
 would be able to  cache the results of the work performed.   The new
@@ -1059,7 +1059,7 @@ Same thing with lazy=dynamic....
 
 The same pattern is needed for "dynamic" relationships::
 
-    user.addresess.where(Address.id > 10).execute().all()
+    user.addresses.where(Address.id > 10).execute().all()
 
 
 What about asyncio???
@@ -1091,7 +1091,7 @@ of asyncio-everything, here are the bulletpoints:
   scaled connections to sockets that are arbitrarily slow and/or sleepy.
 
 * Nevertheless, lots of Python programmers like the asyncio approach and feel
-  more comfortable working with requests in the inheritently "callback"
+  more comfortable working with requests in the inherently "callback"
   style of event-based programming.  SQLAlchemy has every desire for these
   people to be happy.
 
