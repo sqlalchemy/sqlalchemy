@@ -35,7 +35,7 @@ and is also key to the most common (and not-so-common) patterns of ORM usage.
 
     It's important to note that we're only talking about the SQLAlchemy ORM; an
     application which builds on Core and deals only with :class:`.Table` objects,
-    :func:`.select` constructs and the like, **does not** need any primary key
+    :func:`~.sql.expression.select` constructs and the like, **does not** need any primary key
     to be present on or associated with a table in any way (though again, in SQL, all tables
     should really have some kind of primary key, lest you need to actually
     update or delete specific rows).

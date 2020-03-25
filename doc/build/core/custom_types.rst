@@ -371,7 +371,7 @@ in conjunction with :data:`~.sqlalchemy.sql.expression.func`::
             return func.ST_AsText(col, type_=self)
 
 We can apply the ``Geometry`` type into :class:`.Table` metadata
-and use it in a :func:`.select` construct::
+and use it in a :func:`~.sql.expression.select` construct::
 
     geometry = Table('geometry', metadata,
                   Column('geom_id', Integer, primary_key=True),
@@ -393,7 +393,7 @@ is run on the bound parameter so that the passed-in value is converted::
 The :meth:`.TypeEngine.column_expression` method interacts with the
 mechanics of the compiler such that the SQL expression does not interfere
 with the labeling of the wrapped expression.   Such as, if we rendered
-a :func:`.select` against a :func:`.label` of our expression, the string
+a :func:`~.sql.expression.select` against a :func:`.label` of our expression, the string
 label is moved to the outside of the wrapped expression::
 
     print(select([geometry.c.geom_data.label('my_data')]))

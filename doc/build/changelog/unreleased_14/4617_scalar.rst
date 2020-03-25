@@ -16,9 +16,9 @@
     the implicit decisionmaking by the query coercion system.   The
     :meth:`.Subquery.as_scalar` method, which was previously
     ``Alias.as_scalar``, is also deprecated; ``.scalar_subquery()`` should be
-    invoked directly from ` :func:`.select` object or :class:`.Query` object.
+    invoked directly from ` :func:`~.sql.expression.select` object or :class:`.Query` object.
 
-    This change is part of the larger change to convert :func:`.select` objects
+    This change is part of the larger change to convert :func:`~.sql.expression.select` objects
     to no longer be directly part of the "from clause" class hierarchy, which
     also includes an overhaul of the clause coercion system.
 

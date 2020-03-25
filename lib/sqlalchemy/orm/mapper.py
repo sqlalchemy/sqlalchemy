@@ -2227,8 +2227,8 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
     @property
     def selectable(self):
-        """The :func:`.select` construct this :class:`.Mapper` selects from
-        by default.
+        """The :func:`~.sql.expression.select` construct this
+        :class:`.Mapper` selects from by default.
 
         Normally, this is equivalent to :attr:`.persist_selectable`, unless
         the ``with_polymorphic`` feature is in use, in which case the
@@ -2666,8 +2666,8 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         :param row: A :class:`.Row` instance.  The columns which are
          mapped by this :class:`.Mapper` should be locatable in the row,
          preferably via the :class:`.Column` object directly (as is the case
-         when a :func:`.select` construct is executed), or via string names of
-         the form ``<tablename>_<colname>``.
+         when a :func:`~.sql.expression.select` construct is executed), or
+         via string names of the form ``<tablename>_<colname>``.
 
         """
         pk_cols = self.primary_key

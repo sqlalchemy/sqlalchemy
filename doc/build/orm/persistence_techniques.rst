@@ -746,7 +746,7 @@ Comparison to Core Insert / Update Constructs
 ---------------------------------------------
 
 The bulk methods offer performance that under particular circumstances
-can be close to that of using the core :class:`.Insert` and
+can be close to that of using the core :class:`~.sql.expression.Insert` and
 :class:`.Update` constructs in an "executemany" context (for a description
 of "executemany", see :ref:`execute_multiple` in the Core tutorial).
 In order to achieve this, the

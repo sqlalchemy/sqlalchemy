@@ -159,7 +159,7 @@
         Fixed bug where :meth:`.Table.update` and :meth:`.Table.delete`
         would produce an empty WHERE clause when an empty :func:`.and_()`
         or :func:`.or_()` or other blank expression were applied.  This is
-        now consistent with that of :func:`.select`.
+        now consistent with that of :func:`~.sql.expression.select`.
 
     .. change::
         :tags: bug, postgresql
@@ -761,7 +761,7 @@
         :tickets: 2815
         :versions: 0.9.0b1
 
-        A :func:`.select` that is made to refer to itself in its FROM clause,
+        A :func:`~.sql.expression.select` that is made to refer to itself in its FROM clause,
         typically via in-place mutation, will raise an informative error
         message rather than causing a recursion overflow.
 
@@ -952,7 +952,7 @@
         :tags: feature, sql
         :tickets: 722
 
-        Added new method to the :func:`.insert` construct
+        Added new method to the :func:`~.sql.expression.insert` construct
         :meth:`.Insert.from_select`.  Given a list of columns and
         a selectable, renders ``INSERT INTO (table) (columns) SELECT ..``.
 
@@ -960,7 +960,7 @@
         :tags: feature, sql
         :versions: 0.9.0b1
 
-        The :func:`.update`, :func:`.insert`, and :func:`.delete` constructs
+        The :func:`.update`, :func:`~.sql.expression.insert`, and :func:`.delete` constructs
         will now interpret ORM entities as target tables to be operated upon,
         e.g.::
 
@@ -2138,7 +2138,7 @@
         :tags: sql, feature
         :tickets: 2623
 
-      The :class:`.Insert` construct now supports multi-valued inserts,
+      The :class:`~.sql.expression.Insert` construct now supports multi-valued inserts,
       that is, an INSERT that renders like
       "INSERT INTO table VALUES (...), (...), ...".
       Supported by PostgreSQL, SQLite, and MySQL.
@@ -2406,7 +2406,7 @@
         :tags: sql, orm, bug
         :tickets: 2595
 
-      The auto-correlation feature of :func:`.select`, and
+      The auto-correlation feature of :func:`~.sql.expression.select`, and
       by proxy that of :class:`.Query`, will not
       take effect for a SELECT statement that is being
       rendered directly in the FROM list of the enclosing

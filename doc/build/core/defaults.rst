@@ -154,7 +154,7 @@ in the execution for the ``counter`` column, plus the number 12.
 For a single statement that is being executed using "executemany" style, e.g.
 with multiple parameter sets passed to :meth:`.Connection.execute`, the user-
 defined function is called once for each set of parameters. For the use case of
-a multi-valued :class:`.Insert` construct (e.g. with more than one VALUES
+a multi-valued :class:`~.sql.expression.Insert` construct (e.g. with more than one VALUES
 clause set up via the :meth:`.Insert.values` method), the user-defined function
 is also called once for each set of parameters.
 
@@ -227,7 +227,7 @@ the default generation SQL function, meaning it is invoked in a separate SELECT
 statement, and the resulting value is passed as a parameter to the INSERT.
 This only occurs for primary key columns for an INSERT statement that is being
 asked to return this primary key value, where RETURNING or ``cursor.lastrowid``
-may not be used.   An :class:`.Insert` construct that specifies the
+may not be used.   An :class:`~.sql.expression.Insert` construct that specifies the
 :paramref:`~.expression.insert.inline` flag will always render default expressions
 inline.
 
@@ -305,7 +305,7 @@ and for supporting  databases may be used to indicate that the column should be
 part of a RETURNING or OUTPUT clause for the statement.    Tools such as the
 SQLAlchemy ORM then make use of this marker in order to know how to get at the
 value of the column after such an operation.   In particular, the
-:meth:`.ValuesBase.return_defaults` method can be used with an :class:`.Insert`
+:meth:`.ValuesBase.return_defaults` method can be used with an :class:`~.sql.expression.Insert`
 or :class:`.Update` construct to indicate that these values should be
 returned.
 

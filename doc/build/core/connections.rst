@@ -297,7 +297,7 @@ engine::
     result.close()
 
 Above, we associate an :class:`.Engine` with a :class:`.MetaData` object using
-the special attribute :attr:`.MetaData.bind`.  The :func:`.select` construct produced
+the special attribute :attr:`.MetaData.bind`.  The :func:`~.sql.expression.select` construct produced
 from the :class:`.Table` object has a method :meth:`~.Executable.execute`, which will
 search for an :class:`.Engine` that's "bound" to the :class:`.Table`.
 

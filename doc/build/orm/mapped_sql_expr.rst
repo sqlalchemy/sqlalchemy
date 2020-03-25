@@ -102,7 +102,7 @@ follows::
         lastname = Column(String(50))
         fullname = column_property(firstname + " " + lastname)
 
-Correlated subqueries may be used as well.  Below we use the :func:`.select`
+Correlated subqueries may be used as well.  Below we use the :func:`~.sql.expression.select`
 construct to create a SELECT that links together the count of ``Address``
 objects available for a particular ``User``::
 
@@ -128,7 +128,7 @@ objects available for a particular ``User``::
                 correlate_except(Address)
         )
 
-In the above example, we define a :func:`.select` construct like the following::
+In the above example, we define a :func:`~.sql.expression.select` construct like the following::
 
     select([func.count(Address.id)]).\
         where(Address.user_id==id).\
@@ -141,7 +141,7 @@ also the name of a Python built in function, which is not what we want to use
 here - if we were outside of the ``User`` class definition, we'd use ``User.id``).
 
 The :meth:`.select.correlate_except` directive indicates that each element in the
-FROM clause of this :func:`.select` may be omitted from the FROM list (that is, correlated
+FROM clause of this :func:`~.sql.expression.select` may be omitted from the FROM list (that is, correlated
 to the enclosing SELECT statement against ``User``) except for the one corresponding
 to ``Address``.  This isn't strictly necessary, but prevents ``Address`` from
 being inadvertently omitted from the FROM list in the case of a long string

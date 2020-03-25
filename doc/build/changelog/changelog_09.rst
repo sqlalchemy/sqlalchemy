@@ -921,7 +921,7 @@
         :tickets: 3069
         :versions: 1.0.0b1
 
-        Fixed bug where multi-valued :class:`.Insert` construct would fail
+        Fixed bug where multi-valued :class:`~.sql.expression.Insert` construct would fail
         to check subsequent values entries beyond the first one given
         for literal SQL expressions.
 
@@ -1340,7 +1340,7 @@
 
         Fixes to the newly enhanced boolean coercion in :ticket:`2804` where
         the new rules for "where" and "having" woudn't take effect for the
-        "whereclause" and "having" kw arguments of the :func:`.select` construct,
+        "whereclause" and "having" kw arguments of the :func:`~.sql.expression.select` construct,
         which is also what :class:`.Query` uses so wasn't working in the
         ORM either.
 
@@ -2143,7 +2143,7 @@
         which accept a wide variety of dialect-specific arguments such as
         ``mysql_engine`` and ``postgresql_where``, as well as the constructs
         :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`,
-        :class:`.Update`, :class:`.Insert` and :class:`.Delete`, and also
+        :class:`.Update`, :class:`~.sql.expression.Insert` and :class:`.Delete`, and also
         newly added kwarg capability to :class:`.ForeignKeyConstraint`
         and :class:`.ForeignKey`.  The change is that participating dialects
         can now specify acceptable argument lists for these constructs, allowing
@@ -2620,7 +2620,7 @@
         is added with the new :meth:`.GenerativeSelect.with_for_update` method.
         This method supports a more straightforward system of setting
         dialect-specific options compared to the ``for_update`` keyword
-        argument of :func:`.select`, and also includes support for the
+        argument of :func:`~.sql.expression.select`, and also includes support for the
         SQL standard ``FOR UPDATE OF`` clause.   The ORM also includes
         a new corresponding method :meth:`.Query.with_for_update`.
         Pull request courtesy Mario Lassnig.
@@ -2834,7 +2834,7 @@
         new copy is assigned the actual type of the compared column.  Previously,
         this logic would occur on the given :func:`.bindparam` in place.
         Additionally, a similar process now occurs for :func:`.bindparam` constructs
-        passed to :meth:`.ValuesBase.values` for an :class:`.Insert` or
+        passed to :meth:`.ValuesBase.values` for an :class:`~.sql.expression.Insert` or
         :class:`.Update` construct, within the compilation phase of the
         construct.
 
@@ -3132,7 +3132,7 @@
         :tags: feature, sql
         :tickets: 722
 
-        Added new method to the :func:`.insert` construct
+        Added new method to the :func:`~.sql.expression.insert` construct
         :meth:`.Insert.from_select`.  Given a list of columns and
         a selectable, renders ``INSERT INTO (table) (columns) SELECT ..``.
         While this feature is highlighted as part of 0.9 it is also

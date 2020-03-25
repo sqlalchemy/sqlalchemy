@@ -699,11 +699,11 @@
 
         Fixed issue within the :meth:`.Insert.from_select` construct whereby
         the :class:`.Select` construct would have its ``._raw_columns``
-        collection mutated in-place when compiling the :class:`.Insert`
+        collection mutated in-place when compiling the :class:`~.sql.expression.Insert`
         construct, when the target :class:`.Table` has Python-side defaults.
         The :class:`.Select` construct would compile standalone with the
         erroneous column present subsequent to compilation of the
-        :class:`.Insert`, and the :class:`.Insert` statement itself would
+        :class:`~.sql.expression.Insert`, and the :class:`~.sql.expression.Insert` statement itself would
         fail on a second compile attempt due to duplicate bound parameters.
 
     .. change::
@@ -3062,7 +3062,7 @@
         :tickets: 2992
 
         The implicit conversion of strings to :func:`.text` constructs
-        when passed to most builder methods of :func:`.select` as
+        when passed to most builder methods of :func:`~.sql.expression.select` as
         well as :class:`.Query` now emits a warning with just the
         plain string sent.   The textual conversion still proceeds normally,
         however.  The only method that accepts a string without a warning
@@ -3199,7 +3199,7 @@
         :tickets: 3169
 
         Using :meth:`.Insert.from_select`  now implies ``inline=True``
-        on :func:`.insert`.  This helps to fix a bug where an
+        on :func:`~.sql.expression.insert`.  This helps to fix a bug where an
         INSERT...FROM SELECT construct would inadvertently be compiled
         as "implicit returning" on supporting backends, which would
         cause breakage in the case of an INSERT that inserts zero rows

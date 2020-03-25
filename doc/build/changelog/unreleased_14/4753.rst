@@ -2,7 +2,7 @@
     :tags: change,engine
     :tickets: 4753
 
-    The :func:`.select` construct and related constructs now allow for
+    The :func:`~.sql.expression.select` construct and related constructs now allow for
     duplication of column labels and columns themselves in the columns clause,
     mirroring exactly how column expressions were passed in.   This allows
     the tuples returned by an executed result to match what was SELECTed

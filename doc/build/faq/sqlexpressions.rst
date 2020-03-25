@@ -27,7 +27,7 @@ if we don't use it explicitly)::
 
 The ``str()`` builtin, or an equivalent, can be invoked on ORM
 :class:`.Query`  object as well as any statement such as that of
-:func:`.select`, :func:`.insert` etc. and also any expression fragment, such
+:func:`~.sql.expression.select`, :func:`~.sql.expression.insert` etc. and also any expression fragment, such
 as::
 
     >>> from sqlalchemy import column

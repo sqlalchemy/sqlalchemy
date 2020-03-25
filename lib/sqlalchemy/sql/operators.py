@@ -579,8 +579,8 @@ class ColumnOperators(Operators):
           .. versionadded:: 1.3 "expanding" bound parameters now support
              empty lists
 
-        * a :func:`.select` construct, which is usually a correlated
-          scalar select::
+        * a :func:`~.sql.expression.select` construct, which is usually a
+          correlated scalar select::
 
             stmt.where(
                 column.in_(
@@ -594,8 +594,8 @@ class ColumnOperators(Operators):
             WHERE COL IN (SELECT othertable.y
             FROM othertable WHERE othertable.x = table.x)
 
-        :param other: a list of literals, a :func:`.select` construct,
-         or a :func:`.bindparam` construct that includes the
+        :param other: a list of literals, a :func:`~.sql.expression.select`
+         construct, or a :func:`.bindparam` construct that includes the
          :paramref:`.bindparam.expanding` flag set to True.
 
         """

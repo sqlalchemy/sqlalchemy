@@ -85,7 +85,7 @@ is set to ``False`` on any integer primary key column::
     marked with IDENTITY will be rejected by SQL Server.   In order for the
     value to be accepted, a session-level option "SET IDENTITY_INSERT" must be
     enabled.   The SQLAlchemy SQL Server dialect will perform this operation
-    automatically when using a core :class:`.Insert` construct; if the
+    automatically when using a core :class:`~.sql.expression.Insert` construct; if the
     execution specifies a value for the IDENTITY column, the "IDENTITY_INSERT"
     option will be enabled for the span of that statement's invocation.However,
     this scenario is not high performing and should not be relied upon for
@@ -171,7 +171,7 @@ The process for fetching this value has several variants:
 
 A table that contains an ``IDENTITY`` column will prohibit an INSERT statement
 that refers to the identity column explicitly.  The SQLAlchemy dialect will
-detect when an INSERT construct, created using a core :func:`.insert`
+detect when an INSERT construct, created using a core :func:`~.sql.expression.insert`
 construct (not a plain string SQL), refers to the identity column, and
 in this case will emit ``SET IDENTITY_INSERT ON`` prior to the insert
 statement proceeding, and ``SET IDENTITY_INSERT OFF`` subsequent to the

@@ -75,7 +75,7 @@ def subquery(alias, *args, **kwargs):
     :param name: the alias name for the subquery
 
     :param \*args, \**kwargs:  all other arguments are passed through to the
-     :func:`.select` function.
+     :func:`~.sql.expression.select` function.
 
     """
     return Select(*args, **kwargs).subquery(alias)
@@ -316,7 +316,7 @@ class FromClause(HasMemoized, roles.AnonymizedFromClauseRole, Selectable):
     clause of a ``SELECT`` statement.
 
     The most common forms of :class:`.FromClause` are the
-    :class:`.Table` and the :func:`.select` constructs.  Key
+    :class:`.Table` and the :func:`~.sql.expression.select` constructs.  Key
     features common to all :class:`.FromClause` objects include:
 
     * a :attr:`.c` collection, which provides per-name access to a collection
@@ -1277,19 +1277,19 @@ class Alias(AliasedReturnsRows):
         with an alternate name assigned within SQL, typically using the ``AS``
         clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
 
-        Similar functionality is available via the
-        :meth:`~.FromClause.alias` method
-        available on all :class:`.FromClause` subclasses.   In terms of a
-        SELECT object as generated from the :func:`.select` function, the
-        :meth:`.SelectBase.alias` method returns an :class:`.Alias` or
-        similar object which represents a named, parenthesized subquery.
+        Similar functionality is available via the :meth:`~.FromClause.alias`
+        method available on all :class:`.FromClause` subclasses.   In terms of
+        a SELECT object as generated from the :func:`~.sql.expression.select`
+        function, the :meth:`.SelectBase.alias` method returns an
+        :class:`.Alias` or similar object which represents a named,
+        parenthesized subquery.
 
         When an :class:`.Alias` is created from a :class:`.Table` object,
         this has the effect of the table being rendered
         as ``tablename AS aliasname`` in a SELECT statement.
 
-        For :func:`.select` objects, the effect is that of creating a named
-        subquery, i.e. ``(select ...) AS aliasname``.
+        For :func:`~.sql.expression.select` objects, the effect is that of
+        creating a named subquery, i.e. ``(select ...) AS aliasname``.
 
         The ``name`` parameter is optional, and provides the name
         to use in the rendered SQL.  If blank, an "anonymous" name
@@ -1764,7 +1764,8 @@ class Subquery(AliasedReturnsRows):
         "The :meth:`.Subquery.as_scalar` method, which was previously "
         "``Alias.as_scalar()`` prior to version 1.4, is deprecated and "
         "will be removed in a future release; Please use the "
-        ":meth:`.Select.scalar_subquery` method of the :func:`.select` "
+        ":meth:`.Select.scalar_subquery` method of the "
+        ":func:`~.sql.expression.select` "
         "construct before constructing a subquery object, or with the ORM "
         "use the :meth:`.Query.scalar_subquery` method.",
     )
@@ -1909,14 +1910,14 @@ class TableClause(Immutable, FromClause):
 
     @util.preload_module("sqlalchemy.sql.dml")
     def insert(self, values=None, inline=False, **kwargs):
-        """Generate an :func:`.insert` construct against this
+        """Generate an :func:`~.sql.expression.insert` construct against this
         :class:`.TableClause`.
 
         E.g.::
 
             table.insert().values(name='foo')
 
-        See :func:`.insert` for argument and usage information.
+        See :func:`~.sql.expression.insert` for argument and usage information.
 
         """
         return util.preloaded.sql_dml.Insert(
@@ -3320,7 +3321,7 @@ class Select(
         .. seealso::
 
             :ref:`coretutorial_selecting` - Core Tutorial description of
-            :func:`.select`.
+            :func:`~.sql.expression.select`.
 
         :param \*entities:
           Entities to SELECT from.  For Core usage, this is typically a series
@@ -3383,7 +3384,7 @@ class Select(
         .. seealso::
 
             :ref:`coretutorial_selecting` - Core Tutorial description of
-            :func:`.select`.
+            :func:`~.sql.expression.select`.
 
         :param columns:
           A list of :class:`.ColumnElement` or :class:`.FromClause`
@@ -3399,7 +3400,7 @@ class Select(
           .. note::
 
             The :paramref:`.select.columns` parameter is not available
-            in the method form of :func:`.select`, e.g.
+            in the method form of :func:`~.sql.expression.select`, e.g.
             :meth:`.FromClause.select`.
 
           .. seealso::
@@ -3807,11 +3808,11 @@ class Select(
 
     @_generative
     def with_only_columns(self, columns):
-        r"""Return a new :func:`.select` construct with its columns
+        r"""Return a new :func:`~.sql.expression.select` construct with its columns
         clause replaced with the given columns.
 
         This method is exactly equivalent to as if the original
-        :func:`.select` had been called with the given columns
+        :func:`~.sql.expression.select` had been called with the given columns
         clause.   I.e. a statement::
 
             s = select([table1.c.a, table1.c.b])
@@ -3846,15 +3847,14 @@ class Select(
             >>> print(s2)
             SELECT t2.b FROM t1 JOIN t2 ON t1.a=t2.a
 
-        Care should also be taken to use the correct
-        set of column objects passed to :meth:`.Select.with_only_columns`.
-        Since the method is essentially equivalent to calling the
-        :func:`.select` construct in the first place with the given
-        columns, the columns passed to :meth:`.Select.with_only_columns`
-        should usually be a subset of those which were passed
-        to the :func:`.select` construct, not those which are available
-        from the ``.c`` collection of that :func:`.select`.  That
-        is::
+        Care should also be taken to use the correct set of column objects
+        passed to :meth:`.Select.with_only_columns`. Since the method is
+        essentially equivalent to calling the :func:`~.sql.expression.select`
+        construct in the first place with the given columns, the columns passed
+        to :meth:`.Select.with_only_columns` should usually be a subset of
+        those which were passed to the :func:`~.sql.expression.select`
+        construct, not those which are available from the ``.c`` collection of
+        that :func:`~.sql.expression.select`.  That is::
 
             s = select([table1.c.a, table1.c.b]).select_from(table1)
             s = s.with_only_columns([table1.c.b])
@@ -3870,8 +3870,8 @@ class Select(
             FROM (SELECT t1.a AS a, t1.b AS b
             FROM t1), t1
 
-        Since the :func:`.select` construct is essentially being
-        asked to select both from ``table1`` as well as itself.
+        Since the :func:`~.sql.expression.select` construct is essentially
+        being asked to select both from ``table1`` as well as itself.
 
         """
         self._reset_memoizations()
@@ -3930,7 +3930,7 @@ class Select(
 
     @_generative
     def select_from(self, *froms):
-        r"""return a new :func:`.select` construct with the
+        r"""return a new :func:`~.sql.expression.select` construct with the
         given FROM expression(s)
         merged into its list of FROM objects.
 
@@ -4062,8 +4062,8 @@ class Select(
         must be applied first which provides for the necessary parenthesization
         required by SQL.
 
-        For a :func:`.select` construct, the collection here is exactly what
-        would be rendered inside the  "SELECT" statement, and the
+        For a :func:`~.sql.expression.select` construct, the collection here is
+        exactly what would be rendered inside the  "SELECT" statement, and the
         :class:`.ColumnElement` objects are  directly present as they were
         given, e.g.::
 

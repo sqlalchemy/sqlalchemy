@@ -7,8 +7,8 @@
     which is the root of all "SELECT" statement constructs, in that they no
     longer serve directly as FROM clauses, that is, they no longer subclass
     :class:`.FromClause`.  For end users, the change mostly means that any
-    placement of a :func:`.select` construct in the FROM clause of another
-    :func:`.select` requires first that it be wrapped in a subquery first,
+    placement of a :func:`~.sql.expression.select` construct in the FROM clause of another
+    :func:`~.sql.expression.select` requires first that it be wrapped in a subquery first,
     which historically is through the use of the :meth:`.SelectBase.alias`
     method, and is now also available through the use of
     :meth:`.SelectBase.subquery`.    This was usually a requirement in any
@@ -38,11 +38,11 @@
     :tags: change, orm
     :tickets: 4617
 
-    The ORM will now warn when asked to coerce a :func:`.select` construct into
+    The ORM will now warn when asked to coerce a :func:`~.sql.expression.select` construct into
     a subquery implicitly.  This occurs within places such as the
     :meth:`.Query.select_entity_from` and  :meth:`.Query.select_from` methods
     as well as within the :func:`.with_polymorphic` function.  When a
-    :class:`.SelectBase` (which is what's produced by :func:`.select`) or
+    :class:`.SelectBase` (which is what's produced by :func:`~.sql.expression.select`) or
     :class:`.Query` object is passed directly to these functions and others,
     the ORM is typically coercing them to be a subquery by calling the
     :meth:`.SelectBase.alias` method automatically (which is now superceded by

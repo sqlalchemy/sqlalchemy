@@ -548,7 +548,7 @@ class Query(Generative):
          to all columns.
 
         :param reduce_columns: if True, :meth:`.Select.reduce_columns` will
-         be called on the resulting :func:`.select` construct,
+         be called on the resulting :func:`~.sql.expression.select` construct,
          to remove same-named columns where one also refers to the other
          via foreign key or WHERE clause equivalence.
 
@@ -2032,9 +2032,9 @@ class Query(Generative):
 
         There is a lot of flexibility in what the "target" can be when using
         :meth:`~.Query.join`.   As noted previously, it also accepts
-        :class:`.Table` constructs and other selectables such as
-        :func:`.alias` and :func:`.select` constructs, with either the one
-        or two-argument forms::
+        :class:`.Table` constructs and other selectables such as :func:`.alias`
+        and :func:`~.sql.expression.select` constructs, with either the one or
+        two-argument forms::
 
             addresses_q = select([Address.user_id]).\
                         where(Address.email_address.endswith("@bar.com")).\
