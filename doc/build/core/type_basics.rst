@@ -14,7 +14,7 @@ the database driver returns an incorrect type.
 .. code-block:: pycon
 
   >>> users = Table('users', metadata,
-  ...               Column('id', Integer, primary_key=True)
+  ...               Column('id', Integer, primary_key=True),
   ...               Column('login', String(32))
   ...              )
 
