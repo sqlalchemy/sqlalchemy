@@ -210,7 +210,13 @@ method::
         conn.execute(text("some other SQL"))
         conn.rollback()
 
-For the ORM, the above two patterns are already more or less how the
+Above, the ``engine.connect()`` method will return a :class:`.Connection` that
+features **autobegin**, meaning the ``begin()`` event is emitted when the
+execute method is first used (note however that there is no actual "BEGIN" in
+the Python DBAPI).   This is the same as how the ORM :class:`.Session` will
+work also and is not too dissimilar from how things work now.
+
+For the ORM, the above patterns are already more or less how the
 :class:`.Session` is used already::
 
     session = sessionmaker()
@@ -279,7 +285,8 @@ driver.
 To use a connection in autocommit mode::
 
    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-       result = conn.execute(stmt)
+       conn.execute(text("CREATE DATABASE foobar"))
+
 
 The above code is already available in current SQLAlchemy releases.   Driver
 support is available for PostgreSQL, MySQL, SQL Server, and newer releases
