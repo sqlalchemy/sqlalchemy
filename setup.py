@@ -20,26 +20,34 @@ if sys.version_info < (2, 7):
 
 cpython = platform.python_implementation() == "CPython"
 
+ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
+if sys.platform == "win32":
+    # Work around issue https://github.com/pypa/setuptools/issues/1902
+    ext_errors += (IOError, TypeError)
+    extra_compile_args = []
+elif sys.platform == "linux":
+    # warn for undefined symbols in .c files
+    extra_compile_args = ["-Wundef"]
+else:
+    extra_compile_args = []
+
 ext_modules = [
     Extension(
         "sqlalchemy.cprocessors",
         sources=["lib/sqlalchemy/cextension/processors.c"],
+        extra_compile_args=extra_compile_args,
     ),
     Extension(
         "sqlalchemy.cresultproxy",
         sources=["lib/sqlalchemy/cextension/resultproxy.c"],
+        extra_compile_args=extra_compile_args,
     ),
     Extension(
-        "sqlalchemy.cutils", sources=["lib/sqlalchemy/cextension/utils.c"]
+        "sqlalchemy.cutils",
+        sources=["lib/sqlalchemy/cextension/utils.c"],
+        extra_compile_args=extra_compile_args,
     ),
 ]
-
-ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
-if sys.platform == "win32":
-    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
-    # find the compiler
-    # for TypeError, see https://github.com/pypa/setuptools/issues/1902
-    ext_errors += (IOError, TypeError)
 
 
 class BuildFailed(Exception):

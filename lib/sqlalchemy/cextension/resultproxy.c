@@ -21,7 +21,7 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 typedef intargfunc ssizeargfunc;
 #endif
 
-#if PY_MAJOR_VERSON < 3
+#if PY_MAJOR_VERSION < 3
 
 // new typedef in Python 3
 typedef long Py_hash_t;
@@ -359,7 +359,7 @@ BaseRow_subscript_impl(BaseRow *self, PyObject *key, int asmapping)
             /* -1 can be either the actual value, or an error flag. */
             return NULL;
         if (index < 0)
-            index += BaseRow_length(self);
+            index += (long)BaseRow_length(self);
         return BaseRow_getitem(self, index);
     } else if (PySlice_Check(key)) {
         values = PyObject_GetItem(self->row, key);

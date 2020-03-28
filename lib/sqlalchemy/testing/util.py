@@ -17,6 +17,7 @@ from ..util import defaultdict
 from ..util import has_refcount_gc
 from ..util import inspect_getfullargspec
 from ..util import py2k
+from ..util import py36
 
 if not has_refcount_gc:
 
@@ -53,7 +54,7 @@ def picklers():
             yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
-if py2k:
+if py2k or not py36:
 
     def random_choices(population, k=1):
         pop = list(population)

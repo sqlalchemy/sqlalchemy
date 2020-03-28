@@ -3472,12 +3472,22 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         a.data = "bar"
         b.data = "foo"
         if sa.util.py3k:
+            if sa.util.py36:
+                message = (
+                    r"Could not sort objects by primary key; primary key "
+                    r"values must be sortable in Python \(was: '<' not "
+                    r"supported between instances of 'MyNotSortableEnum'"
+                    r" and 'MyNotSortableEnum'\)"
+                )
+            else:
+                message = (
+                    r"Could not sort objects by primary key; primary key "
+                    r"values must be sortable in Python \(was: unorderable "
+                    r"types: MyNotSortableEnum\(\) < MyNotSortableEnum\(\)\)"
+                )
+
             assert_raises_message(
-                sa.exc.InvalidRequestError,
-                r"Could not sort objects by primary key; primary key values "
-                r"must be sortable in Python \(was: '<' not supported between "
-                r"instances of 'MyNotSortableEnum' and 'MyNotSortableEnum'\)",
-                s.flush,
+                sa.exc.InvalidRequestError, message, s.flush,
             )
         else:
             s.flush()
