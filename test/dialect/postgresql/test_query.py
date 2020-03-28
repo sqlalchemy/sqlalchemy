@@ -872,7 +872,7 @@ class TupleTest(fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True
 
-    def test_tuple_containment(self):
+    def test_tuple_containment(self, connection):
 
         for test, exp in [
             ([("a", "b")], True),
@@ -881,7 +881,7 @@ class TupleTest(fixtures.TestBase):
             ([("f", "q"), ("a", "c")], False),
         ]:
             eq_(
-                testing.db.execute(
+                connection.execute(
                     select(
                         [
                             tuple_(
