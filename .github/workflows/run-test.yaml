@@ -1,0 +1,80 @@
+name: Run tests
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'doc/**'
+      - 'examples/**'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - 'doc/**'
+      - 'examples/**'
+
+env:
+  TOX_WORKERS: -n2
+  TOX_BASECOMMAND: python -m pytest
+
+jobs:
+  run-test:
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - 'ubuntu-latest'
+          - 'windows-latest'
+          - 'macos-latest'
+        python-version:
+          - '2.7'
+          - '3.5'
+          - '3.6'
+          - '3.7'
+          - '3.8'
+        build-type:
+          - 'cext'
+          - 'nocext'
+        architecture:
+          - x64
+          - x86
+
+        include:
+          # the mock reconnect test seems to fail on the ci in windows
+          - os: 'windows-latest'
+            pytest-args: "-k 'not MockReconnectTest'"
+
+        exclude:
+          # c-extensions fail to build on windows for python 3.5 and 2.7
+          - os: 'windows-latest'
+            python-version: '2.7'
+            build-type: 'cext'
+          - os: 'windows-latest'
+            python-version: '3.5'
+            build-type: 'cext'
+          - os: 'ubuntu-latest'
+            architecture: x86
+          - os: 'macos-latest'
+            architecture: x86
+
+      fail-fast: true
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tox
+
+      - name: Run tests
+        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
