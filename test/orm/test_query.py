@@ -3889,7 +3889,12 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             .all(),
         )
 
-    def test_columns_augmented_roundtrip_one(self):
+    def test_columns_augmented_roundtrip_one_from_self(self):
+        """Test workaround for legacy style DISTINCT on extra column.
+
+        See #5134
+
+        """
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
@@ -3897,13 +3902,42 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             sess.query(User, Address.email_address)
             .join("addresses")
             .distinct()
-            .order_by(desc(Address.email_address))
             .from_self(User)
+            .order_by(desc(Address.email_address))
         )
 
         eq_([User(id=7), User(id=9), User(id=8)], q.all())
 
+    def test_columns_augmented_roundtrip_one_aliased(self):
+        """Test workaround for legacy style DISTINCT on extra column,
+        but also without using from_self().
+
+        See #5134
+
+        """
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        q = (
+            sess.query(User, Address.email_address)
+            .join("addresses")
+            .distinct()
+        )
+
+        subq = q.subquery()
+
+        entity = aliased(User, subq)
+        q = sess.query(entity).order_by(subq.c.email_address.desc())
+
+        eq_([User(id=7), User(id=9), User(id=8)], q.all())
+
     def test_columns_augmented_roundtrip_two(self):
+        """Test workaround for legacy style DISTINCT on extra column.
+
+        See #5134
+
+        """
+
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
@@ -3926,7 +3960,13 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_columns_augmented_roundtrip_three(self):
+    def test_columns_augmented_roundtrip_three_from_self(self):
+        """Test workaround for legacy style DISTINCT on extra column.
+
+        See #5134
+
+        """
+
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
@@ -3942,11 +3982,10 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             .filter(User.name == "jack")
             .filter(User.id + Address.user_id > 0)
             .distinct()
-            .order_by(User.id, User.name, Address.email_address)
             .from_self(User.id, User.name.label("foo"), Address.id)
+            .order_by(User.id, User.name, Address.email_address)
         )
 
-        # even though columns are added, they aren't in the result
         eq_(
             q.all(),
             [
@@ -3959,6 +3998,55 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         )
         for row in q:
             eq_(row._mapping.keys(), ["id", "foo", "id"])
+
+    def test_columns_augmented_roundtrip_three_aliased(self):
+        """Test workaround for legacy style DISTINCT on extra column,
+        but also without using from_self().
+
+        See #5134
+
+        """
+
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+                Address.email_address,
+            )
+            .join(Address, true())
+            .filter(User.name == "jack")
+            .filter(User.id + Address.user_id > 0)
+            .distinct()
+        )
+
+        # TODO: this should warn for ambiguous labels when the flag
+        # is not present;  is this flag also in core?  See issue #5221
+        subq = q.subquery(with_labels=True)
+
+        # note this is a bit cutting edge; two differnet entities against
+        # the same subquery.
+        uentity = aliased(User, subq)
+        aentity = aliased(Address, subq)
+
+        q = sess.query(
+            uentity.id, uentity.name.label("foo"), aentity.id
+        ).order_by(uentity.id, uentity.name, aentity.email_address)
+
+        eq_(
+            q.all(),
+            [
+                (7, "jack", 3),
+                (7, "jack", 4),
+                (7, "jack", 2),
+                (7, "jack", 5),
+                (7, "jack", 1),
+            ],
+        )
 
     def test_columns_augmented_sql_one(self):
         User, Address = self.classes.User, self.classes.Address
