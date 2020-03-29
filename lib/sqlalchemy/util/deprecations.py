@@ -201,6 +201,7 @@ def _sanitize_restructured_text(text):
             name += "()"
         return name
 
+    text = re.sub(r":ref:`(.+) <.*>`", lambda m: '"%s"' % m.group(1), text)
     return re.sub(r"\:(\w+)\:`~?\.?(.+?)`", repl, text)
 
 

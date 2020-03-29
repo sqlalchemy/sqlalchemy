@@ -940,6 +940,11 @@ class ColumnElement(
         return self._anon_label(getattr(self, "name", None))
 
     @util.memoized_property
+    def _dedupe_anon_label(self):
+        label = getattr(self, "name", None) or "anon"
+        return self._anon_label(label + "_")
+
+    @util.memoized_property
     def _label_anon_label(self):
         return self._anon_label(getattr(self, "_label", None))
 

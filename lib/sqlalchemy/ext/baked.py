@@ -25,6 +25,7 @@ from ..orm.session import Session
 from ..sql import func
 from ..sql import literal_column
 from ..sql import util as sql_util
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import collections_abc
 
 
@@ -436,7 +437,7 @@ class Result(object):
             self.session, context, self._params, self._post_criteria
         )
 
-        context.statement.use_labels = True
+        context.statement._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
         if context.autoflush and not context.populate_existing:
             self.session._autoflush()
         q = context.query.params(self._params).with_session(self.session)

@@ -300,6 +300,7 @@ class CoreFixtures(object):
             select([table_a.c.a]),
             select([table_a.c.a, table_a.c.b]),
             select([table_a.c.b, table_a.c.a]),
+            select([table_a.c.b, table_a.c.a]).apply_labels(),
             select([table_a.c.a]).where(table_a.c.b == 5),
             select([table_a.c.a])
             .where(table_a.c.b == 5)

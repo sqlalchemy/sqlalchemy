@@ -40,6 +40,7 @@ from . import schema
 from . import selectable
 from . import sqltypes
 from .base import NO_ARG
+from .base import prefix_anon_map
 from .elements import quoted_name
 from .. import exc
 from .. import util
@@ -539,27 +540,6 @@ class _CompileLabel(elements.ColumnElement):
 
     def self_group(self, **kw):
         return self
-
-
-class prefix_anon_map(dict):
-    """A map that creates new keys for missing key access.
-
-    Considers keys of the form "<ident> <name>" to produce
-    new symbols "<name>_<index>", where "index" is an incrementing integer
-    corresponding to <name>.
-
-    Inlines the approach taken by :class:`sqlalchemy.util.PopulateDict` which
-    is otherwise usually used for this type of operation.
-
-    """
-
-    def __missing__(self, key):
-        (ident, derived) = key.split(" ", 1)
-        anonymous_counter = self.get(derived, 1)
-        self[derived] = anonymous_counter + 1
-        value = derived + "_" + str(anonymous_counter)
-        self[key] = value
-        return value
 
 
 class SQLCompiler(Compiled):

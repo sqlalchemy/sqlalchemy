@@ -54,6 +54,7 @@ from sqlalchemy.orm.util import join
 from sqlalchemy.orm.util import with_parent
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1265,7 +1266,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             sess = Session()
             lead = sess.query(entity)
             context = lead._compile_context()
-            context.statement.use_labels = True
+            context.statement._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
             lead = context.statement.compile(dialect=dialect)
             expected = (str(lead) + " WHERE " + expected).replace("\n", "")
             clause = sess.query(entity).filter(clause)
@@ -1279,7 +1280,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         lead = sess.query(from_).join(onclause, aliased=True)
         full = lead.filter(clause)
         context = lead._compile_context()
-        context.statement.use_labels = True
+        context.statement._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
         lead = context.statement.compile(dialect=dialect)
         expected = (str(lead) + " WHERE " + expected).replace("\n", "")
 
@@ -4024,9 +4025,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             .distinct()
         )
 
-        # TODO: this should warn for ambiguous labels when the flag
-        # is not present;  is this flag also in core?  See issue #5221
-        subq = q.subquery(with_labels=True)
+        subq = q.subquery()
 
         # note this is a bit cutting edge; two differnet entities against
         # the same subquery.
