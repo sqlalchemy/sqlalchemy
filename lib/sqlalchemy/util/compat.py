@@ -16,12 +16,8 @@ import sys
 
 
 py36 = sys.version_info >= (3, 6)
-py33 = sys.version_info >= (3, 3)
-py35 = sys.version_info >= (3, 5)
-py32 = sys.version_info >= (3, 2)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
-py265 = sys.version_info >= (2, 6, 5)
 
 
 cpython = platform.python_implementation() == "CPython"
@@ -51,13 +47,6 @@ try:
     import threading
 except ImportError:
     import dummy_threading as threading  # noqa
-
-
-# work around http://bugs.python.org/issue2646
-if py265:
-    safe_kwarg = lambda arg: arg  # noqa
-else:
-    safe_kwarg = str
 
 
 def inspect_getfullargspec(func):
@@ -298,7 +287,7 @@ else:
     TYPE_CHECKING = False
 
 
-if py35:
+if py3k:
 
     def _formatannotation(annotation, base_module=None):
         """vendored from python 3.7
@@ -378,7 +367,7 @@ if py35:
         return result
 
 
-elif py2k:
+else:
     from inspect import formatargspec as _inspect_formatargspec
 
     def inspect_formatargspec(*spec, **kw):
@@ -386,13 +375,9 @@ elif py2k:
         return _inspect_formatargspec(*spec[0:4], **kw)  # noqa
 
 
-else:
-    from inspect import formatargspec as inspect_formatargspec  # noqa
-
-
 # Fix deprecation of accessing ABCs straight from collections module
 # (which will stop working in 3.8).
-if py33:
+if py3k:
     import collections.abc as collections_abc
 else:
     import collections as collections_abc  # noqa

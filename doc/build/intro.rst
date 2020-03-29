@@ -71,14 +71,14 @@ Supported Platforms
 SQLAlchemy has been tested against the following platforms:
 
 * cPython 2.7
-* cPython 3.4 and higher
+* cPython 3.5 and higher
 * `PyPy <http://pypy.org/>`_ 2.1 or greater
 
 .. versionchanged:: 1.2
    Python 2.7 is now the minimum Python version supported.
 
-.. versionchanged:: 1.3
-   Within the Python 3 series, 3.4 is now the minimum Python 3 version supported.
+.. versionchanged:: 1.4
+   Within the Python 3 series, 3.5 is now the minimum Python 3 version supported.
 
 Supported Installation Methods
 -------------------------------
