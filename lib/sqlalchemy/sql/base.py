@@ -192,7 +192,7 @@ class _DialectArgView(util.collections_abc.MutableMapping):
 
     def __iter__(self):
         return (
-            util.safe_kwarg("%s_%s" % (dialect_name, value_name))
+            "%s_%s" % (dialect_name, value_name)
             for dialect_name in self.obj.dialect_options
             for value_name in self.obj.dialect_options[
                 dialect_name

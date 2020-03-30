@@ -1006,7 +1006,7 @@ class DeclarativeTest(DeclarativeTestBase):
         try:
             hasattr(User.addresses, "property")
         except exc.InvalidRequestError:
-            assert sa.util.compat.py32
+            assert sa.util.compat.py3k
 
         # the exception is preserved.  Remains the
         # same through repeated calls.

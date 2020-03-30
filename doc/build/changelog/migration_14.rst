@@ -1508,7 +1508,7 @@ join rewriting logic would only occur for SQLite verisons prior to 3.7.16 after
 bisection was used to  identify where SQLite fixed its support for this
 construct, and no further issues were reported against the behavior (even
 though some bugs were found internally).    It is now anticipated that there
-are little to no Python builds for Python 2.7 or 3.4 and above (the supported
+are little to no Python builds for Python 2.7 or 3.5 and above (the supported
 Python versions) which would include a SQLite version prior to 3.7.17, and
 the behavior is only necessary only in more complex ORM joining scenarios.
 A warning is now emitted if the installed SQLite version is older than

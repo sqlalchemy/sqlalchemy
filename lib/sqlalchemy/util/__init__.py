@@ -63,7 +63,6 @@ from .compat import parse_qsl  # noqa
 from .compat import pickle  # noqa
 from .compat import print_  # noqa
 from .compat import py2k  # noqa
-from .compat import py33  # noqa
 from .compat import py36  # noqa
 from .compat import py3k  # noqa
 from .compat import quote_plus  # noqa
@@ -71,7 +70,6 @@ from .compat import raise_  # noqa
 from .compat import raise_from_cause  # noqa
 from .compat import reduce  # noqa
 from .compat import reraise  # noqa
-from .compat import safe_kwarg  # noqa
 from .compat import string_types  # noqa
 from .compat import StringIO  # noqa
 from .compat import text_type  # noqa

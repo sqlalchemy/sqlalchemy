@@ -29,7 +29,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
-from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CreateIndex
@@ -4163,17 +4162,6 @@ class DialectKWArgTest(fixtures.TestBase):
                     "otherunknown_foo": "bar",
                 },
             )  # still populates
-
-    def test_runs_safekwarg(self):
-
-        with mock.patch(
-            "sqlalchemy.util.safe_kwarg", lambda arg: "goofy_%s" % arg
-        ):
-            with self._fixture():
-                idx = Index("a", "b")
-                idx.kwargs[util.u("participating_x")] = 7
-
-                eq_(list(idx.dialect_kwargs), ["goofy_participating_x"])
 
     def test_combined(self):
         with self._fixture():

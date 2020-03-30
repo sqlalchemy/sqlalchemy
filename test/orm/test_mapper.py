@@ -182,7 +182,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         try:
             hasattr(Address.user, "property")
         except sa.orm.exc.UnmappedClassError:
-            assert util.compat.py32
+            assert util.compat.py3k
 
         for i in range(3):
             assert_raises_message(
