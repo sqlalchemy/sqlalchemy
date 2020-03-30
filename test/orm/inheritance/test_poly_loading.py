@@ -121,14 +121,13 @@ class BaseAndSubFixture(object):
                         "SELECT c.a_sub_id AS c_a_sub_id, "
                         "c.id AS c_id "
                         "FROM c WHERE c.a_sub_id "
-                        "IN ([POSTCOMPILE_primary_keys]) ORDER BY c.a_sub_id",
+                        "IN ([POSTCOMPILE_primary_keys])",
                         {"primary_keys": [2]},
                     ),
                 ),
                 CompiledSQL(
                     "SELECT b.a_id AS b_a_id, b.id AS b_id FROM b "
-                    "WHERE b.a_id IN ([POSTCOMPILE_primary_keys]) "
-                    "ORDER BY b.a_id",
+                    "WHERE b.a_id IN ([POSTCOMPILE_primary_keys])",
                     {"primary_keys": [1, 2]},
                 ),
             ),
@@ -255,7 +254,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 "people.name AS people_name, people.type AS people_type "
                 "FROM people WHERE people.company_id "
                 "IN ([POSTCOMPILE_primary_keys]) "
-                "ORDER BY people.company_id, people.person_id",
+                "ORDER BY people.person_id",
                 {"primary_keys": [1, 2]},
             ),
             AllOf(

@@ -1955,7 +1955,7 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
                 "JOIN managers ON people.person_id = managers.person_id) "
                 "AS pjoin WHERE pjoin.name = :name_1) AS anon_1 JOIN "
                 "machines ON anon_1.pjoin_person_id = machines.engineer_id "
-                "ORDER BY anon_1.pjoin_person_id, machines.machine_id",
+                "ORDER BY machines.machine_id",
                 params=[{"name_1": "dilbert"}],
             ),
         )

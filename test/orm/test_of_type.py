@@ -1063,8 +1063,7 @@ class SubclassRelationshipTest2(
                 "anon_1.t_a_id AS anon_1_t_a_id FROM "
                 "(SELECT t_a.id AS t_a_id FROM t_a) AS anon_1 "
                 "JOIN (t_b AS t_b_1 LEFT OUTER JOIN t_b2 AS t_b2_1 "
-                "ON t_b_1.id = t_b2_1.id) ON anon_1.t_a_id = t_b_1.a_id "
-                "ORDER BY anon_1.t_a_id",
+                "ON t_b_1.id = t_b2_1.id) ON anon_1.t_a_id = t_b_1.a_id",
                 {},
             ),
             CompiledSQL(
@@ -1074,8 +1073,7 @@ class SubclassRelationshipTest2(
                 "AS anon_1 JOIN (t_b AS t_b_1 LEFT OUTER JOIN t_b2 AS t_b2_1 "
                 "ON t_b_1.id = t_b2_1.id) ON anon_1.t_a_id = t_b_1.a_id "
                 "JOIN (t_c AS t_c_1 LEFT OUTER JOIN t_c2 AS t_c2_1 ON "
-                "t_c_1.id = t_c2_1.id) ON t_b_1.id = t_c_1.b_id "
-                "ORDER BY t_b_1.id",
+                "t_c_1.id = t_c2_1.id) ON t_b_1.id = t_c_1.b_id",
                 {},
             ),
             CompiledSQL(
@@ -1088,7 +1086,7 @@ class SubclassRelationshipTest2(
                 "JOIN (t_c AS t_c_1 LEFT OUTER JOIN t_c2 AS t_c2_1 "
                 "ON t_c_1.id = t_c2_1.id) "
                 "ON t_b_1.id = t_c_1.b_id "
-                "JOIN t_d ON t_c_1.id = t_d.c_id ORDER BY t_c_1.id",
+                "JOIN t_d ON t_c_1.id = t_d.c_id",
                 {},
             ),
         )

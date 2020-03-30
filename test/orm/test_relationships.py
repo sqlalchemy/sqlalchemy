@@ -5749,7 +5749,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
                 "(SELECT a.id AS aid, b.id AS id FROM a JOIN b ON a.b_ids "
                 "LIKE :id_1 || b.id || :param_1) AS anon_1 "
                 "ON a_1.id = anon_1.aid JOIN b ON b.id = anon_1.id "
-                "WHERE a_1.id IN ([POSTCOMPILE_primary_keys]) ORDER BY a_1.id",
+                "WHERE a_1.id IN ([POSTCOMPILE_primary_keys])",
                 params=[{"id_1": "%", "param_1": "%", "primary_keys": [2]}],
             ),
         )

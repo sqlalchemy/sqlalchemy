@@ -1,0 +1,18 @@
+.. change::
+    :tags: orm, performance
+    :tickets: 5162
+
+    Modified the queries used by subqueryload and selectinload to no longer
+    ORDER BY the primary key of the parent entity;  this ordering was there to
+    allow the rows as they come in to be copied into lists directly with a
+    minimal level of Python-side collation.   However, these ORDER BY clauses
+    can negatively impact the performance of the query as in many scenarios
+    these columns are derived from a subquery or are otherwise not actual
+    primary key columns such that SQL planners cannot make use of indexes. The
+    Python-side collation uses the native itertools.group_by() to collate the
+    incoming rows, and has been modified to allow multiple
+    row-groups-per-parent to be assembled together using list.extend(), which
+    should still allow for relatively fast Python-side performance.  There will
+    still be an ORDER BY present for a relationship that includes an explicit
+    order_by parameter, however this is the only ORDER BY that will be added to
+    the query for both kinds of loading.
