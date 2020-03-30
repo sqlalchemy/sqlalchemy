@@ -661,7 +661,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     "FROM (SELECT users.id AS "
                     "users_id FROM users WHERE users.id = :id_1) AS anon_1 "
                     "JOIN orders ON anon_1.users_id = orders.user_id ORDER BY "
-                    "anon_1.users_id, orders.id",
+                    "orders.id",
                     [{"id_1": 7}],
                 ),
             ],

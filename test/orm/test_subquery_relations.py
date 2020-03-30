@@ -1706,7 +1706,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 ":primary_language_1) AS anon_1 "
                 "JOIN paperwork "
                 "ON anon_1.people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                "ORDER BY paperwork.paperwork_id",
                 {"primary_language_1": "java"},
             ),
         )
@@ -1763,7 +1763,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "paperwork.description = :description_1) AS anon_1 "
                 "JOIN paperwork ON anon_1.people_person_id = "
                 "paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                "ORDER BY paperwork.paperwork_id",
                 {
                     "primary_language_1": "java",
                     "description_1": "tps report #2",
@@ -1828,7 +1828,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "WHERE engineers.primary_language = :primary_language_1) "
                 "AS anon_1 JOIN paperwork "
                 "ON anon_1.people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id",
+                "ORDER BY paperwork.paperwork_id",
                 {"primary_language_1": "java"},
             ),
             CompiledSQL(
@@ -1843,7 +1843,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "AS anon_1 JOIN paperwork AS paperwork_1 "
                 "ON anon_1.people_person_id = paperwork_1.person_id "
                 "JOIN pages ON paperwork_1.paperwork_id = pages.paperwork_id "
-                "ORDER BY paperwork_1.paperwork_id, pages.page_id",
+                "ORDER BY pages.page_id",
                 {"primary_language_1": "java"},
             ),
         )
@@ -1893,7 +1893,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "engineers.engineer_id ORDER BY engineers.primary_language "
                 "DESC LIMIT :param_1) AS anon_1 JOIN paperwork "
                 "ON anon_1.people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.people_person_id, paperwork.paperwork_id"
+                "ORDER BY paperwork.paperwork_id"
             ),
         )
 
@@ -1960,8 +1960,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "DESC LIMIT :param_1) AS anon_1 "
                 "JOIN paperwork "
                 "ON anon_1.anon_2_people_person_id = paperwork.person_id "
-                "ORDER BY anon_1.anon_2_people_person_id, "
-                "paperwork.paperwork_id"
+                "ORDER BY paperwork.paperwork_id"
             ),
         )
 
@@ -2013,8 +2012,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "ON people_1.person_id = engineers_1.engineer_id "
                 "ORDER BY engineers_1.primary_language DESC LIMIT :param_1) "
                 "AS anon_1 JOIN paperwork ON anon_1.people_1_person_id = "
-                "paperwork.person_id ORDER BY anon_1.people_1_person_id, "
-                "paperwork.paperwork_id"
+                "paperwork.person_id ORDER BY paperwork.paperwork_id"
             ),
         )
 
@@ -2712,8 +2710,7 @@ class CyclicalInheritingEagerTestTwo(
             "ON persistent.id = director.id) AS anon_1 "
             "JOIN (persistent JOIN movie "
             "ON persistent.id = movie.id) "
-            "ON anon_1.director_id = movie.director_id "
-            "ORDER BY anon_1.director_id",
+            "ON anon_1.director_id = movie.director_id",
             dialect="default",
         )
 
@@ -2838,8 +2835,7 @@ class SubqueryloadDistinctTest(
             "anon_1.movie_director_id AS anon_1_movie_director_id "
             "FROM (SELECT%s movie.director_id AS movie_director_id "
             "FROM movie) AS anon_1 "
-            "JOIN director ON director.id = anon_1.movie_director_id "
-            "ORDER BY anon_1.movie_director_id"
+            "JOIN director ON director.id = anon_1.movie_director_id"
             % (" DISTINCT" if expect_distinct else ""),
         )
 
@@ -2867,8 +2863,7 @@ class SubqueryloadDistinctTest(
             "JOIN director AS director_1 "
             "ON director_1.id = anon_1.movie_director_id "
             "JOIN director_photo "
-            "ON director_1.id = director_photo.director_id "
-            "ORDER BY director_1.id"
+            "ON director_1.id = director_photo.director_id"
             % (" DISTINCT" if expect_distinct else ""),
         )
         result = s.execute(q3)
@@ -3046,8 +3041,7 @@ class SelfRefInheritanceAliasedTest(
                 "anon_1.foo_foo_id AS anon_1_foo_foo_id "
                 "FROM (SELECT DISTINCT foo.foo_id AS foo_foo_id "
                 "FROM foo WHERE foo.id = :id_1) AS anon_1 "
-                "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id "
-                "ORDER BY anon_1.foo_foo_id",
+                "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id",
                 {"id_1": 2},
             ),
             CompiledSQL(
@@ -3056,7 +3050,7 @@ class SelfRefInheritanceAliasedTest(
                 "FROM (SELECT DISTINCT foo.foo_id AS foo_foo_id FROM foo "
                 "WHERE foo.id = :id_1) AS anon_1 "
                 "JOIN foo AS foo_1 ON foo_1.id = anon_1.foo_foo_id "
-                "JOIN foo ON foo.id = foo_1.foo_id ORDER BY foo_1.foo_id",
+                "JOIN foo ON foo.id = foo_1.foo_id",
                 {"id_1": 2},
             ),
         )

@@ -1698,7 +1698,7 @@ at once:
             addresses.email_address AS addresses_email_address
     FROM addresses
     WHERE addresses.user_id IN (?)
-    ORDER BY addresses.user_id, addresses.id
+    ORDER BY addresses.id
     (5,)
     {stop}>>> jack
     <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>

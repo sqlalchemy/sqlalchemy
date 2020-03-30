@@ -1090,7 +1090,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         to_join, local_attr, parent_alias = self._prep_for_joins(
             left_alias, subq_path
         )
-        q = q.order_by(*local_attr)
+
         q = q.add_columns(*local_attr)
         q = self._apply_joins(
             q, to_join, left_alias, parent_alias, effective_entity
@@ -1333,10 +1333,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
             return self._data.get(key, default)
 
         def _load(self):
-            self._data = dict(
-                (k, [vv[0] for vv in v])
-                for k, v in itertools.groupby(self.subq, lambda x: x[1:])
-            )
+            self._data = collections.defaultdict(list)
+            for k, v in itertools.groupby(self.subq, lambda x: x[1:]):
+                self._data[k].extend(vv[0] for vv in v)
 
         def loader(self, state, dict_, row):
             if self._data is None:
@@ -2357,7 +2356,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             q.add_criteria(
                 lambda q: q.filter(
                     in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-                ).order_by(*pk_cols)
+                )
             )
 
         orig_query = context.query
@@ -2454,13 +2453,12 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 for key, state, state_dict, overwrite in chunk
             ]
 
-            data = {
-                k: [vv[1] for vv in v]
-                for k, v in itertools.groupby(
-                    q(context.session).params(primary_keys=primary_keys),
-                    lambda x: x[0],
-                )
-            }
+            data = collections.defaultdict(list)
+            for k, v in itertools.groupby(
+                q(context.session).params(primary_keys=primary_keys),
+                lambda x: x[0],
+            ):
+                data[k].extend(vv[1] for vv in v)
 
             for key, state, state_dict, overwrite in chunk:
 

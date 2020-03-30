@@ -568,8 +568,7 @@ class RelationshipFromSingleTest(
             "employee.id AS employee_id FROM employee "
             "WHERE employee.type IN (:type_1)) AS anon_1 "
             "JOIN employee_stuff ON anon_1.employee_id "
-            "= employee_stuff.employee_id ORDER BY "
-            "anon_1.employee_id",
+            "= employee_stuff.employee_id",
             use_default_dialect=True,
         )
 
