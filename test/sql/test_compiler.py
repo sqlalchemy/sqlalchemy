@@ -10,6 +10,7 @@ styling and coherent test organization.
 
 """
 
+import datetime
 import decimal
 
 from sqlalchemy import alias
@@ -3743,6 +3744,21 @@ class StringifySpecialTest(fixtures.TestBase):
             str(stmt),
             "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
             "WITHIN GROUP (ORDER BY mytable.name DESC) AS anon_1 FROM mytable",
+        )
+
+    @testing.combinations(
+        ("datetime", datetime.datetime.now()),
+        ("date", datetime.date.today()),
+        ("time", datetime.time()),
+        argnames="value",
+        id_="ia",
+    )
+    def test_render_datetime(self, value):
+        lit = literal(value)
+
+        eq_ignore_whitespace(
+            str(lit.compile(compile_kwargs={"literal_binds": True})),
+            "'%s'" % value,
         )
 
 
