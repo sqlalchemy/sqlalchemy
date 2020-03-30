@@ -203,6 +203,12 @@ For "commit as you go, or rollback instead" usage, which resembles how the
 These will typically be used in conjunction with the :meth:`.Engine.connect`
 method::
 
+    # 1.4 / 2.0 code
+
+    from sqlalchemy.future import create_engine
+
+    engine = create_engine(...)
+
     with engine.connect() as conn:
         conn.execute(some_table.insert().values(foo='bar'))
         conn.commit()
@@ -233,6 +239,8 @@ also include a new mode of operation called ``autobegin=False``, which is
 intended to replace the ``autocommit=True`` mode. In this mode, the
 :class:`.Session` will require that :meth:`.Session.begin` is called in order
 to work with the database::
+
+  # 1.4 / 2.0 code
 
   session = sessionmaker(autobegin=False)
 
@@ -289,8 +297,8 @@ To use a connection in autocommit mode::
 
 
 The above code is already available in current SQLAlchemy releases.   Driver
-support is available for PostgreSQL, MySQL, SQL Server, and newer releases
-will include support for Oracle and SQLite as well.
+support is available for PostgreSQL, MySQL, SQL Server, and as of SQLAlchemy
+1.3.16 Oracle and SQLite as well.
 
 .. _migration_20_implicit_execution:
 
@@ -409,13 +417,13 @@ Core from "many"::
 
 to "one"::
 
-  # one choice!
+  # one choice!  (this works now!)
 
   with engine.begin() as conn:
       result = conn.execute(stmt)
 
 
-  # OK one and a half choices:
+  # OK one and a half choices (the commit() is 1.4 / 2.0 using future engine):
 
   with engine.connect() as conn:
       result = conn.execute(stmt)
@@ -434,6 +442,8 @@ ORM patterns, there still may be some semblance of "implicit" execution of
 a statement, however, it won't really be "connectionless".   Likely, a statement
 can be directly bound to a :class:`.Connection` or :class:`.Session` once
 constructed::
+
+  # 1.4 / 2.0 code (tentative)
 
   stmt = select(some_table).where(criteria)
 
@@ -460,6 +470,8 @@ the :class:`.orm.Session` will be able to receive execution options local
 to a series of statement executions in the same way as that of
 :class:`.Connection`::
 
+    # 1.4 / 2.0 code
+
     session = Session()
 
     result = session.execution_options(stream_per=100).execute(stmt)
@@ -474,6 +486,9 @@ longer.   The signature "in spirit" would be::
 
 The interim signature will be::
 
+    # 1.4 / 2.0 using sqlalchemy.future.create_engine,
+    # sqlalchemy.orm.future.Session / sessionmaker / etc
+
     def execute(self, statement, _params=None, **options):
 
 That is, by naming "``_params``" with an underscore we suggest that this
@@ -481,6 +496,8 @@ be passed positionally and not by name.
 
 The ``**options`` keywords will be another way of passing execution options.
 So that an execution may look like::
+
+    # 1.4 / 2.0 future
 
     result = connection.execute(table.insert(), {"foo": "bar"}, isolation_level='AUTOCOMMIT')
 
@@ -510,6 +527,12 @@ systems using new methods ``.partitions`` and ``.chunks()`` which will behave si
 These new methods will be available from the "Result" object that is similar to
 the existing "ResultProxy" object, but will be present both in Core and ORM
 equally::
+
+    # 1.4 / 2.0 with future create_engine
+
+    from sqlalchemy.future import create_engine
+
+    engine = create_engine(...)
 
     with engine.begin() as conn:
         stmt = table.insert()
@@ -576,12 +599,18 @@ such as ``row["some_column"]`` can be used.
 In order to receive results as mappings up front, the ``mappings()`` modifier
 on the result can be used::
 
+    from sqlalchemy.orm.future import Session
+
+    session = Session(some_engine)
+
     result = session.execute(stmt)
     for row in result.mappings():
         print("the user is: %s" % row["User"])
 
 The :class:`.Row` class as used by the ORM also supports access via entity
 or attribute::
+
+    from sqlalchemy.future import select
 
     stmt = select(User, Address).join(User.addresses)
 
@@ -655,6 +684,8 @@ a special base class or metaclass, this is just the API that is currently
 used.  An alternative API that behaves just like ``mapper()`` can be defined
 right now as follows::
 
+    # 1.xx code
+
     from sqlalchemy.ext.declarative import base
     def declarative_mapper():
         _decl_class_registry = {}
@@ -676,7 +707,7 @@ to where the ``declarative_mapper()`` function was called.   However, we
 can just as easily add the above ``mapper()`` function to any declarative base,
 to make for a pattern such as::
 
-    from sqlalchemy.orm import declarative_base
+    from sqlalchemy.orm.future import declarative_base
 
     base = declarative_base()
 
@@ -735,12 +766,18 @@ For ORM use however, one can construct a :func:`~.sql.expression.select` using O
 then when delivered to the ``.invoke()`` or ``.execute()`` method of
 :class:`.Session`, it will be interpreted appropriately::
 
+    from sqlalchemy.future import select
     stmt = select(User).join(User.addresses).where(Address.email == 'foo@bar.com')
+
+    from sqlalchemy.orm.future import Session
+    session = Session(some_engine)
 
     rows = session.execute(stmt).all()
 
 Similarly, methods like :meth:`.Query.update` and :meth:`.Query.delete` are now
 replaced by usage of the :func:`.update` and :func:`.delete` constructs directly::
+
+    from sqlalchemy.future import update
 
     stmt = update(User).where(User.name == 'foo').values(name='bar')
 
@@ -806,6 +843,7 @@ attributes in a list will also be removed::
     # use instead
     q = select(User).join(User.orders).join(Order.items).join(Item.keywords)
 
+.. _migration_20_query_join_options:
 
 join(..., aliased=True), from_joinpoint removed
 -----------------------------------------------
@@ -894,6 +932,8 @@ Using DISTINCT with additional columns, but only select the entity
 distinct is used.  The following query will select from all User columns
 as well as "address.email_address" but only return User objects::
 
+    # 1.xx code
+
     result = session.query(User).join(User.addresses).\
         distinct().order_by(Address.email_address).all()
 
@@ -902,6 +942,7 @@ it isn't also in the columns clause.   But the above query only wants "User"
 objects back.  In 2.0, this very unusual use case is performed explicitly,
 and the limiting of the entities/columns to ``User`` is done on the result::
 
+    # 1.4/2.0 code
 
     from sqlalchemy.future import select
 
@@ -940,6 +981,8 @@ Starting with a :meth:`.Query.from_self` query that selects from two different
 entities, then converts itself to select just one of the entities from
 a subquery::
 
+  # 1.xx code
+
   q = session.query(User, Address.email_address).\
     join(User.addresses).\
     from_self(User).order_by(Address.email_address)
@@ -959,9 +1002,12 @@ The SQL query above illustrates the automatic translation of the "user" and
 
 In 2.0, we perform these steps explicitly using :func:`.orm.aliased`::
 
+  # 1.4/2.0 code
+
+  from sqlalchemy.future import select
   from sqlalchemy.orm import aliased
 
-  subq = session.query(User, Address.email_address).\
+  subq = select(User, Address.email_address).\
       join(User.addresses).subquery()
 
   # state the User and Address entities both in terms of the subquery
@@ -969,7 +1015,8 @@ In 2.0, we perform these steps explicitly using :func:`.orm.aliased`::
   aa = aliased(Address, subq)
 
   # then select using those entities
-  q = session.query(ua).order_by(aa.email_address)
+  stmt = select(ua).order_by(aa.email_address)
+  result = session.execute(stmt)
 
 The above query renders the identical SQL structure, but uses a more
 succinct labeling scheme that doesn't pull in table names (that labeling
@@ -986,13 +1033,16 @@ so even if our ``User`` and ``Address`` entities have overlapping column names,
 we can select from both entities at once without having to specify any
 particular labeling::
 
-  subq = session.query(User, Address).\
+  # 1.4/2.0 code
+
+  subq = select(User, Address).\
       join(User.addresses).subquery()
 
   ua = aliased(User, subq)
   aa = aliased(Address, subq)
 
-  q = session.query(ua, aa).order_by(aa.email_address)
+  stmt = select(ua, aa).order_by(aa.email_address)
+  result = session.execute(stmt)
 
 The above query will disambiguate the ``.id`` column of ``User`` and
 ``Address``, where ``Address.id`` is rendered and tracked as ``id_1``::
@@ -1077,6 +1127,8 @@ Uniquifying ORM Rows
 ORM rows returned by ``session.execute(stmt)`` are no longer automatically
 "uniqued"; this must be called explicitly::
 
+    # 1.4 / 2.0 code
+
     stmt = select(User).options(joinedload(User.addresses))
 
     # statement will raise if unique() is not used, due to joinedload()
@@ -1104,7 +1156,7 @@ Tuples, Scalars, single-row results with ORM / Core results made consistent
     Again this is an often requested behavior
     at the ORM level so something will have to happen in this regard
 
-The :meth:`.InvocationContext.all` method now delivers named-tuple results
+The :meth:`.future.Result.all` method now delivers named-tuple results
 in all cases, even for an ORM select that is against a single entity.   This
 is for consistency in the return type.
 
@@ -1222,7 +1274,7 @@ of asyncio-everything, here are the bulletpoints:
 * Essentially, it is hoped that the re-architecting of :class:`.Connection`
   to no longer support things like "autocommit" and "connectionless"
   execution, as well as the changes to how result fetching will work with the
-  ``InvocationContext`` which is hoped to be simpler in how it interacts with
+  ``Result`` which is hoped to be simpler in how it interacts with
   the cursor, will make it **much easier** to build async versions of
   SQLAlchemy's :class:`.Connection`.  The simplified model of
   ``Connection.execute()`` and ``Session.execute()`` as the single point of
