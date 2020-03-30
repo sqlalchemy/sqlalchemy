@@ -24,6 +24,7 @@ from .. import types as sqltypes
 from .. import util
 from ..engine import default
 from ..engine import url
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import compat
 from ..util import decorator
 
@@ -398,7 +399,7 @@ class AssertsCompiledSQL(object):
 
         if isinstance(clause, orm.Query):
             context = clause._compile_context()
-            context.statement.use_labels = True
+            context.statement._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
             clause = context.statement
         elif isinstance(clause, orm.persistence.BulkUD):
             with mock.patch.object(clause, "_execute_stmt") as stmt_mock:

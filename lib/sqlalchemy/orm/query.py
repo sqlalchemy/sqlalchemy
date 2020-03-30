@@ -56,6 +56,7 @@ from ..sql.base import _generative
 from ..sql.base import ColumnCollection
 from ..sql.base import Generative
 from ..sql.selectable import ForUpdateArg
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import collections_abc
 
 __all__ = ["Query", "QueryContext", "aliased"]
@@ -1209,6 +1210,14 @@ class Query(Generative):
 
         self.session = session
 
+    @util.deprecated_20(
+        ":meth:`.Query.from_self`",
+        alternative="The new approach is to use the :func:`.orm.aliased` "
+        "construct in conjunction with a subquery.  See the section "
+        ":ref:`Selecting from the query itself as a subquery "
+        "<migration_20_query_from_self>` in the 2.0 migration notes for an "
+        "example.",
+    )
     def from_self(self, *entities):
         r"""return a Query that selects from this Query's
         SELECT statement.
@@ -3313,7 +3322,7 @@ class Query(Generative):
 
     def __iter__(self):
         context = self._compile_context()
-        context.statement.use_labels = True
+        context.statement.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
         if self._autoflush and not self._populate_existing:
             self.session._autoflush()
         return self._execute_and_instances(context)

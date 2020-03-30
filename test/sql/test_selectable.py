@@ -750,6 +750,54 @@ class SelectableTest(
         assert u1.corresponding_column(table2.c.col2) is u1.c._all_columns[1]
         assert u1.corresponding_column(table2.c.col3) is u1.c._all_columns[2]
 
+    def test_union_alias_dupe_keys_disambiguates_in_subq_compile_one(self):
+        s1 = select([table1.c.col1, table1.c.col2, table2.c.col1]).limit(1)
+        s2 = select([table2.c.col1, table2.c.col2, table2.c.col3]).limit(1)
+        u1 = union(s1, s2).subquery()
+
+        eq_(u1.c.keys(), ["col1", "col2", "col1_1"])
+
+        stmt = select([u1])
+
+        eq_(stmt.selected_columns.keys(), ["col1", "col2", "col1_1"])
+
+        # the union() sets a new labeling form in the first SELECT
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.col1, anon_1.col2, anon_1.col1_1 FROM "
+            "((SELECT table1.col1, table1.col2, table2.col1 AS col1_1 "
+            "FROM table1, table2 LIMIT :param_1) UNION "
+            "(SELECT table2.col1, table2.col2, table2.col3 FROM table2 "
+            "LIMIT :param_2)) AS anon_1",
+        )
+
+    def test_union_alias_dupe_keys_disambiguates_in_subq_compile_two(self):
+        a = table("a", column("id"))
+        b = table("b", column("id"), column("aid"))
+        d = table("d", column("id"), column("aid"))
+
+        u1 = union(
+            a.join(b, a.c.id == b.c.aid).select().apply_labels(),
+            a.join(d, a.c.id == d.c.aid).select().apply_labels(),
+        ).alias()
+
+        eq_(u1.c.keys(), ["a_id", "b_id", "b_aid"])
+
+        stmt = select([u1])
+
+        eq_(stmt.selected_columns.keys(), ["a_id", "b_id", "b_aid"])
+
+        # the union() detects that the first SELECT already has a labeling
+        # style and uses that
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.a_id, anon_1.b_id, anon_1.b_aid FROM "
+            "(SELECT a.id AS a_id, b.id AS b_id, b.aid AS b_aid "
+            "FROM a JOIN b ON a.id = b.aid "
+            "UNION SELECT a.id AS a_id, d.id AS d_id, d.aid AS d_aid "
+            "FROM a JOIN d ON a.id = d.aid) AS anon_1",
+        )
+
     def test_union_alias_dupe_keys_grouped(self):
         s1 = select([table1.c.col1, table1.c.col2, table2.c.col1]).limit(1)
         s2 = select([table2.c.col1, table2.c.col2, table2.c.col3]).limit(1)
@@ -974,10 +1022,15 @@ class SelectableTest(
     def test_self_referential_select_raises(self):
         t = table("t", column("x"))
 
-        s = select([t])
+        # this issue is much less likely as subquery() applies a labeling
+        # style to the select, eliminating the self-referential call unless
+        # the select already had labeling applied
+
+        s = select([t]).apply_labels()
 
         with testing.expect_deprecated("The SelectBase.c"):
-            s.where.non_generative(s, s.c.x > 5)
+            s.where.non_generative(s, s.c.t_x > 5)
+
         assert_raises_message(
             exc.InvalidRequestError,
             r"select\(\) construct refers to itself as a FROM",
@@ -2718,6 +2771,8 @@ class WithLabelsTest(fixtures.TestBase):
         sel = self._names_overlap()
         self._assert_result_keys(sel, ["x"])
 
+        self._assert_subq_result_keys(sel, ["x", "x_1"])
+
     def test_names_overlap_label(self):
         sel = self._names_overlap().apply_labels()
         eq_(list(sel.selected_columns.keys()), ["t1_x", "t2_x"])
@@ -2732,6 +2787,7 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_names_overlap_keys_dont_nolabel(self):
         sel = self._names_overlap_keys_dont()
+
         eq_(list(sel.selected_columns.keys()), ["a", "b"])
         eq_(list(sel.subquery().c.keys()), ["a", "b"])
         self._assert_result_keys(sel, ["x"])
@@ -2756,14 +2812,12 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_labels_overlap_label(self):
         sel = self._labels_overlap().apply_labels()
-        t2 = sel.froms[1]
         eq_(
-            list(sel.selected_columns.keys()),
-            ["t_x_id", t2.c.id._label_anon_label],
+            list(sel.selected_columns.keys()), ["t_x_id", "t_x_id_1"],
         )
         eq_(
             list(sel.subquery().c.keys()),
-            ["t_x_id", t2.c.id._label_anon_label],
+            ["t_x_id", "t_x_id_1"],
             # ["t_x_id", "t_x_id"]  # if we turn off deduping entirely,
         )
         self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
@@ -2801,14 +2855,11 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_keylabels_overlap_labels_dont_label(self):
         sel = self._keylabels_overlap_labels_dont().apply_labels()
-        t2 = sel.froms[1]
         eq_(
-            list(sel.selected_columns.keys()),
-            ["t_x_id", t2.c.id._label_anon_label],
+            list(sel.selected_columns.keys()), ["t_x_id", "t_x_b_1"],
         )
         eq_(
-            list(sel.subquery().c.keys()),
-            ["t_x_id", t2.c.id._label_anon_label],
+            list(sel.subquery().c.keys()), ["t_x_id", "t_x_b_1"],
         )
         self._assert_result_keys(sel, ["t_a", "t_x_b"])
         self._assert_subq_result_keys(sel, ["t_a", "t_x_b"])
@@ -2828,14 +2879,12 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_keylabels_overlap_labels_overlap_label(self):
         sel = self._keylabels_overlap_labels_overlap().apply_labels()
-        t2 = sel.froms[1]
         eq_(
-            list(sel.selected_columns.keys()),
-            ["t_x_a", t2.c.a._label_anon_label],
+            list(sel.selected_columns.keys()), ["t_x_a", "t_x_id_1"],
         )
 
         # deduping for different cols but same label
-        eq_(list(sel.subquery().c.keys()), ["t_x_a", t2.c.a._label_anon_label])
+        eq_(list(sel.subquery().c.keys()), ["t_x_a", "t_x_id_1"])
 
         # if we turn off deduping entirely
         # eq_(list(sel.subquery().c.keys()), ["t_x_a", "t_x_a"])

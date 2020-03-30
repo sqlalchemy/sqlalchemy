@@ -910,6 +910,105 @@ and the limiting of the entities/columns to ``User`` is done on the result::
 
     result = session.execute(stmt).scalars(User).all()
 
+.. _migration_20_query_from_self:
+
+Selecting from the query itself as a subquery, e.g. "from_self()"
+-------------------------------------------------------------------
+
+The :meth:`.Query.from_self` method is a very complicated method that is rarely
+used.   The purpose of this method is to convert a :class:`.Query` into a
+subquery, then return a new :class:`.Query` which SELECTs from that subquery.
+The elaborate aspect of this method is that the returned query applies
+automatic translation of ORM entities and columns to be stated in the SELECT in
+terms of the subquery, as well as that it allows the entities and columns to be
+SELECTed from to be modified.
+
+Because :meth:`.Query.from_self` packs an intense amount of implicit
+translation into the SQL it produces, while it does allow a certain kind of
+pattern to be executed very succinctly, real world use of this method is
+infrequent as it is not simple to understand.
+
+In SQLAlchemy 2.0, as the :func:`.future.select` construct will be expected
+to handle every pattern the ORM :class:`.Query` does now, the pattern of
+:meth:`.Query.from_self` can be invoked now by making use of the
+:func:`.orm.aliased` function in conjunction with a subquery, that is
+the :meth:`.Query.subquery` or :meth:`.Select.subquery` method.    Version 1.4
+of SQLAlchemy has enhanced the ability of the :func:`.orm.aliased` construct
+to correctly extract columns from a given subquery.
+
+Starting with a :meth:`.Query.from_self` query that selects from two different
+entities, then converts itself to select just one of the entities from
+a subquery::
+
+  q = session.query(User, Address.email_address).\
+    join(User.addresses).\
+    from_self(User).order_by(Address.email_address)
+
+The above query SELECTS from "user" and "address", then applies a subquery
+to SELECT only the "users" row but still with ORDER BY the email address
+column::
+
+  SELECT anon_1.user_id AS anon_1_user_id
+  FROM (
+    SELECT "user".id AS user_id, address.email_address AS address_email_address
+    FROM "user" JOIN address ON "user".id = address.user_id
+  ) AS anon_1 ORDER BY anon_1.address_email_address
+
+The SQL query above illustrates the automatic translation of the "user" and
+"address" tables in terms of the anonymously named subquery.
+
+In 2.0, we perform these steps explicitly using :func:`.orm.aliased`::
+
+  from sqlalchemy.orm import aliased
+
+  subq = session.query(User, Address.email_address).\
+      join(User.addresses).subquery()
+
+  # state the User and Address entities both in terms of the subquery
+  ua = aliased(User, subq)
+  aa = aliased(Address, subq)
+
+  # then select using those entities
+  q = session.query(ua).order_by(aa.email_address)
+
+The above query renders the identical SQL structure, but uses a more
+succinct labeling scheme that doesn't pull in table names (that labeling
+scheme is still available if the :meth:`.Select.apply_labels` method is used)::
+
+  SELECT anon_1.id AS anon_1_id
+  FROM (
+    SELECT "user".id AS id, address.email_address AS email_address
+    FROM "user" JOIN address ON "user".id = address.user_id
+  ) AS anon_1 ORDER BY anon_1.email_address
+
+SQLAlchemy 1.4 features improved disambiguation of columns in subqueries,
+so even if our ``User`` and ``Address`` entities have overlapping column names,
+we can select from both entities at once without having to specify any
+particular labeling::
+
+  subq = session.query(User, Address).\
+      join(User.addresses).subquery()
+
+  ua = aliased(User, subq)
+  aa = aliased(Address, subq)
+
+  q = session.query(ua, aa).order_by(aa.email_address)
+
+The above query will disambiguate the ``.id`` column of ``User`` and
+``Address``, where ``Address.id`` is rendered and tracked as ``id_1``::
+
+  SELECT anon_1.id AS anon_1_id, anon_1.id_1 AS anon_1_id_1,
+         anon_1.user_id AS anon_1_user_id,
+         anon_1.email_address AS anon_1_email_address
+  FROM (
+    SELECT "user".id AS id, address.id AS id_1,
+    address.user_id AS user_id, address.email_address AS email_address
+    FROM "user" JOIN address ON "user".id = address.user_id
+  ) AS anon_1 ORDER BY anon_1.email_address
+
+:ticket:`5221`
+
+
 Transparent Statement Compilation Caching replaces "Baked" queries, works in Core
 ==================================================================================
 
