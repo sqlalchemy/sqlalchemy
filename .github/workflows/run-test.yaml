@@ -1,10 +1,12 @@
 name: Run tests
 
 on:
-  # run on push in master and on pull request to master. Does not run when changes are only on doc or example folders
+  # run on push in master or rel_* branches and on pull request to master
+  # does not run when changes are only on doc or example folders
   push:
     branches:
       - master
+      - 'rel_*'
     paths-ignore:
       - 'doc/**'
       - 'examples/**'
