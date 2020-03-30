@@ -928,7 +928,9 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     def _sqlite_memory_db(self, config):
-        return not self._sqlite_file_db(config)
+        return against(
+            config, "sqlite"
+        ) and not config.db.dialect._is_url_file_db(config.db.url)
 
     def _sqlite_json(self, config):
         if not against(config, "sqlite >= 3.9"):
