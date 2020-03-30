@@ -1,6 +1,7 @@
 name: Run tests
 
 on:
+  # run on push in master and on pull request to master. Does not run when changes are only on doc or example folders
   push:
     branches:
       - master
@@ -15,14 +16,15 @@ on:
       - 'examples/**'
 
 env:
+  # global env to all steps
   TOX_WORKERS: -n2
-  TOX_BASECOMMAND: python -m pytest
 
 jobs:
   run-test:
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
           - 'ubuntu-latest'
@@ -54,13 +56,16 @@ jobs:
           - os: 'windows-latest'
             python-version: '3.5'
             build-type: 'cext'
+          # linux and osx do not have x86 python
           - os: 'ubuntu-latest'
             architecture: x86
           - os: 'macos-latest'
             architecture: x86
 
+      # abort all jobs as soon as one fails
       fail-fast: true
 
+    # steps to run in each job. Some are github actions, others run shell commands
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
