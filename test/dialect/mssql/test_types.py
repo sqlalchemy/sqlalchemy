@@ -105,7 +105,7 @@ class MSDateTypeTest(fixtures.TestBase):
             "abc",
         )
 
-    def test_extract(self):
+    def test_extract(self, connection):
         from sqlalchemy import extract
 
         fivedaysago = datetime.datetime.now() - datetime.timedelta(days=5)
@@ -114,7 +114,7 @@ class MSDateTypeTest(fixtures.TestBase):
             ("month", fivedaysago.month),
             ("day", fivedaysago.day),
         ):
-            r = testing.db.execute(
+            r = connection.execute(
                 select([extract(field, fivedaysago)])
             ).scalar()
             eq_(r, exp)
