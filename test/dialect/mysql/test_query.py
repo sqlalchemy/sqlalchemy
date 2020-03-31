@@ -130,9 +130,9 @@ class MatchTest(fixtures.TestBase):
         )
         eq_([3], [r.id for r in results])
 
-    def test_return_value(self):
+    def test_return_value(self, connection):
         # test [ticket:3263]
-        result = testing.db.execute(
+        result = connection.execute(
             select(
                 [
                     matchtable.c.title.match("Agile Ruby Programming").label(
@@ -233,35 +233,36 @@ class AnyAllTest(fixtures.TablesTest):
     @classmethod
     def insert_data(cls):
         stuff = cls.tables.stuff
-        testing.db.execute(
-            stuff.insert(),
-            [
-                {"id": 1, "value": 1},
-                {"id": 2, "value": 2},
-                {"id": 3, "value": 3},
-                {"id": 4, "value": 4},
-                {"id": 5, "value": 5},
-            ],
-        )
+        with testing.db.begin() as conn:
+            conn.execute(
+                stuff.insert(),
+                [
+                    {"id": 1, "value": 1},
+                    {"id": 2, "value": 2},
+                    {"id": 3, "value": 3},
+                    {"id": 4, "value": 4},
+                    {"id": 5, "value": 5},
+                ],
+            )
 
-    def test_any_w_comparator(self):
+    def test_any_w_comparator(self, connection):
         stuff = self.tables.stuff
         stmt = select([stuff.c.id]).where(
             stuff.c.value > any_(select([stuff.c.value]).scalar_subquery())
         )
 
-        eq_(testing.db.execute(stmt).fetchall(), [(2,), (3,), (4,), (5,)])
+        eq_(connection.execute(stmt).fetchall(), [(2,), (3,), (4,), (5,)])
 
-    def test_all_w_comparator(self):
+    def test_all_w_comparator(self, connection):
         stuff = self.tables.stuff
         stmt = select([stuff.c.id]).where(
             stuff.c.value >= all_(select([stuff.c.value]).scalar_subquery())
         )
 
-        eq_(testing.db.execute(stmt).fetchall(), [(5,)])
+        eq_(connection.execute(stmt).fetchall(), [(5,)])
 
-    def test_any_literal(self):
+    def test_any_literal(self, connection):
         stuff = self.tables.stuff
         stmt = select([4 == any_(select([stuff.c.value]).scalar_subquery())])
 
-        is_(testing.db.execute(stmt).scalar(), True)
+        is_(connection.execute(stmt).scalar(), True)
