@@ -113,15 +113,15 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
-    def test_string_dates_passed_raise(self):
+    def test_string_dates_passed_raise(self, connection):
         assert_raises(
             exc.StatementError,
-            testing.db.execute,
+            connection.execute,
             select([1]).where(bindparam("date", type_=Date)),
             date=str(datetime.date(2007, 10, 30)),
         )
 
-    def test_cant_parse_datetime_message(self):
+    def test_cant_parse_datetime_message(self, connection):
         for (typ, disp) in [
             (Time, "time"),
             (DateTime, "datetime"),
@@ -130,7 +130,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             assert_raises_message(
                 ValueError,
                 "Couldn't parse %s string." % disp,
-                lambda: testing.db.execute(
+                lambda: connection.execute(
                     text("select 'ASDF' as value").columns(value=typ)
                 ).scalar(),
             )
@@ -152,30 +152,31 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         t.create(engine)
         try:
-            engine.execute(
-                t.insert(),
-                {
-                    "d1": datetime.date(2010, 5, 10),
-                    "d2": datetime.datetime(2010, 5, 10, 12, 15, 25),
-                },
-            )
-            row = engine.execute(t.select()).first()
-            eq_(
-                row,
-                (
-                    1,
-                    datetime.date(2010, 5, 10),
-                    datetime.datetime(2010, 5, 10, 12, 15, 25),
-                ),
-            )
-            r = engine.execute(func.current_date()).scalar()
-            assert isinstance(r, util.string_types)
+            with engine.begin() as conn:
+                conn.execute(
+                    t.insert(),
+                    {
+                        "d1": datetime.date(2010, 5, 10),
+                        "d2": datetime.datetime(2010, 5, 10, 12, 15, 25),
+                    },
+                )
+                row = conn.execute(t.select()).first()
+                eq_(
+                    row,
+                    (
+                        1,
+                        datetime.date(2010, 5, 10),
+                        datetime.datetime(2010, 5, 10, 12, 15, 25),
+                    ),
+                )
+                r = conn.execute(func.current_date()).scalar()
+                assert isinstance(r, util.string_types)
         finally:
             t.drop(engine)
             engine.dispose()
 
     @testing.provide_metadata
-    def test_custom_datetime(self):
+    def test_custom_datetime(self, connection):
         sqlite_date = sqlite.DATETIME(
             # 2004-05-21T00:00:00
             storage_format="%(year)04d-%(month)02d-%(day)02d"
@@ -183,8 +184,8 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
-        self.metadata.create_all(testing.db)
-        testing.db.execute(
+        self.metadata.create_all(connection)
+        connection.execute(
             t.insert().values(d=datetime.datetime(2010, 10, 15, 12, 37, 0))
         )
         exec_sql(
@@ -195,7 +196,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             [("2004-05-21T00:00:00",), ("2010-10-15T12:37:00",)],
         )
         eq_(
-            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
             [
                 (datetime.datetime(2004, 5, 21, 0, 0),),
                 (datetime.datetime(2010, 10, 15, 12, 37),),
@@ -203,15 +204,15 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
 
     @testing.provide_metadata
-    def test_custom_datetime_text_affinity(self):
+    def test_custom_datetime_text_affinity(self, connection):
         sqlite_date = sqlite.DATETIME(
             storage_format="%(year)04d%(month)02d%(day)02d"
             "%(hour)02d%(minute)02d%(second)02d",
             regexp=r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
-        self.metadata.create_all(testing.db)
-        testing.db.execute(
+        self.metadata.create_all(connection)
+        connection.execute(
             t.insert().values(d=datetime.datetime(2010, 10, 15, 12, 37, 0))
         )
         exec_sql(testing.db, "insert into t (d) values ('20040521000000')")
@@ -220,7 +221,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             [("20040521000000",), ("20101015123700",)],
         )
         eq_(
-            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
             [
                 (datetime.datetime(2004, 5, 21, 0, 0),),
                 (datetime.datetime(2010, 10, 15, 12, 37),),
@@ -228,26 +229,26 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
 
     @testing.provide_metadata
-    def test_custom_date_text_affinity(self):
+    def test_custom_date_text_affinity(self, connection):
         sqlite_date = sqlite.DATE(
             storage_format="%(year)04d%(month)02d%(day)02d",
             regexp=r"(\d{4})(\d{2})(\d{2})",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
-        self.metadata.create_all(testing.db)
-        testing.db.execute(t.insert().values(d=datetime.date(2010, 10, 15)))
+        self.metadata.create_all(connection)
+        connection.execute(t.insert().values(d=datetime.date(2010, 10, 15)))
         exec_sql(testing.db, "insert into t (d) values ('20040521')")
         eq_(
             exec_sql(testing.db, "select * from t order by d").fetchall(),
             [("20040521",), ("20101015",)],
         )
         eq_(
-            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
             [(datetime.date(2004, 5, 21),), (datetime.date(2010, 10, 15),)],
         )
 
     @testing.provide_metadata
-    def test_custom_date(self):
+    def test_custom_date(self, connection):
         sqlite_date = sqlite.DATE(
             # 2004-05-21T00:00:00
             storage_format="%(year)04d|%(month)02d|%(day)02d",
@@ -255,14 +256,14 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(testing.db)
-        testing.db.execute(t.insert().values(d=datetime.date(2010, 10, 15)))
+        connection.execute(t.insert().values(d=datetime.date(2010, 10, 15)))
         exec_sql(testing.db, "insert into t (d) values ('2004|05|21')")
         eq_(
             exec_sql(testing.db, "select * from t order by d").fetchall(),
             [("2004|05|21",), ("2010|10|15",)],
         )
         eq_(
-            testing.db.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
             [(datetime.date(2004, 5, 21),), (datetime.date(2010, 10, 15),)],
         )
 
@@ -354,13 +355,14 @@ class JSONTest(fixtures.TestBase):
             )
         self.metadata.create_all(engine)
 
-        engine.execute(sqlite_json.insert(), {"foo": data_element})
+        with engine.begin() as conn:
+            conn.execute(sqlite_json.insert(), {"foo": data_element})
 
-        row = engine.execute(select([sqlite_json.c.foo])).first()
+            row = conn.execute(select([sqlite_json.c.foo])).first()
 
-        eq_(row, (data_element,))
-        eq_(js.mock_calls, [mock.call(data_element)])
-        eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
+            eq_(row, (data_element,))
+            eq_(js.mock_calls, [mock.call(data_element)])
+            eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
 
 class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -712,7 +714,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         #        == table2.c['"aid"'])
 
     @testing.provide_metadata
-    def test_description_encoding(self):
+    def test_description_encoding(self, connection):
         # amazingly, pysqlite seems to still deliver cursor.description
         # as encoded bytes in py2k
 
@@ -724,7 +726,7 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         )
         self.metadata.create_all(testing.db)
 
-        result = testing.db.execute(t.select())
+        result = connection.execute(t.select())
         assert u("méil") in result.keys()
         assert ue("\u6e2c\u8a66") in result.keys()
 
