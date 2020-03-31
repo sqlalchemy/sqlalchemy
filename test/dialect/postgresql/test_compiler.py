@@ -87,8 +87,9 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column(cname[:57], Integer, primary_key=True),
             )
             t.create(engine)
-            r = engine.execute(t.insert())
-            assert r.inserted_primary_key == [1]
+            with engine.begin() as conn:
+                r = conn.execute(t.insert())
+                assert r.inserted_primary_key == [1]
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

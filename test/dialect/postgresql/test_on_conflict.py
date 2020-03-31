@@ -113,20 +113,17 @@ class OnConflictTest(fixtures.TablesTest):
                 [(1, "name1")],
             )
 
-    def test_on_conflict_do_nothing_connectionless(self):
+    def test_on_conflict_do_nothing_connectionless(self, connection):
         users = self.tables.users_xtra
 
-        with testing.db.connect() as conn:
-            result = conn.execute(
-                insert(users).on_conflict_do_nothing(
-                    constraint="uq_login_email"
-                ),
-                dict(name="name1", login_email="email1"),
-            )
-            eq_(result.inserted_primary_key, [1])
-            eq_(result.returned_defaults, (1,))
+        result = connection.execute(
+            insert(users).on_conflict_do_nothing(constraint="uq_login_email"),
+            dict(name="name1", login_email="email1"),
+        )
+        eq_(result.inserted_primary_key, [1])
+        eq_(result.returned_defaults, (1,))
 
-        result = testing.db.execute(
+        result = connection.execute(
             insert(users).on_conflict_do_nothing(constraint="uq_login_email"),
             dict(name="name2", login_email="email1"),
         )
@@ -134,7 +131,7 @@ class OnConflictTest(fixtures.TablesTest):
         eq_(result.returned_defaults, None)
 
         eq_(
-            testing.db.execute(
+            connection.execute(
                 users.select().where(users.c.id == 1)
             ).fetchall(),
             [(1, "name1", "email1", None)],

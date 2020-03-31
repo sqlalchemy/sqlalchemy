@@ -677,7 +677,7 @@ $$ LANGUAGE plpgsql;
             "commit prepared 'gilberte'",
         )
 
-    def test_extract(self):
+    def test_extract(self, connection):
         fivedaysago = testing.db.scalar(
             select([func.now()])
         ) - datetime.timedelta(days=5)
@@ -686,7 +686,7 @@ $$ LANGUAGE plpgsql;
             ("month", fivedaysago.month),
             ("day", fivedaysago.day),
         ):
-            r = testing.db.execute(
+            r = connection.execute(
                 select(
                     [extract(field, func.now() + datetime.timedelta(days=-5))]
                 )
@@ -694,13 +694,13 @@ $$ LANGUAGE plpgsql;
             eq_(r, exp)
 
     @testing.provide_metadata
-    def test_checksfor_sequence(self):
+    def test_checksfor_sequence(self, connection):
         meta1 = self.metadata
         seq = Sequence("fooseq")
         t = Table("mytable", meta1, Column("col1", Integer, seq))
-        seq.drop()
-        testing.db.execute(text("CREATE SEQUENCE fooseq"))
-        t.create(checkfirst=True)
+        seq.drop(connection)
+        connection.execute(text("CREATE SEQUENCE fooseq"))
+        t.create(connection, checkfirst=True)
 
     @testing.provide_metadata
     def test_schema_roundtrips(self):
@@ -760,38 +760,38 @@ $$ LANGUAGE plpgsql;
                 "some_name",
             )
 
-    def test_preexecute_passivedefault(self):
+    @testing.provide_metadata
+    def test_preexecute_passivedefault(self, connection):
         """test that when we get a primary key column back from
         reflecting a table which has a default value on it, we pre-
         execute that DefaultClause upon insert."""
 
-        try:
-            meta = MetaData(testing.db)
-            testing.db.execute(
-                text(
-                    """
-             CREATE TABLE speedy_users
-             (
-                 speedy_user_id   SERIAL     PRIMARY KEY,
-
-                 user_name        VARCHAR    NOT NULL,
-                 user_password    VARCHAR    NOT NULL
-             );
-            """
-                )
+        meta = self.metadata
+        connection.execute(
+            text(
+                """
+                 CREATE TABLE speedy_users
+                 (
+                     speedy_user_id   SERIAL     PRIMARY KEY,
+                     user_name        VARCHAR    NOT NULL,
+                     user_password    VARCHAR    NOT NULL
+                 );
+                """
             )
-            t = Table("speedy_users", meta, autoload=True)
-            r = t.insert().execute(user_name="user", user_password="lala")
-            assert r.inserted_primary_key == [1]
-            result = t.select().execute().fetchall()
-            assert result == [(1, "user", "lala")]
-        finally:
-            testing.db.execute(text("drop table speedy_users"))
+        )
+        t = Table("speedy_users", meta, autoload_with=connection)
+        r = connection.execute(
+            t.insert(), user_name="user", user_password="lala"
+        )
+        assert r.inserted_primary_key == [1]
+        result = connection.execute(t.select()).fetchall()
+        assert result == [(1, "user", "lala")]
+        connection.execute(text("DROP TABLE speedy_users"))
 
     @testing.requires.psycopg2_or_pg8000_compatibility
-    def test_numeric_raise(self):
+    def test_numeric_raise(self, connection):
         stmt = text("select cast('hi' as char) as hi").columns(hi=Numeric)
-        assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
+        assert_raises(exc.InvalidRequestError, connection.execute, stmt)
 
     @testing.only_if(
         "postgresql >= 8.2", "requires standard_conforming_strings"
