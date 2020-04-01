@@ -55,11 +55,13 @@ from sqlalchemy.sql.functions import ReturnTypeFromArgs
 from sqlalchemy.sql.selectable import _OffsetLimitParam
 from sqlalchemy.sql.selectable import AliasedReturnsRows
 from sqlalchemy.sql.selectable import FromGrouping
+from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.selectable import Selectable
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
@@ -372,6 +374,15 @@ class CoreFixtures(object):
             table_b.insert()
             .values([{"a": 5, "b": 10}, {"a": 8, "b": 12}])
             ._annotate({"nocache": True}),
+            table_b.insert()
+            .values([{"a": 9, "b": 10}, {"a": 8, "b": 7}])
+            ._annotate({"nocache": True}),
+            table_b.insert()
+            .values([(5, 10), (8, 12)])
+            ._annotate({"nocache": True}),
+            table_b.insert()
+            .values([(5, 9), (5, 12)])
+            ._annotate({"nocache": True}),
         ),
         lambda: (
             table_b.update(),
@@ -403,6 +414,51 @@ class CoreFixtures(object):
             table_b.delete().with_dialect_options(sqlite_foo="some value"),
             table_b.delete().where(table_b.c.a == 5),
             table_b.delete().where(table_b.c.b == 5),
+        ),
+        lambda: (
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myothervalues",
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myint", Integer),
+                name="myvalues",
+            )
+            .data([(1, "textA", 89), (2, "textG", 88)])
+            ._annotate({"nocache": True}),
+            values(
+                column("mykey", Integer),
+                column("mynottext", String),
+                column("myint", Integer),
+                name="myvalues",
+            )
+            .data([(1, "textA", 99), (2, "textB", 88)])
+            ._annotate({"nocache": True}),
+            # TODO: difference in type
+            # values(
+            #    [
+            #        column("mykey", Integer),
+            #        column("mytext", Text),
+            #        column("myint", Integer),
+            #    ],
+            #    (1, "textA", 99),
+            #    (2, "textB", 88),
+            #    alias_name="myvalues",
+            # ),
         ),
         lambda: (
             select([table_a.c.a]),
@@ -482,43 +538,6 @@ class CoreFixtures(object):
             table("a", column("q"), column("y", Integer)),
         ),
         lambda: (table_a, table_b),
-        lambda: (
-            values(
-                column("mykey", Integer),
-                column("mytext", String),
-                column("myint", Integer),
-                name="myvalues",
-            ).data([(1, "textA", 99), (2, "textB", 88)]),
-            values(
-                column("mykey", Integer),
-                column("mytext", String),
-                column("myint", Integer),
-                name="myothervalues",
-            ).data([(1, "textA", 99), (2, "textB", 88)]),
-            values(
-                column("mykey", Integer),
-                column("mytext", String),
-                column("myint", Integer),
-                name="myvalues",
-            ).data([(1, "textA", 89), (2, "textG", 88)]),
-            values(
-                column("mykey", Integer),
-                column("mynottext", String),
-                column("myint", Integer),
-                name="myvalues",
-            ).data([(1, "textA", 99), (2, "textB", 88)]),
-            # TODO: difference in type
-            # values(
-            #    [
-            #        column("mykey", Integer),
-            #        column("mytext", Text),
-            #        column("myint", Integer),
-            #    ],
-            #    (1, "textA", 99),
-            #    (2, "textB", 88),
-            #    alias_name="myvalues",
-            # ),
-        ),
     ]
 
     dont_compare_values_fixtures = [
@@ -697,9 +716,35 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
             index_elements=[table_a.c.a], set_={"name": "foo"}
         ),
         mysql.insert(table_a).on_duplicate_key_update(updated_once=None),
+        table_a.insert().values(  # multivalues doesn't cache
+            [
+                {"name": "some name"},
+                {"name": "some other name"},
+                {"name": "yet another name"},
+            ]
+        ),
     )
     def test_dml_not_cached_yet(self, dml_stmt):
         eq_(dml_stmt._generate_cache_key(), None)
+
+    def test_values_doesnt_caches_right_now(self):
+        v1 = values(
+            column("mykey", Integer),
+            column("mytext", String),
+            column("myint", Integer),
+            name="myvalues",
+        ).data([(1, "textA", 99), (2, "textB", 88)])
+
+        is_(v1._generate_cache_key(), None)
+
+        large_v1 = values(
+            column("mykey", Integer),
+            column("mytext", String),
+            column("myint", Integer),
+            name="myvalues",
+        ).data([(i, "data %s" % i, i * 5) for i in range(500)])
+
+        is_(large_v1._generate_cache_key(), None)
 
     def test_cache_key(self):
         for fixtures_, compare_values in [
@@ -912,50 +957,38 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
                 case_a = fixture()
                 case_b = fixture()
 
-                assert case_a[0].compare(
-                    case_b[0], compare_values=compare_values
-                )
-
-                clone = visitors.replacement_traverse(
-                    case_a[0], {}, lambda elem: None
-                )
-
-                assert clone.compare(case_b[0], compare_values=compare_values)
-
-                stack = [clone]
-                seen = {clone}
-                found_elements = False
-                while stack:
-                    obj = stack.pop(0)
-
-                    items = [
-                        subelem
-                        for key, elem in clone.__dict__.items()
-                        if key != "_is_clone_of" and elem is not None
-                        for subelem in util.to_list(elem)
-                        if (
-                            isinstance(subelem, (ColumnElement, ClauseList))
-                            and subelem not in seen
-                            and not isinstance(subelem, Immutable)
-                            and subelem is not case_a[0]
-                        )
-                    ]
-                    stack.extend(items)
-                    seen.update(items)
-
-                    if obj is not clone:
-                        found_elements = True
-                        # ensure the element will not compare as true
-                        obj.compare = lambda other, **kw: False
-                        obj.__visit_name__ = "dont_match"
-
-                if found_elements:
-                    assert not clone.compare(
-                        case_b[0], compare_values=compare_values
+                for idx in range(len(case_a)):
+                    assert case_a[idx].compare(
+                        case_b[idx], compare_values=compare_values
                     )
-                assert case_a[0].compare(
-                    case_b[0], compare_values=compare_values
-                )
+
+                    clone = visitors.replacement_traverse(
+                        case_a[idx], {}, lambda elem: None
+                    )
+
+                    assert clone.compare(
+                        case_b[idx], compare_values=compare_values
+                    )
+
+                    assert case_a[idx].compare(
+                        case_b[idx], compare_values=compare_values
+                    )
+
+                    # copy internals of Select is very different than other
+                    # elements and additionally this is extremely well tested
+                    # in test_selectable and test_external_traversal, so
+                    # skip these
+                    if isinstance(case_a[idx], Select):
+                        continue
+
+                    for elema, elemb in zip(
+                        visitors.iterate(case_a[idx], {}),
+                        visitors.iterate(clone, {}),
+                    ):
+                        if isinstance(elema, ClauseElement) and not isinstance(
+                            elema, Immutable
+                        ):
+                            assert elema is not elemb
 
 
 class CompareClausesTest(fixtures.TestBase):

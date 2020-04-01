@@ -47,7 +47,6 @@ from .elements import ColumnClause
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
-from .elements import Tuple
 from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
@@ -1264,14 +1263,16 @@ class AliasedReturnsRows(NoInit, FromClause):
         self.element._generate_fromclause_column_proxies(self)
 
     def _copy_internals(self, clone=_clone, **kw):
-        element = clone(self.element, **kw)
+        existing_element = self.element
+
+        super(AliasedReturnsRows, self)._copy_internals(clone=clone, **kw)
 
         # the element clone is usually against a Table that returns the
         # same object.  don't reset exported .c. collections and other
-        # memoized details if nothing changed
-        if element is not self.element:
+        # memoized details if it was not changed.  this saves a lot on
+        # performance.
+        if existing_element is not self.element:
             self._reset_column_collection()
-            self.element = element
 
     @property
     def _from_objects(self):
@@ -1527,15 +1528,6 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
         if _suffixes:
             self._suffixes = _suffixes
         super(CTE, self)._init(selectable, name=name)
-
-    def _copy_internals(self, clone=_clone, **kw):
-        super(CTE, self)._copy_internals(clone, **kw)
-        # TODO: I don't like that we can't use the traversal data here
-        if self._cte_alias is not None:
-            self._cte_alias = clone(self._cte_alias, **kw)
-        self._restates = frozenset(
-            [clone(elem, **kw) for elem in self._restates]
-        )
 
     def alias(self, name=None, flat=False):
         """Return an :class:`.Alias` of this :class:`.CTE`.
@@ -2064,7 +2056,7 @@ class Values(Generative, FromClause):
 
     _traverse_internals = [
         ("_column_args", InternalTraversal.dp_clauseelement_list,),
-        ("_data", InternalTraversal.dp_clauseelement_list),
+        ("_data", InternalTraversal.dp_dml_multi_values),
         ("name", InternalTraversal.dp_string),
         ("literal_binds", InternalTraversal.dp_boolean),
     ]
@@ -2155,7 +2147,7 @@ class Values(Generative, FromClause):
 
         """
 
-        self._data += tuple(Tuple(*row).self_group() for row in values)
+        self._data += (values,)
 
     def _populate_column_collection(self):
         for c in self._column_args:

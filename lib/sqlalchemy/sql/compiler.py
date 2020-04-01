@@ -2324,9 +2324,14 @@ class SQLCompiler(Compiled):
         return text
 
     def visit_values(self, element, asfrom=False, from_linter=None, **kw):
+
         v = "VALUES %s" % ", ".join(
-            self.process(elem, literal_binds=element.literal_binds)
-            for elem in element._data
+            self.process(
+                elements.Tuple(*elem).self_group(),
+                literal_binds=element.literal_binds,
+            )
+            for chunk in element._data
+            for elem in chunk
         )
 
         if isinstance(element.name, elements._truncated_label):
