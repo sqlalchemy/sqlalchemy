@@ -702,3 +702,52 @@ class ComputedColumnTest(fixtures.TablesTest):
                 .order_by(self.tables.square.c.id)
             ).fetchall()
             eq_(res, [(100, 40), (1764, 168)])
+
+
+class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
+    __backend__ = True
+    __requires__ = ("supports_is_distinct_from",)
+
+    @testing.provide_metadata
+    @testing.combinations(
+        ("both_int_different", 0, 1, 1),
+        ("both_int_same", 1, 1, 0),
+        ("one_null_first", None, 1, 1),
+        ("one_null_second", 0, None, 1),
+        ("both_null", None, None, 0),
+        id_="iaaa",
+        argnames="col_a_value, col_b_value, expected_row_count_for_is",
+    )
+    def test_is_or_isnot_distinct_from(
+        self, col_a_value, col_b_value, expected_row_count_for_is, connection
+    ):
+        meta = self.metadata
+        tbl = Table(
+            "is_distinct_test",
+            meta,
+            Column("id", Integer, primary_key=True),
+            Column("col_a", Integer, nullable=True),
+            Column("col_b", Integer, nullable=True),
+        )
+        tbl.create(connection)
+        connection.execute(
+            tbl.insert(),
+            [{"id": 1, "col_a": col_a_value, "col_b": col_b_value}],
+        )
+
+        result = connection.execute(
+            tbl.select(tbl.c.col_a.is_distinct_from(tbl.c.col_b))
+        ).fetchall()
+        eq_(
+            len(result), expected_row_count_for_is,
+        )
+
+        expected_row_count_for_isnot = (
+            1 if expected_row_count_for_is == 0 else 0
+        )
+        result = connection.execute(
+            tbl.select(tbl.c.col_a.isnot_distinct_from(tbl.c.col_b))
+        ).fetchall()
+        eq_(
+            len(result), expected_row_count_for_isnot,
+        )

@@ -129,6 +129,8 @@ class DefaultDialect(interfaces.Dialect):
     supports_empty_insert = True
     supports_multivalues_insert = False
 
+    supports_is_distinct_from = True
+
     supports_server_side_cursors = False
 
     server_version_info = None
