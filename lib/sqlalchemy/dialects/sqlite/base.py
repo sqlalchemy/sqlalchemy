@@ -1450,9 +1450,6 @@ class SQLiteDialect(default.DefaultDialect):
     colspecs = colspecs
     isolation_level = None
 
-    supports_cast = True
-    supports_default_values = True
-
     construct_arguments = [
         (sa_schema.Table, {"autoincrement": False}),
         (sa_schema.Index, {"where": None}),
