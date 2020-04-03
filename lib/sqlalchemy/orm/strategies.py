@@ -2218,7 +2218,9 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if not orm_util._entity_isa(path[-1], self.parent):
             return
 
-        if loading.PostLoad.path_exists(context, selectin_path, self.key):
+        if loading.PostLoad.path_exists(
+            context, selectin_path, self.parent_property
+        ):
             return
 
         path_w_prop = path[self.parent_property]
@@ -2246,7 +2248,7 @@ class SelectInLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             context,
             selectin_path,
             self.parent,
-            self.key,
+            self.parent_property,
             self._load_for_path,
             effective_entity,
         )
