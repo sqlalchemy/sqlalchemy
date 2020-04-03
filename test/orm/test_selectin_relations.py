@@ -28,6 +28,8 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertsql import AllOf
+from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -3311,4 +3313,111 @@ class M2OWDegradeTest(
                 A(id=4, b=None),
                 A(id=5, b=b1),
             ],
+        )
+
+
+class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class GenericParent(Base):
+            __tablename__ = "generic_parent"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50), nullable=False)
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "generic_parent",
+            }
+
+        class ParentA(GenericParent):
+            __tablename__ = "parent_a"
+
+            id = Column(
+                Integer, ForeignKey("generic_parent.id"), primary_key=True
+            )
+            children = relationship("ChildA", back_populates="parent")
+
+            __mapper_args__ = {"polymorphic_identity": "parent_a"}
+
+        class ParentB(GenericParent):
+            __tablename__ = "parent_b"
+
+            id = Column(
+                Integer, ForeignKey("generic_parent.id"), primary_key=True
+            )
+            children = relationship("ChildB", back_populates="parent")
+
+            __mapper_args__ = {"polymorphic_identity": "parent_b"}
+
+        class ChildA(Base):
+            __tablename__ = "child_a"
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(
+                Integer, ForeignKey("parent_a.id"), nullable=False
+            )
+            parent = relationship("ParentA", back_populates="children")
+
+        class ChildB(Base):
+            __tablename__ = "child_b"
+
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(
+                Integer, ForeignKey("parent_b.id"), nullable=False
+            )
+            parent = relationship("ParentB", back_populates="children")
+
+    @classmethod
+    def insert_data(cls):
+        ParentA, ParentB, ChildA, ChildB = cls.classes(
+            "ParentA", "ParentB", "ChildA", "ChildB"
+        )
+        session = Session()
+        parent_a = ParentA(id=1)
+        parent_b = ParentB(id=2)
+        for i in range(10):
+            parent_a.children.append(ChildA())
+            parent_b.children.append(ChildB())
+        session.add_all([parent_a, parent_b])
+
+        session.commit()
+
+    def test_load_both_wpoly(self):
+        GenericParent, ParentA, ParentB, ChildA, ChildB = self.classes(
+            "GenericParent", "ParentA", "ParentB", "ChildA", "ChildB"
+        )
+        session = Session()
+
+        parent_types = with_polymorphic(GenericParent, [ParentA, ParentB])
+
+        with assert_engine(testing.db) as asserter_:
+            session.query(parent_types).options(
+                selectinload(parent_types.ParentA.children),
+                selectinload(parent_types.ParentB.children),
+            ).all()
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT generic_parent.id AS generic_parent_id, "
+                "generic_parent.type AS generic_parent_type, "
+                "parent_a.id AS parent_a_id, parent_b.id AS parent_b_id "
+                "FROM generic_parent LEFT OUTER JOIN parent_a "
+                "ON generic_parent.id = parent_a.id LEFT OUTER JOIN parent_b "
+                "ON generic_parent.id = parent_b.id"
+            ),
+            AllOf(
+                CompiledSQL(
+                    "SELECT child_a.parent_id AS child_a_parent_id, "
+                    "child_a.id AS child_a_id FROM child_a "
+                    "WHERE child_a.parent_id IN ([POSTCOMPILE_primary_keys])",
+                    [{"primary_keys": [1]}],
+                ),
+                CompiledSQL(
+                    "SELECT child_b.parent_id AS child_b_parent_id, "
+                    "child_b.id AS child_b_id FROM child_b "
+                    "WHERE child_b.parent_id IN ([POSTCOMPILE_primary_keys])",
+                    [{"primary_keys": [2]}],
+                ),
+            ),
         )
