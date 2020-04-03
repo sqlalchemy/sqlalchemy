@@ -1,0 +1,51 @@
+name: Run tests on a pr
+
+on:
+  # run on pull request to master excluding changes that are only on doc or example folders
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - "doc/**"
+      - "examples/**"
+
+env:
+  # global env to all steps
+  TOX_WORKERS: -n2
+
+jobs:
+  run-test:
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # run this job using this matrix, excluding some combinations below.
+      matrix:
+        os:
+          - "ubuntu-latest"
+        python-version:
+          - "3.8"
+        build-type:
+          - "nocext"
+        architecture:
+          - x64
+      # abort all jobs as soon as one fails
+      fail-fast: true
+
+    # steps to run in each job. Some are github actions, others run shell commands
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tox
+
+      - name: Run tests
+        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
