@@ -1,13 +1,10 @@
-name: Run tests
+name: Run tests on a pr
 
 on:
-  # run on push in master or rel_* branches excluding changes are only on doc or example folders
-  push:
+  # run on pull request to master excluding changes that are only on doc or example folders
+  pull_request:
     branches:
       - master
-      - "rel_*"
-      # branches used to test the workflow
-      - "workflow_test_*"
     paths-ignore:
       - "doc/**"
       - "examples/**"
@@ -25,40 +22,12 @@ jobs:
       matrix:
         os:
           - "ubuntu-latest"
-          - "windows-latest"
-          - "macos-latest"
         python-version:
-          - "2.7"
-          - "3.5"
-          - "3.6"
-          - "3.7"
           - "3.8"
         build-type:
-          - "cext"
           - "nocext"
         architecture:
           - x64
-          - x86
-
-        include:
-          # the mock reconnect test seems to fail on the ci in windows
-          - os: "windows-latest"
-            pytest-args: "-k 'not MockReconnectTest'"
-
-        exclude:
-          # c-extensions fail to build on windows for python 3.5 and 2.7
-          - os: "windows-latest"
-            python-version: "2.7"
-            build-type: "cext"
-          - os: "windows-latest"
-            python-version: "3.5"
-            build-type: "cext"
-          # linux and osx do not have x86 python
-          - os: "ubuntu-latest"
-            architecture: x86
-          - os: "macos-latest"
-            architecture: x86
-
       # abort all jobs as soon as one fails
       fail-fast: true
 
