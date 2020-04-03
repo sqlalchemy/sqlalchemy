@@ -842,6 +842,17 @@ class O2OSingleParentNoFlushTest(fixtures.MappedTest):
         sess.add(u1)
         sess.commit()
 
+        # in this case, u1.address has active history set, because
+        # this operation necessarily replaces the old object which must be
+        # loaded.
+        # the set operation requires that "u1" is unexpired, because the
+        # replace operation wants to load the
+        # previous value.  The original test case for #2921 only included
+        # that the lazyload operation passed a no autoflush flag through
+        # to the operation, however in #5226 this has been enhanced to pass
+        # the no autoflush flag down through to the unexpire of the attributes
+        # as well, so that attribute unexpire can otherwise invoke autoflush.
+        assert "id" not in u1.__dict__
         a2 = Address(email_address="asdf")
         sess.add(a2)
         u1.address = a2

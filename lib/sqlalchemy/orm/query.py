@@ -3323,7 +3323,7 @@ class Query(Generative):
     def __iter__(self):
         context = self._compile_context()
         context.statement.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
-        if self._autoflush and not self._populate_existing:
+        if self._autoflush:
             self.session._autoflush()
         return self._execute_and_instances(context)
 

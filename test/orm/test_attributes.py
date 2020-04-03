@@ -442,7 +442,7 @@ class AttributesTest(fixtures.ORMTest):
 
         data = {"a": "this is a", "b": 12}
 
-        def loader(state, keys):
+        def loader(state, keys, passive):
             for k in keys:
                 state.dict[k] = data[k]
             return attributes.ATTR_WAS_SET
@@ -488,7 +488,7 @@ class AttributesTest(fixtures.ORMTest):
     def test_deferred_pickleable(self):
         data = {"a": "this is a", "b": 12}
 
-        def loader(state, keys):
+        def loader(state, keys, passive):
             for k in keys:
                 state.dict[k] = data[k]
             return attributes.ATTR_WAS_SET
@@ -2242,7 +2242,7 @@ class HistoryTest(fixtures.TestBase):
         state.dict.pop("someattr", None)
         state.expired_attributes.add("someattr")
 
-        def scalar_loader(state, toload):
+        def scalar_loader(state, toload, passive):
             state.dict["someattr"] = "one"
 
         state.manager.expired_attribute_loader = scalar_loader

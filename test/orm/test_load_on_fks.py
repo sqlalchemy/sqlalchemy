@@ -176,6 +176,9 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         assert c3 in p1.children
 
     def test_autoflush_on_pending(self):
+        # ensure p1.id is not expired
+        p1.id
+
         c3 = Child()
         sess.add(c3)
         c3.parent_id = p1.id
@@ -184,6 +187,9 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         assert c3.parent is None
 
     def test_autoflush_load_on_pending_on_pending(self):
+        # ensure p1.id is not expired
+        p1.id
+
         Child.parent.property.load_on_pending = True
         c3 = Child()
         sess.add(c3)
@@ -305,6 +311,10 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
                 for manualflush in (False, True):
                     Child.parent.property.load_on_pending = loadonpending
                     sess.autoflush = autoflush
+
+                    # ensure p2.id not expired
+                    p2.id
+
                     c2 = Child()
                     sess.add(c2)
                     c2.parent_id = p2.id

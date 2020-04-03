@@ -194,7 +194,12 @@ def get_from_identity(session, mapper, key, passive):
 
 
 def load_on_ident(
-    query, key, refresh_state=None, with_for_update=None, only_load_props=None
+    query,
+    key,
+    refresh_state=None,
+    with_for_update=None,
+    only_load_props=None,
+    no_autoflush=False,
 ):
     """Load the given identity key from the database."""
     if key is not None:
@@ -202,6 +207,9 @@ def load_on_ident(
         identity_token = key[2]
     else:
         ident = identity_token = None
+
+    if no_autoflush:
+        query = query.autoflush(False)
 
     return load_on_pk_identity(
         query,
@@ -992,7 +1000,7 @@ class PostLoad(object):
         pl.loaders[token] = (token, limit_to_mapper, loader_callable, arg, kw)
 
 
-def load_scalar_attributes(mapper, state, attribute_names):
+def load_scalar_attributes(mapper, state, attribute_names, passive):
     """initiate a column-based attribute refresh operation."""
 
     # assert mapper is _state_mapper(state)
@@ -1006,6 +1014,8 @@ def load_scalar_attributes(mapper, state, attribute_names):
     has_key = bool(state.key)
 
     result = False
+
+    no_autoflush = passive & attributes.NO_AUTOFLUSH
 
     # in the case of inheritance, particularly concrete and abstract
     # concrete inheritance, the class manager might have some keys
@@ -1031,6 +1041,7 @@ def load_scalar_attributes(mapper, state, attribute_names):
                 None,
                 only_load_props=attribute_names,
                 refresh_state=state,
+                no_autoflush=no_autoflush,
             )
 
     if result is False:
@@ -1068,6 +1079,7 @@ def load_scalar_attributes(mapper, state, attribute_names):
             identity_key,
             refresh_state=state,
             only_load_props=attribute_names,
+            no_autoflush=no_autoflush,
         )
 
     # if instance is pending, a refresh operation

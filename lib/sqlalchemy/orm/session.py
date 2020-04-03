@@ -1663,9 +1663,7 @@ class Session(_SessionClassMethods):
                 )
                 util.raise_(e, with_traceback=sys.exc_info()[2])
 
-    def refresh(
-        self, instance, attribute_names=None, with_for_update=None,
-    ):
+    def refresh(self, instance, attribute_names=None, with_for_update=None):
         """Expire and refresh the attributes on the given instance.
 
         A query will be issued to the database and all attributes will be
@@ -1834,7 +1832,7 @@ class Session(_SessionClassMethods):
             for o, m, st_, dct_ in cascaded:
                 self._conditional_expire(st_)
 
-    def _conditional_expire(self, state):
+    def _conditional_expire(self, state, autoflush=None):
         """Expire a state if persistent, else expunge if pending"""
 
         if state.key:

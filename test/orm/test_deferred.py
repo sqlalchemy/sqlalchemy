@@ -1,6 +1,8 @@
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
@@ -2023,3 +2025,46 @@ class RaiseLoadTest(fixtures.DeclarativeMappedTest):
         eq_(a1.id, 1)
 
         assert "x" in a1.__dict__
+
+
+class AutoflushTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+        A.b_count = deferred(
+            select([func.count(1)]).where(A.id == B.a_id).scalar_subquery()
+        )
+
+    def test_deferred_autoflushes(self):
+        A, B = self.classes("A", "B")
+
+        s = Session()
+
+        a1 = A(id=1, bs=[B()])
+        s.add(a1)
+        s.commit()
+
+        eq_(a1.b_count, 1)
+        s.close()
+
+        a1 = s.query(A).first()
+        assert "b_count" not in a1.__dict__
+
+        b1 = B(a_id=1)
+        s.add(b1)
+
+        eq_(a1.b_count, 2)
+
+        assert b1 in s

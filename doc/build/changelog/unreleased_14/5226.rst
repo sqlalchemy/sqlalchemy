@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5226
+
+    The refresh of an expired object will now trigger an autoflush if the list
+    of expired attributes include one or more attributes that were explicitly
+    expired or refreshed using the :meth:`.Session.expire` or
+    :meth:`.Session.refresh` methods.   This is an attempt to find a middle
+    ground between the normal unexpiry of attributes that can happen in many
+    cases where autoflush is not desirable, vs. the case where attributes are
+    being explicitly expired or refreshed and it is possible that these
+    attributes depend upon other pending state within the session that needs to
+    be flushed.   The two methods now also gain a new flag
+    :paramref:`.Session.expire.autoflush` and
+    :paramref:`.Session.refresh.autoflush`, defaulting to True; when set to
+    False, this will disable the autoflush that occurs on unexpire for these
+    attributes.

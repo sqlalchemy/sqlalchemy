@@ -139,11 +139,11 @@ class NullVersionIdTest(fixtures.MappedTest):
         # you should get a FlushError on update.
 
         f1.value = "f1rev2"
-        f1.version_id = None
 
         with conditional_sane_rowcount_warnings(
             update=True, only_returning=True
         ):
+            f1.version_id = None
             assert_raises_message(
                 sa.orm.exc.FlushError,
                 "Instance does not contain a non-NULL version value",
@@ -1973,10 +1973,9 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
 
         s1.expire_all()
 
-        f1.value = "f2"
-        f1.version_id = 2
-
         with conditional_sane_rowcount_warnings(
             update=True, only_returning=True
         ):
+            f1.value = "f2"
+            f1.version_id = 2
             s1.flush()

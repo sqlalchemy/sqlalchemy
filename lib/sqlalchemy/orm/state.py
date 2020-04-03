@@ -570,7 +570,6 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     def _expire(self, dict_, modified_set):
         self.expired = True
-
         if self.modified:
             modified_set.discard(self)
             self.committed_state.clear()
@@ -665,7 +664,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
             if not self.manager[attr].impl.load_on_unexpire
         )
 
-        self.manager.expired_attribute_loader(self, toload)
+        self.manager.expired_attribute_loader(self, toload, passive)
 
         # if the loader failed, or this
         # instance state didn't have an identity,
