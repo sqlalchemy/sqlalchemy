@@ -1,15 +1,15 @@
 # /home/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -409,24 +409,10 @@ test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_build_query 3.7_sqlite_pysq
 
 # TEST: test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results
 
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mssql_pyodbc_dbapiunicode_cextensions 466544
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mssql_pyodbc_dbapiunicode_nocextensions 479246
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mysql_mysqldb_dbapiunicode_cextensions 448590
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_mysql_mysqldb_dbapiunicode_nocextensions 461390
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_oracle_cx_oracle_dbapiunicode_cextensions 553130
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_oracle_cx_oracle_dbapiunicode_nocextensions 565832
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_postgresql_psycopg2_dbapiunicode_cextensions 459650
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_postgresql_psycopg2_dbapiunicode_nocextensions 472450
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_cextensions 442162,441798
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 454962,454598
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_mysql_mysqldb_dbapiunicode_cextensions 453303
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_mysql_mysqldb_dbapiunicode_nocextensions 466303
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_oracle_cx_oracle_dbapiunicode_cextensions 557941
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_oracle_cx_oracle_dbapiunicode_nocextensions 570941
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_postgresql_psycopg2_dbapiunicode_cextensions 481159
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_postgresql_psycopg2_dbapiunicode_nocextensions 494159
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_sqlite_pysqlite_dbapiunicode_cextensions 448275,447911
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_sqlite_pysqlite_dbapiunicode_nocextensions 461275,460911
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_cextensions 352152
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 354552
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_sqlite_pysqlite_dbapiunicode_cextensions 355955
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results 3.7_sqlite_pysqlite_dbapiunicode_nocextensions 360455
 
 # TEST: test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity
 
