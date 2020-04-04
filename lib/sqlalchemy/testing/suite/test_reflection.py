@@ -1166,7 +1166,8 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
                 data, "computed_stored", "normal-42", True,
             )
 
-    def test_get_column_returns_persisted_with_schama(self):
+    @testing.requires.schemas
+    def test_get_column_returns_persisted_with_schema(self):
         insp = inspect(config.db)
 
         cols = insp.get_columns(
