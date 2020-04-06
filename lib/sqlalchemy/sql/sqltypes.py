@@ -1541,6 +1541,7 @@ class Enum(Emulated, String, SchemaType):
         kw.setdefault("native_enum", self.native_enum)
         kw.setdefault("values_callable", self.values_callable)
         kw.setdefault("create_constraint", self.create_constraint)
+        kw.setdefault("length", self.length)
         assert "_enums" in kw
         return impltype(**kw)
 

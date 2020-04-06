@@ -1803,6 +1803,18 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(e1_vc.adapt(ENUM).name, "someotherenum")
         eq_(e1_vc.adapt(ENUM).enums, ["1", "2", "3", "a", "b"])
 
+    def test_adapt_length(self):
+        from sqlalchemy.dialects.postgresql import ENUM
+
+        e1 = Enum("one", "two", "three", length=50, native_enum=False)
+        eq_(e1.adapt(ENUM).length, 50)
+        eq_(e1.adapt(Enum).length, 50)
+
+        e1 = Enum("one", "two", "three")
+        eq_(e1.length, 5)
+        eq_(e1.adapt(ENUM).length, 5)
+        eq_(e1.adapt(Enum).length, 5)
+
     @testing.provide_metadata
     def test_create_metadata_bound_no_crash(self):
         m1 = self.metadata
