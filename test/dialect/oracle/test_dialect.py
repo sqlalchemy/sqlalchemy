@@ -346,8 +346,8 @@ end;
                 """
             )
 
-    def test_out_params(self):
-        result = testing.db.execute(
+    def test_out_params(self, connection):
+        result = connection.execute(
             text(
                 "begin foo(:x_in, :x_out, :y_out, " ":z_out); end;"
             ).bindparams(
@@ -363,7 +363,8 @@ end;
 
     @classmethod
     def teardown_class(cls):
-        testing.db.execute(text("DROP PROCEDURE foo"))
+        with testing.db.connect() as conn:
+            conn.execute(text("DROP PROCEDURE foo"))
 
 
 class QuotedBindRoundTripTest(fixtures.TestBase):
@@ -372,7 +373,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.provide_metadata
-    def test_table_round_trip(self):
+    def test_table_round_trip(self, connection):
         oracle.RESERVED_WORDS.remove("UNION")
 
         metadata = self.metadata
@@ -388,14 +389,16 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        table.insert().execute({"option": 1, "plain": 1, "union": 1})
-        eq_(testing.db.execute(table.select()).first(), (1, 1, 1))
-        table.update().values(option=2, plain=2, union=2).execute()
-        eq_(testing.db.execute(table.select()).first(), (2, 2, 2))
+        connection.execute(
+            table.insert(), {"option": 1, "plain": 1, "union": 1}
+        )
+        eq_(connection.execute(table.select()).first(), (1, 1, 1))
+        connection.execute(table.update().values(option=2, plain=2, union=2))
+        eq_(connection.execute(table.select()).first(), (2, 2, 2))
 
-    def test_numeric_bind_round_trip(self):
+    def test_numeric_bind_round_trip(self, connection):
         eq_(
-            testing.db.scalar(
+            connection.scalar(
                 select(
                     [
                         literal_column("2", type_=Integer())
@@ -407,25 +410,22 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
         )
 
     @testing.provide_metadata
-    def test_numeric_bind_in_crud(self):
+    def test_numeric_bind_in_crud(self, connection):
         t = Table("asfd", self.metadata, Column("100K", Integer))
-        t.create()
+        t.create(connection)
 
-        testing.db.execute(t.insert(), {"100K": 10})
-        eq_(testing.db.scalar(t.select()), 10)
+        connection.execute(t.insert(), {"100K": 10})
+        eq_(connection.scalar(t.select()), 10)
 
     @testing.provide_metadata
-    def test_expanding_quote_roundtrip(self):
+    def test_expanding_quote_roundtrip(self, connection):
         t = Table("asfd", self.metadata, Column("foo", Integer))
-        t.create()
+        t.create(connection)
 
-        with testing.db.connect() as conn:
-            conn.execute(
-                select([t]).where(
-                    t.c.foo.in_(bindparam("uid", expanding=True))
-                ),
-                uid=[1, 2, 3],
-            )
+        connection.execute(
+            select([t]).where(t.c.foo.in_(bindparam("uid", expanding=True))),
+            uid=[1, 2, 3],
+        )
 
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -624,15 +624,15 @@ class ExecuteTest(fixtures.TestBase):
                 [(1,)],
             )
 
-    def test_sequences_are_integers(self):
+    def test_sequences_are_integers(self, connection):
         seq = Sequence("foo_seq")
-        seq.create(testing.db)
+        seq.create(connection)
         try:
-            val = testing.db.execute(seq)
+            val = connection.execute(seq)
             eq_(val, 1)
             assert type(val) is int
         finally:
-            seq.drop(testing.db)
+            seq.drop(connection)
 
     @testing.provide_metadata
     def test_limit_offset_for_update(self):
@@ -676,7 +676,7 @@ class UnicodeSchemaTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.provide_metadata
-    def test_quoted_column_non_unicode(self):
+    def test_quoted_column_non_unicode(self, connection):
         metadata = self.metadata
         table = Table(
             "atable",
@@ -685,14 +685,14 @@ class UnicodeSchemaTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        table.insert().execute({"_underscorecolumn": u("’é")})
-        result = testing.db.execute(
+        connection.execute(table.insert(), {"_underscorecolumn": u("’é")})
+        result = connection.execute(
             table.select().where(table.c._underscorecolumn == u("’é"))
         ).scalar()
         eq_(result, u("’é"))
 
     @testing.provide_metadata
-    def test_quoted_column_unicode(self):
+    def test_quoted_column_unicode(self, connection):
         metadata = self.metadata
         table = Table(
             "atable",
@@ -701,8 +701,8 @@ class UnicodeSchemaTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        table.insert().execute({u("méil"): u("’é")})
-        result = testing.db.execute(
+        connection.execute(table.insert(), {u("méil"): u("’é")})
+        result = connection.execute(
             table.select().where(table.c[u("méil")] == u("’é"))
         ).scalar()
         eq_(result, u("’é"))
