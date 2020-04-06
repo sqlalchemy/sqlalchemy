@@ -1319,7 +1319,14 @@ class Enum(Emulated, String, SchemaType):
 
         :param native_enum: Use the database's native ENUM type when
            available. Defaults to True. When False, uses VARCHAR + check
-           constraint for all backends.
+           constraint for all backends. The VARCHAR length can be controlled
+           with :paramref:`.Enum.length`
+
+        :param length: Allows specifying a custom length for the VARCHAR
+           when :paramref:`.Enum.native_enum` is False. By default it uses the
+           length of the longest value.
+
+           .. versionadded:: 1.3.16
 
         :param schema: Schema name of this type. For types that exist on the
            target database as an independent schema construct (PostgreSQL),
@@ -1391,6 +1398,7 @@ class Enum(Emulated, String, SchemaType):
         self.create_constraint = kw.pop("create_constraint", True)
         self.values_callable = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
+        length_arg = kw.pop("length", NO_ARG)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1414,6 +1422,15 @@ class Enum(Emulated, String, SchemaType):
             length = max(len(x) for x in self.enums)
         else:
             length = 0
+        if not self.native_enum and length_arg is not NO_ARG:
+            if length_arg < length:
+                raise ValueError(
+                    "When provided, length must be larger or equal"
+                    " than the length of the longest enum value. %s < %s"
+                    % (length_arg, length)
+                )
+            length = length_arg
+
         self._valid_lookup[None] = self._object_lookup[None] = None
 
         super(Enum, self).__init__(
