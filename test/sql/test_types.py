@@ -3249,7 +3249,7 @@ class LiteralTest(fixtures.TestBase):
         argnames="value",
         id_="ia",
     )
-    @testing.skip_if(lambda: testing.requires.datetime_literals)
+    @testing.skip_if(testing.requires.datetime_literals)
     def test_render_datetime(self, value):
         lit = literal(value)
 
