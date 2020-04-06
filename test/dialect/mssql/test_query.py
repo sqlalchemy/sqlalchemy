@@ -356,7 +356,8 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         metadata.create_all(engine)
 
         with self.sql_execution_asserter(engine) as asserter:
-            engine.execute(t1.insert(), {"data": "somedata"})
+            with engine.begin() as conn:
+                conn.execute(t1.insert(), {"data": "somedata"})
 
         # TODO: need a dialect SQL that acts like Cursor SQL
         asserter.assert_(
@@ -379,7 +380,8 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         metadata.create_all(engine)
 
         with self.sql_execution_asserter(engine) as asserter:
-            engine.execute(t1.insert())
+            with engine.begin() as conn:
+                conn.execute(t1.insert())
 
         # even with pyodbc, we don't embed the scope identity on a
         # DEFAULT VALUES insert
@@ -403,7 +405,8 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         metadata.create_all(engine)
 
         with self.sql_execution_asserter(engine) as asserter:
-            engine.execute(t1.insert(), {"data": "somedata"})
+            with engine.begin() as conn:
+                conn.execute(t1.insert(), {"data": "somedata"})
 
         # pyodbc-specific system
         asserter.assert_(
