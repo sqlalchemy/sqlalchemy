@@ -1,0 +1,7 @@
+.. change::
+    :tags: mssql, mysql, oracle, usecase
+    :tickets: 5137
+
+    Added support for :meth:`.ColumnOperators.is_distinct_from` and
+    :meth:`.ColumnOperators.isnot_distinct_from` to SQL Server,
+    MySQL, and Oracle.

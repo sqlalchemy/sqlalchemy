@@ -1169,6 +1169,18 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return tmp
 
+    def visit_is_distinct_from_binary(self, binary, operator, **kw):
+        return "DECODE(%s, %s, 0, 1) = 1" % (
+            self.process(binary.left),
+            self.process(binary.right),
+        )
+
+    def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
+        return "DECODE(%s, %s, 0, 1) = 0" % (
+            self.process(binary.left),
+            self.process(binary.right),
+        )
+
 
 class OracleDDLCompiler(compiler.DDLCompiler):
     def define_constraint_cascades(self, constraint):

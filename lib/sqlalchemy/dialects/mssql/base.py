@@ -1955,6 +1955,18 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_empty_set_expr(self, type_):
         return "SELECT 1 WHERE 1!=1"
 
+    def visit_is_distinct_from_binary(self, binary, operator, **kw):
+        return "NOT EXISTS (SELECT %s INTERSECT SELECT %s)" % (
+            self.process(binary.left),
+            self.process(binary.right),
+        )
+
+    def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
+        return "EXISTS (SELECT %s INTERSECT SELECT %s)" % (
+            self.process(binary.left),
+            self.process(binary.right),
+        )
+
 
 class MSSQLStrictCompiler(MSSQLCompiler):
 

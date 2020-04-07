@@ -1572,6 +1572,18 @@ class MySQLCompiler(compiler.SQLCompiler):
             }
         )
 
+    def visit_is_distinct_from_binary(self, binary, operator, **kw):
+        return "NOT (%s <=> %s)" % (
+            self.process(binary.left),
+            self.process(binary.right),
+        )
+
+    def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
+        return "%s <=> %s" % (
+            self.process(binary.left),
+            self.process(binary.right),
+        )
+
 
 class MySQLDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kw):
