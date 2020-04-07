@@ -24,6 +24,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal
@@ -112,6 +113,11 @@ class ExecuteTest(fixtures.TablesTest):
         )
 
     def test_raw_named_invalid(self, connection):
+        # this is awkward b.c. this is just testing if regular Python
+        # is raising TypeError if they happened to send arguments that
+        # look like the legacy ones which also happen to conflict with
+        # the positional signature for the method.   some combinations
+        # can get through and fail differently
         assert_raises(
             TypeError,
             connection.exec_driver_sql,
@@ -119,6 +125,7 @@ class ExecuteTest(fixtures.TablesTest):
             "values (%(id)s, %(name)s)",
             {"id": 2, "name": "ed"},
             {"id": 3, "name": "horse"},
+            {"id": 4, "name": "horse"},
         )
         assert_raises(
             TypeError,
@@ -1224,6 +1231,7 @@ class EngineEventsTest(fixtures.TestBase):
 
     def _assert_stmts(self, expected, received):
         list(received)
+
         for stmt, params, posn in expected:
             if not received:
                 assert False, "Nothing available for stmt: %s" % stmt
@@ -1245,12 +1253,20 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(e1, "before_execute", canary)
         s1 = select([1])
         s2 = select([2])
-        e1.execute(s1)
-        e2.execute(s2)
+
+        with e1.connect() as conn:
+            conn.execute(s1)
+
+        with e2.connect() as conn:
+            conn.execute(s2)
         eq_([arg[1][1] for arg in canary.mock_calls], [s1])
         event.listen(e2, "before_execute", canary)
-        e1.execute(s1)
-        e2.execute(s2)
+
+        with e1.connect() as conn:
+            conn.execute(s1)
+
+        with e2.connect() as conn:
+            conn.execute(s2)
         eq_([arg[1][1] for arg in canary.mock_calls], [s1, s1, s2])
 
     def test_per_engine_plus_global(self):
@@ -1265,11 +1281,13 @@ class EngineEventsTest(fixtures.TestBase):
         e1.connect()
         e2.connect()
 
-        e1.execute(select([1]))
+        with e1.connect() as conn:
+            conn.execute(select([1]))
         eq_(canary.be1.call_count, 1)
         eq_(canary.be2.call_count, 1)
 
-        e2.execute(select([1]))
+        with e2.connect() as conn:
+            conn.execute(select([1]))
 
         eq_(canary.be1.call_count, 2)
         eq_(canary.be2.call_count, 1)
@@ -1288,9 +1306,10 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be1.call_count, 1)
         eq_(canary.be2.call_count, 1)
 
-        conn._branch().execute(select([1]))
-        eq_(canary.be1.call_count, 2)
-        eq_(canary.be2.call_count, 2)
+        if testing.requires.legacy_engine.enabled:
+            conn._branch().execute(select([1]))
+            eq_(canary.be1.call_count, 2)
+            eq_(canary.be2.call_count, 2)
 
     def test_add_event_after_connect(self):
         # new feature as of #2978
@@ -1339,7 +1358,7 @@ class EngineEventsTest(fixtures.TestBase):
             dialect = conn.dialect
 
             ctx = dialect.execution_ctx_cls._init_statement(
-                dialect, conn, conn.connection, stmt, {}
+                dialect, conn, conn.connection, {}, stmt, {}
             )
 
             ctx._execute_scalar(stmt, Integer())
@@ -1377,11 +1396,15 @@ class EngineEventsTest(fixtures.TestBase):
         )
 
     def test_argument_format_execute(self):
-        def before_execute(conn, clauseelement, multiparams, params):
+        def before_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
             assert isinstance(multiparams, (list, tuple))
             assert isinstance(params, dict)
 
-        def after_execute(conn, clauseelement, multiparams, params, result):
+        def after_execute(
+            conn, clauseelement, multiparams, params, result, execution_options
+        ):
             assert isinstance(multiparams, (list, tuple))
             assert isinstance(params, dict)
 
@@ -1389,24 +1412,31 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(e1, "before_execute", before_execute)
         event.listen(e1, "after_execute", after_execute)
 
-        e1.execute(select([1]))
-        e1.execute(select([1]).compile(dialect=e1.dialect).statement)
-        e1.execute(select([1]).compile(dialect=e1.dialect))
-        e1._execute_compiled(select([1]).compile(dialect=e1.dialect), (), {})
+        with e1.connect() as conn:
+            conn.execute(select([1]))
+            conn.execute(select([1]).compile(dialect=e1.dialect).statement)
+            conn.execute(select([1]).compile(dialect=e1.dialect))
 
-    @testing.fails_on("firebird", "Data type unknown")
+            conn._execute_compiled(
+                select([1]).compile(dialect=e1.dialect), (), {}
+            )
+
     def test_execute_events(self):
 
         stmts = []
         cursor_stmts = []
 
-        def execute(conn, clauseelement, multiparams, params):
+        def execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
             stmts.append((str(clauseelement), params, multiparams))
 
         def cursor_execute(
             conn, cursor, statement, parameters, context, executemany
         ):
             cursor_stmts.append((str(statement), parameters, None))
+
+        # TODO: this test is kind of a mess
 
         for engine in [
             engines.testing_engine(options=dict(implicit_returning=False)),
@@ -1428,28 +1458,57 @@ class EngineEventsTest(fixtures.TestBase):
                     primary_key=True,
                 ),
             )
-            m.create_all()
-            try:
-                t1.insert().execute(c1=5, c2="some data")
-                t1.insert().execute(c1=6)
-                eq_(
-                    engine.execute(text("select * from t1")).fetchall(),
-                    [(5, "some data"), (6, "foo")],
-                )
-            finally:
-                m.drop_all()
 
-            compiled = [
-                ("CREATE TABLE t1", {}, None),
-                (
-                    "INSERT INTO t1 (c1, c2)",
-                    {"c2": "some data", "c1": 5},
-                    None,
-                ),
-                ("INSERT INTO t1 (c1, c2)", {"c1": 6}, None),
-                ("select * from t1", {}, None),
-                ("DROP TABLE t1", {}, None),
-            ]
+            if isinstance(engine, Connection) and engine._is_future:
+                ctx = None
+                conn = engine
+            elif engine._is_future:
+                ctx = conn = engine.connect()
+            else:
+                ctx = None
+                conn = engine
+
+            try:
+                m.create_all(conn, checkfirst=False)
+                try:
+                    conn.execute(t1.insert(), dict(c1=5, c2="some data"))
+                    conn.execute(t1.insert(), dict(c1=6))
+                    eq_(
+                        conn.execute(text("select * from t1")).fetchall(),
+                        [(5, "some data"), (6, "foo")],
+                    )
+                finally:
+                    m.drop_all(conn)
+                    if engine._is_future:
+                        conn.commit()
+            finally:
+                if ctx:
+                    ctx.close()
+
+            if engine._is_future:
+                compiled = [
+                    ("CREATE TABLE t1", {}, None),
+                    (
+                        "INSERT INTO t1 (c1, c2)",
+                        {"c2": "some data", "c1": 5},
+                        None,
+                    ),
+                    ("INSERT INTO t1 (c1, c2)", {"c1": 6}, None),
+                    ("select * from t1", {}, None),
+                    ("DROP TABLE t1", {}, None),
+                ]
+            else:
+                compiled = [
+                    ("CREATE TABLE t1", {}, None),
+                    (
+                        "INSERT INTO t1 (c1, c2)",
+                        {},
+                        ({"c2": "some data", "c1": 5},),
+                    ),
+                    ("INSERT INTO t1 (c1, c2)", {}, ({"c1": 6},)),
+                    ("select * from t1", {}, None),
+                    ("DROP TABLE t1", {}, None),
+                ]
 
             cursor = [
                 ("CREATE TABLE t1", {}, ()),
@@ -1512,11 +1571,13 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(eng, "before_execute", l2)
         event.listen(eng1, "before_execute", l3)
 
-        eng.execute(select([1])).close()
+        with eng.connect() as conn:
+            conn.execute(select([1]))
 
         eq_(canary, ["l1", "l2"])
 
-        eng1.execute(select([1])).close()
+        with eng1.connect() as conn:
+            conn.execute(select([1]))
 
         eq_(canary, ["l1", "l2", "l3", "l1", "l2"])
 
@@ -1547,11 +1608,13 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(eng, "before_execute", l3)
         event.listen(eng1, "before_execute", l4)
 
-        eng.execute(select([1])).close()
+        with eng.connect() as conn:
+            conn.execute(select([1]))
 
         eq_(canary, ["l1", "l2", "l3"])
 
-        eng1.execute(select([1])).close()
+        with eng1.connect() as conn:
+            conn.execute(select([1]))
 
         eq_(canary, ["l1", "l2", "l3", "l4", "l1", "l2", "l3"])
 
@@ -1561,7 +1624,8 @@ class EngineEventsTest(fixtures.TestBase):
         event.remove(eng1, "before_execute", l4)
         event.remove(eng, "before_execute", l3)
 
-        eng1.execute(select([1])).close()
+        with eng1.connect() as conn:
+            conn.execute(select([1]))
         eq_(canary, ["l2"])
 
     @testing.requires.ad_hoc_engines
@@ -1609,7 +1673,9 @@ class EngineEventsTest(fixtures.TestBase):
 
             return go
 
-        def execute(conn, clauseelement, multiparams, params):
+        def execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
             canary.append("execute")
             return clauseelement, multiparams, params
 
@@ -1634,9 +1700,11 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(
             engine, "before_cursor_execute", cursor_execute, retval=True
         )
-        engine.execute(select([1]))
+        with engine.connect() as conn:
+            conn.execute(select([1]))
         eq_(canary, ["execute", "cursor_execute"])
 
+    @testing.requires.legacy_engine
     def test_engine_connect(self):
         engine = engines.testing_engine()
 
@@ -1781,7 +1849,15 @@ class EngineEventsTest(fixtures.TestBase):
                 ("begin", set(["conn"])),
                 (
                     "execute",
-                    set(["conn", "clauseelement", "multiparams", "params"]),
+                    set(
+                        [
+                            "conn",
+                            "clauseelement",
+                            "multiparams",
+                            "params",
+                            "execution_options",
+                        ]
+                    ),
                 ),
                 (
                     "cursor_execute",
@@ -1800,7 +1876,15 @@ class EngineEventsTest(fixtures.TestBase):
                 ("begin", set(["conn"])),
                 (
                     "execute",
-                    set(["conn", "clauseelement", "multiparams", "params"]),
+                    set(
+                        [
+                            "conn",
+                            "clauseelement",
+                            "multiparams",
+                            "params",
+                            "execution_options",
+                        ]
+                    ),
                 ),
                 (
                     "cursor_execute",
@@ -1906,6 +1990,10 @@ class EngineEventsTest(fixtures.TestBase):
                 "commit_twophase",
             ],
         )
+
+
+class FutureEngineEventsTest(fixtures.FutureEngineMixin, EngineEventsTest):
+    pass
 
 
 class HandleErrorTest(fixtures.TestBase):
@@ -2649,7 +2737,7 @@ class DialectEventTest(fixtures.TestBase):
             stmt = "insert into table foo"
             params = {"foo": "bar"}
             ctx = dialect.execution_ctx_cls._init_statement(
-                dialect, conn, conn.connection, stmt, [params]
+                dialect, conn, conn.connection, {}, stmt, [params],
             )
 
             conn._cursor_execute(ctx.cursor, stmt, params, ctx)
@@ -2813,3 +2901,80 @@ class AutocommitTextTest(fixtures.TestBase):
 
     def test_select(self):
         self._test_keyword("SELECT foo FROM table", False)
+
+
+class FutureExecuteTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("user_id", INT, primary_key=True, autoincrement=False),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+        Table(
+            "users_autoinc",
+            metadata,
+            Column(
+                "user_id", INT, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+
+    @testing.combinations(
+        ({}, {}, {}),
+        ({"a": "b"}, {}, {"a": "b"}),
+        ({"a": "b", "d": "e"}, {"a": "c"}, {"a": "c", "d": "e"}),
+        argnames="conn_opts, exec_opts, expected",
+    )
+    def test_execution_opts_per_invoke(
+        self, connection, conn_opts, exec_opts, expected
+    ):
+        opts = []
+
+        @event.listens_for(connection, "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            opts.append(context.execution_options)
+
+        if conn_opts:
+            connection = connection.execution_options(**conn_opts)
+
+        if exec_opts:
+            connection.execute(select([1]), execution_options=exec_opts)
+        else:
+            connection.execute(select([1]))
+
+        eq_(opts, [expected])
+
+    def test_execution_opts_invoke_illegal(self, connection):
+        assert_raises_message(
+            tsa.exc.InvalidRequestError,
+            "The 'isolation_level' execution option is not supported "
+            "at the per-statement level",
+            connection.execute,
+            select([1]),
+            execution_options={"isolation_level": "AUTOCOMMIT"},
+        )
+
+        assert_raises_message(
+            tsa.exc.InvalidRequestError,
+            "The 'schema_translate_map' execution option is not supported "
+            "at the per-statement level",
+            connection.execute,
+            select([1]),
+            execution_options={"schema_translate_map": {}},
+        )
+
+    def test_no_branching(self, connection):
+        assert_raises_message(
+            NotImplementedError,
+            "sqlalchemy.future.Connection does not support "
+            "'branching' of new connections.",
+            connection.connect,
+        )

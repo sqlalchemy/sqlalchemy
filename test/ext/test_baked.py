@@ -385,7 +385,9 @@ class ResultPostCriteriaTest(BakedTest):
         with testing.db.connect() as conn:
 
             @event.listens_for(conn, "before_execute")
-            def before_execute(conn, clauseelement, multiparams, params):
+            def before_execute(
+                conn, clauseelement, multiparams, params, execution_options
+            ):
                 assert "yes" in conn._execution_options
 
             bq = self.bakery(lambda s: s.query(User.id).order_by(User.id))

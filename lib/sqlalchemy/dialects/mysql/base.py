@@ -2379,25 +2379,25 @@ class MySQLDialect(default.DefaultDialect):
             raise
 
     def do_begin_twophase(self, connection, xid):
-        connection.execute(sql.text("XA BEGIN :xid"), xid=xid)
+        connection.execute(sql.text("XA BEGIN :xid"), dict(xid=xid))
 
     def do_prepare_twophase(self, connection, xid):
-        connection.execute(sql.text("XA END :xid"), xid=xid)
-        connection.execute(sql.text("XA PREPARE :xid"), xid=xid)
+        connection.execute(sql.text("XA END :xid"), dict(xid=xid))
+        connection.execute(sql.text("XA PREPARE :xid"), dict(xid=xid))
 
     def do_rollback_twophase(
         self, connection, xid, is_prepared=True, recover=False
     ):
         if not is_prepared:
-            connection.execute(sql.text("XA END :xid"), xid=xid)
-        connection.execute(sql.text("XA ROLLBACK :xid"), xid=xid)
+            connection.execute(sql.text("XA END :xid"), dict(xid=xid))
+        connection.execute(sql.text("XA ROLLBACK :xid"), dict(xid=xid))
 
     def do_commit_twophase(
         self, connection, xid, is_prepared=True, recover=False
     ):
         if not is_prepared:
             self.do_prepare_twophase(connection, xid)
-        connection.execute(sql.text("XA COMMIT :xid"), xid=xid)
+        connection.execute(sql.text("XA COMMIT :xid"), dict(xid=xid))
 
     def do_recover_twophase(self, connection):
         resultset = connection.exec_driver_sql("XA RECOVER")
@@ -2501,8 +2501,7 @@ class MySQLDialect(default.DefaultDialect):
                 "WHERE TABLE_NAME=:name AND "
                 "TABLE_SCHEMA=:schema_name"
             ),
-            name=sequence_name,
-            schema_name=schema,
+            dict(name=sequence_name, schema_name=schema),
         )
         return cursor.first() is not None
 
@@ -2750,7 +2749,7 @@ class MySQLDialect(default.DefaultDialect):
                     :table_data;
                 """
                 ).bindparams(sql.bindparam("table_data", expanding=True)),
-                table_data=col_tuples,
+                dict(table_data=col_tuples),
             )
 
             # in casing=0, table name and schema name come back in their

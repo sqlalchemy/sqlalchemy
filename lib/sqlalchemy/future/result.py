@@ -1,17 +1,16 @@
 import operator
 
 from .. import util
-from ..engine.result import _baserow_usecext
 from ..engine.result import BaseResult
 from ..engine.result import CursorResultMetaData
 from ..engine.result import DefaultCursorFetchStrategy
 from ..engine.result import Row
 from ..sql import util as sql_util
 from ..sql.base import _generative
-from ..sql.base import Generative
+from ..sql.base import InPlaceGenerative
 
 
-class Result(Generative, BaseResult):
+class Result(InPlaceGenerative, BaseResult):
     """Interim "future" result proxy so that dialects can build on
     upcoming 2.0 patterns.
 
@@ -50,21 +49,76 @@ class Result(Generative, BaseResult):
         self._soft_close(hard=True)
 
     def columns(self, *col_expressions):
-        indexes = []
-        for key in col_expressions:
-            try:
-                rec = self._keymap[key]
-            except KeyError:
-                rec = self._key_fallback(key, True)
-                if rec is None:
-                    return None
+        r"""Establish the columns that should be returned in each row.
 
-            index, obj = rec[0:2]
+        This method may be used to limit the columns returned as well
+        as to reorder them.   The given list of expressions are normally
+        a series of integers or string key names.   They may also be
+        appropriate :class:`.ColumnElement` objects which correspond to
+        a given statement construct.
 
-            if index is None:
-                self._metadata._raise_for_ambiguous_column_name(obj)
-            indexes.append(index)
-        return self._column_slices(indexes)
+        E.g.::
+
+            statement = select(table.c.x, table.c.y, table.c.z)
+            result = connection.execute(statement)
+
+            for z, y in result.columns('z', 'y'):
+                # ...
+
+
+        Example of using the column objects from the statement itself::
+
+            for z, y in result.columns(
+                    statement.selected_columns.c.z,
+                    statement.selected_columns.c.y
+            ):
+                # ...
+
+        :param \*col_expressions: indicates columns to be returned.  Elements
+         may be integer row indexes, string column names, or appropriate
+         :class:`.ColumnElement` objects corresponding to a select construct.
+
+        :return: this :class:`_future.Result` object with the modifications
+         given.
+
+        """
+        return self._column_slices(col_expressions)
+
+    def partitions(self, size=100):
+        """Iterate through sub-lists of rows of the size given.
+
+        Each list will be of the size given, excluding the last list to
+        be yielded, which may have a small number of rows.  No empty
+        lists will be yielded.
+
+        The result object is automatically closed when the iterator
+        is fully consumed.
+
+        Note that the backend driver will usually buffer the entire result
+        ahead of time unless the
+        :paramref:`.Connection.execution_options.stream_results` execution
+        option is used indicating that the driver should not pre-buffer
+        results, if possible.   Not all drivers support this option and
+        the option is silently ignored for those who do.   For a positive
+        assertion that the driver supports streaming results that will
+        fail if not supported, use the
+        :paramref:`.Connection.execution_options.stream_per`
+        execution option.
+
+        :param size: indicate the maximum number of rows to be present
+         in each list yielded.
+        :return: iterator of lists
+
+        """
+        getter = self._row_getter()
+        while True:
+            partition = [
+                getter(r) for r in self._safe_fetchmany_impl(size=size)
+            ]
+            if partition:
+                yield partition
+            else:
+                break
 
     def scalars(self):
         result = self._column_slices(0)
@@ -73,12 +127,7 @@ class Result(Generative, BaseResult):
 
     @_generative
     def _column_slices(self, indexes):
-        if _baserow_usecext:
-            self._column_slice_filter = self._metadata._tuplegetter(*indexes)
-        else:
-            self._column_slice_filter = self._metadata._pure_py_tuplegetter(
-                *indexes
-            )
+        self._column_slice_filter = self._metadata._tuple_getter(indexes)
 
     @_generative
     def mappings(self):
@@ -135,7 +184,7 @@ class Result(Generative, BaseResult):
 
     def _safe_fetchmany_impl(self, size=None):
         try:
-            l = self.process_rows(self.cursor_strategy.fetchmany(size))
+            l = self.cursor_strategy.fetchmany(size)
             if len(l) == 0:
                 self._soft_close()
             return l
@@ -156,11 +205,77 @@ class Result(Generative, BaseResult):
         else:
             return getter(row)
 
+    @util.deprecated(
+        "2.0",
+        "The :meth:`_future.Result.fetchall` "
+        "method is provided for backwards "
+        "compatibility and will be removed in a future release.",
+    )
+    def fetchall(self):
+        """A synonym for the :meth:`_future.Result.all` method."""
+
+        return self.all()
+
+    @util.deprecated(
+        "2.0",
+        "The :meth:`_future.Result.fetchone` "
+        "method is provided for backwards "
+        "compatibility and will be removed in a future release.",
+    )
+    def fetchone(self):
+        """Fetch one row.
+
+        this method is provided for backwards compatibility with
+        SQLAlchemy 1.x.x.
+
+        To fetch the first row of a result only, use the
+        :meth:`.future.Result.first` method.  To iterate through all
+        rows, iterate the :class:`_future.Result` object directly.
+
+        """
+        return self._onerow()
+
+    @util.deprecated(
+        "2.0",
+        "The :meth:`_future.Result.fetchmany` "
+        "method is provided for backwards "
+        "compatibility and will be removed in a future release.",
+    )
+    def fetchmany(self, size=None):
+        """Fetch many rows.
+
+        this method is provided for backwards compatibility with
+        SQLAlchemy 1.x.x.
+
+        To fetch rows in groups, use the :meth:`.future.Result.partitions`
+        method, or the :meth:`.future.Result.chunks` method in combination
+        with the :paramref:`.Connection.execution_options.stream_per`
+        option which sets up the buffer size before fetching the result.
+
+        """
+        getter = self._row_getter()
+        return [getter(r) for r in self._safe_fetchmany_impl(size=size)]
+
     def all(self):
+        """Return all rows in a list.
+
+        Closes the result set after invocation.
+
+        :return: a list of :class:`.Row` objects.
+
+        """
         getter = self._row_getter()
         return [getter(r) for r in self._safe_fetchall_impl()]
 
     def first(self):
+        """Fetch the first row or None if no row is present.
+
+        Closes the result set and discards remaining rows.  A warning
+        is emitted if additional rows remain.
+
+        :return: a :class:`.Row` object, or None if no rows remain
+
+        """
         getter = self._row_getter()
         row = self._safe_fetchone_impl()
         if row is None:
@@ -172,3 +287,19 @@ class Result(Generative, BaseResult):
                 self._soft_close()
                 util.warn("Additional rows remain")
             return row
+
+    def scalar(self):
+        """Fetch the first column of the first row, and close the result set.
+
+        After calling this method, the object is fully closed,
+        e.g. the :meth:`_engine.ResultProxy.close`
+        method will have been called.
+
+        :return: a Python scalar value , or None if no rows remain
+
+        """
+        row = self.first()
+        if row is not None:
+            return row[0]
+        else:
+            return None

@@ -500,14 +500,35 @@ class DefaultDialect(interfaces.Dialect):
         if "schema_translate_map" in opts:
             connection._schema_translate_map = opts["schema_translate_map"]
 
+    def set_exec_execution_options(self, connection, opts):
+        if "isolation_level" in opts:
+            raise exc.InvalidRequestError(
+                "The 'isolation_level' execution "
+                "option is not supported at the per-statement level"
+            )
+            self._set_connection_isolation(connection, opts["isolation_level"])
+
+        if "schema_translate_map" in opts:
+            raise exc.InvalidRequestError(
+                "The 'schema_translate_map' execution "
+                "option is not supported at the per-statement level"
+            )
+
     def _set_connection_isolation(self, connection, level):
         if connection.in_transaction():
-            util.warn(
-                "Connection is already established with a Transaction; "
-                "setting isolation_level may implicitly rollback or commit "
-                "the existing transaction, or have no effect until "
-                "next transaction"
-            )
+            if connection._is_future:
+                raise exc.InvalidRequestError(
+                    "This connection has already begun a transaction; "
+                    "isolation level may not be altered until transaction end"
+                )
+            else:
+                util.warn(
+                    "Connection is already established with a Transaction; "
+                    "setting isolation_level may implicitly rollback or "
+                    "commit "
+                    "the existing transaction, or have no effect until "
+                    "next transaction"
+                )
         self.set_isolation_level(connection.connection, level)
         connection.connection._connection_record.finalize_callback.append(
             self.reset_isolation_level
@@ -688,6 +709,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     statement = None
     result_column_struct = None
     returned_defaults = None
+    execution_options = util.immutabledict()
     _is_implicit_returning = False
     _is_explicit_returning = False
     _is_future_result = False
@@ -701,7 +723,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     _expanded_parameters = util.immutabledict()
 
     @classmethod
-    def _init_ddl(cls, dialect, connection, dbapi_connection, compiled_ddl):
+    def _init_ddl(
+        cls,
+        dialect,
+        connection,
+        dbapi_connection,
+        execution_options,
+        compiled_ddl,
+    ):
         """Initialize execution context for a DDLElement construct."""
 
         self = cls.__new__(cls)
@@ -714,8 +743,18 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.execution_options = compiled.execution_options
         if connection._execution_options:
-            self.execution_options = dict(self.execution_options)
-            self.execution_options.update(connection._execution_options)
+            self.execution_options = self.execution_options.union(
+                connection._execution_options
+            )
+        if execution_options:
+            self.execution_options = self.execution_options.union(
+                execution_options
+            )
+
+        self._is_future_result = (
+            connection._is_future
+            or self.execution_options.get("future_result", False)
+        )
 
         self.unicode_statement = util.text_type(compiled)
         if compiled.schema_translate_map:
@@ -745,6 +784,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         dialect,
         connection,
         dbapi_connection,
+        execution_options,
         compiled,
         parameters,
         invoked_statement,
@@ -764,11 +804,19 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # we get here
         assert compiled.can_execute
 
-        self._is_future_result = connection._execution_options.get(
-            "future_result", False
-        )
-        self.execution_options = compiled.execution_options.union(
-            connection._execution_options
+        self.execution_options = compiled.execution_options
+        if connection._execution_options:
+            self.execution_options = self.execution_options.union(
+                connection._execution_options
+            )
+        if execution_options:
+            self.execution_options = self.execution_options.union(
+                execution_options
+            )
+
+        self._is_future_result = (
+            connection._is_future
+            or self.execution_options.get("future_result", False)
         )
 
         self.result_column_struct = (
@@ -905,7 +953,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     @classmethod
     def _init_statement(
-        cls, dialect, connection, dbapi_connection, statement, parameters
+        cls,
+        dialect,
+        connection,
+        dbapi_connection,
+        execution_options,
+        statement,
+        parameters,
     ):
         """Initialize execution context for a string SQL statement."""
 
@@ -915,12 +969,19 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.dialect = connection.dialect
         self.is_text = True
 
-        self._is_future_result = connection._execution_options.get(
-            "future_result", False
-        )
+        if connection._execution_options:
+            self.execution_options = self.execution_options.union(
+                connection._execution_options
+            )
+        if execution_options:
+            self.execution_options = self.execution_options.union(
+                execution_options
+            )
 
-        # plain text statement
-        self.execution_options = connection._execution_options
+        self._is_future_result = (
+            connection._is_future
+            or self.execution_options.get("future_result", False)
+        )
 
         if not parameters:
             if self.dialect.positional:
@@ -956,14 +1017,30 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return self
 
     @classmethod
-    def _init_default(cls, dialect, connection, dbapi_connection):
+    def _init_default(
+        cls, dialect, connection, dbapi_connection, execution_options
+    ):
         """Initialize execution context for a ColumnDefault construct."""
 
         self = cls.__new__(cls)
         self.root_connection = connection
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
-        self.execution_options = connection._execution_options
+
+        if connection._execution_options:
+            self.execution_options = self.execution_options.union(
+                connection._execution_options
+            )
+        if execution_options:
+            self.execution_options = self.execution_options.union(
+                execution_options
+            )
+
+        self._is_future_result = (
+            connection._is_future
+            or self.execution_options.get("future_result", False)
+        )
+
         self.cursor = self.create_cursor()
         return self
 
@@ -1043,7 +1120,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     @property
     def connection(self):
-        return self.root_connection._branch()
+        conn = self.root_connection
+        if conn._is_future:
+            return conn
+        else:
+            return conn._branch()
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)

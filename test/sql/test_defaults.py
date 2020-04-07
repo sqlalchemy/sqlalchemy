@@ -535,7 +535,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         result = connection.execute(t.select().order_by(t.c.col1))
         today = datetime.date.today()
         eq_(
-            result.fetchall(),
+            list(result),
             [
                 (
                     x,
@@ -715,9 +715,11 @@ class DefaultRoundTripTest(fixtures.TablesTest):
             "group 1",
             connection.execute,
             t.insert(),
-            {"col4": 7, "col7": 12, "col8": 19},
-            {"col4": 7, "col8": 19},
-            {"col4": 7, "col7": 12, "col8": 19},
+            [
+                {"col4": 7, "col7": 12, "col8": 19},
+                {"col4": 7, "col8": 19},
+                {"col4": 7, "col7": 12, "col8": 19},
+            ],
         )
 
     def test_insert_values(self, connection):
@@ -832,6 +834,13 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         result = connection.execute(t.select().where(t.c.col1 == pk))
         row = result.first()
         eq_(55, row._mapping["col3"])
+
+
+class FutureDefaultRoundTripTest(
+    fixtures.FutureEngineMixin, DefaultRoundTripTest
+):
+
+    __backend__ = True
 
 
 class CTEDefaultTest(fixtures.TablesTest):

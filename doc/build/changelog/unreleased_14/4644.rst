@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, engine, alchemy2
+    :tickets: 4644
+
+    Implemented the SQLAlchemy 2 :func:`_future.create_engine` function which
+    is used for forwards compatibility with SQLAlchemy 2.   This engine
+    features always-transactional behavior with autobegin.
+
+    .. seealso::
+
+        :ref:`migration_20_toplevel`

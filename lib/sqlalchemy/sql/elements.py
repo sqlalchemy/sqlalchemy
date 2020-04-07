@@ -282,9 +282,13 @@ class ClauseElement(
         d.pop("_generate_cache_key", None)
         return d
 
-    def _execute_on_connection(self, connection, multiparams, params):
+    def _execute_on_connection(
+        self, connection, multiparams, params, execution_options
+    ):
         if self.supports_execution:
-            return connection._execute_clauseelement(self, multiparams, params)
+            return connection._execute_clauseelement(
+                self, multiparams, params, execution_options
+            )
         else:
             raise exc.ObjectNotExecutableError(self)
 

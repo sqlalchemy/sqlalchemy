@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import desc
+from sqlalchemy import event
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
@@ -38,10 +39,13 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.mock import call
+from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from . import _fixtures
 from .inheritance import _poly_fixtures
+from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
 from .test_query import QueryTest
 
@@ -1604,3 +1608,67 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
                 "addresses_email_address FROM users, addresses "
                 "ORDER BY users.id, users.name, addresses.email_address",
             )
+
+
+class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+    run_inserts = None
+
+    def test_on_bulk_update_hook(self):
+        User, users = self.classes.User, self.tables.users
+
+        sess = Session()
+        canary = Mock()
+
+        event.listen(sess, "after_bulk_update", canary.after_bulk_update)
+
+        def legacy(ses, qry, ctx, res):
+            canary.after_bulk_update_legacy(ses, qry, ctx, res)
+
+        event.listen(sess, "after_bulk_update", legacy)
+
+        mapper(User, users)
+
+        with testing.expect_deprecated(
+            'The argument signature for the "SessionEvents.after_bulk_update" '
+            "event listener"
+        ):
+            sess.query(User).update({"name": "foo"})
+
+        eq_(canary.after_bulk_update.call_count, 1)
+
+        upd = canary.after_bulk_update.mock_calls[0][1][0]
+        eq_(upd.session, sess)
+        eq_(
+            canary.after_bulk_update_legacy.mock_calls,
+            [call(sess, upd.query, upd.context, upd.result)],
+        )
+
+    def test_on_bulk_delete_hook(self):
+        User, users = self.classes.User, self.tables.users
+
+        sess = Session()
+        canary = Mock()
+
+        event.listen(sess, "after_bulk_delete", canary.after_bulk_delete)
+
+        def legacy(ses, qry, ctx, res):
+            canary.after_bulk_delete_legacy(ses, qry, ctx, res)
+
+        event.listen(sess, "after_bulk_delete", legacy)
+
+        mapper(User, users)
+
+        with testing.expect_deprecated(
+            'The argument signature for the "SessionEvents.after_bulk_delete" '
+            "event listener"
+        ):
+            sess.query(User).delete()
+
+        eq_(canary.after_bulk_delete.call_count, 1)
+
+        upd = canary.after_bulk_delete.mock_calls[0][1][0]
+        eq_(upd.session, sess)
+        eq_(
+            canary.after_bulk_delete_legacy.mock_calls,
+            [call(sess, upd.query, upd.context, upd.result)],
+        )

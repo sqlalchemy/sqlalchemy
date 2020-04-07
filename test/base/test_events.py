@@ -6,6 +6,7 @@ from sqlalchemy import testing
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not_
@@ -408,7 +409,13 @@ class LegacySignatureTest(fixtures.TestBase):
         def handler1(x, y):
             canary(x, y)
 
-        self.TargetOne().dispatch.event_three(4, 5, 6, 7)
+        with expect_deprecated(
+            'The argument signature for the "TargetEventsOne.event_three" '
+            "event listener has changed as of version 0.9, and conversion "
+            "for the old argument signature will be removed in a future "
+            r'release.  The new signature is "def event_three\(x, y, z, q\)"'
+        ):
+            self.TargetOne().dispatch.event_three(4, 5, 6, 7)
 
         eq_(canary.mock_calls, [call(4, 5)])
 
@@ -451,7 +458,14 @@ class LegacySignatureTest(fixtures.TestBase):
         eq_(canary.mock_calls, [call(5, 4, 5, foo="bar")])
 
     def _test_legacy_accept_kw(self, target, canary):
-        target.dispatch.event_four(4, 5, 6, 7, foo="bar")
+        with expect_deprecated(
+            'The argument signature for the "TargetEventsOne.event_four" '
+            "event listener has changed as of version 0.9, and conversion "
+            "for the old argument signature will be removed in a future "
+            r"release.  The new signature is "
+            r'"def event_four\(x, y, z, q, \*\*kw\)"'
+        ):
+            target.dispatch.event_four(4, 5, 6, 7, foo="bar")
 
         eq_(canary.mock_calls, [call(4, 5, {"foo": "bar"})])
 
@@ -462,8 +476,26 @@ class LegacySignatureTest(fixtures.TestBase):
         def handler1(x, y, z, q):
             canary(x, y, z, q)
 
-        self.TargetOne().dispatch.event_six(4, 5)
+        with expect_deprecated(
+            'The argument signature for the "TargetEventsOne.event_six" '
+            "event listener has changed as of version 0.9, and "
+            "conversion for the old argument signature will be removed in "
+            "a future release.  The new signature is "
+            r'"def event_six\(x, y\)'
+        ):
+            self.TargetOne().dispatch.event_six(4, 5)
         eq_(canary.mock_calls, [call(4, 5, 9, 20)])
+
+    def test_complex_new_accept(self):
+        canary = Mock()
+
+        @event.listens_for(self.TargetOne, "event_six")
+        def handler1(x, y):
+            canary(x, y)
+
+        # new version does not emit a warning
+        self.TargetOne().dispatch.event_six(4, 5)
+        eq_(canary.mock_calls, [call(4, 5)])
 
     def test_legacy_accept_from_method(self):
         canary = Mock()
@@ -474,7 +506,13 @@ class LegacySignatureTest(fixtures.TestBase):
 
         event.listen(self.TargetOne, "event_three", MyClass().handler1)
 
-        self.TargetOne().dispatch.event_three(4, 5, 6, 7)
+        with expect_deprecated(
+            'The argument signature for the "TargetEventsOne.event_three" '
+            "event listener has changed as of version 0.9, and conversion "
+            "for the old argument signature will be removed in a future "
+            r'release.  The new signature is "def event_three\(x, y, z, q\)"'
+        ):
+            self.TargetOne().dispatch.event_three(4, 5, 6, 7)
         eq_(canary.mock_calls, [call(4, 5)])
 
     def test_standard_accept_has_legacies(self):

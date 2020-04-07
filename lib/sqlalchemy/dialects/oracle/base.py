@@ -1467,8 +1467,10 @@ class OracleDialect(default.DefaultDialect):
                 "SELECT table_name FROM all_tables "
                 "WHERE table_name = :name AND owner = :schema_name"
             ),
-            name=self.denormalize_name(table_name),
-            schema_name=self.denormalize_name(schema),
+            dict(
+                name=self.denormalize_name(table_name),
+                schema_name=self.denormalize_name(schema),
+            ),
         )
         return cursor.first() is not None
 
@@ -1481,8 +1483,10 @@ class OracleDialect(default.DefaultDialect):
                 "WHERE sequence_name = :name AND "
                 "sequence_owner = :schema_name"
             ),
-            name=self.denormalize_name(sequence_name),
-            schema_name=self.denormalize_name(schema),
+            dict(
+                name=self.denormalize_name(sequence_name),
+                schema_name=self.denormalize_name(schema),
+            ),
         )
         return cursor.first() is not None
 
@@ -1525,7 +1529,7 @@ class OracleDialect(default.DefaultDialect):
         q += " AND ".join(clauses)
 
         result = connection.execution_options(future_result=True).execute(
-            sql.text(q), **params
+            sql.text(q), params
         )
         if desired_owner:
             row = result.mappings().first()
@@ -1621,7 +1625,7 @@ class OracleDialect(default.DefaultDialect):
             "OWNER = :owner " "AND IOT_NAME IS NULL " "AND DURATION IS NULL"
         )
 
-        cursor = connection.execute(sql.text(sql_str), owner=schema)
+        cursor = connection.execute(sql.text(sql_str), dict(owner=schema))
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
@@ -1641,14 +1645,16 @@ class OracleDialect(default.DefaultDialect):
             "AND DURATION IS NOT NULL"
         )
 
-        cursor = connection.execute(sql.text(sql_str), owner=schema)
+        cursor = connection.execute(sql.text(sql_str), dict(owner=schema))
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         schema = self.denormalize_name(schema or self.default_schema_name)
         s = sql.text("SELECT view_name FROM all_views WHERE owner = :owner")
-        cursor = connection.execute(s, owner=self.denormalize_name(schema))
+        cursor = connection.execute(
+            s, dict(owner=self.denormalize_name(schema))
+        )
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
@@ -1687,7 +1693,7 @@ class OracleDialect(default.DefaultDialect):
             text += " AND owner = :owner "
         text = text % {"dblink": dblink, "columns": ", ".join(columns)}
 
-        result = connection.execute(sql.text(text), **params)
+        result = connection.execute(sql.text(text), params)
 
         enabled = dict(DISABLED=False, ENABLED=True)
 
@@ -1752,7 +1758,7 @@ class OracleDialect(default.DefaultDialect):
         text += " ORDER BY col.column_id"
         text = text % {"dblink": dblink, "char_length_col": char_length_col}
 
-        c = connection.execute(sql.text(text), **params)
+        c = connection.execute(sql.text(text), params)
 
         for row in c:
             colname = self.normalize_name(row[0])
@@ -1842,7 +1848,8 @@ class OracleDialect(default.DefaultDialect):
         """
 
         c = connection.execute(
-            sql.text(COMMENT_SQL), table_name=table_name, schema_name=schema
+            sql.text(COMMENT_SQL),
+            dict(table_name=table_name, schema_name=schema),
         )
         return {"text": c.scalar()}
 
@@ -1890,7 +1897,7 @@ class OracleDialect(default.DefaultDialect):
         text = text % {"dblink": dblink}
 
         q = sql.text(text)
-        rp = connection.execute(q, **params)
+        rp = connection.execute(q, params)
         indexes = []
         last_index_name = None
         pk_constraint = self.get_pk_constraint(
@@ -1987,7 +1994,7 @@ class OracleDialect(default.DefaultDialect):
         )
 
         text = text % {"dblink": dblink}
-        rp = connection.execute(sql.text(text), **params)
+        rp = connection.execute(sql.text(text), params)
         constraint_data = rp.fetchall()
         return constraint_data
 
@@ -2215,7 +2222,7 @@ class OracleDialect(default.DefaultDialect):
             text += " AND owner = :schema"
             params["schema"] = schema
 
-        rp = connection.execute(sql.text(text), **params).scalar()
+        rp = connection.execute(sql.text(text), params).scalar()
         if rp:
             if util.py2k:
                 rp = rp.decode(self.encoding)

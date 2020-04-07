@@ -1,5 +1,8 @@
+import re
+
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
+from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -13,9 +16,11 @@ from sqlalchemy import testing
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -23,6 +28,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_instance_of
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -766,3 +772,89 @@ class RawExecuteTest(fixtures.TablesTest):
                 (3, "horse"),
                 (4, "sally"),
             ]
+
+
+class EngineEventsTest(fixtures.TestBase):
+    __requires__ = ("ad_hoc_engines",)
+    __backend__ = True
+
+    def tearDown(self):
+        Engine.dispatch._clear()
+        Engine._has_events = False
+
+    def _assert_stmts(self, expected, received):
+        list(received)
+        for stmt, params, posn in expected:
+            if not received:
+                assert False, "Nothing available for stmt: %s" % stmt
+            while received:
+                teststmt, testparams, testmultiparams = received.pop(0)
+                teststmt = (
+                    re.compile(r"[\n\t ]+", re.M).sub(" ", teststmt).strip()
+                )
+                if teststmt.startswith(stmt) and (
+                    testparams == params or testparams == posn
+                ):
+                    break
+
+    def test_retval_flag(self):
+        canary = []
+
+        def tracker(name):
+            def go(conn, *args, **kw):
+                canary.append(name)
+
+            return go
+
+        def execute(conn, clauseelement, multiparams, params):
+            canary.append("execute")
+            return clauseelement, multiparams, params
+
+        def cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            canary.append("cursor_execute")
+            return statement, parameters
+
+        engine = engines.testing_engine()
+
+        assert_raises(
+            tsa.exc.ArgumentError,
+            event.listen,
+            engine,
+            "begin",
+            tracker("begin"),
+            retval=True,
+        )
+
+        event.listen(engine, "before_execute", execute, retval=True)
+        event.listen(
+            engine, "before_cursor_execute", cursor_execute, retval=True
+        )
+        with testing.expect_deprecated(
+            r"The argument signature for the "
+            r"\"ConnectionEvents.before_execute\" event listener",
+        ):
+            engine.execute(select([1]))
+        eq_(canary, ["execute", "cursor_execute"])
+
+    def test_argument_format_execute(self):
+        def before_execute(conn, clauseelement, multiparams, params):
+            assert isinstance(multiparams, (list, tuple))
+            assert isinstance(params, dict)
+
+        def after_execute(conn, clauseelement, multiparams, params, result):
+            assert isinstance(multiparams, (list, tuple))
+            assert isinstance(params, dict)
+
+        e1 = testing_engine(config.db_url)
+        event.listen(e1, "before_execute", before_execute)
+        event.listen(e1, "after_execute", after_execute)
+
+        with testing.expect_deprecated(
+            r"The argument signature for the "
+            r"\"ConnectionEvents.before_execute\" event listener",
+            r"The argument signature for the "
+            r"\"ConnectionEvents.after_execute\" event listener",
+        ):
+            e1.execute(select([1]))

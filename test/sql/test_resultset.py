@@ -29,6 +29,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.engine import result as _result
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.future import select as future_select
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.selectable import TextualSelect
@@ -2237,3 +2238,98 @@ class AlternateResultProxyTest(fixtures.TablesTest):
             le_(len(result.cursor_strategy._rowbuffer), max_size)
 
         eq_(checks, assertion)
+
+
+class FutureResultTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("user_id", INT, primary_key=True, autoincrement=False),
+            Column("user_name", VARCHAR(20)),
+            Column("x", Integer),
+            Column("y", Integer),
+            test_needs_acid=True,
+        )
+        Table(
+            "users_autoinc",
+            metadata,
+            Column(
+                "user_id", INT, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+
+    def test_fetchall(self, connection):
+        users = self.tables.users
+        connection.execute(
+            users.insert(),
+            [
+                {"user_id": 7, "user_name": "jack", "x": 1, "y": 2},
+                {"user_id": 8, "user_name": "ed", "x": 2, "y": 3},
+                {"user_id": 9, "user_name": "fred", "x": 15, "y": 20},
+            ],
+        )
+
+        result = connection.execute(
+            future_select(users).order_by(users.c.user_id)
+        )
+        eq_(
+            result.all(),
+            [(7, "jack", 1, 2), (8, "ed", 2, 3), (9, "fred", 15, 20)],
+        )
+
+    @testing.combinations(
+        ((1, 0), [("jack", 7), ("ed", 8), ("fred", 9)]),
+        ((3,), [(2,), (3,), (20,)]),
+        ((-2, -1), [(1, 2), (2, 3), (15, 20)]),
+        argnames="columns, expected",
+    )
+    def test_columns(self, connection, columns, expected):
+        users = self.tables.users
+        connection.execute(
+            users.insert(),
+            [
+                {"user_id": 7, "user_name": "jack", "x": 1, "y": 2},
+                {"user_id": 8, "user_name": "ed", "x": 2, "y": 3},
+                {"user_id": 9, "user_name": "fred", "x": 15, "y": 20},
+            ],
+        )
+
+        result = connection.execute(
+            future_select(users).order_by(users.c.user_id)
+        )
+        eq_(result.columns(*columns).all(), expected)
+
+    def test_partitions(self, connection):
+        users = self.tables.users
+        connection.execute(
+            users.insert(),
+            [
+                {
+                    "user_id": i,
+                    "user_name": "user %s" % i,
+                    "x": i * 5,
+                    "y": i * 20,
+                }
+                for i in range(500)
+            ],
+        )
+
+        result = connection.execute(
+            future_select(users).order_by(users.c.user_id)
+        )
+
+        start = 0
+        for partition in result.columns(0, 1).partitions(20):
+            eq_(
+                partition,
+                [(i, "user %s" % i) for i in range(start, start + 20)],
+            )
+            start += 20
+
+        assert result._soft_closed

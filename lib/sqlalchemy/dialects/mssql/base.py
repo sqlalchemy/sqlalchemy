@@ -2544,16 +2544,20 @@ class MSDialect(default.DefaultDialect):
 
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
-        columns = ischema.columns
+        tables = ischema.tables
 
-        whereclause = columns.c.table_name == tablename
+        s = sql.select([tables.c.table_name]).where(
+            sql.and_(
+                tables.c.table_type == "BASE TABLE",
+                tables.c.table_name == tablename,
+            )
+        )
 
         if owner:
-            whereclause = sql.and_(
-                whereclause, columns.c.table_schema == owner
-            )
-        s = sql.select([columns], whereclause)
+            s = s.where(tables.c.table_schema == owner)
+
         c = connection.execute(s)
+
         return c.first() is not None
 
     @reflection.cache
@@ -2569,13 +2573,15 @@ class MSDialect(default.DefaultDialect):
     @_db_plus_owner_listing
     def get_table_names(self, connection, dbname, owner, schema, **kw):
         tables = ischema.tables
-        s = sql.select(
-            [tables.c.table_name],
-            sql.and_(
-                tables.c.table_schema == owner,
-                tables.c.table_type == "BASE TABLE",
-            ),
-            order_by=[tables.c.table_name],
+        s = (
+            sql.select([tables.c.table_name])
+            .where(
+                sql.and_(
+                    tables.c.table_schema == owner,
+                    tables.c.table_type == "BASE TABLE",
+                )
+            )
+            .order_by(tables.c.table_name)
         )
         table_names = [r[0] for r in connection.execute(s)]
         return table_names

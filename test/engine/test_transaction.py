@@ -12,15 +12,16 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import VARCHAR
+from sqlalchemy.future import select as future_select
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-
 
 users, metadata = None, None
 
@@ -1102,3 +1103,564 @@ class IsolationLevelTest(fixtures.TestBase):
                 conn.get_isolation_level(), self._non_default_isolation_level()
             )
             eq_(c2.get_isolation_level(), self._non_default_isolation_level())
+
+
+class FutureResetAgentTest(fixtures.FutureEngineMixin, fixtures.TestBase):
+    """The SQLAlchemy 2.0 Connection ensures its own transaction is rolled
+    back upon close.  Therefore the whole "reset agent" thing can go away.
+    this suite runs through all the reset agent tests to ensure the state
+    of the transaction is maintained while the "reset agent" feature is not
+    needed at all.
+
+    """
+
+    __backend__ = True
+
+    def test_begin_close(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary)
+            trans = connection.begin()
+            assert connection.connection._reset_agent is None
+        assert not trans.is_active
+        eq_(canary.mock_calls, [mock.call(connection)])
+
+    def test_begin_rollback(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary)
+            trans = connection.begin()
+            assert connection.connection._reset_agent is None
+            trans.rollback()
+            assert connection.connection._reset_agent is None
+        assert not trans.is_active
+        eq_(canary.mock_calls, [mock.call(connection)])
+
+    def test_begin_commit(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin()
+            assert connection.connection._reset_agent is None
+            trans.commit()
+            assert connection.connection._reset_agent is None
+        assert not trans.is_active
+        eq_(canary.mock_calls, [mock.call.commit(connection)])
+
+    @testing.requires.savepoints
+    def test_begin_nested_close(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin_nested()
+            assert connection.connection._reset_agent is None
+        assert trans.is_active  # it's a savepoint
+        eq_(canary.mock_calls, [mock.call.rollback(connection)])
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_close(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            assert connection.connection._reset_agent is None
+        assert trans2.is_active  # was never closed
+        assert not trans.is_active
+        eq_(canary.mock_calls, [mock.call.rollback(connection)])
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_commit(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(
+                connection, "rollback_savepoint", canary.rollback_savepoint
+            )
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            assert connection.connection._reset_agent is None
+            trans2.rollback()  # this is not a connection level event
+            assert connection.connection._reset_agent is None
+            trans.commit()
+            assert connection.connection._reset_agent is None
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, trans),
+                mock.call.commit(connection),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_rollback(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            assert connection.connection._reset_agent is None
+            trans2.rollback()
+            assert connection.connection._reset_agent is None
+            trans.rollback()
+            assert connection.connection._reset_agent is None
+        eq_(canary.mock_calls, [mock.call.rollback(connection)])
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(
+                connection, "rollback_twophase", canary.rollback_twophase
+            )
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin_twophase()
+            assert connection.connection._reset_agent is None
+        assert not trans.is_active
+        eq_(
+            canary.mock_calls,
+            [mock.call.rollback_twophase(connection, mock.ANY, False)],
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_commit(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(connection, "commit", canary.commit)
+            event.listen(connection, "commit_twophase", canary.commit_twophase)
+            trans = connection.begin_twophase()
+            assert connection.connection._reset_agent is None
+            trans.commit()
+            assert connection.connection._reset_agent is None
+        eq_(
+            canary.mock_calls,
+            [mock.call.commit_twophase(connection, mock.ANY, False)],
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_rollback(self):
+        canary = mock.Mock()
+        with testing.db.connect() as connection:
+            event.listen(connection, "rollback", canary.rollback)
+            event.listen(
+                connection, "rollback_twophase", canary.rollback_twophase
+            )
+            event.listen(connection, "commit", canary.commit)
+            trans = connection.begin_twophase()
+            assert connection.connection._reset_agent is None
+            trans.rollback()
+            assert connection.connection._reset_agent is None
+        eq_(
+            canary.mock_calls,
+            [mock.call.rollback_twophase(connection, mock.ANY, False)],
+        )
+
+
+class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("user_id", INT, primary_key=True, autoincrement=False),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+        Table(
+            "users_autoinc",
+            metadata,
+            Column(
+                "user_id", INT, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+
+    def test_autobegin_rollback(self):
+        users = self.tables.users
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+            conn.rollback()
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)), 0
+            )
+
+    @testing.requires.autocommit
+    def test_autocommit_isolation_level(self):
+        users = self.tables.users
+
+        with testing.db.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+            conn.rollback()
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+    @testing.requires.autocommit
+    def test_no_autocommit_w_begin(self):
+
+        with testing.db.begin() as conn:
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "This connection has already begun a transaction; "
+                "isolation level may not be altered until transaction end",
+                conn.execution_options,
+                isolation_level="AUTOCOMMIT",
+            )
+
+    @testing.requires.autocommit
+    def test_no_autocommit_w_autobegin(self):
+
+        with testing.db.connect() as conn:
+            conn.execute(future_select(1))
+
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "This connection has already begun a transaction; "
+                "isolation level may not be altered until transaction end",
+                conn.execution_options,
+                isolation_level="AUTOCOMMIT",
+            )
+
+            conn.rollback()
+
+            conn.execution_options(isolation_level="AUTOCOMMIT")
+
+    def test_autobegin_commit(self):
+        users = self.tables.users
+
+        with testing.db.connect() as conn:
+
+            assert not conn.in_transaction()
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            assert conn.in_transaction()
+            conn.commit()
+
+            assert not conn.in_transaction()
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name 2"})
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                2,
+            )
+
+            assert conn.in_transaction()
+            conn.rollback()
+            assert not conn.in_transaction()
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+    def test_rollback_on_close(self):
+        canary = mock.Mock()
+        with testing.db.connect() as conn:
+            event.listen(conn, "rollback", canary)
+            conn.execute(select([1]))
+            assert conn.in_transaction()
+
+        eq_(canary.mock_calls, [mock.call(conn)])
+
+    def test_no_on_close_no_transaction(self):
+        canary = mock.Mock()
+        with testing.db.connect() as conn:
+            event.listen(conn, "rollback", canary)
+            conn.execute(select([1]))
+            conn.rollback()
+            assert not conn.in_transaction()
+
+        eq_(canary.mock_calls, [mock.call(conn)])
+
+    def test_rollback_on_exception(self):
+        canary = mock.Mock()
+        try:
+            with testing.db.connect() as conn:
+                event.listen(conn, "rollback", canary)
+                conn.execute(select([1]))
+                assert conn.in_transaction()
+                raise Exception("some error")
+            assert False
+        except:
+            pass
+
+        eq_(canary.mock_calls, [mock.call(conn)])
+
+    def test_rollback_on_exception_if_no_trans(self):
+        canary = mock.Mock()
+        try:
+            with testing.db.connect() as conn:
+                event.listen(conn, "rollback", canary)
+                assert not conn.in_transaction()
+                raise Exception("some error")
+            assert False
+        except:
+            pass
+
+        eq_(canary.mock_calls, [])
+
+    def test_commit_no_begin(self):
+        with testing.db.connect() as conn:
+            assert not conn.in_transaction()
+            conn.commit()
+
+    @testing.requires.independent_connections
+    def test_commit_inactive(self):
+        with testing.db.connect() as conn:
+            conn.begin()
+            conn.invalidate()
+
+            assert_raises_message(
+                exc.InvalidRequestError, "Can't reconnect until", conn.commit
+            )
+
+    @testing.requires.independent_connections
+    def test_rollback_inactive(self):
+        users = self.tables.users
+        with testing.db.connect() as conn:
+
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+            conn.commit()
+
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            conn.invalidate()
+
+            assert_raises_message(
+                exc.StatementError,
+                "Can't reconnect",
+                conn.execute,
+                select([1]),
+            )
+
+            conn.rollback()
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+    def test_rollback_no_begin(self):
+        with testing.db.connect() as conn:
+            assert not conn.in_transaction()
+            conn.rollback()
+
+    def test_rollback_end_ctx_manager(self):
+        with testing.db.begin() as conn:
+            assert conn.in_transaction()
+            conn.rollback()
+
+    def test_explicit_begin(self):
+        users = self.tables.users
+
+        with testing.db.connect() as conn:
+            assert not conn.in_transaction()
+            conn.begin()
+            assert conn.in_transaction()
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+            conn.commit()
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+    def test_no_double_begin(self):
+        with testing.db.connect() as conn:
+            conn.begin()
+
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "a transaction is already begun for this connection",
+                conn.begin,
+            )
+
+    def test_no_autocommit(self):
+        users = self.tables.users
+
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                0,
+            )
+
+    def test_begin_block(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+    @testing.requires.savepoints
+    def test_savepoint_one(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            savepoint = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                2,
+            )
+            savepoint.rollback()
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )
+
+    @testing.requires.savepoints
+    def test_savepoint_two(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            savepoint = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                2,
+            )
+            savepoint.commit()
+
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                2,
+            )
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                2,
+            )
+
+    @testing.requires.savepoints
+    def test_savepoint_three(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            conn.rollback()
+
+            assert not conn.in_transaction()
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                0,
+            )
+
+    @testing.requires.savepoints
+    def test_savepoint_four(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            sp2 = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 3, "user_name": "name3"})
+
+            sp2.rollback()
+
+            assert conn.in_transaction()
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                2,
+            )
+
+    @testing.requires.savepoints
+    def test_savepoint_five(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            sp2 = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 3, "user_name": "name3"})
+
+            sp2.commit()
+
+            assert conn.in_transaction()
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                3,
+            )
+
+    @testing.requires.savepoints
+    def test_savepoint_six(self):
+        users = self.tables.users
+
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+
+            sp1 = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+
+            sp2 = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 3, "user_name": "name3"})
+
+            sp2.commit()
+
+            sp1.rollback()
+
+            assert conn.in_transaction()
+
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(future_select(func.count(1)).select_from(users)),
+                1,
+            )

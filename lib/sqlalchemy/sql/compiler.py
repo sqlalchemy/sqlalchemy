@@ -434,9 +434,13 @@ class Compiled(object):
                     self.string, schema_translate_map
                 )
 
-    def _execute_on_connection(self, connection, multiparams, params):
+    def _execute_on_connection(
+        self, connection, multiparams, params, execution_options
+    ):
         if self.can_execute:
-            return connection._execute_compiled(self, multiparams, params)
+            return connection._execute_compiled(
+                self, multiparams, params, execution_options
+            )
         else:
             raise exc.ObjectNotExecutableError(self.statement)
 

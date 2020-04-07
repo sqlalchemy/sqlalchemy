@@ -447,7 +447,10 @@ class SessionTransaction(object):
             elif self.nested:
                 transaction = conn.begin_nested()
             else:
-                transaction = conn.begin()
+                if conn._is_future and conn.in_transaction():
+                    transaction = conn._transaction
+                else:
+                    transaction = conn.begin()
         except:
             # connection will not not be associated with this Session;
             # close it immediately so that it isn't closed under GC
@@ -455,10 +458,13 @@ class SessionTransaction(object):
                 conn.close()
             raise
         else:
+            bind_is_connection = isinstance(bind, engine.Connection)
+
             self._connections[conn] = self._connections[conn.engine] = (
                 conn,
                 transaction,
-                conn is not bind,
+                not bind_is_connection or not conn._is_future,
+                not bind_is_connection,
             )
             self.session.dispatch.after_begin(self.session, self, conn)
             return conn
@@ -509,8 +515,11 @@ class SessionTransaction(object):
             self._prepare_impl()
 
         if self._parent is None or self.nested:
-            for t in set(self._connections.values()):
-                t[1].commit()
+            for conn, trans, should_commit, autoclose in set(
+                self._connections.values()
+            ):
+                if should_commit:
+                    trans.commit()
 
             self._state = COMMITTED
             self.session.dispatch.after_commit(self.session)
@@ -579,7 +588,7 @@ class SessionTransaction(object):
     def close(self, invalidate=False):
         self.session._transaction = self._parent
         if self._parent is None:
-            for connection, transaction, autoclose in set(
+            for connection, transaction, should_commit, autoclose in set(
                 self._connections.values()
             ):
                 if invalidate:

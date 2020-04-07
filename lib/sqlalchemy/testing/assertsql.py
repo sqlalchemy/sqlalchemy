@@ -388,7 +388,9 @@ def assert_engine(engine):
     orig = []
 
     @event.listens_for(engine, "before_execute")
-    def connection_execute(conn, clauseelement, multiparams, params):
+    def connection_execute(
+        conn, clauseelement, multiparams, params, execution_options
+    ):
         # grab the original statement + params before any cursor
         # execution
         orig[:] = clauseelement, multiparams, params

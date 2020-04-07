@@ -71,6 +71,7 @@ class _ClsLevelDispatch(RefCollection):
     """Class-level events on :class:`._Dispatch` classes."""
 
     __slots__ = (
+        "clsname",
         "name",
         "arg_names",
         "has_kw",
@@ -81,6 +82,7 @@ class _ClsLevelDispatch(RefCollection):
 
     def __init__(self, parent_dispatch_cls, fn):
         self.name = fn.__name__
+        self.clsname = parent_dispatch_cls.__name__
         argspec = util.inspect_getfullargspec(fn)
         self.arg_names = argspec.args[1:]
         self.has_kw = bool(argspec.varkw)

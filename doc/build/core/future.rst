@@ -10,6 +10,13 @@ SQLAlchemy 2.0 Future (Core)
 
 .. module:: sqlalchemy.future
 
+.. autoclass:: sqlalchemy.future.Connection
+    :members:
+
+.. autofunction:: sqlalchemy.future.create_engine
+
+.. autoclass:: sqlalchemy.future.Engine
+    :members:
 
 .. autofunction:: sqlalchemy.future.select
 

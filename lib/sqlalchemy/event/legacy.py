@@ -35,15 +35,35 @@ def _wrap_fn_for_legacy(dispatch_collection, fn, argspec):
             argspec.varkw
         ):
 
+            formatted_def = "def %s(%s%s)" % (
+                dispatch_collection.name,
+                ", ".join(dispatch_collection.arg_names),
+                ", **kw" if has_kw else "",
+            )
+            warning_txt = (
+                'The argument signature for the "%s.%s" event listener '
+                "has changed as of version %s, and conversion for "
+                "the old argument signature will be removed in a "
+                'future release.  The new signature is "%s"'
+                % (
+                    dispatch_collection.clsname,
+                    dispatch_collection.name,
+                    since,
+                    formatted_def,
+                )
+            )
+
             if conv:
                 assert not has_kw
 
                 def wrap_leg(*args):
+                    util.warn_deprecated(warning_txt, version=since)
                     return fn(*conv(*args))
 
             else:
 
                 def wrap_leg(*args, **kw):
+                    util.warn_deprecated(warning_txt, version=since)
                     argdict = dict(zip(dispatch_collection.arg_names, args))
                     args = [argdict[name] for name in argnames]
                     if has_kw:

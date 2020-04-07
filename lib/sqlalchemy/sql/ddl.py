@@ -68,8 +68,12 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
     dialect = None
     callable_ = None
 
-    def _execute_on_connection(self, connection, multiparams, params):
-        return connection._execute_ddl(self, multiparams, params)
+    def _execute_on_connection(
+        self, connection, multiparams, params, execution_options
+    ):
+        return connection._execute_ddl(
+            self, multiparams, params, execution_options
+        )
 
     def execute(self, bind=None, target=None):
         """Execute this DDL immediately.

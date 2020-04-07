@@ -532,7 +532,8 @@ def create_engine(url, **kwargs):
         pool._dialect = dialect
 
     # create engine.
-    engineclass = base.Engine
+    engineclass = kwargs.pop("_future_engine_class", base.Engine)
+
     engine_args = {}
     for k in util.get_cls_kwargs(engineclass):
         if k in kwargs:

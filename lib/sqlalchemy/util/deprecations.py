@@ -108,6 +108,8 @@ def deprecated(
     if warning is None:
         warning = exc.SADeprecationWarning
 
+    message += " (deprecated since: %s)" % version
+
     def decorate(fn):
         return _decorate_with_warning(
             fn, warning, message % dict(func=fn.__name__), version, header

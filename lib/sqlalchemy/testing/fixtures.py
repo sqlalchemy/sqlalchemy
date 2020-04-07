@@ -84,6 +84,29 @@ class TestBase(object):
     #       engines.drop_all_tables(metadata, config.db)
 
 
+class FutureEngineMixin(object):
+    @classmethod
+    def setup_class(cls):
+        super_ = super(FutureEngineMixin, cls)
+        if hasattr(super_, "setup_class"):
+            super_.setup_class()
+
+        from ..future.engine import Engine
+        from sqlalchemy import testing
+
+        config._current.push_engine(Engine._future_facade(config.db), testing)
+
+    @classmethod
+    def teardown_class(cls):
+        from sqlalchemy import testing
+
+        config._current.pop(testing)
+
+        super_ = super(FutureEngineMixin, cls)
+        if hasattr(super_, "teardown_class"):
+            super_.teardown_class()
+
+
 class TablesTest(TestBase):
 
     # 'once', None

@@ -461,6 +461,17 @@ class Generative(HasMemoized):
         return s
 
 
+class InPlaceGenerative(HasMemoized):
+    """Provide a method-chaining pattern in conjunction with the
+    @_generative decorator taht mutates in place."""
+
+    def _generate(self):
+        skip = self._memoized_keys
+        for k in skip:
+            self.__dict__.pop(k, None)
+        return self
+
+
 class HasCompileState(Generative):
     """A class that has a :class:`.CompileState` associated with it."""
 

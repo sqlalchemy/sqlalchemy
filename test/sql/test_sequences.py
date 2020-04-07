@@ -279,6 +279,11 @@ class SequenceExecTest(fixtures.TestBase):
             self._assert_seq_result(r.inserted_primary_key[0])
 
 
+class FutureSequenceExecTest(fixtures.FutureEngineMixin, SequenceExecTest):
+    __requires__ = ("sequences",)
+    __backend__ = True
+
+
 class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __requires__ = ("sequences",)
     __backend__ = True
@@ -394,6 +399,11 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         result = connection.execute(t.insert())
         eq_(result.inserted_primary_key, [1])
+
+
+class FutureSequenceTest(fixtures.FutureEngineMixin, SequenceTest):
+    __requires__ = ("sequences",)
+    __backend__ = True
 
 
 class TableBoundSequenceTest(fixtures.TablesTest):

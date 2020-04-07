@@ -150,6 +150,14 @@ class Config(object):
         cls.set_as_current(config, namespace)
 
     @classmethod
+    def pop(cls, namespace):
+        if cls._stack:
+            # a failed test w/ -x option can call reset() ahead of time
+            _current = cls._stack[-1]
+            del cls._stack[-1]
+            cls.set_as_current(_current, namespace)
+
+    @classmethod
     def reset(cls, namespace):
         if cls._stack:
             cls.set_as_current(cls._stack[0], namespace)

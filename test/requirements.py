@@ -1374,6 +1374,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["mssql+pymssql"])
 
     @property
+    def legacy_engine(self):
+        return exclusions.skip_if(lambda config: config.db._is_future)
+
+    @property
     def ad_hoc_engines(self):
         return exclusions.skip_if(
             ["oracle"],

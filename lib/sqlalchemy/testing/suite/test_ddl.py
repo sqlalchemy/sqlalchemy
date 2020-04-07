@@ -90,4 +90,8 @@ class TableDDLTest(fixtures.TestBase):
         )
 
 
-__all__ = ("TableDDLTest",)
+class FutureTableDDLTest(fixtures.FutureEngineMixin, TableDDLTest):
+    pass
+
+
+__all__ = ("TableDDLTest", "FutureTableDDLTest")

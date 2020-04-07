@@ -131,7 +131,15 @@ to occur over the course of many major releases.
 Library-level (but not driver level) "Autocommit" removed from both Core and ORM
 ================================================================================
 
-.. admonition:: Certainty: almost definitely
+.. admonition:: Certainty: definite
+
+  Review the new future API for engines and connections at:
+
+    :class:`_future.Connection`
+
+    :class:`.future.Engine`
+
+    :func:`_future.create_engine`
 
   "autocommit" at the ORM level is already not a widely used pattern except to
   the degree that the ``.begin()`` call is desirable, and a new flag
@@ -459,10 +467,12 @@ Flask-style queries only.
 execute() method more strict, .execution_options() are available on ORM Session
 ================================================================================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: definite
 
-  Pending further prototyping, this is part of a larger plan that impacts
-  statement compilation, execution, and result processing.
+  Review the new future API for connections at:
+
+    :class:`_future.Connection`
+
 
 The use of execution options is expected to be more prominent as the Core and
 ORM are largely unified at the statement handling level.   To suit this,
@@ -507,10 +517,12 @@ So that an execution may look like::
 ResultProxy replaced with Result which has more refined methods and behaviors
 =============================================================================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: definite
 
-  This is again part of the rearchitecture of "execute()" internals and is
-  pending further prototyping.
+  Review the new future API for result sets:
+
+    :class:`_future.Result`
+
 
 A major goal of SQLAlchemy 2.0 is to unify how "results" are handled between
 the ORM and Core.   Towards this goal, version 1.4 will already standardized

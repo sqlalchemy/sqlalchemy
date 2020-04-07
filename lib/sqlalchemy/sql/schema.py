@@ -2186,8 +2186,12 @@ class DefaultGenerator(SchemaItem):
             bind = _bind_or_error(self)
         return bind.execute(self, **kwargs)
 
-    def _execute_on_connection(self, connection, multiparams, params):
-        return connection._execute_default(self, multiparams, params)
+    def _execute_on_connection(
+        self, connection, multiparams, params, execution_options
+    ):
+        return connection._execute_default(
+            self, multiparams, params, execution_options
+        )
 
     @property
     def bind(self):

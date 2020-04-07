@@ -2753,7 +2753,7 @@ class PGDialect(default.DefaultDialect):
         s = s.columns(oid=sqltypes.Integer)
         if schema:
             s = s.bindparams(sql.bindparam("schema", type_=sqltypes.Unicode))
-        c = connection.execute(s, table_name=table_name, schema=schema)
+        c = connection.execute(s, dict(table_name=table_name, schema=schema))
         table_oid = c.scalar()
         if table_oid is None:
             raise exc.NoSuchTableError(table_name)
@@ -3519,7 +3519,9 @@ class PGDialect(default.DefaultDialect):
                 pgd.objoid = :table_oid
         """
 
-        c = connection.execute(sql.text(COMMENT_SQL), table_oid=table_oid)
+        c = connection.execute(
+            sql.text(COMMENT_SQL), dict(table_oid=table_oid)
+        )
         return {"text": c.scalar()}
 
     @reflection.cache

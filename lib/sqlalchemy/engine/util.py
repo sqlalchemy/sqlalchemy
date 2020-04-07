@@ -5,7 +5,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from .. import exc
 from .. import util
+from ..util import collections_abc
 
 
 def connection_memoize(key):
@@ -28,6 +30,8 @@ def connection_memoize(key):
 
 
 def py_fallback():
+    # TODO: pass the Connection in so that there can be a standard
+    # method for warning on parameter format
     def _distill_params(multiparams, params):  # noqa
         r"""Given arguments from the calling form \*multiparams, \**params,
         return a list of bind parameter structures, usually a list of
@@ -40,6 +44,7 @@ def py_fallback():
 
         if not multiparams:
             if params:
+                # TODO: parameter format deprecation warning
                 return [params]
             else:
                 return []
@@ -64,6 +69,7 @@ def py_fallback():
                 # execute(stmt, "value")
                 return [[zero]]
         else:
+            # TODO: parameter format deprecation warning
             if hasattr(multiparams[0], "__iter__") and not hasattr(
                 multiparams[0], "strip"
             ):
@@ -72,6 +78,32 @@ def py_fallback():
                 return [multiparams]
 
     return locals()
+
+
+_no_tuple = ()
+_no_kw = util.immutabledict()
+
+
+def _distill_params_20(params):
+    if params is None:
+        return _no_tuple, _no_kw, []
+    elif isinstance(params, collections_abc.MutableSequence):  # list
+        if params and not isinstance(
+            params[0], (collections_abc.Mapping, tuple)
+        ):
+            raise exc.ArgumentError(
+                "List argument must consist only of tuples or dictionaries"
+            )
+
+        # the tuple is needed atm by the C version of _distill_params...
+        return tuple(params), _no_kw, params
+    elif isinstance(
+        params,
+        (collections_abc.Sequence, collections_abc.Mapping),  # tuple or dict
+    ):
+        return _no_tuple, params, [params]
+    else:
+        raise exc.ArgumentError("mapping or sequence expected for parameters")
 
 
 try:

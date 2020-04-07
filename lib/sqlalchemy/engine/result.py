@@ -78,6 +78,7 @@ class SimpleResultMetaData(ResultMetaData):
                     for index in range(len_keys)
                 }
             )
+            # TODO: negative indexes?   test coverage?
         if extra:
             for key, ex in zip(keys, extra):
                 rec = self._keymap[key]
@@ -639,6 +640,9 @@ class CursorResultMetaData(ResultMetaData):
         """
         indexes = []
         for key in keys:
+            if isinstance(key, int):
+                indexes.append(key)
+                continue
             try:
                 rec = self._keymap[key]
             except KeyError as ke:

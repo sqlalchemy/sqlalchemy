@@ -41,8 +41,15 @@ def _add_default_handler(logger):
 _logged_classes = set()
 
 
+def _qual_logger_name_for_cls(cls):
+    return (
+        getattr(cls, "_sqla_logger_namespace", None)
+        or cls.__module__ + "." + cls.__name__
+    )
+
+
 def class_logger(cls):
-    logger = logging.getLogger(cls.__module__ + "." + cls.__name__)
+    logger = logging.getLogger(_qual_logger_name_for_cls(cls))
     cls._should_log_debug = lambda self: logger.isEnabledFor(logging.DEBUG)
     cls._should_log_info = lambda self: logger.isEnabledFor(logging.INFO)
     cls.logger = logger
@@ -175,16 +182,12 @@ def instance_logger(instance, echoflag=None):
     """create a logger for an instance that implements :class:`.Identified`."""
 
     if instance.logging_name:
-        name = "%s.%s.%s" % (
-            instance.__class__.__module__,
-            instance.__class__.__name__,
+        name = "%s.%s" % (
+            _qual_logger_name_for_cls(instance.__class__),
             instance.logging_name,
         )
     else:
-        name = "%s.%s" % (
-            instance.__class__.__module__,
-            instance.__class__.__name__,
-        )
+        name = _qual_logger_name_for_cls(instance.__class__)
 
     instance._echo = echoflag
 

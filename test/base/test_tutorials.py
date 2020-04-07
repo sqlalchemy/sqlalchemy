@@ -13,7 +13,7 @@ from sqlalchemy.testing import fixtures
 
 class DocTest(fixtures.TestBase):
     def _setup_logger(self):
-        rootlogger = logging.getLogger("sqlalchemy.engine.base.Engine")
+        rootlogger = logging.getLogger("sqlalchemy.engine.Engine")
 
         class MyStream(object):
             def write(self, string):
@@ -28,7 +28,7 @@ class DocTest(fixtures.TestBase):
         rootlogger.addHandler(handler)
 
     def _teardown_logger(self):
-        rootlogger = logging.getLogger("sqlalchemy.engine.base.Engine")
+        rootlogger = logging.getLogger("sqlalchemy.engine.Engine")
         rootlogger.removeHandler(self._handler)
 
     def _setup_create_table_patcher(self):
