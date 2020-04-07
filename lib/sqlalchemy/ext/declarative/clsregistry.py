@@ -289,6 +289,38 @@ class _class_resolver(object):
 
         return self.fallback[key]
 
+    def _raise_for_name(self, name, err):
+        util.raise_(
+            exc.InvalidRequestError(
+                "When initializing mapper %s, expression %r failed to "
+                "locate a name (%r). If this is a class name, consider "
+                "adding this relationship() to the %r class after "
+                "both dependent classes have been defined."
+                % (self.prop.parent, self.arg, name, self.cls)
+            ),
+            from_=err,
+        )
+
+    def _resolve_name(self):
+        name = self.arg
+        d = self._dict
+        rval = None
+        try:
+            for token in name.split("."):
+                if rval is None:
+                    rval = d[token]
+                else:
+                    rval = getattr(rval, token)
+        except KeyError as err:
+            self._raise_for_name(name, err)
+        except NameError as n:
+            self._raise_for_name(n.args[0], n)
+        else:
+            if isinstance(rval, _GetColumns):
+                return rval.cls
+            else:
+                return rval
+
     def __call__(self):
         try:
             x = eval(self.arg, globals(), self._dict)
@@ -298,16 +330,7 @@ class _class_resolver(object):
             else:
                 return x
         except NameError as n:
-            util.raise_(
-                exc.InvalidRequestError(
-                    "When initializing mapper %s, expression %r failed to "
-                    "locate a name (%r). If this is a class name, consider "
-                    "adding this relationship() to the %r class after "
-                    "both dependent classes have been defined."
-                    % (self.prop.parent, self.arg, n.args[0], self.cls)
-                ),
-                from_=n,
-            )
+            self._raise_for_name(n.args[0], n)
 
 
 def _resolver(cls, prop):
@@ -320,16 +343,18 @@ def _resolver(cls, prop):
     def resolve_arg(arg):
         return _class_resolver(cls, prop, fallback, arg)
 
-    return resolve_arg
+    def resolve_name(arg):
+        return _class_resolver(cls, prop, fallback, arg)._resolve_name
+
+    return resolve_name, resolve_arg
 
 
 def _deferred_relationship(cls, prop):
 
     if isinstance(prop, RelationshipProperty):
-        resolve_arg = _resolver(cls, prop)
+        resolve_name, resolve_arg = _resolver(cls, prop)
 
         for attr in (
-            "argument",
             "order_by",
             "primaryjoin",
             "secondaryjoin",
@@ -340,6 +365,11 @@ def _deferred_relationship(cls, prop):
             v = getattr(prop, attr)
             if isinstance(v, util.string_types):
                 setattr(prop, attr, resolve_arg(v))
+
+        for attr in ("argument",):
+            v = getattr(prop, attr)
+            if isinstance(v, util.string_types):
+                setattr(prop, attr, resolve_name(v))
 
         if prop.backref and isinstance(prop.backref, tuple):
             key, kwargs = prop.backref
