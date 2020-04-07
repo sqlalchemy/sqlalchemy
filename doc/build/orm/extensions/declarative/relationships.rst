@@ -44,13 +44,21 @@ class using them::
         user_id = Column(Integer, ForeignKey('users.id'))
         user = relationship(User, primaryjoin=user_id == User.id)
 
+.. _declarative_relationship_eval:
+
+Evaluation of relationship arguments
+=====================================
+
 In addition to the main argument for :func:`~sqlalchemy.orm.relationship`,
-other arguments which depend upon the columns present on an as-yet
-undefined class may also be specified as strings.  These strings are
-evaluated as Python expressions.  The full namespace available within
-this evaluation includes all classes mapped for this declarative base,
-as well as the contents of the ``sqlalchemy`` package, including
-expression functions like :func:`~sqlalchemy.sql.expression.desc` and
+other arguments which depend upon the columns present on an as-yet undefined
+class may also be specified as strings.   For all of these arguments
+**including** the main argument prior to SQLAlchemy 1.3.16, these strings are
+**evaluated as Python expressions using Python's built-in eval() function.**
+
+The full namespace available within this evaluation includes all classes mapped
+for this declarative base, as well as the contents of the ``sqlalchemy``
+package, including expression functions like
+:func:`~sqlalchemy.sql.expression.desc` and
 :attr:`~sqlalchemy.sql.expression.func`::
 
     class User(Base):
@@ -58,6 +66,31 @@ expression functions like :func:`~sqlalchemy.sql.expression.desc` and
         addresses = relationship("Address",
                              order_by="desc(Address.email)",
                              primaryjoin="Address.user_id==User.id")
+
+.. warning::
+
+    The strings accepted by the following parameters:
+
+        :paramref:`.relationship.order_by`
+
+        :paramref:`.relationship.primaryjoin`
+
+        :paramref:`.relationship.secondaryjoin`
+
+        :paramref:`.relationship.secondary`
+
+        :paramref:`.relationship.remote_side`
+
+        :paramref:`.relationship.foreign_keys`
+
+        :paramref:`.relationship._user_defined_foreign_keys`
+
+    Are **evaluated as Python code expressions using eval().  DO NOT PASS
+    UNTRUSTED INPUT TO THESE ARGUMENTS.**
+
+    In addition, prior to version 1.3.16 of SQLAlchemy, the main
+    "argument" to :func:`.relationship` is also evaluated as Python
+    code.  **DO NOT PASS UNTRUSTED INPUT TO THIS ARGUMENT.**
 
 For the case where more than one module contains a class of the same name,
 string class names can also be specified as module-qualified paths
