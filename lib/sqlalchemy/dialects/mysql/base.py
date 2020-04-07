@@ -2297,7 +2297,14 @@ class MySQLDialect(default.DefaultDialect):
             cursor.execute("SELECT @@transaction_isolation")
         else:
             cursor.execute("SELECT @@tx_isolation")
-        val = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        if row is None:
+            util.warn(
+                "Could not retrieve transaction isolation level for MySQL "
+                "connection."
+            )
+            raise NotImplementedError()
+        val = row[0]
         cursor.close()
         if util.py3k and isinstance(val, bytes):
             val = val.decode()

@@ -194,6 +194,32 @@ class DialectTest(fixtures.TestBase):
             ):
                 engine.connect()
 
+    def test_no_default_isolation_level(self):
+        from sqlalchemy.testing import mock
+
+        engine = engines.testing_engine()
+
+        real_isolation_level = testing.db.dialect.get_isolation_level
+
+        def fake_isolation_level(connection):
+            connection = mock.Mock(
+                cursor=mock.Mock(
+                    return_value=mock.Mock(
+                        fetchone=mock.Mock(return_value=None)
+                    )
+                )
+            )
+            return real_isolation_level(connection)
+
+        with mock.patch.object(
+            engine.dialect, "get_isolation_level", fake_isolation_level
+        ):
+            with expect_warnings(
+                "Could not retrieve transaction isolation level for MySQL "
+                "connection."
+            ):
+                engine.connect()
+
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(
             isolation_level="AUTOCOMMIT"
