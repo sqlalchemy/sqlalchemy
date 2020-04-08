@@ -7,7 +7,6 @@
 
 from . import base  # noqa
 from . import cymysql  # noqa
-from . import gaerdbms  # noqa
 from . import mysqlconnector  # noqa
 from . import mysqldb  # noqa
 from . import oursql  # noqa

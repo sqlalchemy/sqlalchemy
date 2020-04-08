@@ -2061,7 +2061,8 @@ class MSDDLCompiler(compiler.DDLCompiler):
                     "will correspond to an actual SQL Server "
                     "CREATE SEQUENCE in "
                     "a future release.  Please use the mssql_identity_start "
-                    "and mssql_identity_increment parameters."
+                    "and mssql_identity_increment parameters.",
+                    version="1.3",
                 )
             if column.default.start == 0:
                 start = 0
@@ -2225,7 +2226,8 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
                 "deprecated and will be removed in a future release.  This "
                 "flag has no effect on the behavior of the "
                 "IdentifierPreparer.quote method; please refer to "
-                "quoted_name()."
+                "quoted_name().",
+                version="1.3",
             )
 
         dbname, owner = _schema_elements(schema)

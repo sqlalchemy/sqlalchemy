@@ -1811,18 +1811,6 @@ def get_history(obj, key, passive=PASSIVE_OFF):
         using loader callables if the value is not locally present.
 
     """
-    if passive is True:
-        util.warn_deprecated(
-            "Passing True for 'passive' is deprecated. "
-            "Use attributes.PASSIVE_NO_INITIALIZE"
-        )
-        passive = PASSIVE_NO_INITIALIZE
-    elif passive is False:
-        util.warn_deprecated(
-            "Passing False for 'passive' is "
-            "deprecated.  Use attributes.PASSIVE_OFF"
-        )
-        passive = PASSIVE_OFF
 
     return get_state_history(instance_state(obj), key, passive)
 

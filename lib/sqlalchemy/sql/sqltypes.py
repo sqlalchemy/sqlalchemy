@@ -329,7 +329,8 @@ class String(Concatenable, TypeEngine):
             "unicode_error flag on String are deprecated.  All modern "
             "DBAPIs now support Python Unicode natively under Python 2, and "
             "under Python 3 all strings are inherently Unicode.  These flags "
-            "will be removed in a future release."
+            "will be removed in a future release.",
+            version="1.3",
         )
 
 
@@ -965,16 +966,6 @@ class LargeBinary(_Binary):
 
         """
         _Binary.__init__(self, length=length)
-
-
-@util.deprecated_cls(
-    "0.6",
-    "The :class:`.Binary` class is deprecated and will be removed "
-    "in a future relase.  Please use :class:`.LargeBinary`.",
-)
-class Binary(LargeBinary):
-    def __init__(self, *arg, **kw):
-        LargeBinary.__init__(self, *arg, **kw)
 
 
 class SchemaType(SchemaEventTarget):

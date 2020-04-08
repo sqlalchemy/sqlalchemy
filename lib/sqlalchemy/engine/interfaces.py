@@ -245,19 +245,6 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    @util.deprecated(
-        "0.8",
-        "The :meth:`.Dialect.get_primary_keys` method is deprecated and "
-        "will be removed in a future release.   Please refer to the "
-        ":meth:`.Dialect.get_pk_constraint` method. ",
-    )
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
-        """Return information about primary keys in `table_name`.
-
-        """
-
-        raise NotImplementedError()
-
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """Return information about the primary key constraint on
         table_name`.
@@ -1092,40 +1079,6 @@ class ExecutionContext(object):
       a list of Column objects for which a server-side default or
       inline SQL expression value was fired off.  Applies to inserts
       and updates.
-    """
-
-    exception = None
-    """A DBAPI-level exception that was caught when this ExecutionContext
-    attempted to execute a statement.
-
-    This attribute is meaningful only within the
-    :meth:`.ConnectionEvents.dbapi_error` event.
-
-    .. versionadded:: 0.9.7
-
-    .. seealso::
-
-        :attr:`.ExecutionContext.is_disconnect`
-
-        :meth:`.ConnectionEvents.dbapi_error`
-
-    """
-
-    is_disconnect = None
-    """Boolean flag set to True or False when a DBAPI-level exception
-    is caught when this ExecutionContext attempted to execute a statement.
-
-    This attribute is meaningful only within the
-    :meth:`.ConnectionEvents.dbapi_error` event.
-
-    .. versionadded:: 0.9.7
-
-    .. seealso::
-
-        :attr:`.ExecutionContext.exception`
-
-        :meth:`.ConnectionEvents.dbapi_error`
-
     """
 
     def create_cursor(self):

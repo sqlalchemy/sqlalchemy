@@ -752,12 +752,6 @@ class SessionStateTest(_fixtures.FixtureTest):
             )
 
     def test_internal_identity_conflict_warning_weak(self):
-        self._test_internal_identity_conflict_warning(True)
-
-    def test_internal_identity_conflict_warning_strong(self):
-        self._test_internal_identity_conflict_warning(False)
-
-    def _test_internal_identity_conflict_warning(self, weak_identity_map):
         # test for issue #4890
         # see also test_naturalpks::ReversePKsTest::test_reverse
         users, User = self.tables.users, self.classes.User
@@ -770,8 +764,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         )
         mapper(Address, addresses)
 
-        with testing.expect_deprecated():
-            session = Session(weak_identity_map=weak_identity_map)
+        session = Session()
 
         @event.listens_for(session, "after_flush")
         def load_collections(session, flush_context):

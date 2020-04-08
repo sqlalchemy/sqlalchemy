@@ -7,7 +7,7 @@
 
 import re
 
-from .enumerated import _EnumeratedValues
+from .enumerated import ENUM
 from .enumerated import SET
 from .types import DATETIME
 from .types import TIME
@@ -215,8 +215,8 @@ class MySQLTableDefinitionParser(object):
         for kw in ("charset", "collate"):
             if spec.get(kw, False):
                 type_kw[kw] = spec[kw]
-        if issubclass(col_type, _EnumeratedValues):
-            type_args = _EnumeratedValues._strip_values(type_args)
+        if issubclass(col_type, (ENUM, SET)):
+            type_args = _strip_values(type_args)
 
             if issubclass(col_type, SET) and "" in type_args:
                 type_kw["retrieve_as_bitwise"] = True
@@ -545,3 +545,14 @@ def _re_compile(regex):
     """Compile a string to regex, I and UNICODE."""
 
     return re.compile(regex, re.I | re.UNICODE)
+
+
+def _strip_values(values):
+    "Strip reflected values quotes"
+    strip_values = []
+    for a in values:
+        if a[0:1] == '"' or a[0:1] == "'":
+            # strip enclosing quotes and unquote interior
+            a = a[1:-1].replace(a[0] * 2, a[0])
+        strip_values.append(a)
+    return strip_values

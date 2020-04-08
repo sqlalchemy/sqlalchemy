@@ -1,4 +1,5 @@
-from sqlalchemy.testing import expect_deprecated_20, fixtures
+from sqlalchemy.testing import expect_deprecated_20
+from sqlalchemy.testing import fixtures
 from sqlalchemy.util.compat import import_
 
 

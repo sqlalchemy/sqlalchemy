@@ -146,8 +146,8 @@ def _expect_warnings(
 
     def our_warn(msg, *arg, **kw):
         if isinstance(msg, exc_cls):
-            exception = msg
-            msg = str(exception)
+            exception = type(msg)
+            msg = str(msg)
         elif arg:
             exception = arg[0]
         else:

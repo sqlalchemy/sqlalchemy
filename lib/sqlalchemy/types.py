@@ -46,7 +46,6 @@ __all__ = [
     "Date",
     "Time",
     "LargeBinary",
-    "Binary",
     "Boolean",
     "Unicode",
     "Concatenable",
@@ -64,7 +63,6 @@ from .sql.sqltypes import ARRAY  # noqa
 from .sql.sqltypes import BIGINT  # noqa
 from .sql.sqltypes import BigInteger  # noqa
 from .sql.sqltypes import BINARY  # noqa
-from .sql.sqltypes import Binary  # noqa
 from .sql.sqltypes import BLOB  # noqa
 from .sql.sqltypes import BOOLEAN  # noqa
 from .sql.sqltypes import Boolean  # noqa

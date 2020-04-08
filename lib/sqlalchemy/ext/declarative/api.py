@@ -20,7 +20,6 @@ from ... import exc
 from ... import inspection
 from ... import util
 from ...orm import attributes
-from ...orm import comparable_property
 from ...orm import exc as orm_exc
 from ...orm import interfaces
 from ...orm import relationships
@@ -118,31 +117,6 @@ def synonym_for(name, map_column=False):
 
     def decorate(fn):
         return _orm_synonym(name, map_column=map_column, descriptor=fn)
-
-    return decorate
-
-
-def comparable_using(comparator_factory):
-    """Decorator, allow a Python @property to be used in query criteria.
-
-    This is a  decorator front end to
-    :func:`~sqlalchemy.orm.comparable_property` that passes
-    through the comparator_factory and the function being decorated::
-
-      @comparable_using(MyComparatorType)
-      @property
-      def prop(self):
-          return 'special sauce'
-
-    The regular ``comparable_property()`` is also usable directly in a
-    declarative setting and may be convenient for read/write properties::
-
-      prop = comparable_property(MyComparatorType)
-
-    """
-
-    def decorate(fn):
-        return comparable_property(comparator_factory, fn)
 
     return decorate
 

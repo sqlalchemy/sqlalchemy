@@ -107,13 +107,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
     _dispose_called = False
 
     @util.deprecated_params(
-        order_by=(
-            "1.1",
-            "The :paramref:`.mapper.order_by` parameter "
-            "is deprecated, and will be removed in a future release. "
-            "Use :meth:`.Query.order_by` to determine the ordering of a "
-            "result set.",
-        ),
         non_primary=(
             "1.3",
             "The :paramref:`.mapper.non_primary` parameter is deprecated, "
@@ -133,7 +126,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         inherits=None,
         inherit_condition=None,
         inherit_foreign_keys=None,
-        order_by=False,
         always_refresh=False,
         version_id_col=None,
         version_id_generator=None,
@@ -340,11 +332,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
           .. seealso::
 
               :ref:`relationship_non_primary_mapper`
-
-        :param order_by: A single :class:`.Column` or list of :class:`.Column`
-           objects for which selection operations should use as the default
-           ordering for entities.  By default mappers have no pre-defined
-           ordering.
 
         :param passive_deletes: Indicates DELETE behavior of foreign key
            columns when a joined-table inheritance entity is being deleted.
@@ -603,11 +590,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
 
         self._primary_key_argument = util.to_list(primary_key)
         self.non_primary = non_primary
-
-        if order_by is not False:
-            self.order_by = util.to_list(order_by)
-        else:
-            self.order_by = order_by
 
         self.always_refresh = always_refresh
 
@@ -1064,13 +1046,6 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
                         self.inherits.version_id_col.description,
                     )
                 )
-
-            if (
-                self.order_by is False
-                and not self.concrete
-                and self.inherits.order_by is not False
-            ):
-                self.order_by = self.inherits.order_by
 
             self.polymorphic_map = self.inherits.polymorphic_map
             self.batch = self.inherits.batch

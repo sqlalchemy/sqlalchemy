@@ -11,7 +11,6 @@ from .interfaces import Connectable
 from .interfaces import Dialect
 from .. import event
 from .. import exc
-from .. import util
 
 
 class ConnectionEvents(event.Events):
@@ -42,10 +41,9 @@ class ConnectionEvents(event.Events):
                 log.info("Received statement: %s", statement)
 
     When the methods are called with a `statement` parameter, such as in
-    :meth:`.after_cursor_execute`, :meth:`.before_cursor_execute` and
-    :meth:`.dbapi_error`, the statement is the exact SQL string that was
-    prepared for transmission to the DBAPI ``cursor`` in the connection's
-    :class:`.Dialect`.
+    :meth:`.after_cursor_execute` or :meth:`.before_cursor_execute`,
+    the statement is the exact SQL string that was prepared for transmission
+    to the DBAPI ``cursor`` in the connection's :class:`.Dialect`.
 
     The :meth:`.before_execute` and :meth:`.before_cursor_execute`
     events can also be established with the ``retval=True`` flag, which
@@ -242,58 +240,6 @@ class ConnectionEvents(event.Events):
          be ``None``.
         :param executemany: boolean, if ``True``, this is an ``executemany()``
          call, if ``False``, this is an ``execute()`` call.
-
-        """
-
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.ConnectionEvents.dbapi_error` "
-        "event is deprecated and will be removed in a future release. "
-        "Please refer to the :meth:`.ConnectionEvents.handle_error` "
-        "event.",
-    )
-    def dbapi_error(
-        self, conn, cursor, statement, parameters, context, exception
-    ):
-        """Intercept a raw DBAPI error.
-
-        This event is called with the DBAPI exception instance
-        received from the DBAPI itself, *before* SQLAlchemy wraps the
-        exception with it's own exception wrappers, and before any
-        other operations are performed on the DBAPI cursor; the
-        existing transaction remains in effect as well as any state
-        on the cursor.
-
-        The use case here is to inject low-level exception handling
-        into an :class:`.Engine`, typically for logging and
-        debugging purposes.
-
-        .. warning::
-
-            Code should **not** modify
-            any state or throw any exceptions here as this will
-            interfere with SQLAlchemy's cleanup and error handling
-            routines.  For exception modification, please refer to the
-            new :meth:`.ConnectionEvents.handle_error` event.
-
-        Subsequent to this hook, SQLAlchemy may attempt any
-        number of operations on the connection/cursor, including
-        closing the cursor, rolling back of the transaction in the
-        case of connectionless execution, and disposing of the entire
-        connection pool if a "disconnect" was detected.   The
-        exception is then wrapped in a SQLAlchemy DBAPI exception
-        wrapper and re-thrown.
-
-        :param conn: :class:`.Connection` object
-        :param cursor: DBAPI cursor object
-        :param statement: string SQL statement, as passed to the DBAPI
-        :param parameters: Dictionary, tuple, or list of parameters being
-         passed to the ``execute()`` or ``executemany()`` method of the
-         DBAPI ``cursor``.  In some cases may be ``None``.
-        :param context: :class:`.ExecutionContext` object in use.  May
-         be ``None``.
-        :param exception: The **unwrapped** exception emitted directly from the
-         DBAPI.  The class here is specific to the DBAPI module in use.
 
         """
 

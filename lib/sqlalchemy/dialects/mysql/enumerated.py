@@ -12,53 +12,10 @@ from ... import exc
 from ... import sql
 from ... import util
 from ...sql import sqltypes
+from ...sql.base import NO_ARG
 
 
-class _EnumeratedValues(_StringType):
-    def _init_values(self, values, kw):
-        self.quoting = kw.pop("quoting", "auto")
-
-        if self.quoting == "auto" and len(values):
-            # What quoting character are we using?
-            q = None
-            for e in values:
-                if len(e) == 0:
-                    self.quoting = "unquoted"
-                    break
-                elif q is None:
-                    q = e[0]
-
-                if len(e) == 1 or e[0] != q or e[-1] != q:
-                    self.quoting = "unquoted"
-                    break
-            else:
-                self.quoting = "quoted"
-
-        if self.quoting == "quoted":
-            util.warn_deprecated(
-                "Manually quoting %s value literals is deprecated.  Supply "
-                "unquoted values and use the quoting= option in cases of "
-                "ambiguity." % self.__class__.__name__
-            )
-
-            values = self._strip_values(values)
-
-        self._enumerated_values = values
-        length = max([len(v) for v in values] + [0])
-        return values, length
-
-    @classmethod
-    def _strip_values(cls, values):
-        strip_values = []
-        for a in values:
-            if a[0:1] == '"' or a[0:1] == "'":
-                # strip enclosing quotes and unquote interior
-                a = a[1:-1].replace(a[0] * 2, a[0])
-            strip_values.append(a)
-        return strip_values
-
-
-class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _EnumeratedValues):
+class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
     """MySQL ENUM type."""
 
     __visit_name__ = "ENUM"
@@ -72,10 +29,10 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _EnumeratedValues):
 
           Column('myenum', ENUM("foo", "bar", "baz"))
 
-        :param enums: The range of valid values for this ENUM.  Values will be
-          quoted when generating the schema according to the quoting flag (see
-          below).  This object may also be a PEP-435-compliant enumerated
-          type.
+        :param enums: The range of valid values for this ENUM.  Values in
+          enums are not quoted, they will be escaped and surrounded by single
+          quotes when generating the schema.  This object may also be a
+          PEP-435-compliant enumerated type.
 
           .. versionadded: 1.1 added support for PEP-435-compliant enumerated
              types.
@@ -102,22 +59,15 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _EnumeratedValues):
           BINARY in schema.  This does not affect the type of data stored,
           only the collation of character data.
 
-        :param quoting: Defaults to 'auto': automatically determine enum value
-          quoting.  If all enum values are surrounded by the same quoting
-          character, then use 'quoted' mode.  Otherwise, use 'unquoted' mode.
-
-          'quoted': values in enums are already quoted, they will be used
-          directly when generating the schema - this usage is deprecated.
-
-          'unquoted': values in enums are not quoted, they will be escaped and
-          surrounded by single quotes when generating the schema.
-
-          Previous versions of this type always required manually quoted
-          values to be supplied; future versions will always quote the string
-          literals for you.  This is a transitional option.
+        :param quoting: Not used. A warning will be raised if provided.
 
         """
-
+        if kw.pop("quoting", NO_ARG) is not NO_ARG:
+            util.warn_deprecated_20(
+                "The 'quoting' parameter to :class:`.mysql.ENUM` is deprecated"
+                " and will be removed in a future release. "
+                "This parameter now has no effect."
+            )
         kw.pop("strict", None)
         self._enum_init(enums, kw)
         _StringType.__init__(self, length=self.length, **kw)
@@ -131,10 +81,6 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _EnumeratedValues):
         kw.setdefault("validate_strings", impl.validate_strings)
         kw.setdefault("values_callable", impl.values_callable)
         return cls(**kw)
-
-    def _setup_for_values(self, values, objects, kw):
-        values, length = self._init_values(values, kw)
-        return super(ENUM, self)._setup_for_values(values, objects, kw)
 
     def _object_value_for_elem(self, elem):
         # mysql sends back a blank string for any value that
@@ -152,7 +98,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _EnumeratedValues):
         )
 
 
-class SET(_EnumeratedValues):
+class SET(_StringType):
     """MySQL SET type."""
 
     __visit_name__ = "SET"
@@ -169,7 +115,9 @@ class SET(_EnumeratedValues):
         set will be used to generate DDL for a table, or if the
         :paramref:`.SET.retrieve_as_bitwise` flag is set to True.
 
-        :param values: The range of valid values for this SET.
+        :param values: The range of valid values for this SET. The values
+          are not quoted, they will be escaped and surrounded by single
+          quotes when generating the schema.
 
         :param convert_unicode: Same flag as that of
          :paramref:`.String.convert_unicode`.
@@ -183,22 +131,6 @@ class SET(_EnumeratedValues):
         :param unicode: same as that of :paramref:`.VARCHAR.unicode`.
 
         :param binary: same as that of :paramref:`.VARCHAR.binary`.
-
-        :param quoting: Defaults to 'auto': automatically determine set value
-          quoting.  If all values are surrounded by the same quoting
-          character, then use 'quoted' mode.  Otherwise, use 'unquoted' mode.
-
-          'quoted': values in enums are already quoted, they will be used
-          directly when generating the schema - this usage is deprecated.
-
-          'unquoted': values in enums are not quoted, they will be escaped and
-          surrounded by single quotes when generating the schema.
-
-          Previous versions of this type always required manually quoted
-          values to be supplied; future versions will always quote the string
-          literals for you.  This is a transitional option.
-
-          .. versionadded:: 0.9.0
 
         :param retrieve_as_bitwise: if True, the data for the set type will be
           persisted and selected using an integer value, where a set is coerced
@@ -218,10 +150,16 @@ class SET(_EnumeratedValues):
 
           .. versionadded:: 1.0.0
 
+        :param quoting: Not used. A warning will be raised if passed.
 
         """
+        if kw.pop("quoting", NO_ARG) is not NO_ARG:
+            util.warn_deprecated_20(
+                "The 'quoting' parameter to :class:`.mysql.SET` is deprecated"
+                " and will be removed in a future release. "
+                "This parameter now has no effect."
+            )
         self.retrieve_as_bitwise = kw.pop("retrieve_as_bitwise", False)
-        values, length = self._init_values(values, kw)
         self.values = tuple(values)
         if not self.retrieve_as_bitwise and "" in values:
             raise exc.ArgumentError(
@@ -235,6 +173,7 @@ class SET(_EnumeratedValues):
             self._bitmap.update(
                 (2 ** idx, value) for idx, value in enumerate(self.values)
             )
+        length = max([len(v) for v in values] + [0])
         kw.setdefault("length", length)
         super(SET, self).__init__(**kw)
 

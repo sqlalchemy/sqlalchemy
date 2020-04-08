@@ -82,7 +82,6 @@ from .types import ARRAY  # noqa
 from .types import BIGINT  # noqa
 from .types import BigInteger  # noqa
 from .types import BINARY  # noqa
-from .types import Binary  # noqa
 from .types import BLOB  # noqa
 from .types import BOOLEAN  # noqa
 from .types import Boolean  # noqa

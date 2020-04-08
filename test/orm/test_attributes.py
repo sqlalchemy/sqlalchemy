@@ -1636,7 +1636,9 @@ class PendingBackrefTest(fixtures.ORMTest):
 
         # then this would fail.
         eq_(
-            Blog.posts.impl.get_history(state, dict_, passive=True),
+            Blog.posts.impl.get_history(
+                state, dict_, passive=attributes.PASSIVE_NO_INITIALIZE
+            ),
             ([p2], (), ()),
         )
 
@@ -2901,27 +2903,6 @@ class HistoryTest(fixtures.TestBase):
         eq_(
             attributes.get_state_history(attributes.instance_state(b2), "foo"),
             ([f1], (), ()),
-        )
-
-    def test_deprecated_flags(self):
-        assert_raises_message(
-            sa_exc.SADeprecationWarning,
-            "Passing True for 'passive' is deprecated. "
-            "Use attributes.PASSIVE_NO_INITIALIZE",
-            attributes.get_history,
-            object(),
-            "foo",
-            True,
-        )
-
-        assert_raises_message(
-            sa_exc.SADeprecationWarning,
-            "Passing False for 'passive' is deprecated.  "
-            "Use attributes.PASSIVE_OFF",
-            attributes.get_history,
-            object(),
-            "foo",
-            False,
         )
 
 

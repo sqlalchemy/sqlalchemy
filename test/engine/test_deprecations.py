@@ -1,22 +1,17 @@
 import sqlalchemy as tsa
-from sqlalchemy import column
 from sqlalchemy import create_engine
-from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import INT
 from sqlalchemy import Integer
-from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import TypeDecorator
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
-from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -253,83 +248,6 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
 
         self.dbapi = dbapi
         self.ProgrammingError = sqlite3.ProgrammingError
-
-
-class HandleErrorTest(fixtures.TestBase):
-    __requires__ = ("ad_hoc_engines",)
-    __backend__ = True
-
-    def tearDown(self):
-        Engine.dispatch._clear()
-        Engine._has_events = False
-
-    def test_legacy_dbapi_error(self):
-        engine = engines.testing_engine()
-        canary = Mock()
-
-        with testing.expect_deprecated(
-            r"The ConnectionEvents.dbapi_error\(\) event is deprecated"
-        ):
-            event.listen(engine, "dbapi_error", canary)
-
-        with engine.connect() as conn:
-            try:
-                conn.exec_driver_sql("SELECT FOO FROM I_DONT_EXIST")
-                assert False
-            except tsa.exc.DBAPIError as e:
-                eq_(canary.mock_calls[0][1][5], e.orig)
-                eq_(canary.mock_calls[0][1][2], "SELECT FOO FROM I_DONT_EXIST")
-
-    def test_legacy_dbapi_error_no_ad_hoc_context(self):
-        engine = engines.testing_engine()
-
-        listener = Mock(return_value=None)
-        with testing.expect_deprecated(
-            r"The ConnectionEvents.dbapi_error\(\) event is deprecated"
-        ):
-            event.listen(engine, "dbapi_error", listener)
-
-        nope = SomeException("nope")
-
-        class MyType(TypeDecorator):
-            impl = Integer
-
-            def process_bind_param(self, value, dialect):
-                raise nope
-
-        with engine.connect() as conn:
-            assert_raises_message(
-                tsa.exc.StatementError,
-                r"\(.*SomeException\) " r"nope\n\[SQL\: u?SELECT 1 ",
-                conn.execute,
-                select([1]).where(column("foo") == literal("bar", MyType())),
-            )
-        # no legacy event
-        eq_(listener.mock_calls, [])
-
-    def test_legacy_dbapi_error_non_dbapi_error(self):
-        engine = engines.testing_engine()
-
-        listener = Mock(return_value=None)
-        with testing.expect_deprecated(
-            r"The ConnectionEvents.dbapi_error\(\) event is deprecated"
-        ):
-            event.listen(engine, "dbapi_error", listener)
-
-        nope = TypeError("I'm not a DBAPI error")
-        with engine.connect() as c:
-            c.connection.cursor = Mock(
-                return_value=Mock(execute=Mock(side_effect=nope))
-            )
-
-            assert_raises_message(
-                TypeError,
-                "I'm not a DBAPI error",
-                c.exec_driver_sql,
-                "select ",
-            )
-        # no legacy event
-        eq_(listener.mock_calls, [])
 
 
 def MockDBAPI():  # noqa

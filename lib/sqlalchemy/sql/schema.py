@@ -408,8 +408,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         name, specify the flag ``quote_schema=True`` to the constructor, or use
         the :class:`.quoted_name` construct to specify the name.
 
-    :param useexisting: the same as :paramref:`.Table.extend_existing`.
-
     :param comment: Optional string that will render an SQL comment on table
          creation.
 
@@ -432,14 +430,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     def _gen_cache_key(self, anon_map, bindparams):
         return (self,) + self._annotations_cache_key
 
-    @util.deprecated_params(
-        useexisting=(
-            "0.7",
-            "The :paramref:`.Table.useexisting` parameter is deprecated and "
-            "will be removed in a future release.  Please use "
-            ":paramref:`.Table.extend_existing`.",
-        )
-    )
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this

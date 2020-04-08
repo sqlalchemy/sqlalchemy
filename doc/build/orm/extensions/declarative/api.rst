@@ -20,8 +20,6 @@ API Reference
 
 .. autofunction:: synonym_for
 
-.. autofunction:: comparable_using
-
 .. autofunction:: instrument_declarative
 
 .. autoclass:: AbstractConcreteBase
