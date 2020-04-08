@@ -93,14 +93,14 @@ The steps to achieve this are as follows:
 
 * APIs which are explicitly incompatible with SQLAlchemy 1.x style will be
   available in two new packages ``sqlalchemy.future`` and
-  ``sqlalchemy.orm.future``.  The most prominent objects in these new packages
+  ``sqlalchemy.future.orm``.  The most prominent objects in these new packages
   will be the :func:`sqlalchemy.future.select` object, which now features
   a refined constructor, and additionally will be compatible with ORM
   querying, as well as the new declarative base construct in
-  ``sqlalchemy.orm.future``.
+  ``sqlalchemy.future.orm``.
 
 * SQLAlchemy 2.0 will include the same ``sqlalchemy.future`` and
-  ``sqlalchemy.orm.future`` packages; once an application only needs to run on
+  ``sqlalchemy.future.orm`` packages; once an application only needs to run on
   SQLAlchemy 2.0 (as well as Python 3 only of course :) ), the "future" imports
   can be changed to refer to the canonical import, for example ``from
   sqlalchemy.future import select`` becomes ``from sqlalchemy import select``.
@@ -487,7 +487,7 @@ longer.   The signature "in spirit" would be::
 The interim signature will be::
 
     # 1.4 / 2.0 using sqlalchemy.future.create_engine,
-    # sqlalchemy.orm.future.Session / sessionmaker / etc
+    # sqlalchemy.future.orm.Session / sessionmaker / etc
 
     def execute(self, statement, _params=None, **options):
 
@@ -599,7 +599,7 @@ such as ``row["some_column"]`` can be used.
 In order to receive results as mappings up front, the ``mappings()`` modifier
 on the result can be used::
 
-    from sqlalchemy.orm.future import Session
+    from sqlalchemy.future.orm import Session
 
     session = Session(some_engine)
 
@@ -634,7 +634,7 @@ Declarative becomes a first class API
   be integrating the declarative documentation appropriately.
 
 Declarative will now be part of ``sqlalchemy.orm`` in 2.0, and in 1.4 the
-new version will be present in ``sqlalchemy.orm.future``.   The concept
+new version will be present in ``sqlalchemy.future.orm``.   The concept
 of the ``Base`` class will be there as it is now and do the same thing
 it already does, however it will also have some new capabilities.
 
@@ -707,7 +707,7 @@ to where the ``declarative_mapper()`` function was called.   However, we
 can just as easily add the above ``mapper()`` function to any declarative base,
 to make for a pattern such as::
 
-    from sqlalchemy.orm.future import declarative_base
+    from sqlalchemy.future.orm import declarative_base
 
     base = declarative_base()
 
@@ -769,7 +769,7 @@ then when delivered to the ``.invoke()`` or ``.execute()`` method of
     from sqlalchemy.future import select
     stmt = select(User).join(User.addresses).where(Address.email == 'foo@bar.com')
 
-    from sqlalchemy.orm.future import Session
+    from sqlalchemy.future.orm import Session
     session = Session(some_engine)
 
     rows = session.execute(stmt).all()

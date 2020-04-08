@@ -58,7 +58,7 @@ warning is at the base of this system to provide guidance on what behaviors in
 an existing codebase will need to be modified.
 
 For some occurrences of this warning, an additional recommendation to use an
-API in either the ``sqlalchemy.future`` or  ``sqlalchemy.orm.future`` packages
+API in either the ``sqlalchemy.future`` or  ``sqlalchemy.future.orm`` packages
 may be present.  This refers to two  special future-compatibility packages that
 are part of SQLAlchemy 1.4 and  are there to help migrate an application to the
 2.0 version.
