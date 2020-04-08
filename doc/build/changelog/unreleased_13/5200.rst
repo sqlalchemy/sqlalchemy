@@ -1,7 +1,0 @@
-.. change::
-    :tags: oracle, usecase
-    :tickets: 5200
-
-    Implemented AUTOCOMMIT isolation level for Oracle when using cx_Oracle.
-    Also added a fixed default isolation level of READ COMMITTED for Oracle.
-

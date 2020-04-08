@@ -12,7 +12,166 @@
 
 .. changelog::
     :version: 1.3.16
-    :include_notes_from: unreleased_13
+    :released: April 7, 2020
+
+    .. change::
+        :tags: oracle, usecase
+        :tickets: 5200
+
+        Implemented AUTOCOMMIT isolation level for Oracle when using cx_Oracle.
+        Also added a fixed default isolation level of READ COMMITTED for Oracle.
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5239
+
+        Fixed issue in MySQL dialect when connecting to a psuedo-MySQL database
+        such as that provided by ProxySQL, the up front check for isolation level
+        when it returns no row will not prevent the dialect from continuing to
+        connect. A warning is emitted that the isolation level could not be
+        detected.
+
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 5201
+
+        Fixed an issue that prevented the test suite from running with the
+        recently released py.test 5.4.0.
+
+
+    .. change::
+        :tags: bug, oracle, reflection
+        :tickets: 5146
+
+        Fixed regression / incorrect fix caused by fix for :ticket:`5146` where the
+        Oracle dialect reads from the "all_tab_comments" view to get table comments
+        but fails to accommodate for the current owner of the table being
+        requested, causing it to read the wrong comment if multiple tables of the
+        same name exist in multiple schemas.
+
+
+    .. change::
+        :tags: types, enum
+        :tickets: 5183
+
+        The :class:`.Enum` type now supports the parameter :paramref:`.Enum.length`
+        to specify the length of the VARCHAR column to create when using
+        non native enums by setting :paramref:`.Enum.native_enum` to ``False``
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5228
+
+        Fixed bug in :func:`.orm.selectinload` loading option where two or more
+        loaders that represent different relationships with the same string key
+        name as referenced from a single :func:`.orm.with_polymorphic` construct
+        with multiple subclass mappers would fail to invoke each subqueryload
+        separately, instead making use of a single string-based slot that would
+        prevent the other loaders from being invoked.
+
+
+    .. change::
+        :tags: schema, reflection
+        :tickets: 5063
+
+        Added support for reflection of "computed" columns, which are now returned
+        as part of the structure returned by :meth:`.Inspector.get_columns`.
+        When reflecting full :class:`.Table` objects, computed columns will
+        be represented using the :class:`.Computed` construct.
+
+    .. change::
+        :tags: orm, performance
+        :tickets: 5162
+
+        Modified the queries used by subqueryload and selectinload to no longer
+        ORDER BY the primary key of the parent entity;  this ordering was there to
+        allow the rows as they come in to be copied into lists directly with a
+        minimal level of Python-side collation.   However, these ORDER BY clauses
+        can negatively impact the performance of the query as in many scenarios
+        these columns are derived from a subquery or are otherwise not actual
+        primary key columns such that SQL planners cannot make use of indexes. The
+        Python-side collation uses the native itertools.group_by() to collate the
+        incoming rows, and has been modified to allow multiple
+        row-groups-per-parent to be assembled together using list.extend(), which
+        should still allow for relatively fast Python-side performance.  There will
+        still be an ORDER BY present for a relationship that includes an explicit
+        order_by parameter, however this is the only ORDER BY that will be added to
+        the query for both kinds of loading.
+
+    .. change::
+        :tags: mssql, mysql, oracle, usecase
+        :tickets: 5137
+
+        Added support for :meth:`.ColumnOperators.is_distinct_from` and
+        :meth:`.ColumnOperators.isnot_distinct_from` to SQL Server,
+        MySQL, and Oracle.
+
+    .. change::
+        :tags: sqlite, usecase
+        :tickets: 5164
+
+        Implemented AUTOCOMMIT isolation level for SQLite when using pysqlite.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5205
+
+        Fixed issue where a "covering" index, e.g. those which have an  INCLUDE
+        clause, would be reflected including all the columns in INCLUDE clause as
+        regular columns.  A warning is now emitted if these additional columns are
+        detected indicating that they are currently ignored.  Note that full
+        support for "covering" indexes is part of :ticket:`4458`.  Pull request
+        courtesy Marat Sharafutdinov.
+
+    .. change::
+        :tags: sql, types
+        :tickets: 5052
+
+        Add ability to literal compile a :class:`DateTime`, :class:`Date`
+        or :class:"Time" when using the string dialect for debugging purposes.
+        This change does not impact real dialect implementation that retain
+        their current behavior.
+
+    .. change::
+        :tags: installer
+        :tickets: 5207
+
+        Ensured that the "pyproject.toml" file is not included in builds, as the
+        presence of this file indicates to pip that a pep-517 installation process
+        should be used.  As this mode of operation appears to be not well supported
+        by current tools / distros, these problems are avoided within the scope
+        of SQLAlchemy installation by omitting the file.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5210
+
+        Fixed issue where a lazyload that uses session-local "get" against a target
+        many-to-one relationship where an object with the correct primary key is
+        present, however it's an instance of a sibling class, does not correctly
+        return None as is the case when the lazy loader actually emits a load for
+        that row.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 5238
+
+        The string argument accepted as the first positional argument by the
+        :func:`.relationship` function when using the Declarative API is no longer
+        interpreted using the Python ``eval()`` function; instead, the name is dot
+        separated and the names are looked up directly in the name resolution
+        dictionary without treating the value as a Python expression.  However,
+        passing a string argument to the other :func:`.relationship` parameters
+        that necessarily must accept Python expressions will still use ``eval()``;
+        the documentation has been clarified to ensure that there is no ambiguity
+        that this is in use.
+
+        .. seealso::
+
+            :ref:`declarative_relationship_eval` - details on string evaluation
 
 .. changelog::
     :version: 1.3.15
