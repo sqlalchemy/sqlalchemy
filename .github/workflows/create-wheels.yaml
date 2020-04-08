@@ -63,7 +63,7 @@ jobs:
         # `-replace` uses a regexp match
         # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
         run: |
-          (cat setup.cfg) | %{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg
+          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create wheel
         # create the wheel using --no-use-pep517 since locally we have pyproject
@@ -174,7 +174,7 @@ jobs:
         # `-replace` uses a regexp match
         # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
         run: |
-          (cat setup.cfg) | %{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg
+          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create python PEP 425 tag for manylinux build
         id: linux-py-version
