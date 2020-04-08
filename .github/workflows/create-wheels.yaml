@@ -52,6 +52,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
 
+      - name: Remove tag_build from setup.cfg
+        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
+        # otherwise it gets tagged with `dev0`
+        shell: pwsh
+        # This is equivalent to the sed commands:
+        # `sed -i '/tag_build=dev/d' setup.cfg`
+        # `sed -i '/tag_build = dev/d' setup.cfg`
+
+        # `-replace` uses a regexp match
+        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
+        run: |
+          (cat setup.cfg) | %{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg
+
       - name: Create wheel
         # create the wheel using --no-use-pep517 since locally we have pyproject
         # this flag should be removed once sqlalchemy supports pep517
@@ -64,6 +77,8 @@ jobs:
       - name: Install wheel
         # install the created wheel without using the pypi index
         run: |
+          pip install -U pip
+          pip --version
           pip install -f dist --no-index sqlalchemy
 
       - name: Check c extensions
@@ -149,6 +164,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
 
+      - name: Remove tag_build from setup.cfg
+        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
+        # otherwise it gets tagged with `dev0`
+        shell: pwsh
+        # This is equivalent to the sed commands:
+        # `sed -i '/tag_build=dev/d' setup.cfg`
+        # `sed -i '/tag_build = dev/d' setup.cfg`
+
+        # `-replace` uses a regexp match
+        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
+        run: |
+          (cat setup.cfg) | %{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg
+
       - name: Create python PEP 425 tag for manylinux build
         id: linux-py-version
         env:
@@ -184,6 +212,8 @@ jobs:
       - name: Install wheel
         # install the created wheel without using the pypi index
         run: |
+          pip install -U pip
+          pip --version
           pip install -f wheelhouse --no-index sqlalchemy
 
       - name: Check c extensions
