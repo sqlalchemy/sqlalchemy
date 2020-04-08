@@ -1,7 +1,0 @@
-.. change::
-    :tags: types, enum
-    :tickets: 5183
-
-    The :class:`.Enum` type now supports the parameter :paramref:`.Enum.length`
-    to specify the length of the VARCHAR column to create when using
-    non native enums by setting :paramref:`.Enum.native_enum` to ``False``

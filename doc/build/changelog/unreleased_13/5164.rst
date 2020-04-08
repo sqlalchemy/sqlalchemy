@@ -1,5 +1,0 @@
-.. change::
-    :tags: sqlite, usecase
-    :tickets: 5164
-
-    Implemented AUTOCOMMIT isolation level for SQLite when using pysqlite.
