@@ -18,6 +18,8 @@ What's New in SQLAlchemy 1.4?
     implicit behaviors and rarely-used API flags that complicate the internals
     and hinder performance will be removed.
 
+    For the current status of SQLAlchemy 2.0, see :ref:`migration_20_toplevel`.
+
 Behavioral Changes - General
 ============================
 
