@@ -123,7 +123,7 @@ from .engine import create_engine  # noqa nosort
 from .engine import engine_from_config  # noqa nosort
 
 
-__version__ = '1.3.16'
+__version__ = '1.3.17'
 
 
 def __go(lcls):
