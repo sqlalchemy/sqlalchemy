@@ -49,12 +49,15 @@ class ClsRegistryTest(fixtures.TestBase):
         f2 = MockClass(base, "foo.alt.Foo")
         clsregistry.add_class("Foo", f1)
         clsregistry.add_class("Foo", f2)
-        resolver = clsregistry._resolver(f1, MockProp())
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
 
         is_(resolver("foo.bar.Foo")(), f1)
         is_(resolver("foo.alt.Foo")(), f2)
+
+        is_(name_resolver("foo.bar.Foo")(), f1)
+        is_(name_resolver("foo.alt.Foo")(), f2)
 
     def test_fragment_resolve(self):
         base = weakref.WeakValueDictionary()
@@ -64,12 +67,15 @@ class ClsRegistryTest(fixtures.TestBase):
         clsregistry.add_class("Foo", f1)
         clsregistry.add_class("Foo", f2)
         clsregistry.add_class("HoHo", f3)
-        resolver = clsregistry._resolver(f1, MockProp())
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
 
         is_(resolver("bar.Foo")(), f1)
         is_(resolver("alt.Foo")(), f2)
+
+        is_(name_resolver("bar.Foo")(), f1)
+        is_(name_resolver("alt.Foo")(), f2)
 
     def test_fragment_ambiguous(self):
         base = weakref.WeakValueDictionary()
@@ -79,7 +85,7 @@ class ClsRegistryTest(fixtures.TestBase):
         clsregistry.add_class("Foo", f1)
         clsregistry.add_class("Foo", f2)
         clsregistry.add_class("Foo", f3)
-        resolver = clsregistry._resolver(f1, MockProp())
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
 
@@ -91,6 +97,39 @@ class ClsRegistryTest(fixtures.TestBase):
             resolver("alt.Foo"),
         )
 
+        assert_raises_message(
+            exc.InvalidRequestError,
+            'Multiple classes found for path "alt.Foo" in the registry '
+            "of this declarative base. Please use a fully "
+            "module-qualified path.",
+            name_resolver("alt.Foo"),
+        )
+
+    def test_no_fns_in_name_resolve(self):
+        base = weakref.WeakValueDictionary()
+        f1 = MockClass(base, "foo.bar.Foo")
+        f2 = MockClass(base, "foo.alt.Foo")
+        clsregistry.add_class("Foo", f1)
+        clsregistry.add_class("Foo", f2)
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
+
+        gc_collect()
+
+        import sqlalchemy
+
+        is_(
+            resolver("__import__('sqlalchemy.util').util.EMPTY_SET")(),
+            sqlalchemy.util.EMPTY_SET,
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"When initializing mapper some_parent, expression "
+            r"\"__import__\('sqlalchemy.util'\).util.EMPTY_SET\" "
+            "failed to locate a name",
+            name_resolver("__import__('sqlalchemy.util').util.EMPTY_SET"),
+        )
+
     def test_resolve_dupe_by_name(self):
         base = weakref.WeakValueDictionary()
         f1 = MockClass(base, "foo.bar.Foo")
@@ -100,8 +139,17 @@ class ClsRegistryTest(fixtures.TestBase):
 
         gc_collect()
 
-        resolver = clsregistry._resolver(f1, MockProp())
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
         resolver = resolver("Foo")
+        assert_raises_message(
+            exc.InvalidRequestError,
+            'Multiple classes found for path "Foo" in the '
+            "registry of this declarative base. Please use a "
+            "fully module-qualified path.",
+            resolver,
+        )
+
+        resolver = name_resolver("Foo")
         assert_raises_message(
             exc.InvalidRequestError,
             'Multiple classes found for path "Foo" in the '
@@ -121,9 +169,12 @@ class ClsRegistryTest(fixtures.TestBase):
         gc_collect()
 
         # registry restores itself to just the one class
-        resolver = clsregistry._resolver(f1, MockProp())
-        resolver = resolver("Foo")
-        is_(resolver(), f1)
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
+        f_resolver = resolver("Foo")
+        is_(f_resolver(), f1)
+
+        f_resolver = name_resolver("Foo")
+        is_(f_resolver(), f1)
 
     def test_dupe_classes_cleanout(self):
         # force this to maintain isolation between tests
@@ -156,13 +207,21 @@ class ClsRegistryTest(fixtures.TestBase):
 
         dupe_reg = base["Foo"]
         dupe_reg.contents = [lambda: None]
-        resolver = clsregistry._resolver(f1, MockProp())
-        resolver = resolver("Foo")
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
+        f_resolver = resolver("Foo")
         assert_raises_message(
             exc.InvalidRequestError,
             r"When initializing mapper some_parent, expression "
             r"'Foo' failed to locate a name \('Foo'\).",
-            resolver,
+            f_resolver,
+        )
+
+        f_resolver = name_resolver("Foo")
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"When initializing mapper some_parent, expression "
+            r"'Foo' failed to locate a name \('Foo'\).",
+            f_resolver,
         )
 
     def test_module_reg_cleanout_race(self):
@@ -175,14 +234,22 @@ class ClsRegistryTest(fixtures.TestBase):
         reg = base["_sa_module_registry"]
 
         mod_entry = reg["foo"]["bar"]
-        resolver = clsregistry._resolver(f1, MockProp())
-        resolver = resolver("foo")
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
+        f_resolver = resolver("foo")
         del mod_entry.contents["Foo"]
         assert_raises_message(
             AttributeError,
             "Module 'bar' has no mapped classes registered "
             "under the name 'Foo'",
-            lambda: resolver().bar.Foo,
+            lambda: f_resolver().bar.Foo,
+        )
+
+        f_resolver = name_resolver("foo")
+        assert_raises_message(
+            AttributeError,
+            "Module 'bar' has no mapped classes registered "
+            "under the name 'Foo'",
+            lambda: f_resolver().bar.Foo,
         )
 
     def test_module_reg_no_class(self):
@@ -191,13 +258,21 @@ class ClsRegistryTest(fixtures.TestBase):
         clsregistry.add_class("Foo", f1)
         reg = base["_sa_module_registry"]
         mod_entry = reg["foo"]["bar"]  # noqa
-        resolver = clsregistry._resolver(f1, MockProp())
-        resolver = resolver("foo")
+        name_resolver, resolver = clsregistry._resolver(f1, MockProp())
+        f_resolver = resolver("foo")
         assert_raises_message(
             AttributeError,
             "Module 'bar' has no mapped classes registered "
             "under the name 'Bat'",
-            lambda: resolver().bar.Bat,
+            lambda: f_resolver().bar.Bat,
+        )
+
+        f_resolver = name_resolver("foo")
+        assert_raises_message(
+            AttributeError,
+            "Module 'bar' has no mapped classes registered "
+            "under the name 'Bat'",
+            lambda: f_resolver().bar.Bat,
         )
 
     def test_module_reg_cleanout_two_sub(self):

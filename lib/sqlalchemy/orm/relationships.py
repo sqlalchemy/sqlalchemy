@@ -217,7 +217,19 @@ class RelationshipProperty(StrategizedProperty):
 
           :paramref:`~.relationship.argument` may also be passed as a callable
           function which is evaluated at mapper initialization time, and may
-          be passed as a Python-evaluable string when using Declarative.
+          be passed as a string name when using Declarative.
+
+          .. warning:: Prior to SQLAlchemy 1.3.16, this value is interpreted
+             using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
+
+          .. versionchanged 1.3.16::
+
+             The string evaluation of the main "argument" no longer accepts an
+             open ended Python expression, instead only accepting a string
+             class name or dotted package-qualified name.
 
           .. seealso::
 
@@ -236,6 +248,12 @@ class RelationshipProperty(StrategizedProperty):
           be a string argument noting the name of a :class:`.Table` that is
           present in the :class:`.MetaData` collection associated with the
           parent-mapped :class:`.Table`.
+
+          .. warning:: When passed as a Python-evaluable string, the
+             argument is interpreted using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
 
           The :paramref:`~.relationship.secondary` keyword argument is
           typically applied in the case where the intermediary :class:`.Table`
@@ -482,6 +500,12 @@ class RelationshipProperty(StrategizedProperty):
           and may be passed as a Python-evaluable string when using
           Declarative.
 
+          .. warning:: When passed as a Python-evaluable string, the
+             argument is interpreted using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
+
           .. seealso::
 
             :ref:`relationship_foreign_keys`
@@ -641,6 +665,12 @@ class RelationshipProperty(StrategizedProperty):
           function which is evaluated at mapper initialization time, and may
           be passed as a Python-evaluable string when using Declarative.
 
+          .. warning:: When passed as a Python-evaluable string, the
+             argument is interpreted using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
+
         :param passive_deletes=False:
            Indicates loading behavior during delete operations.
 
@@ -733,6 +763,12 @@ class RelationshipProperty(StrategizedProperty):
           and may be passed as a Python-evaluable string when using
           Declarative.
 
+          .. warning:: When passed as a Python-evaluable string, the
+             argument is interpreted using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
+
           .. seealso::
 
               :ref:`relationship_primaryjoin`
@@ -745,6 +781,12 @@ class RelationshipProperty(StrategizedProperty):
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
+
+          .. warning:: When passed as a Python-evaluable string, the
+             argument is interpreted using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
 
           .. seealso::
 
@@ -779,6 +821,12 @@ class RelationshipProperty(StrategizedProperty):
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
+
+          .. warning:: When passed as a Python-evaluable string, the
+             argument is interpreted using Python's ``eval()`` function.
+             **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+             See :ref:`declarative_relationship_eval` for details on
+             declarative evaluation of :func:`.relationship` arguments.
 
           .. seealso::
 

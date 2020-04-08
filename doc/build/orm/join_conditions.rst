@@ -96,6 +96,13 @@ one :class:`.Column` we need::
 
         billing_address = relationship("Address", foreign_keys="Customer.billing_address_id")
 
+.. warning:: When passed as a Python-evaluable string, the
+    :paramref:`.relationship.foreign_keys` argument is interpreted using Python's
+    ``eval()`` function. **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**. See
+    :ref:`declarative_relationship_eval` for details on declarative
+    evaluation of :func:`.relationship` arguments.
+
+
 .. _relationship_primaryjoin:
 
 Specifying Alternate Join Conditions
@@ -138,12 +145,21 @@ load those ``Address`` objects which specify a city of "Boston"::
         state = Column(String)
         zip = Column(String)
 
-Within this string SQL expression, we made use of the :func:`.and_` conjunction construct to establish
-two distinct predicates for the join condition - joining both the ``User.id`` and
-``Address.user_id`` columns to each other, as well as limiting rows in ``Address``
-to just ``city='Boston'``.   When using Declarative, rudimentary SQL functions like
-:func:`.and_` are automatically available in the evaluated namespace of a string
-:func:`.relationship` argument.
+Within this string SQL expression, we made use of the :func:`.and_` conjunction
+construct to establish two distinct predicates for the join condition - joining
+both the ``User.id`` and ``Address.user_id`` columns to each other, as well as
+limiting rows in ``Address`` to just ``city='Boston'``.   When using
+Declarative, rudimentary SQL functions like :func:`.and_` are automatically
+available in the evaluated namespace of a string :func:`.relationship`
+argument.
+
+.. warning:: When passed as a Python-evaluable string, the
+    :paramref:`.relationship.primaryjoin` argument is interpreted using
+    Python's
+    ``eval()`` function. **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**. See
+    :ref:`declarative_relationship_eval` for details on declarative
+    evaluation of :func:`.relationship` arguments.
+
 
 The custom criteria we use in a :paramref:`~.relationship.primaryjoin`
 is generally only significant when SQLAlchemy is rendering SQL in
@@ -556,6 +572,14 @@ use the string name of the table as it is present in the :class:`.MetaData`::
                             secondaryjoin="Node.id==node_to_node.c.right_node_id",
                             backref="left_nodes"
         )
+
+.. warning:: When passed as a Python-evaluable string, the
+    :paramref:`.relationship.primaryjoin` and
+    :paramref:`.relationship.secondaryjoin` arguments are interpreted using
+    Python's ``eval()`` function. **DO NOT PASS UNTRUSTED INPUT TO THESE
+    STRINGS**. See :ref:`declarative_relationship_eval` for details on
+    declarative evaluation of :func:`.relationship` arguments.
+
 
 A classical mapping situation here is similar, where ``node_to_node`` can be joined
 to ``node.c.id``::

@@ -240,6 +240,13 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
                         secondary="association",
                         backref="parents")
 
+.. warning:: When passed as a Python-evaluable string, the
+    :paramref:`.relationship.secondary` argument is interpreted using Python's
+    ``eval()`` function. **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**. See
+    :ref:`declarative_relationship_eval` for details on declarative
+    evaluation of :func:`.relationship` arguments.
+
+
 .. _relationships_many_to_many_deletion:
 
 Deleting Rows from the Many to Many Table
