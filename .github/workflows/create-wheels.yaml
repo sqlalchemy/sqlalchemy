@@ -71,14 +71,13 @@ jobs:
         # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
         run: |
           python -m pip install --upgrade pip
+          pip --version
           pip install setuptools wheel
           pip wheel -w dist --no-use-pep517 -v --no-deps .
 
       - name: Install wheel
         # install the created wheel without using the pypi index
         run: |
-          pip install -U pip
-          pip --version
           pip install -f dist --no-index sqlalchemy
 
       - name: Check c extensions
