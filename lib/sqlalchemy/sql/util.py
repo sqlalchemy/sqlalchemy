@@ -249,7 +249,9 @@ def find_tables(
         _visitors["join"] = tables.append
 
     if include_aliases:
-        _visitors["alias"] = tables.append
+        _visitors["alias"] = _visitors["subquery"] = _visitors[
+            "tablesample"
+        ] = _visitors["lateral"] = tables.append
 
     if include_crud:
         _visitors["insert"] = _visitors["update"] = _visitors[
