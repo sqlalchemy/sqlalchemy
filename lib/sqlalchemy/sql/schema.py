@@ -2165,7 +2165,7 @@ class DefaultGenerator(_NotAColumnExpr, SchemaItem):
     def execute(self, bind=None, **kwargs):
         if bind is None:
             bind = _bind_or_error(self)
-        return bind._execute_default(self, **kwargs)
+        return bind.execute(self, **kwargs)
 
     def _execute_on_connection(self, connection, multiparams, params):
         return connection._execute_default(self, multiparams, params)
