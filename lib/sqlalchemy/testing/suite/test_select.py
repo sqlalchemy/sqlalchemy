@@ -729,7 +729,7 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             Column("col_a", Integer, nullable=True),
             Column("col_b", Integer, nullable=True),
         )
-        tbl.create(connection)
+        meta.create_all()
         connection.execute(
             tbl.insert(),
             [{"id": 1, "col_a": col_a_value, "col_b": col_b_value}],
