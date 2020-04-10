@@ -687,13 +687,13 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
     def _contains(self, value, row):
         key = value
         if key in self._keymap:
-            util.warn_deprecated(
+            util.warn_deprecated_20(
                 "Using the 'in' operator to test for string or column "
                 "keys, or integer indexes, in a :class:`.Row` object is "
                 "deprecated and will "
                 "be removed in a future release. "
                 "Use the `Row._fields` or `Row._mapping` attribute, i.e. "
-                "'key in row._fields'"
+                "'key in row._fields'",
             )
             return True
         else:
@@ -743,7 +743,8 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
                         "Retreiving row values using Column objects from a "
                         "row that was unpickled is deprecated; adequate "
                         "state cannot be pickled for this to be efficient.   "
-                        "This usage will raise KeyError in a future release."
+                        "This usage will raise KeyError in a future release.",
+                        version="1.4",
                     )
                 else:
                     util.warn_deprecated(
@@ -751,7 +752,8 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
                         "matching names as keys is deprecated, and will raise "
                         "KeyError in a future release; only Column "
                         "objects that are explicitly part of the statement "
-                        "object should be used."
+                        "object should be used.",
+                        version="1.4",
                     )
         if result is None:
             if raiseerr:

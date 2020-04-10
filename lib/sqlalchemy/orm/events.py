@@ -2472,9 +2472,8 @@ class AttributeEvents(event.Events):
         :param collection_adapter: the :class:`.CollectionAdapter` that will
          mediate internal access to the collection.
 
-        .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` events supersede
-           the :class:`.orm.collection.linker` hook.
+        .. versionadded:: 1.0.0 :meth:`.AttributeEvents.init_collection`
+           and :meth:`.AttributeEvents.dispose_collection` events.
 
         .. seealso::
 
@@ -2504,8 +2503,7 @@ class AttributeEvents(event.Events):
            would be empty.
 
         .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` events supersede
-           the :class:`.collection.linker` hook.
+           and :meth:`.AttributeEvents.dispose_collection` events.
 
         .. seealso::
 

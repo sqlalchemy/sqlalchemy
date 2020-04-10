@@ -2141,14 +2141,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         )
 
     def visit_ENUM(self, type_, **kw):
-        return self._visit_enumerated_values(
-            "ENUM", type_, type_._enumerated_values
-        )
+        return self._visit_enumerated_values("ENUM", type_, type_.enums)
 
     def visit_SET(self, type_, **kw):
-        return self._visit_enumerated_values(
-            "SET", type_, type_._enumerated_values
-        )
+        return self._visit_enumerated_values("SET", type_, type_.values)
 
     def visit_BOOLEAN(self, type_, **kw):
         return "BOOL"

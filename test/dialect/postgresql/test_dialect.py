@@ -9,7 +9,6 @@ from sqlalchemy import bindparam
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import DateTime
-from sqlalchemy import dialects
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import extract
@@ -97,14 +96,6 @@ class DialectTest(fixtures.TestBase):
             ),
         ]:
             eq_(dialect._get_server_version_info(mock_conn(string)), version)
-
-    def test_deprecated_dialect_name_still_loads(self):
-        dialects.registry.clear()
-        with expect_deprecated(
-            "The 'postgres' dialect name " "has been renamed to 'postgresql'"
-        ):
-            dialect = url.URL("postgres").get_dialect()
-        is_(dialect, postgresql.dialect)
 
     @testing.requires.psycopg2_compatibility
     def test_pg_dialect_use_native_unicode_from_config(self):

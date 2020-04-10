@@ -101,17 +101,6 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             self.assert_compile(or_(and_()), "")
 
-    def test_fromclause_count(self):
-        with testing.expect_deprecated(
-            r"The FromClause.count\(\) method is deprecated, and will be "
-            r"removed in a future release."
-        ):
-            self.assert_compile(
-                table("q", column("x")).count(),
-                "SELECT count(q.x) AS tbl_row_count FROM q",
-                dialect="default",
-            )
-
 
 class ConvertUnicodeDeprecationTest(fixtures.TestBase):
 
@@ -465,55 +454,6 @@ class LateralSubqueryCoercionsTest(fixtures.TablesTest, AssertsCompiledSQL):
             ),
             Column("book_owner_id", Integer, ForeignKey("people.people_id")),
             Column("book_weight", Integer),
-        )
-
-
-class TextTest(fixtures.TestBase, AssertsCompiledSQL):
-    __dialect__ = "default"
-
-    def test_legacy_bindparam(self):
-        with testing.expect_deprecated(
-            "The text.bindparams parameter is deprecated"
-        ):
-            t = text(
-                "select * from foo where lala=:bar and hoho=:whee",
-                bindparams=[bindparam("bar", 4), bindparam("whee", 7)],
-            )
-
-        self.assert_compile(
-            t,
-            "select * from foo where lala=:bar and hoho=:whee",
-            checkparams={"bar": 4, "whee": 7},
-        )
-
-    def test_legacy_typemap(self):
-        table1 = table(
-            "mytable",
-            column("myid", Integer),
-            column("name", String),
-            column("description", String),
-        )
-        with testing.expect_deprecated(
-            "The text.typemap parameter is deprecated"
-        ):
-            t = text(
-                "select id, name from user",
-                typemap=dict(id=Integer, name=String),
-            ).subquery()
-
-        stmt = select([table1.c.myid]).select_from(
-            table1.join(t, table1.c.myid == t.c.id)
-        )
-        compiled = stmt.compile()
-        eq_(
-            compiled._create_result_map(),
-            {
-                "myid": (
-                    "myid",
-                    (table1.c.myid, "myid", "myid", "mytable_myid"),
-                    table1.c.myid.type,
-                )
-            },
         )
 
 

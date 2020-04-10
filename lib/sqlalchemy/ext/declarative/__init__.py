@@ -7,7 +7,6 @@
 
 from .api import AbstractConcreteBase
 from .api import as_declarative
-from .api import comparable_using
 from .api import ConcreteBase
 from .api import declarative_base
 from .api import DeclarativeMeta
@@ -22,7 +21,6 @@ __all__ = [
     "declarative_base",
     "synonym_for",
     "has_inherited_table",
-    "comparable_using",
     "instrument_declarative",
     "declared_attr",
     "as_declarative",

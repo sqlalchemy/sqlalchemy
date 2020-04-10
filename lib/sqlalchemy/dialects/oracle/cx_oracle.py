@@ -1003,12 +1003,12 @@ class OracleDialect_cx_oracle(OracleDialect):
     def create_connect_args(self, url):
         opts = dict(url.query)
 
-        # deprecated in 1.3
         for opt in ("use_ansi", "auto_convert_lobs"):
             if opt in opts:
                 util.warn_deprecated(
                     "cx_oracle dialect option %r should only be passed to "
-                    "create_engine directly, not within the URL string" % opt
+                    "create_engine directly, not within the URL string" % opt,
+                    version="1.3",
                 )
                 util.coerce_kw_type(opts, opt, bool)
                 setattr(self, opt, opts.pop(opt))

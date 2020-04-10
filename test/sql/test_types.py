@@ -214,7 +214,6 @@ class AdaptTest(fixtures.TestBase):
                         subcl.__name__,
                     ), True, subcl, [typ]
 
-    @testing.uses_deprecated(".*Binary.*")
     @testing.combinations(_adaptions(), id_="iaaa")
     def test_adapt_method(self, is_down_adaption, typ, target_adaptions):
         """ensure all types have a working adapt() method,

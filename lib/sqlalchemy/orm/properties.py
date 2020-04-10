@@ -14,7 +14,6 @@ mapped attributes.
 from __future__ import absolute_import
 
 from . import attributes
-from .descriptor_props import ComparableProperty
 from .descriptor_props import CompositeProperty
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import SynonymProperty
@@ -30,7 +29,6 @@ from ..sql import roles
 
 __all__ = [
     "ColumnProperty",
-    "ComparableProperty",
     "CompositeProperty",
     "ConcreteInheritedProperty",
     "RelationshipProperty",

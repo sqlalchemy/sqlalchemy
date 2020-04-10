@@ -434,18 +434,6 @@ class Compiled(object):
                     self.string, schema_translate_map
                 )
 
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Compiled.compile` method is deprecated and will be "
-        "removed in a future release.   The :class:`.Compiled` object "
-        "now runs its compilation within the constructor, and this method "
-        "does nothing.",
-    )
-    def compile(self):
-        """Produce the internal string representation of this element.
-        """
-        pass
-
     def _execute_on_connection(self, connection, multiparams, params):
         if self.can_execute:
             return connection._execute_compiled(self, multiparams, params)
@@ -4244,7 +4232,9 @@ class IdentifierPreparer(object):
                 "deprecated and will be removed in a future release.  This "
                 "flag has no effect on the behavior of the "
                 "IdentifierPreparer.quote method; please refer to "
-                "quoted_name()."
+                "quoted_name().",
+                # deprecated 0.9. warning from 1.3
+                version="0.9",
             )
 
         return self.quote(schema)
@@ -4280,7 +4270,9 @@ class IdentifierPreparer(object):
                 "deprecated and will be removed in a future release.  This "
                 "flag has no effect on the behavior of the "
                 "IdentifierPreparer.quote method; please refer to "
-                "quoted_name()."
+                "quoted_name().",
+                # deprecated 0.9. warning from 1.3
+                version="0.9",
             )
 
         force = getattr(ident, "quote", None)

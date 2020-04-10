@@ -37,7 +37,6 @@ from .. import util
 from ..sql import operators
 from ..sql import schema as sa_schema
 from ..sql.type_api import TypeEngine
-from ..util import deprecated
 from ..util import topological
 
 
@@ -462,24 +461,6 @@ class Inspector(object):
             if not isinstance(coltype, TypeEngine):
                 col_def["type"] = coltype()
         return col_defs
-
-    @deprecated(
-        "0.7",
-        "The :meth:`.Inspector.get_primary_keys` method is deprecated and "
-        "will be removed in a future release.  Please refer to the "
-        ":meth:`.Inspector.get_pk_constraint` method.",
-    )
-    def get_primary_keys(self, table_name, schema=None, **kw):
-        """Return information about primary keys in `table_name`.
-
-        Given a string `table_name`, and an optional string `schema`, return
-        primary key information as a list of column names.
-        """
-
-        with self._operation_context() as conn:
-            return self.dialect.get_pk_constraint(
-                conn, table_name, schema, info_cache=self.info_cache, **kw
-            )["constrained_columns"]
 
     def get_pk_constraint(self, table_name, schema=None, **kw):
         """Return information about primary key constraint on `table_name`.

@@ -1010,6 +1010,8 @@ See :func:`.orm.%(name)s` for usage examples.
             "name": self.name
         }
         fn = util.deprecated(
+            # This is used by `baked_lazyload_all` was only deprecated in
+            # version 1.2 so this must stick around until that is removed
             "0.9",
             "The :func:`.%(name)s_all` function is deprecated, and will be "
             "removed in a future release.  Please use method chaining with "
@@ -1092,7 +1094,8 @@ def contains_eager(loadopt, attr, alias=None):
                 "Passing a string name for the 'alias' argument to "
                 "'contains_eager()` is deprecated, and will not work in a "
                 "future release.  Please use a sqlalchemy.alias() or "
-                "sqlalchemy.orm.aliased() construct."
+                "sqlalchemy.orm.aliased() construct.",
+                version="1.4",
             )
 
     elif getattr(attr, "_of_type", None):
@@ -1580,7 +1583,8 @@ def defer(key, *addl_attrs, **kw):
         util.warn_deprecated(
             "The *addl_attrs on orm.defer is deprecated.  Please use "
             "method chaining in conjunction with defaultload() to "
-            "indicate a path."
+            "indicate a path.",
+            version="1.3",
         )
     return _UnboundLoad._from_keys(
         _UnboundLoad.defer, (key,) + addl_attrs, False, kw
@@ -1642,7 +1646,8 @@ def undefer(key, *addl_attrs):
         util.warn_deprecated(
             "The *addl_attrs on orm.undefer is deprecated.  Please use "
             "method chaining in conjunction with defaultload() to "
-            "indicate a path."
+            "indicate a path.",
+            version="1.3",
         )
     return _UnboundLoad._from_keys(
         _UnboundLoad.undefer, (key,) + addl_attrs, False, {}

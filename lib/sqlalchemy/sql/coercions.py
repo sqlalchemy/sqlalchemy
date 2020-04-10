@@ -191,7 +191,8 @@ class _ColumnCoercions(object):
             "column-expression context is deprecated in version 1.4; "
             "please use the .scalar_subquery() method to produce a scalar "
             "subquery.  This automatic coercion will be removed in a "
-            "future release."
+            "future release.",
+            version="1.4",
         )
 
     def _implicit_coercions(
@@ -614,7 +615,8 @@ class FromClauseImpl(
                     "Implicit coercion of SELECT and textual SELECT "
                     "constructs into FROM clauses is deprecated; please call "
                     ".subquery() on any Core select or ORM Query object in "
-                    "order to produce a subquery object."
+                    "order to produce a subquery object.",
+                    version="1.4",
                 )
                 return resolved._implicit_subquery
         elif resolved._is_text_clause:
@@ -637,7 +639,8 @@ class StrictFromClauseImpl(FromClauseImpl, roles.StrictFromClauseRole):
                 "Implicit coercion of SELECT and textual SELECT constructs "
                 "into FROM clauses is deprecated; please call .subquery() "
                 "on any Core select or ORM Query object in order to produce a "
-                "subquery object."
+                "subquery object.",
+                version="1.4",
             )
             return resolved._implicit_subquery
         else:

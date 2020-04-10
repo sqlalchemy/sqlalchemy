@@ -2120,7 +2120,7 @@ class HandleErrorTest(fixtures.TestBase):
         is_(ctx.original_exception, nope)
 
     def test_exception_event_non_dbapi_error(self):
-        """test that dbapi_error is called with a context in
+        """test that handle_error is called with a context in
         cases where DBAPI raises an exception that is not a DBAPI
         exception, e.g. internal errors or encoding problems.
 

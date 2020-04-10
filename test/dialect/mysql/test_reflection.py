@@ -209,10 +209,9 @@ class TypeReflectionTest(fixtures.TestBase):
         ]
         self._run_test(specs, [])
 
-    @testing.uses_deprecated("Manually quoting ENUM value literals")
     def test_legacy_enum_types(self):
 
-        specs = [(mysql.ENUM("''", "'fleem'"), mysql.ENUM("''", "'fleem'"))]
+        specs = [(mysql.ENUM("", "fleem"), mysql.ENUM("", "fleem"))]
 
         self._run_test(specs, ["enums"])
 

@@ -692,25 +692,6 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
 
     ensure_kwarg = "get_col_spec"
 
-    class Comparator(TypeEngine.Comparator):
-        __slots__ = ()
-
-        def _adapt_expression(self, op, other_comparator):
-            if hasattr(self.type, "adapt_operator"):
-                util.warn_deprecated(
-                    "UserDefinedType.adapt_operator is deprecated.  Create "
-                    "a UserDefinedType.Comparator subclass instead which "
-                    "generates the desired expression constructs, given a "
-                    "particular operator."
-                )
-                return self.type.adapt_operator(op), self.type
-            else:
-                return super(
-                    UserDefinedType.Comparator, self
-                )._adapt_expression(op, other_comparator)
-
-    comparator_factory = Comparator
-
     def coerce_compared_value(self, op, value):
         """Suggest a type for a 'coerced' Python value in an expression.
 

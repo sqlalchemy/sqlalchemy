@@ -589,6 +589,9 @@ class NotSupportedError(DatabaseError):
 class SADeprecationWarning(DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 
+    deprecated_since = None
+    "Indicates the version that started raising this deprecation warning"
+
 
 class RemovedIn20Warning(SADeprecationWarning):
     """Issued for usage of APIs specifically deprecated in SQLAlchemy 2.0.
@@ -599,12 +602,18 @@ class RemovedIn20Warning(SADeprecationWarning):
 
     """
 
+    deprecated_since = "1.4"
+    "Indicates the version that started raising this deprecation warning"
+
 
 class SAPendingDeprecationWarning(PendingDeprecationWarning):
     """A similar warning as :class:`.SADeprecationWarning`, this warning
     is not used in modern versions of SQLAlchemy.
 
     """
+
+    deprecated_since = None
+    "Indicates the version that started raising this deprecation warning"
 
 
 class SAWarning(RuntimeWarning):

@@ -1,0 +1,89 @@
+.. change::
+   :tags: change, engine
+   :tickets: 4643
+
+   Remove deprecated method ``get_primary_keys` in the :class:`.Dialect` and
+   :class:`.Inspector` classes. Please refer to the
+   :meth:`.Dialect.get_pk_constraint` and :meth:`.Inspector.get_primary_keys`
+   methods.
+
+   Remove deprecated event ``dbapi_error`` and the method
+   ``ConnectionEvents.dbapi_error`. Please refer to the
+   :meth:`.ConnectionEvents.handle_error` event.
+   This chance also removes the attributes ``ExecutionContext.is_disconnect``
+   and ``ExecutionContext.exception``
+
+.. change::
+   :tags: change, postgresql
+   :tickets: 4643
+
+   Remove support for deprecated engine URLs of the form ``postgres://``;
+   this has emitted a warning for many years and projects should be
+   using ``postgresql://``.
+
+.. change::
+   :tags: change, mysql
+   :tickets: 4643
+
+   Remove deprecated dialect ``mysql+gaerdbms`` that has beed deprecated
+   since version 1.0. Use the MySQLdb dialect directly.
+
+   Remove deprecated parameter ``quoting`` from :class:`.mysql.ENUM`
+   and :class:`.mysql.SET` in the ``mysql`` dialect. The values passed to the
+   enum or the set are quoted by SQLAlchemy when needed automatically.
+
+.. change::
+   :tags: change, orm
+   :tickets: 4643
+
+   Remove deprecated function ``comparable_property``. Please refer to the
+   :mod:`~sqlalchemy.ext.hybrid` extension. This also removes the function
+   ``comparable_using`` in the declarative extension.
+
+   Remove deprecated function ``compile_mappers``.  Please use
+   :func:`.configure_mappers`
+
+   Remove deprecated method ``collection.linker``. Please refer to the
+   :meth:`.AttributeEvents.init_collection` and
+   :meth:`.AttributeEvents.dispose_collection` event handlers.
+
+   Remove deprecated method ``Session.prune`` and parameter
+   ``Session.weak_identity_map``. See the recipe at
+   :ref:`session_referencing_behavior` for an event-based approach to
+   maintaining strong identity references.
+   This change also removes the class ``StrongInstanceDict``.
+
+   Remove deprecated parameter ``mapper.order_by``. Use :meth:`.Query.order_by`
+   to determine the ordering of a result set.
+
+   Remove deprecated parameter ``Session._enable_transaction_accounting`.
+
+   Remove deprecated parameter ``Session.is_modified.passive``.
+
+.. change::
+   :tags: change, types
+   :tickets: 4643
+
+   Remove deprecated class ``Binary``. Please use :class:`.LargeBinary`.
+
+.. change::
+   :tags: change, sql, core
+   :tickets: 4643
+
+   Remove deprecated methods ``Compiled.compile``, ``ClauseElement.__and__`` and
+   ``ClauseElement.__or__`` and attribute ``Over.func``.
+
+   Remove deprecated ``FromClause.count`` method. Please use the
+   :class:`.functions.count` function available from the
+   :attr:`.func` namespace.
+
+.. change::
+   :tags: change, sql
+   :tickets: 4643
+
+   Remove deprecated parameters ``text.bindparams`` and ``text.typemap``.
+   Please refer to the :meth:`.TextClause.bindparams` and
+   :meth:`.TextClause.columns` methods.
+
+   Remove deprecated parameter ``Table.useexisting``. Please use
+   :paramref:`.Table.extend_existing`.

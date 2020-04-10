@@ -234,8 +234,7 @@ class SessionTransaction(object):
                 "transaction is in progress"
             )
 
-        if self.session._enable_transaction_accounting:
-            self._take_snapshot(autobegin=autobegin)
+        self._take_snapshot(autobegin=autobegin)
 
         self.session.dispatch.after_transaction_create(self.session, self)
 
@@ -514,8 +513,7 @@ class SessionTransaction(object):
             self._state = COMMITTED
             self.session.dispatch.after_commit(self.session)
 
-            if self.session._enable_transaction_accounting:
-                self._remove_snapshot()
+            self._remove_snapshot()
 
         self.close()
         return self._parent
@@ -543,10 +541,9 @@ class SessionTransaction(object):
                         rollback_err = sys.exc_info()
                     finally:
                         transaction._state = DEACTIVE
-                        if self.session._enable_transaction_accounting:
-                            transaction._restore_snapshot(
-                                dirty_only=transaction.nested
-                            )
+                        transaction._restore_snapshot(
+                            dirty_only=transaction.nested
+                        )
                     boundary = transaction
                     break
                 else:
@@ -554,11 +551,7 @@ class SessionTransaction(object):
 
         sess = self.session
 
-        if (
-            not rollback_err
-            and sess._enable_transaction_accounting
-            and not sess._is_clean()
-        ):
+        if not rollback_err and not sess._is_clean():
 
             # if items were added, deleted, or mutated
             # here, we need to re-restore the snapshot
@@ -654,32 +647,13 @@ class Session(_SessionClassMethods):
         "scalar",
     )
 
-    @util.deprecated_params(
-        weak_identity_map=(
-            "1.0",
-            "The :paramref:`.Session.weak_identity_map` parameter as well as "
-            "the strong-referencing identity map are deprecated, and will be "
-            "removed in a future release.  For the use case where objects "
-            "present in a :class:`.Session` need to be automatically strong "
-            "referenced, see the recipe at "
-            ":ref:`session_referencing_behavior` for an event-based approach "
-            "to maintaining strong identity references. ",
-        ),
-        _enable_transaction_accounting=(
-            "0.7",
-            "The :paramref:`.Session._enable_transaction_accounting` "
-            "parameter is deprecated and will be removed in a future release.",
-        ),
-    )
     def __init__(
         self,
         bind=None,
         autoflush=True,
         expire_on_commit=True,
-        _enable_transaction_accounting=True,
         autocommit=False,
         twophase=False,
-        weak_identity_map=None,
         binds=None,
         enable_baked_queries=True,
         info=None,
@@ -782,10 +756,6 @@ class Session(_SessionClassMethods):
 
            .. versionadded:: 1.2
 
-        :param _enable_transaction_accounting:   A
-           legacy-only flag which when ``False`` disables *all* 0.5-style
-           object accounting on transaction boundaries.
-
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
            instances will be fully expired after each :meth:`~.commit`,
            so that all attribute/object access subsequent to a completed
@@ -813,20 +783,8 @@ class Session(_SessionClassMethods):
             called. This allows each database to roll back the entire
             transaction, before each transaction is committed.
 
-        :param weak_identity_map:  Defaults to ``True`` - when set to
-           ``False``, objects placed in the :class:`.Session` will be
-           strongly referenced until explicitly removed or the
-           :class:`.Session` is closed.
-
-
         """
-
-        if weak_identity_map in (True, None):
-            self._identity_cls = identity.WeakInstanceDict
-        else:
-            self._identity_cls = identity.StrongInstanceDict
-
-        self.identity_map = self._identity_cls()
+        self.identity_map = identity.WeakInstanceDict()
 
         self._new = {}  # InstanceState->object, strong refs object
         self._deleted = {}  # same
@@ -840,7 +798,6 @@ class Session(_SessionClassMethods):
         self.autocommit = autocommit
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
-        self._enable_transaction_accounting = _enable_transaction_accounting
 
         self.twophase = twophase
         self._query_cls = query_cls if query_cls else query.Query
@@ -1353,7 +1310,7 @@ class Session(_SessionClassMethods):
         """
 
         all_states = self.identity_map.all_states() + list(self._new)
-        self.identity_map = self._identity_cls()
+        self.identity_map = identity.WeakInstanceDict()
         self._new = {}
         self._deleted = {}
 
@@ -1841,25 +1798,6 @@ class Session(_SessionClassMethods):
             self._new.pop(state)
             state._detach(self)
 
-    @util.deprecated(
-        "0.7",
-        "The :meth:`.Session.prune` method is deprecated along with "
-        ":paramref:`.Session.weak_identity_map`.  This method will be "
-        "removed in a future release.",
-    )
-    def prune(self):
-        """Remove unreferenced instances cached in the identity map.
-
-        Note that this method is only meaningful if "weak_identity_map" is set
-        to False.  The default weak identity map is self-pruning.
-
-        Removes any object in this Session's identity map that is not
-        referenced in user code, modified, new or scheduled for deletion.
-        Returns the number of objects pruned.
-
-        """
-        return self.identity_map.prune()
-
     def expunge(self, instance):
         """Remove the `instance` from this ``Session``.
 
@@ -1981,7 +1919,7 @@ class Session(_SessionClassMethods):
             self._new.pop(state)
 
     def _register_altered(self, states):
-        if self._enable_transaction_accounting and self._transaction:
+        if self._transaction:
             for state in states:
                 if state in self._new:
                     self._transaction._new[state] = True
@@ -1991,7 +1929,7 @@ class Session(_SessionClassMethods):
     def _remove_newly_deleted(self, states):
         persistent_to_deleted = self.dispatch.persistent_to_deleted or None
         for state in states:
-            if self._enable_transaction_accounting and self._transaction:
+            if self._transaction:
                 self._transaction._deleted[state] = True
 
             if persistent_to_deleted is not None:
@@ -2981,15 +2919,7 @@ class Session(_SessionClassMethods):
         finally:
             self._flushing = False
 
-    @util.deprecated_params(
-        passive=(
-            "0.8",
-            "The :paramref:`.Session.is_modified.passive` flag is deprecated "
-            "and will be removed in a future release.  The flag is no longer "
-            "used and is ignored.",
-        )
-    )
-    def is_modified(self, instance, include_collections=True, passive=None):
+    def is_modified(self, instance, include_collections=True):
         r"""Return ``True`` if the given instance has locally
         modified attributes.
 
@@ -3038,7 +2968,6 @@ class Session(_SessionClassMethods):
          way to detect only local-column based properties (i.e. scalar columns
          or many-to-one foreign keys) that would result in an UPDATE for this
          instance upon flush.
-        :param passive: not used
 
         """
         state = object_state(instance)

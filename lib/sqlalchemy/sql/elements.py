@@ -505,30 +505,6 @@ class ClauseElement(
                 "ascii", "backslashreplace"
             )  # noqa
 
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.ClauseElement.__and__` method is deprecated and will "
-        "be removed in a future release.   Conjunctions should only be "
-        "used from a :class:`.ColumnElement` subclass, e.g. "
-        ":meth:`.ColumnElement.__and__`.",
-    )
-    def __and__(self, other):
-        """'and' at the ClauseElement level.
-        """
-        return and_(self, other)
-
-    @util.deprecated(
-        "0.9",
-        "The :meth:`.ClauseElement.__or__` method is deprecated and will "
-        "be removed in a future release.   Conjunctions should only be "
-        "used from a :class:`.ColumnElement` subclass, e.g. "
-        ":meth:`.ColumnElement.__or__`.",
-    )
-    def __or__(self, other):
-        """'or' at the ClauseElement level.
-        """
-        return or_(self, other)
-
     def __invert__(self):
         # undocumented element currently used by the ORM for
         # relationship.contains()
@@ -1523,22 +1499,8 @@ class TextClause(
         self.text = self._bind_params_regex.sub(repl, text)
 
     @classmethod
-    @util.deprecated_params(
-        bindparams=(
-            "0.9",
-            "The :paramref:`.text.bindparams` parameter "
-            "is deprecated and will be removed in a future release.  Please "
-            "refer to the :meth:`.TextClause.bindparams` method.",
-        ),
-        typemap=(
-            "0.9",
-            "The :paramref:`.text.typemap` parameter is "
-            "deprecated and will be removed in a future release.  Please "
-            "refer to the :meth:`.TextClause.columns` method.",
-        ),
-    )
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
-    def _create_text(self, text, bind=None, bindparams=None, typemap=None):
+    def _create_text(cls, text, bind=None):
         r"""Construct a new :class:`.TextClause` clause, representing
         a textual SQL string directly.
 
@@ -1617,25 +1579,6 @@ class TextClause(
         :param bind:
           an optional connection or engine to be used for this text query.
 
-        :param bindparams:
-          A list of :func:`.bindparam` instances used to
-          provide information about parameters embedded in the statement.
-
-          E.g.::
-
-              stmt = text("SELECT * FROM table WHERE id=:id",
-                        bindparams=[bindparam('id', value=5, type_=Integer)])
-
-        :param typemap:
-          A dictionary mapping the names of columns represented in the columns
-          clause of a ``SELECT`` statement to type objects.
-
-          E.g.::
-
-              stmt = text("SELECT * FROM table",
-                            typemap={'id': Integer, 'name': String},
-                        )
-
         .. seealso::
 
             :ref:`sqlexpression_text` - in the Core tutorial
@@ -1643,13 +1586,7 @@ class TextClause(
             :ref:`orm_tutorial_literal_sql` - in the ORM tutorial
 
         """
-        stmt = TextClause(text, bind=bind)
-        if bindparams:
-            stmt = stmt.bindparams(*bindparams)
-        if typemap:
-            stmt = stmt.columns(**typemap)
-
-        return stmt
+        return TextClause(text, bind=bind)
 
     @_generative
     def bindparams(self, *binds, **names_to_values):
@@ -2233,7 +2170,8 @@ class BooleanClauseList(ClauseList, ColumnElement):
                     "continue_on": "True"
                     if continue_on is True_._singleton
                     else "False",
-                }
+                },
+                version="1.4",
             )
             return cls._construct_raw(operator)
 
@@ -3750,21 +3688,6 @@ class Over(ColumnElement):
                     upper = RANGE_CURRENT
 
         return lower, upper
-
-    @property
-    @util.deprecated(
-        "1.1",
-        "the :attr:`.Over.func` member of the :class:`.Over` "
-        "class is deprecated and will be removed in a future release.  "
-        "Please refer to the :attr:`.Over.element` attribute.",
-    )
-    def func(self):
-        """the element referred to by this :class:`.Over`
-        clause.
-
-
-        """
-        return self.element
 
     @util.memoized_property
     def type(self):

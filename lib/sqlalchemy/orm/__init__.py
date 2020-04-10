@@ -16,7 +16,6 @@ documentation for an overview of how this module is used.
 from . import exc  # noqa
 from . import mapper as mapperlib  # noqa
 from . import strategy_options
-from .descriptor_props import ComparableProperty  # noqa
 from .descriptor_props import CompositeProperty  # noqa
 from .descriptor_props import SynonymProperty  # noqa
 from .interfaces import EXT_CONTINUE  # noqa
@@ -193,23 +192,6 @@ def query_expression():
 mapper = public_factory(Mapper, ".orm.mapper")
 
 synonym = public_factory(SynonymProperty, ".orm.synonym")
-
-comparable_property = public_factory(
-    ComparableProperty, ".orm.comparable_property"
-)
-
-
-@_sa_util.deprecated(
-    "0.7",
-    message=":func:`.compile_mappers` is deprecated and will be removed "
-    "in a future release.  Please use :func:`.configure_mappers`",
-)
-def compile_mappers():
-    """Initialize the inter-mapper relationships of all mappers that have
-    been defined.
-
-    """
-    configure_mappers()
 
 
 def clear_mappers():

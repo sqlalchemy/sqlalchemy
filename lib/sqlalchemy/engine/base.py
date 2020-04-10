@@ -1449,9 +1449,6 @@ class Connection(Connectable):
     ):
         exc_info = sys.exc_info()
 
-        if context and context.exception is None:
-            context.exception = e
-
         is_exit_exception = not isinstance(e, Exception)
 
         if not self._is_disconnect:
@@ -1464,9 +1461,6 @@ class Connection(Connectable):
                     cursor,
                 )
             ) or (is_exit_exception and not self.closed)
-
-            if context:
-                context.is_disconnect = self._is_disconnect
 
         invalidate_pool_on_disconnect = not is_exit_exception
 
@@ -1519,13 +1513,6 @@ class Connection(Connectable):
             ) and not self._execution_options.get(
                 "skip_user_error_events", False
             ):
-                # legacy dbapi_error event
-                if should_wrap and context:
-                    self.dispatch.dbapi_error(
-                        self, cursor, statement, parameters, context, e
-                    )
-
-                # new handle_error event
                 ctx = ExceptionContextImpl(
                     e,
                     sqlalchemy_exception,

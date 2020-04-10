@@ -820,10 +820,10 @@ class EnumSetTest(
     def test_enum(self):
         """Exercise the ENUM type."""
 
-        with testing.expect_deprecated("Manually quoting ENUM value literals"):
-            e1, e2 = mysql.ENUM("'a'", "'b'"), mysql.ENUM("'a'", "'b'")
-            e3 = mysql.ENUM("'a'", "'b'", strict=True)
-            e4 = mysql.ENUM("'a'", "'b'", strict=True)
+        e1 = mysql.ENUM("a", "b")
+        e2 = mysql.ENUM("a", "b")
+        e3 = mysql.ENUM("a", "b", strict=True)
+        e4 = mysql.ENUM("a", "b", strict=True)
 
         enum_table = Table(
             "mysql_enum",
@@ -951,10 +951,10 @@ class EnumSetTest(
         eq_(res, expected)
 
     def _set_fixture_one(self):
-        with testing.expect_deprecated("Manually quoting SET value literals"):
-            e1, e2 = mysql.SET("'a'", "'b'"), mysql.SET("'a'", "'b'")
-            e4 = mysql.SET("'a'", "b")
-            e5 = mysql.SET("'a'", "'b'", quoting="quoted")
+        e1 = mysql.SET("a", "b")
+        e2 = mysql.SET("a", "b")
+        e4 = mysql.SET("'a'", "b")
+        e5 = mysql.SET("a", "b")
 
         set_table = Table(
             "mysql_set",
@@ -1246,18 +1246,17 @@ class EnumSetTest(
     @testing.exclude("mysql", "<", (4,), "3.23 can't handle an ENUM of ''")
     def test_enum_parse(self):
 
-        with testing.expect_deprecated("Manually quoting ENUM value literals"):
-            enum_table = Table(
-                "mysql_enum",
-                self.metadata,
-                Column("e1", mysql.ENUM("'a'")),
-                Column("e2", mysql.ENUM("''")),
-                Column("e3", mysql.ENUM("a")),
-                Column("e4", mysql.ENUM("")),
-                Column("e5", mysql.ENUM("'a'", "''")),
-                Column("e6", mysql.ENUM("''", "'a'")),
-                Column("e7", mysql.ENUM("''", "'''a'''", "'b''b'", "''''")),
-            )
+        enum_table = Table(
+            "mysql_enum",
+            self.metadata,
+            Column("e1", mysql.ENUM("a")),
+            Column("e2", mysql.ENUM("")),
+            Column("e3", mysql.ENUM("a")),
+            Column("e4", mysql.ENUM("")),
+            Column("e5", mysql.ENUM("a", "")),
+            Column("e6", mysql.ENUM("", "a")),
+            Column("e7", mysql.ENUM("", "'a'", "b'b", "'")),
+        )
 
         for col in enum_table.c:
             self.assert_(repr(col))
@@ -1276,27 +1275,20 @@ class EnumSetTest(
     @testing.provide_metadata
     @testing.exclude("mysql", "<", (5,))
     def test_set_parse(self):
-        with testing.expect_deprecated("Manually quoting SET value literals"):
-            set_table = Table(
-                "mysql_set",
-                self.metadata,
-                Column("e1", mysql.SET("'a'")),
-                Column("e2", mysql.SET("''", retrieve_as_bitwise=True)),
-                Column("e3", mysql.SET("a")),
-                Column("e4", mysql.SET("", retrieve_as_bitwise=True)),
-                Column("e5", mysql.SET("'a'", "''", retrieve_as_bitwise=True)),
-                Column("e6", mysql.SET("''", "'a'", retrieve_as_bitwise=True)),
-                Column(
-                    "e7",
-                    mysql.SET(
-                        "''",
-                        "'''a'''",
-                        "'b''b'",
-                        "''''",
-                        retrieve_as_bitwise=True,
-                    ),
-                ),
-            )
+        set_table = Table(
+            "mysql_set",
+            self.metadata,
+            Column("e1", mysql.SET("a")),
+            Column("e2", mysql.SET("", retrieve_as_bitwise=True)),
+            Column("e3", mysql.SET("a")),
+            Column("e4", mysql.SET("", retrieve_as_bitwise=True)),
+            Column("e5", mysql.SET("a", "", retrieve_as_bitwise=True)),
+            Column("e6", mysql.SET("", "a", retrieve_as_bitwise=True)),
+            Column(
+                "e7",
+                mysql.SET("", "'a'", "b'b", "'", retrieve_as_bitwise=True,),
+            ),
+        )
 
         for col in set_table.c:
             self.assert_(repr(col))

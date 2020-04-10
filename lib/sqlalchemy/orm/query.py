@@ -1765,10 +1765,7 @@ class Query(Generative):
         the newly resulting ``Query``
 
         All existing ORDER BY settings can be suppressed by
-        passing ``None`` - this will suppress any ordering configured
-        on the :func:`.mapper` object using the deprecated
-        :paramref:`.mapper.order_by` parameter.
-
+        passing ``None``.
         """
 
         if len(criterion) == 1:
@@ -3439,7 +3436,8 @@ class Query(Generative):
                 "Using the Query.instances() method without a context "
                 "is deprecated and will be disallowed in a future release.  "
                 "Please make use of :meth:`.Query.from_statement` "
-                "for linking ORM results to arbitrary select constructs."
+                "for linking ORM results to arbitrary select constructs.",
+                version="1.4",
             )
             context = QueryContext(self)
 
@@ -4255,15 +4253,6 @@ class _MapperEntity(_QueryEntity):
 
         # if self._adapted_selectable is None:
         context.froms += (self.selectable,)
-
-        if context.order_by is False and self.mapper.order_by:
-            context.order_by = self.mapper.order_by
-
-            # apply adaptation to the mapper's order_by if needed.
-            if adapter:
-                context.order_by = adapter.adapt_list(
-                    util.to_list(context.order_by)
-                )
 
         loading._setup_entity_query(
             context,

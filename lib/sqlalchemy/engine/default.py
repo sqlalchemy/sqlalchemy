@@ -451,17 +451,6 @@ class DefaultDialect(interfaces.Dialect):
         """
         return sqltypes.adapt_type(typeobj, self.colspecs)
 
-    def get_pk_constraint(self, conn, table_name, schema=None, **kw):
-        """Compatibility method, adapts the result of get_primary_keys()
-        for those dialects which don't implement get_pk_constraint().
-
-        """
-        return {
-            "constrained_columns": self.get_primary_keys(
-                conn, table_name, schema=schema, **kw
-            )
-        }
-
     def has_index(self, connection, table_name, index_name, schema=None):
         if not self.has_table(connection, table_name, schema=schema):
             return False

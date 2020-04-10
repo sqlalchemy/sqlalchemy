@@ -1228,9 +1228,6 @@ class SubqueryLoader(PostLoader):
                     q._distinct = True
                     break
 
-        if q._order_by is False:
-            q._order_by = leftmost_mapper.order_by
-
         # don't need ORDER BY if no limit/offset
         if q._limit is None and q._offset is None:
             q._order_by = None

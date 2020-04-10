@@ -301,7 +301,7 @@ class collection(object):
 
     The decorators fall into two groups: annotations and interception recipes.
 
-    The annotating decorators (appender, remover, iterator, linker, converter,
+    The annotating decorators (appender, remover, iterator, converter,
     internally_instrumented) indicate the method's purpose and take no
     arguments.  They are not written with parens::
 
@@ -427,36 +427,6 @@ class collection(object):
         """
         fn._sa_instrumented = True
         return fn
-
-    @staticmethod
-    @util.deprecated(
-        "1.0",
-        "The :meth:`.collection.linker` handler is deprecated and will "
-        "be removed in a future release.  Please refer to the "
-        ":meth:`.AttributeEvents.init_collection` "
-        "and :meth:`.AttributeEvents.dispose_collection` event handlers. ",
-    )
-    def linker(fn):
-        """Tag the method as a "linked to attribute" event handler.
-
-        This optional event handler will be called when the collection class
-        is linked to or unlinked from the InstrumentedAttribute.  It is
-        invoked immediately after the '_sa_adapter' property is set on
-        the instance.  A single argument is passed: the collection adapter
-        that has been linked, or None if unlinking.
-
-
-        """
-        fn._sa_instrument_role = "linker"
-        return fn
-
-    link = linker
-    """Synonym for :meth:`.collection.linker`.
-
-    .. deprecated:: 1.0 - :meth:`.collection.link` is deprecated and will be
-       removed in a future release.
-
-    """
 
     @staticmethod
     @util.deprecated(
@@ -946,7 +916,6 @@ def _locate_roles_and_methods(cls):
                     "appender",
                     "remover",
                     "iterator",
-                    "linker",
                     "converter",
                 )
                 roles.setdefault(role, name)

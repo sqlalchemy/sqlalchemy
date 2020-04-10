@@ -18,14 +18,25 @@ from .langhelpers import inject_param_text
 from .. import exc
 
 
-def warn_deprecated(msg, stacklevel=3):
-    warnings.warn(msg, exc.SADeprecationWarning, stacklevel=stacklevel)
+def _warn_with_version(msg, version, type_, stacklevel):
+    warn = type_(msg)
+    warn.deprecated_since = version
+    warnings.warn(warn, stacklevel=stacklevel + 1)
+
+
+def warn_deprecated(msg, version, stacklevel=3):
+    _warn_with_version(msg, version, exc.SADeprecationWarning, stacklevel)
 
 
 def warn_deprecated_20(msg, stacklevel=3):
     msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
 
-    warnings.warn(msg, exc.RemovedIn20Warning, stacklevel=stacklevel)
+    _warn_with_version(
+        msg,
+        exc.RemovedIn20Warning.deprecated_since,
+        exc.RemovedIn20Warning,
+        stacklevel,
+    )
 
 
 def deprecated_cls(version, message, constructor="__init__"):
@@ -37,6 +48,7 @@ def deprecated_cls(version, message, constructor="__init__"):
             constructor,
             exc.SADeprecationWarning,
             message % dict(func=constructor),
+            version,
             header,
         )
 
@@ -54,7 +66,12 @@ def deprecated_20_cls(clsname, alternative=None, constructor="__init__"):
 
     def decorate(cls):
         return _decorate_cls_with_warning(
-            cls, constructor, exc.RemovedIn20Warning, message, message
+            cls,
+            constructor,
+            exc.RemovedIn20Warning,
+            message,
+            exc.RemovedIn20Warning.deprecated_since,
+            message,
         )
 
     return decorate
@@ -92,7 +109,7 @@ def deprecated(
 
     def decorate(fn):
         return _decorate_with_warning(
-            fn, warning, message % dict(func=fn.__name__), header
+            fn, warning, message % dict(func=fn.__name__), version, header
         )
 
     return decorate
@@ -129,8 +146,10 @@ def deprecated_params(**specs):
     """
 
     messages = {}
+    versions = {}
     version_warnings = {}
     for param, (version, message) in specs.items():
+        versions[param] = version
         messages[param] = _sanitize_restructured_text(message)
         version_warnings[param] = (
             exc.RemovedIn20Warning
@@ -159,13 +178,19 @@ def deprecated_params(**specs):
                 if (defaults[m] is None and kwargs[m] is not None) or (
                     defaults[m] is not None and kwargs[m] != defaults[m]
                 ):
-                    warnings.warn(
-                        messages[m], version_warnings[m], stacklevel=3
+                    _warn_with_version(
+                        messages[m],
+                        versions[m],
+                        version_warnings[m],
+                        stacklevel=3,
                     )
             for m in check_kw:
                 if m in kwargs:
-                    warnings.warn(
-                        messages[m], version_warnings[m], stacklevel=3
+                    _warn_with_version(
+                        messages[m],
+                        versions[m],
+                        version_warnings[m],
+                        stacklevel=3,
                     )
 
             return fn(*args, **kwargs)
@@ -186,14 +211,6 @@ def deprecated_params(**specs):
     return decorate
 
 
-def deprecated_option_value(parameter_value, default_value, warning_text):
-    if parameter_value is None:
-        return default_value
-    else:
-        warn_deprecated(warning_text)
-        return parameter_value
-
-
 def _sanitize_restructured_text(text):
     def repl(m):
         type_, name = m.group(1, 2)
@@ -206,7 +223,7 @@ def _sanitize_restructured_text(text):
 
 
 def _decorate_cls_with_warning(
-    cls, constructor, wtype, message, docstring_header=None
+    cls, constructor, wtype, message, version, docstring_header=None
 ):
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
@@ -238,12 +255,16 @@ def _decorate_cls_with_warning(
             setattr(
                 cls,
                 constructor,
-                _decorate_with_warning(constructor_fn, wtype, message, None),
+                _decorate_with_warning(
+                    constructor_fn, wtype, message, version, None
+                ),
             )
     return cls
 
 
-def _decorate_with_warning(func, wtype, message, docstring_header=None):
+def _decorate_with_warning(
+    func, wtype, message, version, docstring_header=None
+):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
     message = _sanitize_restructured_text(message)
@@ -263,7 +284,9 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     def warned(fn, *args, **kwargs):
         skip_warning = kwargs.pop("_sa_skip_warning", False)
         if not skip_warning:
-            warnings.warn(message + warning_only, wtype, stacklevel=3)
+            _warn_with_version(
+                message + warning_only, version, wtype, stacklevel=3
+            )
         return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ""
@@ -276,5 +299,7 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
 
     decorated = warned(func)
     decorated.__doc__ = doc
-    decorated._sa_warn = lambda: warnings.warn(message, wtype, stacklevel=3)
+    decorated._sa_warn = lambda: _warn_with_version(
+        message, version, wtype, stacklevel=3
+    )
     return decorated
