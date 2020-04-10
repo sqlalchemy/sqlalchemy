@@ -578,7 +578,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             )
 
         insp = inspection.inspect(autoload_with)
-        insp.reflecttable(
+        insp.reflect_table(
             self,
             include_columns,
             exclude_columns,

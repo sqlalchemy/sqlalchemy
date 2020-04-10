@@ -2,6 +2,7 @@ import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -523,6 +524,18 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
         ):
             table_names = testing.db.table_names()
         is_true(set(table_names).issuperset(metadata.tables))
+
+    def test_reflecttable(self):
+        inspector = inspect(testing.db)
+        metadata = self.metadata
+        table = Table("user", metadata)
+        with testing.expect_deprecated_20(
+            r"The Inspector.reflecttable\(\) function/method is considered "
+        ):
+            res = inspector.reflecttable(table, None)
+        exp = inspector.reflect_table(table, None)
+
+        eq_(res, exp)
 
 
 class ExecutionOptionsTest(fixtures.TestBase):
