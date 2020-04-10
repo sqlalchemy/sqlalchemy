@@ -858,8 +858,8 @@ class CTEDefaultTest(fixtures.TablesTest):
 
     @testing.combinations(
         ("update", "select", testing.requires.ctes_on_dml),
-        ("update", "select", testing.requires.ctes_on_dml),
-        ("update", "select", testing.requires.ctes_on_dml),
+        ("delete", "select", testing.requires.ctes_on_dml),
+        ("insert", "select", testing.requires.ctes_on_dml),
         ("select", "update"),
         ("select", "insert"),
         argnames="a, b",
