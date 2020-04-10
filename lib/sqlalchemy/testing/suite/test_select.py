@@ -708,7 +708,16 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
     __backend__ = True
     __requires__ = ("supports_is_distinct_from",)
 
-    @testing.provide_metadata
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "is_distinct_test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("col_a", Integer, nullable=True),
+            Column("col_b", Integer, nullable=True),
+        )
+
     @testing.combinations(
         ("both_int_different", 0, 1, 1),
         ("both_int_same", 1, 1, 0),
@@ -721,15 +730,8 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
     def test_is_or_isnot_distinct_from(
         self, col_a_value, col_b_value, expected_row_count_for_is, connection
     ):
-        meta = self.metadata
-        tbl = Table(
-            "is_distinct_test",
-            meta,
-            Column("id", Integer, primary_key=True),
-            Column("col_a", Integer, nullable=True),
-            Column("col_b", Integer, nullable=True),
-        )
-        meta.create_all()
+        tbl = self.tables.is_distinct_test
+
         connection.execute(
             tbl.insert(),
             [{"id": 1, "col_a": col_a_value, "col_b": col_b_value}],
