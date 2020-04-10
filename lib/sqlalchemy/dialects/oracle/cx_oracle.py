@@ -926,7 +926,11 @@ class OracleDialect_cx_oracle(OracleDialect):
         def output_type_handler(
             cursor, name, default_type, size, precision, scale
         ):
-            if default_type == cx_Oracle.NUMBER:
+
+            if (
+                default_type == cx_Oracle.NUMBER
+                and default_type is not cx_Oracle.NATIVE_FLOAT
+            ):
                 if not dialect.coerce_to_decimal:
                     return None
                 elif precision == 0 and scale in (0, -127):
@@ -948,9 +952,11 @@ class OracleDialect_cx_oracle(OracleDialect):
                     )
 
             # allow all strings to come back natively as Unicode
-            elif dialect.coerce_to_unicode and default_type in (
-                cx_Oracle.STRING,
-                cx_Oracle.FIXED_CHAR,
+            elif (
+                dialect.coerce_to_unicode
+                and default_type in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR,)
+                and default_type is not cx_Oracle.CLOB
+                and default_type is not cx_Oracle.NCLOB
             ):
                 if compat.py2k:
                     outconverter = processors.to_unicode_processor_factory(
@@ -1078,7 +1084,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         util.coerce_kw_type(opts, "threaded", bool)
         util.coerce_kw_type(opts, "events", bool)
         util.coerce_kw_type(opts, "purity", convert_cx_oracle_constant)
-
         return ([], opts)
 
     def _get_server_version_info(self, connection):
