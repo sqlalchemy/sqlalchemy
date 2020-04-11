@@ -213,7 +213,7 @@ def %(name)s(%(args)s):
             "Inherited from :func:`sqlalchemy%s`; this constructor "
             "creates a :class:`%s` object"
             % (linked_to_location, class_location),
-            0,
+            1,
         )
         decorated.__doc__ = linked_to_doc
     else:
@@ -1677,6 +1677,8 @@ def _dedent_docstring(text):
 def inject_docstring_text(doctext, injecttext, pos):
     doctext = _dedent_docstring(doctext or "")
     lines = doctext.split("\n")
+    if len(lines) == 1:
+        lines.append("")
     injectlines = textwrap.dedent(injecttext).split("\n")
     if injectlines[0]:
         injectlines.insert(0, "")

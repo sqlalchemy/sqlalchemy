@@ -1,4 +1,4 @@
-.. module:: sqlalchemy.orm
+.. currentmodule:: sqlalchemy.orm
 
 .. _mapping_constructors:
 

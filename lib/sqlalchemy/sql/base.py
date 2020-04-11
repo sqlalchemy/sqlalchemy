@@ -401,7 +401,9 @@ class Executable(Generative):
         return self._execution_options
 
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`."""
+        """Compile and execute this :class:`.Executable`.
+
+        """
         e = self.bind
         if e is None:
             label = getattr(self, "description", self.__class__.__name__)

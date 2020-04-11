@@ -1,4 +1,4 @@
-.. module:: sqlalchemy.orm.session
+.. currentmodule:: sqlalchemy.orm.session
 
 Session API
 ===========
