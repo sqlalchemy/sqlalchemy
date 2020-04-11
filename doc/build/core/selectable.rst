@@ -7,7 +7,7 @@ distinguishing feature is their :attr:`.FromClause.c` attribute, which is
 a namespace of all the columns contained within the FROM clause (these
 elements are themselves :class:`.ColumnElement` subclasses).
 
-.. module:: sqlalchemy.sql.expression
+.. currentmodule:: sqlalchemy.sql.expression
 
 .. autofunction:: alias
 

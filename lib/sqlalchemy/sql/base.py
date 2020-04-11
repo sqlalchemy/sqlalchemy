@@ -375,7 +375,9 @@ class Executable(Generative):
         self._execution_options = self._execution_options.union(kw)
 
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`."""
+        """Compile and execute this :class:`.Executable`.
+
+        """
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)

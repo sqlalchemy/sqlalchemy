@@ -1,62 +1,62 @@
-
 =============
 0.7 Changelog
 =============
 
 .. changelog::
     :version: 0.7.11
+    :released:
 
     .. change::
         :tags: bug, engine
         :tickets: 2851
         :versions: 0.8.3, 0.9.0b1
 
-        The regexp used by the :func:`~sqlalchemy.engine.url.make_url` function now parses
-        ipv6 addresses, e.g. surrounded by brackets.
+      The regexp used by the :func:`~sqlalchemy.engine.url.make_url` function now parses
+      ipv6 addresses, e.g. surrounded by brackets.
 
     .. change::
         :tags: bug, orm
         :tickets: 2807
         :versions: 0.8.3, 0.9.0b1
 
-        Fixed bug where list instrumentation would fail to represent a
-        setslice of ``[0:0]`` correctly, which in particular could occur
-        when using ``insert(0, item)`` with the association proxy.  Due
-        to some quirk in Python collections, the issue was much more likely
-        with Python 3 rather than 2.
+      Fixed bug where list instrumentation would fail to represent a
+      setslice of ``[0:0]`` correctly, which in particular could occur
+      when using ``insert(0, item)`` with the association proxy.  Due
+      to some quirk in Python collections, the issue was much more likely
+      with Python 3 rather than 2.
 
     .. change::
         :tags: bug, sql
         :tickets: 2801
         :versions: 0.8.3, 0.9.0b1
 
-        Fixed regression dating back to 0.7.9 whereby the name of a CTE might
-        not be properly quoted if it was referred to in multiple FROM clauses.
+      Fixed regression dating back to 0.7.9 whereby the name of a CTE might
+      not be properly quoted if it was referred to in multiple FROM clauses.
 
     .. change::
         :tags: mysql, bug
         :tickets: 2791
         :versions: 0.8.3, 0.9.0b1
 
-        Updates to MySQL reserved words for versions 5.5, 5.6, courtesy
-        Hanno Schlichting.
+      Updates to MySQL reserved words for versions 5.5, 5.6, courtesy
+      Hanno Schlichting.
 
     .. change::
         :tags: sql, bug, cte
         :tickets: 2783
         :versions: 0.8.3, 0.9.0b1
 
-        Fixed bug in common table expression system where if the CTE were
-        used only as an ``alias()`` construct, it would not render using the
-        WITH keyword.
+      Fixed bug in common table expression system where if the CTE were
+      used only as an ``alias()`` construct, it would not render using the
+      WITH keyword.
 
     .. change::
         :tags: bug, sql
         :tickets: 2784
         :versions: 0.8.3, 0.9.0b1
 
-        Fixed bug in :class:`.CheckConstraint` DDL where the "quote" flag from a
-        :class:`.Column` object would not be propagated.
+      Fixed bug in :class:`.CheckConstraint` DDL where the "quote" flag from a
+      :class:`.Column` object would not be propagated.
 
     .. change::
         :tags: bug, orm

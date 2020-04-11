@@ -1,4 +1,4 @@
-.. module:: sqlalchemy.orm
+.. currentmodule:: sqlalchemy.orm
 
 Changing Attribute Behavior
 ===========================

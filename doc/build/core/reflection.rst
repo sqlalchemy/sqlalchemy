@@ -1,4 +1,4 @@
-.. module:: sqlalchemy.schema
+.. currentmodule:: sqlalchemy.schema
 
 .. _metadata_reflection_toplevel:
 .. _metadata_reflection:

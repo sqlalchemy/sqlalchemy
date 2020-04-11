@@ -1,6 +1,6 @@
 .. _metadata_ddl_toplevel:
 .. _metadata_ddl:
-.. module:: sqlalchemy.schema
+.. currentmodule:: sqlalchemy.schema
 
 Customizing DDL
 ===============

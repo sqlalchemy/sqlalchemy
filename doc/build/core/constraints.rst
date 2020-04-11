@@ -1,7 +1,7 @@
 .. _metadata_constraints_toplevel:
 .. _metadata_constraints:
 
-.. module:: sqlalchemy.schema
+.. currentmodule:: sqlalchemy.schema
 
 ================================
 Defining Constraints and Indexes

@@ -7,8 +7,10 @@
     .. include:: changelog_08.rst
         :start-line: 5
 
+
     .. include:: changelog_07.rst
         :start-line: 5
+
 
 .. _unreleased_changelog::
     :version: 0.9.11
