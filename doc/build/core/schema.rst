@@ -4,7 +4,7 @@
 Schema Definition Language
 ==========================
 
-.. module:: sqlalchemy.schema
+.. currentmodule:: sqlalchemy.schema
 
 This section references SQLAlchemy **schema metadata**, a comprehensive system of describing and inspecting
 database schemas.

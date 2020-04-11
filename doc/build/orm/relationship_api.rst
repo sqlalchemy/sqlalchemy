@@ -1,4 +1,4 @@
-.. automodule:: sqlalchemy.orm
+.. currentmodule:: sqlalchemy.orm
 
 Relationships API
 -----------------
