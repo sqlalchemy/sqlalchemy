@@ -645,7 +645,17 @@ class Inspector(object):
                 conn, table_name, schema, info_cache=self.info_cache, **kw
             )
 
-    def reflecttable(
+    @util.deprecated_20(
+        ":meth:`.Inspector.reflecttable`",
+        "The :meth:`.Inspector.reflecttable` method was renamed to "
+        ":meth:`.Inspector.reflect_table`. This deprecated alias "
+        "will be removed in a future release.",
+    )
+    def reflecttable(self, *args, **kwargs):
+        "See reflect_table. This method name is deprecated"
+        return self.reflect_table(*args, **kwargs)
+
+    def reflect_table(
         self,
         table,
         include_columns,
@@ -666,7 +676,10 @@ class Inspector(object):
             meta = MetaData()
             user_table = Table('user', meta)
             insp = Inspector.from_engine(engine)
-            insp.reflecttable(user_table, None)
+            insp.reflect_table(user_table, None)
+
+        .. versionchanged:: 1.4 Renamed from ``reflecttable`` to
+           ``reflect_table``
 
         :param table: a :class:`~sqlalchemy.schema.Table` instance.
         :param include_columns: a list of string column names to include

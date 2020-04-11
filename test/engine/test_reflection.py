@@ -1282,15 +1282,15 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m = MetaData()
 
         inspector = sa.engine.reflection.Inspector
-        reflecttable = inspector.reflecttable
+        reflect_table = inspector.reflect_table
 
         def patched(self, table, *arg, **kw):
             if table.name == "rt_c":
                 raise sa.exc.UnreflectableTableError("Can't reflect rt_c")
             else:
-                return reflecttable(self, table, *arg, **kw)
+                return reflect_table(self, table, *arg, **kw)
 
-        with mock.patch.object(inspector, "reflecttable", patched):
+        with mock.patch.object(inspector, "reflect_table", patched):
             with expect_warnings("Skipping table rt_c: Can't reflect rt_c"):
                 m.reflect(bind=testing.db)
 
@@ -1685,7 +1685,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
     @testing.requires.unicode_connections
     def test_basic(self):
         # the 'convert_unicode' should not get in the way of the
-        # reflection process.  reflecttable for oracle, postgresql
+        # reflection process.  reflect_table for oracle, postgresql
         # (others?) expect non-unicode strings in result sets/bind
         # params
 
