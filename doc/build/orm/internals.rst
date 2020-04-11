@@ -21,9 +21,6 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
 
-.. autoclass:: sqlalchemy.orm.descriptor_props.ComparableProperty
-    :members:
-
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
     :members:
 

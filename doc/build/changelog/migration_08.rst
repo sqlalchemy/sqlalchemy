@@ -1298,7 +1298,7 @@ be no pending state change on an unloaded attribute.
 :ticket:`2320`
 
 :attr:`.Column.key` is honored in the :attr:`.Select.c` attribute of :func:`~.sql.expression.select` with :meth:`.Select.apply_labels`
------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Users of the expression system know that :meth:`.Select.apply_labels`
 prepends the table name to each column name, affecting the

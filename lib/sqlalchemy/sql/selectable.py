@@ -3814,19 +3814,19 @@ class Select(
         "1.4",
         "The :meth:`.Select.column` method is deprecated and will "
         "be removed in a future release.  Please use "
-        ":meth:`.Select.add_columns",
+        ":meth:`.Select.add_columns`",
     )
     def column(self, column):
         """return a new select() construct with the given column expression
-            added to its columns clause.
+           added to its columns clause.
 
-            E.g.::
+           E.g.::
 
                 my_select = my_select.column(table.c.new_column)
 
-            See the documentation for :meth:`.Select.with_only_columns`
-            for guidelines on adding /replacing the columns of a
-            :class:`.Select` object.
+           See the documentation for :meth:`.Select.with_only_columns`
+           for guidelines on adding /replacing the columns of a
+           :class:`.Select` object.
 
         """
         return self.add_columns(column)

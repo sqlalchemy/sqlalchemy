@@ -578,7 +578,9 @@ class Executable(Generative):
         ":class:`.Session`.",
     )
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`."""
+        """Compile and execute this :class:`.Executable`.
+
+        """
         e = self.bind
         if e is None:
             label = getattr(self, "description", self.__class__.__name__)

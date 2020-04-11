@@ -51,7 +51,7 @@ SQLAlchemy 1.x to 2.0 Transition
 
 .. admonition:: Certainty: definite
 
-  ::
+    This change will proceed.
 
 An extremely high priority of the SQLAlchemy 2.0 project is that transition
 from the 1.x to 2.0 series will be as straightforward as possible.  The
@@ -111,7 +111,7 @@ Python 3 Only
 
 .. admonition:: Certainty: definite
 
-  ::
+    This change will proceed.
 
 At the top level, Python 2 is now retired in 2020, and new Python development
 across the board is expected to be in Python 3.   SQLAlchemy will maintain

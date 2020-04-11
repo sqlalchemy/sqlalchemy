@@ -13,7 +13,6 @@ This section presents additional information about collection configuration
 and techniques.
 
 .. _largecollections:
-.. currentmodule:: sqlalchemy.orm
 
 Working with Large Collections
 ==============================
@@ -185,6 +184,7 @@ database.
     :paramref:`.orm.mapper.passive_deletes` - similar feature on :func:`.mapper`
 
 .. currentmodule:: sqlalchemy.orm.collections
+
 .. _custom_collections:
 
 Customizing Collection Access

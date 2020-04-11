@@ -8,5 +8,4 @@ Events and Internals
     events
     internals
     exceptions
-    deprecated
 

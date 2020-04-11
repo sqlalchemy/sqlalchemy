@@ -7,14 +7,18 @@
     .. include:: changelog_10.rst
         :start-line: 5
 
+
     .. include:: changelog_09.rst
         :start-line: 5
+
 
     .. include:: changelog_08.rst
         :start-line: 5
 
+
     .. include:: changelog_07.rst
         :start-line: 5
+
 
 
 .. changelog::

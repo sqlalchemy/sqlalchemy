@@ -7,6 +7,5 @@ Core API Basics
 
     event
     inspection
-    interfaces
     exceptions
     internals

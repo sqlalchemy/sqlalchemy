@@ -33,6 +33,7 @@ from .interfaces import ExceptionContext  # noqa
 from .interfaces import ExecutionContext  # noqa
 from .interfaces import TypeCompiler  # noqa
 from .mock import create_mock_engine
+from .result import BaseResult  # noqa
 from .result import BaseRow  # noqa
 from .result import BufferedColumnResultProxy  # noqa
 from .result import BufferedColumnRow  # noqa

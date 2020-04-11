@@ -386,7 +386,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """visit the values() ordered tuple list of an :class:`.Update` object."""
 
     dp_dml_values = symbol("DML_V")
-    """visit the values() dictionary of a :class:`.ValuesBase
+    """visit the values() dictionary of a :class:`.ValuesBase`
     (e.g. Insert or Update) object.
 
     """

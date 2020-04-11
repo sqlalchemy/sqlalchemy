@@ -787,7 +787,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ":meth:`.Inspector.has_table`.",
     )
     def exists(self, bind=None):
-        """Return True if this table exists."""
+        """Return True if this table exists.
+
+        """
 
         if bind is None:
             bind = _bind_or_error(self)
