@@ -32,6 +32,7 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy.engine import default
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CreateIndex
+from sqlalchemy.schema import DefaultClause
 from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
@@ -627,6 +628,22 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             (Sequence("my_seq"), "Sequence('my_seq')"),
             (Sequence("my_seq", start=5), "Sequence('my_seq', start=5)"),
             (Column("foo", Integer), "Column('foo', Integer(), table=None)"),
+            (
+                Column(
+                    "foo",
+                    Integer,
+                    primary_key=True,
+                    nullable=False,
+                    onupdate=1,
+                    default=42,
+                    server_default="42",
+                    comment="foo",
+                ),
+                "Column('foo', Integer(), table=None, primary_key=True, "
+                "nullable=False, onupdate=%s, default=%s, server_default=%s, "
+                "comment='foo')"
+                % (ColumnDefault(1), ColumnDefault(42), DefaultClause("42"),),
+            ),
             (
                 Table("bar", MetaData(), Column("x", String)),
                 "Table('bar', MetaData(bind=None), "
