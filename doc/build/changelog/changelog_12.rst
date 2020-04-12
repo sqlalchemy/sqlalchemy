@@ -882,15 +882,15 @@
     :released: May 28, 2018
 
     .. change::
-    	:tags: bug, orm
-    	:tickets: 4256
+      :tags: bug, orm
+      :tickets: 4256
 
-    	Fixed regression in 1.2.7 caused by :ticket:`4228`, which itself was fixing
-    	a 1.2-level regression, where the ``query_cls`` callable passed to a
-    	:class:`.Session` was assumed to be a subclass of :class:`.Query`  with
-    	class method availability, as opposed to an arbitrary callable.    In
-    	particular, the dogpile caching example illustrates ``query_cls`` as a
-    	function and not a :class:`.Query` subclass.
+      Fixed regression in 1.2.7 caused by :ticket:`4228`, which itself was fixing
+      a 1.2-level regression, where the ``query_cls`` callable passed to a
+      :class:`.Session` was assumed to be a subclass of :class:`.Query`  with
+      class method availability, as opposed to an arbitrary callable.    In
+      particular, the dogpile caching example illustrates ``query_cls`` as a
+      function and not a :class:`.Query` subclass.
 
     .. change::
         :tags: bug, engine
@@ -928,15 +928,15 @@
 
 
     .. change::
-    	:tags: bug, ext
-    	:tickets: 4247
+      :tags: bug, ext
+      :tickets: 4247
 
-    	The horizontal sharding extension now makes use of the identity token
-    	added to ORM identity keys as part of :ticket:`4137`, when an object
-    	refresh or column-based deferred load or unexpiration operation occurs.
-    	Since we know the "shard" that the object originated from, we make
-    	use of this value when refreshing, thereby avoiding queries against
-    	other shards that don't match this object's identity in any case.
+      The horizontal sharding extension now makes use of the identity token
+      added to ORM identity keys as part of :ticket:`4137`, when an object
+      refresh or column-based deferred load or unexpiration operation occurs.
+      Since we know the "shard" that the object originated from, we make
+      use of this value when refreshing, thereby avoiding queries against
+      other shards that don't match this object's identity in any case.
 
     .. change::
         :tags: bug, sql
@@ -1009,15 +1009,15 @@
         of these issues as part of issue :ticket:`4258`.
 
     .. change::
-    	:tags: bug, ext
-    	:tickets: 4266
+      :tags: bug, ext
+      :tickets: 4266
 
-    	Fixed a race condition which could occur if automap
-    	:meth:`.AutomapBase.prepare` were used within a multi-threaded context
-    	against other threads which  may call :func:`.configure_mappers` as a
-    	result of use of other mappers.  The unfinished mapping work of automap
-    	is particularly sensitive to being pulled in by a
-    	:func:`.configure_mappers` step leading to errors.
+      Fixed a race condition which could occur if automap
+      :meth:`.AutomapBase.prepare` were used within a multi-threaded context
+      against other threads which  may call :func:`.configure_mappers` as a
+      result of use of other mappers.  The unfinished mapping work of automap
+      is particularly sensitive to being pulled in by a
+      :func:`.configure_mappers` step leading to errors.
 
     .. change::
         :tags: bug, orm
@@ -1029,12 +1029,12 @@
         the post criteria feature is now used by the lazy loader.
 
     .. change::
-    	:tags: bug, tests
-    	:tickets: 4249
+      :tags: bug, tests
+      :tickets: 4249
 
-    	Fixed a bug in the test suite where if an external dialect returned
-    	``None`` for ``server_version_info``, the exclusion logic would raise an
-    	``AttributeError``.
+      Fixed a bug in the test suite where if an external dialect returned
+      ``None`` for ``server_version_info``, the exclusion logic would raise an
+      ``AttributeError``.
 
     .. change::
         :tags: bug, orm
@@ -1954,18 +1954,18 @@
         index implicitly added by Oracle onto the primary key columns.
 
     .. change::
-    	:tags: bug, orm
-    	:tickets: 4071
+      :tags: bug, orm
+      :tickets: 4071
 
-    	Removed the warnings that are emitted when the LRU caches employed
-    	by the mapper as well as loader strategies reach their threshold; the
-    	purpose of this warning was at first a guard against excess cache keys
-    	being generated but became basically a check on the "creating many
-    	engines" antipattern.   While this is still an antipattern, the presence
-    	of test suites which both create an engine per test as well as raise
-    	on all warnings will be an inconvenience; it should not be critical
-    	that such test suites change their architecture just for this warning
-    	(though engine-per-test suite is always better).
+      Removed the warnings that are emitted when the LRU caches employed
+      by the mapper as well as loader strategies reach their threshold; the
+      purpose of this warning was at first a guard against excess cache keys
+      being generated but became basically a check on the "creating many
+      engines" antipattern.   While this is still an antipattern, the presence
+      of test suites which both create an engine per test as well as raise
+      on all warnings will be an inconvenience; it should not be critical
+      that such test suites change their architecture just for this warning
+      (though engine-per-test suite is always better).
 
     .. change::
         :tags: bug, orm
@@ -2093,11 +2093,12 @@
         Internal refinements to the :class:`.Enum`, :class:`.Interval`, and
         :class:`.Boolean` types, which now extend a common mixin
         :class:`.Emulated` that indicates a type that provides Python-side
-        emulation of a DB native type, switching out to the DB native type when a
-        supporting backend is in use.   The PostgreSQL :class:`.INTERVAL` type
-        when used directly will now include the correct type coercion rules for
-        SQL expressions that also take effect for :class:`.sqltypes.Interval`
-        (such as adding a date to an interval yields a datetime).
+        emulation of a DB native type, switching out to the DB native type when
+        a supporting backend is in use.   The PostgreSQL
+        :class:`.postgresql.INTERVAL` type when used directly will now include
+        the correct type coercion rules for SQL expressions that also take
+        effect for :class:`.sqltypes.Interval` (such as adding a date to an
+        interval yields a datetime).
 
 
     .. change::

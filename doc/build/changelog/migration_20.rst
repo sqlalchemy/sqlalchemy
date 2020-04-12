@@ -731,7 +731,7 @@ ORM Query Unified with Core Select
 
   Tenative overall, however there will almost definitely be
   architectural changes in :class:`.Query` that move it closer to
-  :meth:`.select`.
+  :func:`.select`.
 
   The ``session.query(<cls>)`` pattern itself will likely **not** be fully
   removed.   As this pattern is extremely prevalent and numerous within any

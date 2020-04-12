@@ -356,9 +356,9 @@
         :tickets: 2957
         :versions: 0.9.3
 
-        Fixed bug where :meth:`.in_()` would go into an endless loop if
-        erroneously passed a column expression whose comparator included
-        the ``__getitem__()`` method, such as a column that uses the
+        Fixed bug where :meth:`.ColumnOperators.in_()` would go into an endless
+        loop if erroneously passed a column expression whose comparator
+        included the ``__getitem__()`` method, such as a column that uses the
         :class:`.postgresql.ARRAY` type.
 
     .. change::

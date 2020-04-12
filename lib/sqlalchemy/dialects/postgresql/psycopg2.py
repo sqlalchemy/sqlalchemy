@@ -140,6 +140,8 @@ The following DBAPI-specific options are respected when used with
   .. versionchanged:: 1.4  The ``max_row_buffer`` size can now be greater than
      1000, and the buffer will grow to that size.
 
+.. _psycopg2_batch_mode:
+
 .. _psycopg2_executemany_mode:
 
 Psycopg2 Fast Execution Helpers

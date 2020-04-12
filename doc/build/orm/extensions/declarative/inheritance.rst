@@ -248,4 +248,3 @@ on concrete inheritance for details.
 
     :ref:`concrete_inheritance`
 
-    :ref:`inheritance_concrete_helpers`

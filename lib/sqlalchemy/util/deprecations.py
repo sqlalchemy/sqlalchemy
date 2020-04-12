@@ -21,6 +21,7 @@ from .. import exc
 def _warn_with_version(msg, version, type_, stacklevel):
     warn = type_(msg)
     warn.deprecated_since = version
+
     warnings.warn(warn, stacklevel=stacklevel + 1)
 
 
@@ -219,7 +220,7 @@ def _sanitize_restructured_text(text):
         return name
 
     text = re.sub(r":ref:`(.+) <.*>`", lambda m: '"%s"' % m.group(1), text)
-    return re.sub(r"\:(\w+)\:`~?\.?(.+?)`", repl, text)
+    return re.sub(r"\:(\w+)\:`~?(?:_\w+)?\.?(.+?)`", repl, text)
 
 
 def _decorate_cls_with_warning(

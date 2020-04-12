@@ -700,6 +700,8 @@ complexity is kept within the middle.
    sometimes ways to make relationships like the above writable, this is
    generally complicated and error prone.
 
+.. _relationship_non_primary_mapper:
+
 .. _relationship_aliased_class:
 
 Relationship to Aliased Class

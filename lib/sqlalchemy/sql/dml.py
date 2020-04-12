@@ -200,47 +200,47 @@ class UpdateBase(
 
         param_to_method_lookup = dict(
             whereclause=(
-                "The :paramref:`.%(func)s.whereclause` parameter "
+                "The :paramref:`%(func)s.whereclause` parameter "
                 "will be removed "
                 "in SQLAlchemy 2.0.  Please refer to the "
                 ":meth:`.%(classname)s.where` method."
             ),
             values=(
-                "The :paramref:`.%(func)s.values` parameter will be removed "
+                "The :paramref:`%(func)s.values` parameter will be removed "
                 "in SQLAlchemy 2.0.  Please refer to the "
-                ":meth:`.%(classname)s.values` method."
+                ":meth:`%(classname)s.values` method."
             ),
             bind=(
-                "The :paramref:`.%(func)s.bind` parameter will be removed in "
+                "The :paramref:`%(func)s.bind` parameter will be removed in "
                 "SQLAlchemy 2.0.  Please use explicit connection execution."
             ),
             inline=(
-                "The :paramref:`.%(func)s.inline` parameter will be "
+                "The :paramref:`%(func)s.inline` parameter will be "
                 "removed in "
                 "SQLAlchemy 2.0.  Please use the "
-                ":meth:`.%(classname)s.inline` method."
+                ":meth:`%(classname)s.inline` method."
             ),
             prefixes=(
-                "The :paramref:`.%(func)s.prefixes parameter will be "
+                "The :paramref:`%(func)s.prefixes parameter will be "
                 "removed in "
                 "SQLAlchemy 2.0.  Please use the "
-                ":meth:`.%(classname)s.prefix_with` "
+                ":meth:`%(classname)s.prefix_with` "
                 "method."
             ),
             return_defaults=(
-                "The :paramref:`.%(func)s.return_defaults` parameter will be "
+                "The :paramref:`%(func)s.return_defaults` parameter will be "
                 "removed in SQLAlchemy 2.0.  Please use the "
-                ":meth:`.%(classname)s.return_defaults` method."
+                ":meth:`%(classname)s.return_defaults` method."
             ),
             returning=(
-                "The :paramref:`.%(func)s.returning` parameter will be "
+                "The :paramref:`%(func)s.returning` parameter will be "
                 "removed in SQLAlchemy 2.0.  Please use the "
-                ":meth:`.%(classname)s.returning`` method."
+                ":meth:`%(classname)s.returning`` method."
             ),
             preserve_parameter_order=(
                 "The :paramref:`%(func)s.preserve_parameter_order` parameter "
                 "will be removed in SQLAlchemy 2.0.   Use the "
-                ":meth:`.%(classname)s.ordered_values` method with a list "
+                ":meth:`%(classname)s.ordered_values` method with a list "
                 "of tuples. "
             ),
         )
@@ -250,7 +250,10 @@ class UpdateBase(
                 name: (
                     "2.0",
                     param_to_method_lookup[name]
-                    % {"func": fn_name, "classname": clsname},
+                    % {
+                        "func": "_expression.%s" % fn_name,
+                        "classname": "_expression.%s" % clsname,
+                    },
                 )
                 for name in names
             }
@@ -546,25 +549,13 @@ class ValuesBase(UpdateBase):
               callable is invoked for each row.   See :ref:`bug_3288`
               for other details.
 
-         The :class:`.Update` construct supports a special form which is a
-         list of 2-tuples, which when provided must be passed in conjunction
-         with the
-         :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
-         parameter.
-         This form causes the UPDATE statement to render the SET clauses
-         using the order of parameters given to :meth:`.Update.values`, rather
-         than the ordering of columns given in the :class:`.Table`.
-
-           .. versionadded:: 1.0.10 - added support for parameter-ordered
-              UPDATE statements via the
-              :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
-              flag.
+          The UPDATE construct also supports rendering the SET parameters
+          in a specific order.  For this feature refer to the
+          :meth:`.Update.ordered_values` method.
 
            .. seealso::
 
-              :ref:`updates_order_parameters` - full example of the
-              :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
-              flag
+              :meth:`.Update.ordered_values`
 
         .. seealso::
 
@@ -1064,8 +1055,8 @@ class Update(DMLWhereBase, ValuesBase):
 
           .. seealso::
 
-            :ref:`updates_order_parameters` - full example of the
-            :paramref:`~.update.preserve_parameter_order` flag
+            :ref:`updates_order_parameters` - illustrates the
+            :meth:`.Update.ordered_values` method.
 
         If both ``values`` and compile-time bind parameters are present, the
         compile-time bind parameters override the information specified
@@ -1089,7 +1080,8 @@ class Update(DMLWhereBase, ValuesBase):
           etc.
 
         when combining :func:`~.sql.expression.select` constructs within the
-        values clause of an :func:`.update` construct, the subquery represented
+        values clause of an :func:`.update`
+        construct, the subquery represented
         by the :func:`~.sql.expression.select` should be *correlated* to the
         parent table, that is, providing criterion which links the table inside
         the subquery to the outer table being updated::
@@ -1135,8 +1127,7 @@ class Update(DMLWhereBase, ValuesBase):
         .. seealso::
 
            :ref:`updates_order_parameters` - full example of the
-           :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
-           flag
+           :meth:`.Update.ordered_values` method.
 
         .. versionchanged:: 1.4 The :meth:`.Update.ordered_values` method
            supersedes the :paramref:`.update.preserve_parameter_order`
@@ -1219,7 +1210,7 @@ class Delete(DMLWhereBase, UpdateBase):
         prefixes=None,
         **dialect_kw
     ):
-        """Construct :class:`.Delete` object.
+        r"""Construct :class:`.Delete` object.
 
         Similar functionality is available via the
         :meth:`~.TableClause.delete` method on

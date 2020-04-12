@@ -15,8 +15,8 @@ Class Mapping API
 
 .. autofunction:: sqlalchemy.orm.util.identity_key
 
-.. autofunction:: sqlalchemy.orm.util.polymorphic_union
+.. autofunction:: polymorphic_union
 
-.. autoclass:: sqlalchemy.orm.mapper.Mapper
+.. autoclass:: Mapper
    :members:
 

@@ -1551,7 +1551,7 @@ class ResultProxy(BaseResult):
                 yield row
 
     def close(self):
-        """Close this ResultProxy.
+        """Close this :class:`.ResultProxy`.
 
         This closes out the underlying DBAPI cursor corresponding
         to the statement execution, if one is still present.  Note that the
@@ -1567,7 +1567,7 @@ class ResultProxy(BaseResult):
 
         .. deprecated:: 2.0 "connectionless" execution is deprecated and will
            be removed in version 2.0.   Version 2.0 will feature the
-           :class:`.Result` object that will no longer affect the status
+           :class:`.future.Result` object that will no longer affect the status
            of the originating connection in any case.
 
         After this method is called, it is no longer valid to call upon

@@ -3424,7 +3424,7 @@ class Select(
 
         All arguments which accept :class:`.ClauseElement` arguments also
         accept string arguments, which will be converted as appropriate into
-        either :func:`text()` or :func:`literal_column()` constructs.
+        either :func:`.text()` or :func:`.literal_column()` constructs.
 
         .. seealso::
 

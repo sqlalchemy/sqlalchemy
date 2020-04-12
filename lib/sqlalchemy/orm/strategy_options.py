@@ -982,9 +982,9 @@ class loader_option(object):
         self._unbound_fn = fn
         fn_doc = self.fn.__doc__
         self.fn.__doc__ = """Produce a new :class:`.Load` object with the
-:func:`.orm.%(name)s` option applied.
+:func:`_orm.%(name)s` option applied.
 
-See :func:`.orm.%(name)s` for usage examples.
+See :func:`_orm.%(name)s` for usage examples.
 
 """ % {
             "name": self.name
@@ -994,13 +994,14 @@ See :func:`.orm.%(name)s` for usage examples.
         return self
 
     def _add_unbound_all_fn(self, fn):
-        fn.__doc__ = """Produce a standalone "all" option for :func:`.orm.%(name)s`.
+        fn.__doc__ = """Produce a standalone "all" option for
+:func:`_orm.%(name)s`.
 
 .. deprecated:: 0.9
 
-    The :func:`.%(name)s_all` function is deprecated, and will be removed
-    in a future release.  Please use method chaining with :func:`.%(name)s`
-    instead, as in::
+    The :func:`_orm.%(name)s_all` function is deprecated, and will be removed
+    in a future release.  Please use method chaining with
+    :func:`_orm.%(name)s` instead, as in::
 
         session.query(MyClass).options(
             %(name)s("someattribute").%(name)s("anotherattribute")
@@ -1751,7 +1752,7 @@ def selectin_polymorphic(loadopt, classes):
 
     .. seealso::
 
-        :ref:`inheritance_polymorphic_load`
+        :ref:`polymorphic_selectin`
 
     """
     loadopt.set_class_strategy(

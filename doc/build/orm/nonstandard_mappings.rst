@@ -157,35 +157,21 @@ Multiple Mappers for One Class
 ==============================
 
 In modern SQLAlchemy, a particular class is mapped by only one so-called
-**primary** mapper at a time.   This mapper is involved in three main
-areas of functionality: querying, persistence, and instrumentation of the
-mapped class.   The rationale of the primary mapper relates to the fact
-that the :func:`.mapper` modifies the class itself, not only
-persisting it towards a particular :class:`.Table`, but also :term:`instrumenting`
-attributes upon the class which are structured specifically according to the
-table metadata.   It's not possible for more than one mapper
-to be associated with a class in equal measure, since only one mapper can
-actually instrument the class.
+**primary** mapper at a time.   This mapper is involved in three main areas of
+functionality: querying, persistence, and instrumentation of the mapped class.
+The rationale of the primary mapper relates to the fact that the
+:func:`.mapper` modifies the class itself, not only persisting it towards a
+particular :class:`.Table`, but also :term:`instrumenting` attributes upon the
+class which are structured specifically according to the table metadata.   It's
+not possible for more than one mapper to be associated with a class in equal
+measure, since only one mapper can actually instrument the class.
 
-However, there is a class of mapper known as the **non primary** mapper
-which allows additional mappers to be associated with a class, but with
-a limited scope of use.   This scope typically applies to
-being able to load rows from an alternate table or selectable unit, but
-still producing classes which are ultimately persisted using the primary
-mapping.    The non-primary mapper is created using the classical style
-of mapping against a class that is already mapped with a primary mapper,
-and involves the use of the :paramref:`~sqlalchemy.orm.mapper.non_primary`
-flag.
-
-The non primary mapper is of very limited use in modern SQLAlchemy, as the
-task of being able to load classes from subqueries or other compound statements
-can be now accomplished using the :class:`.Query` object directly.
-
-There is really only one use case for the non-primary mapper, which is that
-we wish to build a :func:`.relationship` to such a mapper; this is useful
-in the rare and advanced case that our relationship is attempting to join two
-classes together using many tables and/or joins in between.  An example of this
-pattern is at :ref:`relationship_non_primary_mapper`.
+The concept of a "non-primary" mapper had existed for many versions of
+SQLAlchemy however as of version 1.3 this feature is deprecated.   The
+one case where such a non-primary mapper is useful is when constructing
+a relationship to a class against an alternative selectable.   This
+use case is now suited using the :class:`.aliased` construct and is described
+at :ref:`relationship_aliased_class`.
 
 As far as the use case of a class that can actually be fully persisted
 to different tables under different scenarios, very early versions of
