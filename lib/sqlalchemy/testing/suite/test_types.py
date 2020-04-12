@@ -519,10 +519,10 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             filter_=lambda n: n is not None and round(n, 5) or None,
         )
 
-    def test_float_coerce_round_trip(self):
+    def test_float_coerce_round_trip(self, connection):
         expr = 15.7563
 
-        val = testing.db.scalar(select([literal(expr)]))
+        val = connection.scalar(select([literal(expr)]))
         eq_(val, expr)
 
     # this does not work in MySQL, see #4036, however we choose not
@@ -530,17 +530,17 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @testing.requires.implicit_decimal_binds
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
-    def test_decimal_coerce_round_trip(self):
+    def test_decimal_coerce_round_trip(self, connection):
         expr = decimal.Decimal("15.7563")
 
-        val = testing.db.scalar(select([literal(expr)]))
+        val = connection.scalar(select([literal(expr)]))
         eq_(val, expr)
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
-    def test_decimal_coerce_round_trip_w_cast(self):
+    def test_decimal_coerce_round_trip_w_cast(self, connection):
         expr = decimal.Decimal("15.7563")
 
-        val = testing.db.scalar(select([cast(expr, Numeric(10, 4))]))
+        val = connection.scalar(select([cast(expr, Numeric(10, 4))]))
         eq_(val, expr)
 
     @testing.requires.precision_numerics_general

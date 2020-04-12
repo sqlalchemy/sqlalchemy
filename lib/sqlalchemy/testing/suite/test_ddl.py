@@ -67,25 +67,27 @@ class TableDDLTest(fixtures.TestBase):
 
     @requirements.comment_reflection
     @util.provide_metadata
-    def test_add_table_comment(self):
+    def test_add_table_comment(self, connection):
         table = self._simple_fixture()
-        table.create(config.db, checkfirst=False)
+        table.create(connection, checkfirst=False)
         table.comment = "a comment"
-        config.db.execute(schema.SetTableComment(table))
+        connection.execute(schema.SetTableComment(table))
         eq_(
-            inspect(config.db).get_table_comment("test_table"),
+            inspect(connection).get_table_comment("test_table"),
             {"text": "a comment"},
         )
 
     @requirements.comment_reflection
     @util.provide_metadata
-    def test_drop_table_comment(self):
+    def test_drop_table_comment(self, connection):
         table = self._simple_fixture()
-        table.create(config.db, checkfirst=False)
+        table.create(connection, checkfirst=False)
         table.comment = "a comment"
-        config.db.execute(schema.SetTableComment(table))
-        config.db.execute(schema.DropTableComment(table))
-        eq_(inspect(config.db).get_table_comment("test_table"), {"text": None})
+        connection.execute(schema.SetTableComment(table))
+        connection.execute(schema.DropTableComment(table))
+        eq_(
+            inspect(connection).get_table_comment("test_table"), {"text": None}
+        )
 
 
 __all__ = ("TableDDLTest",)
