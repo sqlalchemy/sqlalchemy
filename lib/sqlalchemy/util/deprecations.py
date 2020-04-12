@@ -105,7 +105,7 @@ def _sanitize_restructured_text(text):
             name += "()"
         return name
 
-    return re.sub(r"\:(\w+)\:`~?\.?(.+?)`", repl, text)
+    return re.sub(r"\:(\w+)\:`~?(?:_\w+)?\.?(.+?)`", repl, text)
 
 
 def _decorate_with_warning(func, wtype, message, docstring_header=None):

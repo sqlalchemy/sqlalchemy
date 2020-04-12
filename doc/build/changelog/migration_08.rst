@@ -413,7 +413,7 @@ and :meth:`.PropComparator.has`::
 
 .. seealso::
 
-    :ref:`of_type`
+    :ref:`inheritance_of_type`
 
 :ticket:`2438` :ticket:`1106`
 
@@ -960,7 +960,7 @@ when features such as :meth:`.MetaData.create_all` and :func:`.cast` is used::
 :ticket:`2276`
 
 "Prefixes" now supported for :func:`.update`, :func:`.delete`
--------------------------------------------------------------
+----------------------------------------------------------------------------
 
 Geared towards MySQL, a "prefix" can be rendered within any of
 these constructs.   E.g.::

@@ -543,8 +543,8 @@ or loaded with :meth:`~.Session.refresh` varies based on several factors, includ
   expired column-based attributes being accessed.
 
 * Regarding relationships, :meth:`~.Session.refresh` is more restrictive than
-  :meth:`~.Session.expire` with regards to attributes that aren't column-mapped.
-  Calling :meth:`.refresh` and passing a list of names that only includes
+  :meth:`.Session.expire` with regards to attributes that aren't column-mapped.
+  Calling :meth:`.Session.refresh` and passing a list of names that only includes
   relationship-mapped attributes will actually raise an error.
   In any case, non-eager-loading :func:`.relationship` attributes will not be
   included in any refresh operation.
@@ -620,7 +620,7 @@ The second bullet has the important caveat that "it is also known that the isola
 allow this data to be visible."  This means that it cannot be assumed that an
 UPDATE that happened on another database connection will yet be visible here
 locally; in many cases, it will not.  This is why if one wishes to use
-:meth:`.expire` or :meth:`.refresh` in order to view data between ongoing
+:meth:`.Session.expire` or :meth:`.Session.refresh` in order to view data between ongoing
 transactions, an understanding of the isolation behavior in effect is essential.
 
 .. seealso::

@@ -663,6 +663,8 @@ complexity is kept within the middle.
 
 .. _relationship_non_primary_mapper:
 
+.. _relationship_aliased_class:
+
 Relationship to Non Primary Mapper
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

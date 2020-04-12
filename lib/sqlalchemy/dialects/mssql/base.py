@@ -326,9 +326,10 @@ behavior of this flag is as follows:
 
 * Complete control over whether the "old" or "new" types are rendered is
   available in all SQLAlchemy versions by using the UPPERCASE type objects
-  instead: :class:`.NVARCHAR`, :class:`.VARCHAR`, :class:`.types.VARBINARY`,
-  :class:`.TEXT`, :class:`.mssql.NTEXT`, :class:`.mssql.IMAGE` will always
-  remain fixed and always output exactly that type.
+  instead: :class:`.types.NVARCHAR`, :class:`.types.VARCHAR`,
+  :class:`.types.VARBINARY`, :class:`.types.TEXT`, :class:`.mssql.NTEXT`,
+  :class:`.mssql.IMAGE` will always remain fixed and always output exactly that
+  type.
 
 .. versionadded:: 1.0.0
 

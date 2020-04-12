@@ -103,6 +103,7 @@ The :meth:`~.Connection.execute` method can of course accommodate more than
 that, including the variety of SQL expression constructs described
 in :ref:`sqlexpression_toplevel`.
 
+
 Using Transactions
 ==================
 

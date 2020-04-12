@@ -395,7 +395,7 @@ class FromClause(Selectable):
         message="The :meth:`.FromClause.count` method is deprecated, "
         "and will be removed in a future release.   Please use the "
         ":class:`.functions.count` function available from the "
-        ":attr:`.func` namespace."
+        ":attr:`.func` namespace.",
     )
     @util.dependencies("sqlalchemy.sql.functions")
     def count(self, functions, whereclause=None, **params):
@@ -2014,7 +2014,7 @@ class SelectBase(HasCTE, Executable, FromClause):
         "and will be removed in a future release.   Please use the "
         "the :paramref:`.Connection.execution_options.autocommit` "
         "parameter in conjunction with the "
-        ":meth:`.Executable.execution_options` method."
+        ":meth:`.Executable.execution_options` method.",
     )
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to
@@ -2649,7 +2649,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         All arguments which accept :class:`.ClauseElement` arguments also
         accept string arguments, which will be converted as appropriate into
-        either :func:`text()` or :func:`literal_column()` constructs.
+        either :func:`.text()` or :func:`.literal_column()` constructs.
 
         .. seealso::
 
