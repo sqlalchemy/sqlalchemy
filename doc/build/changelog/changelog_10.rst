@@ -1006,8 +1006,8 @@
         :tickets: 3459
 
         Added a :meth:`.ColumnElement.cast` method which performs the same
-        purpose as the standalone :func:`.cast` function.  Pull request
-        courtesy Sebastian Bank.
+        purpose as the standalone :func:`.expression.cast` function.  Pull
+        request courtesy Sebastian Bank.
 
     .. change::
         :tags: bug, engine
@@ -1181,7 +1181,7 @@
         Repaired the :class:`.ExcludeConstraint` construct to support common
         features that other objects like :class:`.Index` now do, that
         the column expression may be specified as an arbitrary SQL
-        expression such as :obj:`.cast` or :obj:`.text`.
+        expression such as :obj:`.expression.cast` or :obj:`.expression.text`.
 
     .. change::
         :tags: feature, postgresql
@@ -1206,14 +1206,13 @@
         :tags: bug, orm
         :tickets: 3448
 
-        Fixed an unexpected-use regression whereby custom :class:`.Comparator`
-        objects that made use of the ``__clause_element__()`` method and
-        returned an object that was an ORM-mapped
-        :class:`.InstrumentedAttribute` and not explicitly a
-        :class:`.ColumnElement` would fail to be correctly
-        handled when passed as an expression to :meth:`.Session.query`.
-        The logic in 0.9 happened to succeed on this, so this use case is now
-        supported.
+        Fixed an unexpected-use regression whereby custom
+        :class:`.types.TypeEngine.Comparator` objects that made use of the
+        ``__clause_element__()`` method and returned an object that was an
+        ORM-mapped :class:`.InstrumentedAttribute` and not explicitly a
+        :class:`.ColumnElement` would fail to be correctly handled when passed
+        as an expression to :meth:`.Session.query`. The logic in 0.9 happened
+        to succeed on this, so this use case is now supported.
 
     .. change::
         :tags: bug, sql

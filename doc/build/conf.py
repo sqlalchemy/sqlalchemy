@@ -37,13 +37,14 @@ extensions = [
     "changelog",
     "sphinx_paramlinks",
 ]
+needs_extensions = {"zzzeeksphinx": "1.1.2"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
 # have reported this.
 templates_path = [os.path.abspath("templates")]
 
-nitpicky = True
+nitpicky = False
 
 # The suffix of source filenames.
 source_suffix = ".rst"
@@ -88,6 +89,9 @@ changelog_render_changeset = "http://www.sqlalchemy.org/trac/changeset/%s"
 
 exclude_patterns = ["build", "**/unreleased*/*"]
 
+# zzzeeksphinx makes these conversions when it is rendering the
+# docstrings classes, methods, and functions within the scope of
+# Sphinx autodoc
 autodocmods_convert_modname = {
     "sqlalchemy.sql.sqltypes": "sqlalchemy.types",
     "sqlalchemy.sql.type_api": "sqlalchemy.types",
@@ -97,14 +101,52 @@ autodocmods_convert_modname = {
     "sqlalchemy.sql.dml": "sqlalchemy.sql.expression",
     "sqlalchemy.sql.ddl": "sqlalchemy.schema",
     "sqlalchemy.sql.base": "sqlalchemy.sql.expression",
+    "sqlalchemy.event.base": "sqlalchemy.event",
     "sqlalchemy.engine.base": "sqlalchemy.engine",
     "sqlalchemy.engine.result": "sqlalchemy.engine",
+    "sqlalchemy.util._collections": "sqlalchemy.util",
 }
 
 autodocmods_convert_modname_w_class = {
     ("sqlalchemy.engine.interfaces", "Connectable"): "sqlalchemy.engine",
     ("sqlalchemy.sql.base", "DialectKWArgs"): "sqlalchemy.sql.base",
 }
+
+# on the referencing side, a newer zzzeeksphinx extension
+# applies shorthand symbols to references so that we can have short
+# names that are still using absolute references.
+zzzeeksphinx_module_prefixes = {
+    "_sa": "sqlalchemy",
+    "_engine": "sqlalchemy.engine",
+    "_schema": "sqlalchemy.schema",
+    "_types": "sqlalchemy.types",
+    "_expression": "sqlalchemy.sql.expression",
+    "_functions": "sqlalchemy.sql.functions",
+    "_pool": "sqlalchemy.pool",
+    "_event": "sqlalchemy.event",
+    "_events": "sqlalchemy.events",
+    "_exc": "sqlalchemy.exc",
+    "_reflection": "sqlalchemy.engine.reflection",
+    "_orm": "sqlalchemy.orm",
+    "_query": "sqlalchemy.orm.query",
+    "_ormevent": "sqlalchemy.orm.event",
+    "_ormexc": "sqlalchemy.orm.exc",
+    "_baked": "sqlalchemy.ext.baked",
+    "_associationproxy": "sqlalchemy.ext.associationproxy",
+    "_automap": "sqlalchemy.ext.automap",
+    "_hybrid": "sqlalchemy.ext.hybrid",
+    "_compilerext": "sqlalchemy.ext.compiler",
+    "_mutable": "sqlalchemy.ext.mutable",
+    "_declarative": "sqlalchemy.ext.declarative",
+    "_future": "sqlalchemy.future",
+    "_futureorm": "sqlalchemy.future.orm",
+    "_postgresql": "sqlalchemy.dialects.postgresql",
+    "_mysql": "sqlalchemy.dialects.mysql",
+    "_mssql": "sqlalchemy.dialects.mssql",
+    "_oracle": "sqlalchemy.dialects.oracle",
+    "_sqlite": "sqlalchemy.dialects.sqlite",
+}
+
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'

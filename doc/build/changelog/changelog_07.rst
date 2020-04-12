@@ -2578,7 +2578,7 @@
 
       The behavior of =/!= when comparing a scalar select
       to a value will no longer produce IN/NOT IN as of 0.8;
-      this behavior is a little too heavy handed (use in_() if
+      this behavior is a little too heavy handed (use ``in_()`` if
       you want to emit IN) and now emits a deprecation warning.
       To get the 0.8 behavior immediately and remove the warning,
       a compiler recipe is given at

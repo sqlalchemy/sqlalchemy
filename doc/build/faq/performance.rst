@@ -212,7 +212,7 @@ the profiling output of this intentionally slow operation can be seen like this:
 that is, we see many expensive calls within the ``type_api`` system, and the actual
 time consuming thing is the ``time.sleep()`` call.
 
-Make sure to check the :doc:`Dialect documentation <dialects/index>`
+Make sure to check the :ref:`Dialect documentation <dialect_toplevel>`
 for notes on known performance tuning suggestions at this level, especially for
 databases like Oracle.  There may be systems related to ensuring numeric accuracy
 or string processing that may not be needed in all cases.
@@ -295,14 +295,14 @@ ORM as a first-class component.
 
 For the use case of fast bulk inserts, the
 SQL generation and execution system that the ORM builds on top of
-is part of the :doc:`Core <core/tutorial>`.  Using this system directly, we can produce an INSERT that
+is part of the :ref:`Core <sqlexpression_toplevel>`.  Using this system directly, we can produce an INSERT that
 is competitive with using the raw database API directly.
 
 .. note::
 
-    When using the psycopg2 dialect, consider making use of the
-    :ref:`batch execution helpers <psycopg2_batch_mode>` feature of psycopg2,
-    now supported directly by the SQLAlchemy psycopg2 dialect.
+    When using the psycopg2 dialect, consider making use of the :ref:`batch
+    execution helpers <psycopg2_batch_mode>` feature of psycopg2, now
+    supported directly by the SQLAlchemy psycopg2 dialect.
 
 Alternatively, the SQLAlchemy ORM offers the :ref:`bulk_operations`
 suite of methods, which provide hooks into subsections of the unit of

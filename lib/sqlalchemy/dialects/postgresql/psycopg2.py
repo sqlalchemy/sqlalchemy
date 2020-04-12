@@ -139,6 +139,8 @@ The following DBAPI-specific options are respected when used with
 
   .. versionadded:: 1.0.6
 
+.. _psycopg2_batch_mode:
+
 .. _psycopg2_executemany_mode:
 
 Psycopg2 Fast Execution Helpers

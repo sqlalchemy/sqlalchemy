@@ -5,7 +5,9 @@ Runtime Inspection API
 ======================
 
 .. automodule:: sqlalchemy.inspection
-    :members:
+
+.. autofunction:: sqlalchemy.inspect
+
 
 Available Inspection Targets
 ----------------------------
