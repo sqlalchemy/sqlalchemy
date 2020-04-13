@@ -1,4 +1,6 @@
-Individual per-changelog files go here in `.rst` format, which are pulled in by
+Individual per-changelog files are placed into their corresponding release's
+directory (for example: changelog files for the `1.4` branch are placed in the 
+`./unreleased_14/` directory). Files are in `.rst` format, which are pulled in by
 changelog (https://github.com/sqlalchemyorg/changelog; version 0.4.0 or higher) 
 to be rendered into the `changelog_xx.rst` file.
 
