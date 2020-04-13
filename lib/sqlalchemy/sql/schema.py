@@ -1440,6 +1440,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             kwarg.append("default")
         if self.server_default:
             kwarg.append("server_default")
+        if self.comment:
+            kwarg.append("comment")
         return "Column(%s)" % ", ".join(
             [repr(self.name)]
             + [repr(self.type)]
