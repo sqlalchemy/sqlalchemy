@@ -1651,7 +1651,7 @@ was emitted.  If you want to reduce the number of queries (dramatically, in many
 we can apply an :term:`eager load` to the query operation.   SQLAlchemy
 offers three types of eager loading, two of which are automatic, and a third
 which involves custom criterion.   All three are usually invoked via functions known
-as :term:`query options` which give additional instructions to the :class:`.Query` on how
+as query options which give additional instructions to the :class:`.Query` on how
 we would like various attributes to be loaded, via the :meth:`.Query.options` method.
 
 Selectin Load
