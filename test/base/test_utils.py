@@ -2805,6 +2805,8 @@ class TimezoneTest(fixtures.TestBase):
         ),
     )
     def test_tzname(self, td, expected):
+        if expected == "UTC" and util.py3k and not util.py36:
+            expected += "+00:00"
         eq_(timezone(td).tzname(None), expected)
 
     def test_utcoffset(self):
