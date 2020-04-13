@@ -27,7 +27,7 @@ from ...engine import processors
 _server_side_id = util.counter()
 
 
-class _PsycopgNumeric(sqltypes.Numeric):
+class _PsycopgNumericCommon(sqltypes.NumericCommon):
     def bind_processor(self, dialect):
         return None
 
@@ -56,8 +56,12 @@ class _PsycopgNumeric(sqltypes.Numeric):
                 )
 
 
-class _PsycopgFloat(_PsycopgNumeric):
-    __visit_name__ = "float"
+class _PsycopgNumeric(_PsycopgNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class _PsycopgFloat(_PsycopgNumericCommon, sqltypes.Float):
+    pass
 
 
 class _PsycopgHStore(HSTORE):

@@ -1017,6 +1017,7 @@ from .reserved_words import RESERVED_WORDS_MYSQL
 from .types import _FloatType
 from .types import _IntegerType
 from .types import _MatchType
+from .types import _NumericCommonType
 from .types import _NumericType
 from .types import _StringType
 from .types import BIGINT
@@ -1114,6 +1115,7 @@ MSInteger = INTEGER
 
 colspecs = {
     _IntegerType: _IntegerType,
+    _NumericCommonType: _NumericCommonType,
     _NumericType: _NumericType,
     _FloatType: _FloatType,
     sqltypes.Numeric: NUMERIC,
@@ -1277,7 +1279,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                     self.process(binary.right, **kw),
                 )
             )
-        elif binary.type._type_affinity is sqltypes.Numeric:
+        elif binary.type._type_affinity in (sqltypes.Numeric, sqltypes.Float):
             if (
                 binary.type.scale is not None
                 and binary.type.precision is not None
@@ -2145,7 +2147,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         )
 
     def _mysql_type(self, type_):
-        return isinstance(type_, (_StringType, _NumericType))
+        return isinstance(type_, (_StringType, _NumericCommonType))
 
     def visit_NUMERIC(self, type_, **kw):
         if type_.precision is None:

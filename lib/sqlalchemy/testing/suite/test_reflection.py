@@ -1649,6 +1649,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                             [
                                 sql_types.Integer,
                                 sql_types.Numeric,
+                                sql_types.Float,
                                 sql_types.DateTime,
                                 sql_types.Date,
                                 sql_types.Time,

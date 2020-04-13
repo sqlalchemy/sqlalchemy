@@ -47,6 +47,7 @@ from .sql.sqltypes import NULLTYPE as NULLTYPE
 from .sql.sqltypes import NullType as NullType
 from .sql.sqltypes import NUMERIC as NUMERIC
 from .sql.sqltypes import Numeric as Numeric
+from .sql.sqltypes import NumericCommon as NumericCommon
 from .sql.sqltypes import NVARCHAR as NVARCHAR
 from .sql.sqltypes import PickleType as PickleType
 from .sql.sqltypes import REAL as REAL

@@ -217,6 +217,9 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 .. autoclass:: Numeric
   :members:
 
+.. autoclass:: NumericCommon
+  :members:
+
 .. autoclass:: PickleType
   :members:
 

@@ -3106,7 +3106,7 @@ class SQLCompiler(Compiled):
                         (
                             binary.right.type
                             if binary.right.type._type_affinity
-                            is sqltypes.Numeric
+                            in (sqltypes.Numeric, sqltypes.Float)
                             else sqltypes.Numeric()
                         ),
                     ),
