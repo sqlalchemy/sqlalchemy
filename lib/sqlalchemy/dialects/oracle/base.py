@@ -1635,6 +1635,19 @@ class OracleDialect(default.DefaultDialect):
         return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
+    def get_sequence_names(self, connection, schema=None, **kw):
+        if not schema:
+            schema = self.default_schema_name
+        cursor = connection.execute(
+            sql.text(
+                "SELECT sequence_name FROM all_sequences "
+                "WHERE sequence_owner = :schema_name"
+            ),
+            schema_name=self.denormalize_name(schema),
+        )
+        return [self.normalize_name(row[0]) for row in cursor]
+
+    @reflection.cache
     def get_table_options(self, connection, table_name, schema=None, **kw):
         options = {}
 

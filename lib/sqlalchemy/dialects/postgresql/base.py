@@ -2682,39 +2682,23 @@ class PGDialect(default.DefaultDialect):
 
     def has_sequence(self, connection, sequence_name, schema=None):
         if schema is None:
-            cursor = connection.execute(
-                sql.text(
-                    "SELECT relname FROM pg_class c join pg_namespace n on "
-                    "n.oid=c.relnamespace where relkind='S' and "
-                    "n.nspname=current_schema() "
-                    "and relname=:name"
-                ).bindparams(
-                    sql.bindparam(
-                        "name",
-                        util.text_type(sequence_name),
-                        type_=sqltypes.Unicode,
-                    )
-                )
+            schema = self.default_schema_name
+        cursor = connection.execute(
+            sql.text(
+                "SELECT relname FROM pg_class c join pg_namespace n on "
+                "n.oid=c.relnamespace where relkind='S' and "
+                "n.nspname=:schema and relname=:name"
+            ).bindparams(
+                sql.bindparam(
+                    "name",
+                    util.text_type(sequence_name),
+                    type_=sqltypes.Unicode,
+                ),
+                sql.bindparam(
+                    "schema", util.text_type(schema), type_=sqltypes.Unicode,
+                ),
             )
-        else:
-            cursor = connection.execute(
-                sql.text(
-                    "SELECT relname FROM pg_class c join pg_namespace n on "
-                    "n.oid=c.relnamespace where relkind='S' and "
-                    "n.nspname=:schema and relname=:name"
-                ).bindparams(
-                    sql.bindparam(
-                        "name",
-                        util.text_type(sequence_name),
-                        type_=sqltypes.Unicode,
-                    ),
-                    sql.bindparam(
-                        "schema",
-                        util.text_type(schema),
-                        type_=sqltypes.Unicode,
-                    ),
-                )
-            )
+        )
 
         return bool(cursor.first())
 
@@ -2869,6 +2853,23 @@ class PGDialect(default.DefaultDialect):
             schema=schema if schema is not None else self.default_schema_name,
         )
         return [name for name, in result]
+
+    @reflection.cache
+    def get_sequence_names(self, connection, schema=None, **kw):
+        if not schema:
+            schema = self.default_schema_name
+        cursor = connection.execute(
+            sql.text(
+                "SELECT relname FROM pg_class c join pg_namespace n on "
+                "n.oid=c.relnamespace where relkind='S' and "
+                "n.nspname=:schema"
+            ).bindparams(
+                sql.bindparam(
+                    "schema", util.text_type(schema), type_=sqltypes.Unicode,
+                ),
+            )
+        )
+        return [row[0] for row in cursor]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):

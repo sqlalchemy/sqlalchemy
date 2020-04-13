@@ -255,11 +255,6 @@ class Inspector(object):
          support named schemas, behavior is undefined if ``schema`` is not
          passed as ``None``.  For special quoting, use :class:`.quoted_name`.
 
-        :param order_by: Optional, may be the string "foreign_key" to sort
-         the result on foreign key dependencies.  Does not automatically
-         resolve cycles, and will raise :class:`.CircularDependencyError`
-         if cycles exist.
-
         .. seealso::
 
             :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
@@ -276,12 +271,29 @@ class Inspector(object):
     def has_table(self, table_name, schema=None):
         """Return True if the backend has a table of the given name.
 
+
+        :param table_name: name of the table to check
+        :param schema: schema name to query, if not the default schema.
+
         .. versionadded:: 1.4
 
         """
         # TODO: info_cache?
         with self._operation_context() as conn:
             return self.dialect.has_table(conn, table_name, schema)
+
+    def has_sequence(self, sequence_name, schema=None):
+        """Return True if the backend has a table of the given name.
+
+        :param sequence_name: name of the table to check
+        :param schema: schema name to query, if not the default schema.
+
+        .. versionadded:: 1.4
+
+        """
+        # TODO: info_cache?
+        with self._operation_context() as conn:
+            return self.dialect.has_sequence(conn, sequence_name, schema)
 
     def get_sorted_table_and_fkc_names(self, schema=None):
         """Return dependency-sorted table and foreign key constraint names in
@@ -398,6 +410,19 @@ class Inspector(object):
 
         with self._operation_context() as conn:
             return self.dialect.get_view_names(
+                conn, schema, info_cache=self.info_cache
+            )
+
+    def get_sequence_names(self, schema=None):
+        """Return all sequence names in `schema`.
+
+        :param schema: Optional, retrieve names from a non-default schema.
+         For special quoting, use :class:`.quoted_name`.
+
+        """
+
+        with self._operation_context() as conn:
+            return self.dialect.get_sequence_names(
                 conn, schema, info_cache=self.info_cache
             )
 
