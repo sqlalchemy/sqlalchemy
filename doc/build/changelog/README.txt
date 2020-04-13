@@ -1,11 +1,12 @@
 Individual per-changelog files are placed into their corresponding release's
 directory (for example: changelog files for the `1.4` branch are placed in the 
-`./unreleased_14/` directory). Files are in `.rst` format, which are pulled in by
-changelog (https://github.com/sqlalchemyorg/changelog; version 0.4.0 or higher) 
-to be rendered into the `changelog_xx.rst` file.
+`./unreleased_14/` directory, such as `./unreleased_14/4710.rst`).
 
-At release time, the files in `unreleased_xx/`` are removed and written directly
-into the changelog.
+Files are in `.rst` format, which are pulled in by
+changelog (https://github.com/sqlalchemyorg/changelog; version 0.4.0 or higher) 
+to be rendered into their corresponding `changelog_xx.rst` file
+(for example: `./changelog_14.rst`). At release time, the files in the
+`unreleased_xx/` directory are removed and written directly into the changelog.
 
 Rationale is so that multiple changes being merged into gerrit don't produce
 conflicts.   Note that gerrit does not support custom merge handlers unlike
