@@ -37,16 +37,17 @@ class CTETest(fixtures.TablesTest):
 
     @classmethod
     def insert_data(cls):
-        config.db.execute(
-            cls.tables.some_table.insert(),
-            [
-                {"id": 1, "data": "d1", "parent_id": None},
-                {"id": 2, "data": "d2", "parent_id": 1},
-                {"id": 3, "data": "d3", "parent_id": 1},
-                {"id": 4, "data": "d4", "parent_id": 3},
-                {"id": 5, "data": "d5", "parent_id": 3},
-            ],
-        )
+        with config.db.connect() as conn:
+            conn.execute(
+                cls.tables.some_table.insert(),
+                [
+                    {"id": 1, "data": "d1", "parent_id": None},
+                    {"id": 2, "data": "d2", "parent_id": 1},
+                    {"id": 3, "data": "d3", "parent_id": 1},
+                    {"id": 4, "data": "d4", "parent_id": 3},
+                    {"id": 5, "data": "d5", "parent_id": 3},
+                ],
+            )
 
     def test_select_nonrecursive_round_trip(self):
         some_table = self.tables.some_table
