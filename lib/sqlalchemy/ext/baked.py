@@ -145,7 +145,7 @@ class BakedQuery(object):
          :class:`.BakedQuery` object subsequent to the spoil step will be
          non-cached; the state of the :class:`.BakedQuery` up until
          this point will be pulled from the cache.   If True, then the
-         entire :class:`.Query` object is built from scratch each
+         entire :class:`_query.Query` object is built from scratch each
          time, with all creational functions being called on each
          invocation.
 
@@ -163,8 +163,8 @@ class BakedQuery(object):
         :class:`.Session`.
 
         This basically means we also will include the session's query_class,
-        as the actual :class:`.Query` object is part of what's cached
-        and needs to match the type of :class:`.Query` that a later
+        as the actual :class:`_query.Query` object is part of what's cached
+        and needs to match the type of :class:`_query.Query` that a later
         session will want to use.
 
         """
@@ -253,11 +253,11 @@ class BakedQuery(object):
         return context
 
     def to_query(self, query_or_session):
-        """Return the :class:`.Query` object for use as a subquery.
+        """Return the :class:`_query.Query` object for use as a subquery.
 
         This method should be used within the lambda callable being used
         to generate a step of an enclosing :class:`.BakedQuery`.   The
-        parameter should normally be the :class:`.Query` object that
+        parameter should normally be the :class:`_query.Query` object that
         is passed to the lambda::
 
             sub_bq = self.bakery(lambda s: s.query(User.name))
@@ -279,7 +279,7 @@ class BakedQuery(object):
                 lambda s: s.query(Address.id, sub_bq.to_query(q).as_scalar())
             )
 
-        :param query_or_session: a :class:`.Query` object or a class
+        :param query_or_session: a :class:`_query.Query` object or a class
          :class:`.Session` object, that is assumed to be within the context
          of an enclosing :class:`.BakedQuery` callable.
 
@@ -391,13 +391,14 @@ class Result(object):
         """Add a criteria function that will be applied post-cache.
 
         This adds a function that will be run against the
-        :class:`.Query` object after it is retrieved from the
+        :class:`_query.Query` object after it is retrieved from the
         cache.    Functions here can be used to alter the query in ways
         that **do not affect the SQL output**, such as execution options
         and shard identifiers (when using a shard-enabled query object)
 
         .. warning::  :meth:`.Result.with_post_criteria` functions are applied
-           to the :class:`.Query` object **after** the query's SQL statement
+           to the :class:`_query.Query`
+           object **after** the query's SQL statement
            object has been retrieved from the cache.   Any operations here
            which intend to modify the SQL should ensure that
            :meth:`.BakedQuery.spoil` was called first.
@@ -446,7 +447,7 @@ class Result(object):
     def count(self):
         """return the 'count'.
 
-        Equivalent to :meth:`.Query.count`.
+        Equivalent to :meth:`_query.Query.count`.
 
         Note this uses a subquery to ensure an accurate count regardless
         of the structure of the original statement.
@@ -464,7 +465,7 @@ class Result(object):
         if no rows present.  If multiple rows are returned,
         raises MultipleResultsFound.
 
-        Equivalent to :meth:`.Query.scalar`.
+        Equivalent to :meth:`_query.Query.scalar`.
 
         .. versionadded:: 1.1.6
 
@@ -480,7 +481,7 @@ class Result(object):
     def first(self):
         """Return the first row.
 
-        Equivalent to :meth:`.Query.first`.
+        Equivalent to :meth:`_query.Query.first`.
 
         """
         bq = self.bq.with_criteria(lambda q: q.slice(0, 1))
@@ -497,7 +498,7 @@ class Result(object):
     def one(self):
         """Return exactly one result or raise an exception.
 
-        Equivalent to :meth:`.Query.one`.
+        Equivalent to :meth:`_query.Query.one`.
 
         """
         try:
@@ -518,7 +519,7 @@ class Result(object):
         """Return one or zero results, or raise an exception for multiple
         rows.
 
-        Equivalent to :meth:`.Query.one_or_none`.
+        Equivalent to :meth:`_query.Query.one_or_none`.
 
         .. versionadded:: 1.0.9
 
@@ -538,7 +539,7 @@ class Result(object):
     def all(self):
         """Return all rows.
 
-        Equivalent to :meth:`.Query.all`.
+        Equivalent to :meth:`_query.Query.all`.
 
         """
         return list(self)
@@ -546,7 +547,7 @@ class Result(object):
     def get(self, ident):
         """Retrieve an object based on identity.
 
-        Equivalent to :meth:`.Query.get`.
+        Equivalent to :meth:`_query.Query.get`.
 
         """
 
@@ -643,7 +644,7 @@ def unbake_lazy_loaders():
 
     This method now raises NotImplementedError() as the "baked" implementation
     is the only lazy load implementation.  The
-    :paramref:`.relationship.bake_queries` flag may be used to disable
+    :paramref:`_orm.relationship.bake_queries` flag may be used to disable
     the caching of queries on a per-relationship basis.
 
     """

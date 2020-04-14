@@ -9,8 +9,8 @@ class JSON(sqltypes.JSON):
     `loadable extension <https://www.sqlite.org/loadext.html>`_ and as such
     may not be available, or may require run-time loading.
 
-    The :class:`.sqlite.JSON` type supports persistence of JSON values
-    as well as the core index operations provided by :class:`.types.JSON`
+    The :class:`_sqlite.JSON` type supports persistence of JSON values
+    as well as the core index operations provided by :class:`_types.JSON`
     datatype, by adapting the operations to render the ``JSON_EXTRACT``
     function wrapped in the ``JSON_QUOTE`` function at the database level.
     Extracted values are quoted in order to ensure that the results are

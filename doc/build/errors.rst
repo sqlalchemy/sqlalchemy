@@ -51,7 +51,7 @@ familiar with.
 
 * **The SQLAlchemy Engine object uses a pool of connections by default** - What
   this means is that when one makes use of a SQL database connection resource
-  of an :class:`.Engine` object, and then :term:`releases` that resource,
+  of an :class:`_engine.Engine` object, and then :term:`releases` that resource,
   the database connection itself remains connected to the database and
   is returned to an internal queue where it can be used again.  Even though
   the code may appear to be ending its conversation with the database, in many
@@ -59,7 +59,7 @@ familiar with.
   that persist until the application ends or the pool is explicitly disposed.
 
 * Because of the pool, when an application makes use of a SQL database
-  connection, most typically from either making use of :meth:`.Engine.connect`
+  connection, most typically from either making use of :meth:`_engine.Engine.connect`
   or when making queries using an ORM :class:`.Session`, this activity
   does not necessarily establish a new connection to the database at the
   moment the connection object is acquired; it instead consults the
@@ -77,7 +77,7 @@ familiar with.
 
    engine = create_engine("mysql://u:p@host/db", pool_size=10, max_overflow=20)
 
-  The above :class:`.Engine` will allow **at most 30 connections** to be in
+  The above :class:`_engine.Engine` will allow **at most 30 connections** to be in
   play at any time, not including connections that were detached from the
   engine or invalidated.  If a request for a new connection arrives and
   30 connections are already in use by other parts of the application,
@@ -137,7 +137,7 @@ What causes an application to use up all the connections that it has available?
   A common reason this can occur is that the application uses ORM sessions and
   does not call :meth:`.Session.close` upon them one the work involving that
   session is complete. Solution is to make sure ORM sessions if using the ORM,
-  or engine-bound :class:`.Connection` objects if using Core, are explicitly
+  or engine-bound :class:`_engine.Connection` objects if using Core, are explicitly
   closed at the end of the work being done, either via the appropriate
   ``.close()`` method, or by using one of the available context managers (e.g.
   "with:" statement) to properly release the resource.
@@ -333,7 +333,7 @@ kinds of SQL compiler classes will be named, such as ``SQLCompiler`` or
 more specific to the "stringification" use case but describes the general
 background as well.
 
-Normally, a Core SQL construct or ORM :class:`.Query` object can be stringified
+Normally, a Core SQL construct or ORM :class:`_query.Query` object can be stringified
 directly, such as when we use ``print()``::
 
   >>> from sqlalchemy import column
@@ -367,15 +367,15 @@ to turn into a string, such as the PostgreSQL
   <class 'sqlalchemy.dialects.postgresql.dml.OnConflictDoNothing'>
 
 In order to stringify constructs that are specific to particular backend,
-the :meth:`.ClauseElement.compile` method must be used, passing either an
-:class:`.Engine` or a :class:`.Dialect` object which will invoke the correct
+the :meth:`_expression.ClauseElement.compile` method must be used, passing either an
+:class:`_engine.Engine` or a :class:`.Dialect` object which will invoke the correct
 compiler.   Below we use a PostgreSQL dialect::
 
   >>> from sqlalchemy.dialects import postgresql
   >>> print(insert_stmt.compile(dialect=postgresql.dialect()))
   INSERT INTO my_table (x) VALUES (%(x)s) ON CONFLICT (y) DO NOTHING
 
-For an ORM :class:`.Query` object, the statement can be accessed using the
+For an ORM :class:`_query.Query` object, the statement can be accessed using the
 :attr:`~.orm.query.Query.statement` accessor::
 
     statement = query.statement
@@ -407,9 +407,9 @@ declarative such as::
         )
 
 Above, the ``cprop`` attribute is used inline before it has been mapped,
-however this ``cprop`` attribute is not a :class:`.Column`,
+however this ``cprop`` attribute is not a :class:`_schema.Column`,
 it's a :class:`.ColumnProperty`, which is an interim object and therefore
-does not have the full functionality of either the :class:`.Column` object
+does not have the full functionality of either the :class:`_schema.Column` object
 or the :class:`.InstrumentedAttribute` object that will be mapped onto the
 ``Bar`` class once the declarative process is complete.
 
@@ -419,7 +419,7 @@ open-ended comparison context as illustrated above, since it has no Python
 ``__eq__()`` method that would allow it to interpret the comparison to the
 number "5" as a SQL expression and not a regular Python comparison.
 
-The solution is to access the :class:`.Column` directly using the
+The solution is to access the :class:`_schema.Column` directly using the
 :attr:`.ColumnProperty.expression` attribute::
 
     class Bar(Base):
@@ -441,7 +441,7 @@ This Compiled object is not bound to any Engine or Connection
 This error refers to the concept of "bound metadata", described at
 :ref:`dbengine_implicit`.   The issue occurs when one invokes the
 :meth:`.Executable.execute` method directly off of a Core expression object
-that is not associated with any :class:`.Engine`::
+that is not associated with any :class:`_engine.Engine`::
 
  metadata = MetaData()
  table = Table('t', metadata, Column('q', Integer))
@@ -449,19 +449,19 @@ that is not associated with any :class:`.Engine`::
  stmt = select([table])
  result = stmt.execute()   # <--- raises
 
-What the logic is expecting is that the :class:`.MetaData` object has
-been **bound** to a :class:`.Engine`::
+What the logic is expecting is that the :class:`_schema.MetaData` object has
+been **bound** to a :class:`_engine.Engine`::
 
  engine = create_engine("mysql+pymysql://user:pass@host/db")
  metadata = MetaData(bind=engine)
 
-Where above, any statement that derives from a :class:`.Table` which
-in turn derives from that :class:`.MetaData` will implicitly make use of
-the given :class:`.Engine` in order to invoke the statement.
+Where above, any statement that derives from a :class:`_schema.Table` which
+in turn derives from that :class:`_schema.MetaData` will implicitly make use of
+the given :class:`_engine.Engine` in order to invoke the statement.
 
 Note that the concept of bound metadata is a **legacy pattern** and in most
 cases is **highly discouraged**.   The best way to invoke the statement is
-to pass it to the :meth:`.Connection.execute` method of a :class:`.Connection`::
+to pass it to the :meth:`_engine.Connection.execute` method of a :class:`_engine.Connection`::
 
  with engine.connect() as conn:
    result = conn.execute(stmt)

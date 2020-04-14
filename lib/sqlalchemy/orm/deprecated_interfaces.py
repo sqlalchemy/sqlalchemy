@@ -12,7 +12,7 @@ from .. import util
 
 @util.langhelpers.dependency_for("sqlalchemy.orm.interfaces")
 class MapperExtension(object):
-    """Base implementation for :class:`.Mapper` event hooks.
+    """Base implementation for :class:`_orm.Mapper` event hooks.
 
     .. deprecated:: 0.7
 
@@ -464,7 +464,7 @@ class AttributeExtension(object):
     remove, and append events on individual mapped attributes.
     It is established on an individual mapped attribute using
     the `extension` argument, available on
-    :func:`.column_property`, :func:`.relationship`, and
+    :func:`.column_property`, :func:`_orm.relationship`, and
     others::
 
         from sqlalchemy.orm.interfaces import AttributeExtension
@@ -501,7 +501,7 @@ class AttributeExtension(object):
     even if it means firing lazy callables.
 
     Note that ``active_history`` can also be set directly via
-    :func:`.column_property` and :func:`.relationship`.
+    :func:`.column_property` and :func:`_orm.relationship`.
 
     """
 

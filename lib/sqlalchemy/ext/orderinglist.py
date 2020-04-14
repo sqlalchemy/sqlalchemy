@@ -11,7 +11,7 @@ elements.
 :author: Jason Kirtland
 
 ``orderinglist`` is a helper for mutable ordered relationships.  It will
-intercept list operations performed on a :func:`.relationship`-managed
+intercept list operations performed on a :func:`_orm.relationship`-managed
 collection and
 automatically synchronize changes in list position onto a target scalar
 attribute.
@@ -86,7 +86,7 @@ With the above mapping the ``Bullet.position`` attribute is managed::
 The :class:`.OrderingList` construct only works with **changes** to a
 collection, and not the initial load from the database, and requires that the
 list be sorted when loaded.  Therefore, be sure to specify ``order_by`` on the
-:func:`.relationship` against the target ordering attribute, so that the
+:func:`_orm.relationship` against the target ordering attribute, so that the
 ordering is correct when first loaded.
 
 .. warning::
@@ -213,7 +213,7 @@ class OrderingList(list):
 
     The :class:`.OrderingList` object is normally set up using the
     :func:`.ordering_list` factory function, used in conjunction with
-    the :func:`.relationship` function.
+    the :func:`_orm.relationship` function.
 
     """
 

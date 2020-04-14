@@ -28,7 +28,7 @@ result object above also maintains a link to this connection.  If
 the result object is closed or all rows are exhausted.
 
 The call to ``mytable.drop(engine)`` attempts to emit DROP TABLE on a second
-connection procured from the :class:`.Engine` which will lock.
+connection procured from the :class:`_engine.Engine` which will lock.
 
 The solution is to close out all connections before emitting DROP TABLE::
 
@@ -58,7 +58,7 @@ or SQLAlchemy-Migrate; see :ref:`schema_migrations` for discussion on this.
 How can I sort Table objects in order of their dependency?
 ==========================================================
 
-This is available via the :attr:`.MetaData.sorted_tables` function::
+This is available via the :attr:`_schema.MetaData.sorted_tables` function::
 
     metadata = MetaData()
     # ... add Table objects to metadata
@@ -80,7 +80,7 @@ To get the string specific to a certain engine::
 
     print(CreateTable(mytable).compile(engine))
 
-There's also a special form of :class:`.Engine` that can let you dump an entire
+There's also a special form of :class:`_engine.Engine` that can let you dump an entire
 metadata creation sequence, using this recipe::
 
     def dump(sql, *multiparams, **params):
@@ -94,7 +94,7 @@ an "offline" SQL generation mode that renders database migrations as SQL scripts
 How can I subclass Table/Column to provide certain behaviors/configurations?
 ============================================================================
 
-:class:`.Table` and :class:`.Column` are not good targets for direct subclassing.
+:class:`_schema.Table` and :class:`_schema.Column` are not good targets for direct subclassing.
 However, there are simple ways to get on-construction behaviors using creation
 functions, and behaviors related to the linkages between schema objects such as
 constraint conventions or naming conventions using attachment events.

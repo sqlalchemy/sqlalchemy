@@ -906,7 +906,7 @@ class ResultProxy(object):
     def is_insert(self):
         """True if this :class:`.ResultProxy` is the result
         of a executing an expression language compiled
-        :func:`.expression.insert` construct.
+        :func:`_expression.insert` construct.
 
         When True, this implies that the
         :attr:`inserted_primary_key` attribute is accessible,
@@ -965,7 +965,8 @@ class ResultProxy(object):
 
         In the case of a result that is the product of
         :ref:`connectionless execution <dbengine_implicit>`,
-        the underlying :class:`.Connection` object is also closed, which
+        the underlying :class:`_engine.Connection` object is also closed,
+        which
         :term:`releases` DBAPI connection resources.
 
         After this method is called, it is no longer valid to call upon
@@ -975,7 +976,8 @@ class ResultProxy(object):
         .. versionchanged:: 1.0.0 - the :meth:`.ResultProxy.close` method
            has been separated out from the process that releases the underlying
            DBAPI cursor resource.   The "auto close" feature of the
-           :class:`.Connection` now performs a so-called "soft close", which
+           :class:`_engine.Connection` now performs a so-called "soft close",
+           which
            releases the underlying DBAPI cursor, but allows the
            :class:`.ResultProxy` to still behave as an open-but-exhausted
            result set; the actual :meth:`.ResultProxy.close` method is never
@@ -1027,14 +1029,14 @@ class ResultProxy(object):
         corresponding to the list of primary key columns
         in the target table.
 
-        This only applies to single row :func:`.insert`
+        This only applies to single row :func:`_expression.insert`
         constructs which did not explicitly specify
-        :meth:`.Insert.returning`.
+        :meth:`_expression.Insert.returning`.
 
         Note that primary key columns which specify a
         server_default clause,
         or otherwise do not qualify as "autoincrement"
-        columns (see the notes at :class:`.Column`), and were
+        columns (see the notes at :class:`_schema.Column`), and were
         generated using the database-side default, will
         appear in this list as ``None`` unless the backend
         supports "returning" and the insert statement executed

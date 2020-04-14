@@ -19,7 +19,7 @@ not provide out of the box functionality for translating values between Python
 `datetime` objects and a SQLite-supported format. SQLAlchemy's own
 :class:`~sqlalchemy.types.DateTime` and related types provide date formatting
 and parsing functionality when SQLite is used. The implementation classes are
-:class:`~.sqlite.DATETIME`, :class:`~.sqlite.DATE` and :class:`~.sqlite.TIME`.
+:class:`_sqlite.DATETIME`, :class:`_sqlite.DATE` and :class:`_sqlite.TIME`.
 These types represent dates and times as ISO formatted strings, which also
 nicely support ordering. There's no reliance on typical "libc" internals for
 these functions so historical dates are fully supported.
@@ -216,7 +216,7 @@ SAVEPOINT Support
 
 SQLite supports SAVEPOINTs, which only function once a transaction is
 begun.   SQLAlchemy's SAVEPOINT support is available using the
-:meth:`.Connection.begin_nested` method at the Core level, and
+:meth:`_engine.Connection.begin_nested` method at the Core level, and
 :meth:`.Session.begin_nested` at the ORM level.   However, SAVEPOINTs
 won't work at all with pysqlite unless workarounds are taken.
 
@@ -303,11 +303,12 @@ itself depending on the location of the target constraint.    To render this
 clause within DDL, the extension parameter ``sqlite_on_conflict`` can be
 specified with a string conflict resolution algorithm within the
 :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`,
-:class:`.CheckConstraint` objects.  Within the :class:`.Column` object, there
+:class:`.CheckConstraint` objects.  Within the :class:`_schema.Column` object,
+there
 are individual parameters ``sqlite_on_conflict_not_null``,
 ``sqlite_on_conflict_primary_key``, ``sqlite_on_conflict_unique`` which each
 correspond to the three types of relevant constraint types that can be
-indicated from a :class:`.Column` object.
+indicated from a :class:`_schema.Column` object.
 
 .. seealso::
 
@@ -339,9 +340,10 @@ The above renders CREATE TABLE DDL as::
     )
 
 
-When using the :paramref:`.Column.unique` flag to add a UNIQUE constraint
+When using the :paramref:`_schema.Column.unique`
+flag to add a UNIQUE constraint
 to a single column, the ``sqlite_on_conflict_unique`` parameter can
-be added to the :class:`.Column` as well, which will be added to the
+be added to the :class:`_schema.Column` as well, which will be added to the
 UNIQUE constraint in the DDL::
 
     some_table = Table(
@@ -417,30 +419,30 @@ http://www.sqlite.org/datatype3.html section 2.1.
 The provided typemap will make direct associations from an exact string
 name match for the following types:
 
-:class:`~.types.BIGINT`, :class:`~.types.BLOB`,
-:class:`~.types.BOOLEAN`, :class:`~.types.BOOLEAN`,
-:class:`~.types.CHAR`, :class:`~.types.DATE`,
-:class:`~.types.DATETIME`, :class:`~.types.FLOAT`,
-:class:`~.types.DECIMAL`, :class:`~.types.FLOAT`,
-:class:`~.types.INTEGER`, :class:`~.types.INTEGER`,
-:class:`~.types.NUMERIC`, :class:`~.types.REAL`,
-:class:`~.types.SMALLINT`, :class:`~.types.TEXT`,
-:class:`~.types.TIME`, :class:`~.types.TIMESTAMP`,
-:class:`~.types.VARCHAR`, :class:`~.types.NVARCHAR`,
-:class:`~.types.NCHAR`
+:class:`_types.BIGINT`, :class:`_types.BLOB`,
+:class:`_types.BOOLEAN`, :class:`_types.BOOLEAN`,
+:class:`_types.CHAR`, :class:`_types.DATE`,
+:class:`_types.DATETIME`, :class:`_types.FLOAT`,
+:class:`_types.DECIMAL`, :class:`_types.FLOAT`,
+:class:`_types.INTEGER`, :class:`_types.INTEGER`,
+:class:`_types.NUMERIC`, :class:`_types.REAL`,
+:class:`_types.SMALLINT`, :class:`_types.TEXT`,
+:class:`_types.TIME`, :class:`_types.TIMESTAMP`,
+:class:`_types.VARCHAR`, :class:`_types.NVARCHAR`,
+:class:`_types.NCHAR`
 
 When a type name does not match one of the above types, the "type affinity"
 lookup is used instead:
 
-* :class:`~.types.INTEGER` is returned if the type name includes the
+* :class:`_types.INTEGER` is returned if the type name includes the
   string ``INT``
-* :class:`~.types.TEXT` is returned if the type name includes the
+* :class:`_types.TEXT` is returned if the type name includes the
   string ``CHAR``, ``CLOB`` or ``TEXT``
-* :class:`~.types.NullType` is returned if the type name includes the
+* :class:`_types.NullType` is returned if the type name includes the
   string ``BLOB``
-* :class:`~.types.REAL` is returned if the type name includes the string
+* :class:`_types.REAL` is returned if the type name includes the string
   ``REAL``, ``FLOA`` or ``DOUB``.
-* Otherwise, the :class:`~.types.NUMERIC` type is used.
+* Otherwise, the :class:`_types.NUMERIC` type is used.
 
 .. versionadded:: 0.9.3 Support for SQLite type affinity rules when reflecting
    columns.
@@ -560,7 +562,7 @@ the very specific case where an application is forced to use column names that
 contain dots, and the functionality of :meth:`.ResultProxy.keys` and
 :meth:`.RowProxy.keys()` is required to return these dotted names unmodified,
 the ``sqlite_raw_colnames`` execution option may be provided, either on a
-per-:class:`.Connection` basis::
+per-:class:`_engine.Connection` basis::
 
     result = conn.execution_options(sqlite_raw_colnames=True).execute('''
         select x.a, x.b from x where a=1
@@ -569,11 +571,11 @@ per-:class:`.Connection` basis::
     ''')
     assert result.keys() == ["x.a", "x.b"]
 
-or on a per-:class:`.Engine` basis::
+or on a per-:class:`_engine.Engine` basis::
 
     engine = create_engine("sqlite://", execution_options={"sqlite_raw_colnames": True})
 
-When using the per-:class:`.Engine` execution option, note that
+When using the per-:class:`_engine.Engine` execution option, note that
 **Core and ORM queries that use UNION may not function properly**.
 
 """  # noqa

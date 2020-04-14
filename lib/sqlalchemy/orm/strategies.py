@@ -1316,7 +1316,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         return q
 
     class _SubqCollections(object):
-        """Given a :class:`.Query` used to emit the "subquery load",
+        """Given a :class:`_query.Query` used to emit the "subquery load",
         provide a load interface that executes the query at the
         first moment a value is needed.
 

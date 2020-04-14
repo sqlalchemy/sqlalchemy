@@ -23,7 +23,7 @@ class Insert(StandardInsert):
 
     Adds methods for PG-specific syntaxes such as ON CONFLICT.
 
-    The :class:`.postgresql.Insert` object is created using the
+    The :class:`_postgresql.Insert` object is created using the
     :func:`sqlalchemy.dialects.postgresql.insert` function.
 
     .. versionadded:: 1.1
@@ -41,7 +41,7 @@ class Insert(StandardInsert):
         .. seealso::
 
             :ref:`postgresql_insert_on_conflict` - example of how
-            to use :attr:`.Insert.excluded`
+            to use :attr:`_expression.Insert.excluded`
 
         """
         return alias(self.table, name="excluded").columns
@@ -66,7 +66,7 @@ class Insert(StandardInsert):
          or the constraint object itself if it has a .name attribute.
 
         :param index_elements:
-         A sequence consisting of string column names, :class:`.Column`
+         A sequence consisting of string column names, :class:`_schema.Column`
          objects, or other column expression objects that will be used
          to infer a target index.
 
@@ -78,12 +78,13 @@ class Insert(StandardInsert):
          Required argument. A dictionary or other mapping object
          with column names as keys and expressions or literals as values,
          specifying the ``SET`` actions to take.
-         If the target :class:`.Column` specifies a ".key" attribute distinct
+         If the target :class:`_schema.Column` specifies a ".
+         key" attribute distinct
          from the column name, that key should be used.
 
          .. warning:: This dictionary does **not** take into account
             Python-specified default UPDATE values or generation functions,
-            e.g. those specified using :paramref:`.Column.onupdate`.
+            e.g. those specified using :paramref:`_schema.Column.onupdate`.
             These values will not be exercised for an ON CONFLICT style of
             UPDATE, unless they are manually specified in the
             :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
@@ -123,7 +124,7 @@ class Insert(StandardInsert):
          or the constraint object itself if it has a .name attribute.
 
         :param index_elements:
-         A sequence consisting of string column names, :class:`.Column`
+         A sequence consisting of string column names, :class:`_schema.Column`
          objects, or other column expression objects that will be used
          to infer a target index.
 

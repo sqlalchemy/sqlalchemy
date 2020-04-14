@@ -77,7 +77,8 @@ class TypeEngine(Visitable):
 
             This method determines the type of a resulting binary expression
             given two source types and an operator.   For example, two
-            :class:`.Column` objects, both of the type :class:`.Integer`, will
+            :class:`_schema.Column` objects, both of the type
+            :class:`.Integer`, will
             produce a :class:`.BinaryExpression` that also has the type
             :class:`.Integer` when compared via the addition (``+``) operator.
             However, using the addition operator with an :class:`.Integer`
@@ -111,7 +112,8 @@ class TypeEngine(Visitable):
 
     comparator_factory = Comparator
     """A :class:`.TypeEngine.Comparator` class which will apply
-    to operations performed by owning :class:`.ColumnElement` objects.
+    to operations performed by owning :class:`_expression.ColumnElement`
+    objects.
 
     The :attr:`.comparator_factory` attribute is a hook consulted by
     the core expression system when column and SQL expression operations
@@ -190,14 +192,15 @@ class TypeEngine(Visitable):
 
         In all cases, the actual NULL SQL value can be always be
         persisted in any column by using
-        the :obj:`~.expression.null` SQL construct in an INSERT statement
+        the :obj:`_expression.null` SQL construct in an INSERT statement
         or associated with an ORM-mapped attribute.
 
         .. note::
 
             The "evaluates none" flag does **not** apply to a value
-            of ``None`` passed to :paramref:`.Column.default` or
-            :paramref:`.Column.server_default`; in these cases, ``None``
+            of ``None`` passed to :paramref:`_schema.Column.default` or
+            :paramref:`_schema.Column.server_default`; in these cases,
+            ``None``
             still means "no default".
 
         .. versionadded:: 1.1
@@ -661,7 +664,7 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
 
     The ``get_col_spec()`` method will in most cases receive a keyword
     argument ``type_expression`` which refers to the owning expression
-    of the type as being compiled, such as a :class:`.Column` or
+    of the type as being compiled, such as a :class:`_schema.Column` or
     :func:`.cast` construct.  This keyword is only sent if the method
     accepts keyword arguments (e.g. ``**kw``) in its argument signature;
     introspection is used to check for this in order to support legacy
@@ -863,7 +866,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
        If the :class:`.TypeDecorator` is augmenting a
        type that requires special logic for certain types of operators,
        this method **must** be overridden.  A key example is when decorating
-       the :class:`.postgresql.JSON` and :class:`.postgresql.JSONB` types;
+       the :class:`_postgresql.JSON` and :class:`_postgresql.JSONB` types;
        the default rules of :meth:`.TypeEngine.coerce_compared_value` should
        be used in order to deal with operators like index operations::
 

@@ -6,7 +6,7 @@
 Collection Configuration and Techniques
 =======================================
 
-The :func:`.relationship` function defines a linkage between two classes.
+The :func:`_orm.relationship` function defines a linkage between two classes.
 When the linkage defines a one-to-many or many-to-many relationship, it's
 represented as a Python collection when objects are loaded and manipulated.
 This section presents additional information about collection configuration
@@ -17,7 +17,7 @@ and techniques.
 Working with Large Collections
 ==============================
 
-The default behavior of :func:`.relationship` is to fully load
+The default behavior of :func:`_orm.relationship` is to fully load
 the collection of items in, as according to the loading strategy of the
 relationship. Additionally, the :class:`.Session` by default only knows how to delete
 objects which are actually present within the session. When a parent instance
@@ -66,7 +66,7 @@ enabled on the :class:`.Session` in use, this will occur
 automatically each time the collection is about to emit a
 query.
 
-To place a dynamic relationship on a backref, use the :func:`~.orm.backref`
+To place a dynamic relationship on a backref, use the :func:`_orm.backref`
 function in conjunction with ``lazy='dynamic'``::
 
     class Post(Base):
@@ -80,8 +80,8 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
 
 .. note::
 
-   The :func:`~.orm.dynamic_loader` function is essentially the same
-   as :func:`~.orm.relationship` with the ``lazy='dynamic'`` argument specified.
+   The :func:`_orm.dynamic_loader` function is essentially the same
+   as :func:`_orm.relationship` with the ``lazy='dynamic'`` argument specified.
 
 .. warning::
 
@@ -108,7 +108,7 @@ be persisted to the database as well as locally available for reading at the
 time they are added. However when instances of ``MyClass`` are freshly loaded
 from the database, the ``children`` collection stays empty.   The noload
 strategy is also available on a query option basis using the
-:func:`.orm.noload` loader option.
+:func:`_orm.noload` loader option.
 
 Alternatively, a "raise"-loaded relationship will raise an
 :exc:`~sqlalchemy.exc.InvalidRequestError` where the attribute would normally
@@ -127,7 +127,7 @@ application is not emitting any unexpected lazy loads within a certain context.
 Rather than having to read through SQL logs to determine that all necessary
 attributes were eager loaded, the "raise" strategy will cause unloaded
 attributes to raise immediately if accessed.  The raise strategy is
-also available on a query option basis using the :func:`.orm.raiseload`
+also available on a query option basis using the :func:`_orm.raiseload`
 loader option.
 
 .. versionadded:: 1.1 added the "raise" loader strategy.
@@ -141,7 +141,7 @@ loader option.
 Using Passive Deletes
 ---------------------
 
-Use :paramref:`~.relationship.passive_deletes` to disable child object loading on a DELETE
+Use :paramref:`_orm.relationship.passive_deletes` to disable child object loading on a DELETE
 operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database
 to automatically cascade deletes to child objects::
 
@@ -171,7 +171,7 @@ to automatically cascade deletes to child objects::
     * When using SQLite, foreign key support must be enabled explicitly.
       See :ref:`sqlite_foreign_keys` for details.
 
-When :paramref:`~.relationship.passive_deletes` is applied, the ``children`` relationship will not be
+When :paramref:`_orm.relationship.passive_deletes` is applied, the ``children`` relationship will not be
 loaded into memory when an instance of ``MyClass`` is marked for deletion. The
 ``cascade="all, delete-orphan"`` *will* take effect for instances of
 ``MyOtherClass`` which are currently present in the session; however for
@@ -206,7 +206,7 @@ this collection is a ``list``::
 
 Collections are not limited to lists. Sets, mutable sequences and almost any
 other Python object that can act as a container can be used in place of the
-default list, by specifying the :paramref:`~.relationship.collection_class` option on
+default list, by specifying the :paramref:`_orm.relationship.collection_class` option on
 :func:`~sqlalchemy.orm.relationship`::
 
     class Parent(Base):
@@ -314,7 +314,7 @@ is added to the ``Item.notes`` dictionary and the key is generated for us automa
     {('a', 'atext'): <__main__.Note object at 0x2eaaf0>}
 
 Other built-in dictionary types include :func:`.column_mapped_collection`,
-which is almost like :func:`.attribute_mapped_collection` except given the :class:`.Column`
+which is almost like :func:`.attribute_mapped_collection` except given the :class:`_schema.Column`
 object directly::
 
     from sqlalchemy.orm.collections import column_mapped_collection
@@ -365,7 +365,7 @@ about how the collection operates.
    step beyond and represents the data internally in some fashion, presenting
    a "view" of that data on the outside of a different form.
 
-   For the first use case, the :func:`.orm.validates` decorator is by far
+   For the first use case, the :func:`_orm.validates` decorator is by far
    the simplest way to intercept incoming values in all cases for the purposes
    of validation and simple marshaling.  See :ref:`simple_validators`
    for an example of this.

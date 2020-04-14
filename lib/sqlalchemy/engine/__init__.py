@@ -83,7 +83,7 @@ default_strategy = "plain"
 
 
 def create_engine(*args, **kwargs):
-    """Create a new :class:`.Engine` instance.
+    """Create a new :class:`_engine.Engine` instance.
 
     The standard calling form is to send the URL as the
     first positional argument, usually a string
@@ -93,8 +93,8 @@ def create_engine(*args, **kwargs):
         engine = create_engine("postgresql://scott:tiger@localhost/test")
 
     Additional keyword arguments may then follow it which
-    establish various options on the resulting :class:`.Engine`
-    and its underlying :class:`.Dialect` and :class:`.Pool`
+    establish various options on the resulting :class:`_engine.Engine`
+    and its underlying :class:`.Dialect` and :class:`_pool.Pool`
     constructs::
 
         engine = create_engine("mysql://scott:tiger@hostname/dbname",
@@ -109,15 +109,17 @@ def create_engine(*args, **kwargs):
 
     ``**kwargs`` takes a wide variety of options which are routed
     towards their appropriate components.  Arguments may be specific to
-    the :class:`.Engine`, the underlying :class:`.Dialect`, as well as the
-    :class:`.Pool`.  Specific dialects also accept keyword arguments that
+    the :class:`_engine.Engine`, the underlying :class:`.Dialect`,
+    as well as the
+    :class:`_pool.Pool`.  Specific dialects also accept keyword arguments that
     are unique to that dialect.   Here, we describe the parameters
     that are common to most :func:`.create_engine()` usage.
 
-    Once established, the newly resulting :class:`.Engine` will
-    request a connection from the underlying :class:`.Pool` once
-    :meth:`.Engine.connect` is called, or a method which depends on it
-    such as :meth:`.Engine.execute` is invoked.   The :class:`.Pool` in turn
+    Once established, the newly resulting :class:`_engine.Engine` will
+    request a connection from the underlying :class:`_pool.Pool` once
+    :meth:`_engine.Engine.connect` is called, or a method which depends on it
+    such as :meth:`_engine.Engine.execute` is invoked.   The
+    :class:`_pool.Pool` in turn
     will establish the first actual DBAPI connection when this request
     is received.   The :func:`.create_engine` call itself does **not**
     establish any actual DBAPI connections directly.
@@ -278,16 +280,17 @@ def create_engine(*args, **kwargs):
         individual dialects should be consulted directly.
 
         Note that the isolation level can also be set on a
-        per-:class:`.Connection` basis as well, using the
+        per-:class:`_engine.Connection` basis as well, using the
         :paramref:`.Connection.execution_options.isolation_level`
         feature.
 
         .. seealso::
 
-            :attr:`.Connection.default_isolation_level` - view default level
+            :attr:`_engine.Connection.default_isolation_level`
+            - view default level
 
             :paramref:`.Connection.execution_options.isolation_level`
-            - set per :class:`.Connection` isolation level
+            - set per :class:`_engine.Connection` isolation level
 
             :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
@@ -297,7 +300,8 @@ def create_engine(*args, **kwargs):
 
             :ref:`session_transaction_isolation` - for the ORM
 
-    :param json_deserializer: for dialects that support the :class:`.JSON`
+    :param json_deserializer: for dialects that support the
+        :class:`_types.JSON`
         datatype, this is a Python callable that will convert a JSON string
         to a Python object.  By default, the Python ``json.loads`` function is
         used.
@@ -305,7 +309,7 @@ def create_engine(*args, **kwargs):
         .. versionchanged:: 1.3.7  The SQLite dialect renamed this from
            ``_json_deserializer``.
 
-    :param json_serializer: for dialects that support the :class:`.JSON`
+    :param json_serializer: for dialects that support the :class:`_types.JSON`
         datatype, this is a Python callable that will render a given object
         as JSON.   By default, the Python ``json.dumps`` function is used.
 
@@ -361,7 +365,7 @@ def create_engine(*args, **kwargs):
         specific DBAPI which will be imported before first connect.  This
         parameter causes the import to be bypassed, and the given module to
         be used instead. Can be used for testing of DBAPIs as well as to
-        inject "mock" DBAPI implementations into the :class:`.Engine`.
+        inject "mock" DBAPI implementations into the :class:`_engine.Engine`.
 
     :param paramstyle=None: The `paramstyle <http://legacy.python.org/dev/peps/pep-0249/#paramstyle>`_
         to use when rendering bound parameters.  This style defaults to the
@@ -426,13 +430,13 @@ def create_engine(*args, **kwargs):
             :ref:`pool_setting_recycle`
 
     :param pool_reset_on_return='rollback': set the
-        :paramref:`.Pool.reset_on_return` parameter of the underlying
-        :class:`.Pool` object, which can be set to the values
+        :paramref:`_pool.Pool.reset_on_return` parameter of the underlying
+        :class:`_pool.Pool` object, which can be set to the values
         ``"rollback"``, ``"commit"``, or ``None``.
 
         .. seealso::
 
-            :paramref:`.Pool.reset_on_return`
+            :paramref:`_pool.Pool.reset_on_return`
 
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used

@@ -3,10 +3,10 @@
 Mapping Table Columns
 =====================
 
-The default behavior of :func:`~.orm.mapper` is to assemble all the columns in
-the mapped :class:`.Table` into mapped object attributes, each of which are
+The default behavior of :func:`_orm.mapper` is to assemble all the columns in
+the mapped :class:`_schema.Table` into mapped object attributes, each of which are
 named according to the name of the column itself (specifically, the ``key``
-attribute of :class:`.Column`).  This behavior can be
+attribute of :class:`_schema.Column`).  This behavior can be
 modified in several ways.
 
 .. _mapper_column_distinct_names:
@@ -15,12 +15,12 @@ Naming Columns Distinctly from Attribute Names
 ----------------------------------------------
 
 A mapping by default shares the same name for a
-:class:`.Column` as that of the mapped attribute - specifically
-it matches the :attr:`.Column.key` attribute on :class:`.Column`, which
-by default is the same as the :attr:`.Column.name`.
+:class:`_schema.Column` as that of the mapped attribute - specifically
+it matches the :attr:`_schema.Column.key` attribute on :class:`_schema.Column`, which
+by default is the same as the :attr:`_schema.Column.name`.
 
 The name assigned to the Python attribute which maps to
-:class:`.Column` can be different from either :attr:`.Column.name` or :attr:`.Column.key`
+:class:`_schema.Column` can be different from either :attr:`_schema.Column.name` or :attr:`_schema.Column.key`
 just by assigning it that way, as we illustrate here in a Declarative mapping::
 
     class User(Base):
@@ -31,7 +31,7 @@ just by assigning it that way, as we illustrate here in a Declarative mapping::
 Where above ``User.id`` resolves to a column named ``user_id``
 and ``User.name`` resolves to a column named ``user_name``.
 
-When mapping to an existing table, the :class:`.Column` object
+When mapping to an existing table, the :class:`_schema.Column` object
 can be referenced directly::
 
     class User(Base):
@@ -55,27 +55,27 @@ Automating Column Naming Schemes from Reflected Tables
 ------------------------------------------------------
 
 In the previous section :ref:`mapper_column_distinct_names`, we showed how
-a :class:`.Column` explicitly mapped to a class can have a different attribute
-name than the column.  But what if we aren't listing out :class:`.Column`
-objects explicitly, and instead are automating the production of :class:`.Table`
+a :class:`_schema.Column` explicitly mapped to a class can have a different attribute
+name than the column.  But what if we aren't listing out :class:`_schema.Column`
+objects explicitly, and instead are automating the production of :class:`_schema.Table`
 objects using reflection (e.g. as described in :ref:`metadata_reflection_toplevel`)?
 In this case we can make use of the :meth:`.DDLEvents.column_reflect` event
-to intercept the production of :class:`.Column` objects and provide them
-with the :attr:`.Column.key` of our choice::
+to intercept the production of :class:`_schema.Column` objects and provide them
+with the :attr:`_schema.Column.key` of our choice::
 
     @event.listens_for(Table, "column_reflect")
     def column_reflect(inspector, table, column_info):
         # set column.key = "attr_<lower_case_name>"
         column_info['key'] = "attr_%s" % column_info['name'].lower()
 
-With the above event, the reflection of :class:`.Column` objects will be intercepted
+With the above event, the reflection of :class:`_schema.Column` objects will be intercepted
 with our event that adds a new ".key" element, such as in a mapping as below::
 
     class MyClass(Base):
         __table__ = Table("some_table", Base.metadata,
                     autoload=True, autoload_with=some_engine)
 
-If we want to qualify our event to only react for the specific :class:`.MetaData`
+If we want to qualify our event to only react for the specific :class:`_schema.MetaData`
 object above, we can check for it in our event::
 
     @event.listens_for(Table, "column_reflect")
@@ -90,7 +90,7 @@ Naming All Columns with a Prefix
 --------------------------------
 
 A quick approach to prefix column names, typically when mapping
-to an existing :class:`.Table` object, is to use ``column_prefix``::
+to an existing :class:`_schema.Table` object, is to use ``column_prefix``::
 
     class User(Base):
         __table__ = user_table
@@ -108,12 +108,12 @@ tables, a more flexible approach is to use that described in
 Using column_property for column level options
 ----------------------------------------------
 
-Options can be specified when mapping a :class:`.Column` using the
+Options can be specified when mapping a :class:`_schema.Column` using the
 :func:`.column_property` function.  This function
 explicitly creates the :class:`.ColumnProperty` used by the
-:func:`.mapper` to keep track of the :class:`.Column`; normally, the
+:func:`.mapper` to keep track of the :class:`_schema.Column`; normally, the
 :func:`.mapper` creates this automatically.   Using :func:`.column_property`,
-we can pass additional arguments about how we'd like the :class:`.Column`
+we can pass additional arguments about how we'd like the :class:`_schema.Column`
 to be mapped.   Below, we pass an option ``active_history``,
 which specifies that a change to this column's value should
 result in the former value being loaded first::
@@ -127,7 +127,7 @@ result in the former value being loaded first::
         name = column_property(Column(String(50)), active_history=True)
 
 :func:`.column_property` is also used to map a single attribute to
-multiple columns.  This use case arises when mapping to a :func:`~.expression.join`
+multiple columns.  This use case arises when mapping to a :func:`_expression.join`
 which has attributes which are equated to each other::
 
     class User(Base):
@@ -160,7 +160,7 @@ See examples of this usage at :ref:`mapper_sql_expressions`.
 Mapping a Subset of Table Columns
 ---------------------------------
 
-Sometimes, a :class:`.Table` object was made available using the
+Sometimes, a :class:`_schema.Table` object was made available using the
 reflection process described at :ref:`metadata_reflection` to load
 the table's structure from the database.
 For such a table that has lots of columns that don't need to be referenced
@@ -188,7 +188,7 @@ Similarly::
 all columns present except ``street``, ``city``, ``state``, and ``zip``.
 
 When this mapping is used, the columns that are not included will not be
-referenced in any SELECT statements emitted by :class:`.Query`, nor will there
+referenced in any SELECT statements emitted by :class:`_query.Query`, nor will there
 be any mapped attribute on the mapped class which represents the column;
 assigning an attribute of that name will have no effect beyond that of
 a normal Python attribute assignment.
@@ -196,7 +196,7 @@ a normal Python attribute assignment.
 In some cases, multiple columns may have the same name, such as when
 mapping to a join of two or more tables that share some column name.
 ``include_properties`` and ``exclude_properties`` can also accommodate
-:class:`.Column` objects to more accurately describe which columns
+:class:`_schema.Column` objects to more accurately describe which columns
 should be included or excluded::
 
     class UserAddress(Base):
@@ -208,17 +208,17 @@ should be included or excluded::
 
 .. note::
 
-    insert and update defaults configured on individual :class:`.Column`
+    insert and update defaults configured on individual :class:`_schema.Column`
     objects, i.e. those described at :ref:`metadata_defaults` including those
-    configured by the :paramref:`.Column.default`,
-    :paramref:`.Column.onupdate`, :paramref:`.Column.server_default` and
-    :paramref:`.Column.server_onupdate` parameters, will continue to function
-    normally even if those :class:`.Column` objects are not mapped. This is
-    because in the case of :paramref:`.Column.default` and
-    :paramref:`.Column.onupdate`, the :class:`.Column` object is still present
-    on the underlying :class:`.Table`, thus allowing the default functions to
+    configured by the :paramref:`_schema.Column.default`,
+    :paramref:`_schema.Column.onupdate`, :paramref:`_schema.Column.server_default` and
+    :paramref:`_schema.Column.server_onupdate` parameters, will continue to function
+    normally even if those :class:`_schema.Column` objects are not mapped. This is
+    because in the case of :paramref:`_schema.Column.default` and
+    :paramref:`_schema.Column.onupdate`, the :class:`_schema.Column` object is still present
+    on the underlying :class:`_schema.Table`, thus allowing the default functions to
     take place when the ORM emits an INSERT or UPDATE, and in the case of
-    :paramref:`.Column.server_default` and :paramref:`.Column.server_onupdate`,
+    :paramref:`_schema.Column.server_default` and :paramref:`_schema.Column.server_onupdate`,
     the relational database itself emits these defaults as a server side
     behavior.
 

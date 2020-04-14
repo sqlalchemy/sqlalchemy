@@ -89,18 +89,18 @@ The "non primary mapper" is a :func:`.mapper` created in the
 already mapped class against a different kind of selectable.  The non primary
 mapper has its roots in the 0.1, 0.2 series of SQLAlchemy where it was
 anticipated that the :func:`.mapper` object was to be the primary query
-construction interface, before the :class:`.Query` object existed.
+construction interface, before the :class:`_query.Query` object existed.
 
-With the advent of :class:`.Query` and later the :class:`.AliasedClass`
+With the advent of :class:`_query.Query` and later the :class:`.AliasedClass`
 construct, most use cases for the non primary mapper went away.  This was a
 good thing since SQLAlchemy also moved away from "classical" mappings altogether
 around the 0.5 series in favor of the declarative system.
 
 One use case remained around for non primary mappers when it was realized that
-some very hard-to-define :func:`.relationship` configurations could be made
+some very hard-to-define :func:`_orm.relationship` configurations could be made
 possible when a non-primary mapper with an alternative selectable was made as
 the mapping target, rather than trying to construct a
-:paramref:`.relationship.primaryjoin` that encompassed all the complexity of a
+:paramref:`_orm.relationship.primaryjoin` that encompassed all the complexity of a
 particular inter-object relationship.
 
 As this use case became more popular, its limitations became apparent,
@@ -110,10 +110,10 @@ relationships of the original mapping, that relationships which are configured
 explicitly on the non primary mapper do  not function well with loader options,
 and that the non primary mapper also doesn't provide a fully functional
 namespace of column-based attributes which can be used in queries (which again,
-in the old 0.1 - 0.4 days, one would use :class:`.Table` objects directly with
+in the old 0.1 - 0.4 days, one would use :class:`_schema.Table` objects directly with
 the ORM).
 
-The missing piece was to allow the :func:`.relationship` to refer directly
+The missing piece was to allow the :func:`_orm.relationship` to refer directly
 to the :class:`.AliasedClass`.  The :class:`.AliasedClass` already does
 everything we want the non primary mapper to do; it allows an existing mapped
 class to be loaded from an alternative selectable, it inherits all the
@@ -222,8 +222,8 @@ directly from the identity map.   However, as with most querying features,
 the feature's implementation became more complex as a result of advanced
 scenarios regarding polymorphic loading.   If problems are encountered,
 users should report a bug, however the change also includes a flag
-:paramref:`.relationship.omit_join` which can be set to ``False`` on the
-:func:`.relationship` to disable the optimization.
+:paramref:`_orm.relationship.omit_join` which can be set to ``False`` on the
+:func:`_orm.relationship` to disable the optimization.
 
 
 :ticket:`4340`
@@ -307,7 +307,7 @@ Many-to-one replacement won't raise for "raiseload" or detached for "old" object
 
 Given the case where a lazy load would proceed on a many-to-one relationship
 in order to load the "old" value, if the relationship does not specify
-the :paramref:`.relationship.active_history` flag, an assertion will not
+the :paramref:`_orm.relationship.active_history` flag, an assertion will not
 be raised for a detached object::
 
     a1 = session.query(Address).filter_by(id=5).one()
@@ -360,7 +360,7 @@ info dictionary added to InstanceState
 --------------------------------------
 
 Added the ``.info`` dictionary to the :class:`.InstanceState` class, the object
-that comes from calling :func:`.inspect` on a mapped object.  This allows custom
+that comes from calling :func:`_sa.inspect` on a mapped object.  This allows custom
 recipes to add additional information about an object that will be carried
 along with that object's full lifecycle in memory::
 
@@ -378,8 +378,8 @@ along with that object's full lifecycle in memory::
 Horizontal Sharding extension supports bulk update and delete methods
 ---------------------------------------------------------------------
 
-The :class:`.ShardedQuery` extension object supports the :meth:`.Query.update`
-and :meth:`.Query.delete` bulk update/delete methods.    The ``query_chooser``
+The :class:`.ShardedQuery` extension object supports the :meth:`_query.Query.update`
+and :meth:`_query.Query.delete` bulk update/delete methods.    The ``query_chooser``
 callable is consulted when they are called in order to run the update/delete
 across multiple shards based on given criteria.
 
@@ -737,12 +737,12 @@ Many-to-one backref checks for collection duplicates during remove operation
 ----------------------------------------------------------------------------
 
 When an ORM-mapped collection that existed as a Python sequence, typically a
-Python ``list`` as is the default for :func:`.relationship`, contained
+Python ``list`` as is the default for :func:`_orm.relationship`, contained
 duplicates, and the object were removed from one of its positions but not the
 other(s),  a many-to-one backref would set its attribute to ``None`` even
 though the one-to-many side still represented the object as present.  Even
 though one-to-many collections cannot have duplicates in the relational model,
-an ORM-mapped :func:`.relationship` that uses a sequence collection can have
+an ORM-mapped :func:`_orm.relationship` that uses a sequence collection can have
 duplicates inside of it in memory, with the restriction that this duplicate
 state can neither be persisted nor retrieved from the database.   In particular,
 having a duplicate temporarily present in the list is intrinsic to a Python
@@ -884,15 +884,15 @@ implicit" philosophy.
 FOR UPDATE clause is rendered within the joined eager load subquery as well as outside
 --------------------------------------------------------------------------------------
 
-This change applies specifically to the use of the :func:`.joinedload` loading
-strategy in conjunction with a row limited query, e.g. using :meth:`.Query.first`
-or :meth:`.Query.limit`, as well as with use of the :class:`.Query.with_for_update` method.
+This change applies specifically to the use of the :func:`_orm.joinedload` loading
+strategy in conjunction with a row limited query, e.g. using :meth:`_query.Query.first`
+or :meth:`_query.Query.limit`, as well as with use of the :class:`_query.Query.with_for_update` method.
 
 Given a query as::
 
     session.query(A).options(joinedload(A.b)).limit(5)
 
-The :class:`.Query` object renders a SELECT of the following form when joined
+The :class:`_query.Query` object renders a SELECT of the following form when joined
 eager loading is combined with LIMIT::
 
     SELECT subq.a_id, subq.a_data, b_alias.id, b_alias.data FROM (
@@ -948,7 +948,7 @@ and can't easily be generalized for more complex queries.
 passive_deletes='all' will leave FK unchanged for object removed from collection
 --------------------------------------------------------------------------------
 
-The :paramref:`.relationship.passive_deletes` option accepts the value
+The :paramref:`_orm.relationship.passive_deletes` option accepts the value
 ``"all"`` to indicate that no foreign key attributes should be modified when
 the object is flushed, even if the relationship's collection / reference has
 been removed.   Previously, this did not take place for one-to-many, or
@@ -995,7 +995,7 @@ New Features and Improvements - Core
 New multi-column naming convention tokens, long name truncation
 ----------------------------------------------------------------
 
-To suit the case where a :class:`.MetaData` naming convention needs to
+To suit the case where a :class:`_schema.MetaData` naming convention needs to
 disambiguate between multiple-column constraints and wishes to use all the
 columns within the generated constraint name, a new series of
 naming convention tokens are added, including
@@ -1117,7 +1117,7 @@ different.
 
     :ref:`constraint_naming_conventions`
 
-    :paramref:`.MetaData.naming_convention`
+    :paramref:`_schema.MetaData.naming_convention`
 
 :ticket:`3989`
 
@@ -1130,7 +1130,7 @@ This enhancement is implemented at the Core level, however is applicable
 primarily to the ORM.
 
 A SQL function that compares two elements can now be used as a "comparison"
-object, suitable for usage in an ORM :func:`.relationship`, by first
+object, suitable for usage in an ORM :func:`_orm.relationship`, by first
 creating the function as usual using the :data:`.func` factory, then
 when the function is complete calling upon the :meth:`.FunctionElement.as_comparison`
 modifier to produce a :class:`.BinaryExpression` that has a "left" and a "right"
@@ -1150,7 +1150,7 @@ side::
             order_by=name
         )
 
-Above, the :paramref:`.relationship.primaryjoin` of the "descendants" relationship
+Above, the :paramref:`_orm.relationship.primaryjoin` of the "descendants" relationship
 will produce a "left" and a "right" expression based on the first and second
 arguments passed to ``instr()``.   This allows features like the ORM
 lazyload to produce SQL like::
@@ -1306,10 +1306,10 @@ Coercion of string SQL fragments to text() fully removed
 The warnings that were first added in version 1.0, described at
 :ref:`migration_2992`, have now been converted into exceptions.    Continued
 concerns have been raised regarding the automatic coercion of string fragments
-passed to methods like :meth:`.Query.filter` and :meth:`.Select.order_by` being
-converted to :func:`.text` constructs, even though this has emitted a warning.
-In the case of :meth:`.Select.order_by`, :meth:`.Query.order_by`,
-:meth:`.Select.group_by`, and :meth:`.Query.group_by`, a string label or column
+passed to methods like :meth:`_query.Query.filter` and :meth:`_expression.Select.order_by` being
+converted to :func:`_expression.text` constructs, even though this has emitted a warning.
+In the case of :meth:`_expression.Select.order_by`, :meth:`_query.Query.order_by`,
+:meth:`_expression.Select.group_by`, and :meth:`_query.Query.group_by`, a string label or column
 name is still resolved into the corresponding expression construct, however if
 the resolution fails, a :class:`.CompileError` is raised, thus preventing raw
 SQL text from being rendered directly.
@@ -1377,10 +1377,10 @@ the original pattern, thanks to context managers::
 At this point, any remaining code that is still relying upon the "threadlocal"
 style will be encouraged via this deprecation to modernize - the feature should
 be removed totally by the next major series of SQLAlchemy, e.g. 1.4.  The
-connection pool parameter :paramref:`.Pool.use_threadlocal` is also deprecated
+connection pool parameter :paramref:`_pool.Pool.use_threadlocal` is also deprecated
 as it does not actually have any effect in most cases, as is the
-:meth:`.Engine.contextual_connect` method, which is normally synonymous with
-the :meth:`.Engine.connect` method except in the case where the threadlocal
+:meth:`_engine.Engine.contextual_connect` method, which is normally synonymous with
+the :meth:`_engine.Engine.connect` method except in the case where the threadlocal
 engine is in use.
 
 .. seealso::
@@ -1463,7 +1463,7 @@ Given a schema such as::
     )
 
 The two table names ``'data_values'`` and ``'data_values_4_10'`` will come
-back from :meth:`.Inspector.get_table_names` and additionally the columns
+back from :meth:`_reflection.Inspector.get_table_names` and additionally the columns
 will come back from ``Inspector.get_columns('data_values')`` as well
 as ``Inspector.get_columns('data_values_4_10')``.   This also extends to the
 use of ``Table(..., autoload=True)`` with these tables.
@@ -1519,8 +1519,8 @@ Dialect Improvements and Changes - SQLite
 Support for SQLite JSON Added
 -----------------------------
 
-A new datatype :class:`.sqlite.JSON` is added which implements SQLite's json
-member access functions on behalf of the :class:`.types.JSON`
+A new datatype :class:`_sqlite.JSON` is added which implements SQLite's json
+member access functions on behalf of the :class:`_types.JSON`
 base datatype.  The SQLite ``JSON_EXTRACT`` and ``JSON_QUOTE`` functions
 are used by the implementation to provide basic JSON support.
 
@@ -1543,7 +1543,7 @@ SQLite supports a non-standard ON CONFLICT clause that may be specified
 for standalone constraints as well as some column-inline constraints such as
 NOT NULL. Support has been added for these clauses via the ``sqlite_on_conflict``
 keyword added to objects like :class:`.UniqueConstraint`  as well
-as several :class:`.Column` -specific variants::
+as several :class:`_schema.Column` -specific variants::
 
     some_table = Table(
         'some_table', metadata,
@@ -1592,7 +1592,7 @@ database that is not using a Unicode-compliant character set.  In this case,
 the flag ``use_nchar_for_unicode`` can be passed to :func:`.create_engine` to
 re-enable the old behavior.
 
-As always, using the :class:`.oracle.NVARCHAR2` and :class:`.oracle.NCLOB`
+As always, using the :class:`_oracle.NVARCHAR2` and :class:`_oracle.NCLOB`
 datatypes explicitly will continue to make use of ``NVARCHAR2`` and ``NCLOB``,
 including within DDL as well as when handling bound parameters with cx_Oracle's
 ``setinputsizes()``.
@@ -1622,7 +1622,7 @@ dialect as well as the URL string:
 
 * The value of the ``threaded`` parameter, which has always been defaulted
   to True for the SQLAlchemy dialect, is no longer generated by default.
-  The SQLAlchemy :class:`.Connection` object is not considered to be thread-safe
+  The SQLAlchemy :class:`_engine.Connection` object is not considered to be thread-safe
   itself so there's no need for this flag to be passed.
 
 * It's deprecated to pass ``threaded`` to :func:`.create_engine` itself.
@@ -1679,7 +1679,7 @@ to make the transition towards normal sequences being available as well,
 using :class:.`.Sequence` will emit a deprecation warning throughout the
 1.3 series.  In order to affect "start" and "increment", use the
 new ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
-on :class:`.Column`::
+on :class:`_schema.Column`::
 
     test = Table(
         'test', metadata,
@@ -1691,7 +1691,7 @@ on :class:`.Column`::
     )
 
 In order to emit ``IDENTITY`` on a non-primary key column, which is a little-used
-but valid SQL Server use case, use the :paramref:`.Column.autoincrement` flag,
+but valid SQL Server use case, use the :paramref:`_schema.Column.autoincrement` flag,
 setting it to ``True`` on the target column, ``False`` on any integer
 primary key column::
 

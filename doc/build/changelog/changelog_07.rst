@@ -56,7 +56,7 @@
         :versions: 0.8.3, 0.9.0b1
 
       Fixed bug in :class:`.CheckConstraint` DDL where the "quote" flag from a
-      :class:`.Column` object would not be propagated.
+      :class:`_schema.Column` object would not be propagated.
 
     .. change::
         :tags: bug, orm
@@ -133,10 +133,10 @@
         :tickets: 2604
         :versions: 0.8.0b2
 
-      Fixed :meth:`.MetaData.reflect` to correctly use
-      the given :class:`.Connection`, if given, without
+      Fixed :meth:`_schema.MetaData.reflect` to correctly use
+      the given :class:`_engine.Connection`, if given, without
       opening a second connection from that connection's
-      :class:`.Engine`.
+      :class:`_engine.Engine`.
 
     .. change::
         :tags: mssql, bug
@@ -172,8 +172,8 @@
         :tags: sql, bug
         :tickets: 2643
 
-        Fixed bug where :meth:`.Table.tometadata` would fail if a
-        :class:`.Column` had both a foreign key as well as an
+        Fixed bug where :meth:`_schema.Table.tometadata` would fail if a
+        :class:`_schema.Column` had both a foreign key as well as an
         alternate ".key" name for the column.
 
     .. change::
@@ -201,7 +201,7 @@
         :tags: orm, bug
         :tickets: 2640
 
-      :meth:`.Query.merge_result` can now load rows from an outer join
+      :meth:`_query.Query.merge_result` can now load rows from an outer join
       where an entity may be ``None`` without throwing an error.
 
     .. change::

@@ -22,10 +22,10 @@ REQUIRED = util.symbol(
     """
 Placeholder for the value within a :class:`.BindParameter`
 which is required to be present when the statement is passed
-to :meth:`.Connection.execute`.
+to :meth:`_engine.Connection.execute`.
 
-This symbol is typically used when a :func:`.expression.insert`
-or :func:`.expression.update` statement is compiled without parameter
+This symbol is typically used when a :func:`_expression.insert`
+or :func:`_expression.update` statement is compiled without parameter
 values present.
 
 """,

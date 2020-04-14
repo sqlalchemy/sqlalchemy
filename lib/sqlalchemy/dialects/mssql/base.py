@@ -18,8 +18,10 @@ SQL Server provides so-called "auto incrementing" behavior using the
 ``IDENTITY`` construct, which can be placed on any single integer column in a
 table. SQLAlchemy considers ``IDENTITY`` within its default "autoincrement"
 behavior for an integer primary key column, described at
-:paramref:`.Column.autoincrement`.  This means that by default, the first
-integer primary key column in a :class:`.Table` will be considered to be the
+:paramref:`_schema.Column.autoincrement`.  This means that by default,
+the first
+integer primary key column in a :class:`_schema.Table`
+will be considered to be the
 identity column and will generate DDL as such::
 
     from sqlalchemy import Table, MetaData, Column, Integer
@@ -41,7 +43,7 @@ The above example will generate DDL as:
     )
 
 For the case where this default generation of ``IDENTITY`` is not desired,
-specify ``False`` for the :paramref:`.Column.autoincrement` flag,
+specify ``False`` for the :paramref:`_schema.Column.autoincrement` flag,
 on the first integer primary key column::
 
     m = MetaData()
@@ -51,8 +53,9 @@ on the first integer primary key column::
     m.create_all(engine)
 
 To add the ``IDENTITY`` keyword to a non-primary key column, specify
-``True`` for the :paramref:`.Column.autoincrement` flag on the desired
-:class:`.Column` object, and ensure that :paramref:`.Column.autoincrement`
+``True`` for the :paramref:`_schema.Column.autoincrement` flag on the desired
+:class:`_schema.Column` object, and ensure that
+:paramref:`_schema.Column.autoincrement`
 is set to ``False`` on any integer primary key column::
 
     m = MetaData()
@@ -62,7 +65,8 @@ is set to ``False`` on any integer primary key column::
     m.create_all(engine)
 
 .. versionchanged::  1.3   Added ``mssql_identity_start`` and
-   ``mssql_identity_increment`` parameters to :class:`.Column`.  These replace
+   ``mssql_identity_increment`` parameters to :class:`_schema.Column`.
+   These replace
    the use of the :class:`.Sequence` object in order to specify these values.
 
 .. deprecated:: 1.3
@@ -85,7 +89,8 @@ is set to ``False`` on any integer primary key column::
     marked with IDENTITY will be rejected by SQL Server.   In order for the
     value to be accepted, a session-level option "SET IDENTITY_INSERT" must be
     enabled.   The SQLAlchemy SQL Server dialect will perform this operation
-    automatically when using a core :class:`.Insert` construct; if the
+    automatically when using a core :class:`_expression.Insert`
+    construct; if the
     execution specifies a value for the IDENTITY column, the "IDENTITY_INSERT"
     option will be enabled for the span of that statement's invocation.However,
     this scenario is not high performing and should not be relied upon for
@@ -99,7 +104,7 @@ Controlling "Start" and "Increment"
 Specific control over the "start" and "increment" values for
 the ``IDENTITY`` generator are provided using the
 ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
-passed to the :class:`.Column` object::
+passed to the :class:`_schema.Column` object::
 
     from sqlalchemy import Table, Integer, Column
 
@@ -112,7 +117,7 @@ passed to the :class:`.Column` object::
         Column('name', String(20))
     )
 
-The CREATE TABLE for the above :class:`.Table` object would be:
+The CREATE TABLE for the above :class:`_schema.Table` object would be:
 
 .. sourcecode:: sql
 
@@ -123,7 +128,7 @@ The CREATE TABLE for the above :class:`.Table` object would be:
 
 .. versionchanged:: 1.3  The ``mssql_identity_start`` and
    ``mssql_identity_increment`` parameters are now used to affect the
-   ``IDENTITY`` generator for a :class:`.Column` under  SQL Server.
+   ``IDENTITY`` generator for a :class:`_schema.Column` under  SQL Server.
    Previously, the :class:`.Sequence` object was used.  As SQL Server now
    supports real sequences as a separate construct, :class:`.Sequence` will be
    functional in the normal way in a future SQLAlchemy version.
@@ -171,7 +176,8 @@ The process for fetching this value has several variants:
 
 A table that contains an ``IDENTITY`` column will prohibit an INSERT statement
 that refers to the identity column explicitly.  The SQLAlchemy dialect will
-detect when an INSERT construct, created using a core :func:`.insert`
+detect when an INSERT construct, created using a core
+:func:`_expression.insert`
 construct (not a plain string SQL), refers to the identity column, and
 in this case will emit ``SET IDENTITY_INSERT ON`` prior to the insert
 statement proceeding, and ``SET IDENTITY_INSERT OFF`` subsequent to the
@@ -213,7 +219,7 @@ MAX on VARCHAR / NVARCHAR
 -------------------------
 
 SQL Server supports the special string "MAX" within the
-:class:`.sqltypes.VARCHAR` and :class:`.sqltypes.NVARCHAR` datatypes,
+:class:`_types.VARCHAR` and :class:`_types.NVARCHAR` datatypes,
 to indicate "maximum length possible".   The dialect currently handles this as
 a length of "None" in the base type, rather than supplying a
 dialect-specific version of these types, so that a base type
@@ -238,7 +244,7 @@ specified by the string argument "collation"::
     from sqlalchemy import VARCHAR
     Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
 
-When such a column is associated with a :class:`.Table`, the
+When such a column is associated with a :class:`_schema.Table`, the
 CREATE TABLE statement for this column will yield::
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
@@ -270,7 +276,8 @@ both via a dialect-specific parameter
 accepted by :func:`.create_engine`,
 as well as the :paramref:`.Connection.execution_options.isolation_level`
 argument as passed to
-:meth:`.Connection.execution_options`.  This feature works by issuing the
+:meth:`_engine.Connection.execution_options`.
+This feature works by issuing the
 command ``SET TRANSACTION ISOLATION LEVEL <level>`` for
 each new connection.
 
@@ -337,19 +344,22 @@ Per
 `SQL Server 2012/2014 Documentation <http://technet.microsoft.com/en-us/library/ms187993.aspx>`_,
 the ``NTEXT``, ``TEXT`` and ``IMAGE`` datatypes are to be removed from SQL
 Server in a future release.   SQLAlchemy normally relates these types to the
-:class:`.UnicodeText`, :class:`.Text` and :class:`.LargeBinary` datatypes.
+:class:`.UnicodeText`, :class:`_expression.TextClause` and
+:class:`.LargeBinary` datatypes.
 
 In order to accommodate this change, a new flag ``deprecate_large_types``
 is added to the dialect, which will be automatically set based on detection
 of the server version in use, if not otherwise set by the user.  The
 behavior of this flag is as follows:
 
-* When this flag is ``True``, the :class:`.UnicodeText`, :class:`.Text` and
+* When this flag is ``True``, the :class:`.UnicodeText`,
+  :class:`_expression.TextClause` and
   :class:`.LargeBinary` datatypes, when used to render DDL, will render the
   types ``NVARCHAR(max)``, ``VARCHAR(max)``, and ``VARBINARY(max)``,
   respectively.  This is a new behavior as of the addition of this flag.
 
-* When this flag is ``False``, the :class:`.UnicodeText`, :class:`.Text` and
+* When this flag is ``False``, the :class:`.UnicodeText`,
+  :class:`_expression.TextClause` and
   :class:`.LargeBinary` datatypes, when used to render DDL, will render the
   types ``NTEXT``, ``TEXT``, and ``IMAGE``,
   respectively.  This is the long-standing behavior of these types.
@@ -370,9 +380,10 @@ behavior of this flag is as follows:
 
 * Complete control over whether the "old" or "new" types are rendered is
   available in all SQLAlchemy versions by using the UPPERCASE type objects
-  instead: :class:`.types.NVARCHAR`, :class:`.types.VARCHAR`,
-  :class:`.types.VARBINARY`, :class:`.types.TEXT`, :class:`.mssql.NTEXT`,
-  :class:`.mssql.IMAGE` will always remain fixed and always output exactly that
+  instead: :class:`_types.NVARCHAR`, :class:`_types.VARCHAR`,
+  :class:`_types.VARBINARY`, :class:`_types.TEXT`, :class:`_mssql.NTEXT`,
+  :class:`_mssql.IMAGE`
+  will always remain fixed and always output exactly that
   type.
 
 .. versionadded:: 1.0.0
@@ -385,7 +396,8 @@ Multipart Schema Names
 SQL Server schemas sometimes require multiple parts to their "schema"
 qualifier, that is, including the database name and owner name as separate
 tokens, such as ``mydatabase.dbo.some_table``. These multipart names can be set
-at once using the :paramref:`.Table.schema` argument of :class:`.Table`::
+at once using the :paramref:`_schema.Table.schema` argument of
+:class:`_schema.Table`::
 
     Table(
         "some_table", metadata,
@@ -588,7 +600,7 @@ generated primary key values via IDENTITY columns or other
 server side defaults.   MS-SQL does not
 allow the usage of OUTPUT INSERTED on tables that have triggers.
 To disable the usage of OUTPUT INSERTED on a per-table basis,
-specify ``implicit_returning=False`` for each :class:`.Table`
+specify ``implicit_returning=False`` for each :class:`_schema.Table`
 which has triggers::
 
     Table('mytable', metadata,
@@ -624,8 +636,8 @@ verifies that the version identifier matched.   When this condition occurs, a
 warning will be emitted but the operation will proceed.
 
 The use of OUTPUT INSERTED can be disabled by setting the
-:paramref:`.Table.implicit_returning` flag to ``False`` on a particular
-:class:`.Table`, which in declarative looks like::
+:paramref:`_schema.Table.implicit_returning` flag to ``False`` on a particular
+:class:`_schema.Table`, which in declarative looks like::
 
     class MyTable(Base):
         __tablename__ = 'mytable'
@@ -1049,7 +1061,7 @@ class TIMESTAMP(sqltypes._Binary):
 
     .. seealso::
 
-        :class:`.mssql.ROWVERSION`
+        :class:`_mssql.ROWVERSION`
 
     """
 
@@ -1094,7 +1106,7 @@ class ROWVERSION(TIMESTAMP):
 
     The ROWVERSION datatype does **not** reflect (e.g. introspect) from the
     database as itself; the returned datatype will be
-    :class:`.mssql.TIMESTAMP`.
+    :class:`_mssql.TIMESTAMP`.
 
     This is a read-only datatype that does not support INSERT of values.
 
@@ -1102,7 +1114,7 @@ class ROWVERSION(TIMESTAMP):
 
     .. seealso::
 
-        :class:`.mssql.TIMESTAMP`
+        :class:`_mssql.TIMESTAMP`
 
     """
 
@@ -1122,7 +1134,7 @@ class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
 
     This type is present to support "deprecate_large_types" mode where
     either ``VARBINARY(max)`` or IMAGE is rendered.   Otherwise, this type
-    object is redundant vs. :class:`.types.VARBINARY`.
+    object is redundant vs. :class:`_types.VARBINARY`.
 
     .. versionadded:: 1.0.0
 

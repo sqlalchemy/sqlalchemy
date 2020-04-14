@@ -185,7 +185,7 @@ class Dialect(object):
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
-        :func:`.types.adapt_type` function in the types module to
+        :func:`_types.adapt_type` function in the types module to
         accomplish this.
 
         The returned result is cached *per dialect class* so can
@@ -217,13 +217,13 @@ class Dialect(object):
     ):
         """Load table description from the database.
 
-        Given a :class:`.Connection` and a
+        Given a :class:`_engine.Connection` and a
         :class:`~sqlalchemy.schema.Table` object, reflect its columns and
         properties from the database.
 
         The implementation of this method is provided by
         :meth:`.DefaultDialect.reflecttable`, which makes use of
-        :class:`.Inspector` to retrieve column information.
+        :class:`_reflection.Inspector` to retrieve column information.
 
         Dialects should **not** seek to implement this method, and should
         instead implement individual schema inspection operations such as
@@ -237,7 +237,7 @@ class Dialect(object):
     def get_columns(self, connection, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
 
-        Given a :class:`.Connection`, a string
+        Given a :class:`_engine.Connection`, a string
         `table_name`, and an optional string `schema`, return column
         information as a list of dictionaries with these keys:
 
@@ -284,7 +284,7 @@ class Dialect(object):
         """Return information about the primary key constraint on
         table_name`.
 
-        Given a :class:`.Connection`, a string
+        Given a :class:`_engine.Connection`, a string
         `table_name`, and an optional string `schema`, return primary
         key information as a dictionary with these keys:
 
@@ -300,7 +300,7 @@ class Dialect(object):
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
 
-        Given a :class:`.Connection`, a string
+        Given a :class:`_engine.Connection`, a string
         `table_name`, and an optional string `schema`, return foreign
         key information as a list of dicts with these keys:
 
@@ -356,7 +356,7 @@ class Dialect(object):
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         """Return view definition.
 
-        Given a :class:`.Connection`, a string
+        Given a :class:`_engine.Connection`, a string
         `view_name`, and an optional string `schema`, return the view
         definition.
         """
@@ -366,7 +366,7 @@ class Dialect(object):
     def get_indexes(self, connection, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
 
-        Given a :class:`.Connection`, a string
+        Given a :class:`_engine.Connection`, a string
         `table_name` and an optional string `schema`, return index
         information as a list of dictionaries with these keys:
 
@@ -469,7 +469,7 @@ class Dialect(object):
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
-        Given a :class:`.Connection` object and a string
+        Given a :class:`_engine.Connection` object and a string
         `table_name`, return True if the given table (possibly within
         the specified `schema`) exists in the database, False
         otherwise.
@@ -480,7 +480,7 @@ class Dialect(object):
     def has_sequence(self, connection, sequence_name, schema=None):
         """Check the existence of a particular sequence in the database.
 
-        Given a :class:`.Connection` object and a string
+        Given a :class:`_engine.Connection` object and a string
         `sequence_name`, return True if the given sequence exists in
         the database, False otherwise.
         """
@@ -523,7 +523,8 @@ class Dialect(object):
         :meth:`.Dialect.do_autocommit`
         hook is provided for DBAPIs that need some extra commands emitted
         after a commit in order to enter the next transaction, when the
-        SQLAlchemy :class:`.Connection` is used in its default "autocommit"
+        SQLAlchemy :class:`_engine.Connection`
+        is used in its default "autocommit"
         mode.
 
         :param dbapi_connection: a DBAPI connection, typically
@@ -559,7 +560,8 @@ class Dialect(object):
         """Provide an implementation of ``connection.close()``, given a DBAPI
         connection.
 
-        This hook is called by the :class:`.Pool` when a connection has been
+        This hook is called by the :class:`_pool.Pool`
+        when a connection has been
         detached from the pool, or is being returned beyond the normal
         capacity of the pool.
 
@@ -580,7 +582,7 @@ class Dialect(object):
     def do_savepoint(self, connection, name):
         """Create a savepoint with the given name.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param name: savepoint name.
 
         """
@@ -590,7 +592,7 @@ class Dialect(object):
     def do_rollback_to_savepoint(self, connection, name):
         """Rollback a connection to the named savepoint.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param name: savepoint name.
 
         """
@@ -600,7 +602,7 @@ class Dialect(object):
     def do_release_savepoint(self, connection, name):
         """Release the named savepoint on a connection.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param name: savepoint name.
         """
 
@@ -609,7 +611,7 @@ class Dialect(object):
     def do_begin_twophase(self, connection, xid):
         """Begin a two phase transaction on the given connection.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param xid: xid
 
         """
@@ -619,7 +621,7 @@ class Dialect(object):
     def do_prepare_twophase(self, connection, xid):
         """Prepare a two phase transaction on the given connection.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param xid: xid
 
         """
@@ -631,7 +633,7 @@ class Dialect(object):
     ):
         """Rollback a two phase transaction on the given connection.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param xid: xid
         :param is_prepared: whether or not
          :meth:`.TwoPhaseTransaction.prepare` was called.
@@ -647,7 +649,7 @@ class Dialect(object):
         """Commit a two phase transaction on the given connection.
 
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
         :param xid: xid
         :param is_prepared: whether or not
          :meth:`.TwoPhaseTransaction.prepare` was called.
@@ -661,7 +663,7 @@ class Dialect(object):
         """Recover list of uncommitted prepared two phase transaction
         identifiers on the given connection.
 
-        :param connection: a :class:`.Connection`.
+        :param connection: a :class:`_engine.Connection`.
 
         """
 
@@ -751,11 +753,13 @@ class Dialect(object):
         isolation modes, Unicode modes, etc.
 
         The "do_on_connect" callable is invoked by using the
-        :meth:`.PoolEvents.first_connect` and :meth:`.PoolEvents.connect` event
+        :meth:`_events.PoolEvents.first_connect` and
+        :meth:`_events.PoolEvents.connect` event
         hooks, then unwrapping the DBAPI connection and passing it into the
         callable.  The reason it is invoked for both events is so that any
         dialect-level initialization that occurs upon first connection, which
-        also makes use of the :meth:`.PoolEvents.first_connect` method, will
+        also makes use of the :meth:`_events.PoolEvents.first_connect` method,
+        will
         proceed after this hook has been called. This currently means the
         hook is in fact called twice for the very first  connection in which a
         dialect creates; and once per connection afterwards.
@@ -777,22 +781,24 @@ class Dialect(object):
         """Given a DBAPI connection, revert its isolation to the default.
 
         Note that this is a dialect-level method which is used as part
-        of the implementation of the :class:`.Connection` and
-        :class:`.Engine`
+        of the implementation of the :class:`_engine.Connection` and
+        :class:`_engine.Engine`
         isolation level facilities; these APIs should be preferred for
         most typical use cases.
 
         .. seealso::
 
-            :meth:`.Connection.get_isolation_level` - view current level
+            :meth:`_engine.Connection.get_isolation_level`
+            - view current level
 
-            :attr:`.Connection.default_isolation_level` - view default level
+            :attr:`_engine.Connection.default_isolation_level`
+            - view default level
 
             :paramref:`.Connection.execution_options.isolation_level` -
-            set per :class:`.Connection` isolation level
+            set per :class:`_engine.Connection` isolation level
 
             :paramref:`.create_engine.isolation_level` -
-            set per :class:`.Engine` isolation level
+            set per :class:`_engine.Engine` isolation level
 
         """
 
@@ -802,22 +808,24 @@ class Dialect(object):
         """Given a DBAPI connection, set its isolation level.
 
         Note that this is a dialect-level method which is used as part
-        of the implementation of the :class:`.Connection` and
-        :class:`.Engine`
+        of the implementation of the :class:`_engine.Connection` and
+        :class:`_engine.Engine`
         isolation level facilities; these APIs should be preferred for
         most typical use cases.
 
         .. seealso::
 
-            :meth:`.Connection.get_isolation_level` - view current level
+            :meth:`_engine.Connection.get_isolation_level`
+            - view current level
 
-            :attr:`.Connection.default_isolation_level` - view default level
+            :attr:`_engine.Connection.default_isolation_level`
+            - view default level
 
             :paramref:`.Connection.execution_options.isolation_level` -
-            set per :class:`.Connection` isolation level
+            set per :class:`_engine.Connection` isolation level
 
             :paramref:`.create_engine.isolation_level` -
-            set per :class:`.Engine` isolation level
+            set per :class:`_engine.Engine` isolation level
 
         """
 
@@ -826,27 +834,30 @@ class Dialect(object):
     def get_isolation_level(self, dbapi_conn):
         """Given a DBAPI connection, return its isolation level.
 
-        When working with a :class:`.Connection` object, the corresponding
+        When working with a :class:`_engine.Connection` object,
+        the corresponding
         DBAPI connection may be procured using the
-        :attr:`.Connection.connection` accessor.
+        :attr:`_engine.Connection.connection` accessor.
 
         Note that this is a dialect-level method which is used as part
-        of the implementation of the :class:`.Connection` and
-        :class:`.Engine` isolation level facilities;
+        of the implementation of the :class:`_engine.Connection` and
+        :class:`_engine.Engine` isolation level facilities;
         these APIs should be preferred for most typical use cases.
 
 
         .. seealso::
 
-            :meth:`.Connection.get_isolation_level` - view current level
+            :meth:`_engine.Connection.get_isolation_level`
+            - view current level
 
-            :attr:`.Connection.default_isolation_level` - view default level
+            :attr:`_engine.Connection.default_isolation_level`
+            - view default level
 
             :paramref:`.Connection.execution_options.isolation_level` -
-            set per :class:`.Connection` isolation level
+            set per :class:`_engine.Connection` isolation level
 
             :paramref:`.create_engine.isolation_level` -
-            set per :class:`.Engine` isolation level
+            set per :class:`_engine.Engine` isolation level
 
 
         """
@@ -900,7 +911,8 @@ class Dialect(object):
 
     @classmethod
     def engine_created(cls, engine):
-        """A convenience hook called before returning the final :class:`.Engine`.
+        """A convenience hook called before returning the final
+        :class:`_engine.Engine`.
 
         If the dialect returned a different class from the
         :meth:`.get_dialect_cls`
@@ -920,7 +932,7 @@ class Dialect(object):
 
 class CreateEnginePlugin(object):
     """A set of hooks intended to augment the construction of an
-    :class:`.Engine` object based on entrypoint names in a URL.
+    :class:`_engine.Engine` object based on entrypoint names in a URL.
 
     The purpose of :class:`.CreateEnginePlugin` is to allow third-party
     systems to apply engine, pool and dialect level event listeners without
@@ -996,7 +1008,7 @@ class CreateEnginePlugin(object):
     arguments afterwards.
 
     When the engine creation process completes and produces the
-    :class:`.Engine` object, it is again passed to the plugin via the
+    :class:`_engine.Engine` object, it is again passed to the plugin via the
     :meth:`.CreateEnginePlugin.engine_created` hook.  In this hook, additional
     changes can be made to the engine, most typically involving setup of
     events (e.g. those defined in :ref:`core_event_toplevel`).
@@ -1009,7 +1021,7 @@ class CreateEnginePlugin(object):
         """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call
-        to :func:`.create_engine`.  A single :class:`.Engine` will be
+        to :func:`.create_engine`.  A single :class:`_engine.Engine` will be
         passed to the :meth:`.CreateEnginePlugin.engine_created` method
         corresponding to this URL.
 
@@ -1032,7 +1044,8 @@ class CreateEnginePlugin(object):
         """parse and modify pool kwargs"""
 
     def engine_created(self, engine):
-        """Receive the :class:`.Engine` object when it is fully constructed.
+        """Receive the :class:`_engine.Engine`
+        object when it is fully constructed.
 
         The plugin may make additional changes to the engine, such as
         registering engine or connection pool events.
@@ -1205,7 +1218,7 @@ class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
     The two implementations of :class:`.Connectable` are
-    :class:`.Connection` and :class:`.Engine`.
+    :class:`_engine.Connection` and :class:`_engine.Engine`.
 
     Connectable must also implement the 'dialect' member which references a
     :class:`.Dialect` instance.
@@ -1213,38 +1226,42 @@ class Connectable(object):
     """
 
     def connect(self, **kwargs):
-        """Return a :class:`.Connection` object.
+        """Return a :class:`_engine.Connection` object.
 
         Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`.Connection`, or a newly
-        procured :class:`.Connection` if this object is an instance
-        of :class:`.Engine`.
+        is already an instance of :class:`_engine.Connection`, or a newly
+        procured :class:`_engine.Connection` if this object is an instance
+        of :class:`_engine.Engine`.
 
         """
 
     engine = None
-    """The :class:`.Engine` instance referred to by this :class:`.Connectable`.
+    """The :class:`_engine.Engine` instance referred to by this
+    :class:`.Connectable`.
 
-    May be ``self`` if this is already an :class:`.Engine`.
+    May be ``self`` if this is already an :class:`_engine.Engine`.
 
     """
 
     @util.deprecated(
         "1.3",
-        "The :meth:`.Engine.contextual_connect` and "
-        ":meth:`.Connection.contextual_connect` methods are deprecated.  This "
+        "The :meth:`_engine.Engine.contextual_connect` and "
+        ":meth:`_engine.Connection.contextual_connect` methods are "
+        "deprecated. This "
         "method is an artifact of the threadlocal engine strategy which is "
         "also to be deprecated.   For explicit connections from an "
-        ":class:`.Engine`, use the :meth:`.Engine.connect` method.",
+        ":class:`_engine.Engine`, use the :meth:`_engine.Engine.connect` "
+        "method.",
     )
     def contextual_connect(self, *arg, **kw):
-        """Return a :class:`.Connection` object which may be part of an ongoing
+        """Return a :class:`_engine.Connection`
+        object which may be part of an ongoing
         context.
 
         Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`.Connection`, or a newly
-        procured :class:`.Connection` if this object is an instance
-        of :class:`.Engine`.
+        is already an instance of :class:`_engine.Connection`, or a newly
+        procured :class:`_engine.Connection` if this object is an instance
+        of :class:`_engine.Engine`.
 
         """
 
@@ -1258,8 +1275,8 @@ class Connectable(object):
         "The :meth:`.Connectable.create` method is deprecated and will be "
         "removed in a future release.  Please use the ``.create()`` method "
         "on specific schema objects to emit DDL sequences, including "
-        ":meth:`.Table.create`, :meth:`.Index.create`, and "
-        ":meth:`.MetaData.create_all`.",
+        ":meth:`_schema.Table.create`, :meth:`.Index.create`, and "
+        ":meth:`_schema.MetaData.create_all`.",
     )
     def create(self, entity, **kwargs):
         """Emit CREATE statements for the given schema entity.
@@ -1272,8 +1289,8 @@ class Connectable(object):
         "The :meth:`.Connectable.drop` method is deprecated and will be "
         "removed in a future release.  Please use the ``.drop()`` method "
         "on specific schema objects to emit DDL sequences, including "
-        ":meth:`.Table.drop`, :meth:`.Index.drop`, and "
-        ":meth:`.MetaData.drop_all`.",
+        ":meth:`_schema.Table.drop`, :meth:`.Index.drop`, and "
+        ":meth:`_schema.MetaData.drop_all`.",
     )
     def drop(self, entity, **kwargs):
         """Emit DROP statements for the given schema entity.
@@ -1311,7 +1328,7 @@ class ExceptionContext(object):
     """
 
     connection = None
-    """The :class:`.Connection` in use during the exception.
+    """The :class:`_engine.Connection` in use during the exception.
 
     This member is present, except in the case of a failure when
     first connecting.
@@ -1324,7 +1341,7 @@ class ExceptionContext(object):
     """
 
     engine = None
-    """The :class:`.Engine` in use during the exception.
+    """The :class:`_engine.Engine` in use during the exception.
 
     This member should always be present, even in the case of a failure
     when first connecting.

@@ -18,7 +18,7 @@ One To Many
 ~~~~~~~~~~~
 
 A one to many relationship places a foreign key on the child table referencing
-the parent.  :func:`.relationship` is then specified on the parent, as referencing
+the parent.  :func:`_orm.relationship` is then specified on the parent, as referencing
 a collection of items represented by the child::
 
     class Parent(Base):
@@ -32,8 +32,8 @@ a collection of items represented by the child::
         parent_id = Column(Integer, ForeignKey('parent.id'))
 
 To establish a bidirectional relationship in one-to-many, where the "reverse"
-side is a many to one, specify an additional :func:`.relationship` and connect
-the two using the :paramref:`.relationship.back_populates` parameter::
+side is a many to one, specify an additional :func:`_orm.relationship` and connect
+the two using the :paramref:`_orm.relationship.back_populates` parameter::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -48,9 +48,9 @@ the two using the :paramref:`.relationship.back_populates` parameter::
 
 ``Child`` will get a ``parent`` attribute with many-to-one semantics.
 
-Alternatively, the :paramref:`~.relationship.backref` option may be used
-on a single :func:`.relationship` instead of using
-:paramref:`~.relationship.back_populates`::
+Alternatively, the :paramref:`_orm.relationship.backref` option may be used
+on a single :func:`_orm.relationship` instead of using
+:paramref:`_orm.relationship.back_populates`::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -62,7 +62,7 @@ Many To One
 ~~~~~~~~~~~
 
 Many to one places a foreign key in the parent table referencing the child.
-:func:`.relationship` is declared on the parent, where a new scalar-holding
+:func:`_orm.relationship` is declared on the parent, where a new scalar-holding
 attribute will be created::
 
     class Parent(Base):
@@ -75,8 +75,8 @@ attribute will be created::
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
 
-Bidirectional behavior is achieved by adding a second :func:`.relationship`
-and applying the :paramref:`.relationship.back_populates` parameter
+Bidirectional behavior is achieved by adding a second :func:`_orm.relationship`
+and applying the :paramref:`_orm.relationship.back_populates` parameter
 in both directions::
 
     class Parent(Base):
@@ -90,8 +90,8 @@ in both directions::
         id = Column(Integer, primary_key=True)
         parents = relationship("Parent", back_populates="child")
 
-Alternatively, the :paramref:`~.relationship.backref` parameter
-may be applied to a single :func:`.relationship`, such as ``Parent.child``::
+Alternatively, the :paramref:`_orm.relationship.backref` parameter
+may be applied to a single :func:`_orm.relationship`, such as ``Parent.child``::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -105,7 +105,7 @@ One To One
 ~~~~~~~~~~
 
 One To One is essentially a bidirectional relationship with a scalar
-attribute on both sides. To achieve this, the :paramref:`~.relationship.uselist` flag indicates
+attribute on both sides. To achieve this, the :paramref:`_orm.relationship.uselist` flag indicates
 the placement of a scalar attribute instead of a collection on the "many" side
 of the relationship. To convert one-to-many into one-to-one::
 
@@ -133,8 +133,8 @@ Or for many-to-one::
         id = Column(Integer, primary_key=True)
         parent = relationship("Parent", back_populates="child", uselist=False)
 
-As always, the :paramref:`.relationship.backref` and :func:`.backref` functions
-may be used in lieu of the :paramref:`.relationship.back_populates` approach;
+As always, the :paramref:`_orm.relationship.backref` and :func:`.backref` functions
+may be used in lieu of the :paramref:`_orm.relationship.back_populates` approach;
 to specify ``uselist`` on a backref, use the :func:`.backref` function::
 
     from sqlalchemy.orm import backref
@@ -152,9 +152,9 @@ Many To Many
 ~~~~~~~~~~~~
 
 Many to Many adds an association table between two classes. The association
-table is indicated by the :paramref:`~.relationship.secondary` argument to
-:func:`.relationship`.  Usually, the :class:`.Table` uses the :class:`.MetaData`
-object associated with the declarative base class, so that the :class:`.ForeignKey`
+table is indicated by the :paramref:`_orm.relationship.secondary` argument to
+:func:`_orm.relationship`.  Usually, the :class:`_schema.Table` uses the :class:`_schema.MetaData`
+object associated with the declarative base class, so that the :class:`_schema.ForeignKey`
 directives can locate the remote tables with which to link::
 
     association_table = Table('association', Base.metadata,
@@ -173,8 +173,8 @@ directives can locate the remote tables with which to link::
         id = Column(Integer, primary_key=True)
 
 For a bidirectional relationship, both sides of the relationship contain a
-collection.  Specify using :paramref:`.relationship.back_populates`, and
-for each :func:`.relationship` specify the common association table::
+collection.  Specify using :paramref:`_orm.relationship.back_populates`, and
+for each :func:`_orm.relationship` specify the common association table::
 
     association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
@@ -197,9 +197,9 @@ for each :func:`.relationship` specify the common association table::
             secondary=association_table,
             back_populates="children")
 
-When using the :paramref:`~.relationship.backref` parameter instead of
-:paramref:`.relationship.back_populates`, the backref will automatically use
-the same :paramref:`~.relationship.secondary` argument for the reverse relationship::
+When using the :paramref:`_orm.relationship.backref` parameter instead of
+:paramref:`_orm.relationship.back_populates`, the backref will automatically use
+the same :paramref:`_orm.relationship.secondary` argument for the reverse relationship::
 
     association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
@@ -217,7 +217,7 @@ the same :paramref:`~.relationship.secondary` argument for the reverse relations
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
-The :paramref:`~.relationship.secondary` argument of :func:`.relationship` also accepts a callable
+The :paramref:`_orm.relationship.secondary` argument of :func:`_orm.relationship` also accepts a callable
 that returns the ultimate argument, which is evaluated only when mappers are
 first used.   Using this, we can define the ``association_table`` at a later
 point, as long as it's available to the callable after all module initialization
@@ -241,10 +241,10 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
                         backref="parents")
 
 .. warning:: When passed as a Python-evaluable string, the
-    :paramref:`.relationship.secondary` argument is interpreted using Python's
+    :paramref:`_orm.relationship.secondary` argument is interpreted using Python's
     ``eval()`` function. **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**. See
     :ref:`declarative_relationship_eval` for details on declarative
-    evaluation of :func:`.relationship` arguments.
+    evaluation of :func:`_orm.relationship` arguments.
 
 
 .. _relationships_many_to_many_deletion:
@@ -252,8 +252,8 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
 Deleting Rows from the Many to Many Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A behavior which is unique to the :paramref:`~.relationship.secondary` argument to :func:`.relationship`
-is that the :class:`.Table` which is specified here is automatically subject
+A behavior which is unique to the :paramref:`_orm.relationship.secondary` argument to :func:`_orm.relationship`
+is that the :class:`_schema.Table` which is specified here is automatically subject
 to INSERT and DELETE statements, as objects are added or removed from the collection.
 There is **no need to delete from this table manually**.   The act of removing a
 record from the collection will have the effect of the row being deleted on flush::
@@ -269,7 +269,7 @@ when the child object is handed directly to :meth:`.Session.delete`::
 
 There are several possibilities here:
 
-* If there is a :func:`.relationship` from ``Parent`` to ``Child``, but there is
+* If there is a :func:`_orm.relationship` from ``Parent`` to ``Child``, but there is
   **not** a reverse-relationship that links a particular ``Child`` to each ``Parent``,
   SQLAlchemy will not have any awareness that when deleting this particular
   ``Child`` object, it needs to maintain the "secondary" table that links it to
@@ -279,21 +279,21 @@ There are several possibilities here:
   the ``Child.parents`` collection to locate all ``Parent`` objects, and remove
   each row from the "secondary" table which establishes this link.  Note that
   this relationship does not need to be bidirectional; SQLAlchemy is strictly
-  looking at every :func:`.relationship` associated with the ``Child`` object
+  looking at every :func:`_orm.relationship` associated with the ``Child`` object
   being deleted.
 * A higher performing option here is to use ON DELETE CASCADE directives
   with the foreign keys used by the database.   Assuming the database supports
   this feature, the database itself can be made to automatically delete rows in the
   "secondary" table as referencing rows in "child" are deleted.   SQLAlchemy
   can be instructed to forego actively loading in the ``Child.parents``
-  collection in this case using the :paramref:`~.relationship.passive_deletes`
-  directive on :func:`.relationship`; see :ref:`passive_deletes` for more details
+  collection in this case using the :paramref:`_orm.relationship.passive_deletes`
+  directive on :func:`_orm.relationship`; see :ref:`passive_deletes` for more details
   on this.
 
-Note again, these behaviors are *only* relevant to the :paramref:`~.relationship.secondary` option
-used with :func:`.relationship`.   If dealing with association tables that
-are mapped explicitly and are *not* present in the :paramref:`~.relationship.secondary` option
-of a relevant :func:`.relationship`, cascade rules can be used instead
+Note again, these behaviors are *only* relevant to the :paramref:`_orm.relationship.secondary` option
+used with :func:`_orm.relationship`.   If dealing with association tables that
+are mapped explicitly and are *not* present in the :paramref:`_orm.relationship.secondary` option
+of a relevant :func:`_orm.relationship`, cascade rules can be used instead
 to automatically delete entities in reaction to a related entity being
 deleted - see :ref:`unitofwork_cascades` for information on this feature.
 
@@ -306,7 +306,7 @@ Association Object
 The association object pattern is a variant on many-to-many: it's used
 when your association table contains additional columns beyond those
 which are foreign keys to the left and right tables. Instead of using
-the :paramref:`~.relationship.secondary` argument, you map a new class
+the :paramref:`_orm.relationship.secondary` argument, you map a new class
 directly to the association table. The left side of the relationship
 references the association object via one-to-many, and the association
 class references the right side via many-to-one.  Below we illustrate
@@ -331,8 +331,8 @@ is stored along with each association between ``Parent`` and
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
-As always, the bidirectional version makes use of :paramref:`.relationship.back_populates`
-or :paramref:`.relationship.backref`::
+As always, the bidirectional version makes use of :paramref:`_orm.relationship.back_populates`
+or :paramref:`_orm.relationship.backref`::
 
     class Association(Base):
         __tablename__ = 'association'

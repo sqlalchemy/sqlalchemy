@@ -39,7 +39,7 @@ also should supply adequate ``__eq__()`` and ``__ne__()`` methods which test
 the equality of two instances.
 
 We will create a mapping to a table ``vertices``, which represents two points
-as ``x1/y1`` and ``x2/y2``. These are created normally as :class:`.Column`
+as ``x1/y1`` and ``x2/y2``. These are created normally as :class:`_schema.Column`
 objects. Then, the :func:`.composite` function is used to assign new
 attributes that will represent sets of columns via the ``Point`` class::
 

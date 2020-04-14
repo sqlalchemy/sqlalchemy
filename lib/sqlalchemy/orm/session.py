@@ -103,7 +103,7 @@ class SessionTransaction(object):
 
     :class:`.SessionTransaction` is a mostly behind-the-scenes object
     not normally referenced directly by application code.   It coordinates
-    among multiple :class:`.Connection` objects, maintaining a database
+    among multiple :class:`_engine.Connection` objects, maintaining a database
     transaction for each one individually, committing or rolling them
     back all at once.   It also provides optional two-phase commit behavior
     which can augment this coordination operation.
@@ -126,8 +126,9 @@ class SessionTransaction(object):
     A :class:`.SessionTransaction` is associated with a :class:`.Session`
     in its default mode of ``autocommit=False`` immediately, associated
     with no database connections.  As the :class:`.Session` is called upon
-    to emit SQL on behalf of various :class:`.Engine` or :class:`.Connection`
-    objects, a corresponding :class:`.Connection` and associated
+    to emit SQL on behalf of various :class:`_engine.Engine` or
+    :class:`_engine.Connection`
+    objects, a corresponding :class:`_engine.Connection` and associated
     :class:`.Transaction` is added to a collection within the
     :class:`.SessionTransaction` object, becoming one of the
     connection/transaction pairs maintained by the
@@ -730,22 +731,27 @@ class Session(_SessionClassMethods):
            :meth:`~.Session.flush` are rarely needed; you usually only need to
            call :meth:`~.Session.commit` (which flushes) to finalize changes.
 
-        :param bind: An optional :class:`.Engine` or :class:`.Connection` to
+        :param bind: An optional :class:`_engine.Engine` or
+           :class:`_engine.Connection` to
            which this ``Session`` should be bound. When specified, all SQL
            operations performed by this session will execute via this
            connectable.
 
         :param binds: A dictionary which may specify any number of
-           :class:`.Engine` or :class:`.Connection` objects as the source of
+           :class:`_engine.Engine` or :class:`_engine.Connection`
+           objects as the source of
            connectivity for SQL operations on a per-entity basis.   The keys
            of the dictionary consist of any series of mapped classes,
            arbitrary Python classes that are bases for mapped classes,
-           :class:`.Table` objects and :class:`.Mapper` objects.  The
-           values of the dictionary are then instances of :class:`.Engine`
-           or less commonly :class:`.Connection` objects.  Operations which
+           :class:`_schema.Table` objects and :class:`_orm.Mapper` objects.
+           The
+           values of the dictionary are then instances of
+           :class:`_engine.Engine`
+           or less commonly :class:`_engine.Connection` objects.
+           Operations which
            proceed relative to a particular mapped class will consult this
            dictionary for the closest matching entity in order to determine
-           which :class:`.Engine` should be used for a particular SQL
+           which :class:`_engine.Engine` should be used for a particular SQL
            operation.    The complete heuristics for resolution are
            described at :meth:`.Session.get_bind`.  Usage looks like::
 
@@ -813,7 +819,7 @@ class Session(_SessionClassMethods):
 
         :param query_cls:  Class which should be used to create new Query
           objects, as returned by the :meth:`~.Session.query` method.
-          Defaults to :class:`.Query`.
+          Defaults to :class:`_query.Query`.
 
         :param twophase:  When ``True``, all transactions will be started as
             a "two phase" transaction, i.e. using the "two phase" semantics
@@ -1063,27 +1069,28 @@ class Session(_SessionClassMethods):
         execution_options=None,
         **kw
     ):
-        r"""Return a :class:`.Connection` object corresponding to this
+        r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
         If this :class:`.Session` is configured with ``autocommit=False``,
-        either the :class:`.Connection` corresponding to the current
+        either the :class:`_engine.Connection` corresponding to the current
         transaction is returned, or if no transaction is in progress, a new
-        one is begun and the :class:`.Connection` returned (note that no
+        one is begun and the :class:`_engine.Connection`
+        returned (note that no
         transactional state is established with the DBAPI until the first
         SQL statement is emitted).
 
         Alternatively, if this :class:`.Session` is configured with
-        ``autocommit=True``, an ad-hoc :class:`.Connection` is returned
-        using :meth:`.Engine.connect` on the underlying
-        :class:`.Engine`.
+        ``autocommit=True``, an ad-hoc :class:`_engine.Connection` is returned
+        using :meth:`_engine.Engine.connect` on the underlying
+        :class:`_engine.Engine`.
 
         Ambiguity in multi-bind or unbound :class:`.Session` objects can be
         resolved through any of the optional keyword arguments.   This
         ultimately makes usage of the :meth:`.get_bind` method for resolution.
 
         :param bind:
-          Optional :class:`.Engine` to be used as the bind.  If
+          Optional :class:`_engine.Engine` to be used as the bind.  If
           this engine is already involved in an ongoing transaction,
           that connection will be used.  This argument takes precedence
           over ``mapper``, ``clause``.
@@ -1094,20 +1101,21 @@ class Session(_SessionClassMethods):
           ``clause``.
 
         :param clause:
-            A :class:`.ClauseElement` (i.e. :func:`~.sql.expression.select`,
-            :func:`~.sql.expression.text`,
+            A :class:`_expression.ClauseElement` (i.e.
+            :func:`_expression.select`,
+            :func:`_expression.text`,
             etc.) which will be used to locate a bind, if a bind
             cannot otherwise be identified.
 
-        :param close_with_result: Passed to :meth:`.Engine.connect`,
-          indicating the :class:`.Connection` should be considered
+        :param close_with_result: Passed to :meth:`_engine.Engine.connect`,
+          indicating the :class:`_engine.Connection` should be considered
           "single use", automatically closing when the first result set is
           closed.  This flag only has an effect if this :class:`.Session` is
           configured with ``autocommit=True`` and does not already have a
           transaction in progress.
 
         :param execution_options: a dictionary of execution options that will
-         be passed to :meth:`.Connection.execution_options`, **when the
+         be passed to :meth:`_engine.Connection.execution_options`, **when the
          connection is first procured only**.   If the connection is already
          present within the :class:`.Session`, a warning is emitted and
          the arguments are ignored.
@@ -1150,8 +1158,8 @@ class Session(_SessionClassMethods):
 
         Returns a :class:`.ResultProxy` representing
         results of the statement execution, in the same manner as that of an
-        :class:`.Engine` or
-        :class:`.Connection`.
+        :class:`_engine.Engine` or
+        :class:`_engine.Connection`.
 
         E.g.::
 
@@ -1160,14 +1168,14 @@ class Session(_SessionClassMethods):
                     )
 
         :meth:`~.Session.execute` accepts any executable clause construct,
-        such as :func:`~.sql.expression.select`,
-        :func:`~.sql.expression.insert`,
-        :func:`~.sql.expression.update`,
-        :func:`~.sql.expression.delete`, and
-        :func:`~.sql.expression.text`.  Plain SQL strings can be passed
+        such as :func:`_expression.select`,
+        :func:`_expression.insert`,
+        :func:`_expression.update`,
+        :func:`_expression.delete`, and
+        :func:`_expression.text`.  Plain SQL strings can be passed
         as well, which in the case of :meth:`.Session.execute` only
         will be interpreted the same as if it were passed via a
-        :func:`~.expression.text` construct.  That is, the following usage::
+        :func:`_expression.text` construct.  That is, the following usage::
 
             result = session.execute(
                         "SELECT * FROM user WHERE id=:param",
@@ -1184,7 +1192,7 @@ class Session(_SessionClassMethods):
 
         The second positional argument to :meth:`.Session.execute` is an
         optional parameter set.  Similar to that of
-        :meth:`.Connection.execute`, whether this is passed as a single
+        :meth:`_engine.Connection.execute`, whether this is passed as a single
         dictionary, or a sequence of dictionaries, determines whether the DBAPI
         cursor's ``execute()`` or ``executemany()`` is used to execute the
         statement.   An INSERT construct may be invoked for a single row::
@@ -1201,14 +1209,16 @@ class Session(_SessionClassMethods):
                                 ])
 
         The statement is executed within the current transactional context of
-        this :class:`.Session`.   The :class:`.Connection` which is used
+        this :class:`.Session`.   The :class:`_engine.Connection`
+        which is used
         to execute the statement can also be acquired directly by
         calling the :meth:`.Session.connection` method.  Both methods use
         a rule-based resolution scheme in order to determine the
-        :class:`.Connection`, which in the average case is derived directly
+        :class:`_engine.Connection`,
+        which in the average case is derived directly
         from the "bind" of the :class:`.Session` itself, and in other cases
         can be based on the :func:`.mapper`
-        and :class:`.Table` objects passed to the method; see the
+        and :class:`_schema.Table` objects passed to the method; see the
         documentation for :meth:`.Session.get_bind` for a full description of
         this scheme.
 
@@ -1218,7 +1228,8 @@ class Session(_SessionClassMethods):
         method is returned with the "close_with_result" flag set to true;
         the significance of this flag is that if this :class:`.Session` is
         autocommitting and does not have a transaction-dedicated
-        :class:`.Connection` available, a temporary :class:`.Connection` is
+        :class:`_engine.Connection` available, a temporary
+        :class:`_engine.Connection` is
         established for the statement execution, which is closed (meaning,
         returned to the connection pool) when the :class:`.ResultProxy` has
         consumed all available data. This applies *only* when the
@@ -1227,7 +1238,7 @@ class Session(_SessionClassMethods):
 
         :param clause:
             An executable statement (i.e. an :class:`.Executable` expression
-            such as :func:`.expression.select`) or string SQL statement
+            such as :func:`_expression.select`) or string SQL statement
             to be executed.
 
         :param params:
@@ -1244,7 +1255,7 @@ class Session(_SessionClassMethods):
           for more details.
 
         :param bind:
-          Optional :class:`.Engine` to be used as the bind.  If
+          Optional :class:`_engine.Engine` to be used as the bind.  If
           this engine is already involved in an ongoing transaction,
           that connection will be used.  This argument takes
           precedence over ``mapper`` and ``clause`` when locating
@@ -1262,7 +1273,8 @@ class Session(_SessionClassMethods):
             :ref:`connections_toplevel` - Further information on direct
             statement execution.
 
-            :meth:`.Connection.execute` - core level statement execution
+            :meth:`_engine.Connection.execute`
+            - core level statement execution
             method, which is :meth:`.Session.execute` ultimately uses
             in order to execute the statement.
 
@@ -1301,8 +1313,9 @@ class Session(_SessionClassMethods):
         """Close this Session, using connection invalidation.
 
         This is a variant of :meth:`.Session.close` that will additionally
-        ensure that the :meth:`.Connection.invalidate` method will be called
-        on all :class:`.Connection` objects.  This can be called when
+        ensure that the :meth:`_engine.Connection.invalidate`
+        method will be called
+        on all :class:`_engine.Connection` objects.  This can be called when
         the database is known to be in a state where the connections are
         no longer safe to be used.
 
@@ -1377,17 +1390,20 @@ class Session(_SessionClassMethods):
                 )
 
     def bind_mapper(self, mapper, bind):
-        """Associate a :class:`.Mapper` or arbitrary Python class with a
-        "bind", e.g. an :class:`.Engine` or :class:`.Connection`.
+        """Associate a :class:`_orm.Mapper` or arbitrary Python class with a
+        "bind", e.g. an :class:`_engine.Engine` or :class:`_engine.Connection`
+        .
 
         The given entity is added to a lookup used by the
         :meth:`.Session.get_bind` method.
 
-        :param mapper: a :class:`.Mapper` object, or an instance of a mapped
+        :param mapper: a :class:`_orm.Mapper` object,
+         or an instance of a mapped
          class, or any Python class that is the base of a set of mapped
          classes.
 
-        :param bind: an :class:`.Engine` or :class:`.Connection` object.
+        :param bind: an :class:`_engine.Engine` or :class:`_engine.Connection`
+                    object.
 
         .. seealso::
 
@@ -1402,17 +1418,20 @@ class Session(_SessionClassMethods):
         self._add_bind(mapper, bind)
 
     def bind_table(self, table, bind):
-        """Associate a :class:`.Table` with a "bind", e.g. an :class:`.Engine`
-        or :class:`.Connection`.
+        """Associate a :class:`_schema.Table` with a "bind", e.g. an
+        :class:`_engine.Engine`
+        or :class:`_engine.Connection`.
 
-        The given :class:`.Table` is added to a lookup used by the
+        The given :class:`_schema.Table` is added to a lookup used by the
         :meth:`.Session.get_bind` method.
 
-        :param table: a :class:`.Table` object, which is typically the target
+        :param table: a :class:`_schema.Table` object,
+         which is typically the target
          of an ORM mapping, or is present within a selectable that is
          mapped.
 
-        :param bind: an :class:`.Engine` or :class:`.Connection` object.
+        :param bind: an :class:`_engine.Engine` or :class:`_engine.Connection`
+                    object.
 
         .. seealso::
 
@@ -1429,9 +1448,9 @@ class Session(_SessionClassMethods):
     def get_bind(self, mapper=None, clause=None):
         """Return a "bind" to which this :class:`.Session` is bound.
 
-        The "bind" is usually an instance of :class:`.Engine`,
+        The "bind" is usually an instance of :class:`_engine.Engine`,
         except in the case where the :class:`.Session` has been
-        explicitly bound directly to a :class:`.Connection`.
+        explicitly bound directly to a :class:`_engine.Connection`.
 
         For a multiply-bound or unbound :class:`.Session`, the
         ``mapper`` or ``clause`` arguments are used to determine the
@@ -1451,15 +1470,15 @@ class Session(_SessionClassMethods):
            present in the ``__mro__`` of the mapped class, from more specific
            superclasses to more general.
         2. if clause given and session.binds is present,
-           locate a bind based on :class:`.Table` objects
+           locate a bind based on :class:`_schema.Table` objects
            found in the given clause present in session.binds.
         3. if session.bind is present, return that.
         4. if clause given, attempt to return a bind
-           linked to the :class:`.MetaData` ultimately
+           linked to the :class:`_schema.MetaData` ultimately
            associated with the clause.
         5. if mapper given, attempt to return a bind
-           linked to the :class:`.MetaData` ultimately
-           associated with the :class:`.Table` or other
+           linked to the :class:`_schema.MetaData` ultimately
+           associated with the :class:`_schema.Table` or other
            selectable to which the mapper is mapped.
         6. No bind can be found, :exc:`~sqlalchemy.exc.UnboundExecutionError`
            is raised.
@@ -1471,19 +1490,24 @@ class Session(_SessionClassMethods):
 
         :param mapper:
           Optional :func:`.mapper` mapped class or instance of
-          :class:`.Mapper`.   The bind can be derived from a :class:`.Mapper`
+          :class:`_orm.Mapper`.   The bind can be derived from a
+          :class:`_orm.Mapper`
           first by consulting the "binds" map associated with this
-          :class:`.Session`, and secondly by consulting the :class:`.MetaData`
-          associated with the :class:`.Table` to which the :class:`.Mapper`
+          :class:`.Session`, and secondly by consulting the
+          :class:`_schema.MetaData`
+          associated with the :class:`_schema.Table` to which the
+          :class:`_orm.Mapper`
           is mapped for a bind.
 
         :param clause:
-            A :class:`.ClauseElement` (i.e. :func:`~.sql.expression.select`,
-            :func:`~.sql.expression.text`,
+            A :class:`_expression.ClauseElement` (i.e.
+            :func:`_expression.select`,
+            :func:`_expression.text`,
             etc.).  If the ``mapper`` argument is not present or could not
             produce a bind, the given expression construct will be searched
-            for a bound element, typically a :class:`.Table` associated with
-            bound :class:`.MetaData`.
+            for a bound element, typically a :class:`_schema.Table`
+            associated with
+            bound :class:`_schema.MetaData`.
 
         .. seealso::
 
@@ -1552,7 +1576,7 @@ class Session(_SessionClassMethods):
         )
 
     def query(self, *entities, **kwargs):
-        """Return a new :class:`.Query` object corresponding to this
+        """Return a new :class:`_query.Query` object corresponding to this
         :class:`.Session`."""
 
         return self._query_cls(entities, self, **kwargs)
@@ -1634,7 +1658,8 @@ class Session(_SessionClassMethods):
         :param with_for_update: optional boolean ``True`` indicating FOR UPDATE
           should be used, or may be a dictionary containing flags to
           indicate a more specific set of FOR UPDATE flags for the SELECT;
-          flags should match the parameters of :meth:`.Query.with_for_update`.
+          flags should match the parameters of
+          :meth:`_query.Query.with_for_update`.
           Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
 
           .. versionadded:: 1.2
@@ -2354,7 +2379,7 @@ class Session(_SessionClassMethods):
             :meth:`.enable_relationship_loading` exists to serve special
             use cases and is not recommended for general use.
 
-        Accesses of attributes mapped with :func:`.relationship`
+        Accesses of attributes mapped with :func:`_orm.relationship`
         will attempt to load a value from the database using this
         :class:`.Session` as the source of connectivity.  The values
         will be loaded based on foreign key and primary key values
@@ -2372,7 +2397,7 @@ class Session(_SessionClassMethods):
         is what was already loaded from a foreign-key-holding value.
 
         The :meth:`.Session.enable_relationship_loading` method is
-        similar to the ``load_on_pending`` flag on :func:`.relationship`.
+        similar to the ``load_on_pending`` flag on :func:`_orm.relationship`.
         Unlike that flag, :meth:`.Session.enable_relationship_loading` allows
         an object to remain transient while still being able to load
         related items.
@@ -2391,7 +2416,7 @@ class Session(_SessionClassMethods):
 
         .. seealso::
 
-            ``load_on_pending`` at :func:`.relationship` - this flag
+            ``load_on_pending`` at :func:`_orm.relationship` - this flag
             allows per-relationship loading of many-to-ones on items that
             are pending.
 
@@ -2753,7 +2778,8 @@ class Session(_SessionClassMethods):
         large numbers of simple rows.
 
         The values within the dictionaries as given are typically passed
-        without modification into Core :meth:`.Insert` constructs, after
+        without modification into Core :meth:`_expression.Insert` constructs,
+        after
         organizing the values within them across the tables to which
         the given mapper is mapped.
 
@@ -2771,7 +2797,8 @@ class Session(_SessionClassMethods):
             **before using this method, and fully test and confirm the
             functionality of all code developed using these systems.**
 
-        :param mapper: a mapped class, or the actual :class:`.Mapper` object,
+        :param mapper: a mapped class, or the actual :class:`_orm.Mapper`
+         object,
          representing the single kind of object represented within the mapping
          list.
 
@@ -2862,7 +2889,8 @@ class Session(_SessionClassMethods):
             **before using this method, and fully test and confirm the
             functionality of all code developed using these systems.**
 
-        :param mapper: a mapped class, or the actual :class:`.Mapper` object,
+        :param mapper: a mapped class, or the actual :class:`_orm.Mapper`
+         object,
          representing the single kind of object represented within the mapping
          list.
 
@@ -3033,7 +3061,7 @@ class Session(_SessionClassMethods):
         :class:`.Session` has actually begun to use DBAPI resources is to
         implement a listener using the :meth:`.SessionEvents.after_begin`
         method, which will deliver both the :class:`.Session` as well as the
-        target :class:`.Connection` to a user-defined event listener.
+        target :class:`_engine.Connection` to a user-defined event listener.
 
         The "partial rollback" state refers to when an "inner" transaction,
         typically used during a flush, encounters an error and emits a
@@ -3165,7 +3193,8 @@ class sessionmaker(_SessionClassMethods):
     The class also includes a method :meth:`.configure`, which can
     be used to specify additional keyword arguments to the factory, which
     will take effect for subsequent :class:`.Session` objects generated.
-    This is usually used to associate one or more :class:`.Engine` objects
+    This is usually used to associate one or more :class:`_engine.Engine`
+    objects
     with an existing :class:`.sessionmaker` factory before it is first
     used::
 
@@ -3201,7 +3230,8 @@ class sessionmaker(_SessionClassMethods):
         accepted by :class:`.Session` directly.  See the
         :meth:`.Session.__init__` docstring for more details on parameters.
 
-        :param bind: a :class:`.Engine` or other :class:`.Connectable` with
+        :param bind: a :class:`_engine.Engine` or other :class:`.Connectable`
+         with
          which newly created :class:`.Session` objects will be associated.
         :param class\_: class to use in order to create new :class:`.Session`
          objects.  Defaults to :class:`.Session`.

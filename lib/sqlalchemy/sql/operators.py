@@ -61,7 +61,7 @@ class Operators(object):
 
         When used with SQL expressions, results in an
         AND operation, equivalent to
-        :func:`~.expression.and_`, that is::
+        :func:`_expression.and_`, that is::
 
             a & b
 
@@ -85,7 +85,7 @@ class Operators(object):
 
         When used with SQL expressions, results in an
         OR operation, equivalent to
-        :func:`~.expression.or_`, that is::
+        :func:`_expression.or_`, that is::
 
             a | b
 
@@ -109,7 +109,7 @@ class Operators(object):
 
         When used with SQL expressions, results in a
         NOT operation, equivalent to
-        :func:`~.expression.not_`, that is::
+        :func:`_expression.not_`, that is::
 
             ~a
 
@@ -296,7 +296,7 @@ class custom_op(object):
 
 class ColumnOperators(Operators):
     """Defines boolean, comparison, and other operators for
-    :class:`.ColumnElement` expressions.
+    :class:`_expression.ColumnElement` expressions.
 
     By default, all methods call down to
     :meth:`.operate` or :meth:`.reverse_operate`,
@@ -314,9 +314,9 @@ class ColumnOperators(Operators):
         def eq(a, b):
             return a == b
 
-    The core column expression unit :class:`.ColumnElement`
+    The core column expression unit :class:`_expression.ColumnElement`
     overrides :meth:`.Operators.operate` and others
-    to return further :class:`.ColumnElement` constructs,
+    to return further :class:`_expression.ColumnElement` constructs,
     so that the ``==`` operation above is replaced by a clause
     construct.
 
@@ -581,7 +581,8 @@ class ColumnOperators(Operators):
           .. versionadded:: 1.3 "expanding" bound parameters now support
              empty lists
 
-        * a :func:`.select` construct, which is usually a correlated
+        * a :func:`_expression.select` construct,
+          which is usually a correlated
           scalar select::
 
             stmt.where(
@@ -596,7 +597,8 @@ class ColumnOperators(Operators):
             WHERE COL IN (SELECT othertable.y
             FROM othertable WHERE othertable.x = table.x)
 
-        :param other: a list of literals, a :func:`.select` construct,
+        :param other: a list of literals, a :func:`_expression.select`
+         construct,
          or a :func:`.bindparam` construct that includes the
          :paramref:`.bindparam.expanding` flag set to True.
 
@@ -963,32 +965,32 @@ class ColumnOperators(Operators):
         return self.operate(match_op, other, **kwargs)
 
     def desc(self):
-        """Produce a :func:`~.expression.desc` clause against the
+        """Produce a :func:`_expression.desc` clause against the
         parent object."""
         return self.operate(desc_op)
 
     def asc(self):
-        """Produce a :func:`~.expression.asc` clause against the
+        """Produce a :func:`_expression.asc` clause against the
         parent object."""
         return self.operate(asc_op)
 
     def nullsfirst(self):
-        """Produce a :func:`~.expression.nullsfirst` clause against the
+        """Produce a :func:`_expression.nullsfirst` clause against the
         parent object."""
         return self.operate(nullsfirst_op)
 
     def nullslast(self):
-        """Produce a :func:`~.expression.nullslast` clause against the
+        """Produce a :func:`_expression.nullslast` clause against the
         parent object."""
         return self.operate(nullslast_op)
 
     def collate(self, collation):
-        """Produce a :func:`~.expression.collate` clause against
+        """Produce a :func:`_expression.collate` clause against
         the parent object, given the collation string.
 
         .. seealso::
 
-            :func:`~.expression.collate`
+            :func:`_expression.collate`
 
         """
         return self.operate(collate, collation)
@@ -1034,21 +1036,21 @@ class ColumnOperators(Operators):
         return self.reverse_operate(mod, other)
 
     def between(self, cleft, cright, symmetric=False):
-        """Produce a :func:`~.expression.between` clause against
+        """Produce a :func:`_expression.between` clause against
         the parent object, given the lower and upper range.
 
         """
         return self.operate(between_op, cleft, cright, symmetric=symmetric)
 
     def distinct(self):
-        """Produce a :func:`~.expression.distinct` clause against the
+        """Produce a :func:`_expression.distinct` clause against the
         parent object.
 
         """
         return self.operate(distinct_op)
 
     def any_(self):
-        """Produce a :func:`~.expression.any_` clause against the
+        """Produce a :func:`_expression.any_` clause against the
         parent object.
 
         This operator is only appropriate against a scalar subquery
@@ -1063,9 +1065,9 @@ class ColumnOperators(Operators):
 
         .. seealso::
 
-            :func:`~.expression.any_` - standalone version
+            :func:`_expression.any_` - standalone version
 
-            :func:`~.expression.all_` - ALL operator
+            :func:`_expression.all_` - ALL operator
 
         .. versionadded:: 1.1
 
@@ -1073,7 +1075,7 @@ class ColumnOperators(Operators):
         return self.operate(any_op)
 
     def all_(self):
-        """Produce a :func:`~.expression.all_` clause against the
+        """Produce a :func:`_expression.all_` clause against the
         parent object.
 
         This operator is only appropriate against a scalar subquery
@@ -1088,9 +1090,9 @@ class ColumnOperators(Operators):
 
         .. seealso::
 
-            :func:`~.expression.all_` - standalone version
+            :func:`_expression.all_` - standalone version
 
-            :func:`~.expression.any_` - ANY operator
+            :func:`_expression.any_` - ANY operator
 
         .. versionadded:: 1.1
 

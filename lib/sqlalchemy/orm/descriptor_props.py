@@ -562,14 +562,18 @@ class SynonymProperty(DescriptorProperty):
 
         :param map_column: **For classical mappings and mappings against
           an existing Table object only**.  if ``True``, the :func:`.synonym`
-          construct will locate the :class:`.Column` object upon the mapped
+          construct will locate the :class:`_schema.Column`
+          object upon the mapped
           table that would normally be associated with the attribute name of
           this synonym, and produce a new :class:`.ColumnProperty` that instead
-          maps this :class:`.Column` to the alternate name given as the "name"
+          maps this :class:`_schema.Column`
+          to the alternate name given as the "name"
           argument of the synonym; in this way, the usual step of redefining
-          the mapping of the :class:`.Column` to be under a different name is
+          the mapping of the :class:`_schema.Column`
+          to be under a different name is
           unnecessary. This is usually intended to be used when a
-          :class:`.Column` is to be replaced with an attribute that also uses a
+          :class:`_schema.Column`
+          is to be replaced with an attribute that also uses a
           descriptor, that is, in conjunction with the
           :paramref:`.synonym.descriptor` parameter::
 

@@ -12,7 +12,7 @@ How do I render SQL expressions as strings, possibly with bound parameters inlin
 ------------------------------------------------------------------------------------
 
 The "stringification" of a SQLAlchemy Core statement object or
-expression fragment, as well as that of an ORM :class:`.Query` object,
+expression fragment, as well as that of an ORM :class:`_query.Query` object,
 in the majority of simple cases is as simple as using
 the ``str()`` builtin function, as below when use it with the ``print``
 function (note the Python ``print`` function also calls ``str()`` automatically
@@ -26,8 +26,8 @@ if we don't use it explicitly)::
     FROM my_table
 
 The ``str()`` builtin, or an equivalent, can be invoked on ORM
-:class:`.Query`  object as well as any statement such as that of
-:func:`.select`, :func:`.insert` etc. and also any expression fragment, such
+:class:`_query.Query`  object as well as any statement such as that of
+:func:`_expression.select`, :func:`_expression.insert` etc. and also any expression fragment, such
 as::
 
     >>> from sqlalchemy import column
@@ -44,7 +44,7 @@ In these cases, we might get a stringified statement that is not in the correct
 syntax for the database we are targeting, or the operation may raise a
 :class:`.UnsupportedCompilationError` exception.   In these cases, it is
 necessary that we stringify the statement using the
-:meth:`.ClauseElement.compile` method, while passing along an :class:`.Engine`
+:meth:`_expression.ClauseElement.compile` method, while passing along an :class:`_engine.Engine`
 or :class:`.Dialect` object that represents the target database.  Such as
 below, if we have a MySQL database engine, we can stringify a statement in
 terms of the MySQL dialect::
@@ -54,7 +54,7 @@ terms of the MySQL dialect::
     engine = create_engine("mysql+pymysql://scott:tiger@localhost/test")
     print(statement.compile(engine))
 
-More directly, without building up an :class:`.Engine` object we can
+More directly, without building up an :class:`_engine.Engine` object we can
 instantiate a :class:`.Dialect` object directly, as below where we
 use a PostgreSQL dialect::
 
@@ -62,7 +62,7 @@ use a PostgreSQL dialect::
     print(statement.compile(dialect=postgresql.dialect()))
 
 When given an ORM :class:`~.orm.query.Query` object, in order to get at the
-:meth:`.ClauseElement.compile`
+:meth:`_expression.ClauseElement.compile`
 method we only need access the :attr:`~.orm.query.Query.statement`
 accessor first::
 
@@ -160,7 +160,7 @@ SQLAlchemy operator is currently 15::
 
 We can also usually force parenthesization around a binary expression (e.g.
 an expression that has left/right operands and an operator) using the
-:meth:`.ColumnElement.self_group` method::
+:meth:`_expression.ColumnElement.self_group` method::
 
     >>> print((column('q1') + column('q2')).self_group().op('->')(column('p')))
     (q1 + q2) -> p

@@ -102,14 +102,14 @@ colspecs[sqltypes.JSON.JSONPathType] = JSONPathType
 class JSON(sqltypes.JSON):
     """Represent the PostgreSQL JSON type.
 
-    This type is a specialization of the Core-level :class:`.types.JSON`
-    type.   Be sure to read the documentation for :class:`.types.JSON` for
+    This type is a specialization of the Core-level :class:`_types.JSON`
+    type.   Be sure to read the documentation for :class:`_types.JSON` for
     important tips regarding treatment of NULL values and ORM use.
 
-    .. versionchanged:: 1.1 :class:`.postgresql.JSON` is now a PostgreSQL-
-       specific specialization of the new :class:`.types.JSON` type.
+    .. versionchanged:: 1.1 :class:`_postgresql.JSON` is now a PostgreSQL-
+       specific specialization of the new :class:`_types.JSON` type.
 
-    The operators provided by the PostgreSQL version of :class:`.JSON`
+    The operators provided by the PostgreSQL version of :class:`_types.JSON`
     include:
 
     * Index operations (the ``->`` operator)::
@@ -142,13 +142,15 @@ class JSON(sqltypes.JSON):
 
         data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')].astext == 'some value'
 
-    .. versionchanged:: 1.1  The :meth:`.ColumnElement.cast` operator on
+    .. versionchanged:: 1.1  The :meth:`_expression.ColumnElement.cast`
+       operator on
        JSON objects now requires that the :attr:`.JSON.Comparator.astext`
        modifier be called explicitly, if the cast works only from a textual
        string.
 
     Index operations return an expression object whose type defaults to
-    :class:`.JSON` by default, so that further JSON-oriented instructions
+    :class:`_types.JSON` by default,
+    so that further JSON-oriented instructions
     may be called upon the result type.
 
     Custom serializers and deserializers are specified at the dialect level,
@@ -166,16 +168,16 @@ class JSON(sqltypes.JSON):
 
     .. seealso::
 
-        :class:`.types.JSON` - Core level JSON type
+        :class:`_types.JSON` - Core level JSON type
 
-        :class:`.JSONB`
+        :class:`_postgresql.JSONB`
 
     """  # noqa
 
     astext_type = sqltypes.Text()
 
     def __init__(self, none_as_null=False, astext_type=None):
-        """Construct a :class:`.JSON` type.
+        """Construct a :class:`_types.JSON` type.
 
         :param none_as_null: if True, persist the value ``None`` as a
          SQL NULL value, not the JSON encoding of ``null``.   Note that
@@ -190,11 +192,11 @@ class JSON(sqltypes.JSON):
 
          .. seealso::
 
-              :attr:`.JSON.NULL`
+              :attr:`_types.JSON.NULL`
 
         :param astext_type: the type to use for the
          :attr:`.JSON.Comparator.astext`
-         accessor on indexed attributes.  Defaults to :class:`.types.Text`.
+         accessor on indexed attributes.  Defaults to :class:`_types.Text`.
 
          .. versionadded:: 1.1
 
@@ -204,7 +206,7 @@ class JSON(sqltypes.JSON):
             self.astext_type = astext_type
 
     class Comparator(sqltypes.JSON.Comparator):
-        """Define comparison operations for :class:`.JSON`."""
+        """Define comparison operations for :class:`_types.JSON`."""
 
         @property
         def astext(self):
@@ -217,7 +219,7 @@ class JSON(sqltypes.JSON):
 
             .. seealso::
 
-                :meth:`.ColumnElement.cast`
+                :meth:`_expression.ColumnElement.cast`
 
             """
             if isinstance(self.expr.right.type, sqltypes.JSON.JSONPathType):
@@ -241,7 +243,8 @@ ischema_names["json"] = JSON
 class JSONB(JSON):
     """Represent the PostgreSQL JSONB type.
 
-    The :class:`.JSONB` type stores arbitrary JSONB format data, e.g.::
+    The :class:`_postgresql.JSONB` type stores arbitrary JSONB format data, e.
+    g.::
 
         data_table = Table('data_table', metadata,
             Column('id', Integer, primary_key=True),
@@ -254,19 +257,22 @@ class JSONB(JSON):
                 data = {"key1": "value1", "key2": "value2"}
             )
 
-    The :class:`.JSONB` type includes all operations provided by
-    :class:`.JSON`, including the same behaviors for indexing operations.
+    The :class:`_postgresql.JSONB` type includes all operations provided by
+    :class:`_types.JSON`, including the same behaviors for indexing operations
+    .
     It also adds additional operators specific to JSONB, including
     :meth:`.JSONB.Comparator.has_key`, :meth:`.JSONB.Comparator.has_all`,
     :meth:`.JSONB.Comparator.has_any`, :meth:`.JSONB.Comparator.contains`,
     and :meth:`.JSONB.Comparator.contained_by`.
 
-    Like the :class:`.JSON` type, the :class:`.JSONB` type does not detect
+    Like the :class:`_types.JSON` type, the :class:`_postgresql.JSONB`
+    type does not detect
     in-place changes when used with the ORM, unless the
     :mod:`sqlalchemy.ext.mutable` extension is used.
 
     Custom serializers and deserializers
-    are shared with the :class:`.JSON` class, using the ``json_serializer``
+    are shared with the :class:`_types.JSON` class,
+    using the ``json_serializer``
     and ``json_deserializer`` keyword arguments.  These must be specified
     at the dialect level using :func:`.create_engine`.  When using
     psycopg2, the serializers are associated with the jsonb type using
@@ -278,14 +284,14 @@ class JSONB(JSON):
 
     .. seealso::
 
-        :class:`.JSON`
+        :class:`_types.JSON`
 
     """
 
     __visit_name__ = "JSONB"
 
     class Comparator(JSON.Comparator):
-        """Define comparison operations for :class:`.JSON`."""
+        """Define comparison operations for :class:`_types.JSON`."""
 
         def has_key(self, other):
             """Boolean expression.  Test for presence of a key.  Note that the

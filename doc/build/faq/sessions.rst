@@ -67,7 +67,7 @@ Three ways, from most common to least:
 
 3. We can run whole queries while setting them to definitely overwrite
    already-loaded objects as they read rows by using
-   :meth:`.Query.populate_existing`.
+   :meth:`_query.Query.populate_existing`.
 
 But remember, **the ORM cannot see changes in rows if our isolation
 level is repeatable read or higher, unless we start a new transaction**.
@@ -230,7 +230,7 @@ See the recipe at `FilteredQuery <http://www.sqlalchemy.org/trac/wiki/UsageRecip
 My Query does not return the same number of objects as query.count() tells me - why?
 -------------------------------------------------------------------------------------
 
-The :class:`.Query` object, when asked to return a list of ORM-mapped objects,
+The :class:`_query.Query` object, when asked to return a list of ORM-mapped objects,
 will **deduplicate the objects based on primary key**.   That is, if we
 for example use the ``User`` mapping described at :ref:`ormtutorial_toplevel`,
 and we had a SQL query like the following::
@@ -239,26 +239,26 @@ and we had a SQL query like the following::
 
 Above, the sample data used in the tutorial has two rows in the ``addresses``
 table for the ``users`` row with the name ``'jack'``, primary key value 5.
-If we ask the above query for a :meth:`.Query.count`, we will get the answer
+If we ask the above query for a :meth:`_query.Query.count`, we will get the answer
 **2**::
 
     >>> q.count()
     2
 
-However, if we run :meth:`.Query.all` or iterate over the query, we get back
+However, if we run :meth:`_query.Query.all` or iterate over the query, we get back
 **one element**::
 
   >>> q.all()
   [User(id=5, name='jack', ...)]
 
-This is because when the :class:`.Query` object returns full entities, they
+This is because when the :class:`_query.Query` object returns full entities, they
 are **deduplicated**.    This does not occur if we instead request individual
 columns back::
 
   >>> session.query(User.id, User.name).outerjoin(User.addresses).filter(User.name == 'jack').all()
   [(5, 'jack'), (5, 'jack')]
 
-There are two main reasons the :class:`.Query` will deduplicate:
+There are two main reasons the :class:`_query.Query` will deduplicate:
 
 * **To allow joined eager loading to work correctly** - :ref:`joined_eager_loading`
   works by querying rows using joins against related tables, where it then routes
@@ -270,7 +270,7 @@ There are two main reasons the :class:`.Query` will deduplicate:
   were queried, e.g. all the ``User()`` objects whose name is ``'jack'`` which
   for us is one object, with
   the ``User.addresses`` collection eagerly loaded as was indicated either
-  by ``lazy='joined'`` on the :func:`.relationship` or via the :func:`.joinedload`
+  by ``lazy='joined'`` on the :func:`_orm.relationship` or via the :func:`_orm.joinedload`
   option.    For consistency, the deduplication is still applied whether or not
   the joinedload is established, as the key philosophy behind eager loading
   is that these options never affect the result.
@@ -282,16 +282,16 @@ There are two main reasons the :class:`.Query` will deduplicate:
   which must be maintained uniquely on its identity, that is, its primary key /
   class combination.   It doesn't actually make much sense, if one is querying for
   ``User()`` objects, to get the same object multiple times in the list.   An
-  ordered set would potentially be a better representation of what :class:`.Query`
+  ordered set would potentially be a better representation of what :class:`_query.Query`
   seeks to return when it returns full objects.
 
-The issue of :class:`.Query` deduplication remains problematic, mostly for the
-single reason that the :meth:`.Query.count` method is inconsistent, and the
+The issue of :class:`_query.Query` deduplication remains problematic, mostly for the
+single reason that the :meth:`_query.Query.count` method is inconsistent, and the
 current status is that joined eager loading has in recent releases been
 superseded first by the "subquery eager loading" strategy and more recently the
 "select IN eager loading" strategy, both of which are generally more
 appropriate for collection eager loading. As this evolution continues,
-SQLAlchemy may alter this behavior on :class:`.Query`, which may also involve
+SQLAlchemy may alter this behavior on :class:`_query.Query`, which may also involve
 new APIs in order to more directly control this behavior, and may also alter
 the behavior of joined eager loading in order to create a more consistent usage
 pattern.
@@ -301,7 +301,7 @@ I've created a mapping against an Outer Join, and while the query returns rows, 
 ------------------------------------------------------------------------------------------------------------------
 
 Rows returned by an outer join may contain NULL for part of the primary key,
-as the primary key is the composite of both tables.  The :class:`.Query` object ignores incoming rows
+as the primary key is the composite of both tables.  The :class:`_query.Query` object ignores incoming rows
 that don't have an acceptable primary key.   Based on the setting of the ``allow_partial_pks``
 flag on :func:`.mapper`, a primary key is accepted if the value has at least one non-NULL
 value, or alternatively if the value has no NULL values.  See ``allow_partial_pks``
@@ -322,7 +322,7 @@ Query has no ``__len__()``, why not?
 
 The Python ``__len__()`` magic method applied to an object allows the ``len()``
 builtin to be used to determine the length of the collection. It's intuitive
-that a SQL query object would link ``__len__()`` to the :meth:`.Query.count`
+that a SQL query object would link ``__len__()`` to the :meth:`_query.Query.count`
 method, which emits a `SELECT COUNT`. The reason this is not possible is
 because evaluating the query as a list would incur two SQL calls instead of
 one::
@@ -348,7 +348,7 @@ How Do I use Textual SQL with ORM Queries?
 
 See:
 
-* :ref:`orm_tutorial_literal_sql` - Ad-hoc textual blocks with :class:`.Query`
+* :ref:`orm_tutorial_literal_sql` - Ad-hoc textual blocks with :class:`_query.Query`
 
 * :ref:`session_sql_expressions` - Using :class:`.Session` with textual SQL directly.
 
@@ -390,7 +390,7 @@ set ``o.foo`` is to do just that - set it!::
 
 Manipulation of foreign key attributes is of course entirely legal.  However,
 setting a foreign-key attribute to a new value currently does not trigger
-an "expire" event of the :func:`.relationship` in which it's involved.  This means
+an "expire" event of the :func:`_orm.relationship` in which it's involved.  This means
 that for the following sequence::
 
     o = Session.query(SomeClass).first()
@@ -450,7 +450,7 @@ have meaning until the row is inserted; otherwise there is no row yet::
 .. topic:: Attribute loading for non-persistent objects
 
     One variant on the "pending" behavior above is if we use the flag
-    ``load_on_pending`` on :func:`.relationship`.   When this flag is set, the
+    ``load_on_pending`` on :func:`_orm.relationship`.   When this flag is set, the
     lazy loader will emit for ``new_obj.foo`` before the INSERT proceeds; another
     variant of this is to use the :meth:`.Session.enable_relationship_loading`
     method, which can "attach" an object to a :class:`.Session` in such a way that
@@ -470,7 +470,7 @@ How do I walk all objects that are related to a given object?
 -------------------------------------------------------------
 
 An object that has other objects related to it will correspond to the
-:func:`.relationship` constructs set up between mappers.  This code fragment will
+:func:`_orm.relationship` constructs set up between mappers.  This code fragment will
 iterate all the objects, correcting for cycles as well::
 
     from sqlalchemy import inspect

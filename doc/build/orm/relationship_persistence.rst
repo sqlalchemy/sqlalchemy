@@ -49,14 +49,14 @@ identifiers were populated manually (again essentially bypassing
 :func:`~sqlalchemy.orm.relationship`).
 
 To enable the usage of a supplementary UPDATE statement,
-we use the :paramref:`~.relationship.post_update` option
-of :func:`.relationship`.  This specifies that the linkage between the
+we use the :paramref:`_orm.relationship.post_update` option
+of :func:`_orm.relationship`.  This specifies that the linkage between the
 two rows should be created using an UPDATE statement after both rows
 have been INSERTED; it also causes the rows to be de-associated with
 each other via UPDATE before a DELETE is emitted.  The flag should
 be placed on just *one* of the relationships, preferably the
 many-to-one side.  Below we illustrate
-a complete example, including two :class:`.ForeignKey` constructs::
+a complete example, including two :class:`_schema.ForeignKey` constructs::
 
     from sqlalchemy import Integer, ForeignKey, Column
     from sqlalchemy.ext.declarative import declarative_base
@@ -156,12 +156,12 @@ as illustrated below::
                                     foreign_keys=favorite_entry_id,
                                     post_update=True)
 
-The above mapping features a composite :class:`.ForeignKeyConstraint`
+The above mapping features a composite :class:`_schema.ForeignKeyConstraint`
 bridging the ``widget_id`` and ``favorite_entry_id`` columns.  To ensure
 that ``Widget.widget_id`` remains an "autoincrementing" column we specify
-:paramref:`~.Column.autoincrement` to the value ``"ignore_fk"``
-on :class:`.Column`, and additionally on each
-:func:`.relationship` we must limit those columns considered as part of
+:paramref:`_schema.Column.autoincrement` to the value ``"ignore_fk"``
+on :class:`_schema.Column`, and additionally on each
+:func:`_orm.relationship` we must limit those columns considered as part of
 the foreign key for the purposes of joining and cross-population.
 
 .. _passive_updates:
@@ -202,7 +202,7 @@ illustrates this is::
                     ForeignKey('user.username', onupdate="cascade")
                 )
 
-Above, we illustrate ``onupdate="cascade"`` on the :class:`.ForeignKey`
+Above, we illustrate ``onupdate="cascade"`` on the :class:`_schema.ForeignKey`
 object, and we also illustrate the ``mysql_engine='InnoDB'`` setting
 which, on a MySQL backend, ensures that the ``InnoDB`` engine supporting
 referential integrity is used.  When using SQLite, referential integrity
@@ -233,9 +233,9 @@ referential integrity, needs constraints to be marked as deferrable
 so that SQLAlchemy can emit UPDATE statements.
 
 The feature is enabled by setting the
-:paramref:`~.relationship.passive_updates` flag to ``False``,
+:paramref:`_orm.relationship.passive_updates` flag to ``False``,
 most preferably on a one-to-many or
-many-to-many :func:`.relationship`.  When "updates" are no longer
+many-to-many :func:`_orm.relationship`.  When "updates" are no longer
 "passive" this indicates that SQLAlchemy will
 issue UPDATE statements individually for
 objects referenced in the collection referred to by the parent object
