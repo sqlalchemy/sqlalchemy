@@ -127,8 +127,9 @@ class CircularDependencyError(SQLAlchemyError):
       or pre-deassociate one of the foreign key constrained values.
       The ``post_update`` flag described at :ref:`post_update` can resolve
       this cycle.
-    * In a :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
-      or :class:`.ForeignKeyConstraint` objects mutually refer to each
+    * In a :attr:`_schema.MetaData.sorted_tables` operation, two
+      :class:`_schema.ForeignKey`
+      or :class:`_schema.ForeignKeyConstraint` objects mutually refer to each
       other.  Apply the ``use_alter=True`` flag to one or both,
       see :ref:`use_alter`.
 
@@ -178,7 +179,8 @@ class DisconnectionError(SQLAlchemyError):
     """A disconnect is detected on a raw DB-API connection.
 
     This error is raised and consumed internally by a connection pool.  It can
-    be raised by the :meth:`.PoolEvents.checkout` event so that the host pool
+    be raised by the :meth:`_events.PoolEvents.checkout`
+    event so that the host pool
     forces a retry; the exception will be caught three times in a row before
     the pool gives up and raises :class:`~sqlalchemy.exc.InvalidRequestError`
     regarding the connection attempt.
@@ -191,12 +193,12 @@ class DisconnectionError(SQLAlchemyError):
 class InvalidatePoolError(DisconnectionError):
     """Raised when the connection pool should invalidate all stale connections.
 
-    A subclass of :class:`.DisconnectionError` that indicates that the
+    A subclass of :class:`_exc.DisconnectionError` that indicates that the
     disconnect situation encountered on the connection probably means the
     entire pool should be invalidated, as the database has been restarted.
 
     This exception will be handled otherwise the same way as
-    :class:`.DisconnectionError`, allowing three attempts to reconnect
+    :class:`_exc.DisconnectionError`, allowing three attempts to reconnect
     before giving up.
 
     .. versionadded:: 1.2

@@ -12,8 +12,8 @@ Control of logging for SA can be performed from the regular python logging
 module.  The regular dotted module namespace is used, starting at
 'sqlalchemy'.  For class-level logging, the class name is appended.
 
-The "echo" keyword parameter, available on SQLA :class:`.Engine`
-and :class:`.Pool` objects, corresponds to a logger specific to that
+The "echo" keyword parameter, available on SQLA :class:`_engine.Engine`
+and :class:`_pool.Pool` objects, corresponds to a logger specific to that
 instance only.
 
 """

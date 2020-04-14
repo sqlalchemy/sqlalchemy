@@ -27,7 +27,7 @@ Pooling
 
 Google App Engine connections appear to be randomly recycled,
 so the dialect does not pool connections.  The :class:`.NullPool`
-implementation is installed within the :class:`.Engine` by
+implementation is installed within the :class:`_engine.Engine` by
 default.
 
 """  # noqa

@@ -58,9 +58,9 @@ RETAIN_SCHEMA = util.symbol("retain_schema")
 
 BLANK_SCHEMA = util.symbol(
     "blank_schema",
-    """Symbol indicating that a :class:`.Table` or :class:`.Sequence`
+    """Symbol indicating that a :class:`_schema.Table` or :class:`.Sequence`
     should have 'None' for its schema, even if the parent
-    :class:`.MetaData` has specified a schema.
+    :class:`_schema.MetaData` has specified a schema.
 
     .. versionadded:: 1.0.14
 
@@ -117,7 +117,8 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
         "The :attr:`.SchemaItem.quote` attribute is deprecated and will be "
         "removed in a future release.  Use the :attr:`.quoted_name.quote` "
         "attribute on the ``name`` field of the target schema item to retrieve"
-        "quoted status.")
+        "quoted status.",
+    )
     def quote(self):
         """Return the value of the ``quote`` flag passed
         to this schema object, for those schema items which
@@ -134,7 +135,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
         The dictionary is automatically generated when first accessed.
         It can also be specified in the constructor of some objects,
-        such as :class:`.Table` and :class:`.Column`.
+        such as :class:`_schema.Table` and :class:`_schema.Column`.
 
         """
         return {}
@@ -159,12 +160,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                         Column('value', String(50))
                    )
 
-    The :class:`.Table` object constructs a unique instance of itself based
+    The :class:`_schema.Table`
+    object constructs a unique instance of itself based
     on its name and optional schema name within the given
-    :class:`.MetaData` object. Calling the :class:`.Table`
-    constructor with the same name and same :class:`.MetaData` argument
-    a second time will return the *same* :class:`.Table` object - in this way
-    the :class:`.Table` constructor acts as a registry function.
+    :class:`_schema.MetaData` object. Calling the :class:`_schema.Table`
+    constructor with the same name and same :class:`_schema.MetaData` argument
+    a second time will return the *same* :class:`_schema.Table`
+    object - in this way
+    the :class:`_schema.Table` constructor acts as a registry function.
 
     .. seealso::
 
@@ -175,10 +178,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     :param name: The name of this table as represented in the database.
 
         The table name, along with the value of the ``schema`` parameter,
-        forms a key which uniquely identifies this :class:`.Table` within
-        the owning :class:`.MetaData` collection.
-        Additional calls to :class:`.Table` with the same name, metadata,
-        and schema name will return the same :class:`.Table` object.
+        forms a key which uniquely identifies this :class:`_schema.Table`
+        within
+        the owning :class:`_schema.MetaData` collection.
+        Additional calls to :class:`_schema.Table` with the same name,
+        metadata,
+        and schema name will return the same :class:`_schema.Table` object.
 
         Names which contain no upper case characters
         will be treated as case insensitive names, and will not be quoted
@@ -190,26 +195,34 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ``quote=True`` to the constructor, or use the :class:`.quoted_name`
         construct to specify the name.
 
-    :param metadata: a :class:`.MetaData` object which will contain this
+    :param metadata: a :class:`_schema.MetaData`
+        object which will contain this
         table.  The metadata is used as a point of association of this table
         with other tables which are referenced via foreign key.  It also
         may be used to associate this table with a particular
         :class:`.Connectable`.
 
     :param \*args: Additional positional arguments are used primarily
-        to add the list of :class:`.Column` objects contained within this
+        to add the list of :class:`_schema.Column`
+        objects contained within this
         table. Similar to the style of a CREATE TABLE statement, other
         :class:`.SchemaItem` constructs may be added here, including
-        :class:`.PrimaryKeyConstraint`, and :class:`.ForeignKeyConstraint`.
+        :class:`.PrimaryKeyConstraint`, and
+        :class:`_schema.ForeignKeyConstraint`.
 
-    :param autoload: Defaults to False, unless :paramref:`.Table.autoload_with`
-        is set in which case it defaults to True; :class:`.Column` objects
+    :param autoload: Defaults to False, unless
+        :paramref:`_schema.Table.autoload_with`
+        is set in which case it defaults to True; :class:`_schema.Column`
+        objects
         for this table should be reflected from the database, possibly
-        augmenting or replacing existing :class:`.Column` objects that were
+        augmenting or replacing existing :class:`_schema.Column`
+        objects that were
         explicitly specified.
 
-        .. versionchanged:: 1.0.0 setting the :paramref:`.Table.autoload_with`
-           parameter implies that :paramref:`.Table.autoload` will default
+        .. versionchanged:: 1.0.0 setting the
+           :paramref:`_schema.Table.autoload_with`
+           parameter implies that :paramref:`_schema.Table.autoload`
+           will default
            to True.
 
         .. seealso::
@@ -217,68 +230,87 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             :ref:`metadata_reflection_toplevel`
 
     :param autoload_replace: Defaults to ``True``; when using
-        :paramref:`.Table.autoload`
-        in conjunction with :paramref:`.Table.extend_existing`, indicates
-        that :class:`.Column` objects present in the already-existing
-        :class:`.Table` object should be replaced with columns of the same
+        :paramref:`_schema.Table.autoload`
+        in conjunction with :paramref:`_schema.Table.extend_existing`,
+        indicates
+        that :class:`_schema.Column` objects present in the already-existing
+        :class:`_schema.Table`
+        object should be replaced with columns of the same
         name retrieved from the autoload process.   When ``False``, columns
         already present under existing names will be omitted from the
         reflection process.
 
-        Note that this setting does not impact :class:`.Column` objects
-        specified programmatically within the call to :class:`.Table` that
-        also is autoloading; those :class:`.Column` objects will always
+        Note that this setting does not impact :class:`_schema.Column` objects
+        specified programmatically within the call to :class:`_schema.Table`
+        that
+        also is autoloading; those :class:`_schema.Column` objects will always
         replace existing columns of the same name when
-        :paramref:`.Table.extend_existing` is ``True``.
+        :paramref:`_schema.Table.extend_existing` is ``True``.
 
         .. seealso::
 
-            :paramref:`.Table.autoload`
+            :paramref:`_schema.Table.autoload`
 
-            :paramref:`.Table.extend_existing`
+            :paramref:`_schema.Table.extend_existing`
 
-    :param autoload_with: An :class:`.Engine` or :class:`.Connection` object
-        with which this :class:`.Table` object will be reflected; when
-        set to a non-None value, it implies that :paramref:`.Table.autoload`
-        is ``True``.   If left unset, but :paramref:`.Table.autoload` is
+    :param autoload_with: An :class:`_engine.Engine` or
+        :class:`_engine.Connection` object
+        with which this :class:`_schema.Table` object will be reflected; when
+        set to a non-None value, it implies that
+        :paramref:`_schema.Table.autoload`
+        is ``True``.   If left unset, but :paramref:`_schema.Table.autoload`
+        is
         explicitly set to ``True``, an autoload operation will attempt to
-        proceed by locating an :class:`.Engine` or :class:`.Connection` bound
-        to the underlying :class:`.MetaData` object.
+        proceed by locating an :class:`_engine.Engine` or
+        :class:`_engine.Connection` bound
+        to the underlying :class:`_schema.MetaData` object.
 
         .. seealso::
 
-            :paramref:`.Table.autoload`
+            :paramref:`_schema.Table.autoload`
 
     :param extend_existing: When ``True``, indicates that if this
-        :class:`.Table` is already present in the given :class:`.MetaData`,
+        :class:`_schema.Table` is already present in the given
+        :class:`_schema.MetaData`,
         apply further arguments within the constructor to the existing
-        :class:`.Table`.
+        :class:`_schema.Table`.
 
-        If :paramref:`.Table.extend_existing` or
-        :paramref:`.Table.keep_existing` are not set, and the given name
-        of the new :class:`.Table` refers to a :class:`.Table` that is
-        already present in the target :class:`.MetaData` collection, and
-        this :class:`.Table` specifies additional columns or other constructs
+        If :paramref:`_schema.Table.extend_existing` or
+        :paramref:`_schema.Table.keep_existing` are not set,
+        and the given name
+        of the new :class:`_schema.Table` refers to a :class:`_schema.Table`
+        that is
+        already present in the target :class:`_schema.MetaData` collection,
+        and
+        this :class:`_schema.Table`
+        specifies additional columns or other constructs
         or flags that modify the table's state, an
         error is raised.  The purpose of these two mutually-exclusive flags
-        is to specify what action should be taken when a :class:`.Table`
-        is specified that matches an existing :class:`.Table`, yet specifies
+        is to specify what action should be taken when a
+        :class:`_schema.Table`
+        is specified that matches an existing :class:`_schema.Table`,
+        yet specifies
         additional constructs.
 
-        :paramref:`.Table.extend_existing` will also work in conjunction
-        with :paramref:`.Table.autoload` to run a new reflection
-        operation against the database, even if a :class:`.Table`
+        :paramref:`_schema.Table.extend_existing`
+        will also work in conjunction
+        with :paramref:`_schema.Table.autoload` to run a new reflection
+        operation against the database, even if a :class:`_schema.Table`
         of the same name is already present in the target
-        :class:`.MetaData`; newly reflected :class:`.Column` objects
+        :class:`_schema.MetaData`; newly reflected :class:`_schema.Column`
+        objects
         and other options will be added into the state of the
-        :class:`.Table`, potentially overwriting existing columns
+        :class:`_schema.Table`, potentially overwriting existing columns
         and options of the same name.
 
-        As is always the case with :paramref:`.Table.autoload`,
-        :class:`.Column` objects can be specified in the same :class:`.Table`
+        As is always the case with :paramref:`_schema.Table.autoload`,
+        :class:`_schema.Column` objects can be specified in the same
+        :class:`_schema.Table`
         constructor, which will take precedence.  Below, the existing
-        table ``mytable`` will be augmented with :class:`.Column` objects
-        both reflected from the database, as well as the given :class:`.Column`
+        table ``mytable`` will be augmented with :class:`_schema.Column`
+        objects
+        both reflected from the database, as well as the given
+        :class:`_schema.Column`
         named "y"::
 
             Table("mytable", metadata,
@@ -290,11 +322,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         .. seealso::
 
-            :paramref:`.Table.autoload`
+            :paramref:`_schema.Table.autoload`
 
-            :paramref:`.Table.autoload_replace`
+            :paramref:`_schema.Table.autoload_replace`
 
-            :paramref:`.Table.keep_existing`
+            :paramref:`_schema.Table.keep_existing`
 
 
     :param implicit_returning: True by default - indicates that
@@ -312,34 +344,41 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         :attr:`.SchemaItem.info` attribute of this object.
 
     :param keep_existing: When ``True``, indicates that if this Table
-        is already present in the given :class:`.MetaData`, ignore
+        is already present in the given :class:`_schema.MetaData`, ignore
         further arguments within the constructor to the existing
-        :class:`.Table`, and return the :class:`.Table` object as
+        :class:`_schema.Table`, and return the :class:`_schema.Table`
+        object as
         originally created. This is to allow a function that wishes
-        to define a new :class:`.Table` on first call, but on
-        subsequent calls will return the same :class:`.Table`,
+        to define a new :class:`_schema.Table` on first call, but on
+        subsequent calls will return the same :class:`_schema.Table`,
         without any of the declarations (particularly constraints)
         being applied a second time.
 
-        If :paramref:`.Table.extend_existing` or
-        :paramref:`.Table.keep_existing` are not set, and the given name
-        of the new :class:`.Table` refers to a :class:`.Table` that is
-        already present in the target :class:`.MetaData` collection, and
-        this :class:`.Table` specifies additional columns or other constructs
+        If :paramref:`_schema.Table.extend_existing` or
+        :paramref:`_schema.Table.keep_existing` are not set,
+        and the given name
+        of the new :class:`_schema.Table` refers to a :class:`_schema.Table`
+        that is
+        already present in the target :class:`_schema.MetaData` collection,
+        and
+        this :class:`_schema.Table`
+        specifies additional columns or other constructs
         or flags that modify the table's state, an
         error is raised.  The purpose of these two mutually-exclusive flags
-        is to specify what action should be taken when a :class:`.Table`
-        is specified that matches an existing :class:`.Table`, yet specifies
+        is to specify what action should be taken when a
+        :class:`_schema.Table`
+        is specified that matches an existing :class:`_schema.Table`,
+        yet specifies
         additional constructs.
 
         .. seealso::
 
-            :paramref:`.Table.extend_existing`
+            :paramref:`_schema.Table.extend_existing`
 
     :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
         which will be passed to :func:`.event.listen` upon construction.
         This alternate hook to :func:`.event.listen` allows the establishment
-        of a listener function specific to this :class:`.Table` before
+        of a listener function specific to this :class:`_schema.Table` before
         the "autoload" process begins.  Particularly useful for
         the :meth:`.DDLEvents.column_reflect` event::
 
@@ -355,7 +394,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 ])
 
     :param mustexist: When ``True``, indicates that this Table must already
-        be present in the given :class:`.MetaData` collection, else
+        be present in the given :class:`_schema.MetaData` collection, else
         an exception is raised.
 
     :param prefixes:
@@ -376,16 +415,23 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         the table resides in a schema other than the default selected schema
         for the engine's database connection.  Defaults to ``None``.
 
-        If the owning :class:`.MetaData` of this :class:`.Table` specifies its
-        own :paramref:`.MetaData.schema` parameter, then that schema name will
-        be applied to this :class:`.Table` if the schema parameter here is set
-        to ``None``.  To set a blank schema name on a :class:`.Table` that
-        would otherwise use the schema set on the owning :class:`.MetaData`,
+        If the owning :class:`_schema.MetaData` of this :class:`_schema.Table`
+        specifies its
+        own :paramref:`_schema.MetaData.schema` parameter,
+        then that schema name will
+        be applied to this :class:`_schema.Table`
+        if the schema parameter here is set
+        to ``None``.  To set a blank schema name on a :class:`_schema.Table`
+        that
+        would otherwise use the schema set on the owning
+        :class:`_schema.MetaData`,
         specify the special symbol :attr:`.BLANK_SCHEMA`.
 
         .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
-           allow a :class:`.Table` to have a blank schema name even when the
-           parent :class:`.MetaData` specifies :paramref:`.MetaData.schema`.
+           allow a :class:`_schema.Table`
+           to have a blank schema name even when the
+           parent :class:`_schema.MetaData` specifies
+           :paramref:`_schema.MetaData.schema`.
 
         The quoting rules for the schema name are the same as those for the
         ``name`` parameter, in that quoting is applied for reserved words or
@@ -393,13 +439,15 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         name, specify the flag ``quote_schema=True`` to the constructor, or use
         the :class:`.quoted_name` construct to specify the name.
 
-    :param useexisting: Deprecated.  Use :paramref:`.Table.extend_existing`.
+    :param useexisting: Deprecated.  Use
+                       :paramref:`_schema.Table.extend_existing`.
 
     :param comment: Optional string that will render an SQL comment on table
          creation.
 
-         .. versionadded:: 1.2 Added the :paramref:`.Table.comment` parameter
-            to :class:`.Table`.
+         .. versionadded:: 1.2 Added the :paramref:`_schema.Table.comment`
+            parameter
+            to :class:`_schema.Table`.
 
     :param \**kw: Additional keyword arguments not mentioned above are
         dialect specific, and passed in the form ``<dialectname>_<argname>``.
@@ -474,19 +522,20 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         "The :meth:`.SchemaItem.quote` method is deprecated and will be "
         "removed in a future release.  Use the :attr:`.quoted_name.quote` "
         "attribute on the ``schema`` field of the target schema item to "
-        "retrieve quoted status.")
+        "retrieve quoted status.",
+    )
     def quote_schema(self):
         """Return the value of the ``quote_schema`` flag passed
-        to this :class:`.Table`.
+        to this :class:`_schema.Table`.
         """
 
         return self.schema.quote
 
     def __init__(self, *args, **kw):
-        """Constructor for :class:`~.schema.Table`.
+        """Constructor for :class:`_schema.Table`.
 
         This method is a no-op.   See the top-level
-        documentation for :class:`~.schema.Table`
+        documentation for :class:`_schema.Table`
         for constructor arguments.
 
         """
@@ -600,10 +649,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     @property
     def foreign_key_constraints(self):
-        """:class:`.ForeignKeyConstraint` objects referred to by this
-        :class:`.Table`.
+        """:class:`_schema.ForeignKeyConstraint` objects referred to by this
+        :class:`_schema.Table`.
 
-        This list is produced from the collection of :class:`.ForeignKey`
+        This list is produced from the collection of
+        :class:`_schema.ForeignKey`
         objects currently associated.
 
         .. versionadded:: 1.0.0
@@ -677,12 +727,13 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     @property
     def key(self):
-        """Return the 'key' for this :class:`.Table`.
+        """Return the 'key' for this :class:`_schema.Table`.
 
         This value is used as the dictionary key within the
-        :attr:`.MetaData.tables` collection.   It is typically the same
-        as that of :attr:`.Table.name` for a table with no
-        :attr:`.Table.schema` set; otherwise it is typically of the form
+        :attr:`_schema.MetaData.tables` collection.   It is typically the same
+        as that of :attr:`_schema.Table.name` for a table with no
+        :attr:`_schema.Table.schema`
+        set; otherwise it is typically of the form
         ``schemaname.tablename``.
 
         """
@@ -720,13 +771,13 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         self._extra_dependencies.add(table)
 
     def append_column(self, column):
-        """Append a :class:`~.schema.Column` to this :class:`~.schema.Table`.
+        """Append a :class:`_schema.Column` to this :class:`_schema.Table`.
 
-        The "key" of the newly added :class:`~.schema.Column`, i.e. the
+        The "key" of the newly added :class:`_schema.Column`, i.e. the
         value of its ``.key`` attribute, will then be available
-        in the ``.c`` collection of this :class:`~.schema.Table`, and the
+        in the ``.c`` collection of this :class:`_schema.Table`, and the
         column definition will be included in any CREATE TABLE, SELECT,
-        UPDATE, etc. statements generated from this :class:`~.schema.Table`
+        UPDATE, etc. statements generated from this :class:`_schema.Table`
         construct.
 
         Note that this does **not** change the definition of the table
@@ -742,13 +793,13 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         column._set_parent_with_dispatch(self)
 
     def append_constraint(self, constraint):
-        """Append a :class:`~.schema.Constraint` to this
-        :class:`~.schema.Table`.
+        """Append a :class:`_schema.Constraint` to this
+        :class:`_schema.Table`.
 
         This has the effect of the constraint being included in any
         future CREATE TABLE statement, assuming specific DDL creation
         events have not been associated with the given
-        :class:`~.schema.Constraint` object.
+        :class:`_schema.Constraint` object.
 
         Note that this does **not** produce the constraint within the
         relational database automatically, for a table that already exists
@@ -804,12 +855,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this
-        :class:`.Table`, using the given :class:`.Connectable`
+        :class:`_schema.Table`, using the given :class:`.Connectable`
         for connectivity.
 
         .. seealso::
 
-            :meth:`.MetaData.create_all`.
+            :meth:`_schema.MetaData.create_all`.
 
         """
 
@@ -819,12 +870,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this
-        :class:`.Table`, using the given :class:`.Connectable`
+        :class:`_schema.Table`, using the given :class:`.Connectable`
         for connectivity.
 
         .. seealso::
 
-            :meth:`.MetaData.drop_all`.
+            :meth:`_schema.MetaData.drop_all`.
 
         """
         if bind is None:
@@ -838,8 +889,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         referred_schema_fn=None,
         name=None,
     ):
-        """Return a copy of this :class:`.Table` associated with a different
-        :class:`.MetaData`.
+        """Return a copy of this :class:`_schema.Table`
+        associated with a different
+        :class:`_schema.MetaData`.
 
         E.g.::
 
@@ -850,16 +902,19 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             m2 = MetaData()
             user_copy = user.tometadata(m2)
 
-        :param metadata: Target :class:`.MetaData` object, into which the
-         new :class:`.Table` object will be created.
+        :param metadata: Target :class:`_schema.MetaData` object,
+         into which the
+         new :class:`_schema.Table` object will be created.
 
         :param schema: optional string name indicating the target schema.
          Defaults to the special symbol :attr:`.RETAIN_SCHEMA` which indicates
          that no change to the schema name should be made in the new
-         :class:`.Table`.  If set to a string name, the new :class:`.Table`
+         :class:`_schema.Table`.  If set to a string name, the new
+         :class:`_schema.Table`
          will have this new name as the ``.schema``.  If set to ``None``, the
          schema will be set to that of the schema set on the target
-         :class:`.MetaData`, which is typically ``None`` as well, unless
+         :class:`_schema.MetaData`, which is typically ``None`` as well,
+         unless
          set explicitly::
 
             m2 = MetaData(schema='newschema')
@@ -874,10 +929,10 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         :param referred_schema_fn: optional callable which can be supplied
          in order to provide for the schema name that should be assigned
-         to the referenced table of a :class:`.ForeignKeyConstraint`.
-         The callable accepts this parent :class:`.Table`, the
+         to the referenced table of a :class:`_schema.ForeignKeyConstraint`.
+         The callable accepts this parent :class:`_schema.Table`, the
          target schema that we are changing to, the
-         :class:`.ForeignKeyConstraint` object, and the existing
+         :class:`_schema.ForeignKeyConstraint` object, and the existing
          "target schema" of that constraint.  The function should return the
          string schema name that should be applied.
          E.g.::
@@ -896,7 +951,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         :param name: optional string name indicating the target table name.
          If not specified or None, the table name is retained.  This allows
-         a :class:`.Table` to be copied to the same :class:`.MetaData` target
+         a :class:`_schema.Table` to be copied to the same
+         :class:`_schema.MetaData` target
          with a new name.
 
          .. versionadded:: 1.0.0
@@ -990,7 +1046,7 @@ class Column(SchemaItem, ColumnClause):
 
           The name field may be omitted at construction time and applied
           later, at any time before the Column is associated with a
-          :class:`.Table`.  This is to support convenient
+          :class:`_schema.Table`.  This is to support convenient
           usage within the :mod:`~sqlalchemy.ext.declarative` extension.
 
         :param type\_: The column's type, indicated using an instance which
@@ -1009,21 +1065,24 @@ class Column(SchemaItem, ColumnClause):
 
           If the ``type`` is ``None`` or is omitted, it will first default to
           the special type :class:`.NullType`.  If and when this
-          :class:`.Column` is made to refer to another column using
-          :class:`.ForeignKey` and/or :class:`.ForeignKeyConstraint`, the type
+          :class:`_schema.Column` is made to refer to another column using
+          :class:`_schema.ForeignKey` and/or
+          :class:`_schema.ForeignKeyConstraint`, the type
           of the remote-referenced column will be copied to this column as
           well, at the moment that the foreign key is resolved against that
-          remote :class:`.Column` object.
+          remote :class:`_schema.Column` object.
 
           .. versionchanged:: 0.9.0
-            Support for propagation of type to a :class:`.Column` from its
-            :class:`.ForeignKey` object has been improved and should be
+            Support for propagation of type to a :class:`_schema.Column`
+            from its
+            :class:`_schema.ForeignKey` object has been improved and should be
             more reliable and timely.
 
         :param \*args: Additional positional arguments include various
           :class:`.SchemaItem` derived constructs which will be applied
           as options to the column.  These include instances of
-          :class:`.Constraint`, :class:`.ForeignKey`, :class:`.ColumnDefault`,
+          :class:`.Constraint`, :class:`_schema.ForeignKey`,
+          :class:`.ColumnDefault`,
           and :class:`.Sequence`.  In some cases an equivalent keyword
           argument is available such as ``server_default``, ``default``
           and ``unique``.
@@ -1058,7 +1117,8 @@ class Column(SchemaItem, ColumnClause):
              (multi-column) primary keys, autoincrement is never implicitly
              enabled; as always, ``autoincrement=True`` will allow for
              at most one of those columns to be an "autoincrement" column.
-             ``autoincrement=True`` may also be set on a :class:`.Column`
+             ``autoincrement=True`` may also be set on a
+             :class:`_schema.Column`
              that has an explicit client-side or server-side default,
              subject to limitations of the backend database and dialect.
 
@@ -1069,7 +1129,8 @@ class Column(SchemaItem, ColumnClause):
 
           * Part of the primary key
 
-          * Not referring to another column via :class:`.ForeignKey`, unless
+          * Not referring to another column via :class:`_schema.ForeignKey`,
+            unless
             the value is specified as ``'ignore_fk'``::
 
                 # turn on autoincrement for this column despite
@@ -1107,14 +1168,15 @@ class Column(SchemaItem, ColumnClause):
 
 
         :param default: A scalar, Python callable, or
-            :class:`.ColumnElement` expression representing the
+            :class:`_expression.ColumnElement` expression representing the
             *default value* for this column, which will be invoked upon insert
             if this column is otherwise not specified in the VALUES clause of
             the insert. This is a shortcut to using :class:`.ColumnDefault` as
             a positional argument; see that class for full detail on the
             structure of the argument.
 
-            Contrast this argument to :paramref:`.Column.server_default`
+            Contrast this argument to
+            :paramref:`_schema.Column.server_default`
             which creates a default generator on the database side.
 
             .. seealso::
@@ -1123,11 +1185,13 @@ class Column(SchemaItem, ColumnClause):
 
         :param doc: optional String that can be used by the ORM or similar
             to document attributes on the Python side.   This attribute does
-            **not** render SQL comments; use the :paramref:`.Column.comment`
+            **not** render SQL comments; use the
+            :paramref:`_schema.Column.comment`
             parameter for this purpose.
 
         :param key: An optional string identifier which will identify this
-            ``Column`` object on the :class:`.Table`. When a key is provided,
+            ``Column`` object on the :class:`_schema.Table`.
+            When a key is provided,
             this is the only identifier referencing the ``Column`` within the
             application, including ORM attribute mapping; the ``name`` field
             is used only when rendering SQL.
@@ -1146,7 +1210,8 @@ class Column(SchemaItem, ColumnClause):
             ``True``, will normally generate nothing (in SQL this defaults to
             "NULL"), except in some very specific backend-specific edge cases
             where "NULL" may render explicitly.   Defaults to ``True`` unless
-            :paramref:`~.Column.primary_key` is also ``True``, in which case it
+            :paramref:`_schema.Column.primary_key` is also ``True``,
+            in which case it
             defaults to ``False``.  This parameter is only used when issuing
             CREATE TABLE statements.
 
@@ -1165,7 +1230,7 @@ class Column(SchemaItem, ColumnClause):
         :param primary_key: If ``True``, marks this column as a primary key
             column. Multiple columns can have this flag set to specify
             composite primary keys. As an alternative, the primary key of a
-            :class:`.Table` can be specified via an explicit
+            :class:`_schema.Table` can be specified via an explicit
             :class:`.PrimaryKeyConstraint` object.
 
         :param server_default: A :class:`.FetchedValue` instance, str, Unicode
@@ -1238,8 +1303,9 @@ class Column(SchemaItem, ColumnClause):
         :param comment: Optional string that will render an SQL comment on
              table creation.
 
-             .. versionadded:: 1.2 Added the :paramref:`.Column.comment`
-                parameter to :class:`.Column`.
+             .. versionadded:: 1.2 Added the
+                :paramref:`_schema.Column.comment`
+                parameter to :class:`_schema.Column`.
 
 
         """
@@ -1585,7 +1651,8 @@ class Column(SchemaItem, ColumnClause):
 class ForeignKey(DialectKWArgs, SchemaItem):
     """Defines a dependency between two columns.
 
-    ``ForeignKey`` is specified as an argument to a :class:`.Column` object,
+    ``ForeignKey`` is specified as an argument to a :class:`_schema.Column`
+    object,
     e.g.::
 
         t = Table("remote_table", metadata,
@@ -1594,24 +1661,26 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     Note that ``ForeignKey`` is only a marker object that defines
     a dependency between two columns.   The actual constraint
-    is in all cases represented by the :class:`.ForeignKeyConstraint`
+    is in all cases represented by the :class:`_schema.ForeignKeyConstraint`
     object.   This object will be generated automatically when
-    a ``ForeignKey`` is associated with a :class:`.Column` which
-    in turn is associated with a :class:`.Table`.   Conversely,
-    when :class:`.ForeignKeyConstraint` is applied to a :class:`.Table`,
+    a ``ForeignKey`` is associated with a :class:`_schema.Column` which
+    in turn is associated with a :class:`_schema.Table`.   Conversely,
+    when :class:`_schema.ForeignKeyConstraint` is applied to a
+    :class:`_schema.Table`,
     ``ForeignKey`` markers are automatically generated to be
-    present on each associated :class:`.Column`, which are also
+    present on each associated :class:`_schema.Column`, which are also
     associated with the constraint object.
 
     Note that you cannot define a "composite" foreign key constraint,
     that is a constraint between a grouping of multiple parent/child
     columns, using ``ForeignKey`` objects.   To define this grouping,
-    the :class:`.ForeignKeyConstraint` object must be used, and applied
-    to the :class:`.Table`.   The associated ``ForeignKey`` objects
+    the :class:`_schema.ForeignKeyConstraint` object must be used, and applied
+    to the :class:`_schema.Table`.   The associated ``ForeignKey`` objects
     are created automatically.
 
     The ``ForeignKey`` objects associated with an individual
-    :class:`.Column` object are available in the `foreign_keys` collection
+    :class:`_schema.Column`
+    object are available in the `foreign_keys` collection
     of that column.
 
     Further examples of foreign key configuration are in
@@ -1639,12 +1708,13 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         r"""
         Construct a column-level FOREIGN KEY.
 
-        The :class:`.ForeignKey` object when constructed generates a
-        :class:`.ForeignKeyConstraint` which is associated with the parent
-        :class:`.Table` object's collection of constraints.
+        The :class:`_schema.ForeignKey` object when constructed generates a
+        :class:`_schema.ForeignKeyConstraint`
+        which is associated with the parent
+        :class:`_schema.Table` object's collection of constraints.
 
         :param column: A single target column for the key relationship. A
-            :class:`.Column` object or a column name as a string:
+            :class:`_schema.Column` object or a column name as a string:
             ``tablename.columnkey`` or ``schema.tablename.columnkey``.
             ``columnkey`` is the ``key`` which has been assigned to the column
             (defaults to the column name itself), unless ``link_to_name`` is
@@ -1672,14 +1742,15 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             assigned ``key``.
 
         :param use_alter: passed to the underlying
-            :class:`.ForeignKeyConstraint` to indicate the constraint should
+            :class:`_schema.ForeignKeyConstraint`
+            to indicate the constraint should
             be generated/dropped externally from the CREATE TABLE/ DROP TABLE
-            statement.  See :paramref:`.ForeignKeyConstraint.use_alter`
+            statement.  See :paramref:`_schema.ForeignKeyConstraint.use_alter`
             for further description.
 
             .. seealso::
 
-                :paramref:`.ForeignKeyConstraint.use_alter`
+                :paramref:`_schema.ForeignKeyConstraint.use_alter`
 
                 :ref:`use_alter`
 
@@ -1695,7 +1766,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  The
             arguments are ultimately handled by a corresponding
-            :class:`.ForeignKeyConstraint`.  See the documentation regarding
+            :class:`_schema.ForeignKeyConstraint`.
+            See the documentation regarding
             an individual dialect at :ref:`dialect_toplevel` for detail on
             documented arguments.
 
@@ -1748,16 +1820,16 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         return "ForeignKey(%r)" % self._get_colspec()
 
     def copy(self, schema=None):
-        """Produce a copy of this :class:`.ForeignKey` object.
+        """Produce a copy of this :class:`_schema.ForeignKey` object.
 
-        The new :class:`.ForeignKey` will not be bound
-        to any :class:`.Column`.
+        The new :class:`_schema.ForeignKey` will not be bound
+        to any :class:`_schema.Column`.
 
         This method is usually used by the internal
-        copy procedures of :class:`.Column`, :class:`.Table`,
-        and :class:`.MetaData`.
+        copy procedures of :class:`_schema.Column`, :class:`_schema.Table`,
+        and :class:`_schema.MetaData`.
 
-        :param schema: The returned :class:`.ForeignKey` will
+        :param schema: The returned :class:`_schema.ForeignKey` will
           reference the original table and column name, qualified
           by the given string schema name.
 
@@ -1779,7 +1851,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     def _get_colspec(self, schema=None, table_name=None):
         """Return a string based 'column specification' for this
-        :class:`.ForeignKey`.
+        :class:`_schema.ForeignKey`.
 
         This is usually the equivalent of the string-based "tablename.colname"
         argument first passed to the object's constructor.
@@ -1821,17 +1893,20 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     target_fullname = property(_get_colspec)
 
     def references(self, table):
-        """Return True if the given :class:`.Table` is referenced by this
-        :class:`.ForeignKey`."""
+        """Return True if the given :class:`_schema.Table`
+        is referenced by this
+        :class:`_schema.ForeignKey`."""
 
         return table.corresponding_column(self.column) is not None
 
     def get_referent(self, table):
-        """Return the :class:`.Column` in the given :class:`.Table`
-        referenced by this :class:`.ForeignKey`.
+        """Return the :class:`_schema.Column` in the given
+        :class:`_schema.Table`
+        referenced by this :class:`_schema.ForeignKey`.
 
-        Returns None if this :class:`.ForeignKey` does not reference the given
-        :class:`.Table`.
+        Returns None if this :class:`_schema.ForeignKey`
+        does not reference the given
+        :class:`_schema.Table`.
 
         """
 
@@ -1957,8 +2032,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     @util.memoized_property
     def column(self):
-        """Return the target :class:`.Column` referenced by this
-        :class:`.ForeignKey`.
+        """Return the target :class:`_schema.Column` referenced by this
+        :class:`_schema.ForeignKey`.
 
         If no target column has been established, an exception
         is raised.
@@ -2121,7 +2196,7 @@ class ColumnDefault(DefaultGenerator):
 
     :class:`.ColumnDefault` is generated automatically
     whenever the ``default``, ``onupdate`` arguments of
-    :class:`.Column` are used.  A :class:`.ColumnDefault`
+    :class:`_schema.Column` are used.  A :class:`.ColumnDefault`
     can be passed positionally as well.
 
     For example, the following::
@@ -2146,7 +2221,7 @@ class ColumnDefault(DefaultGenerator):
            string, integer, boolean, or other simple type.
            The default value will be used as is each time.
          * a SQL expression, that is one which derives from
-           :class:`.ColumnElement`.  The SQL expression will
+           :class:`_expression.ColumnElement`.  The SQL expression will
            be rendered into the INSERT or UPDATE statement,
            or in the case of a primary key column when
            RETURNING is not used may be
@@ -2157,7 +2232,7 @@ class ColumnDefault(DefaultGenerator):
            zero or one positional arguments.  The one-argument form
            will receive an instance of the :class:`.ExecutionContext`,
            which provides contextual information as to the current
-           :class:`.Connection` in use as well as the current
+           :class:`_engine.Connection` in use as well as the current
            statement and parameters.
 
         """
@@ -2237,8 +2312,9 @@ class Sequence(DefaultGenerator):
 
     The :class:`.Sequence` object represents the name and configurational
     parameters of a database sequence.   It also represents
-    a construct that can be "executed" by a SQLAlchemy :class:`.Engine`
-    or :class:`.Connection`, rendering the appropriate "next value" function
+    a construct that can be "executed" by a SQLAlchemy :class:`_engine.Engine`
+    or :class:`_engine.Connection`,
+    rendering the appropriate "next value" function
     for the target database and returning a result.
 
     The :class:`.Sequence` is typically associated with a primary key column::
@@ -2249,7 +2325,7 @@ class Sequence(DefaultGenerator):
             primary_key=True)
         )
 
-    When CREATE TABLE is emitted for the above :class:`.Table`, if the
+    When CREATE TABLE is emitted for the above :class:`_schema.Table`, if the
     target platform supports sequences, a CREATE SEQUENCE statement will
     be emitted as well.   For platforms that don't support sequences,
     the :class:`.Sequence` construct is ignored.
@@ -2347,8 +2423,9 @@ class Sequence(DefaultGenerator):
 
         :param schema: Optional schema name for the sequence, if located
          in a schema other than the default.  The rules for selecting the
-         schema name when a :class:`.MetaData` is also present are the same
-         as that of :paramref:`.Table.schema`.
+         schema name when a :class:`_schema.MetaData`
+         is also present are the same
+         as that of :paramref:`_schema.Table.schema`.
 
         :param cache: optional integer value; number of future values in the
          sequence which are calculated in advance.  Renders the CACHE keyword
@@ -2376,27 +2453,32 @@ class Sequence(DefaultGenerator):
         :param quote_schema: set the quoting preferences for the ``schema``
          name.
 
-        :param metadata: optional :class:`.MetaData` object which this
+        :param metadata: optional :class:`_schema.MetaData` object which this
          :class:`.Sequence` will be associated with.  A :class:`.Sequence`
-         that is associated with a :class:`.MetaData` gains the following
+         that is associated with a :class:`_schema.MetaData`
+         gains the following
          capabilities:
 
-         * The :class:`.Sequence` will inherit the :paramref:`.MetaData.schema`
-           parameter specified to the target :class:`.MetaData`, which
+         * The :class:`.Sequence` will inherit the
+           :paramref:`_schema.MetaData.schema`
+           parameter specified to the target :class:`_schema.MetaData`, which
            affects the production of CREATE / DROP DDL, if any.
 
          * The :meth:`.Sequence.create` and :meth:`.Sequence.drop` methods
-           automatically use the engine bound to the :class:`.MetaData`
+           automatically use the engine bound to the :class:`_schema.MetaData`
            object, if any.
 
-         * The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all`
+         * The :meth:`_schema.MetaData.create_all` and
+           :meth:`_schema.MetaData.drop_all`
            methods will emit CREATE / DROP for this :class:`.Sequence`,
            even if the :class:`.Sequence` is not associated with any
-           :class:`.Table` / :class:`.Column` that's a member of this
-           :class:`.MetaData`.
+           :class:`_schema.Table` / :class:`_schema.Column`
+           that's a member of this
+           :class:`_schema.MetaData`.
 
          The above behaviors can only occur if the :class:`.Sequence` is
-         explicitly associated with the :class:`.MetaData` via this parameter.
+         explicitly associated with the :class:`_schema.MetaData`
+         via this parameter.
 
          .. seealso::
 
@@ -2404,7 +2486,8 @@ class Sequence(DefaultGenerator):
             :paramref:`.Sequence.metadata` parameter.
 
         :param for_update: Indicates this :class:`.Sequence`, when associated
-         with a :class:`.Column`, should be invoked for UPDATE statements
+         with a :class:`_schema.Column`,
+         should be invoked for UPDATE statements
          on that column's table, rather than for INSERT statements, when
          no value is otherwise present for that column in the statement.
 
@@ -2551,7 +2634,7 @@ class DefaultClause(FetchedValue):
 
     :class:`.DefaultClause` is generated automatically
     whenever the ``server_default``, ``server_onupdate`` arguments of
-    :class:`.Column` are used.  A :class:`.DefaultClause`
+    :class:`_schema.Column` are used.  A :class:`.DefaultClause`
     can be passed positionally as well.
 
     For example, the following::
@@ -2705,7 +2788,8 @@ def _to_schema_column_or_string(element):
 class ColumnCollectionMixin(object):
 
     columns = None
-    """A :class:`.ColumnCollection` of :class:`.Column` objects.
+    """A :class:`_expression.ColumnCollection` of :class:`_schema.Column`
+    objects.
 
     This collection represents the columns which are referred to by
     this object.
@@ -2829,7 +2913,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         )
 
     columns = None
-    """A :class:`.ColumnCollection` representing the set of columns
+    """A :class:`_expression.ColumnCollection` representing the set of columns
     for this constraint.
 
     """
@@ -2854,7 +2938,8 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         """Return True if this constraint contains the given column.
 
         Note that this object also contains an attribute ``.columns``
-        which is a :class:`.ColumnCollection` of :class:`.Column` objects.
+        which is a :class:`_expression.ColumnCollection` of
+        :class:`_schema.Column` objects.
 
         """
 
@@ -2896,7 +2981,8 @@ class CheckConstraint(ColumnCollectionConstraint):
         :param sqltext:
           A string containing the constraint definition, which will be used
           verbatim, or a SQL expression construct.   If given as a string,
-          the object is converted to a :class:`.Text` object.   If the textual
+          the object is converted to a :class:`_expression.TextClause` object.
+          If the textual
           string includes a colon character, escape this using a backslash::
 
             CheckConstraint(r"foo ~ E'a(?\:b|c)d")
@@ -2968,9 +3054,10 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
     Defines a single column or composite FOREIGN KEY ... REFERENCES
     constraint. For a no-frills, single column foreign key, adding a
-    :class:`.ForeignKey` to the definition of a :class:`.Column` is a
+    :class:`_schema.ForeignKey` to the definition of a :class:`_schema.Column`
+    is a
     shorthand equivalent for an unnamed, single column
-    :class:`.ForeignKeyConstraint`.
+    :class:`_schema.ForeignKeyConstraint`.
 
     Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
 
@@ -3030,16 +3117,17 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
           have been created, and drop it via an ALTER TABLE statement before
           the full collection of tables are dropped.
 
-          The use of :paramref:`.ForeignKeyConstraint.use_alter` is
+          The use of :paramref:`_schema.ForeignKeyConstraint.use_alter` is
           particularly geared towards the case where two or more tables
           are established within a mutually-dependent foreign key constraint
-          relationship; however, the :meth:`.MetaData.create_all` and
-          :meth:`.MetaData.drop_all` methods will perform this resolution
+          relationship; however, the :meth:`_schema.MetaData.create_all` and
+          :meth:`_schema.MetaData.drop_all`
+          methods will perform this resolution
           automatically, so the flag is normally not needed.
 
           .. versionchanged:: 1.0.0  Automatic resolution of foreign key
              cycles has been added, removing the need to use the
-             :paramref:`.ForeignKeyConstraint.use_alter` in typical use
+             :paramref:`_schema.ForeignKeyConstraint.use_alter` in typical use
              cases.
 
           .. seealso::
@@ -3127,15 +3215,16 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self.elements.append(fk)
 
     columns = None
-    """A :class:`.ColumnCollection` representing the set of columns
+    """A :class:`_expression.ColumnCollection` representing the set of columns
     for this constraint.
 
     """
 
     elements = None
-    """A sequence of :class:`.ForeignKey` objects.
+    """A sequence of :class:`_schema.ForeignKey` objects.
 
-    Each :class:`.ForeignKey` represents a single referring column/referred
+    Each :class:`_schema.ForeignKey`
+    represents a single referring column/referred
     column pair.
 
     This collection is intended to be read-only.
@@ -3156,8 +3245,8 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
     @property
     def referred_table(self):
-        """The :class:`.Table` object to which this
-        :class:`.ForeignKeyConstraint` references.
+        """The :class:`_schema.Table` object to which this
+        :class:`_schema.ForeignKeyConstraint` references.
 
         This is a dynamically calculated attribute which may not be available
         if the constraint and/or parent table is not yet associated with
@@ -3181,11 +3270,11 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     @property
     def column_keys(self):
         """Return a list of string keys representing the local
-        columns in this :class:`.ForeignKeyConstraint`.
+        columns in this :class:`_schema.ForeignKeyConstraint`.
 
         This list is either the original string arguments sent
-        to the constructor of the :class:`.ForeignKeyConstraint`,
-        or if the constraint has been initialized with :class:`.Column`
+        to the constructor of the :class:`_schema.ForeignKeyConstraint`,
+        or if the constraint has been initialized with :class:`_schema.Column`
         objects, is the string .key of each element.
 
         .. versionadded:: 1.0.0
@@ -3252,9 +3341,9 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     """A table-level PRIMARY KEY constraint.
 
     The :class:`.PrimaryKeyConstraint` object is present automatically
-    on any :class:`.Table` object; it is assigned a set of
-    :class:`.Column` objects corresponding to those marked with
-    the :paramref:`.Column.primary_key` flag::
+    on any :class:`_schema.Table` object; it is assigned a set of
+    :class:`_schema.Column` objects corresponding to those marked with
+    the :paramref:`_schema.Column.primary_key` flag::
 
         >>> my_table = Table('mytable', metadata,
         ...                 Column('id', Integer, primary_key=True),
@@ -3269,7 +3358,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                    primary_key=True, nullable=False)
         )
 
-    The primary key of a :class:`.Table` can also be specified by using
+    The primary key of a :class:`_schema.Table` can also be specified by using
     a :class:`.PrimaryKeyConstraint` object explicitly; in this mode of usage,
     the "name" of the constraint can also be specified, as well as other
     options which may be recognized by dialects::
@@ -3302,7 +3391,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     :class:`.PrimaryKeyConstraint`, but the usual style of using
     ``primary_key=True`` flags is still desirable, an empty
     :class:`.PrimaryKeyConstraint` may be specified, which will take on the
-    primary key column collection from the :class:`.Table` based on the
+    primary key column collection from the :class:`_schema.Table` based on the
     flags::
 
         my_table = Table('mytable', metadata,
@@ -3316,7 +3405,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     .. versionadded:: 0.9.2 an empty :class:`.PrimaryKeyConstraint` may now
        be specified for the purposes of establishing keyword arguments with
        the constraint, independently of the specification of "primary key"
-       columns within the :class:`.Table` itself; columns marked as
+       columns within the :class:`_schema.Table` itself; columns marked as
        ``primary_key=True`` will be gathered into the empty constraint's
        column collection.
 
@@ -3372,7 +3461,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         This is basically like putting a whole new
         :class:`.PrimaryKeyConstraint` object on the parent
-        :class:`.Table` object without actually replacing the object.
+        :class:`_schema.Table` object without actually replacing the object.
 
         The ordering of the given list of columns is also maintained; these
         columns will be appended to the list of columns after any which
@@ -3487,7 +3576,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         Index("some_index", sometable.c.name)
 
     For a no-frills, single column index, adding
-    :class:`.Column` also supports ``index=True``::
+    :class:`_schema.Column` also supports ``index=True``::
 
         sometable = Table("sometable", metadata,
                         Column("name", String(50), index=True)
@@ -3499,13 +3588,15 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
     Functional indexes are supported as well, typically by using the
     :data:`.func` construct in conjunction with table-bound
-    :class:`.Column` objects::
+    :class:`_schema.Column` objects::
 
         Index("some_index", func.lower(sometable.c.name))
 
-    An :class:`.Index` can also be manually associated with a :class:`.Table`,
+    An :class:`.Index` can also be manually associated with a
+    :class:`_schema.Table`,
     either through inline declaration or using
-    :meth:`.Table.append_constraint`.  When this approach is used, the names
+    :meth:`_schema.Table.append_constraint`.  When this approach is used,
+    the names
     of the indexed columns can be specified as strings::
 
         Table("sometable", metadata,
@@ -3515,7 +3606,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
                 )
 
     To support functional or expression-based indexes in this form, the
-    :func:`.text` construct may be used::
+    :func:`_expression.text` construct may be used::
 
         from sqlalchemy import text
 
@@ -3525,9 +3616,10 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
                         Index("some_index", text("lower(name)"))
                 )
 
-    .. versionadded:: 0.9.5 the :func:`.text` construct may be used to
+    .. versionadded:: 0.9.5 the :func:`_expression.text`
+       construct may be used to
        specify :class:`.Index` expressions, provided the :class:`.Index`
-       is explicitly associated with the :class:`.Table`.
+       is explicitly associated with the :class:`_schema.Table`.
 
 
     .. seealso::
@@ -3555,9 +3647,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         :param \*expressions:
           Column expressions to include in the index.   The expressions
-          are normally instances of :class:`.Column`, but may also
+          are normally instances of :class:`_schema.Column`, but may also
           be arbitrary SQL expressions which ultimately refer to a
-          :class:`.Column`.
+          :class:`_schema.Column`.
 
         :param unique=False:
             Keyword only argument; if True, create a unique index.
@@ -3565,7 +3657,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         :param quote=None:
             Keyword only argument; whether to apply quoting to the name of
             the index.  Works in the same manner as that of
-            :paramref:`.Column.quote`.
+            :paramref:`_schema.Column.quote`.
 
         :param info=None: Optional data dictionary which will be populated
             into the :attr:`.SchemaItem.info` attribute of this object.
@@ -3648,7 +3740,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         .. seealso::
 
-            :meth:`.MetaData.create_all`.
+            :meth:`_schema.MetaData.create_all`.
 
         """
         if bind is None:
@@ -3663,7 +3755,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 
         .. seealso::
 
-            :meth:`.MetaData.drop_all`.
+            :meth:`_schema.MetaData.drop_all`.
 
         """
         if bind is None:
@@ -3684,20 +3776,22 @@ DEFAULT_NAMING_CONVENTION = util.immutabledict({"ix": "ix_%(column_0_label)s"})
 
 
 class MetaData(SchemaItem):
-    """A collection of :class:`.Table` objects and their associated schema
+    """A collection of :class:`_schema.Table`
+    objects and their associated schema
     constructs.
 
-    Holds a collection of :class:`.Table` objects as well as
-    an optional binding to an :class:`.Engine` or
-    :class:`.Connection`.  If bound, the :class:`.Table` objects
+    Holds a collection of :class:`_schema.Table` objects as well as
+    an optional binding to an :class:`_engine.Engine` or
+    :class:`_engine.Connection`.  If bound, the :class:`_schema.Table` objects
     in the collection and their columns may participate in implicit SQL
     execution.
 
-    The :class:`.Table` objects themselves are stored in the
-    :attr:`.MetaData.tables` dictionary.
+    The :class:`_schema.Table` objects themselves are stored in the
+    :attr:`_schema.MetaData.tables` dictionary.
 
-    :class:`.MetaData` is a thread-safe object for read operations.
-    Construction of new tables within a single :class:`.MetaData` object,
+    :class:`_schema.MetaData` is a thread-safe object for read operations.
+    Construction of new tables within a single :class:`_schema.MetaData`
+    object,
     either explicitly or via reflection, may not be completely thread-safe.
 
     .. seealso::
@@ -3730,42 +3824,52 @@ class MetaData(SchemaItem):
 
           .. deprecated:: 0.8
 
-                The :paramref:`.MetaData.reflect` flag is deprecated and will
+                The :paramref:`_schema.MetaData.reflect`
+                flag is deprecated and will
                 be removed in a future release.   Please use the
-                :meth:`.MetaData.reflect` method.
+                :meth:`_schema.MetaData.reflect` method.
 
         :param schema:
-           The default schema to use for the :class:`.Table`,
+           The default schema to use for the :class:`_schema.Table`,
            :class:`.Sequence`, and potentially other objects associated with
-           this :class:`.MetaData`. Defaults to ``None``.
+           this :class:`_schema.MetaData`. Defaults to ``None``.
 
-           When this value is set, any :class:`.Table` or :class:`.Sequence`
+           When this value is set, any :class:`_schema.Table` or
+           :class:`.Sequence`
            which specifies ``None`` for the schema parameter will instead
-           have this schema name defined.  To build a :class:`.Table`
+           have this schema name defined.  To build a :class:`_schema.Table`
            or :class:`.Sequence` that still has ``None`` for the schema
            even when this parameter is present, use the :attr:`.BLANK_SCHEMA`
            symbol.
 
            .. note::
 
-                As refered above, the :paramref:`.MetaData.schema` parameter
+                As refered above, the :paramref:`_schema.MetaData.schema`
+                parameter
                 only refers to the **default value** that will be applied to
-                the :paramref:`.Table.schema` parameter of an incoming
-                :class:`.Table` object.   It does not refer to how the
-                :class:`.Table` is catalogued within the :class:`.MetaData`,
-                which remains consistent vs. a :class:`.MetaData` collection
-                that does not define this parameter.  The :class:`.Table`
-                within the :class:`.MetaData` will still be keyed based on its
+                the :paramref:`_schema.Table.schema` parameter of an incoming
+                :class:`_schema.Table` object.   It does not refer to how the
+                :class:`_schema.Table` is catalogued within the
+                :class:`_schema.MetaData`,
+                which remains consistent vs. a :class:`_schema.MetaData`
+                collection
+                that does not define this parameter.  The
+                :class:`_schema.Table`
+                within the :class:`_schema.MetaData`
+                will still be keyed based on its
                 schema-qualified name, e.g.
                 ``my_metadata.tables["some_schema.my_table"]``.
 
-                The current behavior of the :class:`.ForeignKey` object is to
+                The current behavior of the :class:`_schema.ForeignKey`
+                object is to
                 circumvent this restriction, where it can locate a table given
                 the table name alone, where the schema will be assumed to be
                 present from this value as specified on the owning
-                :class:`.MetaData` collection.  However, this implies  that a
+                :class:`_schema.MetaData` collection.  However,
+                this implies  that a
                 table qualified with BLANK_SCHEMA cannot currently be referred
-                to by string name from :class:`.ForeignKey`.    Other parts of
+                to by string name from :class:`_schema.ForeignKey`.
+                Other parts of
                 SQLAlchemy such as Declarative may not have similar behaviors
                 built in, however may do so in a future release, along with a
                 consistent method of referring to a table in BLANK_SCHEMA.
@@ -3773,12 +3877,12 @@ class MetaData(SchemaItem):
 
            .. seealso::
 
-                :paramref:`.Table.schema`
+                :paramref:`_schema.Table.schema`
 
                 :paramref:`.Sequence.schema`
 
         :param quote_schema:
-            Sets the ``quote_schema`` flag for those :class:`.Table`,
+            Sets the ``quote_schema`` flag for those :class:`_schema.Table`,
             :class:`.Sequence`, and other objects which make usage of the
             local ``schema`` name.
 
@@ -3795,7 +3899,8 @@ class MetaData(SchemaItem):
           The keys of this dictionary may be:
 
           * a constraint or Index class, e.g. the :class:`.UniqueConstraint`,
-            :class:`.ForeignKeyConstraint` class, the :class:`.Index` class
+            :class:`_schema.ForeignKeyConstraint` class, the :class:`.Index`
+            class
 
           * a string mnemonic for one of the known constraint classes;
             ``"fk"``, ``"pk"``, ``"ix"``, ``"ck"``, ``"uq"`` for foreign key,
@@ -3810,31 +3915,36 @@ class MetaData(SchemaItem):
           which describe how the name should be composed.  The values
           associated with user-defined "token" keys should be callables of the
           form ``fn(constraint, table)``, which accepts the constraint/index
-          object and :class:`.Table` as arguments, returning a string
+          object and :class:`_schema.Table` as arguments, returning a string
           result.
 
           The built-in names are as follows, some of which may only be
           available for certain types of constraint:
 
-            * ``%(table_name)s`` - the name of the :class:`.Table` object
+            * ``%(table_name)s`` - the name of the :class:`_schema.Table`
+              object
               associated with the constraint.
 
-            * ``%(referred_table_name)s`` - the name of the :class:`.Table`
+            * ``%(referred_table_name)s`` - the name of the
+              :class:`_schema.Table`
               object associated with the referencing target of a
-              :class:`.ForeignKeyConstraint`.
+              :class:`_schema.ForeignKeyConstraint`.
 
-            * ``%(column_0_name)s`` - the name of the :class:`.Column` at
+            * ``%(column_0_name)s`` - the name of the :class:`_schema.Column`
+              at
               index position "0" within the constraint.
 
-            * ``%(column_0_label)s`` - the label of the :class:`.Column` at
-              index position "0", e.g. :attr:`.Column.label`
+            * ``%(column_0_label)s`` - the label of the
+              :class:`_schema.Column` at
+              index position "0", e.g. :attr:`_schema.Column.label`
 
-            * ``%(column_0_key)s`` - the key of the :class:`.Column` at
-              index position "0", e.g. :attr:`.Column.key`
+            * ``%(column_0_key)s`` - the key of the :class:`_schema.Column` at
+              index position "0", e.g. :attr:`_schema.Column.key`
 
-            * ``%(referred_column_0_name)s`` - the name of a :class:`.Column`
+            * ``%(referred_column_0_name)s`` - the name of a
+              :class:`_schema.Column`
               at index position "0" referenced by a
-              :class:`.ForeignKeyConstraint`.
+              :class:`_schema.ForeignKeyConstraint`.
 
             * ``%(constraint_name)s`` - a special key that refers to the
               existing name given to the constraint.  When this key is
@@ -3878,16 +3988,20 @@ class MetaData(SchemaItem):
             self.reflect()
 
     tables = None
-    """A dictionary of :class:`.Table` objects keyed to their name or "table key".
+    """A dictionary of :class:`_schema.Table`
+    objects keyed to their name or "table key".
 
-    The exact key is that determined by the :attr:`.Table.key` attribute;
-    for a table with no :attr:`.Table.schema` attribute, this is the same
-    as :attr:`.Table.name`.  For a table with a schema, it is typically of the
+    The exact key is that determined by the :attr:`_schema.Table.key`
+    attribute;
+    for a table with no :attr:`_schema.Table.schema` attribute,
+    this is the same
+    as :attr:`_schema.Table.name`.  For a table with a schema,
+    it is typically of the
     form ``schemaname.tablename``.
 
     .. seealso::
 
-        :attr:`.MetaData.sorted_tables`
+        :attr:`_schema.MetaData.sorted_tables`
 
     """
 
@@ -3945,10 +4059,11 @@ class MetaData(SchemaItem):
         return self._bind is not None
 
     def bind(self):
-        """An :class:`.Engine` or :class:`.Connection` to which this
-        :class:`.MetaData` is bound.
+        """An :class:`_engine.Engine` or :class:`_engine.Connection`
+        to which this
+        :class:`_schema.MetaData` is bound.
 
-        Typically, a :class:`.Engine` is assigned to this attribute
+        Typically, a :class:`_engine.Engine` is assigned to this attribute
         so that "implicit execution" may be used, or alternatively
         as a means of providing engine binding information to an
         ORM :class:`.Session` object::
@@ -3988,10 +4103,11 @@ class MetaData(SchemaItem):
 
     @property
     def sorted_tables(self):
-        """Returns a list of :class:`.Table` objects sorted in order of
+        """Returns a list of :class:`_schema.Table` objects sorted in order of
         foreign key dependency.
 
-        The sorting will place :class:`.Table` objects that have dependencies
+        The sorting will place :class:`_schema.Table`
+        objects that have dependencies
         first, before the dependencies themselves, representing the
         order in which they can be created.   To get the order in which
         the tables would be dropped, use the ``reversed()`` Python built-in.
@@ -4002,22 +4118,23 @@ class MetaData(SchemaItem):
             automatic resolution of dependency cycles between tables, which
             are usually caused by mutually dependent foreign key constraints.
             To resolve these cycles, either the
-            :paramref:`.ForeignKeyConstraint.use_alter` parameter may be
+            :paramref:`_schema.ForeignKeyConstraint.use_alter`
+            parameter may be
             applied to those constraints, or use the
-            :func:`.schema.sort_tables_and_constraints` function which will
+            :func:`_schema.sort_tables_and_constraints` function which will
             break out foreign key constraints involved in cycles separately.
 
         .. seealso::
 
-            :func:`.schema.sort_tables`
+            :func:`_schema.sort_tables`
 
-            :func:`.schema.sort_tables_and_constraints`
+            :func:`_schema.sort_tables_and_constraints`
 
-            :attr:`.MetaData.tables`
+            :attr:`_schema.MetaData.tables`
 
-            :meth:`.Inspector.get_table_names`
+            :meth:`_reflection.Inspector.get_table_names`
 
-            :meth:`.Inspector.get_sorted_table_and_fkc_names`
+            :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
 
 
         """
@@ -4049,7 +4166,7 @@ class MetaData(SchemaItem):
 
         :param schema:
           Optional, query and reflect tables from an alternate schema.
-          If None, the schema associated with this :class:`.MetaData`
+          If None, the schema associated with this :class:`_schema.MetaData`
           is used, if any.
 
         :param views:
@@ -4069,13 +4186,14 @@ class MetaData(SchemaItem):
           with a table name and this ``MetaData`` instance as positional
           arguments and should return a true value for any table to reflect.
 
-        :param extend_existing: Passed along to each :class:`.Table` as
-          :paramref:`.Table.extend_existing`.
+        :param extend_existing: Passed along to each :class:`_schema.Table` as
+          :paramref:`_schema.Table.extend_existing`.
 
           .. versionadded:: 0.9.1
 
-        :param autoload_replace: Passed along to each :class:`.Table` as
-          :paramref:`.Table.autoload_replace`.
+        :param autoload_replace: Passed along to each :class:`_schema.Table`
+          as
+          :paramref:`_schema.Table.autoload_replace`.
 
           .. versionadded:: 0.9.1
 
@@ -4087,7 +4205,7 @@ class MetaData(SchemaItem):
 
           .. versionadded:: 0.9.2 - Added
              :paramref:`.MetaData.reflect.**dialect_kwargs` to support
-             dialect-level reflection options for all :class:`.Table`
+             dialect-level reflection options for all :class:`_schema.Table`
              objects reflected.
 
         """

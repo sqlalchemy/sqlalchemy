@@ -185,7 +185,7 @@ def polymorphic_union(
     this is used.
 
     :param table_map: mapping of polymorphic identities to
-     :class:`.Table` objects.
+     :class:`_schema.Table` objects.
     :param typecolname: string name of a "discriminator" column, which will be
      derived from the query, producing the polymorphic identity for
      each row.  If ``None``, no polymorphic discriminator is generated.
@@ -286,7 +286,7 @@ def identity_key(*args, **kwargs):
         (<class '__main__.MyClass'>, (1, 2), None)
 
       In this form, the given instance is ultimately run though
-      :meth:`.Mapper.identity_key_from_instance`, which will have the
+      :meth:`_orm.Mapper.identity_key_from_instance`, which will have the
       effect of performing a database check for the corresponding row
       if the object is expired.
 
@@ -401,8 +401,8 @@ class AliasedClass(object):
     __getattr__ scheme and maintains a reference to a
     real :class:`~sqlalchemy.sql.expression.Alias` object.
 
-    Usage is via the :func:`.orm.aliased` function, or alternatively
-    via the :func:`.orm.with_polymorphic` function.
+    Usage is via the :func:`_orm.aliased` function, or alternatively
+    via the :func:`_orm.with_polymorphic` function.
 
     Usage example::
 
@@ -420,8 +420,8 @@ class AliasedClass(object):
     including hybrid attributes (see :ref:`hybrids_toplevel`).
 
     The :class:`.AliasedClass` can be inspected for its underlying
-    :class:`.Mapper`, aliased selectable, and other information
-    using :func:`.inspect`::
+    :class:`_orm.Mapper`, aliased selectable, and other information
+    using :func:`_sa.inspect`::
 
         from sqlalchemy import inspect
         my_alias = aliased(MyClass)
@@ -521,7 +521,7 @@ class AliasedInsp(InspectionAttr):
 
     The :class:`.AliasedInsp` object is returned
     given an :class:`.AliasedClass` using the
-    :func:`.inspect` function::
+    :func:`_sa.inspect` function::
 
         from sqlalchemy import inspect
         from sqlalchemy.orm import aliased
@@ -533,13 +533,16 @@ class AliasedInsp(InspectionAttr):
     include:
 
     * ``entity`` - the :class:`.AliasedClass` represented.
-    * ``mapper`` - the :class:`.Mapper` mapping the underlying class.
-    * ``selectable`` - the :class:`.Alias` construct which ultimately
-      represents an aliased :class:`.Table` or :class:`.Select`
+    * ``mapper`` - the :class:`_orm.Mapper` mapping the underlying class.
+    * ``selectable`` - the :class:`_expression.Alias`
+      construct which ultimately
+      represents an aliased :class:`_schema.Table` or
+      :class:`_expression.Select`
       construct.
     * ``name`` - the name of the alias.  Also is used as the attribute
-      name when returned in a result tuple from :class:`.Query`.
-    * ``with_polymorphic_mappers`` - collection of :class:`.Mapper` objects
+      name when returned in a result tuple from :class:`_query.Query`.
+    * ``with_polymorphic_mappers`` - collection of :class:`_orm.Mapper`
+      objects
       indicating all those mappers expressed in the select construct
       for the :class:`.AliasedClass`.
     * ``polymorphic_on`` - an alternate column or SQL expression which
@@ -703,35 +706,45 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
     The :func:`.aliased` function is used to create an ad-hoc mapping
     of a mapped class to a new selectable.  By default, a selectable
     is generated from the normally mapped selectable (typically a
-    :class:`.Table`) using the :meth:`.FromClause.alias` method.
+    :class:`_schema.Table`) using the :meth:`_expression.FromClause.alias`
+    method.
     However, :func:`.aliased` can also be used to link the class to
-    a new :func:`.select` statement.   Also, the :func:`.with_polymorphic`
+    a new :func:`_expression.select` statement.   Also, the
+    :func:`.with_polymorphic`
     function is a variant of :func:`.aliased` that is intended to specify
     a so-called "polymorphic selectable", that corresponds to the union
     of several joined-inheritance subclasses at once.
 
     For convenience, the :func:`.aliased` function also accepts plain
-    :class:`.FromClause` constructs, such as a :class:`.Table` or
-    :func:`.select` construct.   In those cases, the :meth:`.FromClause.alias`
-    method is called on the object and the new :class:`.Alias` object
-    returned.  The returned :class:`.Alias` is not ORM-mapped in this case.
+    :class:`_expression.FromClause` constructs, such as a
+    :class:`_schema.Table` or
+    :func:`_expression.select` construct.   In those cases, the
+    :meth:`_expression.FromClause.alias`
+    method is called on the object and the new :class:`_expression.Alias`
+    object
+    returned.  The returned :class:`_expression.Alias`
+    is not ORM-mapped in this case.
 
     :param element: element to be aliased.  Is normally a mapped class,
-     but for convenience can also be a :class:`.FromClause` element.
+     but for convenience can also be a :class:`_expression.FromClause` element
+     .
 
     :param alias: Optional selectable unit to map the element to.  This should
-     normally be a :class:`.Alias` object corresponding to the :class:`.Table`
-     to which the class is mapped, or to a :func:`.select` construct that
+     normally be a :class:`_expression.Alias` object corresponding to the
+     :class:`_schema.Table`
+     to which the class is mapped, or to a :func:`_expression.select`
+     construct that
      is compatible with the mapping.   By default, a simple anonymous
      alias of the mapped table is generated.
 
     :param name: optional string name to use for the alias, if not specified
      by the ``alias`` parameter.  The name, among other things, forms the
      attribute name that will be accessible via tuples returned by a
-     :class:`.Query` object.
+     :class:`_query.Query` object.
 
     :param flat: Boolean, will be passed through to the
-     :meth:`.FromClause.alias` call so that aliases of :class:`.Join` objects
+     :meth:`_expression.FromClause.alias` call so that aliases of
+     :class:`_expression.Join` objects
      don't include an enclosing SELECT.  This can lead to more efficient
      queries in many circumstances.  A JOIN against a nested JOIN will be
      rewritten as a JOIN against an aliased SELECT subquery on backends that
@@ -739,7 +752,7 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 
      .. versionadded:: 0.9.0
 
-     .. seealso:: :meth:`.Join.alias`
+     .. seealso:: :meth:`_expression.Join.alias`
 
     :param adapt_on_names: if True, more liberal "matching" will be used when
      mapping the mapped columns of the ORM entity to those of the
@@ -809,7 +822,7 @@ def with_polymorphic(
     .. seealso::
 
         :ref:`with_polymorphic` - full discussion of
-        :func:`.orm.with_polymorphic`.
+        :func:`_orm.with_polymorphic`.
 
     :param base: Base class to be aliased.
 
@@ -825,11 +838,13 @@ def with_polymorphic(
         support parenthesized joins, such as SQLite and older
         versions of MySQL.   However if the
         :paramref:`.with_polymorphic.selectable` parameter is in use
-        with an existing :class:`.Alias` construct, then you should not
+        with an existing :class:`_expression.Alias` construct,
+        then you should not
         set this flag.
 
     :param flat: Boolean, will be passed through to the
-     :meth:`.FromClause.alias` call so that aliases of :class:`.Join`
+     :meth:`_expression.FromClause.alias` call so that aliases of
+     :class:`_expression.Join`
      objects don't include an enclosing SELECT.  This can lead to more
      efficient queries in many circumstances.  A JOIN against a nested JOIN
      will be rewritten as a JOIN against an aliased SELECT subquery on
@@ -840,7 +855,7 @@ def with_polymorphic(
 
      .. versionadded:: 0.9.0
 
-     .. seealso:: :meth:`.Join.alias`
+     .. seealso:: :meth:`_expression.Join.alias`
 
     :param selectable: a table or select() statement that will
         be used in place of the generated FROM clause. This argument is
@@ -901,7 +916,7 @@ def _orm_deannotate(element):
     """Remove annotations that link a column to a particular mapping.
 
     Note this doesn't affect "remote" and "foreign" annotations
-    passed by the :func:`.orm.foreign` and :func:`.orm.remote`
+    passed by the :func:`_orm.foreign` and :func:`_orm.remote`
     annotators.
 
     """
@@ -1051,21 +1066,21 @@ def join(
 ):
     r"""Produce an inner join between left and right clauses.
 
-    :func:`.orm.join` is an extension to the core join interface
-    provided by :func:`.sql.expression.join()`, where the
+    :func:`_orm.join` is an extension to the core join interface
+    provided by :func:`_expression.join()`, where the
     left and right selectables may be not only core selectable
-    objects such as :class:`.Table`, but also mapped classes or
+    objects such as :class:`_schema.Table`, but also mapped classes or
     :class:`.AliasedClass` instances.   The "on" clause can
     be a SQL expression, or an attribute or string name
-    referencing a configured :func:`.relationship`.
+    referencing a configured :func:`_orm.relationship`.
 
-    :func:`.orm.join` is not commonly needed in modern usage,
+    :func:`_orm.join` is not commonly needed in modern usage,
     as its functionality is encapsulated within that of the
-    :meth:`.Query.join` method, which features a
-    significant amount of automation beyond :func:`.orm.join`
-    by itself.  Explicit usage of :func:`.orm.join`
-    with :class:`.Query` involves usage of the
-    :meth:`.Query.select_from` method, as in::
+    :meth:`_query.Query.join` method, which features a
+    significant amount of automation beyond :func:`_orm.join`
+    by itself.  Explicit usage of :func:`_orm.join`
+    with :class:`_query.Query` involves usage of the
+    :meth:`_query.Query.select_from` method, as in::
 
         from sqlalchemy.orm import join
         session.query(User).\
@@ -1079,7 +1094,7 @@ def join(
                 join(User.addresses).\
                 filter(Address.email_address=='foo@bar.com')
 
-    See :meth:`.Query.join` for information on modern usage
+    See :meth:`_query.Query.join` for information on modern usage
     of ORM level joins.
 
     .. deprecated:: 0.8
@@ -1094,7 +1109,7 @@ def join(
 def outerjoin(left, right, onclause=None, full=False, join_to_left=None):
     """Produce a left outer join between left and right clauses.
 
-    This is the "outer join" version of the :func:`.orm.join` function,
+    This is the "outer join" version of the :func:`_orm.join` function,
     featuring the same behavior except that an OUTER JOIN is generated.
     See that function's documentation for other usage details.
 
@@ -1104,7 +1119,8 @@ def outerjoin(left, right, onclause=None, full=False, join_to_left=None):
 
 def with_parent(instance, prop, from_entity=None):
     """Create filtering criterion that relates this query's primary entity
-    to the given related instance, using established :func:`.relationship()`
+    to the given related instance, using established
+    :func:`_orm.relationship()`
     configuration.
 
     The SQL rendered is the same as that rendered when a lazy loader
@@ -1114,7 +1130,7 @@ def with_parent(instance, prop, from_entity=None):
     in the rendered statement.
 
     :param instance:
-      An instance which has some :func:`.relationship`.
+      An instance which has some :func:`_orm.relationship`.
 
     :param property:
       String property name, or class-bound attribute, which indicates
@@ -1123,7 +1139,7 @@ def with_parent(instance, prop, from_entity=None):
 
     :param from_entity:
       Entity in which to consider as the left side.  This defaults to the
-      "zero" entity of the :class:`.Query` itself.
+      "zero" entity of the :class:`_query.Query` itself.
 
       .. versionadded:: 1.2
 

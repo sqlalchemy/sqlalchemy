@@ -13,10 +13,10 @@ Deferred Column Loading
 
 This feature allows particular columns of a table be loaded only
 upon direct access, instead of when the entity is queried using
-:class:`.Query`.  This feature is useful when one wants to avoid
+:class:`_query.Query`.  This feature is useful when one wants to avoid
 loading a large text or binary field into memory when it's not needed.
 Individual columns can be lazy loaded by themselves or placed into groups that
-lazy-load together, using the :func:`.orm.deferred` function to
+lazy-load together, using the :func:`_orm.deferred` function to
 mark them as "deferred". In the example below, we define a mapping that will load each of
 ``.excerpt`` and ``.photo`` in separate, individual-row SELECT statements when each
 attribute is first referenced on the individual object instance::
@@ -33,8 +33,8 @@ attribute is first referenced on the individual object instance::
         excerpt = deferred(Column(Text))
         photo = deferred(Column(Binary))
 
-Classical mappings as always place the usage of :func:`.orm.deferred` in the
-``properties`` dictionary against the table-bound :class:`.Column`::
+Classical mappings as always place the usage of :func:`_orm.deferred` in the
+``properties`` dictionary against the table-bound :class:`_schema.Column`::
 
     mapper(Book, book_table, properties={
         'photo':deferred(book_table.c.photo)
@@ -58,7 +58,7 @@ separately when it is accessed::
         photo3 = deferred(Column(Binary), group='photos')
 
 You can defer or undefer columns at the :class:`~sqlalchemy.orm.query.Query`
-level using options, including :func:`.orm.defer` and :func:`.orm.undefer`::
+level using options, including :func:`_orm.defer` and :func:`_orm.undefer`::
 
     from sqlalchemy.orm import defer, undefer
 
@@ -67,8 +67,8 @@ level using options, including :func:`.orm.defer` and :func:`.orm.undefer`::
     query = query.options(undefer('excerpt'))
     query.all()
 
-:func:`.orm.deferred` attributes which are marked with a "group" can be undeferred
-using :func:`.orm.undefer_group`, sending in the group name::
+:func:`_orm.deferred` attributes which are marked with a "group" can be undeferred
+using :func:`_orm.undefer_group`, sending in the group name::
 
     from sqlalchemy.orm import undefer_group
 
@@ -79,7 +79,7 @@ Load Only Cols
 --------------
 
 An arbitrary set of columns can be selected as "load only" columns, which will
-be loaded while deferring all other columns on a given entity, using :func:`.orm.load_only`::
+be loaded while deferring all other columns on a given entity, using :func:`_orm.load_only`::
 
     from sqlalchemy.orm import load_only
 
@@ -92,8 +92,8 @@ be loaded while deferring all other columns on a given entity, using :func:`.orm
 Deferred Loading with Multiple Entities
 ---------------------------------------
 
-To specify column deferral options within a :class:`.Query` that loads multiple types
-of entity, the :class:`.Load` object can specify which parent entity to start with::
+To specify column deferral options within a :class:`_query.Query` that loads multiple types
+of entity, the :class:`_orm.Load` object can specify which parent entity to start with::
 
     from sqlalchemy.orm import Load
 
@@ -117,7 +117,7 @@ options to the ``Author`` entity::
             )
 
 In the case where the loading style of parent relationships should be left
-unchanged, use :func:`.orm.defaultload`::
+unchanged, use :func:`_orm.defaultload`::
 
     from sqlalchemy.orm import defaultload
 
@@ -126,7 +126,7 @@ unchanged, use :func:`.orm.defaultload`::
                 defaultload(Book.author).load_only("summary", "excerpt"),
             )
 
-.. versionadded:: 0.9.0 support for :class:`.Load` and other options which
+.. versionadded:: 0.9.0 support for :class:`_orm.Load` and other options which
    allow for better targeting of deferral options.
 
 Column Deferral API
@@ -166,7 +166,7 @@ The bundle allows columns to be grouped together::
 
 The bundle can be subclassed to provide custom behaviors when results
 are fetched.  The method :meth:`.Bundle.create_row_processor` is given
-the :class:`.Query` and a set of "row processor" functions at query execution
+the :class:`_query.Query` and a set of "row processor" functions at query execution
 time; these processor functions when given a result row will return the
 individual attribute value, which can then be adapted into any kind of
 return data structure.  Below illustrates replacing the usual :class:`.KeyedTuple`

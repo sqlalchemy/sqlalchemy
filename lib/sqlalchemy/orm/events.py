@@ -143,8 +143,8 @@ class InstanceEvents(event.Events):
     * mapped classes
     * unmapped superclasses of mapped or to-be-mapped classes
       (using the ``propagate=True`` flag)
-    * :class:`.Mapper` objects
-    * the :class:`.Mapper` class itself and the :func:`.mapper`
+    * :class:`_orm.Mapper` objects
+    * the :class:`_orm.Mapper` class itself and the :func:`.mapper`
       function indicate listening for all mappers.
 
     Instance events are closely related to mapper events, but
@@ -307,15 +307,15 @@ class InstanceEvents(event.Events):
         initialized, depending on what's present in the result rows.
 
         The :meth:`.InstanceEvents.load` event is also available in a
-        class-method decorator format called :func:`.orm.reconstructor`.
+        class-method decorator format called :func:`_orm.reconstructor`.
 
         :param target: the mapped instance.  If
          the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param context: the :class:`.QueryContext` corresponding to the
-         current :class:`.Query` in progress.  This argument may be
-         ``None`` if the load does not correspond to a :class:`.Query`,
+         current :class:`_query.Query` in progress.  This argument may be
+         ``None`` if the load does not correspond to a :class:`_query.Query`,
          such as during :meth:`.Session.merge`.
 
         .. seealso::
@@ -342,7 +342,7 @@ class InstanceEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param context: the :class:`.QueryContext` corresponding to the
-         current :class:`.Query` in progress.
+         current :class:`_query.Query` in progress.
         :param attrs: sequence of attribute names which
          were populated, or None if all column-mapped, non-deferred
          attributes were populated.
@@ -552,8 +552,8 @@ class MapperEvents(event.Events):
     * mapped classes
     * unmapped superclasses of mapped or to-be-mapped classes
       (using the ``propagate=True`` flag)
-    * :class:`.Mapper` objects
-    * the :class:`.Mapper` class itself and the :func:`.mapper`
+    * :class:`_orm.Mapper` objects
+    * the :class:`_orm.Mapper` class itself and the :func:`.mapper`
       function indicate listening for all mappers.
 
     Mapper events provide hooks into critical sections of the
@@ -680,7 +680,7 @@ class MapperEvents(event.Events):
         This event is the earliest phase of mapper construction.
         Most attributes of the mapper are not yet initialized.
 
-        This listener can either be applied to the :class:`.Mapper`
+        This listener can either be applied to the :class:`_orm.Mapper`
         class overall, or to any un-mapped class which serves as a base
         for classes that will be mapped (using the ``propagate=True`` flag)::
 
@@ -690,7 +690,7 @@ class MapperEvents(event.Events):
             def on_new_class(mapper, cls_):
                 " ... "
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
         :param class\_: the mapped class.
 
@@ -702,9 +702,9 @@ class MapperEvents(event.Events):
 
         The :meth:`.MapperEvents.mapper_configured` event is invoked
         for each mapper that is encountered when the
-        :func:`.orm.configure_mappers` function proceeds through the current
+        :func:`_orm.configure_mappers` function proceeds through the current
         list of not-yet-configured mappers.
-        :func:`.orm.configure_mappers` is typically invoked
+        :func:`_orm.configure_mappers` is typically invoked
         automatically as mappings are first used, as well as each time
         new mappers have been made available and new mapper use is
         detected.
@@ -735,7 +735,7 @@ class MapperEvents(event.Events):
         on a specific mapper basis, which don't require that "backref"
         configurations are necessarily ready yet.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
         :param class\_: the mapped class.
 
@@ -752,14 +752,14 @@ class MapperEvents(event.Events):
         """Called before a series of mappers have been configured.
 
         The :meth:`.MapperEvents.before_configured` event is invoked
-        each time the :func:`.orm.configure_mappers` function is
+        each time the :func:`_orm.configure_mappers` function is
         invoked, before the function has done any of its work.
-        :func:`.orm.configure_mappers` is typically invoked
+        :func:`_orm.configure_mappers` is typically invoked
         automatically as mappings are first used, as well as each time
         new mappers have been made available and new mapper use is
         detected.
 
-        This event can **only** be applied to the :class:`.Mapper` class
+        This event can **only** be applied to the :class:`_orm.Mapper` class
         or :func:`.mapper` function, and not to individual mappings or
         mapped classes.  It is only invoked for all mappings as a whole::
 
@@ -776,7 +776,7 @@ class MapperEvents(event.Events):
 
         Theoretically this event is called once per
         application, but is actually called any time new mappers
-        are to be affected by a :func:`.orm.configure_mappers`
+        are to be affected by a :func:`_orm.configure_mappers`
         call.   If new mappings are constructed after existing ones have
         already been used, this event will likely be called again.  To ensure
         that a particular event is only called once and no further, the
@@ -804,9 +804,9 @@ class MapperEvents(event.Events):
         """Called after a series of mappers have been configured.
 
         The :meth:`.MapperEvents.after_configured` event is invoked
-        each time the :func:`.orm.configure_mappers` function is
+        each time the :func:`_orm.configure_mappers` function is
         invoked, after the function has completed its work.
-        :func:`.orm.configure_mappers` is typically invoked
+        :func:`_orm.configure_mappers` is typically invoked
         automatically as mappings are first used, as well as each time
         new mappers have been made available and new mapper use is
         detected.
@@ -819,7 +819,7 @@ class MapperEvents(event.Events):
         Also contrast to :meth:`.MapperEvents.before_configured`,
         which is invoked before the series of mappers has been configured.
 
-        This event can **only** be applied to the :class:`.Mapper` class
+        This event can **only** be applied to the :class:`_orm.Mapper` class
         or :func:`.mapper` function, and not to individual mappings or
         mapped classes.  It is only invoked for all mappings as a whole::
 
@@ -831,7 +831,7 @@ class MapperEvents(event.Events):
 
         Theoretically this event is called once per
         application, but is actually called any time new mappers
-        have been affected by a :func:`.orm.configure_mappers`
+        have been affected by a :func:`_orm.configure_mappers`
         call.   If new mappings are constructed after existing ones have
         already been used, this event will likely be called again.  To ensure
         that a particular event is only called once and no further, the
@@ -874,14 +874,14 @@ class MapperEvents(event.Events):
             Mapper-level flush events only allow **very limited operations**,
             on attributes local to the row being operated upon only,
             as well as allowing any SQL to be emitted on the given
-            :class:`.Connection`.  **Please read fully** the notes
+            :class:`_engine.Connection`.  **Please read fully** the notes
             at :ref:`session_persistence_mapper` for guidelines on using
             these methods; generally, the :meth:`.SessionEvents.before_flush`
             method should be preferred for general on-flush changes.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to
+        :param connection: the :class:`_engine.Connection` being used to
          emit INSERT statements for this instance.  This
          provides a handle into the current transaction on the
          target database specific to this instance.
@@ -920,14 +920,14 @@ class MapperEvents(event.Events):
             Mapper-level flush events only allow **very limited operations**,
             on attributes local to the row being operated upon only,
             as well as allowing any SQL to be emitted on the given
-            :class:`.Connection`.  **Please read fully** the notes
+            :class:`_engine.Connection`.  **Please read fully** the notes
             at :ref:`session_persistence_mapper` for guidelines on using
             these methods; generally, the :meth:`.SessionEvents.before_flush`
             method should be preferred for general on-flush changes.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to
+        :param connection: the :class:`_engine.Connection` being used to
          emit INSERT statements for this instance.  This
          provides a handle into the current transaction on the
          target database specific to this instance.
@@ -985,14 +985,14 @@ class MapperEvents(event.Events):
             Mapper-level flush events only allow **very limited operations**,
             on attributes local to the row being operated upon only,
             as well as allowing any SQL to be emitted on the given
-            :class:`.Connection`.  **Please read fully** the notes
+            :class:`_engine.Connection`.  **Please read fully** the notes
             at :ref:`session_persistence_mapper` for guidelines on using
             these methods; generally, the :meth:`.SessionEvents.before_flush`
             method should be preferred for general on-flush changes.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to
+        :param connection: the :class:`_engine.Connection` being used to
          emit UPDATE statements for this instance.  This
          provides a handle into the current transaction on the
          target database specific to this instance.
@@ -1049,14 +1049,14 @@ class MapperEvents(event.Events):
             Mapper-level flush events only allow **very limited operations**,
             on attributes local to the row being operated upon only,
             as well as allowing any SQL to be emitted on the given
-            :class:`.Connection`.  **Please read fully** the notes
+            :class:`_engine.Connection`.  **Please read fully** the notes
             at :ref:`session_persistence_mapper` for guidelines on using
             these methods; generally, the :meth:`.SessionEvents.before_flush`
             method should be preferred for general on-flush changes.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to
+        :param connection: the :class:`_engine.Connection` being used to
          emit UPDATE statements for this instance.  This
          provides a handle into the current transaction on the
          target database specific to this instance.
@@ -1089,14 +1089,14 @@ class MapperEvents(event.Events):
             Mapper-level flush events only allow **very limited operations**,
             on attributes local to the row being operated upon only,
             as well as allowing any SQL to be emitted on the given
-            :class:`.Connection`.  **Please read fully** the notes
+            :class:`_engine.Connection`.  **Please read fully** the notes
             at :ref:`session_persistence_mapper` for guidelines on using
             these methods; generally, the :meth:`.SessionEvents.before_flush`
             method should be preferred for general on-flush changes.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to
+        :param connection: the :class:`_engine.Connection` being used to
          emit DELETE statements for this instance.  This
          provides a handle into the current transaction on the
          target database specific to this instance.
@@ -1129,14 +1129,14 @@ class MapperEvents(event.Events):
             Mapper-level flush events only allow **very limited operations**,
             on attributes local to the row being operated upon only,
             as well as allowing any SQL to be emitted on the given
-            :class:`.Connection`.  **Please read fully** the notes
+            :class:`_engine.Connection`.  **Please read fully** the notes
             at :ref:`session_persistence_mapper` for guidelines on using
             these methods; generally, the :meth:`.SessionEvents.before_flush`
             method should be preferred for general on-flush changes.
 
-        :param mapper: the :class:`.Mapper` which is the target
+        :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
-        :param connection: the :class:`.Connection` being used to
+        :param connection: the :class:`_engine.Connection` being used to
          emit DELETE statements for this instance.  This
          provides a handle into the current transaction on the
          target database specific to this instance.
@@ -1480,7 +1480,7 @@ class SessionEvents(event.Events):
 
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
-        :param connection: The :class:`~.engine.Connection` object
+        :param connection: The :class:`_engine.Connection` object
          which will be used for SQL statements.
 
         .. seealso::
@@ -1546,16 +1546,17 @@ class SessionEvents(event.Events):
     def after_bulk_update(self, update_context):
         """Execute after a bulk update operation to the session.
 
-        This is called as a result of the :meth:`.Query.update` method.
+        This is called as a result of the :meth:`_query.Query.update` method.
 
         :param update_context: an "update context" object which contains
          details about the update, including these attributes:
 
             * ``session`` - the :class:`.Session` involved
-            * ``query`` -the :class:`.Query` object that this update operation
+            * ``query`` -the :class:`_query.Query`
+              object that this update operation
               was called upon.
             * ``values`` The "values" dictionary that was passed to
-              :meth:`.Query.update`.
+              :meth:`_query.Query.update`.
             * ``context`` The :class:`.QueryContext` object, corresponding
               to the invocation of an ORM query.
             * ``result`` the :class:`.ResultProxy` returned as a result of the
@@ -1582,13 +1583,14 @@ class SessionEvents(event.Events):
     def after_bulk_delete(self, delete_context):
         """Execute after a bulk delete operation to the session.
 
-        This is called as a result of the :meth:`.Query.delete` method.
+        This is called as a result of the :meth:`_query.Query.delete` method.
 
         :param delete_context: a "delete context" object which contains
          details about the update, including these attributes:
 
             * ``session`` - the :class:`.Session` involved
-            * ``query`` -the :class:`.Query` object that this update operation
+            * ``query`` -the :class:`_query.Query`
+              object that this update operation
               was called upon.
             * ``context`` The :class:`.QueryContext` object, corresponding
               to the invocation of an ORM query.
@@ -1890,7 +1892,7 @@ class AttributeEvents(event.Events):
       replaced unconditionally, even if this requires firing off
       database loads. Note that ``active_history`` can also be
       set directly via :func:`.column_property` and
-      :func:`.relationship`.
+      :func:`_orm.relationship`.
 
     :param propagate=False: When True, the listener function will
       be established not just for the class attribute given, but
@@ -2132,10 +2134,12 @@ class AttributeEvents(event.Events):
         Python's usual behavior of raising ``AttributeError``.    The
         event here can be used to customize what value is actually returned,
         with the assumption that the event listener would be mirroring
-        a default generator that is configured on the Core :class:`.Column`
+        a default generator that is configured on the Core
+        :class:`_schema.Column`
         object as well.
 
-        Since a default generator on a :class:`.Column` might also produce
+        Since a default generator on a :class:`_schema.Column`
+        might also produce
         a changing value such as a timestamp, the
         :meth:`.AttributeEvents.init_scalar`
         event handler can also be used to **set** the newly returned value, so
@@ -2169,7 +2173,7 @@ class AttributeEvents(event.Events):
         * By setting the value ``SOME_CONSTANT`` in the given ``dict_``,
           we indicate that this value is to be persisted to the database.
           This supersedes the use of ``SOME_CONSTANT`` in the default generator
-          for the :class:`.Column`.  The ``active_column_defaults.py``
+          for the :class:`_schema.Column`.  The ``active_column_defaults.py``
           example given at :ref:`examples_instrumentation` illustrates using
           the same approach for a changing default, e.g. a timestamp
           generator.    In this particular example, it is not strictly
@@ -2188,7 +2192,7 @@ class AttributeEvents(event.Events):
 
         In the above example, the attribute set event
         :meth:`.AttributeEvents.set` as well as the related validation feature
-        provided by :obj:`.orm.validates` is **not** invoked when we apply our
+        provided by :obj:`_orm.validates` is **not** invoked when we apply our
         value to the given ``dict_``.  To have these events to invoke in
         response to our newly generated value, apply the value to the given
         object as a normal attribute set operation::
@@ -2258,7 +2262,7 @@ class AttributeEvents(event.Events):
          be the :class:`.InstanceState` object.
         :param collection: the new collection.  This will always be generated
          from what was specified as
-         :paramref:`.relationship.collection_class`, and will always
+         :paramref:`_orm.relationship.collection_class`, and will always
          be empty.
         :param collection_adapter: the :class:`.CollectionAdapter` that will
          mediate internal access to the collection.
@@ -2327,10 +2331,11 @@ class AttributeEvents(event.Events):
 
 
 class QueryEvents(event.Events):
-    """Represent events within the construction of a :class:`.Query` object.
+    """Represent events within the construction of a :class:`_query.Query`
+    object.
 
     The events here are intended to be used with an as-yet-unreleased
-    inspection system for :class:`.Query`.   Some very basic operations
+    inspection system for :class:`_query.Query`.   Some very basic operations
     are possible now, however the inspection system is intended to allow
     complex query manipulations to be automated.
 
@@ -2342,8 +2347,9 @@ class QueryEvents(event.Events):
     _dispatch_target = Query
 
     def before_compile(self, query):
-        """Receive the :class:`.Query` object before it is composed into a
-        core :class:`.Select` object.
+        """Receive the :class:`_query.Query`
+        object before it is composed into a
+        core :class:`_expression.Select` object.
 
         This event is intended to allow changes to the query given::
 
@@ -2359,9 +2365,11 @@ class QueryEvents(event.Events):
         parameter set, so that the modified query may be returned.
 
         .. warning::  If the :meth:`.QueryEvents.before_compile` event is to
-           be applied to :class:`.Query` objects that are used for lazy loading
+           be applied to :class:`_query.Query`
+           objects that are used for lazy loading
            of :func:`.relationships` (as described at :ref:`lazy_loading`),
-           it may be necessary to set :paramref:`.relationship.bake_queries`
+           it may be necessary to set
+           :paramref:`_orm.relationship.bake_queries`
            to ``False``, else the :meth:`.QueryEvents.before_compile` event
            will not be invoked for each lazy load operation.
 
@@ -2375,13 +2383,13 @@ class QueryEvents(event.Events):
         """
 
     def before_compile_update(self, query, update_context):
-        """Allow modifications to the :class:`.Query` object within
-        :meth:`.Query.update`.
+        """Allow modifications to the :class:`_query.Query` object within
+        :meth:`_query.Query.update`.
 
         Like the :meth:`.QueryEvents.before_compile` event, if the event
-        is to be used to alter the :class:`.Query` object, it should
+        is to be used to alter the :class:`_query.Query` object, it should
         be configured with ``retval=True``, and the modified
-        :class:`.Query` object returned, as in ::
+        :class:`_query.Query` object returned, as in ::
 
             @event.listens_for(Query, "before_compile_update", retval=True)
             def no_deleted(query, update_context):
@@ -2396,7 +2404,7 @@ class QueryEvents(event.Events):
         The ``.values`` dictionary of the "update context" object can also
         be modified in place as illustrated above.
 
-        :param query: a :class:`.Query` instance; this is also
+        :param query: a :class:`_query.Query` instance; this is also
          the ``.query`` attribute of the given "update context"
          object.
 
@@ -2404,7 +2412,8 @@ class QueryEvents(event.Events):
          the same kind of object as described in
          :paramref:`.QueryEvents.after_bulk_update.update_context`.
          The object has a ``.values`` attribute in an UPDATE context which is
-         the dictionary of parameters passed to :meth:`.Query.update`.  This
+         the dictionary of parameters passed to :meth:`_query.Query.update`.
+         This
          dictionary can be modified to alter the VALUES clause of the
          resulting UPDATE statement.
 
@@ -2420,12 +2429,12 @@ class QueryEvents(event.Events):
         """
 
     def before_compile_delete(self, query, delete_context):
-        """Allow modifications to the :class:`.Query` object within
-        :meth:`.Query.delete`.
+        """Allow modifications to the :class:`_query.Query` object within
+        :meth:`_query.Query.delete`.
 
         Like the :meth:`.QueryEvents.before_compile` event, this event
         should be configured with ``retval=True``, and the modified
-        :class:`.Query` object returned, as in ::
+        :class:`_query.Query` object returned, as in ::
 
             @event.listens_for(Query, "before_compile_delete", retval=True)
             def no_deleted(query, delete_context):
@@ -2435,7 +2444,7 @@ class QueryEvents(event.Events):
                         query = query.filter(entity.deleted == False)
                 return query
 
-        :param query: a :class:`.Query` instance; this is also
+        :param query: a :class:`_query.Query` instance; this is also
          the ``.query`` attribute of the given "delete context"
          object.
 

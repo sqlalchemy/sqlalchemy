@@ -113,7 +113,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         and/or subclassed directly.
 
         :param target_collection: Name of the collection we'll proxy to,
-          usually created with :func:`.relationship`.
+          usually created with :func:`_orm.relationship`.
 
         :param attr: Attribute on the collected instances we'll proxy
           for.  For example, given a target collection of [obj1, obj2], a
@@ -205,7 +205,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         """Return a tuple of ``(local_attr, remote_attr)``.
 
         This attribute is convenient when specifying a join
-        using :meth:`.Query.join` across two relationships::
+        using :meth:`_query.Query.join` across two relationships::
 
             sess.query(Parent).join(*Parent.proxied.attr)
 

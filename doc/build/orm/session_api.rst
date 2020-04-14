@@ -63,7 +63,7 @@ those described in :doc:`/orm/events`.
     This function is the internal version
     of :func:`.object_state`.   The
     :func:`.object_state` and/or the
-    :func:`.inspect` function is preferred here
+    :func:`_sa.inspect` function is preferred here
     as they each emit an informative exception
     if the given object is not mapped.
 

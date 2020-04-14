@@ -39,7 +39,7 @@ JSON strings before being persisted::
 The usage of ``json`` is only for the purposes of example. The
 :mod:`sqlalchemy.ext.mutable` extension can be used
 with any type whose target Python type may be mutable, including
-:class:`.PickleType`, :class:`.postgresql.ARRAY`, etc.
+:class:`.PickleType`, :class:`_postgresql.ARRAY`, etc.
 
 When using the :mod:`sqlalchemy.ext.mutable` extension, the value itself
 tracks all parents which reference it.  Below, we illustrate a simple
@@ -270,7 +270,7 @@ and to also route attribute set events via ``__setattr__`` to the
             return not self.__eq__(other)
 
 The :class:`.MutableComposite` class uses a Python metaclass to automatically
-establish listeners for any usage of :func:`.orm.composite` that specifies our
+establish listeners for any usage of :func:`_orm.composite` that specifies our
 ``Point`` type. Below, when ``Point`` is mapped to the ``Vertex`` class,
 listeners are established which will route change events from ``Point``
 objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::

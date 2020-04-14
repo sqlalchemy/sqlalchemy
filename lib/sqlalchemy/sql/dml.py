@@ -5,7 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 """
-Provide :class:`.Insert`, :class:`.Update` and :class:`.Delete`.
+Provide :class:`_expression.Insert`, :class:`_expression.Update` and
+:class:`_expression.Delete`.
 
 """
 
@@ -95,7 +96,7 @@ class UpdateBase(
 
     def bind(self):
         """Return a 'bind' linked to this :class:`.UpdateBase`
-        or a :class:`.Table` associated with it.
+        or a :class:`_schema.Table` associated with it.
 
         """
         return self._bind or self.table.bind
@@ -122,7 +123,8 @@ class UpdateBase(
 
         The given collection of column expressions should be derived from
         the table that is
-        the target of the INSERT, UPDATE, or DELETE.  While :class:`.Column`
+        the target of the INSERT, UPDATE, or DELETE.  While
+        :class:`_schema.Column`
         objects are typical, the elements can also be expressions::
 
             stmt = table.insert().returning(
@@ -173,9 +175,9 @@ class UpdateBase(
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
-        to the :class:`.Table` that is the subject of this
+        to the :class:`_schema.Table` that is the subject of this
         statement, or optionally to that of the given
-        :class:`.Table` passed as the ``selectable`` argument.
+        :class:`_schema.Table` passed as the ``selectable`` argument.
 
         The ``dialect_name`` option will limit the rendering of a particular
         hint to a particular backend. Such as, to add a hint
@@ -184,7 +186,7 @@ class UpdateBase(
             mytable.insert().with_hint("WITH (PAGLOCK)", dialect_name="mssql")
 
         :param text: Text of the hint.
-        :param selectable: optional :class:`.Table` that specifies
+        :param selectable: optional :class:`_schema.Table` that specifies
          an element of the FROM clause within an UPDATE or DELETE
          to be the subject of the hint - applies only to certain backends.
         :param dialect_name: defaults to ``*``, if specified as the name
@@ -222,9 +224,10 @@ class ValuesBase(UpdateBase):
         r"""specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
-        Note that the :class:`.Insert` and :class:`.Update` constructs support
+        Note that the :class:`_expression.Insert` and
+        :class:`_expression.Update` constructs support
         per-execution time formatting of the VALUES and/or SET clauses,
-        based on the arguments passed to :meth:`.Connection.execute`.
+        based on the arguments passed to :meth:`_engine.Connection.execute`.
         However, the :meth:`.ValuesBase.values` method can be used to "fix" a
         particular set of parameters into the statement.
 
@@ -237,7 +240,8 @@ class ValuesBase(UpdateBase):
         onto the existing list of values.
 
         :param \**kwargs: key value pairs representing the string key
-          of a :class:`.Column` mapped to the value to be rendered into the
+          of a :class:`_schema.Column`
+          mapped to the value to be rendered into the
           VALUES or SET clause::
 
                 users.insert().values(name="some name")
@@ -248,10 +252,12 @@ class ValuesBase(UpdateBase):
          a dictionary, tuple, or list of dictionaries or tuples can be passed
          as a single positional argument in order to form the VALUES or
          SET clause of the statement.  The forms that are accepted vary
-         based on whether this is an :class:`.Insert` or an :class:`.Update`
+         based on whether this is an :class:`_expression.Insert` or an
+         :class:`_expression.Update`
          construct.
 
-         For either an :class:`.Insert` or :class:`.Update` construct, a
+         For either an :class:`_expression.Insert` or
+         :class:`_expression.Update` construct, a
          single dictionary can be passed, which works the same as that of
          the kwargs form::
 
@@ -259,13 +265,15 @@ class ValuesBase(UpdateBase):
 
             users.update().values({"name": "some new name"})
 
-         Also for either form but more typically for the :class:`.Insert`
+         Also for either form but more typically for the
+         :class:`_expression.Insert`
          construct, a tuple that contains an entry for every column in the
          table is also accepted::
 
             users.insert().values((5, "some name"))
 
-         The :class:`.Insert` construct also supports being passed a list
+         The :class:`_expression.Insert`
+         construct also supports being passed a list
          of dictionaries or full-table-tuples, which on the server will
          render the less common SQL syntax of "multiple values" - this
          syntax is supported on backends such as SQLite, PostgreSQL, MySQL,
@@ -288,7 +296,8 @@ class ValuesBase(UpdateBase):
          NOT the same as using traditional executemany() form**.  The above
          syntax is a **special** syntax not typically used.  To emit an
          INSERT statement against multiple rows, the normal method is
-         to pass a multiple values list to the :meth:`.Connection.execute`
+         to pass a multiple values list to the
+         :meth:`_engine.Connection.execute`
          method, which is supported by all database backends and is generally
          more efficient for a very large number of parameters.
 
@@ -300,7 +309,8 @@ class ValuesBase(UpdateBase):
 
            .. versionchanged:: 1.0.0 an INSERT that uses a multiple-VALUES
               clause, even a list of length one,
-              implies that the :paramref:`.Insert.inline` flag is set to
+              implies that the :paramref:`_expression.Insert.inline`
+              flag is set to
               True, indicating that the statement will not attempt to fetch
               the "last inserted primary key" or other defaults.  The
               statement deals with an arbitrary number of rows, so the
@@ -313,14 +323,16 @@ class ValuesBase(UpdateBase):
               callable is invoked for each row.   See :ref:`bug_3288`
               for other details.
 
-         The :class:`.Update` construct supports a special form which is a
+         The :class:`_expression.Update`
+         construct supports a special form which is a
          list of 2-tuples, which when provided must be passed in conjunction
          with the
          :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
          parameter.
          This form causes the UPDATE statement to render the SET clauses
-         using the order of parameters given to :meth:`.Update.values`, rather
-         than the ordering of columns given in the :class:`.Table`.
+         using the order of parameters given to
+         :meth:`_expression.Update.values`, rather
+         than the ordering of columns given in the :class:`_schema.Table`.
 
            .. versionadded:: 1.0.10 - added support for parameter-ordered
               UPDATE statements via the
@@ -338,9 +350,9 @@ class ValuesBase(UpdateBase):
             :ref:`inserts_and_updates` - SQL Expression
             Language Tutorial
 
-            :func:`~.expression.insert` - produce an ``INSERT`` statement
+            :func:`_expression.insert` - produce an ``INSERT`` statement
 
-            :func:`~.expression.update` - produce an ``UPDATE`` statement
+            :func:`_expression.update` - produce an ``UPDATE`` statement
 
         """
         if self.select is not None:
@@ -416,7 +428,8 @@ class ValuesBase(UpdateBase):
         :meth:`.UpdateBase.returning` is not used simultaneously.  The column
         values will then be available on the result using the
         :attr:`.ResultProxy.returned_defaults` accessor as a dictionary,
-        referring to values keyed to the :class:`.Column` object as well as
+        referring to values keyed to the :class:`_schema.Column`
+        object as well as
         its ``.key``.
 
         This method differs from :meth:`.UpdateBase.returning` in these ways:
@@ -450,7 +463,8 @@ class ValuesBase(UpdateBase):
         an efficient implementation for the ``eager_defaults`` feature of
         :func:`.mapper`.
 
-        :param cols: optional list of column key names or :class:`.Column`
+        :param cols: optional list of column key names or
+         :class:`_schema.Column`
          objects.  If omitted, all column expressions evaluated on the server
          are added to the returning list.
 
@@ -469,8 +483,8 @@ class ValuesBase(UpdateBase):
 class Insert(ValuesBase):
     """Represent an INSERT construct.
 
-    The :class:`.Insert` object is created using the
-    :func:`~.expression.insert()` function.
+    The :class:`_expression.Insert` object is created using the
+    :func:`_expression.insert()` function.
 
     .. seealso::
 
@@ -493,20 +507,23 @@ class Insert(ValuesBase):
         return_defaults=False,
         **dialect_kw
     ):
-        """Construct an :class:`.Insert` object.
+        """Construct an :class:`_expression.Insert` object.
 
         Similar functionality is available via the
-        :meth:`~.TableClause.insert` method on
-        :class:`~.schema.Table`.
+        :meth:`_expression.TableClause.insert` method on
+        :class:`_schema.Table`.
 
-        :param table: :class:`.TableClause` which is the subject of the
+        :param table: :class:`_expression.TableClause`
+         which is the subject of the
          insert.
 
         :param values: collection of values to be inserted; see
-         :meth:`.Insert.values` for a description of allowed formats here.
-         Can be omitted entirely; a :class:`.Insert` construct will also
+         :meth:`_expression.Insert.values`
+         for a description of allowed formats here.
+         Can be omitted entirely; a :class:`_expression.Insert`
+         construct will also
          dynamically render the VALUES clause at execution time based on
-         the parameters passed to :meth:`.Connection.execute`.
+         the parameters passed to :meth:`_engine.Connection.execute`.
 
         :param inline: if True, no attempt will be made to retrieve the
          SQL-generated default values to be provided within the statement;
@@ -556,7 +573,7 @@ class Insert(ValuesBase):
 
     @_generative
     def from_select(self, names, select, include_defaults=True):
-        """Return a new :class:`.Insert` construct which represents
+        """Return a new :class:`_expression.Insert` construct which represents
         an ``INSERT...FROM SELECT`` statement.
 
         e.g.::
@@ -564,18 +581,21 @@ class Insert(ValuesBase):
             sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
             ins = table2.insert().from_select(['a', 'b'], sel)
 
-        :param names: a sequence of string column names or :class:`.Column`
+        :param names: a sequence of string column names or
+         :class:`_schema.Column`
          objects representing the target columns.
-        :param select: a :func:`.select` construct, :class:`.FromClause`
-         or other construct which resolves into a :class:`.FromClause`,
-         such as an ORM :class:`.Query` object, etc.  The order of
+        :param select: a :func:`_expression.select` construct,
+         :class:`_expression.FromClause`
+         or other construct which resolves into a
+         :class:`_expression.FromClause`,
+         such as an ORM :class:`_query.Query` object, etc.  The order of
          columns returned from this FROM clause should correspond to the
          order of columns sent as the ``names`` parameter;  while this
          is not checked before passing along to the database, the database
          would normally raise an exception if these column lists don't
          correspond.
         :param include_defaults: if True, non-server default values and
-         SQL expressions as specified on :class:`.Column` objects
+         SQL expressions as specified on :class:`_schema.Column` objects
          (as documented in :ref:`metadata_defaults_toplevel`) not
          otherwise specified in the list of names will be rendered
          into the INSERT and SELECT statements, so that these values are also
@@ -585,13 +605,15 @@ class Insert(ValuesBase):
             will only be invoked **once** for the whole statement, and **not
             per row**.
 
-         .. versionadded:: 1.0.0 - :meth:`.Insert.from_select` now renders
+         .. versionadded:: 1.0.0 - :meth:`_expression.Insert.from_select`
+            now renders
             Python-side and SQL expression column defaults into the
             SELECT statement for columns otherwise not included in the
             list of column names.
 
         .. versionchanged:: 1.0.0 an INSERT that uses FROM SELECT
-           implies that the :paramref:`.insert.inline` flag is set to
+           implies that the :paramref:`_expression.insert.inline`
+           flag is set to
            True, indicating that the statement will not attempt to fetch
            the "last inserted primary key" or other defaults.  The statement
            deals with an arbitrary number of rows, so the
@@ -622,7 +644,8 @@ class Insert(ValuesBase):
 class Update(ValuesBase):
     """Represent an Update construct.
 
-    The :class:`.Update` object is created using the :func:`update()`
+    The :class:`_expression.Update`
+    object is created using the :func:`update()`
     function.
 
     """
@@ -642,7 +665,7 @@ class Update(ValuesBase):
         preserve_parameter_order=False,
         **dialect_kw
     ):
-        r"""Construct an :class:`.Update` object.
+        r"""Construct an :class:`_expression.Update` object.
 
         E.g.::
 
@@ -652,14 +675,15 @@ class Update(ValuesBase):
                     values(name='user #5')
 
         Similar functionality is available via the
-        :meth:`~.TableClause.update` method on
-        :class:`.Table`::
+        :meth:`_expression.TableClause.update` method on
+        :class:`_schema.Table`::
 
             stmt = users.update().\
                         where(users.c.id==5).\
                         values(name='user #5')
 
-        :param table: A :class:`.Table` object representing the database
+        :param table: A :class:`_schema.Table`
+         object representing the database
          table to be updated.
 
         :param whereclause: Optional SQL expression describing the ``WHERE``
@@ -690,11 +714,11 @@ class Update(ValuesBase):
           the ``SET`` clause generates for all columns.
 
           Modern applications may prefer to use the generative
-          :meth:`.Update.values` method to set the values of the
+          :meth:`_expression.Update.values` method to set the values of the
           UPDATE statement.
 
         :param inline:
-          if True, SQL defaults present on :class:`.Column` objects via
+          if True, SQL defaults present on :class:`_schema.Column` objects via
           the ``default`` keyword will be compiled 'inline' into the statement
           and not pre-executed.  This means that their values will not
           be available in the dictionary returned from
@@ -702,7 +726,8 @@ class Update(ValuesBase):
 
         :param preserve_parameter_order: if True, the update statement is
           expected to receive parameters **only** via the
-          :meth:`.Update.values` method, and they must be passed as a Python
+          :meth:`_expression.Update.values` method,
+          and they must be passed as a Python
           ``list`` of 2-tuples. The rendered UPDATE statement will emit the SET
           clause for each referenced column maintaining this order.
 
@@ -711,18 +736,18 @@ class Update(ValuesBase):
           .. seealso::
 
             :ref:`updates_order_parameters` - full example of the
-            :paramref:`~.update.preserve_parameter_order` flag
+            :paramref:`_expression.update.preserve_parameter_order` flag
 
         If both ``values`` and compile-time bind parameters are present, the
         compile-time bind parameters override the information specified
         within ``values`` on a per-key basis.
 
-        The keys within ``values`` can be either :class:`.Column`
+        The keys within ``values`` can be either :class:`_schema.Column`
         objects or their string identifiers (specifically the "key" of the
-        :class:`.Column`, normally but not necessarily equivalent to
+        :class:`_schema.Column`, normally but not necessarily equivalent to
         its "name").  Normally, the
-        :class:`.Column` objects used here are expected to be
-        part of the target :class:`.Table` that is the table
+        :class:`_schema.Column` objects used here are expected to be
+        part of the target :class:`_schema.Table` that is the table
         to be updated.  However when using MySQL, a multiple-table
         UPDATE statement can refer to columns from any of
         the tables referred to in the WHERE clause.
@@ -730,13 +755,13 @@ class Update(ValuesBase):
         The values referred to in ``values`` are typically:
 
         * a literal data value (i.e. string, number, etc.)
-        * a SQL expression, such as a related :class:`.Column`,
-          a scalar-returning :func:`.select` construct,
+        * a SQL expression, such as a related :class:`_schema.Column`,
+          a scalar-returning :func:`_expression.select` construct,
           etc.
 
-        When combining :func:`.select` constructs within the values
-        clause of an :func:`.update` construct,
-        the subquery represented by the :func:`.select` should be
+        When combining :func:`_expression.select` constructs within the values
+        clause of an :func:`_expression.update` construct,
+        the subquery represented by the :func:`_expression.select` should be
         *correlated* to the parent table, that is, providing criterion
         which links the table inside the subquery to the outer table
         being updated::
@@ -807,7 +832,8 @@ class Update(ValuesBase):
 class Delete(UpdateBase):
     """Represent a DELETE construct.
 
-    The :class:`.Delete` object is created using the :func:`delete()`
+    The :class:`_expression.Delete`
+    object is created using the :func:`delete()`
     function.
 
     """
@@ -823,15 +849,16 @@ class Delete(UpdateBase):
         prefixes=None,
         **dialect_kw
     ):
-        r"""Construct :class:`.Delete` object.
+        r"""Construct :class:`_expression.Delete` object.
 
         Similar functionality is available via the
-        :meth:`~.TableClause.delete` method on
-        :class:`~.schema.Table`.
+        :meth:`_expression.TableClause.delete` method on
+        :class:`_schema.Table`.
 
         :param table: The table to delete rows from.
 
-        :param whereclause: A :class:`.ClauseElement` describing the ``WHERE``
+        :param whereclause: A :class:`_expression.ClauseElement`
+          describing the ``WHERE``
           condition of the ``DELETE`` statement. Note that the
           :meth:`~Delete.where()` generative method may be used instead.
 

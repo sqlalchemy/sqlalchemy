@@ -71,9 +71,9 @@ class Mapper(InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
 
-    The :class:`.Mapper` object is instantiated using the
+    The :class:`_orm.Mapper` object is instantiated using the
     :func:`~sqlalchemy.orm.mapper` function.    For information
-    about instantiating new :class:`.Mapper` objects, see
+    about instantiating new :class:`_orm.Mapper` objects, see
     that function's documentation.
 
 
@@ -86,8 +86,8 @@ class Mapper(InspectionAttr):
     makes usage of :func:`.mapper` behind the scenes.
 
     Given a particular class known to be mapped by the ORM,
-    the :class:`.Mapper` which maintains it can be acquired
-    using the :func:`.inspect` function::
+    the :class:`_orm.Mapper` which maintains it can be acquired
+    using the :func:`_sa.inspect` function::
 
         from sqlalchemy import inspect
 
@@ -135,7 +135,7 @@ class Mapper(InspectionAttr):
         legacy_is_orphan=False,
         _compiled_cache_size=100,
     ):
-        r"""Return a new :class:`~.Mapper` object.
+        r"""Return a new :class:`_orm.Mapper` object.
 
         This function is typically used behind the scenes
         via the Declarative extension.   When using Declarative,
@@ -184,21 +184,22 @@ class Mapper(InspectionAttr):
           this argument is automatically passed as the declared class
           itself.
 
-        :param local_table: The :class:`.Table` or other selectable
+        :param local_table: The :class:`_schema.Table` or other selectable
            to which the class is mapped.  May be ``None`` if
            this mapper inherits from another mapper using single-table
            inheritance.   When using Declarative, this argument is
            automatically passed by the extension, based on what
            is configured via the ``__table__`` argument or via the
-           :class:`.Table` produced as a result of the ``__tablename__``
-           and :class:`.Column` arguments present.
+           :class:`_schema.Table`
+           produced as a result of the ``__tablename__``
+           and :class:`_schema.Column` arguments present.
 
         :param always_refresh: If True, all query operations for this mapped
            class will overwrite all data within object instances that already
            exist within the session, erasing any in-memory changes with
            whatever information was loaded from the database. Usage of this
            flag is highly discouraged; as an alternative, see the method
-           :meth:`.Query.populate_existing`.
+           :meth:`_query.Query.populate_existing`.
 
         :param allow_partial_pks: Defaults to True.  Indicates that a
            composite primary key with some NULL values should be considered as
@@ -217,7 +218,7 @@ class Mapper(InspectionAttr):
            in between individual row persistence operations.
 
         :param column_prefix: A string which will be prepended
-           to the mapped attribute name when :class:`.Column`
+           to the mapped attribute name when :class:`_schema.Column`
            objects are automatically assigned as attributes to the
            mapped class.  Does not affect explicitly specified
            column-based properties.
@@ -268,7 +269,7 @@ class Mapper(InspectionAttr):
 
         :param extension: A :class:`.MapperExtension` instance or
            list of :class:`.MapperExtension` instances which will be applied
-           to all operations by this :class:`.Mapper`.
+           to all operations by this :class:`_orm.Mapper`.
 
            .. deprecated:: 0.7
 
@@ -282,8 +283,9 @@ class Mapper(InspectionAttr):
 
           See :ref:`include_exclude_cols` for an example.
 
-        :param inherits: A mapped class or the corresponding :class:`.Mapper`
-          of one indicating a superclass to which this :class:`.Mapper`
+        :param inherits: A mapped class or the corresponding
+          :class:`_orm.Mapper`
+          of one indicating a superclass to which this :class:`_orm.Mapper`
           should *inherit* from.   The mapped class here must be a subclass
           of the other mapper's class.   When using Declarative, this argument
           is passed automatically as a result of the natural class
@@ -299,7 +301,7 @@ class Mapper(InspectionAttr):
            between the two tables.
 
         :param inherit_foreign_keys: When ``inherit_condition`` is used and
-           the columns present are missing a :class:`.ForeignKey`
+           the columns present are missing a :class:`_schema.ForeignKey`
            configuration, this parameter can be used to specify which columns
            are "foreign".  In most cases can be left as ``None``.
 
@@ -319,27 +321,29 @@ class Mapper(InspectionAttr):
           See the change note and example at :ref:`legacy_is_orphan_addition`
           for more detail on this change.
 
-        :param non_primary: Specify that this :class:`.Mapper` is in addition
+        :param non_primary: Specify that this :class:`_orm.Mapper`
+          is in addition
           to the "primary" mapper, that is, the one used for persistence.
-          The :class:`.Mapper` created here may be used for ad-hoc
+          The :class:`_orm.Mapper` created here may be used for ad-hoc
           mapping of the class to an alternate selectable, for loading
           only.
 
-          :paramref:`.Mapper.non_primary` is not an often used option, but
-          is useful in some specific :func:`.relationship` cases.
+          :paramref:`_orm.Mapper.non_primary` is not an often used option, but
+          is useful in some specific :func:`_orm.relationship` cases.
 
           .. seealso::
 
               :ref:`relationship_non_primary_mapper`
 
-        :param order_by: A single :class:`.Column` or list of :class:`.Column`
+        :param order_by: A single :class:`_schema.Column` or list of
+           :class:`_schema.Column`
            objects for which selection operations should use as the default
            ordering for entities.  By default mappers have no pre-defined
            ordering.
 
-           .. deprecated:: 1.1 The :paramref:`.Mapper.order_by` parameter
+           .. deprecated:: 1.1 The :paramref:`_orm.Mapper.order_by` parameter
               is deprecated, and will be removed in a future release.
-              Use :meth:`.Query.order_by` to determine the ordering of a
+              Use :meth:`_query.Query.order_by` to determine the ordering of a
               result set.
 
         :param passive_deletes: Indicates DELETE behavior of foreign key
@@ -371,7 +375,7 @@ class Mapper(InspectionAttr):
            .. seealso::
 
                :ref:`passive_deletes` - description of similar feature as
-               used with :func:`.relationship`
+               used with :func:`_orm.relationship`
 
                :paramref:`.mapper.passive_updates` - supporting ON UPDATE
                CASCADE for joined-table inheritance mappers
@@ -394,7 +398,7 @@ class Mapper(InspectionAttr):
            .. seealso::
 
                :ref:`passive_updates` - description of a similar feature as
-               used with :func:`.relationship`
+               used with :func:`_orm.relationship`
 
                :paramref:`.mapper.passive_deletes` - supporting ON DELETE
                CASCADE for joined-table inheritance mappers
@@ -424,8 +428,8 @@ class Mapper(InspectionAttr):
           SQL expression used to determine the target class for an
           incoming row, when inheriting classes are present.
 
-          This value is commonly a :class:`.Column` object that's
-          present in the mapped :class:`.Table`::
+          This value is commonly a :class:`_schema.Column` object that's
+          present in the mapped :class:`_schema.Table`::
 
             class Employee(Base):
                 __tablename__ = 'employee'
@@ -480,7 +484,7 @@ class Mapper(InspectionAttr):
 
           When setting ``polymorphic_on`` to reference an
           attribute or expression that's not present in the
-          locally mapped :class:`.Table`, yet the value
+          locally mapped :class:`_schema.Table`, yet the value
           of the discriminator should be persisted to the database,
           the value of the
           discriminator is not automatically set on new
@@ -522,20 +526,22 @@ class Mapper(InspectionAttr):
 
         :param properties: A dictionary mapping the string names of object
            attributes to :class:`.MapperProperty` instances, which define the
-           persistence behavior of that attribute.  Note that :class:`.Column`
+           persistence behavior of that attribute.  Note that
+           :class:`_schema.Column`
            objects present in
-           the mapped :class:`.Table` are automatically placed into
+           the mapped :class:`_schema.Table` are automatically placed into
            ``ColumnProperty`` instances upon mapping, unless overridden.
            When using Declarative, this argument is passed automatically,
            based on all those :class:`.MapperProperty` instances declared
            in the declared class body.
 
-        :param primary_key: A list of :class:`.Column` objects which define
+        :param primary_key: A list of :class:`_schema.Column`
+           objects which define
            the primary key to be used against this mapper's selectable unit.
            This is normally simply the primary key of the ``local_table``, but
            can be overridden here.
 
-        :param version_id_col: A :class:`.Column`
+        :param version_id_col: A :class:`_schema.Column`
            that will be used to keep a running version id of rows
            in the table.  This is used to detect concurrent updates or
            the presence of stale data in a flush.  The methodology is to
@@ -739,48 +745,52 @@ class Mapper(InspectionAttr):
         return self.class_
 
     local_table = None
-    """The :class:`.Selectable` which this :class:`.Mapper` manages.
+    """The :class:`expression.Selectable` which this :class:`_orm.Mapper`
+    manages.
 
-    Typically is an instance of :class:`.Table` or :class:`.Alias`.
+    Typically is an instance of :class:`_schema.Table` or
+    :class:`_expression.Alias`.
     May also be ``None``.
 
     The "local" table is the
-    selectable that the :class:`.Mapper` is directly responsible for
+    selectable that the :class:`_orm.Mapper` is directly responsible for
     managing from an attribute access and flush perspective.   For
     non-inheriting mappers, the local table is the same as the
     "mapped" table.   For joined-table inheritance mappers, local_table
     will be the particular sub-table of the overall "join" which
-    this :class:`.Mapper` represents.  If this mapper is a
+    this :class:`_orm.Mapper` represents.  If this mapper is a
     single-table inheriting mapper, local_table will be ``None``.
 
     .. seealso::
 
-        :attr:`~.Mapper.mapped_table`.
+        :attr:`_orm.Mapper.mapped_table`.
 
     """
 
     mapped_table = None
-    """The :class:`.Selectable` to which this :class:`.Mapper` is mapped.
+    """The :class:`expression.Selectable` to which this :class:`_orm.Mapper`
+    is mapped.
 
-    Typically an instance of :class:`.Table`, :class:`.Join`, or
-    :class:`.Alias`.
+    Typically an instance of :class:`_schema.Table`, :class:`_expression.Join`
+    , or
+    :class:`_expression.Alias`.
 
     The "mapped" table is the selectable that
     the mapper selects from during queries.   For non-inheriting
     mappers, the mapped table is the same as the "local" table.
     For joined-table inheritance mappers, mapped_table references the
-    full :class:`.Join` representing full rows for this particular
+    full :class:`_expression.Join` representing full rows for this particular
     subclass.  For single-table inheritance mappers, mapped_table
     references the base table.
 
     .. seealso::
 
-        :attr:`~.Mapper.local_table`.
+        :attr:`_orm.Mapper.local_table`.
 
     """
 
     inherits = None
-    """References the :class:`.Mapper` which this :class:`.Mapper`
+    """References the :class:`_orm.Mapper` which this :class:`_orm.Mapper`
     inherits from, if any.
 
     This is a *read only* attribute determined during mapper construction.
@@ -789,7 +799,7 @@ class Mapper(InspectionAttr):
     """
 
     configured = None
-    """Represent ``True`` if this :class:`.Mapper` has been configured.
+    """Represent ``True`` if this :class:`_orm.Mapper` has been configured.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -801,7 +811,7 @@ class Mapper(InspectionAttr):
     """
 
     concrete = None
-    """Represent ``True`` if this :class:`.Mapper` is a concrete
+    """Represent ``True`` if this :class:`_orm.Mapper` is a concrete
     inheritance mapper.
 
     This is a *read only* attribute determined during mapper construction.
@@ -810,11 +820,13 @@ class Mapper(InspectionAttr):
     """
 
     tables = None
-    """An iterable containing the collection of :class:`.Table` objects
-    which this :class:`.Mapper` is aware of.
+    """An iterable containing the collection of :class:`_schema.Table` objects
+    which this :class:`_orm.Mapper` is aware of.
 
-    If the mapper is mapped to a :class:`.Join`, or an :class:`.Alias`
-    representing a :class:`.Select`, the individual :class:`.Table`
+    If the mapper is mapped to a :class:`_expression.Join`, or an
+    :class:`_expression.Alias`
+    representing a :class:`_expression.Select`, the individual
+    :class:`_schema.Table`
     objects that comprise the full construct will be represented here.
 
     This is a *read only* attribute determined during mapper construction.
@@ -823,20 +835,23 @@ class Mapper(InspectionAttr):
     """
 
     primary_key = None
-    """An iterable containing the collection of :class:`.Column` objects
+    """An iterable containing the collection of :class:`_schema.Column`
+    objects
     which comprise the 'primary key' of the mapped table, from the
-    perspective of this :class:`.Mapper`.
+    perspective of this :class:`_orm.Mapper`.
 
-    This list is against the selectable in :attr:`~.Mapper.mapped_table`. In
+    This list is against the selectable in :attr:`_orm.Mapper.mapped_table`.
+    In
     the case of inheriting mappers, some columns may be managed by a
-    superclass mapper.  For example, in the case of a :class:`.Join`, the
+    superclass mapper.  For example, in the case of a
+    :class:`_expression.Join`, the
     primary key is determined by all of the primary key columns across all
-    tables referenced by the :class:`.Join`.
+    tables referenced by the :class:`_expression.Join`.
 
     The list is also not necessarily the same as the primary key column
-    collection associated with the underlying tables; the :class:`.Mapper`
+    collection associated with the underlying tables; the :class:`_orm.Mapper`
     features a ``primary_key`` argument that can override what the
-    :class:`.Mapper` considers as primary key columns.
+    :class:`_orm.Mapper` considers as primary key columns.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -844,7 +859,7 @@ class Mapper(InspectionAttr):
     """
 
     class_ = None
-    """The Python class which this :class:`.Mapper` maps.
+    """The Python class which this :class:`_orm.Mapper` maps.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -853,7 +868,7 @@ class Mapper(InspectionAttr):
 
     class_manager = None
     """The :class:`.ClassManager` which maintains event listeners
-    and class-bound descriptors for this :class:`.Mapper`.
+    and class-bound descriptors for this :class:`_orm.Mapper`.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -861,10 +876,10 @@ class Mapper(InspectionAttr):
     """
 
     single = None
-    """Represent ``True`` if this :class:`.Mapper` is a single table
+    """Represent ``True`` if this :class:`_orm.Mapper` is a single table
     inheritance mapper.
 
-    :attr:`~.Mapper.local_table` will be ``None`` if this flag is set.
+    :attr:`_orm.Mapper.local_table` will be ``None`` if this flag is set.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -872,7 +887,7 @@ class Mapper(InspectionAttr):
     """
 
     non_primary = None
-    """Represent ``True`` if this :class:`.Mapper` is a "non-primary"
+    """Represent ``True`` if this :class:`_orm.Mapper` is a "non-primary"
     mapper, e.g. a mapper that is used only to select rows but not for
     persistence management.
 
@@ -882,11 +897,11 @@ class Mapper(InspectionAttr):
     """
 
     polymorphic_on = None
-    """The :class:`.Column` or SQL expression specified as the
+    """The :class:`_schema.Column` or SQL expression specified as the
     ``polymorphic_on`` argument
-    for this :class:`.Mapper`, within an inheritance scenario.
+    for this :class:`_orm.Mapper`, within an inheritance scenario.
 
-    This attribute is normally a :class:`.Column` instance but
+    This attribute is normally a :class:`_schema.Column` instance but
     may also be an expression, such as one derived from
     :func:`.cast`.
 
@@ -897,10 +912,10 @@ class Mapper(InspectionAttr):
 
     polymorphic_map = None
     """A mapping of "polymorphic identity" identifiers mapped to
-    :class:`.Mapper` instances, within an inheritance scenario.
+    :class:`_orm.Mapper` instances, within an inheritance scenario.
 
     The identifiers can be of any type which is comparable to the
-    type of column represented by :attr:`~.Mapper.polymorphic_on`.
+    type of column represented by :attr:`_orm.Mapper.polymorphic_on`.
 
     An inheritance chain of mappers will all reference the same
     polymorphic map object.  The object is used to correlate incoming
@@ -913,11 +928,11 @@ class Mapper(InspectionAttr):
 
     polymorphic_identity = None
     """Represent an identifier which is matched against the
-    :attr:`~.Mapper.polymorphic_on` column during result row loading.
+    :attr:`_orm.Mapper.polymorphic_on` column during result row loading.
 
     Used only with inheritance, this object can be of any type which is
     comparable to the type of column represented by
-    :attr:`~.Mapper.polymorphic_on`.
+    :attr:`_orm.Mapper.polymorphic_on`.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -925,11 +940,11 @@ class Mapper(InspectionAttr):
     """
 
     base_mapper = None
-    """The base-most :class:`.Mapper` in an inheritance chain.
+    """The base-most :class:`_orm.Mapper` in an inheritance chain.
 
     In a non-inheriting scenario, this attribute will always be this
-    :class:`.Mapper`.   In an inheritance scenario, it references
-    the :class:`.Mapper` which is parent to all other :class:`.Mapper`
+    :class:`_orm.Mapper`.   In an inheritance scenario, it references
+    the :class:`_orm.Mapper` which is parent to all other :class:`_orm.Mapper`
     objects in the inheritance chain.
 
     This is a *read only* attribute determined during mapper construction.
@@ -938,14 +953,15 @@ class Mapper(InspectionAttr):
     """
 
     columns = None
-    """A collection of :class:`.Column` or other scalar expression
-    objects maintained by this :class:`.Mapper`.
+    """A collection of :class:`_schema.Column` or other scalar expression
+    objects maintained by this :class:`_orm.Mapper`.
 
     The collection behaves the same as that of the ``c`` attribute on
-    any :class:`.Table` object, except that only those columns included in
+    any :class:`_schema.Table` object,
+    except that only those columns included in
     this mapping are present, and are keyed based on the attribute name
     defined in the mapping, not necessarily the ``key`` attribute of the
-    :class:`.Column` itself.   Additionally, scalar expressions mapped
+    :class:`_schema.Column` itself.   Additionally, scalar expressions mapped
     by :func:`.column_property` are also present here.
 
     This is a *read only* attribute determined during mapper construction.
@@ -955,7 +971,7 @@ class Mapper(InspectionAttr):
 
     validators = None
     """An immutable dictionary of attributes which have been decorated
-    using the :func:`~.orm.validates` decorator.
+    using the :func:`_orm.validates` decorator.
 
     The dictionary contains string attribute names as keys
     mapped to the actual validation method.
@@ -963,7 +979,7 @@ class Mapper(InspectionAttr):
     """
 
     c = None
-    """A synonym for :attr:`~.Mapper.columns`."""
+    """A synonym for :attr:`_orm.Mapper.columns`."""
 
     @util.memoized_property
     def _path_registry(self):
@@ -1153,8 +1169,8 @@ class Mapper(InspectionAttr):
             )
 
     def _set_concrete_base(self, mapper):
-        """Set the given :class:`.Mapper` as the 'inherits' for this
-        :class:`.Mapper`, assuming this :class:`.Mapper` is concrete
+        """Set the given :class:`_orm.Mapper` as the 'inherits' for this
+        :class:`_orm.Mapper`, assuming this :class:`_orm.Mapper` is concrete
         and does not already have an inherits."""
 
         assert self.concrete
@@ -1822,7 +1838,7 @@ class Mapper(InspectionAttr):
 
     def _property_from_column(self, key, prop):
         """generate/update a :class:`.ColumnProprerty` given a
-        :class:`.Column` object. """
+        :class:`_schema.Column` object. """
 
         # we were passed a Column or a list of Columns;
         # generate a properties.ColumnProperty
@@ -2024,7 +2040,7 @@ class Mapper(InspectionAttr):
             )
 
     def get_property_by_column(self, column):
-        """Given a :class:`.Column` object, return the
+        """Given a :class:`_schema.Column` object, return the
         :class:`.MapperProperty` which maps this column."""
 
         return self._columntoproperty[column]
@@ -2128,7 +2144,7 @@ class Mapper(InspectionAttr):
             )
 
     with_polymorphic_mappers = _with_polymorphic_mappers
-    """The list of :class:`.Mapper` objects included in the
+    """The list of :class:`_orm.Mapper` objects included in the
     default "polymorphic" query.
 
     """
@@ -2239,7 +2255,8 @@ class Mapper(InspectionAttr):
 
     @property
     def selectable(self):
-        """The :func:`.select` construct this :class:`.Mapper` selects from
+        """The :func:`_expression.select` construct this :class:`_orm.Mapper`
+        selects from
         by default.
 
         Normally, this is equivalent to :attr:`.mapped_table`, unless
@@ -2314,14 +2331,14 @@ class Mapper(InspectionAttr):
         column.   The namespace object can also be iterated,
         which would yield each :class:`.MapperProperty`.
 
-        :class:`.Mapper` has several pre-filtered views
+        :class:`_orm.Mapper` has several pre-filtered views
         of this attribute which limit the types of properties
         returned, including :attr:`.synonyms`, :attr:`.column_attrs`,
         :attr:`.relationships`, and :attr:`.composites`.
 
         .. warning::
 
-            The :attr:`.Mapper.attrs` accessor namespace is an
+            The :attr:`_orm.Mapper.attrs` accessor namespace is an
             instance of :class:`.OrderedProperties`.  This is
             a dictionary-like object which includes a small number of
             named methods such as :meth:`.OrderedProperties.items`
@@ -2332,7 +2349,7 @@ class Mapper(InspectionAttr):
 
         .. seealso::
 
-            :attr:`.Mapper.all_orm_descriptors`
+            :attr:`_orm.Mapper.all_orm_descriptors`
 
         """
         if Mapper._new_mappers:
@@ -2363,11 +2380,12 @@ class Mapper(InspectionAttr):
         :attr:`.QueryableAttribute.property` attribute refers to the
         :class:`.MapperProperty` property, which is what you get when
         referring to the collection of mapped properties via
-        :attr:`.Mapper.attrs`.
+        :attr:`_orm.Mapper.attrs`.
 
         .. warning::
 
-            The :attr:`.Mapper.all_orm_descriptors` accessor namespace is an
+            The :attr:`_orm.Mapper.all_orm_descriptors`
+            accessor namespace is an
             instance of :class:`.OrderedProperties`.  This is
             a dictionary-like object which includes a small number of
             named methods such as :meth:`.OrderedProperties.items`
@@ -2379,7 +2397,7 @@ class Mapper(InspectionAttr):
 
         .. seealso::
 
-            :attr:`.Mapper.attrs`
+            :attr:`_orm.Mapper.attrs`
 
         """
         return util.ImmutableProperties(
@@ -2389,11 +2407,12 @@ class Mapper(InspectionAttr):
     @_memoized_configured_property
     def synonyms(self):
         """Return a namespace of all :class:`.SynonymProperty`
-        properties maintained by this :class:`.Mapper`.
+        properties maintained by this :class:`_orm.Mapper`.
 
         .. seealso::
 
-            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            :attr:`_orm.Mapper.attrs` - namespace of all
+            :class:`.MapperProperty`
             objects.
 
         """
@@ -2402,11 +2421,12 @@ class Mapper(InspectionAttr):
     @_memoized_configured_property
     def column_attrs(self):
         """Return a namespace of all :class:`.ColumnProperty`
-        properties maintained by this :class:`.Mapper`.
+        properties maintained by this :class:`_orm.Mapper`.
 
         .. seealso::
 
-            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            :attr:`_orm.Mapper.attrs` - namespace of all
+            :class:`.MapperProperty`
             objects.
 
         """
@@ -2415,11 +2435,11 @@ class Mapper(InspectionAttr):
     @_memoized_configured_property
     def relationships(self):
         """A namespace of all :class:`.RelationshipProperty` properties
-        maintained by this :class:`.Mapper`.
+        maintained by this :class:`_orm.Mapper`.
 
         .. warning::
 
-            the :attr:`.Mapper.relationships` accessor namespace is an
+            the :attr:`_orm.Mapper.relationships` accessor namespace is an
             instance of :class:`.OrderedProperties`.  This is
             a dictionary-like object which includes a small number of
             named methods such as :meth:`.OrderedProperties.items`
@@ -2431,7 +2451,8 @@ class Mapper(InspectionAttr):
 
         .. seealso::
 
-            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            :attr:`_orm.Mapper.attrs` - namespace of all
+            :class:`.MapperProperty`
             objects.
 
         """
@@ -2440,11 +2461,12 @@ class Mapper(InspectionAttr):
     @_memoized_configured_property
     def composites(self):
         """Return a namespace of all :class:`.CompositeProperty`
-        properties maintained by this :class:`.Mapper`.
+        properties maintained by this :class:`_orm.Mapper`.
 
         .. seealso::
 
-            :attr:`.Mapper.attrs` - namespace of all :class:`.MapperProperty`
+            :attr:`_orm.Mapper.attrs` - namespace of all
+            :class:`.MapperProperty`
             objects.
 
         """
@@ -2651,9 +2673,11 @@ class Mapper(InspectionAttr):
         item from the identity map.
 
         :param row: A :class:`.RowProxy` instance.  The columns which are
-         mapped by this :class:`.Mapper` should be locatable in the row,
-         preferably via the :class:`.Column` object directly (as is the case
-         when a :func:`.select` construct is executed), or via string names of
+         mapped by this :class:`_orm.Mapper` should be locatable in the row,
+         preferably via the :class:`_schema.Column`
+         object directly (as is the case
+         when a :func:`_expression.select` construct is executed),
+         or via string names of
          the form ``<tablename>_<colname>``.
 
         """
@@ -3144,13 +3168,13 @@ def configure_mappers():
       proceeds.
 
     * :meth:`.MapperEvents.mapper_configured` - called as each individual
-      :class:`.Mapper` is configured within the process; will include all
+      :class:`_orm.Mapper` is configured within the process; will include all
       mapper state except for backrefs set up by other mappers that are still
       to be configured.
 
     * :meth:`.MapperEvents.after_configured` - called once after
       :func:`.configure_mappers` is complete; at this stage, all
-      :class:`.Mapper` objects that are known  to SQLAlchemy will be fully
+      :class:`_orm.Mapper` objects that are known  to SQLAlchemy will be fully
       configured.  Note that the calling application may still have other
       mappings that haven't been produced yet, such as if they are in modules
       as yet unimported.

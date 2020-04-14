@@ -19,7 +19,7 @@ instructions regarding secondary event targets based on the given target.
 
 The name of an event and the argument signature of a corresponding listener function is derived from
 a class bound specification method, which exists bound to a marker class that's described in the documentation.
-For example, the documentation for :meth:`.PoolEvents.connect` indicates that the event name is ``"connect"``
+For example, the documentation for :meth:`_events.PoolEvents.connect` indicates that the event name is ``"connect"``
 and that a user-defined listener function should receive two positional arguments::
 
     from sqlalchemy.event import listen
@@ -43,7 +43,7 @@ Named Argument Styles
 ---------------------
 
 There are some varieties of argument styles which can be accepted by listener
-functions.  Taking the example of :meth:`.PoolEvents.connect`, this function
+functions.  Taking the example of :meth:`_events.PoolEvents.connect`, this function
 is documented as receiving ``dbapi_connection`` and ``connection_record`` arguments.
 We can opt to receive these arguments by name, by establishing a listener function
 that accepts ``**keyword`` arguments, by passing ``named=True`` to either
@@ -84,7 +84,7 @@ The :func:`.listen` function is very flexible regarding targets.  It
 generally accepts classes, instances of those classes, and related
 classes or objects from which the appropriate target can be derived.
 For example, the above mentioned ``"connect"`` event accepts
-:class:`.Engine` classes and objects as well as :class:`.Pool` classes
+:class:`_engine.Engine` classes and objects as well as :class:`_pool.Pool` classes
 and objects::
 
     from sqlalchemy.event import listen

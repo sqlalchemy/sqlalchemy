@@ -526,9 +526,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         self._raise_on_sql = self.strategy_opts["lazy"] == "raise_on_sql"
 
         join_condition = self.parent_property._join_condition
-        self._lazywhere, self._bind_to_col, self._equated_columns = (
-            join_condition.create_lazy_clause()
-        )
+        (
+            self._lazywhere,
+            self._bind_to_col,
+            self._equated_columns,
+        ) = join_condition.create_lazy_clause()
 
         (
             self._rev_lazywhere,
@@ -587,6 +589,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         def visit_bindparam(bindparam):
             bindparam.unique = False
+
         visitors.traverse(criterion, {}, {"bindparam": visit_bindparam})
 
         def visit_bindparam(bindparam):
@@ -1277,7 +1280,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         return q
 
     class _SubqCollections(object):
-        """Given a :class:`.Query` used to emit the "subquery load",
+        """Given a :class:`_query.Query` used to emit the "subquery load",
         provide a load interface that executes the query at the
         first moment a value is needed.
 

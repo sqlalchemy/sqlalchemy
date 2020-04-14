@@ -20,18 +20,19 @@ class DDLEvents(event.Events):
     """
     Define event listeners for schema objects,
     that is, :class:`.SchemaItem` and other :class:`.SchemaEventTarget`
-    subclasses, including :class:`.MetaData`, :class:`.Table`,
-    :class:`.Column`.
+    subclasses, including :class:`_schema.MetaData`, :class:`_schema.Table`,
+    :class:`_schema.Column`.
 
-    :class:`.MetaData` and :class:`.Table` support events
+    :class:`_schema.MetaData` and :class:`_schema.Table` support events
     specifically regarding when CREATE and DROP
     DDL is emitted to the database.
 
     Attachment events are also provided to customize
     behavior whenever a child schema element is associated
-    with a parent, such as, when a :class:`.Column` is associated
-    with its :class:`.Table`, when a :class:`.ForeignKeyConstraint`
-    is associated with a :class:`.Table`, etc.
+    with a parent, such as, when a :class:`_schema.Column` is associated
+    with its :class:`_schema.Table`, when a
+    :class:`_schema.ForeignKeyConstraint`
+    is associated with a :class:`_schema.Table`, etc.
 
     Example using the ``after_create`` event::
 
@@ -65,7 +66,8 @@ class DDLEvents(event.Events):
 
     For all :class:`.DDLEvent` events, the ``propagate=True`` keyword argument
     will ensure that a given event handler is propagated to copies of the
-    object, which are made when using the :meth:`.Table.tometadata` method::
+    object, which are made when using the :meth:`_schema.Table.tometadata`
+    method::
 
         from sqlalchemy import DDL
         event.listen(
@@ -78,7 +80,7 @@ class DDLEvents(event.Events):
         new_table = some_table.tometadata(new_metadata)
 
     The above :class:`.DDL` object will also be associated with the
-    :class:`.Table` object represented by ``new_table``.
+    :class:`_schema.Table` object represented by ``new_table``.
 
     .. seealso::
 
@@ -98,9 +100,9 @@ class DDLEvents(event.Events):
     def before_create(self, target, connection, **kw):
         r"""Called before CREATE statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          CREATE statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -113,16 +115,16 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def after_create(self, target, connection, **kw):
         r"""Called after CREATE statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          CREATE statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -135,16 +137,16 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def before_drop(self, target, connection, **kw):
         r"""Called before DROP statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          DROP statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -157,16 +159,16 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def after_drop(self, target, connection, **kw):
         r"""Called after DROP statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          DROP statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -179,7 +181,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
@@ -194,7 +196,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
@@ -209,13 +211,13 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def column_reflect(self, inspector, table, column_info):
         """Called for each unit of 'column info' retrieved when
-        a :class:`.Table` is being reflected.
+        a :class:`_schema.Table` is being reflected.
 
         The dictionary of column information as returned by the
         dialect is passed, and can be modified.  The dictionary
@@ -232,13 +234,13 @@ class DDLEvents(event.Events):
             * ``default`` - the column's server default value.  This is
               normally specified as a plain string SQL expression, however the
               event can pass a :class:`.FetchedValue`, :class:`.DefaultClause`,
-              or :func:`.sql.expression.text` object as well.
+              or :func:`_expression.text` object as well.
 
               .. versionchanged:: 1.1.6
 
                     The :meth:`.DDLEvents.column_reflect` event allows a non
                     string :class:`.FetchedValue`,
-                    :func:`.sql.expression.text`, or derived object to be
+                    :func:`_expression.text`, or derived object to be
                     specified as the value of ``default`` in the column
                     dictionary.
 
@@ -246,12 +248,12 @@ class DDLEvents(event.Events):
 
         The event is called before any action is taken against
         this dictionary, and the contents can be modified.
-        The :class:`.Column` specific arguments ``info``, ``key``,
+        The :class:`_schema.Column` specific arguments ``info``, ``key``,
         and ``quote`` can also be added to the dictionary and
-        will be passed to the constructor of :class:`.Column`.
+        will be passed to the constructor of :class:`_schema.Column`.
 
         Note that this event is only meaningful if either
-        associated with the :class:`.Table` class across the
+        associated with the :class:`_schema.Table` class across the
         board, e.g.::
 
             from sqlalchemy.schema import Table
@@ -266,7 +268,7 @@ class DDLEvents(event.Events):
                     'column_reflect',
                     listen_for_reflect)
 
-        ...or with a specific :class:`.Table` instance using
+        ...or with a specific :class:`_schema.Table` instance using
         the ``listeners`` argument::
 
             def listen_for_reflect(inspector, table, column_info):
@@ -281,19 +283,20 @@ class DDLEvents(event.Events):
                 ])
 
         This because the reflection process initiated by ``autoload=True``
-        completes within the scope of the constructor for :class:`.Table`.
+        completes within the scope of the constructor for
+        :class:`_schema.Table`.
 
         :func:`.event.listen` also accepts the ``propagate=True``
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
 
 class PoolEvents(event.Events):
-    """Available events for :class:`.Pool`.
+    """Available events for :class:`_pool.Pool`.
 
     The methods here define the name of an event as well
     as the names of members that are passed to listener
@@ -308,11 +311,11 @@ class PoolEvents(event.Events):
 
         event.listen(Pool, 'checkout', my_on_checkout)
 
-    In addition to accepting the :class:`.Pool` class and
-    :class:`.Pool` instances, :class:`.PoolEvents` also accepts
-    :class:`.Engine` objects and the :class:`.Engine` class as
+    In addition to accepting the :class:`_pool.Pool` class and
+    :class:`_pool.Pool` instances, :class:`_events.PoolEvents` also accepts
+    :class:`_engine.Engine` objects and the :class:`_engine.Engine` class as
     targets, which will be resolved to the ``.pool`` attribute of the
-    given engine or the :class:`.Pool` class::
+    given engine or the :class:`_pool.Pool` class::
 
         engine = create_engine("postgresql://scott:tiger@localhost/test")
 
@@ -338,7 +341,7 @@ class PoolEvents(event.Events):
 
     def connect(self, dbapi_connection, connection_record):
         """Called at the moment a particular DBAPI connection is first
-        created for a given :class:`.Pool`.
+        created for a given :class:`_pool.Pool`.
 
         This event allows one to capture the point directly after which
         the DBAPI module-level ``.connect()`` method has been used in order
@@ -353,13 +356,16 @@ class PoolEvents(event.Events):
 
     def first_connect(self, dbapi_connection, connection_record):
         """Called exactly once for the first time a DBAPI connection is
-        checked out from a particular :class:`.Pool`.
+        checked out from a particular :class:`_pool.Pool`.
 
-        The rationale for :meth:`.PoolEvents.first_connect` is to determine
+        The rationale for :meth:`_events.PoolEvents.first_connect`
+        is to determine
         information about a particular series of database connections based
         on the settings used for all connections.  Since a particular
-        :class:`.Pool` refers to a single "creator" function (which in terms
-        of a :class:`.Engine` refers to the URL and connection options used),
+        :class:`_pool.Pool`
+        refers to a single "creator" function (which in terms
+        of a :class:`_engine.Engine`
+        refers to the URL and connection options used),
         it is typically valid to make observations about a single connection
         that can be safely assumed to be valid about all subsequent
         connections, such as the database version, the server and client
@@ -390,7 +396,7 @@ class PoolEvents(event.Events):
         using the new connection.
 
         .. seealso:: :meth:`.ConnectionEvents.engine_connect` - a similar event
-           which occurs upon creation of a new :class:`.Connection`.
+           which occurs upon creation of a new :class:`_engine.Connection`.
 
         """
 
@@ -418,8 +424,8 @@ class PoolEvents(event.Events):
         pool argument.
 
 
-        The :meth:`.PoolEvents.reset` event is usually followed by the
-        :meth:`.PoolEvents.checkin` event is called, except in those
+        The :meth:`_events.PoolEvents.reset` event is usually followed by the
+        :meth:`_events.PoolEvents.checkin` event is called, except in those
         cases where the connection is discarded immediately after reset.
 
         :param dbapi_connection: a DBAPI connection.
@@ -520,13 +526,13 @@ class PoolEvents(event.Events):
 
 class ConnectionEvents(event.Events):
     """Available events for :class:`.Connectable`, which includes
-    :class:`.Connection` and :class:`.Engine`.
+    :class:`_engine.Connection` and :class:`_engine.Engine`.
 
     The methods here define the name of an event as well as the names of
     members that are passed to listener functions.
 
     An event listener can be associated with any :class:`.Connectable`
-    class or instance, such as an :class:`.Engine`, e.g.::
+    class or instance, such as an :class:`_engine.Engine`, e.g.::
 
         from sqlalchemy import event, create_engine
 
@@ -537,7 +543,7 @@ class ConnectionEvents(event.Events):
         engine = create_engine('postgresql://scott:tiger@localhost/test')
         event.listen(engine, "before_cursor_execute", before_cursor_execute)
 
-    or with a specific :class:`.Connection`::
+    or with a specific :class:`_engine.Connection`::
 
         with engine.begin() as conn:
             @event.listens_for(conn, 'before_cursor_execute')
@@ -568,19 +574,23 @@ class ConnectionEvents(event.Events):
             return statement, parameters
 
     .. note:: :class:`.ConnectionEvents` can be established on any
-       combination of :class:`.Engine`, :class:`.Connection`, as well
+       combination of :class:`_engine.Engine`, :class:`_engine.Connection`,
+       as well
        as instances of each of those classes.  Events across all
        four scopes will fire off for a given instance of
-       :class:`.Connection`.  However, for performance reasons, the
-       :class:`.Connection` object determines at instantiation time
-       whether or not its parent :class:`.Engine` has event listeners
-       established.   Event listeners added to the :class:`.Engine`
-       class or to an instance of :class:`.Engine` *after* the instantiation
-       of a dependent :class:`.Connection` instance will usually
-       *not* be available on that :class:`.Connection` instance.  The newly
-       added listeners will instead take effect for :class:`.Connection`
+       :class:`_engine.Connection`.  However, for performance reasons, the
+       :class:`_engine.Connection` object determines at instantiation time
+       whether or not its parent :class:`_engine.Engine` has event listeners
+       established.   Event listeners added to the :class:`_engine.Engine`
+       class or to an instance of :class:`_engine.Engine`
+       *after* the instantiation
+       of a dependent :class:`_engine.Connection` instance will usually
+       *not* be available on that :class:`_engine.Connection` instance.
+       The newly
+       added listeners will instead take effect for
+       :class:`_engine.Connection`
        instances created subsequent to those event listeners being
-       established on the parent :class:`.Engine` class or instance.
+       established on the parent :class:`_engine.Engine` class or instance.
 
     :param retval=False: Applies to the :meth:`.before_execute` and
       :meth:`.before_cursor_execute` events only.  When True, the
@@ -662,9 +672,10 @@ class ConnectionEvents(event.Events):
                 # do something with clauseelement, multiparams, params
                 return clauseelement, multiparams, params
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param clauseelement: SQL expression construct, :class:`.Compiled`
-         instance, or string statement passed to :meth:`.Connection.execute`.
+         instance, or string statement passed to
+         :meth:`_engine.Connection.execute`.
         :param multiparams: Multiple parameter sets, a list of dictionaries.
         :param params: Single parameter set, a single dictionary.
 
@@ -678,9 +689,10 @@ class ConnectionEvents(event.Events):
         """Intercept high level execute() events after execute.
 
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param clauseelement: SQL expression construct, :class:`.Compiled`
-         instance, or string statement passed to :meth:`.Connection.execute`.
+         instance, or string statement passed to
+         :meth:`_engine.Connection.execute`.
         :param multiparams: Multiple parameter sets, a list of dictionaries.
         :param params: Single parameter set, a single dictionary.
         :param result: :class:`.ResultProxy` generated by the execution.
@@ -710,7 +722,7 @@ class ConnectionEvents(event.Events):
 
         See the example at :class:`.ConnectionEvents`.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param cursor: DBAPI cursor object
         :param statement: string SQL statement, as to be passed to the DBAPI
         :param parameters: Dictionary, tuple, or list of parameters being
@@ -734,7 +746,7 @@ class ConnectionEvents(event.Events):
     ):
         """Intercept low-level cursor execute() events after execution.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param cursor: DBAPI cursor object.  Will have results pending
          if the statement was a SELECT, but these should not be consumed
          as they will be needed by the :class:`.ResultProxy`.
@@ -762,7 +774,7 @@ class ConnectionEvents(event.Events):
         on the cursor.
 
         The use case here is to inject low-level exception handling
-        into an :class:`.Engine`, typically for logging and
+        into an :class:`_engine.Engine`, typically for logging and
         debugging purposes.
 
         .. warning::
@@ -781,7 +793,7 @@ class ConnectionEvents(event.Events):
         exception is then wrapped in a SQLAlchemy DBAPI exception
         wrapper and re-thrown.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param cursor: DBAPI cursor object
         :param statement: string SQL statement, as passed to the DBAPI
         :param parameters: Dictionary, tuple, or list of parameters being
@@ -800,7 +812,8 @@ class ConnectionEvents(event.Events):
         """
 
     def handle_error(self, exception_context):
-        r"""Intercept all exceptions processed by the :class:`.Connection`.
+        r"""Intercept all exceptions processed by the
+        :class:`_engine.Connection`.
 
         This includes all exceptions emitted by the DBAPI as well as
         within SQLAlchemy's statement invocation process, including
@@ -918,9 +931,9 @@ class ConnectionEvents(event.Events):
            ``False``.
 
         .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is now
-           invoked when an :class:`.Engine` fails during the initial
-           call to :meth:`.Engine.connect`, as well as when a
-           :class:`.Connection` object encounters an error during a
+           invoked when an :class:`_engine.Engine` fails during the initial
+           call to :meth:`_engine.Engine.connect`, as well as when a
+           :class:`_engine.Connection` object encounters an error during a
            reconnect operation.
 
         .. versionchanged:: 1.0.0 The :meth:`.handle_error` event is
@@ -936,32 +949,39 @@ class ConnectionEvents(event.Events):
         """
 
     def engine_connect(self, conn, branch):
-        """Intercept the creation of a new :class:`.Connection`.
+        """Intercept the creation of a new :class:`_engine.Connection`.
 
         This event is called typically as the direct result of calling
-        the :meth:`.Engine.connect` method.
+        the :meth:`_engine.Engine.connect` method.
 
-        It differs from the :meth:`.PoolEvents.connect` method, which
+        It differs from the :meth:`_events.PoolEvents.connect` method, which
         refers to the actual connection to a database at the DBAPI level;
         a DBAPI connection may be pooled and reused for many operations.
         In contrast, this event refers only to the production of a higher level
-        :class:`.Connection` wrapper around such a DBAPI connection.
+        :class:`_engine.Connection` wrapper around such a DBAPI connection.
 
-        It also differs from the :meth:`.PoolEvents.checkout` event
-        in that it is specific to the :class:`.Connection` object, not the
-        DBAPI connection that :meth:`.PoolEvents.checkout` deals with, although
+        It also differs from the :meth:`_events.PoolEvents.checkout` event
+        in that it is specific to the :class:`_engine.Connection` object,
+        not the
+        DBAPI connection that :meth:`_events.PoolEvents.checkout` deals with,
+        although
         this DBAPI connection is available here via the
-        :attr:`.Connection.connection` attribute.  But note there can in fact
-        be multiple :meth:`.PoolEvents.checkout` events within the lifespan
-        of a single :class:`.Connection` object, if that :class:`.Connection`
+        :attr:`_engine.Connection.connection` attribute.
+        But note there can in fact
+        be multiple :meth:`_events.PoolEvents.checkout`
+        events within the lifespan
+        of a single :class:`_engine.Connection` object, if that
+        :class:`_engine.Connection`
         is invalidated and re-established.  There can also be multiple
-        :class:`.Connection` objects generated for the same already-checked-out
-        DBAPI connection, in the case that a "branch" of a :class:`.Connection`
+        :class:`_engine.Connection`
+        objects generated for the same already-checked-out
+        DBAPI connection, in the case that a "branch" of a
+        :class:`_engine.Connection`
         is produced.
 
-        :param conn: :class:`.Connection` object.
+        :param conn: :class:`_engine.Connection` object.
         :param branch: if True, this is a "branch" of an existing
-         :class:`.Connection`.  A branch is generated within the course
+         :class:`_engine.Connection`.  A branch is generated within the course
          of a statement execution to invoke supplemental statements, most
          typically to pre-execute a SELECT of a default value for the purposes
          of an INSERT statement.
@@ -975,81 +995,91 @@ class ConnectionEvents(event.Events):
             to transparently ensure pooled connections are connected to the
             database.
 
-            :meth:`.PoolEvents.checkout` the lower-level pool checkout event
+            :meth:`_events.PoolEvents.checkout`
+            the lower-level pool checkout event
             for an individual DBAPI connection
 
             :meth:`.ConnectionEvents.set_connection_execution_options` - a copy
-            of a :class:`.Connection` is also made when the
-            :meth:`.Connection.execution_options` method is called.
+            of a :class:`_engine.Connection` is also made when the
+            :meth:`_engine.Connection.execution_options` method is called.
 
         """
 
     def set_connection_execution_options(self, conn, opts):
-        """Intercept when the :meth:`.Connection.execution_options`
+        """Intercept when the :meth:`_engine.Connection.execution_options`
         method is called.
 
-        This method is called after the new :class:`.Connection` has been
+        This method is called after the new :class:`_engine.Connection`
+        has been
         produced, with the newly updated execution options collection, but
         before the :class:`.Dialect` has acted upon any of those new options.
 
-        Note that this method is not called when a new :class:`.Connection`
+        Note that this method is not called when a new
+        :class:`_engine.Connection`
         is produced which is inheriting execution options from its parent
-        :class:`.Engine`; to intercept this condition, use the
+        :class:`_engine.Engine`; to intercept this condition, use the
         :meth:`.ConnectionEvents.engine_connect` event.
 
-        :param conn: The newly copied :class:`.Connection` object
+        :param conn: The newly copied :class:`_engine.Connection` object
 
         :param opts: dictionary of options that were passed to the
-         :meth:`.Connection.execution_options` method.
+         :meth:`_engine.Connection.execution_options` method.
 
         .. versionadded:: 0.9.0
 
         .. seealso::
 
             :meth:`.ConnectionEvents.set_engine_execution_options` - event
-            which is called when :meth:`.Engine.execution_options` is called.
+            which is called when :meth:`_engine.Engine.execution_options`
+            is called.
 
 
         """
 
     def set_engine_execution_options(self, engine, opts):
-        """Intercept when the :meth:`.Engine.execution_options`
+        """Intercept when the :meth:`_engine.Engine.execution_options`
         method is called.
 
-        The :meth:`.Engine.execution_options` method produces a shallow
-        copy of the :class:`.Engine` which stores the new options.  That new
-        :class:`.Engine` is passed here.   A particular application of this
+        The :meth:`_engine.Engine.execution_options` method produces a shallow
+        copy of the :class:`_engine.Engine` which stores the new options.
+        That new
+        :class:`_engine.Engine` is passed here.
+        A particular application of this
         method is to add a :meth:`.ConnectionEvents.engine_connect` event
-        handler to the given :class:`.Engine` which will perform some per-
-        :class:`.Connection` task specific to these execution options.
+        handler to the given :class:`_engine.Engine`
+        which will perform some per-
+        :class:`_engine.Connection` task specific to these execution options.
 
-        :param conn: The newly copied :class:`.Engine` object
+        :param conn: The newly copied :class:`_engine.Engine` object
 
         :param opts: dictionary of options that were passed to the
-         :meth:`.Connection.execution_options` method.
+         :meth:`_engine.Connection.execution_options` method.
 
         .. versionadded:: 0.9.0
 
         .. seealso::
 
             :meth:`.ConnectionEvents.set_connection_execution_options` - event
-            which is called when :meth:`.Connection.execution_options` is
+            which is called when :meth:`_engine.Connection.execution_options`
+            is
             called.
 
         """
 
     def engine_disposed(self, engine):
-        """Intercept when the :meth:`.Engine.dispose` method is called.
+        """Intercept when the :meth:`_engine.Engine.dispose` method is called.
 
-        The :meth:`.Engine.dispose` method instructs the engine to
-        "dispose" of it's connection pool (e.g. :class:`.Pool`), and
+        The :meth:`_engine.Engine.dispose` method instructs the engine to
+        "dispose" of it's connection pool (e.g. :class:`_pool.Pool`), and
         replaces it with a new one.  Disposing of the old pool has the
         effect that existing checked-in connections are closed.  The new
         pool does not establish any new connections until it is first used.
 
         This event can be used to indicate that resources related to the
-        :class:`.Engine` should also be cleaned up, keeping in mind that the
-        :class:`.Engine` can still be used for new requests in which case
+        :class:`_engine.Engine` should also be cleaned up,
+        keeping in mind that the
+        :class:`_engine.Engine`
+        can still be used for new requests in which case
         it re-acquires connection resources.
 
         .. versionadded:: 1.0.5
@@ -1059,7 +1089,7 @@ class ConnectionEvents(event.Events):
     def begin(self, conn):
         """Intercept begin() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
 
         """
 
@@ -1067,17 +1097,17 @@ class ConnectionEvents(event.Events):
         """Intercept rollback() events, as initiated by a
         :class:`.Transaction`.
 
-        Note that the :class:`.Pool` also "auto-rolls back"
+        Note that the :class:`_pool.Pool` also "auto-rolls back"
         a DBAPI connection upon checkin, if the ``reset_on_return``
         flag is set to its default value of ``'rollback'``.
         To intercept this
-        rollback, use the :meth:`.PoolEvents.reset` hook.
+        rollback, use the :meth:`_events.PoolEvents.reset` hook.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
 
         .. seealso::
 
-            :meth:`.PoolEvents.reset`
+            :meth:`_events.PoolEvents.reset`
 
         """
 
@@ -1085,18 +1115,18 @@ class ConnectionEvents(event.Events):
         """Intercept commit() events, as initiated by a
         :class:`.Transaction`.
 
-        Note that the :class:`.Pool` may also "auto-commit"
+        Note that the :class:`_pool.Pool` may also "auto-commit"
         a DBAPI connection upon checkin, if the ``reset_on_return``
         flag is set to the value ``'commit'``.  To intercept this
-        commit, use the :meth:`.PoolEvents.reset` hook.
+        commit, use the :meth:`_events.PoolEvents.reset` hook.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         """
 
     def savepoint(self, conn, name):
         """Intercept savepoint() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param name: specified name used for the savepoint.
 
         """
@@ -1104,7 +1134,7 @@ class ConnectionEvents(event.Events):
     def rollback_savepoint(self, conn, name, context):
         """Intercept rollback_savepoint() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param name: specified name used for the savepoint.
         :param context: :class:`.ExecutionContext` in use.  May be ``None``.
 
@@ -1113,7 +1143,7 @@ class ConnectionEvents(event.Events):
     def release_savepoint(self, conn, name, context):
         """Intercept release_savepoint() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param name: specified name used for the savepoint.
         :param context: :class:`.ExecutionContext` in use.  May be ``None``.
 
@@ -1122,7 +1152,7 @@ class ConnectionEvents(event.Events):
     def begin_twophase(self, conn, xid):
         """Intercept begin_twophase() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param xid: two-phase XID identifier
 
         """
@@ -1130,14 +1160,14 @@ class ConnectionEvents(event.Events):
     def prepare_twophase(self, conn, xid):
         """Intercept prepare_twophase() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param xid: two-phase XID identifier
         """
 
     def rollback_twophase(self, conn, xid, is_prepared):
         """Intercept rollback_twophase() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param xid: two-phase XID identifier
         :param is_prepared: boolean, indicates if
          :meth:`.TwoPhaseTransaction.prepare` was called.
@@ -1147,7 +1177,7 @@ class ConnectionEvents(event.Events):
     def commit_twophase(self, conn, xid, is_prepared):
         """Intercept commit_twophase() events.
 
-        :param conn: :class:`.Connection` object
+        :param conn: :class:`_engine.Connection` object
         :param xid: two-phase XID identifier
         :param is_prepared: boolean, indicates if
          :meth:`.TwoPhaseTransaction.prepare` was called.

@@ -16,7 +16,7 @@ How do I pool database connections?   Are my connections pooled?
 ----------------------------------------------------------------
 
 SQLAlchemy performs application-level connection pooling automatically
-in most cases.  With the exception of SQLite, a :class:`.Engine` object
+in most cases.  With the exception of SQLite, a :class:`_engine.Engine` object
 refers to a :class:`.QueuePool` as a source of connectivity.
 
 For more detail, see :ref:`engines_toplevel` and :ref:`pooling_toplevel`.
@@ -81,7 +81,7 @@ connection pool, it will malfunction when checked out again.  The mitigation
 for this issue is that the connection is **invalidated** when such a failure
 mode occurs so that the underlying database connection to MySQL is discarded.
 This invalidation occurs automatically for many known failure modes and can
-also be called explicitly via the :meth:`.Connection.invalidate` method.
+also be called explicitly via the :meth:`_engine.Connection.invalidate` method.
 
 There is also a second class of failure modes within this category where a context manager
 such as ``with session.begin_nested():`` wants to "roll back" the transaction
@@ -111,13 +111,13 @@ which have been improved across SQLAlchemy versions but others which are unavoid
   the server receives interleaved messages and breaks the state of the connection.
 
   This scenario can occur very easily if a program uses Python's "multiprocessing"
-  module and makes use of an :class:`.Engine` that was created in the parent
+  module and makes use of an :class:`_engine.Engine` that was created in the parent
   process.  It's common that "multiprocessing" is in use when using tools like
-  Celery.  The correct approach should be either that a new :class:`.Engine`
-  is produced when a child process first starts, discarding any :class:`.Engine`
-  that came down from the parent process; or, the :class:`.Engine` that's inherited
+  Celery.  The correct approach should be either that a new :class:`_engine.Engine`
+  is produced when a child process first starts, discarding any :class:`_engine.Engine`
+  that came down from the parent process; or, the :class:`_engine.Engine` that's inherited
   from the parent process can have it's internal pool of connections disposed by
-  calling :meth:`.Engine.dispose`.
+  calling :meth:`_engine.Engine.dispose`.
 
 * **Greenlet Monkeypatching w/ Exits** - When using a library like gevent or eventlet
   that monkeypatches the Python networking API, libraries like PyMySQL are now
@@ -206,8 +206,8 @@ How do I get at the raw DBAPI connection when using an Engine?
 --------------------------------------------------------------
 
 With a regular SA engine-level Connection, you can get at a pool-proxied
-version of the DBAPI connection via the :attr:`.Connection.connection` attribute on
-:class:`.Connection`, and for the really-real DBAPI connection you can call the
+version of the DBAPI connection via the :attr:`_engine.Connection.connection` attribute on
+:class:`_engine.Connection`, and for the really-real DBAPI connection you can call the
 :attr:`.ConnectionFairy.connection` attribute on that - but there should never be any need to access
 the non-pool-proxied DBAPI connection, as all methods are proxied through::
 
@@ -220,10 +220,10 @@ You must ensure that you revert any isolation level settings or other
 operation-specific settings on the connection back to normal before returning
 it to the pool.
 
-As an alternative to reverting settings, you can call the :meth:`.Connection.detach` method on
-either :class:`.Connection` or the proxied connection, which will de-associate
+As an alternative to reverting settings, you can call the :meth:`_engine.Connection.detach` method on
+either :class:`_engine.Connection` or the proxied connection, which will de-associate
 the connection from the pool such that it will be closed and discarded
-when :meth:`.Connection.close` is called::
+when :meth:`_engine.Connection.close` is called::
 
     conn = engine.connect()
     conn.detach()  # detaches the DBAPI connection from the connection pool
@@ -239,21 +239,21 @@ the issues that arise here range from non-working connections to socket connecti
 are used by multiple processes concurrently, leading to broken messaging (the latter
 case is typically the most common).
 
-The SQLAlchemy :class:`.Engine` object refers to a connection pool of existing
+The SQLAlchemy :class:`_engine.Engine` object refers to a connection pool of existing
 database connections.  So when this object is replicated to a child process,
 the goal is to ensure that no database connections are carried over.  There
 are three general approaches to this:
 
 1. Disable pooling using :class:`.NullPool`.  This is the most simplistic,
-   one shot system that prevents the :class:`.Engine` from using any connection
+   one shot system that prevents the :class:`_engine.Engine` from using any connection
    more than once.
 
-2. Call :meth:`.Engine.dispose` on any given :class:`.Engine` as soon one is
+2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine` as soon one is
    within the new process.  In Python multiprocessing, constructs such as
    ``multiprocessing.Pool`` include "initializer" hooks which are a place
    that this can be performed; otherwise at the top of where ``os.fork()``
    or where the ``Process`` object begins the child fork, a single call
-   to :meth:`.Engine.dispose` will ensure any remaining connections are flushed.
+   to :meth:`_engine.Engine.dispose` will ensure any remaining connections are flushed.
 
 3. An event handler can be applied to the connection pool that tests for connections
    being shared across process boundaries, and invalidates them.  This looks like
@@ -294,17 +294,17 @@ are three general approaches to this:
                         (connection_record.info['pid'], pid)
                     )
 
-   These events are applied to an :class:`.Engine` as soon as its created::
+   These events are applied to an :class:`_engine.Engine` as soon as its created::
 
         engine = create_engine("...")
 
         add_engine_pidguard(engine)
 
-The above strategies will accommodate the case of an :class:`.Engine`
+The above strategies will accommodate the case of an :class:`_engine.Engine`
 being shared among processes.  However, for the case of a transaction-active
-:class:`.Session` or :class:`.Connection` being shared, there's no automatic
+:class:`.Session` or :class:`_engine.Connection` being shared, there's no automatic
 fix for this; an application needs to ensure a new child process only
-initiate new :class:`.Connection` objects and transactions, as well as ORM
+initiate new :class:`_engine.Connection` objects and transactions, as well as ORM
 :class:`.Session` objects.  For a :class:`.Session` object, technically
 this is only needed if the session is currently transaction-bound, however
 the scope of a single :class:`.Session` is in any case intended to be

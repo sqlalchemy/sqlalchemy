@@ -24,7 +24,7 @@ def Any(other, arrexpr, operator=operators.eq):
 
     .. seealso::
 
-        :func:`.expression.any_`
+        :func:`_expression.any_`
 
     """
 
@@ -38,7 +38,7 @@ def All(other, arrexpr, operator=operators.eq):
 
     .. seealso::
 
-        :func:`.expression.all_`
+        :func:`_expression.all_`
 
     """
 
@@ -67,14 +67,14 @@ class array(expression.Tuple):
             ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]) AS anon_1
 
     An instance of :class:`.array` will always have the datatype
-    :class:`.ARRAY`.  The "inner" type of the array is inferred from
+    :class:`_types.ARRAY`.  The "inner" type of the array is inferred from
     the values present, unless the ``type_`` keyword argument is passed::
 
         array(['foo', 'bar'], type_=CHAR)
 
     .. seealso::
 
-        :class:`.postgresql.ARRAY`
+        :class:`_postgresql.ARRAY`
 
     """
 
@@ -126,11 +126,11 @@ class ARRAY(sqltypes.ARRAY):
 
     """PostgreSQL ARRAY type.
 
-    .. versionchanged:: 1.1 The :class:`.postgresql.ARRAY` type is now
-       a subclass of the core :class:`.types.ARRAY` type.
+    .. versionchanged:: 1.1 The :class:`_postgresql.ARRAY` type is now
+       a subclass of the core :class:`_types.ARRAY` type.
 
-    The :class:`.postgresql.ARRAY` type is constructed in the same way
-    as the core :class:`.types.ARRAY` type; a member type is required, and a
+    The :class:`_postgresql.ARRAY` type is constructed in the same way
+    as the core :class:`_types.ARRAY` type; a member type is required, and a
     number of dimensions is recommended if the type is to be used for more
     than one dimension::
 
@@ -140,11 +140,12 @@ class ARRAY(sqltypes.ARRAY):
                 Column("data", postgresql.ARRAY(Integer, dimensions=2))
             )
 
-    The :class:`.postgresql.ARRAY` type provides all operations defined on the
-    core :class:`.types.ARRAY` type, including support for "dimensions",
+    The :class:`_postgresql.ARRAY` type provides all operations defined on the
+    core :class:`_types.ARRAY` type, including support for "dimensions",
     indexed access, and simple matching such as
     :meth:`.types.ARRAY.Comparator.any` and
-    :meth:`.types.ARRAY.Comparator.all`.  :class:`.postgresql.ARRAY` class also
+    :meth:`.types.ARRAY.Comparator.all`.  :class:`_postgresql.ARRAY`
+    class also
     provides PostgreSQL-specific methods for containment operations, including
     :meth:`.postgresql.ARRAY.Comparator.contains`
     :meth:`.postgresql.ARRAY.Comparator.contained_by`, and
@@ -152,24 +153,25 @@ class ARRAY(sqltypes.ARRAY):
 
         mytable.c.data.contains([1, 2])
 
-    The :class:`.postgresql.ARRAY` type may not be supported on all
+    The :class:`_postgresql.ARRAY` type may not be supported on all
     PostgreSQL DBAPIs; it is currently known to work on psycopg2 only.
 
-    Additionally, the :class:`.postgresql.ARRAY` type does not work directly in
+    Additionally, the :class:`_postgresql.ARRAY`
+    type does not work directly in
     conjunction with the :class:`.ENUM` type.  For a workaround, see the
     special type at :ref:`postgresql_array_of_enum`.
 
     .. seealso::
 
-        :class:`.types.ARRAY` - base array type
+        :class:`_types.ARRAY` - base array type
 
-        :class:`.postgresql.array` - produces a literal array value.
+        :class:`_postgresql.array` - produces a literal array value.
 
     """
 
     class Comparator(sqltypes.ARRAY.Comparator):
 
-        """Define comparison operations for :class:`.ARRAY`.
+        """Define comparison operations for :class:`_types.ARRAY`.
 
         Note that these operations are in addition to those provided
         by the base :class:`.types.ARRAY.Comparator` class, including

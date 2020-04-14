@@ -62,7 +62,7 @@ sections, are listed here.
 
         The dictionary is generated when first accessed.  Alternatively,
         it can be specified as a constructor argument to the
-        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        :func:`.column_property`, :func:`_orm.relationship`, or :func:`.composite`
         functions.
 
         .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved

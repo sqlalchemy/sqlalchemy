@@ -71,25 +71,25 @@ package, including expression functions like
 
     The strings accepted by the following parameters:
 
-        :paramref:`.relationship.order_by`
+        :paramref:`_orm.relationship.order_by`
 
-        :paramref:`.relationship.primaryjoin`
+        :paramref:`_orm.relationship.primaryjoin`
 
-        :paramref:`.relationship.secondaryjoin`
+        :paramref:`_orm.relationship.secondaryjoin`
 
-        :paramref:`.relationship.secondary`
+        :paramref:`_orm.relationship.secondary`
 
-        :paramref:`.relationship.remote_side`
+        :paramref:`_orm.relationship.remote_side`
 
-        :paramref:`.relationship.foreign_keys`
+        :paramref:`_orm.relationship.foreign_keys`
 
-        :paramref:`.relationship._user_defined_foreign_keys`
+        :paramref:`_orm.relationship._user_defined_foreign_keys`
 
     Are **evaluated as Python code expressions using eval().  DO NOT PASS
     UNTRUSTED INPUT TO THESE ARGUMENTS.**
 
     In addition, prior to version 1.3.16 of SQLAlchemy, the main
-    "argument" to :func:`.relationship` is also evaluated as Python
+    "argument" to :func:`_orm.relationship` is also evaluated as Python
     code.  **DO NOT PASS UNTRUSTED INPUT TO THIS ARGUMENT.**
 
 For the case where more than one module contains a class of the same name,
@@ -141,10 +141,10 @@ Configuring Many-to-Many Relationships
 Many-to-many relationships are also declared in the same way
 with declarative as with traditional mappings. The
 ``secondary`` argument to
-:func:`.relationship` is as usual passed a
-:class:`.Table` object, which is typically declared in the
-traditional way.  The :class:`.Table` usually shares
-the :class:`.MetaData` object used by the declarative base::
+:func:`_orm.relationship` is as usual passed a
+:class:`_schema.Table` object, which is typically declared in the
+traditional way.  The :class:`_schema.Table` usually shares
+the :class:`_schema.MetaData` object used by the declarative base::
 
     keywords = Table(
         'keywords', Base.metadata,
@@ -167,8 +167,8 @@ as well, passing the string name of the table as defined in the
         keywords = relationship("Keyword", secondary="keywords")
 
 As with traditional mapping, its generally not a good idea to use
-a :class:`.Table` as the "secondary" argument which is also mapped to
-a class, unless the :func:`.relationship` is declared with ``viewonly=True``.
+a :class:`_schema.Table` as the "secondary" argument which is also mapped to
+a class, unless the :func:`_orm.relationship` is declared with ``viewonly=True``.
 Otherwise, the unit-of-work system may attempt duplicate INSERT and
 DELETE statements against the underlying table.
 

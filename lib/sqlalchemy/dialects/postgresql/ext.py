@@ -43,7 +43,7 @@ class aggregate_order_by(expression.ColumnElement):
 
     .. seealso::
 
-        :class:`.array_agg`
+        :class:`_functions.array_agg`
 
     """
 
@@ -103,7 +103,8 @@ class ExcludeConstraint(ColumnCollectionConstraint):
                 where=(Column('group') != 'some group')
             )
 
-        The constraint is normally embedded into the :class:`.Table` construct
+        The constraint is normally embedded into the :class:`_schema.Table`
+        construct
         directly, or added later using :meth:`.append_constraint`::
 
             some_table = Table(
@@ -125,7 +126,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         :param \*elements:
           A sequence of two tuples of the form ``(column, operator)`` where
           "column" is a SQL expression element or a raw SQL string, most
-          typically a :class:`.Column` object,
+          typically a :class:`_schema.Column` object,
           and "operator" is a string containing the operator to use.
 
           .. note::
@@ -134,9 +135,11 @@ class ExcludeConstraint(ColumnCollectionConstraint):
                 as an arbitrary SQL  expression; when passing a plain string,
                 any necessary quoting and escaping syntaxes must be applied
                 manually. In order to specify a column name when a
-                :class:`.Column` object is not available, while ensuring that
+                :class:`_schema.Column` object is not available,
+                while ensuring that
                 any necessary quoting rules take effect, an ad-hoc
-                :class:`.Column` or :func:`.sql.expression.column` object may
+                :class:`_schema.Column` or :func:`_expression.column`
+                object may
                 be used.
 
         :param name:
@@ -216,9 +219,9 @@ class ExcludeConstraint(ColumnCollectionConstraint):
 
 
 def array_agg(*arg, **kw):
-    """PostgreSQL-specific form of :class:`.array_agg`, ensures
-    return type is :class:`.postgresql.ARRAY` and not
-    the plain :class:`.types.ARRAY`, unless an explicit ``type_``
+    """PostgreSQL-specific form of :class:`_functions.array_agg`, ensures
+    return type is :class:`_postgresql.ARRAY` and not
+    the plain :class:`_types.ARRAY`, unless an explicit ``type_``
     is passed.
 
     .. versionadded:: 1.1

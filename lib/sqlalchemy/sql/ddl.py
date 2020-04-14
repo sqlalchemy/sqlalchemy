@@ -106,7 +106,7 @@ class DDLElement(Executable, _DDLCompiles):
         "The :meth:`.DDLElement.execute_at` method is deprecated and will "
         "be removed in a future release.  Please use the :class:`.DDLEvents` "
         "listener interface in conjunction with the "
-        ":meth:`.DDLElement.execute_if` method."
+        ":meth:`.DDLElement.execute_if` method.",
     )
     def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
@@ -128,7 +128,7 @@ class DDLElement(Executable, _DDLCompiles):
         A DDLElement instance can be linked to any number of schema items.
 
         ``execute_at`` builds on the ``append_ddl_listener`` interface of
-        :class:`.MetaData` and :class:`.Table` objects.
+        :class:`_schema.MetaData` and :class:`_schema.Table` objects.
 
         Caveat: Creating or dropping a Table in isolation will also trigger
         any DDL set to ``execute_at`` that Table's MetaData.  This may change
@@ -181,12 +181,13 @@ class DDLElement(Executable, _DDLCompiles):
               This DDL element.
 
             :target:
-              The :class:`.Table` or :class:`.MetaData` object which is the
+              The :class:`_schema.Table` or :class:`_schema.MetaData`
+              object which is the
               target of this event. May be None if the DDL is executed
               explicitly.
 
             :bind:
-              The :class:`.Connection` being used for DDL execution
+              The :class:`_engine.Connection` being used for DDL execution
 
             :tables:
               Optional keyword argument - a list of Table objects which are to
@@ -285,8 +286,9 @@ class DDL(DDLElement):
 
     Specifies literal SQL DDL to be executed by the database.  DDL objects
     function as DDL event listeners, and can be subscribed to those events
-    listed in :class:`.DDLEvents`, using either :class:`.Table` or
-    :class:`.MetaData` objects as targets.   Basic templating support allows
+    listed in :class:`.DDLEvents`, using either :class:`_schema.Table` or
+    :class:`_schema.MetaData` objects as targets.
+    Basic templating support allows
     a single DDL instance to handle repetitive tasks for multiple tables.
 
     Examples::
@@ -488,12 +490,12 @@ class CreateTable(_CreateDropBase):
     ):
         """Create a :class:`.CreateTable` construct.
 
-        :param element: a :class:`.Table` that's the subject
+        :param element: a :class:`_schema.Table` that's the subject
          of the CREATE
         :param on: See the description for 'on' in :class:`.DDL`.
         :param bind: See the description for 'bind' in :class:`.DDL`.
         :param include_foreign_key_constraints: optional sequence of
-         :class:`.ForeignKeyConstraint` objects that will be included
+         :class:`_schema.ForeignKeyConstraint` objects that will be included
          inline within the CREATE construct; if omitted, all foreign key
          constraints that do not specify use_alter=True are included.
 
@@ -517,7 +519,8 @@ class _DropView(_CreateDropBase):
 
 
 class CreateColumn(_DDLCompiles):
-    """Represent a :class:`.Column` as rendered in a CREATE TABLE statement,
+    """Represent a :class:`_schema.Column`
+    as rendered in a CREATE TABLE statement,
     via the :class:`.CreateTable` construct.
 
     This is provided to support custom column DDL within the generation
@@ -525,7 +528,7 @@ class CreateColumn(_DDLCompiles):
     compiler extension documented in :ref:`sqlalchemy.ext.compiler_toplevel`
     to extend :class:`.CreateColumn`.
 
-    Typical integration is to examine the incoming :class:`.Column`
+    Typical integration is to examine the incoming :class:`_schema.Column`
     object, and to redirect compilation if a particular flag or condition
     is found::
 
@@ -556,7 +559,8 @@ class CreateColumn(_DDLCompiles):
                             for const in column.constraints)
             return text
 
-    The above construct can be applied to a :class:`.Table` as follows::
+    The above construct can be applied to a :class:`_schema.Table`
+    as follows::
 
         from sqlalchemy import Table, Metadata, Column, Integer, String
         from sqlalchemy import schema
@@ -571,7 +575,8 @@ class CreateColumn(_DDLCompiles):
 
         metadata.create_all(conn)
 
-    Above, the directives we've added to the :attr:`.Column.info` collection
+    Above, the directives we've added to the :attr:`_schema.Column.info`
+    collection
     will be detected by our custom compilation scheme::
 
         CREATE TABLE mytable (
@@ -585,10 +590,11 @@ class CreateColumn(_DDLCompiles):
     columns when producing a ``CREATE TABLE``.  This is accomplished by
     creating a compilation rule that conditionally returns ``None``.
     This is essentially how to produce the same effect as using the
-    ``system=True`` argument on :class:`.Column`, which marks a column
+    ``system=True`` argument on :class:`_schema.Column`, which marks a column
     as an implicitly-present "system" column.
 
-    For example, suppose we wish to produce a :class:`.Table` which skips
+    For example, suppose we wish to produce a :class:`_schema.Table`
+    which skips
     rendering of the PostgreSQL ``xmin`` column against the PostgreSQL
     backend, but on other backends does render it, in anticipation of a
     triggered rule.  A conditional compilation rule could skip this name only
@@ -1029,13 +1035,16 @@ class SchemaDropper(DDLBase):
 
 
 def sort_tables(tables, skip_fn=None, extra_dependencies=None):
-    """sort a collection of :class:`.Table` objects based on dependency.
+    """sort a collection of :class:`_schema.Table` objects based on dependency
+    .
 
-    This is a dependency-ordered sort which will emit :class:`.Table`
-    objects such that they will follow their dependent :class:`.Table` objects.
+    This is a dependency-ordered sort which will emit :class:`_schema.Table`
+    objects such that they will follow their dependent :class:`_schema.Table`
+    objects.
     Tables are dependent on another based on the presence of
-    :class:`.ForeignKeyConstraint` objects as well as explicit dependencies
-    added by :meth:`.Table.add_is_dependent_on`.
+    :class:`_schema.ForeignKeyConstraint`
+    objects as well as explicit dependencies
+    added by :meth:`_schema.Table.add_is_dependent_on`.
 
     .. warning::
 
@@ -1043,19 +1052,21 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
         automatic resolution of dependency cycles between tables, which
         are usually caused by mutually dependent foreign key constraints.
         To resolve these cycles, either the
-        :paramref:`.ForeignKeyConstraint.use_alter` parameter may be applied
+        :paramref:`_schema.ForeignKeyConstraint.use_alter`
+        parameter may be applied
         to those constraints, or use the
-        :func:`.sql.sort_tables_and_constraints` function which will break
+        :func:`_expression.sort_tables_and_constraints`
+        function which will break
         out foreign key constraints involved in cycles separately.
 
-    :param tables: a sequence of :class:`.Table` objects.
+    :param tables: a sequence of :class:`_schema.Table` objects.
 
     :param skip_fn: optional callable which will be passed a
-     :class:`.ForeignKey` object; if it returns True, this
+     :class:`_schema.ForeignKey` object; if it returns True, this
      constraint will not be considered as a dependency.  Note this is
      **different** from the same parameter in
      :func:`.sort_tables_and_constraints`, which is
-     instead passed the owning :class:`.ForeignKeyConstraint` object.
+     instead passed the owning :class:`_schema.ForeignKeyConstraint` object.
 
     :param extra_dependencies: a sequence of 2-tuples of tables which will
      also be considered as dependent on each other.
@@ -1064,7 +1075,7 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
 
         :func:`.sort_tables_and_constraints`
 
-        :meth:`.MetaData.sorted_tables` - uses this function to sort
+        :meth:`_schema.MetaData.sorted_tables` - uses this function to sort
 
 
     """
@@ -1093,27 +1104,32 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
 def sort_tables_and_constraints(
     tables, filter_fn=None, extra_dependencies=None
 ):
-    """sort a collection of :class:`.Table`  / :class:`.ForeignKeyConstraint`
+    """sort a collection of :class:`_schema.Table`  /
+    :class:`_schema.ForeignKeyConstraint`
     objects.
 
     This is a dependency-ordered sort which will emit tuples of
     ``(Table, [ForeignKeyConstraint, ...])`` such that each
-    :class:`.Table` follows its dependent :class:`.Table` objects.
-    Remaining :class:`.ForeignKeyConstraint` objects that are separate due to
+    :class:`_schema.Table` follows its dependent :class:`_schema.Table`
+    objects.
+    Remaining :class:`_schema.ForeignKeyConstraint`
+    objects that are separate due to
     dependency rules not satisfied by the sort are emitted afterwards
     as ``(None, [ForeignKeyConstraint ...])``.
 
     Tables are dependent on another based on the presence of
-    :class:`.ForeignKeyConstraint` objects, explicit dependencies
-    added by :meth:`.Table.add_is_dependent_on`, as well as dependencies
+    :class:`_schema.ForeignKeyConstraint` objects, explicit dependencies
+    added by :meth:`_schema.Table.add_is_dependent_on`,
+    as well as dependencies
     stated here using the :paramref:`~.sort_tables_and_constraints.skip_fn`
     and/or :paramref:`~.sort_tables_and_constraints.extra_dependencies`
     parameters.
 
-    :param tables: a sequence of :class:`.Table` objects.
+    :param tables: a sequence of :class:`_schema.Table` objects.
 
     :param filter_fn: optional callable which will be passed a
-     :class:`.ForeignKeyConstraint` object, and returns a value based on
+     :class:`_schema.ForeignKeyConstraint` object,
+     and returns a value based on
      whether this constraint should definitely be included or excluded as
      an inline constraint, or neither.   If it returns False, the constraint
      will definitely be included as a dependency that cannot be subject

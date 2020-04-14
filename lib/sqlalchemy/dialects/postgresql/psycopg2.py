@@ -53,7 +53,7 @@ psycopg2-specific keyword arguments which are accepted by
     :ref:`psycopg2_unicode`
 
 * ``use_batch_mode``: This flag allows ``psycopg2.extras.execute_batch``
-  for ``cursor.executemany()`` calls performed by the :class:`.Engine`.
+  for ``cursor.executemany()`` calls performed by the :class:`_engine.Engine`.
   It is currently experimental but
   may well become True by default as it is critical for executemany
   performance.
@@ -89,18 +89,21 @@ Per-Statement/Connection Execution Options
 -------------------------------------------
 
 The following DBAPI-specific options are respected when used with
-:meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
-:meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
+:meth:`_engine.Connection.execution_options`,
+:meth:`.Executable.execution_options`,
+:meth:`_query.Query.execution_options`,
+in addition to those not specific to DBAPIs:
 
 * ``isolation_level`` - Set the transaction isolation level for the lifespan
-  of a :class:`.Connection` (can only be set on a connection, not a statement
+  of a :class:`_engine.Connection` (can only be set on a connection,
+  not a statement
   or query).   See :ref:`psycopg2_isolation_level`.
 
 * ``stream_results`` - Enable or disable usage of psycopg2 server side
   cursors - this feature makes use of "named" cursors in combination with
   special result handling methods so that result rows are not fully buffered.
   If ``None`` or not set, the ``server_side_cursors`` option of the
-  :class:`.Engine` is used.
+  :class:`_engine.Engine` is used.
 
 * ``max_row_buffer`` - when using ``stream_results``, an integer value that
   specifies the maximum number of rows to buffer at a time.  This is
@@ -120,7 +123,8 @@ Modern versions of psycopg2 include a feature known as
 which have been shown in benchmarking to improve psycopg2's executemany()
 performance with INSERTS by multiple orders of magnitude.   SQLAlchemy
 allows this extension to be used for all ``executemany()`` style calls
-invoked by an :class:`.Engine` when used with :ref:`multiple parameter sets <execute_multiple>`,
+invoked by an :class:`_engine.Engine`
+when used with :ref:`multiple parameter sets <execute_multiple>`,
 by adding the ``use_batch_mode`` flag to :func:`.create_engine`::
 
     engine = create_engine(
@@ -133,7 +137,7 @@ be enabled by default in a future release.
 .. seealso::
 
     :ref:`execute_multiple` - demonstrates how to use DBAPI ``executemany()``
-    with the :class:`.Connection` object.
+    with the :class:`_engine.Connection` object.
 
 .. versionadded:: 1.2.0
 
@@ -217,7 +221,8 @@ actually contain percent or parenthesis symbols; as SQLAlchemy in many cases
 generates bound parameter names based on the name of a column, the presence
 of these characters in a column name can lead to problems.
 
-There are two solutions to the issue of a :class:`.schema.Column` that contains
+There are two solutions to the issue of a :class:`_schema.Column`
+that contains
 one of these characters in its name.  One is to specify the
 :paramref:`.schema.Column.key` for columns that have such names::
 
@@ -230,10 +235,12 @@ Above, an INSERT statement such as ``measurement.insert()`` will use
 ``measurement.c.size_meters > 10`` will derive the bound parameter name
 from the ``size_meters`` key as well.
 
-.. versionchanged:: 1.0.0 - SQL expressions will use :attr:`.Column.key`
+.. versionchanged:: 1.0.0 - SQL expressions will use
+   :attr:`_schema.Column.key`
    as the source of naming when anonymous bound parameters are created
    in SQL expressions; previously, this behavior only applied to
-   :meth:`.Table.insert` and :meth:`.Table.update` parameter names.
+   :meth:`_schema.Table.insert` and :meth:`_schema.Table.update`
+   parameter names.
 
 The other solution is to use a positional format; psycopg2 allows use of the
 "format" paramstyle, which can be passed to
@@ -270,7 +277,8 @@ As discussed in :ref:`postgresql_isolation_level`,
 all PostgreSQL dialects support setting of transaction isolation level
 both via the ``isolation_level`` parameter passed to :func:`.create_engine`,
 as well as the ``isolation_level`` argument used by
-:meth:`.Connection.execution_options`.  When using the psycopg2 dialect, these
+:meth:`_engine.Connection.execution_options`.  When using the psycopg2 dialect
+, these
 options make use of psycopg2's ``set_isolation_level()`` connection method,
 rather than emitting a PostgreSQL directive; this is because psycopg2's
 API-level setting is always emitted at the start of each transaction in any

@@ -113,7 +113,7 @@ class Visitable(util.with_metaclass(VisitableType, object)):
     :class:`.visitors.VisitableType` metaclass.
 
     The :class:`.Visitable` class is essentially at the base of the
-    :class:`.ClauseElement` hierarchy.
+    :class:`_expression.ClauseElement` hierarchy.
 
     """
 
@@ -238,14 +238,18 @@ def iterate(obj, opts):
 
     The central API feature used by the :func:`.visitors.iterate` and
     :func:`.visitors.iterate_depthfirst` functions is the
-    :meth:`.ClauseElement.get_children` method of :class:`.ClauseElement`
-    objects.  This method should return all the :class:`.ClauseElement` objects
-    which are associated with a particular :class:`.ClauseElement` object.
+    :meth:`_expression.ClauseElement.get_children` method of
+    :class:`_expression.ClauseElement`
+    objects.  This method should return all the
+    :class:`_expression.ClauseElement` objects
+    which are associated with a particular :class:`_expression.ClauseElement`
+    object.
     For example, a :class:`.Case` structure will refer to a series of
-    :class:`.ColumnElement` objects within its "whens" and "else\_" member
+    :class:`_expression.ColumnElement`
+    objects within its "whens" and "else\_" member
     variables.
 
-    :param obj: :class:`.ClauseElement` structure to be traversed
+    :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
     :param opts: dictionary of iteration options.   This dictionary is usually
      empty in modern usage.
@@ -271,7 +275,7 @@ def iterate_depthfirst(obj, opts):
 
     traversal is configured to be depth-first.
 
-    :param obj: :class:`.ClauseElement` structure to be traversed
+    :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
     :param opts: dictionary of iteration options.   This dictionary is usually
      empty in modern usage.
@@ -305,11 +309,13 @@ def traverse_using(iterator, obj, visitors):
     functions.
 
     :param iterator: an iterable or sequence which will yield
-     :class:`.ClauseElement` structures; the iterator is assumed to be the
+     :class:`_expression.ClauseElement`
+     structures; the iterator is assumed to be the
      product of the :func:`.visitors.iterate` or
      :func:`.visitors.iterate_depthfirst` functions.
 
-    :param obj: the :class:`.ClauseElement` that was used as the target of the
+    :param obj: the :class:`_expression.ClauseElement`
+     that was used as the target of the
      :func:`.iterate` or :func:`.iterate_depthfirst` function.
 
     :param visitors: dictionary of visit functions.  See :func:`.traverse`
@@ -347,7 +353,7 @@ def traverse(obj, opts, visitors):
     The iteration of objects uses the :func:`.visitors.iterate` function,
     which does a breadth-first traversal using a stack.
 
-    :param obj: :class:`.ClauseElement` structure to be traversed
+    :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
     :param opts: dictionary of iteration options.   This dictionary is usually
      empty in modern usage.
@@ -386,9 +392,12 @@ def cloned_traverse(obj, opts, visitors):
 
     The central API feature used by the :func:`.visitors.cloned_traverse`
     and :func:`.visitors.replacement_traverse` functions, in addition to the
-    :meth:`.ClauseElement.get_children` function that is used to achieve
-    the iteration, is the :meth:`.ClauseElement._copy_internals` method.
-    For a :class:`.ClauseElement` structure to support cloning and replacement
+    :meth:`_expression.ClauseElement.get_children`
+    function that is used to achieve
+    the iteration, is the :meth:`_expression.ClauseElement._copy_internals`
+    method.
+    For a :class:`_expression.ClauseElement`
+    structure to support cloning and replacement
     traversals correctly, it needs to be able to pass a cloning function into
     its internal members in order to make copies of them.
 

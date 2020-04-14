@@ -6,11 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Heuristics related to join conditions as used in
-:func:`.relationship`.
+:func:`_orm.relationship`.
 
 Provides the :class:`.JoinCondition` object, which encapsulates
 SQL annotation and aliasing behavior focused on the `primaryjoin`
-and `secondaryjoin` aspects of :func:`.relationship`.
+and `secondaryjoin` aspects of :func:`_orm.relationship`.
 
 """
 from __future__ import absolute_import
@@ -92,7 +92,7 @@ class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
 
-    Public constructor is the :func:`.orm.relationship` function.
+    Public constructor is the :func:`_orm.relationship` function.
 
     .. seealso::
 
@@ -145,15 +145,16 @@ class RelationshipProperty(StrategizedProperty):
         The constructed class is an instance of
         :class:`.RelationshipProperty`.
 
-        A typical :func:`.relationship`, used in a classical mapping::
+        A typical :func:`_orm.relationship`, used in a classical mapping::
 
            mapper(Parent, properties={
              'children': relationship(Child)
            })
 
-        Some arguments accepted by :func:`.relationship` optionally accept a
+        Some arguments accepted by :func:`_orm.relationship`
+        optionally accept a
         callable function, which when called produces the desired value.
-        The callable is invoked by the parent :class:`.Mapper` at "mapper
+        The callable is invoked by the parent :class:`_orm.Mapper` at "mapper
         initialization" time, which happens only when mappers are first used,
         and is assumed to be after all mappings have been constructed.  This
         can be used to resolve order-of-declaration and other dependency
@@ -167,7 +168,7 @@ class RelationshipProperty(StrategizedProperty):
 
         When using the :ref:`declarative_toplevel` extension, the Declarative
         initializer allows string arguments to be passed to
-        :func:`.relationship`.  These string arguments are converted into
+        :func:`_orm.relationship`.  These string arguments are converted into
         callables that evaluate the string as Python code, using the
         Declarative class-registry as a namespace.  This allows the lookup of
         related classes to be automatic via their string name, and removes the
@@ -176,7 +177,8 @@ class RelationshipProperty(StrategizedProperty):
         that the modules in which these related classes appear are imported
         anywhere in the application at some point before the related mappings
         are actually used, else a lookup error will be raised when the
-        :func:`.relationship` attempts to resolve the string reference to the
+        :func:`_orm.relationship`
+        attempts to resolve the string reference to the
         related class.    An example of a string- resolved class is as
         follows::
 
@@ -192,15 +194,17 @@ class RelationshipProperty(StrategizedProperty):
         .. seealso::
 
           :ref:`relationship_config_toplevel` - Full introductory and
-          reference documentation for :func:`.relationship`.
+          reference documentation for :func:`_orm.relationship`.
 
           :ref:`orm_tutorial_relationship` - ORM tutorial introduction.
 
         :param argument:
-          a mapped class, or actual :class:`.Mapper` instance, representing
+          a mapped class, or actual :class:`_orm.Mapper` instance,
+          representing
           the target of the relationship.
 
-          :paramref:`~.relationship.argument` may also be passed as a callable
+          :paramref:`_orm.relationship.argument`
+          may also be passed as a callable
           function which is evaluated at mapper initialization time, and may
           be passed as a string name when using Declarative.
 
@@ -208,7 +212,7 @@ class RelationshipProperty(StrategizedProperty):
              using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
           .. seealso::
 
@@ -217,30 +221,35 @@ class RelationshipProperty(StrategizedProperty):
 
         :param secondary:
           for a many-to-many relationship, specifies the intermediary
-          table, and is typically an instance of :class:`.Table`.
+          table, and is typically an instance of :class:`_schema.Table`.
           In less common circumstances, the argument may also be specified
-          as an :class:`.Alias` construct, or even a :class:`.Join` construct.
+          as an :class:`_expression.Alias` construct, or even a
+          :class:`_expression.Join` construct.
 
-          :paramref:`~.relationship.secondary` may
+          :paramref:`_orm.relationship.secondary` may
           also be passed as a callable function which is evaluated at
           mapper initialization time.  When using Declarative, it may also
-          be a string argument noting the name of a :class:`.Table` that is
-          present in the :class:`.MetaData` collection associated with the
-          parent-mapped :class:`.Table`.
+          be a string argument noting the name of a :class:`_schema.Table`
+          that is
+          present in the :class:`_schema.MetaData`
+          collection associated with the
+          parent-mapped :class:`_schema.Table`.
 
           .. warning:: When passed as a Python-evaluable string, the
              argument is interpreted using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
-          The :paramref:`~.relationship.secondary` keyword argument is
-          typically applied in the case where the intermediary :class:`.Table`
+          The :paramref:`_orm.relationship.secondary` keyword argument is
+          typically applied in the case where the intermediary
+          :class:`_schema.Table`
           is not otherwise expressed in any direct class mapping. If the
           "secondary" table is also explicitly mapped elsewhere (e.g. as in
           :ref:`association_pattern`), one should consider applying the
-          :paramref:`~.relationship.viewonly` flag so that this
-          :func:`.relationship` is not used for persistence operations which
+          :paramref:`_orm.relationship.viewonly` flag so that this
+          :func:`_orm.relationship`
+          is not used for persistence operations which
           may conflict with those of the association object pattern.
 
           .. seealso::
@@ -258,16 +267,19 @@ class RelationshipProperty(StrategizedProperty):
               Declarative.
 
               :ref:`association_pattern` - an alternative to
-              :paramref:`~.relationship.secondary` when composing association
+              :paramref:`_orm.relationship.secondary`
+              when composing association
               table relationships, allowing additional attributes to be
               specified on the association table.
 
               :ref:`composite_secondary_join` - a lesser-used pattern which
-              in some cases can enable complex :func:`.relationship` SQL
+              in some cases can enable complex :func:`_orm.relationship` SQL
               conditions to be used.
 
-          .. versionadded:: 0.9.2 :paramref:`~.relationship.secondary` works
-             more effectively when referring to a :class:`.Join` instance.
+          .. versionadded:: 0.9.2 :paramref:`_orm.relationship.secondary`
+             works
+             more effectively when referring to a :class:`_expression.Join`
+             instance.
 
         :param active_history=False:
           When ``True``, indicates that the "previous" value for a
@@ -292,20 +304,20 @@ class RelationshipProperty(StrategizedProperty):
             :ref:`relationships_backref` - Introductory documentation and
             examples.
 
-            :paramref:`~.relationship.back_populates` - alternative form
+            :paramref:`_orm.relationship.back_populates` - alternative form
             of backref specification.
 
-            :func:`.backref` - allows control over :func:`.relationship`
-            configuration when using :paramref:`~.relationship.backref`.
+            :func:`.backref` - allows control over :func:`_orm.relationship`
+            configuration when using :paramref:`_orm.relationship.backref`.
 
 
         :param back_populates:
           Takes a string name and has the same meaning as
-          :paramref:`~.relationship.backref`, except the complementing
+          :paramref:`_orm.relationship.backref`, except the complementing
           property is **not** created automatically, and instead must be
           configured explicitly on the other mapper.  The complementing
           property should also indicate
-          :paramref:`~.relationship.back_populates` to this relationship to
+          :paramref:`_orm.relationship.back_populates` to this relationship to
           ensure proper functioning.
 
           .. seealso::
@@ -313,7 +325,7 @@ class RelationshipProperty(StrategizedProperty):
             :ref:`relationships_backref` - Introductory documentation and
             examples.
 
-            :paramref:`~.relationship.backref` - alternative form
+            :paramref:`_orm.relationship.backref` - alternative form
             of backref specification.
 
         :param bake_queries=True:
@@ -364,7 +376,7 @@ class RelationshipProperty(StrategizedProperty):
           .. seealso::
 
             :ref:`backref_cascade` - Full discussion and examples on how
-            the :paramref:`~.relationship.cascade_backrefs` option is used.
+            the :paramref:`_orm.relationship.cascade_backrefs` option is used.
 
         :param collection_class:
           a class or callable that returns a new list-holding object. will
@@ -401,7 +413,7 @@ class RelationshipProperty(StrategizedProperty):
           duplicate innermost rows may be causing.
 
           .. versionchanged:: 0.9.0 -
-             :paramref:`~.relationship.distinct_target_key` now defaults to
+             :paramref:`_orm.relationship.distinct_target_key` now defaults to
              ``None``, so that the feature enables itself automatically for
              those cases where the innermost query targets a non-unique
              key.
@@ -423,58 +435,62 @@ class RelationshipProperty(StrategizedProperty):
 
                 :class:`.AttributeExtension` is deprecated in favor of the
                 :class:`.AttributeEvents` listener interface. The
-                :paramref:`.relationship.extension` parameter will be
+                :paramref:`_orm.relationship.extension` parameter will be
                 removed in a future release.
 
         :param foreign_keys:
 
           a list of columns which are to be used as "foreign key"
           columns, or columns which refer to the value in a remote
-          column, within the context of this :func:`.relationship`
-          object's :paramref:`~.relationship.primaryjoin` condition.
-          That is, if the :paramref:`~.relationship.primaryjoin`
-          condition of this :func:`.relationship` is ``a.id ==
+          column, within the context of this :func:`_orm.relationship`
+          object's :paramref:`_orm.relationship.primaryjoin` condition.
+          That is, if the :paramref:`_orm.relationship.primaryjoin`
+          condition of this :func:`_orm.relationship` is ``a.id ==
           b.a_id``, and the values in ``b.a_id`` are required to be
           present in ``a.id``, then the "foreign key" column of this
-          :func:`.relationship` is ``b.a_id``.
+          :func:`_orm.relationship` is ``b.a_id``.
 
-          In normal cases, the :paramref:`~.relationship.foreign_keys`
-          parameter is **not required.** :func:`.relationship` will
+          In normal cases, the :paramref:`_orm.relationship.foreign_keys`
+          parameter is **not required.** :func:`_orm.relationship` will
           automatically determine which columns in the
-          :paramref:`~.relationship.primaryjoin` condition are to be
+          :paramref:`_orm.relationship.primaryjoin` condition are to be
           considered "foreign key" columns based on those
-          :class:`.Column` objects that specify :class:`.ForeignKey`,
+          :class:`_schema.Column` objects that specify
+          :class:`_schema.ForeignKey`,
           or are otherwise listed as referencing columns in a
-          :class:`.ForeignKeyConstraint` construct.
-          :paramref:`~.relationship.foreign_keys` is only needed when:
+          :class:`_schema.ForeignKeyConstraint` construct.
+          :paramref:`_orm.relationship.foreign_keys` is only needed when:
 
             1. There is more than one way to construct a join from the local
                table to the remote table, as there are multiple foreign key
                references present.  Setting ``foreign_keys`` will limit the
-               :func:`.relationship` to consider just those columns specified
+               :func:`_orm.relationship`
+               to consider just those columns specified
                here as "foreign".
 
-            2. The :class:`.Table` being mapped does not actually have
-               :class:`.ForeignKey` or :class:`.ForeignKeyConstraint`
+            2. The :class:`_schema.Table` being mapped does not actually have
+               :class:`_schema.ForeignKey` or
+               :class:`_schema.ForeignKeyConstraint`
                constructs present, often because the table
                was reflected from a database that does not support foreign key
                reflection (MySQL MyISAM).
 
-            3. The :paramref:`~.relationship.primaryjoin` argument is used to
+            3. The :paramref:`_orm.relationship.primaryjoin`
+               argument is used to
                construct a non-standard join condition, which makes use of
                columns or expressions that do not normally refer to their
                "parent" column, such as a join condition expressed by a
                complex comparison using a SQL function.
 
-          The :func:`.relationship` construct will raise informative
+          The :func:`_orm.relationship` construct will raise informative
           error messages that suggest the use of the
-          :paramref:`~.relationship.foreign_keys` parameter when
+          :paramref:`_orm.relationship.foreign_keys` parameter when
           presented with an ambiguous condition.   In typical cases,
-          if :func:`.relationship` doesn't raise any exceptions, the
-          :paramref:`~.relationship.foreign_keys` parameter is usually
+          if :func:`_orm.relationship` doesn't raise any exceptions, the
+          :paramref:`_orm.relationship.foreign_keys` parameter is usually
           not needed.
 
-          :paramref:`~.relationship.foreign_keys` may also be passed as a
+          :paramref:`_orm.relationship.foreign_keys` may also be passed as a
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
@@ -483,7 +499,7 @@ class RelationshipProperty(StrategizedProperty):
              argument is interpreted using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
           .. seealso::
 
@@ -492,7 +508,8 @@ class RelationshipProperty(StrategizedProperty):
             :ref:`relationship_custom_foreign`
 
             :func:`.foreign` - allows direct annotation of the "foreign"
-            columns within a :paramref:`~.relationship.primaryjoin` condition.
+            columns within a :paramref:`_orm.relationship.primaryjoin`
+            condition.
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.MapperProperty.info` attribute of this object.
@@ -509,12 +526,12 @@ class RelationshipProperty(StrategizedProperty):
           is guaranteed to have one or at least one entry.
 
           The option supports the same "nested" and "unnested" options as
-          that of :paramref:`.joinedload.innerjoin`.  See that flag
+          that of :paramref:`_orm.joinedload.innerjoin`.  See that flag
           for details on nested / unnested behaviors.
 
           .. seealso::
 
-            :paramref:`.joinedload.innerjoin` - the option as specified by
+            :paramref:`_orm.joinedload.innerjoin` - the option as specified by
             loader option, including detail on nesting behavior.
 
             :ref:`what_kind_of_loading` - Discussion of some details of
@@ -551,7 +568,7 @@ class RelationshipProperty(StrategizedProperty):
           * ``joined`` - items should be loaded "eagerly" in the same query as
             that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
             the join is "outer" or not is determined by the
-            :paramref:`~.relationship.innerjoin` parameter.
+            :paramref:`_orm.relationship.innerjoin` parameter.
 
           * ``subquery`` - items should be loaded "eagerly" as the parents are
             loaded, using one additional SQL statement, which issues a JOIN to
@@ -590,7 +607,7 @@ class RelationshipProperty(StrategizedProperty):
             .. versionadded:: 1.1
 
           * ``dynamic`` - the attribute will return a pre-configured
-            :class:`.Query` object for all read
+            :class:`_query.Query` object for all read
             operations, onto which further filtering operations can be
             applied before iterating the results.  See
             the section :ref:`dynamic_relationship` for more details.
@@ -620,7 +637,8 @@ class RelationshipProperty(StrategizedProperty):
           "attached" to a :class:`.Session` but is not part of its pending
           collection.
 
-          The :paramref:`~.relationship.load_on_pending` flag does not improve
+          The :paramref:`_orm.relationship.load_on_pending`
+          flag does not improve
           behavior when the ORM is used normally - object references should be
           constructed at the object level, not at the foreign key level, so
           that they are present in an ordinary way before a flush proceeds.
@@ -635,12 +653,15 @@ class RelationshipProperty(StrategizedProperty):
 
         :param order_by:
           indicates the ordering that should be applied when loading these
-          items.  :paramref:`~.relationship.order_by` is expected to refer to
-          one of the :class:`.Column` objects to which the target class is
+          items.  :paramref:`_orm.relationship.order_by`
+          is expected to refer to
+          one of the :class:`_schema.Column`
+          objects to which the target class is
           mapped, or the attribute itself bound to the target class which
           refers to the column.
 
-          :paramref:`~.relationship.order_by` may also be passed as a callable
+          :paramref:`_orm.relationship.order_by`
+          may also be passed as a callable
           function which is evaluated at mapper initialization time, and may
           be passed as a Python-evaluable string when using Declarative.
 
@@ -648,7 +669,7 @@ class RelationshipProperty(StrategizedProperty):
              argument is interpreted using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
         :param passive_deletes=False:
            Indicates loading behavior during delete operations.
@@ -685,7 +706,8 @@ class RelationshipProperty(StrategizedProperty):
           When True, it is assumed that ``ON UPDATE CASCADE`` is configured on
           the foreign key in the database, and that the database will
           handle propagation of an UPDATE from a source column to
-          dependent rows.  When False, the SQLAlchemy :func:`.relationship`
+          dependent rows.  When False, the SQLAlchemy
+          :func:`_orm.relationship`
           construct will attempt to emit its own UPDATE statements to
           modify related targets.  However note that SQLAlchemy **cannot**
           emit an UPDATE for more than one level of cascade.  Also,
@@ -723,7 +745,7 @@ class RelationshipProperty(StrategizedProperty):
           list (i.e. both tables contain a foreign key to each other). If
           a flush operation returns an error that a "cyclical
           dependency" was detected, this is a cue that you might want to
-          use :paramref:`~.relationship.post_update` to "break" the cycle.
+          use :paramref:`_orm.relationship.post_update` to "break" the cycle.
 
           .. seealso::
 
@@ -737,7 +759,7 @@ class RelationshipProperty(StrategizedProperty):
           foreign key relationships of the parent and child tables (or
           association table).
 
-          :paramref:`~.relationship.primaryjoin` may also be passed as a
+          :paramref:`_orm.relationship.primaryjoin` may also be passed as a
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
@@ -746,7 +768,7 @@ class RelationshipProperty(StrategizedProperty):
              argument is interpreted using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
           .. seealso::
 
@@ -756,7 +778,7 @@ class RelationshipProperty(StrategizedProperty):
           used for self-referential relationships, indicates the column or
           list of columns that form the "remote side" of the relationship.
 
-          :paramref:`.relationship.remote_side` may also be passed as a
+          :paramref:`_orm.relationship.remote_side` may also be passed as a
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
@@ -765,24 +787,26 @@ class RelationshipProperty(StrategizedProperty):
              argument is interpreted using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
           .. seealso::
 
             :ref:`self_referential` - in-depth explanation of how
-            :paramref:`~.relationship.remote_side`
+            :paramref:`_orm.relationship.remote_side`
             is used to configure self-referential relationships.
 
             :func:`.remote` - an annotation function that accomplishes the
-            same purpose as :paramref:`~.relationship.remote_side`, typically
-            when a custom :paramref:`~.relationship.primaryjoin` condition
+            same purpose as :paramref:`_orm.relationship.remote_side`,
+            typically
+            when a custom :paramref:`_orm.relationship.primaryjoin` condition
             is used.
 
         :param query_class:
-          a :class:`.Query` subclass that will be used as the base of the
+          a :class:`_query.Query`
+          subclass that will be used as the base of the
           "appender query" returned by a "dynamic" relationship, that
           is, a relationship that specifies ``lazy="dynamic"`` or was
-          otherwise constructed using the :func:`.orm.dynamic_loader`
+          otherwise constructed using the :func:`_orm.dynamic_loader`
           function.
 
           .. seealso::
@@ -796,7 +820,7 @@ class RelationshipProperty(StrategizedProperty):
           computed based on the foreign key relationships of the association
           and child tables.
 
-          :paramref:`~.relationship.secondaryjoin` may also be passed as a
+          :paramref:`_orm.relationship.secondaryjoin` may also be passed as a
           callable function which is evaluated at mapper initialization time,
           and may be passed as a Python-evaluable string when using
           Declarative.
@@ -805,7 +829,7 @@ class RelationshipProperty(StrategizedProperty):
              argument is interpreted using Python's ``eval()`` function.
              **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
              See :ref:`declarative_relationship_eval` for details on
-             declarative evaluation of :func:`.relationship` arguments.
+             declarative evaluation of :func:`_orm.relationship` arguments.
 
           .. seealso::
 
@@ -816,31 +840,36 @@ class RelationshipProperty(StrategizedProperty):
           from being associated with more than one parent at a time.
           This is used for many-to-one or many-to-many relationships that
           should be treated either as one-to-one or one-to-many.  Its usage
-          is optional, except for :func:`.relationship` constructs which
+          is optional, except for :func:`_orm.relationship` constructs which
           are many-to-one or many-to-many and also
           specify the ``delete-orphan`` cascade option.  The
-          :func:`.relationship` construct itself will raise an error
+          :func:`_orm.relationship` construct itself will raise an error
           instructing when this option is required.
 
           .. seealso::
 
             :ref:`unitofwork_cascades` - includes detail on when the
-            :paramref:`~.relationship.single_parent` flag may be appropriate.
+            :paramref:`_orm.relationship.single_parent`
+            flag may be appropriate.
 
         :param uselist:
           a boolean that indicates if this property should be loaded as a
           list or a scalar. In most cases, this value is determined
-          automatically by :func:`.relationship` at mapper configuration
+          automatically by :func:`_orm.relationship` at mapper configuration
           time, based on the type and direction
           of the relationship - one to many forms a list, many to one
           forms a scalar, many to many is a list. If a scalar is desired
           where normally a list would be present, such as a bi-directional
-          one-to-one relationship, set :paramref:`~.relationship.uselist` to
+          one-to-one relationship, set :paramref:`_orm.relationship.uselist`
+          to
           False.
 
-          The :paramref:`~.relationship.uselist` flag is also available on an
-          existing :func:`.relationship` construct as a read-only attribute,
-          which can be used to determine if this :func:`.relationship` deals
+          The :paramref:`_orm.relationship.uselist`
+          flag is also available on an
+          existing :func:`_orm.relationship`
+          construct as a read-only attribute,
+          which can be used to determine if this :func:`_orm.relationship`
+          deals
           with collections or scalar attributes::
 
               >>> User.addresses.property.uselist
@@ -850,18 +879,20 @@ class RelationshipProperty(StrategizedProperty):
 
               :ref:`relationships_one_to_one` - Introduction to the "one to
               one" relationship pattern, which is typically when the
-              :paramref:`~.relationship.uselist` flag is needed.
+              :paramref:`_orm.relationship.uselist` flag is needed.
 
         :param viewonly=False:
           when set to True, the relationship is used only for loading objects,
-          and not for any persistence operation.  A :func:`.relationship`
-          which specifies :paramref:`~.relationship.viewonly` can work
+          and not for any persistence operation.  A :func:`_orm.relationship`
+          which specifies :paramref:`_orm.relationship.viewonly` can work
           with a wider range of SQL operations within the
-          :paramref:`~.relationship.primaryjoin` condition, including
+          :paramref:`_orm.relationship.primaryjoin` condition, including
           operations that feature the use of a variety of comparison operators
-          as well as SQL functions such as :func:`~.sql.expression.cast`.  The
-          :paramref:`~.relationship.viewonly` flag is also of general use when
-          defining any kind of :func:`~.relationship` that doesn't represent
+          as well as SQL functions such as :func:`_expression.cast`.  The
+          :paramref:`_orm.relationship.viewonly`
+          flag is also of general use when
+          defining any kind of :func:`_orm.relationship`
+          that doesn't represent
           the full set of related objects, to prevent modifications of the
           collection from resulting in persistence operations.
 
@@ -982,11 +1013,11 @@ class RelationshipProperty(StrategizedProperty):
 
         @util.memoized_property
         def mapper(self):
-            """The target :class:`.Mapper` referred to by this
+            """The target :class:`_orm.Mapper` referred to by this
             :class:`.RelationshipProperty.Comparator`.
 
             This is the "target" or "remote" side of the
-            :func:`.relationship`.
+            :func:`_orm.relationship`.
 
             """
             return self.property.mapper
@@ -1040,7 +1071,7 @@ class RelationshipProperty(StrategizedProperty):
 
         def in_(self, other):
             """Produce an IN clause - this is not implemented
-            for :func:`~.orm.relationship`-based attributes at this time.
+            for :func:`_orm.relationship`-based attributes at this time.
 
             """
             raise NotImplementedError(
@@ -1230,7 +1261,7 @@ class RelationshipProperty(StrategizedProperty):
                 related.my_id=my_table.id)
 
             :meth:`~.RelationshipProperty.Comparator.any` is only
-            valid for collections, i.e. a :func:`.relationship`
+            valid for collections, i.e. a :func:`_orm.relationship`
             that has ``uselist=True``.  For scalar references,
             use :meth:`~.RelationshipProperty.Comparator.has`.
 
@@ -1266,7 +1297,7 @@ class RelationshipProperty(StrategizedProperty):
             using a join.
 
             :meth:`~.RelationshipProperty.Comparator.has` is only
-            valid for scalar references, i.e. a :func:`.relationship`
+            valid for scalar references, i.e. a :func:`_orm.relationship`
             that has ``uselist=False``.  For collection references,
             use :meth:`~.RelationshipProperty.Comparator.any`.
 
@@ -1283,7 +1314,7 @@ class RelationshipProperty(StrategizedProperty):
 
             :meth:`~.RelationshipProperty.Comparator.contains` is
             only valid for a collection, i.e. a
-            :func:`~.orm.relationship` that implements
+            :func:`_orm.relationship` that implements
             one-to-many or many-to-many with ``uselist=True``.
 
             When used in a simple one-to-many context, an
@@ -1329,7 +1360,8 @@ class RelationshipProperty(StrategizedProperty):
             explicit "outer joins" will need to be used instead.
             See :meth:`~.RelationshipProperty.Comparator.any` for
             a less-performant alternative using EXISTS, or refer
-            to :meth:`.Query.outerjoin` as well as :ref:`ormtutorial_joins`
+            to :meth:`_query.Query.outerjoin`
+            as well as :ref:`ormtutorial_joins`
             for more details on constructing outer joins.
 
             """
@@ -1418,7 +1450,7 @@ class RelationshipProperty(StrategizedProperty):
             * Comparisons against collections are not supported.
               Use
               :meth:`~.RelationshipProperty.Comparator.contains`
-              in conjunction with :func:`~.expression.not_`.
+              in conjunction with :func:`_expression.not_`.
             * Compared to a scalar one-to-many, will produce a
               clause that compares the target columns in the parent to
               the given target.
@@ -1430,7 +1462,7 @@ class RelationshipProperty(StrategizedProperty):
               comparisons, such as those which use OR. Use
               explicit joins, outerjoins, or
               :meth:`~.RelationshipProperty.Comparator.has` in
-              conjunction with :func:`~.expression.not_` for
+              conjunction with :func:`_expression.not_` for
               more comprehensive non-many-to-one scalar
               membership tests.
             * Comparisons against ``None`` given in a one-to-many
@@ -1760,7 +1792,7 @@ class RelationshipProperty(StrategizedProperty):
 
     @util.memoized_property
     def mapper(self):
-        """Return the targeted :class:`.Mapper` for this
+        """Return the targeted :class:`_orm.Mapper` for this
         :class:`.RelationshipProperty`.
 
         This is a lazy-initializing static attribute.
@@ -1790,7 +1822,7 @@ class RelationshipProperty(StrategizedProperty):
     def table(self):
         """Return the selectable linked to this
         :class:`.RelationshipProperty` object's target
-        :class:`.Mapper`.
+        :class:`_orm.Mapper`.
         """
         return self.target
 
@@ -1988,7 +2020,7 @@ class RelationshipProperty(StrategizedProperty):
 
     def _generate_backref(self):
         """Interpret the 'backref' instruction to create a
-        :func:`.relationship` complementary to this one."""
+        :func:`_orm.relationship` complementary to this one."""
 
         if self.parent.non_primary:
             return

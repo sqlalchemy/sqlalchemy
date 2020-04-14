@@ -95,7 +95,7 @@ Python 2:
   to True.
 
 * When using raw SQL strings, typing behavior can be added for unicode
-  conversion using the :func:`.text` construct::
+  conversion using the :func:`_expression.text` construct::
 
     from sqlalchemy import text, Unicode
     result = conn.execute(
@@ -264,12 +264,12 @@ Precision Numerics
 
 SQLAlchemy's numeric types can handle receiving and returning values as Python
 ``Decimal`` objects or float objects.  When a :class:`.Numeric` object, or a
-subclass such as :class:`.Float`, :class:`.oracle.DOUBLE_PRECISION` etc. is in
+subclass such as :class:`.Float`, :class:`_oracle.DOUBLE_PRECISION` etc. is in
 use, the :paramref:`.Numeric.asdecimal` flag determines if values should be
 coerced to ``Decimal`` upon return, or returned as float objects.   To make
 matters more complicated under Oracle, Oracle's ``NUMBER`` type can also
 represent integer values if the "scale" is zero, so the Oracle-specific
-:class:`.oracle.NUMBER` type takes this into account as well.
+:class:`_oracle.NUMBER` type takes this into account as well.
 
 The cx_Oracle dialect makes extensive use of connection- and cursor-level
 "outputtypehandler" callables in order to coerce numeric values as requested.
@@ -1009,7 +1009,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         return tuple(int(x) for x in connection.connection.version.split("."))
 
     def is_disconnect(self, e, connection, cursor):
-        error, = e.args
+        (error,) = e.args
         if isinstance(
             e, (self.dbapi.InterfaceError, self.dbapi.DatabaseError)
         ) and "not connected" in str(e):

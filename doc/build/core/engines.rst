@@ -4,7 +4,7 @@
 Engine Configuration
 ====================
 
-The :class:`.Engine` is the starting point for any SQLAlchemy application. It's
+The :class:`_engine.Engine` is the starting point for any SQLAlchemy application. It's
 "home base" for the actual database and its :term:`DBAPI`, delivered to the SQLAlchemy
 application through a connection pool and a :class:`.Dialect`, which describes how
 to talk to a specific kind of database/DBAPI combination.
@@ -13,8 +13,8 @@ The general structure can be illustrated as follows:
 
 .. image:: sqla_engine_arch.png
 
-Where above, an :class:`.Engine` references both a
-:class:`.Dialect` and a :class:`.Pool`,
+Where above, an :class:`_engine.Engine` references both a
+:class:`.Dialect` and a :class:`_pool.Pool`,
 which together interpret the DBAPI's module functions as well as the behavior
 of the database.
 
@@ -25,18 +25,18 @@ Creating an engine is just a matter of issuing a single call,
     engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
 
 The above engine creates a :class:`.Dialect` object tailored towards
-PostgreSQL, as well as a :class:`.Pool` object which will establish a DBAPI
+PostgreSQL, as well as a :class:`_pool.Pool` object which will establish a DBAPI
 connection at ``localhost:5432`` when a connection request is first received.
-Note that the :class:`.Engine` and its underlying :class:`.Pool` do **not**
-establish the first actual DBAPI connection until the :meth:`.Engine.connect`
+Note that the :class:`_engine.Engine` and its underlying :class:`_pool.Pool` do **not**
+establish the first actual DBAPI connection until the :meth:`_engine.Engine.connect`
 method is called, or an operation which is dependent on this method such as
-:meth:`.Engine.execute` is invoked. In this way, :class:`.Engine` and
-:class:`.Pool` can be said to have a *lazy initialization* behavior.
+:meth:`_engine.Engine.execute` is invoked. In this way, :class:`_engine.Engine` and
+:class:`_pool.Pool` can be said to have a *lazy initialization* behavior.
 
-The :class:`.Engine`, once created, can either be used directly to interact with the database,
+The :class:`_engine.Engine`, once created, can either be used directly to interact with the database,
 or can be passed to a :class:`.Session` object to work with the ORM.   This section
-covers the details of configuring an :class:`.Engine`.   The next section, :ref:`connections_toplevel`,
-will detail the usage API of the :class:`.Engine` and similar, typically for non-ORM
+covers the details of configuring an :class:`_engine.Engine`.   The next section, :ref:`connections_toplevel`,
+will detail the usage API of the :class:`_engine.Engine` and similar, typically for non-ORM
 applications.
 
 .. _supported_dbapis:
@@ -55,7 +55,7 @@ See the section :ref:`dialect_toplevel` for information on the various backends 
 Database Urls
 =============
 
-The :func:`.create_engine` function produces an :class:`.Engine` object based
+The :func:`.create_engine` function produces an :class:`_engine.Engine` object based
 on a URL.  These URLs follow `RFC-1738
 <http://rfc.net/rfc1738.html>`_, and usually can include username, password,
 hostname, database name as well as optional keyword arguments for additional configuration.
@@ -201,15 +201,15 @@ Engine Creation API
 Pooling
 =======
 
-The :class:`.Engine` will ask the connection pool for a
+The :class:`_engine.Engine` will ask the connection pool for a
 connection when the ``connect()`` or ``execute()`` methods are called. The
 default connection pool, :class:`~.QueuePool`, will open connections to the
 database on an as-needed basis. As concurrent statements are executed,
 :class:`.QueuePool` will grow its pool of connections to a
 default size of five, and will allow a default "overflow" of ten. Since the
-:class:`.Engine` is essentially "home base" for the
+:class:`_engine.Engine` is essentially "home base" for the
 connection pool, it follows that you should keep a single
-:class:`.Engine` per database established within an
+:class:`_engine.Engine` per database established within an
 application, rather than creating a new one for each connection.
 
 .. note::
@@ -327,13 +327,13 @@ string. To set this to a specific name, use the "logging_name" and
 
 .. note::
 
-   The SQLAlchemy :class:`.Engine` conserves Python function call overhead
+   The SQLAlchemy :class:`_engine.Engine` conserves Python function call overhead
    by only emitting log statements when the current logging level is detected
    as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when
    a new connection is procured from the connection pool.  Therefore when
    changing the logging configuration for an already-running application, any
-   :class:`.Connection` that's currently active, or more commonly a
+   :class:`_engine.Connection` that's currently active, or more commonly a
    :class:`~.orm.session.Session` object that's active in a transaction, won't log any
-   SQL according to the new configuration until a new :class:`.Connection`
+   SQL according to the new configuration until a new :class:`_engine.Connection`
    is procured (in the case of :class:`~.orm.session.Session`, this is
    after the current transaction ends and a new one begins).

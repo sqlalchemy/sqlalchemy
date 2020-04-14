@@ -87,7 +87,7 @@ subclasses to extend just from the special class::
         ""
 
 One possible use of ``__abstract__`` is to use a distinct
-:class:`.MetaData` for different bases::
+:class:`_schema.MetaData` for different bases::
 
     Base = declarative_base()
 
@@ -100,7 +100,7 @@ One possible use of ``__abstract__`` is to use a distinct
         metadata = MetaData()
 
 Above, classes which inherit from ``DefaultBase`` will use one
-:class:`.MetaData` as the registry of tables, and those which inherit from
+:class:`_schema.MetaData` as the registry of tables, and those which inherit from
 ``OtherBase`` will use a different one. The tables themselves can then be
 created perhaps within distinct databases::
 
@@ -111,9 +111,9 @@ created perhaps within distinct databases::
 ``__table_cls__``
 ~~~~~~~~~~~~~~~~~
 
-Allows the callable / class used to generate a :class:`.Table` to be customized.
+Allows the callable / class used to generate a :class:`_schema.Table` to be customized.
 This is a very open-ended hook that can allow special customizations
-to a :class:`.Table` that one generates here::
+to a :class:`_schema.Table` that one generates here::
 
     class MyMixin(object):
         @classmethod
@@ -123,7 +123,7 @@ to a :class:`.Table` that one generates here::
                 metadata, *arg, **kw
             )
 
-The above mixin would cause all :class:`.Table` objects generated to include
+The above mixin would cause all :class:`_schema.Table` objects generated to include
 the prefix ``"my_"``, followed by the name normally specified using the
 ``__tablename__`` attribute.
 

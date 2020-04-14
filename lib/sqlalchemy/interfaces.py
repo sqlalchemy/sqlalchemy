@@ -22,13 +22,13 @@ from . import util
 
 
 class PoolListener(object):
-    """Hooks into the lifecycle of connections in a :class:`.Pool`.
+    """Hooks into the lifecycle of connections in a :class:`_pool.Pool`.
 
     .. deprecated:: 0.7
 
        :class:`.PoolListener` is deprecated and will be removed in a future
        release.  Please refer to :func:`.event.listen` in conjunction with
-       the :class:`.PoolEvents` listener interface.
+       the :class:`_events.PoolEvents` listener interface.
 
     Usage::
 
