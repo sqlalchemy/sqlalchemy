@@ -143,7 +143,7 @@ class EagerTest(fixtures.MappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Owner, Category, Option, Thing = (
             cls.classes.Owner,
             cls.classes.Category,
@@ -151,7 +151,7 @@ class EagerTest(fixtures.MappedTest):
             cls.classes.Thing,
         )
 
-        session = create_session()
+        session = create_session(connection)
 
         o = Owner()
         c = Category(name="Some Category")

@@ -36,8 +36,8 @@ class CTETest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "data": "d1", "parent_id": None},

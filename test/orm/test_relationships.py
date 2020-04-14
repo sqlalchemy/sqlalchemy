@@ -280,7 +280,7 @@ class DependencyTwoParentTest(fixtures.MappedTest):
         mapper(D, tbl_d, properties=dict(b_row=relationship(B)))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, C, B, D = (
             cls.classes.A,
             cls.classes.C,
@@ -288,7 +288,7 @@ class DependencyTwoParentTest(fixtures.MappedTest):
             cls.classes.D,
         )
 
-        session = create_session()
+        session = create_session(connection)
         a = A(name="a1")
         b = B(name="b1")
         c = C(name="c1", a_row=a)
@@ -3468,9 +3468,9 @@ class FunctionAsPrimaryJoinTest(fixtures.DeclarativeMappedTest):
             )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Venue = cls.classes.Venue
-        s = Session()
+        s = Session(connection)
         s.add_all(
             [
                 Venue(name="parent1"),
@@ -3548,9 +3548,9 @@ class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
             ip_addr = Column(Integer, primary_key=True)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Network, Address = cls.classes.Network, cls.classes.Address
-        s = Session(testing.db)
+        s = Session(connection)
 
         s.add_all(
             [
@@ -4169,9 +4169,9 @@ class SecondaryNestedJoinTest(
         mapper(D, d)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
-        sess = Session()
+        sess = Session(connection)
         a1, a2, a3, a4 = A(name="a1"), A(name="a2"), A(name="a3"), A(name="a4")
         b1, b2, b3, b4 = B(name="b1"), B(name="b2"), B(name="b3"), B(name="b4")
         c1, c2, c3, c4 = C(name="c1"), C(name="c2"), C(name="c3"), C(name="c4")
@@ -5507,10 +5507,10 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
         mapper(B, b)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
 
-        s = Session()
+        s = Session(connection)
         s.add_all(
             [
                 A(id=1, b_ids="1"),

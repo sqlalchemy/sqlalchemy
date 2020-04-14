@@ -1302,15 +1302,17 @@ class PolymorphicExpireTest(fixtures.MappedTest):
             pass
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         people, engineers = cls.tables.people, cls.tables.engineers
 
-        people.insert().execute(
+        connection.execute(
+            people.insert(),
             {"person_id": 1, "name": "person1", "type": "person"},
             {"person_id": 2, "name": "engineer1", "type": "engineer"},
             {"person_id": 3, "name": "engineer2", "type": "engineer"},
         )
-        engineers.insert().execute(
+        connection.execute(
+            engineers.insert(),
             {"person_id": 2, "status": "new engineer"},
             {"person_id": 3, "status": "old engineer"},
         )

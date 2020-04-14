@@ -231,9 +231,9 @@ class AnyAllTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         stuff = cls.tables.stuff
-        testing.db.execute(
+        connection.execute(
             stuff.insert(),
             [
                 {"id": 1, "value": 1},

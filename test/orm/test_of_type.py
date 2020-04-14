@@ -564,8 +564,8 @@ class SubclassRelationshipTest(
             name = Column(String(10))
 
     @classmethod
-    def insert_data(cls):
-        s = Session(testing.db)
+    def insert_data(cls, connection):
+        s = Session(connection)
 
         s.add_all(cls._fixture())
         s.commit()
@@ -1022,8 +1022,8 @@ class SubclassRelationshipTest2(
             c = relationship("C", backref="ds")
 
     @classmethod
-    def insert_data(cls):
-        s = Session(testing.db)
+    def insert_data(cls, connection):
+        s = Session(connection)
 
         s.add_all(cls._fixture())
         s.commit()

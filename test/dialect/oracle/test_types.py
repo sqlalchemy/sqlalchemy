@@ -908,7 +908,7 @@ class LOBFetchTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         cls.data = data = [
             dict(
                 id=i,
@@ -918,7 +918,7 @@ class LOBFetchTest(fixtures.TablesTest):
             for i in range(1, 20)
         ]
 
-        testing.db.execute(cls.tables.z_test.insert(), data)
+        connection.execute(cls.tables.z_test.insert(), data)
 
         binary_table = cls.tables.binary_table
         fname = os.path.join(
@@ -928,7 +928,7 @@ class LOBFetchTest(fixtures.TablesTest):
             cls.stream = stream = file_.read(12000)
 
         for i in range(1, 11):
-            binary_table.insert().execute(id=i, data=stream)
+            connection.execute(binary_table.insert(), id=i, data=stream)
 
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
