@@ -239,7 +239,7 @@ defaultload = strategy_options.defaultload._unbound_fn
 selectin_polymorphic = strategy_options.selectin_polymorphic._unbound_fn
 
 
-@_sa_util.deprecated_20("relation", "Please use :func:`joinedload`.")
+@_sa_util.deprecated_20("eagerload", "Please use :func:`_orm.joinedload`.")
 def eagerload(*args, **kwargs):
     """A synonym for :func:`joinedload()`."""
     return joinedload(*args, **kwargs)

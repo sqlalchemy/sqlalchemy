@@ -446,10 +446,10 @@ class Event(object):
 
     .. versionadded:: 0.9.0
 
-    :var impl: The :class:`.AttributeImpl` which is the current event
+    :attribute impl: The :class:`.AttributeImpl` which is the current event
      initiator.
 
-    :var op: The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE`,
+    :attribute op: The symbol :attr:`.OP_APPEND`, :attr:`.OP_REMOVE`,
      :attr:`.OP_REPLACE`, or :attr:`.OP_BULK_REPLACE`, indicating the
      source operation.
 

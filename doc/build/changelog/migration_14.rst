@@ -23,7 +23,7 @@ What's New in SQLAlchemy 1.4?
 Behavioral Changes - General
 ============================
 
-.. _change_change_deferred_construction:
+.. _change_deferred_construction:
 
 
 Many Core and ORM statement objects now perform much of their validation in the compile phase

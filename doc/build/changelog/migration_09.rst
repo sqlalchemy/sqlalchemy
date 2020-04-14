@@ -83,7 +83,7 @@ accessor::
 .. _migration_2736:
 
 :meth:`.Query.select_from` no longer applies the clause to corresponding entities
----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------
 
 The :meth:`.Query.select_from` method has been popularized in recent versions
 as a means of controlling the first thing that a :class:`.Query` object
@@ -564,8 +564,9 @@ by that of most database documentation::
     -- 0.9 behavior
     x = :x_1 COLLATE en_EN
 
-The potentially backwards incompatible change arises if the :meth:`.collate`
-operator is being applied to the right-hand column, as follows::
+The potentially backwards incompatible change arises if the
+:meth:`.ColumnOperators.collate` operator is being applied to the right-hand
+column, as follows::
 
     print(column('x') == literal('somevalue').collate("en_EN"))
 

@@ -442,8 +442,6 @@ class ConcreteBase(object):
 
         :ref:`concrete_inheritance`
 
-        :ref:`inheritance_concrete_helpers`
-
 
     """
 
@@ -581,8 +579,6 @@ class AbstractConcreteBase(ConcreteBase):
         :class:`.ConcreteBase`
 
         :ref:`concrete_inheritance`
-
-        :ref:`inheritance_concrete_helpers`
 
     """
 

@@ -610,7 +610,7 @@ def engine_from_config(configuration, prefix="sqlalchemy.", **kwargs):
     :param configuration: A dictionary (typically produced from a config file,
         but this is not a requirement).  Items whose keys start with the value
         of 'prefix' will have that prefix stripped, and will then be passed to
-        :ref:`create_engine`.
+        :func:`.create_engine`.
 
     :param prefix: Prefix to match and then strip from keys
         in 'configuration'.

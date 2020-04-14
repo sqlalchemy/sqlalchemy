@@ -81,7 +81,7 @@ def association_proxy(target_collection, attr, **kw):
 
 
 ASSOCIATION_PROXY = util.symbol("ASSOCIATION_PROXY")
-"""Symbol indicating an :class:`InspectionAttr` that's
+"""Symbol indicating an :class:`.InspectionAttr` that's
     of type :class:`.AssociationProxy`.
 
    Is assigned to the :attr:`.InspectionAttr.extension_type`

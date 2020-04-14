@@ -16,19 +16,29 @@ constructs build on the intermediary :class:`.ValuesBase`.
 
 .. autoclass:: Delete
    :members:
-   :inherited-members:
+
+   .. automethod:: Delete.where
+
+   .. automethod:: Delete.returning
 
 .. autoclass:: Insert
    :members:
-   :inherited-members:
+
+   .. automethod:: Insert.values
+
+   .. automethod:: Insert.returning
 
 .. autoclass:: Update
-  :members:
-  :inherited-members:
+   :members:
+
+   .. automethod:: Update.returning
+
+   .. automethod:: Update.where
+
+   .. automethod:: Update.values
 
 .. autoclass:: sqlalchemy.sql.expression.UpdateBase
-  :members:
-  :inherited-members:
+   :members:
 
 .. autoclass:: sqlalchemy.sql.expression.ValuesBase
    :members:

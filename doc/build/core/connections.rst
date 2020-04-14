@@ -75,7 +75,7 @@ any transactional state or locks are removed, and the connection is ready for
 its next use.
 
 .. deprecated:: 2.0 The :class:`.ResultProxy` object is replaced in SQLAlchemy
-   2.0 with a newly refined object known as :class:`.Result`.
+   2.0 with a newly refined object known as :class:`.future.Result`.
 
 Our example above illustrated the execution of a textual SQL string, which
 should be invoked by using the :func:`.text` construct to indicate that
