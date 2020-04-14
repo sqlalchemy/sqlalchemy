@@ -83,14 +83,16 @@ elements are themselves :class:`.ColumnElement` subclasses).
 
 .. autoclass:: Select
    :members:
-   :inherited-members:
+   :inherited-members:  ClauseElement
+   :exclude-members: memoized_attribute, memoized_instancemethod
 
 .. autoclass:: Selectable
    :members:
 
 .. autoclass:: SelectBase
    :members:
-   :inherited-members:
+   :inherited-members:  ClauseElement
+   :exclude-members: memoized_attribute, memoized_instancemethod
 
 .. autoclass:: TableClause
    :members:

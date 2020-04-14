@@ -410,7 +410,7 @@ Above, the ``cprop`` attribute is used inline before it has been mapped,
 however this ``cprop`` attribute is not a :class:`.Column`,
 it's a :class:`.ColumnProperty`, which is an interim object and therefore
 does not have the full functionality of either the :class:`.Column` object
-or the :class:`.InstrmentedAttribute` object that will be mapped onto the
+or the :class:`.InstrumentedAttribute` object that will be mapped onto the
 ``Bar`` class once the declarative process is complete.
 
 While the :class:`.ColumnProperty` does have a ``__clause_element__()`` method,

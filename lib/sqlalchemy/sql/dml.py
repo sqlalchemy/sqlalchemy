@@ -823,7 +823,7 @@ class Delete(UpdateBase):
         prefixes=None,
         **dialect_kw
     ):
-        """Construct :class:`.Delete` object.
+        r"""Construct :class:`.Delete` object.
 
         Similar functionality is available via the
         :meth:`~.TableClause.delete` method on

@@ -325,7 +325,7 @@ ourselves. This is achieved using two event listeners::
         conn.execute("BEGIN")
 
 .. warning:: When using the above recipe, it is advised to not use the
-   :paramref:`.execution_options.isolation_level` setting on
+   :paramref:`.Connection.execution_options.isolation_level` setting on
    :class:`.Connection` and :func:`.create_engine` with the SQLite driver,
    as this function necessarily will also alter the ".isolation_level" setting.
 

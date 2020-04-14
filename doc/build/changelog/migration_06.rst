@@ -641,7 +641,7 @@ Type System Changes
 ===================
 
 New Architecture
---------------
+----------------
 
 The type system has been completely reworked behind the
 scenes to provide two goals:

@@ -1321,13 +1321,12 @@ SQL text from being rendered directly.
 "threadlocal" engine strategy deprecated
 -----------------------------------------
 
-The :ref:`"threadlocal" engine strategy <threadlocal_strategy>` was added
-around SQLAlchemy 0.2, as a solution to the problem that the standard way of
-operating in SQLAlchemy 0.1, which can be summed up as "threadlocal
-everything",  was found to be lacking. In retrospect, it seems fairly absurd
-that by SQLAlchemy's first releases which were in every regard "alpha", that
-there was concern that too many users had already settled on the existing API
-to simply change it.
+The "threadlocal engine strategy" was added around SQLAlchemy 0.2, as a
+solution to the problem that the standard way of operating in SQLAlchemy 0.1,
+which can be summed up as "threadlocal everything",  was found to be lacking.
+In retrospect, it seems fairly absurd that by SQLAlchemy's first releases which
+were in every regard "alpha", that there was concern that too many users had
+already settled on the existing API to simply change it.
 
 The original usage model for SQLAlchemy looked like this::
 
