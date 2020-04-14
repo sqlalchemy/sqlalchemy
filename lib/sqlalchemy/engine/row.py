@@ -127,7 +127,7 @@ class Row(BaseRow, collections_abc.Sequence):
 
     The :class:`.Row` object represents a row of a database result.  It is
     typically associated in the 1.x series of SQLAlchemy with the
-    :class:`.ResultProxy` object, however is also used by the ORM for
+    :class:`_engine.ResultProxy` object, however is also used by the ORM for
     tuple-like results as of SQLAlchemy 1.4.
 
     The :class:`.Row` object seeks to act as much like a Python named
@@ -150,7 +150,8 @@ class Row(BaseRow, collections_abc.Sequence):
         and now acts mostly like a named tuple.  Mapping-like functionality is
         moved to the :attr:`.Row._mapping` attribute, but will remain available
         in SQLAlchemy 1.x series via the :class:`.LegacyRow` class that is used
-        by :class:`.ResultProxy`.   See :ref:`change_4710_core` for background
+        by :class:`_engine.ResultProxy`.
+        See :ref:`change_4710_core` for background
         on this change.
 
     """

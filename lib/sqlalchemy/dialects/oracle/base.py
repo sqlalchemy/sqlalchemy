@@ -125,7 +125,7 @@ As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialect
 is 128 characters.  Upon first connect, the compatibility version is detected
 and if it is less than Oracle version 12.2, the max identifier length is
 changed to be 30 characters.  In all cases, setting the
-:paramref:`.create_engine.max_identifier_length` parameter will bypass this
+:paramref:`_sa.create_engine.max_identifier_length` parameter will bypass this
 change and the value given will be used as is::
 
     engine = create_engine(
@@ -183,7 +183,8 @@ database migration that wishes to "DROP CONSTRAINT" on a name that was
 previously generated with the shorter length.  This migration will fail when
 the identifier length is changed without the name of the index or constraint
 first being adjusted.  Such applications are strongly advised to make use of
-:paramref:`.create_engine.max_identifier_length` in order to maintain control
+:paramref:`_sa.create_engine.max_identifier_length`
+in order to maintain control
 of the generation of truncated names, and to fully review and test all database
 migrations in a staging environment when changing this value to ensure that the
 impact of this change has been mitigated.
@@ -206,7 +207,7 @@ There is currently a single option to affect its behavior:
 
 * the "FIRST_ROWS()" optimization keyword is not used by default.  To enable
   the usage of this optimization directive, specify ``optimize_limits=True``
-  to :func:`.create_engine`.
+  to :func:`_sa.create_engine`.
 
 .. versionchanged:: 1.4
     The Oracle dialect renders limit/offset integer values using a "post
@@ -242,7 +243,7 @@ on the Oracle backend.  By default, "implicit returning" typically only
 fetches the value of a single ``nextval(some_seq)`` expression embedded into
 an INSERT in order to increment a sequence within an INSERT statement and get
 the value back at the same time. To disable this feature across the board,
-specify ``implicit_returning=False`` to :func:`.create_engine`::
+specify ``implicit_returning=False`` to :func:`_sa.create_engine`::
 
     engine = create_engine("oracle://scott:tiger@dsn",
                            implicit_returning=False)

@@ -600,7 +600,8 @@ class Executable(Generative):
         "by the :meth:`_engine.Connection.execute` method of "
         ":class:`_engine.Connection`, "
         "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
+        ":class:`.Session`; the :meth:`_future.Result.scalar` "
+        "method can then be "
         "used to return a scalar result.",
     )
     def scalar(self, *multiparams, **params):

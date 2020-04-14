@@ -1013,7 +1013,7 @@
         :tags: bug, engine
         :tickets: 3481
 
-        Fixed regression where new methods on :class:`.ResultProxy` used
+        Fixed regression where new methods on :class:`_engine.ResultProxy` used
         by the ORM :class:`_query.Query` object (part of the performance
         enhancements of :ticket:`3175`) would not raise the "this result
         does not return rows" exception in the case where the driver
@@ -1024,7 +1024,7 @@
         :tags: bug, engine
         :tickets: 3483
 
-        Fixed regression where :meth:`.ResultProxy.keys` would return
+        Fixed regression where :meth:`_engine.ResultProxy.keys` would return
         un-adjusted internal symbol names for "anonymous" labels, which
         are the "foo_1" types of labels we see generated for SQL functions
         without labels and similar.  This was a side effect of the
@@ -1243,7 +1243,7 @@
     .. change::
         :tags: feature, engine
 
-        Added new engine event :meth:`.ConnectionEvents.engine_disposed`.
+        Added new engine event :meth:`_events.ConnectionEvents.engine_disposed`.
         Called after the :meth:`_engine.Engine.dispose` method is called.
 
     .. change::
@@ -1477,7 +1477,7 @@
 
         Also added new flag
         :attr:`.ExceptionContext.invalidate_pool_on_disconnect`.
-        Allows an error handler within :meth:`.ConnectionEvents.handle_error`
+        Allows an error handler within :meth:`_events.ConnectionEvents.handle_error`
         to maintain a "disconnect" condition, but to handle calling invalidate
         on individual connections in a specific manner within the event.
 
@@ -2034,12 +2034,12 @@
         :tags: bug, engine
         :tickets: 3330, 3329
 
-        The "auto close" for :class:`.ResultProxy` is now a "soft" close.
+        The "auto close" for :class:`_engine.ResultProxy` is now a "soft" close.
         That is, after exhausting all rows using the fetch methods, the
         DBAPI cursor is released as before and the object may be safely
         discarded, but the fetch methods may continue to be called for which
         they will return an end-of-result object (None for fetchone, empty list
-        for fetchmany and fetchall).   Only if :meth:`.ResultProxy.close`
+        for fetchmany and fetchall).   Only if :meth:`_engine.ResultProxy.close`
         is called explicitly will these methods raise the "result is closed"
         error.
 
@@ -2171,7 +2171,7 @@
         :tags: feature, postgresql
 
         The PG8000 dialect now supports the
-        :paramref:`.create_engine.encoding` parameter, by setting up
+        :paramref:`_sa.create_engine.encoding` parameter, by setting up
         the client encoding on the connection which is then intercepted
         by pg8000.  Pull request courtesy Tony Locke.
 
@@ -2494,7 +2494,7 @@
         The engine-level error handling and wrapping routines will now
         take effect in all engine connection use cases, including
         when user-custom connect routines are used via the
-        :paramref:`.create_engine.creator` parameter, as well as when
+        :paramref:`_sa.create_engine.creator` parameter, as well as when
         the :class:`_engine.Connection` encounters a connection error on
         revalidation.
 
@@ -2643,7 +2643,7 @@
         or UPDATE statement.   This allows :attr:`_schema.Column.key` to be used
         as a "substitute" string to work around a difficult column name
         that doesn't translate well into a bound parameter name.   Note that
-        the paramstyle is configurable on :func:`.create_engine` in any case,
+        the paramstyle is configurable on :func:`_sa.create_engine` in any case,
         and most DBAPIs today support a named and positional style.
 
     .. change::
@@ -3210,7 +3210,7 @@
         with multiple parameter sets; implicit RETURNING will no longer emit
         for this statement either.  As both of these constructs deal
         with variable numbers of rows, the
-        :attr:`.ResultProxy.inserted_primary_key` accessor does not
+        :attr:`_engine.ResultProxy.inserted_primary_key` accessor does not
         apply.   Previously, there was a documentation note that one
         may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
         don't support returning and therefore can't do "implicit" returning,
@@ -3324,7 +3324,7 @@
     .. change::
         :tags: mysql, bug
 
-        The MySQL dialect will now disable :meth:`.ConnectionEvents.handle_error`
+        The MySQL dialect will now disable :meth:`_events.ConnectionEvents.handle_error`
         events from firing for those statements which it uses internally
         to detect if a table exists or not.   This is achieved using an
         execution option ``skip_user_error_events`` that disables the handle

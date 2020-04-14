@@ -92,7 +92,8 @@ def create_mock_engine(url, executor, **kw):
      string using :meth:`.DDLElement.compile`.
 
     .. versionadded:: 1.4 - the :func:`.create_mock_engine` function replaces
-       the previous "mock" engine strategy used with :func:`.create_engine`.
+       the previous "mock" engine strategy used with :func:`_sa.create_engine`
+       .
 
     .. seealso::
 

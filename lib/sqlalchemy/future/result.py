@@ -26,14 +26,17 @@ class Result(Generative, BaseResult):
     _post_creational_filter = None
 
     def close(self):
-        """Close this :class:`.Result`.
+        """Close this :class:`_future.Result`.
 
         This closes out the underlying DBAPI cursor corresponding
         to the statement execution, if one is still present.  Note that the
-        DBAPI cursor is automatically released when the :class:`.Result`
-        exhausts all available rows.  :meth:`.Result.close` is generally
+        DBAPI cursor is automatically released when the
+        :class:`_future.Result`
+        exhausts all available rows.  :meth:`_future.Result.close`
+        is generally
         an optional method except in the case when discarding a
-        :class:`.Result` that still has additional rows pending for fetch.
+        :class:`_future.Result`
+        that still has additional rows pending for fetch.
 
         After this method is called, it is no longer valid to call upon
         the fetch methods, which will raise a :class:`.ResourceClosedError`

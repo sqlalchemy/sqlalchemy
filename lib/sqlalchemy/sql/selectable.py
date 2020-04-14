@@ -3471,7 +3471,7 @@ class Select(
         r"""Construct a new :class:`_expression.Select` using the 2.
         x style API.
 
-        .. versionadded:: 2.0 - the :func:`.future.select` construct is
+        .. versionadded:: 2.0 - the :func:`_future.select` construct is
            the same construct as the one returned by
            :func:`_expression.select`, except that the function only
            accepts the "columns clause" entities up front; the rest of the

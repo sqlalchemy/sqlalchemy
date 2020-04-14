@@ -247,8 +247,8 @@ class Connection(Connectable):
           Set the transaction isolation level for the lifespan of this
           :class:`_engine.Connection` object.
           Valid values include those string
-          values accepted by the :paramref:`.create_engine.isolation_level`
-          parameter passed to :func:`.create_engine`.  These levels are
+          values accepted by the :paramref:`_sa.create_engine.isolation_level`
+          parameter passed to :func:`_sa.create_engine`.  These levels are
           semi-database specific; see individual dialect documentation for
           valid levels.
 
@@ -282,7 +282,7 @@ class Connection(Connectable):
 
           .. seealso::
 
-                :paramref:`.create_engine.isolation_level`
+                :paramref:`_sa.create_engine.isolation_level`
                 - set per :class:`_engine.Engine` isolation level
 
                 :meth:`_engine.Connection.get_isolation_level`
@@ -420,7 +420,7 @@ class Connection(Connectable):
             :attr:`_engine.Connection.default_isolation_level`
             - view default level
 
-            :paramref:`.create_engine.isolation_level`
+            :paramref:`_sa.create_engine.isolation_level`
             - set per :class:`_engine.Engine` isolation level
 
             :paramref:`.Connection.execution_options.isolation_level`
@@ -456,7 +456,7 @@ class Connection(Connectable):
             :meth:`_engine.Connection.get_isolation_level`
             - view current level
 
-            :paramref:`.create_engine.isolation_level`
+            :paramref:`_sa.create_engine.isolation_level`
             - set per :class:`_engine.Engine` isolation level
 
             :paramref:`.Connection.execution_options.isolation_level`
@@ -950,7 +950,7 @@ class Connection(Connectable):
 
     def execute(self, object_, *multiparams, **params):
         r"""Executes a SQL statement construct and returns a
-        :class:`.ResultProxy`.
+        :class:`_engine.ResultProxy`.
 
         :param object: The statement to be executed.  May be
          one of:
@@ -1219,7 +1219,7 @@ class Connection(Connectable):
 
     def exec_driver_sql(self, statement, parameters=None):
         r"""Executes a SQL statement construct and returns a
-        :class:`.ResultProxy`.
+        :class:`_engine.ResultProxy`.
 
         :param statement: The statement str to be executed.   Bound parameters
          must use the underlying DBAPI's paramstyle, such as "qmark",
@@ -1272,7 +1272,7 @@ class Connection(Connectable):
         self, dialect, constructor, statement, parameters, *args
     ):
         """Create an :class:`.ExecutionContext` and execute, returning
-        a :class:`.ResultProxy`."""
+        a :class:`_engine.ResultProxy`."""
 
         try:
             try:
@@ -2027,7 +2027,7 @@ class Engine(Connectable, log.Identified):
         default execution options that will be used for
         all connections.  The initial contents of this dictionary
         can be sent via the ``execution_options`` parameter
-        to :func:`.create_engine`.
+        to :func:`_sa.create_engine`.
 
         .. seealso::
 
@@ -2224,10 +2224,10 @@ class Engine(Connectable, log.Identified):
         that the :class:`_engine.Connection` will be closed when the operation
         is complete.   When set to ``True``, it indicates the
         :class:`_engine.Connection` is in "single use" mode, where the
-        :class:`.ResultProxy` returned by the first call to
+        :class:`_engine.ResultProxy` returned by the first call to
         :meth:`_engine.Connection.execute` will close the
         :class:`_engine.Connection` when
-        that :class:`.ResultProxy` has exhausted all result rows.
+        that :class:`_engine.ResultProxy` has exhausted all result rows.
 
         .. seealso::
 
@@ -2335,15 +2335,17 @@ class Engine(Connectable, log.Identified):
         ":class:`.Session`.",
     )
     def execute(self, statement, *multiparams, **params):
-        """Executes the given construct and returns a :class:`.ResultProxy`.
+        """Executes the given construct and returns a
+        :class:`_engine.ResultProxy`.
 
         The arguments are the same as those used by
         :meth:`_engine.Connection.execute`.
 
         Here, a :class:`_engine.Connection` is acquired using the
         :meth:`_engine.Engine.connect` method, and the statement executed
-        with that connection. The returned :class:`.ResultProxy` is flagged
-        such that when the :class:`.ResultProxy` is exhausted and its
+        with that connection. The returned :class:`_engine.ResultProxy`
+        is flagged
+        such that when the :class:`_engine.ResultProxy` is exhausted and its
         underlying cursor is closed, the :class:`_engine.Connection`
         created here
         will also be closed, which allows its associated DBAPI connection
@@ -2359,7 +2361,8 @@ class Engine(Connectable, log.Identified):
         "by the :meth:`_engine.Connection.execute` method of "
         ":class:`_engine.Connection`, "
         "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
+        ":class:`.Session`; the :meth:`_future.Result.scalar` "
+        "method can then be "
         "used to return a scalar result.",
     )
     def scalar(self, statement, *multiparams, **params):

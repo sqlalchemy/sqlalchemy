@@ -1379,8 +1379,8 @@
         times where their values will be joined into a list.  This is to support
         the plugins feature documented at :class:`.CreateEnginePlugin` which
         documents that "plugin" can be passed multiple times. Additionally, the
-        plugin names can be passed to :func:`.create_engine` outside of the URL
-        using the new :paramref:`.create_engine.plugins` parameter.
+        plugin names can be passed to :func:`_sa.create_engine` outside of the URL
+        using the new :paramref:`_sa.create_engine.plugins` parameter.
 
     .. change::
         :tags: feature, sql
@@ -1667,7 +1667,7 @@
         this method can be used with :class:`.horizontal_shard.ShardedQuery`
         to set the shard identifier.   :class:`.horizontal_shard.ShardedQuery`
         has also been modified such that its :meth:`.ShardedQuery.get` method
-        interacts correctly with that of :class:`.baked.Result`.
+        interacts correctly with that of :class:`_baked.Result`.
 
     .. change::
         :tags: bug, oracle
@@ -1886,9 +1886,9 @@
         :tags: feature, engine
         :tickets: 4077
 
-        Added ``__next__()`` and ``next()`` methods to :class:`.ResultProxy`,
+        Added ``__next__()`` and ``next()`` methods to :class:`_engine.ResultProxy`,
         so that the ``next()`` builtin function works on the object directly.
-        :class:`.ResultProxy` has long had an ``__iter__()`` method which already
+        :class:`_engine.ResultProxy` has long had an ``__iter__()`` method which already
         allows it to respond to the ``iter()`` builtin.   The implementation
         for ``__iter__()`` is unchanged, as performance testing has indicated
         that iteration using a ``__next__()`` method with ``StopIteration``
@@ -2727,7 +2727,7 @@
 
         Added native "pessimistic disconnection" handling to the :class:`_pool.Pool`
         object.  The new parameter :paramref:`_pool.Pool.pre_ping`, available from
-        the engine as :paramref:`.create_engine.pool_pre_ping`, applies an
+        the engine as :paramref:`_sa.create_engine.pool_pre_ping`, applies an
         efficient form of the "pre-ping" recipe featured in the pooling
         documentation, which upon each connection check out, emits a simple
         statement, typically "SELECT 1", to test the connection for liveness.
@@ -2881,8 +2881,8 @@
         expression.  This causes the result for a NULL column comparison
         against an empty set to change from NULL to true/false.  The
         behavior is configurable, and the old behavior can be enabled
-        using the :paramref:`.create_engine.empty_in_strategy` parameter
-        to :func:`.create_engine`.
+        using the :paramref:`_sa.create_engine.empty_in_strategy` parameter
+        to :func:`_sa.create_engine`.
 
         .. seealso::
 

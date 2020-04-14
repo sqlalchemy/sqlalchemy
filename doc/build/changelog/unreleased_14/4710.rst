@@ -7,7 +7,7 @@
     upon construction.   Now named :class:`.Row`, the mechanics of how the
     Python-level value processors have been simplified, particularly as it impacts the
     format of the C code, so that a DBAPI row is processed into a result tuple
-    up front.   The object returned by the :class:`.ResultProxy` is now the
+    up front.   The object returned by the :class:`_engine.ResultProxy` is now the
     :class:`.LegacyRow` subclass, which maintains mapping/tuple hybrid behavior,
     however the base :class:`.Row` class now behaves more fully like a named
     tuple.

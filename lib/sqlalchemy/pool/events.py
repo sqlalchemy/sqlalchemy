@@ -110,7 +110,8 @@ class PoolEvents(event.Events):
         Processing of all checkout listeners will abort and restart
         using the new connection.
 
-        .. seealso:: :meth:`.ConnectionEvents.engine_connect` - a similar event
+        .. seealso:: :meth:`_events.ConnectionEvents.engine_connect`
+           - a similar event
            which occurs upon creation of a new :class:`_engine.Connection`.
 
         """
@@ -150,9 +151,9 @@ class PoolEvents(event.Events):
 
         .. seealso::
 
-            :meth:`.ConnectionEvents.rollback`
+            :meth:`_events.ConnectionEvents.rollback`
 
-            :meth:`.ConnectionEvents.commit`
+            :meth:`_events.ConnectionEvents.commit`
 
         """
 

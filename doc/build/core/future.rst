@@ -16,3 +16,4 @@ SQLAlchemy 2.0 Future (Core)
 .. autoclass:: sqlalchemy.future.Result
     :members:
     :inherited-members:
+    :exclude-members: memoized_attribute, memoized_instancemethod

@@ -9,7 +9,7 @@
 
    Remove deprecated event ``dbapi_error`` and the method
    ``ConnectionEvents.dbapi_error`. Please refer to the
-   :meth:`.ConnectionEvents.handle_error` event.
+   :meth:`_events.ConnectionEvents.handle_error` event.
    This chance also removes the attributes ``ExecutionContext.is_disconnect``
    and ``ExecutionContext.exception``
 

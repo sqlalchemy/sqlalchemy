@@ -780,7 +780,7 @@ class Dialect(object):
             :paramref:`.Connection.execution_options.isolation_level` -
             set per :class:`_engine.Connection` isolation level
 
-            :paramref:`.create_engine.isolation_level` -
+            :paramref:`_sa.create_engine.isolation_level` -
             set per :class:`_engine.Engine` isolation level
 
         """
@@ -807,7 +807,7 @@ class Dialect(object):
             :paramref:`.Connection.execution_options.isolation_level` -
             set per :class:`_engine.Connection` isolation level
 
-            :paramref:`.create_engine.isolation_level` -
+            :paramref:`_sa.create_engine.isolation_level` -
             set per :class:`_engine.Engine` isolation level
 
         """
@@ -839,7 +839,7 @@ class Dialect(object):
             :paramref:`.Connection.execution_options.isolation_level` -
             set per :class:`_engine.Connection` isolation level
 
-            :paramref:`.create_engine.isolation_level` -
+            :paramref:`_sa.create_engine.isolation_level` -
             set per :class:`_engine.Engine` isolation level
 
 
@@ -945,14 +945,14 @@ class CreateEnginePlugin(object):
           "mysql+pymysql://scott:tiger@localhost/test?plugin=myplugin")
 
     Alternatively, the :paramref:`.create_engine.plugins" argument may be
-    passed as a list to :func:`.create_engine`::
+    passed as a list to :func:`_sa.create_engine`::
 
         engine = create_engine(
           "mysql+pymysql://scott:tiger@localhost/test",
           plugins=["myplugin"])
 
     .. versionadded:: 1.2.3  plugin names can also be specified
-       to :func:`.create_engine` as a list
+       to :func:`_sa.create_engine` as a list
 
     The ``plugin`` argument supports multiple instances, so that a URL
     may specify multiple plugins; they are loaded in the order stated
@@ -963,7 +963,7 @@ class CreateEnginePlugin(object):
           "test?plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three")
 
     A plugin can receive additional arguments from the URL string as
-    well as from the keyword arguments passed to :func:`.create_engine`.
+    well as from the keyword arguments passed to :func:`_sa.create_engine`.
     The :class:`.URL` object and the keyword dictionary are passed to the
     constructor so that these arguments can be extracted from the url's
     :attr:`.URL.query` collection as well as from the dictionary::
@@ -1004,7 +1004,8 @@ class CreateEnginePlugin(object):
         """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call
-        to :func:`.create_engine`.  A single :class:`_engine.Engine` will be
+        to :func:`_sa.create_engine`.  A single :class:`_engine.
+        Engine` will be
         passed to the :meth:`.CreateEnginePlugin.engine_created` method
         corresponding to this URL.
 
@@ -1249,7 +1250,7 @@ class ExecutionContext(object):
         """Return the DBAPI ``cursor.rowcount`` value, or in some
         cases an interpreted value.
 
-        See :attr:`.ResultProxy.rowcount` for details on this.
+        See :attr:`_engine.ResultProxy.rowcount` for details on this.
 
         """
 
@@ -1296,7 +1297,8 @@ class Connectable(object):
     """
 
     def execute(self, object_, *multiparams, **params):
-        """Executes the given construct and returns a :class:`.ResultProxy`."""
+        """Executes the given construct and returns a """
+        """:class:`_engine.ResultProxy`."""
         raise NotImplementedError()
 
     def scalar(self, object_, *multiparams, **params):
@@ -1317,7 +1319,8 @@ class ExceptionContext(object):
     """Encapsulate information about an error condition in progress.
 
     This object exists solely to be passed to the
-    :meth:`.ConnectionEvents.handle_error` event, supporting an interface that
+    :meth:`_events.ConnectionEvents.handle_error` event,
+    supporting an interface that
     can be extended without backwards-incompatibility.
 
     .. versionadded:: 0.9.7
@@ -1409,7 +1412,7 @@ class ExceptionContext(object):
     :attr:`.ExceptionContext.parameters` members may represent a
     different value than that of the :class:`.ExecutionContext`,
     potentially in the case where a
-    :meth:`.ConnectionEvents.before_cursor_execute` event or similar
+    :meth:`_events.ConnectionEvents.before_cursor_execute` event or similar
     modified the statement/parameters to be sent.
 
     May be None.
@@ -1421,7 +1424,7 @@ class ExceptionContext(object):
     condition.
 
     This flag will always be True or False within the scope of the
-    :meth:`.ConnectionEvents.handle_error` handler.
+    :meth:`_events.ConnectionEvents.handle_error` handler.
 
     SQLAlchemy will defer to this flag in order to determine whether or not
     the connection should be invalidated subsequently.    That is, by
@@ -1436,7 +1439,8 @@ class ExceptionContext(object):
     when a "disconnect" condition is in effect.
 
     Setting this flag to False within the scope of the
-    :meth:`.ConnectionEvents.handle_error` event will have the effect such
+    :meth:`_events.ConnectionEvents.handle_error`
+    event will have the effect such
     that the full collection of connections in the pool will not be
     invalidated during a disconnect; only the current connection that is the
     subject of the error will actually be invalidated.

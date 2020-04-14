@@ -1273,7 +1273,7 @@ well as for casting decimal bind values for MySQL.
 New last-in-first-out strategy for QueuePool
 ---------------------------------------------
 
-The connection pool usually used by :func:`.create_engine` is known
+The connection pool usually used by :func:`_sa.create_engine` is known
 as :class:`.QueuePool`.  This pool uses an object equivalent to Python's
 built-in ``Queue`` class in order to store database connections waiting
 to be used.   The ``Queue`` features first-in-first-out behavior, which is
@@ -1282,7 +1282,7 @@ persistently in the pool.   However, a potential downside of this is that
 when the utilization of the pool is low, the re-use of each connection in series
 means that a server-side timeout strategy that attempts to reduce unused
 connections is prevented from shutting down these connections.   To suit
-this use case, a new flag :paramref:`.create_engine.pool_use_lifo` is added
+this use case, a new flag :paramref:`_sa.create_engine.pool_use_lifo` is added
 which reverses the ``.get()`` method of the ``Queue`` to pull the connection
 from the beginning of the queue instead of the end, essentially turning the
 "queue" into a "stack" (adding a whole new pool called ``StackPool`` was
@@ -1393,7 +1393,7 @@ convert_unicode parameters deprecated
 --------------------------------------
 
 The parameters :paramref:`.String.convert_unicode` and
-:paramref:`.create_engine.convert_unicode` are deprecated.    The purpose of
+:paramref:`_sa.create_engine.convert_unicode` are deprecated.    The purpose of
 these parameters was to instruct SQLAlchemy to ensure that incoming Python
 Unicode objects under Python 2 were encoded to bytestrings before passing to
 the database, and to expect bytestrings from the database to be converted back
@@ -1585,7 +1585,7 @@ functions like ``trunc()``.
 
 The one case where ``NVARCHAR2`` and related types may be needed is for a
 database that is not using a Unicode-compliant character set.  In this case,
-the flag ``use_nchar_for_unicode`` can be passed to :func:`.create_engine` to
+the flag ``use_nchar_for_unicode`` can be passed to :func:`_sa.create_engine` to
 re-enable the old behavior.
 
 As always, using the :class:`_oracle.NVARCHAR2` and :class:`_oracle.NCLOB`
@@ -1621,9 +1621,9 @@ dialect as well as the URL string:
   The SQLAlchemy :class:`_engine.Connection` object is not considered to be thread-safe
   itself so there's no need for this flag to be passed.
 
-* It's deprecated to pass ``threaded`` to :func:`.create_engine` itself.
+* It's deprecated to pass ``threaded`` to :func:`_sa.create_engine` itself.
   To set the value of ``threaded`` to ``True``, pass it to either the
-  :paramref:`.create_engine.connect_args` dictionary or use the query
+  :paramref:`_sa.create_engine.connect_args` dictionary or use the query
   string e.g. ``oracle+cx_oracle://...?threaded=true``.
 
 * All parameters passed on the URL query string that are not otherwise
@@ -1632,7 +1632,7 @@ dialect as well as the URL string:
   or booleans including ``mode``, ``purity``, ``events``, and ``threaded``.
 
 * As was the case earlier, all cx_Oracle ``.connect()`` arguments are accepted
-  via the :paramref:`.create_engine.connect_args` dictionary, the documentation
+  via the :paramref:`_sa.create_engine.connect_args` dictionary, the documentation
   was inaccurate regarding this.
 
 :ticket:`4369`
@@ -1647,7 +1647,7 @@ Support for pyodbc fast_executemany
 
 Pyodbc's recently added "fast_executemany" mode, available when using the
 Microsoft ODBC driver, is now an option for the pyodbc / mssql dialect.
-Pass it via :func:`.create_engine`::
+Pass it via :func:`_sa.create_engine`::
 
     engine = create_engine(
         "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server",

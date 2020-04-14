@@ -50,7 +50,7 @@ that none of them "pre create" connections - all implementations wait
 until first use before creating a connection.   At that point, if
 no additional concurrent checkout requests for more connections
 are made, no additional connections are created.   This is why it's perfectly
-fine for :func:`.create_engine` to default to using a :class:`.QueuePool`
+fine for :func:`_sa.create_engine` to default to using a :class:`.QueuePool`
 of size five without regard to whether or not the application really needs five connections
 queued up - the pool would only grow to that size if the application
 actually used five connections concurrently, in which case the usage of a
@@ -61,7 +61,7 @@ small pool is an entirely appropriate default behavior.
 Switching Pool Implementations
 ------------------------------
 
-The usual way to use a different kind of pool with :func:`.create_engine`
+The usual way to use a different kind of pool with :func:`_sa.create_engine`
 is to use the ``poolclass`` argument.   This argument accepts a class
 imported from the ``sqlalchemy.pool`` module, and handles the details
 of building the pool for you.   Common options include specifying
@@ -81,7 +81,7 @@ Using a Custom Connection Function
 ----------------------------------
 
 All :class:`_pool.Pool` classes accept an argument ``creator`` which is
-a callable that creates a new connection.  :func:`.create_engine`
+a callable that creates a new connection.  :func:`_sa.create_engine`
 accepts this function to pass onto the pool via an argument of
 the same name::
 
@@ -97,7 +97,7 @@ the same name::
 
 For most "initialize on connection" routines, it's more convenient
 to use the :class:`_events.PoolEvents` event hooks, so that the usual URL argument to
-:func:`.create_engine` is still usable.  ``creator`` is there as
+:func:`_sa.create_engine` is still usable.  ``creator`` is there as
 a last resort for when a DBAPI has some form of ``connect``
 that is not at all supported by SQLAlchemy.
 
@@ -150,7 +150,7 @@ are removed.   This behavior can be disabled using the ``reset_on_return``
 option of :class:`_pool.Pool`.
 
 A particular pre-created :class:`_pool.Pool` can be shared with one or more
-engines by passing it to the ``pool`` argument of :func:`.create_engine`::
+engines by passing it to the ``pool`` argument of :func:`_sa.create_engine`::
 
     e = create_engine('postgresql://', pool=mypool)
 
@@ -201,8 +201,8 @@ up to the application to either abandon
 the operation, or retry the whole transaction again.
 
 Pessimistic testing of connections upon checkout is achievable by
-using the :paramref:`_pool.Pool.pre_ping` argument, available from :func:`.create_engine`
-via the :paramref:`.create_engine.pool_pre_ping` argument::
+using the :paramref:`_pool.Pool.pre_ping` argument, available from :func:`_sa.create_engine`
+via the :paramref:`_sa.create_engine.pool_pre_ping` argument::
 
     engine = create_engine("mysql+pymysql://user:pw@host/db", pool_pre_ping=True)
 
@@ -231,9 +231,9 @@ to three times before giving up, propagating the database error last received.
 Custom / Legacy Pessimistic Ping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before :paramref:`.create_engine.pool_pre_ping` was added, the "pre-ping"
+Before :paramref:`_sa.create_engine.pool_pre_ping` was added, the "pre-ping"
 approach historically has been performed manually using
-the :meth:`.ConnectionEvents.engine_connect` engine event.
+the :meth:`_events.ConnectionEvents.engine_connect` engine event.
 The most common recipe for this is below, for reference
 purposes in case an application is already using such a recipe, or special
 behaviors are needed::
@@ -403,7 +403,7 @@ Using FIFO vs. LIFO
 
 The :class:`.QueuePool` class features a flag called
 :paramref:`.QueuePool.use_lifo`, which can also be accessed from
-:func:`.create_engine` via the flag :paramref:`.create_engine.pool_use_lifo`.
+:func:`_sa.create_engine` via the flag :paramref:`_sa.create_engine.pool_use_lifo`.
 Setting this flag to ``True`` causes the pool's "queue" behavior to instead be
 that of a "stack", e.g. the last connection to be returned to the pool is the
 first one to be used on the next request. In contrast to the pool's long-
@@ -417,7 +417,7 @@ connections ready to go even during idle periods::
     engine = create_engine(
         "postgreql://", pool_use_lifo=True, pool_pre_ping=True)
 
-Above, we also make use of the :paramref:`.create_engine.pool_pre_ping` flag
+Above, we also make use of the :paramref:`_sa.create_engine.pool_pre_ping` flag
 so that connections which are closed from the server side are gracefully
 handled by the connection pool and replaced with a new connection.
 
@@ -436,7 +436,7 @@ Using Connection Pools with Multiprocessing
 -------------------------------------------
 
 It's critical that when using a connection pool, and by extension when
-using an :class:`_engine.Engine` created via :func:`.create_engine`, that
+using an :class:`_engine.Engine` created via :func:`_sa.create_engine`, that
 the pooled connections **are not shared to a forked process**.  TCP connections
 are represented as file descriptors, which usually work across process
 boundaries, meaning this will cause concurrent access to the file descriptor

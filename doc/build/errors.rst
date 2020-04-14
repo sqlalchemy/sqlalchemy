@@ -123,13 +123,13 @@ familiar with.
 
   In order to allow for a higher number of connections be in use at once,
   the pool can be adjusted using the
-  :paramref:`.create_engine.pool_size` and :paramref:`.create_engine.max_overflow`
-  parameters as passed to the :func:`.create_engine` function.      The timeout
+  :paramref:`_sa.create_engine.pool_size` and :paramref:`_sa.create_engine.max_overflow`
+  parameters as passed to the :func:`_sa.create_engine` function.      The timeout
   to wait for a connection to be available is configured using the
-  :paramref:`.create_engine.pool_timeout` parameter.
+  :paramref:`_sa.create_engine.pool_timeout` parameter.
 
 * The pool can be configured to have unlimited overflow by setting
-  :paramref:`.create_engine.max_overflow` to the value "-1".  With this setting,
+  :paramref:`_sa.create_engine.max_overflow` to the value "-1".  With this setting,
   the pool will still maintain a fixed pool of connections, however it will
   never block upon a new connection being requested; it will instead unconditionally
   make a new connection if none are available.

@@ -590,7 +590,7 @@
         :tickets: 3200
 
         The execution options passed to an :class:`_engine.Engine` either via
-        :paramref:`.create_engine.execution_options` or
+        :paramref:`_sa.create_engine.execution_options` or
         :meth:`_engine.Engine.update_execution_options` are not passed to the
         special :class:`_engine.Connection` used to initialize the dialect
         within the "first connect" event; dialects will usually
@@ -995,9 +995,9 @@
         :tickets: 3076
         :versions: 1.0.0b1
 
-        Added new event :meth:`.ConnectionEvents.handle_error`, a more
+        Added new event :meth:`_events.ConnectionEvents.handle_error`, a more
         fully featured and comprehensive replacement for
-        :meth:`.ConnectionEvents.dbapi_error`.
+        :meth:`_events.ConnectionEvents.dbapi_error`.
 
     .. change::
         :tags: bug, orm
@@ -1497,12 +1497,12 @@
     .. change::
         :tags: bug, engine
 
-        The :meth:`.ConnectionEvents.after_cursor_execute` event is now
+        The :meth:`_events.ConnectionEvents.after_cursor_execute` event is now
         emitted for the "_cursor_execute()" method of :class:`_engine.Connection`;
         this is the "quick" executor that is used for things like
         when a sequence is executed ahead of an INSERT statement, as well as
         for dialect startup checks like unicode returns, charset, etc.
-        the :meth:`.ConnectionEvents.before_cursor_execute` event was already
+        the :meth:`_events.ConnectionEvents.before_cursor_execute` event was already
         invoked here.  The "executemany" flag is now always set to False
         here, as this event always corresponds to a single execution.
         Previously the flag could be True if we were acting on behalf of
@@ -2647,7 +2647,7 @@
         :tags: bug, engine
         :tickets: 2873
 
-        The :func:`.create_engine` routine and the related
+        The :func:`_sa.create_engine` routine and the related
         :func:`.make_url` function no longer considers the ``+`` sign
         to be a space within the password field.  The parsing has been
         adjusted to match RFC 1738 exactly, in that both ``username``
@@ -3055,7 +3055,7 @@
         with the compilers usual "implicit returning" feature, which is used to
         efficiently fetch newly generated primary key values.  For supporting
         backends, a dictionary of all fetched values is present at
-        :attr:`.ResultProxy.returned_defaults`.
+        :attr:`_engine.ResultProxy.returned_defaults`.
 
     .. change::
         :tags: bug, mysql
@@ -3148,11 +3148,11 @@
         :tags: feature, engine
         :tickets: 2770
 
-        New events added to :class:`.ConnectionEvents`:
+        New events added to :class:`_events.ConnectionEvents`:
 
-        * :meth:`.ConnectionEvents.engine_connect`
-        * :meth:`.ConnectionEvents.set_connection_execution_options`
-        * :meth:`.ConnectionEvents.set_engine_execution_options`
+        * :meth:`_events.ConnectionEvents.engine_connect`
+        * :meth:`_events.ConnectionEvents.set_connection_execution_options`
+        * :meth:`_events.ConnectionEvents.set_engine_execution_options`
 
     .. change::
         :tags: bug, sql

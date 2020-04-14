@@ -690,11 +690,11 @@ Pessimistic disconnection detection added to the connection pool
 ----------------------------------------------------------------
 
 The connection pool documentation has long featured a recipe for using
-the :meth:`.ConnectionEvents.engine_connect` engine event to emit a simple
+the :meth:`_events.ConnectionEvents.engine_connect` engine event to emit a simple
 statement on a checked-out connection to test it for liveness.   The
 functionality of this recipe has now been added into the connection pool
 itself, when used in conjunction with an appropriate dialect.   Using
-the new parameter :paramref:`.create_engine.pool_pre_ping`, each connection
+the new parameter :paramref:`_sa.create_engine.pool_pre_ping`, each connection
 checked out will be tested for freshness before being returned::
 
     engine = create_engine("mysql+pymysql://", pool_pre_ping=True)
@@ -730,8 +730,8 @@ of a query that is comparing a SQL expression or column that evaluates to
 NULL when compared to an empty set, producing a boolean value false or true
 (for NOT IN) rather than NULL.  The warning that would emit under
 this condition is also removed.  The old behavior is available using the
-:paramref:`.create_engine.empty_in_strategy` parameter to
-:func:`.create_engine`.
+:paramref:`_sa.create_engine.empty_in_strategy` parameter to
+:func:`_sa.create_engine`.
 
 In SQL, the IN and NOT IN operators do not support comparison to a
 collection of values that is explicitly empty; meaning, this syntax is
@@ -801,7 +801,7 @@ for the negation ``where(~null_expr.in_([]))``, since this now evaluates to true
 and not NULL.
 
 The behavior can now be controlled using the flag
-:paramref:`.create_engine.empty_in_strategy`, which defaults to the
+:paramref:`_sa.create_engine.empty_in_strategy`, which defaults to the
 ``"static"`` setting, but may also be set to ``"dynamic"`` or
 ``"dynamic_warn"``, where the ``"dynamic_warn"`` setting is equivalent to the
 previous behavior of emitting ``expr != expr`` as well as a performance
@@ -1550,7 +1550,7 @@ DML statements in batch.   SQLAlchemy 1.2 now includes support for these
 helpers to be used transparently whenever the :class:`_engine.Engine` makes use
 of ``cursor.executemany()`` to invoke a statement against multiple parameter
 sets.   The feature is off by default and can be enabled using the
-``use_batch_mode`` argument on :func:`.create_engine`::
+``use_batch_mode`` argument on :func:`_sa.create_engine`::
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",

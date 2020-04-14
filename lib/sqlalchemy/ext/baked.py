@@ -112,7 +112,8 @@ class BakedQuery(object):
         return self
 
     def with_criteria(self, fn, *args):
-        """Add a criteria function to a :class:`.BakedQuery` cloned from this one.
+        """Add a criteria function to a :class:`.BakedQuery` cloned from this
+        one.
 
         This is equivalent to using the ``+`` operator to
         produce a new :class:`.BakedQuery` with modifications.
@@ -121,7 +122,8 @@ class BakedQuery(object):
         return self._clone().add_criteria(fn, *args)
 
     def for_session(self, session):
-        """Return a :class:`.Result` object for this :class:`.BakedQuery`.
+        """Return a :class:`_baked.Result` object for this
+        :class:`.BakedQuery`.
 
         This is equivalent to calling the :class:`.BakedQuery` as a
         Python callable, e.g. ``result = my_baked_query(session)``.
@@ -358,7 +360,7 @@ class BakedQuery(object):
 class Result(object):
     """Invokes a :class:`.BakedQuery` against a :class:`.Session`.
 
-    The :class:`.Result` object is where the actual :class:`.query.Query`
+    The :class:`_baked.Result` object is where the actual :class:`.query.Query`
     object gets created, or retrieved from the cache,
     against a target :class:`.Session`, and is then invoked for results.
 
@@ -399,7 +401,8 @@ class Result(object):
         that **do not affect the SQL output**, such as execution options
         and shard identifiers (when using a shard-enabled query object)
 
-        .. warning::  :meth:`.Result.with_post_criteria` functions are applied
+        .. warning::  :meth:`_baked.Result.with_post_criteria`
+           functions are applied
            to the :class:`_query.Query`
            object **after** the query's SQL statement
            object has been retrieved from the cache.   Any operations here

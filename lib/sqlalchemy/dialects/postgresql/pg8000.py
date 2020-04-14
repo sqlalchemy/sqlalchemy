@@ -36,7 +36,7 @@ The ``client_encoding`` can be overridden for a session by executing the SQL:
 SET CLIENT_ENCODING TO 'utf8';
 
 SQLAlchemy will execute this SQL on all new connections based on the value
-passed to :func:`.create_engine` using the ``client_encoding`` parameter::
+passed to :func:`_sa.create_engine` using the ``client_encoding`` parameter::
 
     engine = create_engine(
         "postgresql+pg8000://user:pass@host/dbname", client_encoding='utf8')

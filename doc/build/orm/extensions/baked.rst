@@ -76,7 +76,7 @@ Following are some observations about the above code:
    object.
 
 2. The actual :class:`~.query.Query` object is not built at all, until the
-   very end of the function when :meth:`.Result.all` is called.
+   very end of the function when :meth:`_baked.Result.all` is called.
 
 3. The steps that are added to the ``baked_query`` object are all expressed
    as Python functions,  typically lambdas.  The first lambda given
@@ -103,7 +103,7 @@ Following are some observations about the above code:
    variables which may change across calls are referenced **within** the
    lambdas; instead, assuming these are values to be bound into the
    SQL string, we use :func:`.bindparam` to construct named parameters,
-   where we apply their actual values later using :meth:`.Result.params`.
+   where we apply their actual values later using :meth:`_baked.Result.params`.
 
 
 Performance

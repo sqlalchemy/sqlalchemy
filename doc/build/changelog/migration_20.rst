@@ -349,15 +349,15 @@ Fast forward fifteen years later and here is all that's wrong with that:
   attribute is non-None.   If not, we assume this is a DML or DDL statement,
   the cursor is closed immediately, and the result is returned after the
   connection is closed.  If there is a result, we leave the cursor and
-  connection open, the :class:`.ResultProxy` is then responsible for
+  connection open, the :class:`_engine.ResultProxy` is then responsible for
   autoclosing the cursor when the results are fully exhausted, and at that
-  point another special flag in the :class:`.ResultProxy` indicates that the
+  point another special flag in the :class:`_engine.ResultProxy` indicates that the
   connection also needs to be returned to the pool.
 
 That last one especially sounds crazy right?   That's why ``engine.execute()``
 is going away.  It looks simple on the outside but it is unfortunately not,
 and also, it's unnecessary and is frequently mis-used.  A whole series of
-intricate "autoclose" logic within the :class:`.ResultProxy` can be removed
+intricate "autoclose" logic within the :class:`_engine.ResultProxy` can be removed
 when this happens.
 
 With "connectionless" execution going away, we also take away a pattern that
@@ -921,7 +921,7 @@ Other ORM Query patterns changed
 =================================
 
 This section will collect various :class:`_query.Query` patterns and how they work
-in terms of :func:`.future.select`.
+in terms of :func:`_future.select`.
 
 .. _migration_20_query_distinct:
 
@@ -969,7 +969,7 @@ translation into the SQL it produces, while it does allow a certain kind of
 pattern to be executed very succinctly, real world use of this method is
 infrequent as it is not simple to understand.
 
-In SQLAlchemy 2.0, as the :func:`.future.select` construct will be expected
+In SQLAlchemy 2.0, as the :func:`_future.select` construct will be expected
 to handle every pattern the ORM :class:`_query.Query` does now, the pattern of
 :meth:`_query.Query.from_self` can be invoked now by making use of the
 :func:`_orm.aliased` function in conjunction with a subquery, that is

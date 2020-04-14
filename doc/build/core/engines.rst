@@ -19,7 +19,7 @@ which together interpret the DBAPI's module functions as well as the behavior
 of the database.
 
 Creating an engine is just a matter of issuing a single call,
-:func:`.create_engine()`::
+:func:`_sa.create_engine()`::
 
     from sqlalchemy import create_engine
     engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
@@ -55,7 +55,7 @@ See the section :ref:`dialect_toplevel` for information on the various backends 
 Database Urls
 =============
 
-The :func:`.create_engine` function produces an :class:`_engine.Engine` object based
+The :func:`_sa.create_engine` function produces an :class:`_engine.Engine` object based
 on a URL.  These URLs follow `RFC-1738
 <http://rfc.net/rfc1738.html>`_, and usually can include username, password,
 hostname, database name as well as optional keyword arguments for additional configuration.
@@ -266,8 +266,8 @@ Python's standard `logging
 implement informational and debug log output with SQLAlchemy. This allows
 SQLAlchemy's logging to integrate in a standard way with other applications
 and libraries.   There are also two parameters
-:paramref:`.create_engine.echo` and :paramref:`.create_engine.echo_pool`
-present on :func:`.create_engine` which allow immediate logging to ``sys.stdout``
+:paramref:`_sa.create_engine.echo` and :paramref:`_sa.create_engine.echo_pool`
+present on :func:`_sa.create_engine` which allow immediate logging to ``sys.stdout``
 for the purposes of local development; these parameters ultimately interact
 with the regular Python loggers described below.
 
@@ -280,13 +280,13 @@ namespace of SA loggers that can be turned on is as follows:
 * ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for
   SQL query output, ``logging.DEBUG`` for query + result set output.  These
   settings are equivalent to ``echo=True`` and ``echo="debug"`` on
-  :paramref:`.create_engine.echo`, respectively.
+  :paramref:`_sa.create_engine.echo`, respectively.
 
 * ``sqlalchemy.pool`` - controls connection pool logging.  set to
   ``logging.INFO`` to log connection invalidation and recycle events; set to
   ``logging.DEBUG`` to additionally log all pool checkins and checkouts.
   These settings are equivalent to ``pool_echo=True`` and ``pool_echo="debug"``
-  on :paramref:`.create_engine.echo_pool`, respectively.
+  on :paramref:`_sa.create_engine.echo_pool`, respectively.
 
 * ``sqlalchemy.dialects`` - controls custom logging for SQL dialects, to the
   extend that logging is used within specific dialects, which is generally

@@ -317,7 +317,7 @@ so-called "empty set".  As there is no standard SQL syntax for empty sets, a
 SELECT that returns no rows is used, tailored in specific ways for each backend
 so that the database treats it as an empty set; this feature was first
 introduced in version 1.3 and is described at :ref:`change_4271`.  The
-:paramref:`.create_engine.empty_in_strategy` parameter, introduced in version
+:paramref:`_sa.create_engine.empty_in_strategy` parameter, introduced in version
 1.2 as a means for migrating for how this case was treated for the previous IN
 system, is now deprecated and this flag no longer has an effect; as described
 in :ref:`change_3907`, this flag allowed a dialect to switch between the
@@ -1153,7 +1153,7 @@ together and ensuring that all the FROM elements are connected in a single
 graph. This recipe has now been adapted to be part of the :class:`.SQLCompiler`
 itself where it now optionally emits a warning for a statement if this
 condition is detected.   The warning is enabled using the
-:paramref:`.create_engine.enable_from_linting` flag and is enabled by default.
+:paramref:`_sa.create_engine.enable_from_linting` flag and is enabled by default.
 The computational overhead of the linter is very low, and additionally it only
 occurs during statement compilation which means for a cached SQL statement it
 only occurs once.
@@ -1337,7 +1337,7 @@ are up until now always a so-called "anonymous" expression::
     FROM foo
 
 These anonymous expressions were necessary as SQLAlchemy's
-:class:`.ResultProxy` made heavy use of result column names in order to match
+:class:`_engine.ResultProxy` made heavy use of result column names in order to match
 up datatypes, such as the :class:`.String` datatype which used to have
 result-row-processing behavior, to the correct column, so most importantly the
 names had to be both easy to determine in a database-agnostic manner as well as
@@ -1398,7 +1398,7 @@ a SQL Server "TOP N" statement, such as::
 
 as well as with Oracle, where the FIRST_ROWS() hint (which SQLAlchemy will
 use if the ``optimize_limits=True`` parameter is passed to
-:func:`.create_engine` with an Oracle URL) does not allow them,
+:func:`_sa.create_engine` with an Oracle URL) does not allow them,
 but also that using bound parameters with ROWNUM comparisons has been reported
 as producing slower query plans::
 

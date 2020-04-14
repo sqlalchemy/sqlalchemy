@@ -304,7 +304,7 @@ APIs or via database-specific calls.
 
 SQLAlchemy's dialects support settable isolation modes on a per-:class:`_engine.Engine`
 or per-:class:`_engine.Connection` basis, using flags at both the
-:func:`.create_engine` level as well as at the :meth:`_engine.Connection.execution_options`
+:func:`_sa.create_engine` level as well as at the :meth:`_engine.Connection.execution_options`
 level.
 
 When using the ORM :class:`.Session`, it acts as a *facade* for engines and
@@ -314,7 +314,7 @@ order to affect transaction isolation level, we need to act upon the
 
 .. seealso::
 
-    :paramref:`.create_engine.isolation_level`
+    :paramref:`_sa.create_engine.isolation_level`
 
     :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
@@ -326,7 +326,7 @@ Setting Isolation Engine-Wide
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To set up a :class:`.Session` or :class:`.sessionmaker` with a specific
-isolation level globally, use the :paramref:`.create_engine.isolation_level`
+isolation level globally, use the :paramref:`_sa.create_engine.isolation_level`
 parameter::
 
     from sqlalchemy import create_engine

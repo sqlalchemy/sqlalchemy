@@ -610,7 +610,7 @@ class ColumnOperators(Operators):
         In the case that ``other`` is an empty sequence, the compiler
         produces an "empty not in" expression.   This defaults to the
         expression "1 = 1" to produce true in all cases.  The
-        :paramref:`.create_engine.empty_in_strategy` may be used to
+        :paramref:`_sa.create_engine.empty_in_strategy` may be used to
         alter this behavior.
 
         .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and

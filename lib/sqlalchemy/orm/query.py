@@ -3494,7 +3494,7 @@ class Query(Generative):
         ]
 
     def instances(self, result_proxy, context=None):
-        """Return an ORM result given a :class:`.ResultProxy` and
+        """Return an ORM result given a :class:`_engine.ResultProxy` and
         :class:`.QueryContext`.
 
         """

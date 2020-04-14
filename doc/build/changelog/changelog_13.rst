@@ -907,7 +907,7 @@
         :tickets: 4799
 
         Added dialect-level flag ``encoding_errors`` to the cx_Oracle dialect,
-        which can be specified as part of :func:`.create_engine`.   This is passed
+        which can be specified as part of :func:`_sa.create_engine`.   This is passed
         to SQLAlchemy's unicode decoding converter under Python 2, and to
         cx_Oracle's ``cursor.var()`` object as the ``encodingErrors`` parameter
         under Python 3, for the very unusual case that broken encodings are present
@@ -981,12 +981,12 @@
         :tags: usecase, engine
         :tickets: 4857
 
-        Added new :func:`.create_engine` parameter
-        :paramref:`.create_engine.max_identifier_length`. This overrides the
+        Added new :func:`_sa.create_engine` parameter
+        :paramref:`_sa.create_engine.max_identifier_length`. This overrides the
         dialect-coded "max identifier length" in order to accommodate for databases
         that have recently changed this length and the SQLAlchemy dialect has
         not yet been adjusted to detect for that version.  This parameter interacts
-        with the existing :paramref:`.create_engine.label_length` parameter in that
+        with the existing :paramref:`_sa.create_engine.label_length` parameter in that
         it establishes the maximum (and default) value for anonymously generated
         labels.   Additionally, post-connection detection of max identifier lengths
         has been added to the dialect system.  This feature is first being used
@@ -1001,13 +1001,13 @@
         :tickets: 4857
 
         The Oracle dialect now emits a warning if Oracle version 12.2 or greater is
-        used, and the :paramref:`.create_engine.max_identifier_length` parameter is
+        used, and the :paramref:`_sa.create_engine.max_identifier_length` parameter is
         not set.   The version in this specific case defaults to that of the
         "compatibility" version set in the Oracle server configuration, not the
         actual server version.   In version 1.4, the default max_identifier_length
         for 12.2 or greater will move to 128 characters.  In order to maintain
         forwards compatibility, applications should set
-        :paramref:`.create_engine.max_identifier_length` to 30 in order to maintain
+        :paramref:`_sa.create_engine.max_identifier_length` to 30 in order to maintain
         the same length behavior, or to 128 in order to test the upcoming behavior.
         This length determines among other things how generated constraint names
         are truncated for statements like ``CREATE CONSTRAINT`` and ``DROP
@@ -1210,7 +1210,7 @@
         :tags: feature, engine
         :tickets: 4815
 
-        Added new parameter :paramref:`.create_engine.hide_parameters` which when
+        Added new parameter :paramref:`_sa.create_engine.hide_parameters` which when
         set to True will cause SQL parameters to no longer be logged, nor rendered
         in the string representation of a :class:`.StatementError` object.
 
@@ -1250,8 +1250,8 @@
         however the SQLite dialect calls them ``_json_serilizer`` and
         ``_json_deserilalizer``.  The names have been corrected, the old names are
         accepted with a change warning, and these parameters are now documented as
-        :paramref:`.create_engine.json_serializer` and
-        :paramref:`.create_engine.json_deserializer`.
+        :paramref:`_sa.create_engine.json_serializer` and
+        :paramref:`_sa.create_engine.json_deserializer`.
 
 
     .. change::
@@ -1956,7 +1956,7 @@
         :tickets: 4562
 
         Added support for parameter-less connection URLs for the psycopg2 dialect,
-        meaning, the URL can be passed to :func:`.create_engine` as
+        meaning, the URL can be passed to :func:`_sa.create_engine` as
         ``"postgresql+psycopg2://"`` with no additional arguments to indicate an
         empty DSN passed to libpq, which indicates to connect to "localhost" with
         no username, password, or database given. Pull request courtesy Julian
@@ -2370,7 +2370,7 @@
        :tags: change, sql
        :tickets: 4393
 
-       The :paramref:`.create_engine.convert_unicode` and
+       The :paramref:`_sa.create_engine.convert_unicode` and
        :paramref:`.String.convert_unicode` parameters have been deprecated.  These
        parameters were built back when most Python DBAPIs had little to no support
        for Python Unicode objects, and SQLAlchemy needed to take on the very
@@ -2457,7 +2457,7 @@
         The Oracle dialect will no longer use the NCHAR/NCLOB datatypes
         represent generic unicode strings or clob fields in conjunction with
         :class:`.Unicode` and :class:`.UnicodeText` unless the flag
-        ``use_nchar_for_unicode=True`` is passed to :func:`.create_engine` -
+        ``use_nchar_for_unicode=True`` is passed to :func:`_sa.create_engine` -
         this includes CREATE TABLE behavior as well as ``setinputsizes()`` for
         bound parameters.   On the read side, automatic Unicode conversion under
         Python 2 has been added to CHAR/VARCHAR/CLOB result rows, to match the
@@ -2527,7 +2527,7 @@
        :tags: feature, engine
 
        Added new "lifo" mode to :class:`.QueuePool`, typically enabled by setting
-       the flag :paramref:`.create_engine.pool_use_lifo` to True.   "lifo" mode
+       the flag :paramref:`_sa.create_engine.pool_use_lifo` to True.   "lifo" mode
        means the same connection just checked in will be the first to be checked
        out again, allowing excess connections to be cleaned up from the server
        side during periods of the pool being only partially utilized.  Pull request
