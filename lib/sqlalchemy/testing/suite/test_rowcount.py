@@ -6,7 +6,6 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
@@ -33,7 +32,7 @@ class RowCountTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         cls.data = data = [
             ("Angela", "A"),
             ("Andrew", "A"),
@@ -47,11 +46,10 @@ class RowCountTest(fixtures.TablesTest):
         ]
 
         employees_table = cls.tables.employees
-        with config.db.begin() as conn:
-            conn.execute(
-                employees_table.insert(),
-                [{"name": n, "department": d} for n, d in data],
-            )
+        connection.execute(
+            employees_table.insert(),
+            [{"name": n, "department": d} for n, d in data],
+        )
 
     def test_basic(self):
         employees_table = self.tables.employees

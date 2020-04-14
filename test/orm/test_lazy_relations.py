@@ -1248,16 +1248,18 @@ class CorrelatedTest(fixtures.MappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         stuff, user_t = cls.tables.stuff, cls.tables.user_t
 
-        user_t.insert().execute(
+        connection.execute(
+            user_t.insert(),
             {"id": 1, "name": "user1"},
             {"id": 2, "name": "user2"},
             {"id": 3, "name": "user3"},
         )
 
-        stuff.insert().execute(
+        connection.execute(
+            stuff.insert(),
             {"id": 1, "user_id": 1, "date": datetime.date(2007, 10, 15)},
             {"id": 2, "user_id": 1, "date": datetime.date(2007, 12, 15)},
             {"id": 3, "user_id": 1, "date": datetime.date(2007, 11, 15)},

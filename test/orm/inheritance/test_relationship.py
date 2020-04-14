@@ -574,7 +574,7 @@ class M2MFilterTest(fixtures.MappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Organization = cls.classes.Organization
         e1 = Engineer(name="e1")
         e2 = Engineer(name="e2")
@@ -582,7 +582,7 @@ class M2MFilterTest(fixtures.MappedTest):
         e4 = Engineer(name="e4")
         org1 = Organization(name="org1", engineers=[e1, e2])
         org2 = Organization(name="org2", engineers=[e3, e4])
-        sess = create_session()
+        sess = create_session(connection)
         sess.add(org1)
         sess.add(org2)
         sess.flush()
@@ -900,13 +900,13 @@ class EagerToSubclassTest(fixtures.MappedTest):
         mapper(Related, related)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         global p1, p2
 
         Parent = cls.classes.Parent
         Sub = cls.classes.Sub
         Related = cls.classes.Related
-        sess = Session()
+        sess = Session(connection)
         r1, r2 = Related(data="r1"), Related(data="r2")
         s1 = Sub(data="s1", related=r1)
         s2 = Sub(data="s2", related=r2)
@@ -1079,11 +1079,11 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         mapper(Sub, sub, inherits=Base, polymorphic_identity="s")
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         global p1, p2
 
         Sub, Subparent = cls.classes.Sub, cls.classes.Subparent
-        sess = create_session()
+        sess = create_session(connection)
         p1 = Subparent(
             data="p1",
             children=[Sub(data="s1"), Sub(data="s2"), Sub(data="s3")],
@@ -1265,12 +1265,12 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         mapper(D, cls.tables.d)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         B = cls.classes.B
         C = cls.classes.C
         D = cls.classes.D
 
-        session = Session()
+        session = Session(connection)
 
         d = D()
         session.add_all([B(related=[d]), C(related=[d])])
@@ -1438,10 +1438,10 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
         mapper(D, cls.tables.d, inherits=A, polymorphic_identity="d")
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         B = cls.classes.B
 
-        session = Session()
+        session = Session(connection)
         session.add(B())
         session.commit()
 
@@ -1784,7 +1784,7 @@ class JoinedloadWPolyOfTypeContinued(
             id = Column(Integer, primary_key=True)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         User, Fred, SubBar, Bar, SubFoo = cls.classes(
             "User", "Fred", "SubBar", "Bar", "SubFoo"
         )
@@ -1794,7 +1794,7 @@ class JoinedloadWPolyOfTypeContinued(
         sub_bar = SubBar(fred=fred)
         rectangle = SubFoo(owner=user, baz=10, bar=bar, sub_bar=sub_bar)
 
-        s = Session()
+        s = Session(connection)
         s.add_all([user, fred, bar, sub_bar, rectangle])
         s.commit()
 
@@ -2730,9 +2730,9 @@ class M2ODontLoadSiblingTest(fixtures.DeclarativeMappedTest):
             child2 = relationship(Child2, viewonly=True)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Other, Child1 = cls.classes("Other", "Child1")
-        s = Session()
+        s = Session(connection)
         obj = Other(parent=Child1())
         s.add(obj)
         s.commit()

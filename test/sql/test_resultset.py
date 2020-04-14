@@ -1406,21 +1406,19 @@ class KeyTargetingTest(fixtures.TablesTest):
             )
 
     @classmethod
-    def insert_data(cls):
-        with testing.db.begin() as conn:
-            conn.execute(cls.tables.keyed1.insert(), dict(b="a1", q="c1"))
-            conn.execute(cls.tables.keyed2.insert(), dict(a="a2", b="b2"))
-            conn.execute(cls.tables.keyed3.insert(), dict(a="a3", d="d3"))
-            conn.execute(cls.tables.keyed4.insert(), dict(b="b4", q="q4"))
-            conn.execute(cls.tables.content.insert(), dict(type="t1"))
+    def insert_data(cls, connection):
+        conn = connection
+        conn.execute(cls.tables.keyed1.insert(), dict(b="a1", q="c1"))
+        conn.execute(cls.tables.keyed2.insert(), dict(a="a2", b="b2"))
+        conn.execute(cls.tables.keyed3.insert(), dict(a="a3", d="d3"))
+        conn.execute(cls.tables.keyed4.insert(), dict(b="b4", q="q4"))
+        conn.execute(cls.tables.content.insert(), dict(type="t1"))
 
-            if testing.requires.schemas.enabled:
-                conn.execute(
-                    cls.tables[
-                        "%s.wschema" % testing.config.test_schema
-                    ].insert(),
-                    dict(b="a1", q="c1"),
-                )
+        if testing.requires.schemas.enabled:
+            conn.execute(
+                cls.tables["%s.wschema" % testing.config.test_schema].insert(),
+                dict(b="a1", q="c1"),
+            )
 
     @testing.requires.schemas
     def test_keyed_accessor_wschema(self, connection):
@@ -1835,12 +1833,10 @@ class PositionalTextTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with testing.db.connect() as conn:
-            conn.execute(
-                cls.tables.text1.insert(),
-                [dict(a="a1", b="b1", c="c1", d="d1")],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.text1.insert(), [dict(a="a1", b="b1", c="c1", d="d1")],
+        )
 
     def test_via_column(self, connection):
         c1, c2, c3, c4 = column("q"), column("p"), column("r"), column("d")
@@ -2053,12 +2049,11 @@ class AlternateResultProxyTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with cls.engine.connect() as conn:
-            conn.execute(
-                cls.tables.test.insert(),
-                [{"x": i, "y": "t_%d" % i} for i in range(1, 12)],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.test.insert(),
+            [{"x": i, "y": "t_%d" % i} for i in range(1, 12)],
+        )
 
     @contextmanager
     def _proxy_fixture(self, cls):

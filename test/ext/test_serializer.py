@@ -81,7 +81,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         configure_mappers()
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         params = [
             dict(list(zip(("id", "name"), column_values)))
             for column_values in [
@@ -91,8 +91,9 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
                 (10, "chuck"),
             ]
         ]
-        users.insert().execute(params)
-        addresses.insert().execute(
+        connection.execute(users.insert(), params)
+        connection.execute(
+            addresses.insert(),
             [
                 dict(list(zip(("id", "user_id", "email"), column_values)))
                 for column_values in [
@@ -102,7 +103,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
                     (4, 8, "ed@lala.com"),
                     (5, 9, "fred@fred.com"),
                 ]
-            ]
+            ],
         )
 
     def test_tables(self):

@@ -1695,9 +1695,9 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
         assert Address.user.property._use_get is False
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         User, Address = cls.classes.User, cls.classes.Address
-        s = Session()
+        s = Session(connection)
         s.add_all(
             [
                 User(

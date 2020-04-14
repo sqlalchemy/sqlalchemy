@@ -1171,12 +1171,14 @@ class ColKeysTest(fixtures.MappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        refugees_table.insert().execute(
+    def insert_data(cls, connection):
+        connection.execute(
+            refugees_table.insert(),
             dict(refugee_fid=1, name="refugee1"),
             dict(refugee_fid=2, name="refugee2"),
         )
-        offices_table.insert().execute(
+        connection.execute(
+            offices_table.insert(),
             dict(office_fid=1, name="office1"),
             dict(office_fid=2, name="office2"),
         )

@@ -1637,7 +1637,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
         mapper(Page, pages)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
 
         e1 = Engineer(primary_language="java")
         e2 = Engineer(primary_language="c++")
@@ -1658,7 +1658,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             ),
         ]
         e2.paperwork = [Paperwork(description="tps report #3")]
-        sess = create_session()
+        sess = create_session(connection)
         sess.add_all([e1, e2])
         sess.flush()
 
@@ -2128,9 +2128,9 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
         mapper(MachineType, machine_type)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         c1 = cls._fixture()
-        sess = create_session()
+        sess = create_session(connection)
         sess.add(c1)
         sess.flush()
 
@@ -2782,7 +2782,7 @@ class SubqueryloadDistinctTest(
             movie_id = Column(Integer, ForeignKey("movie.id"))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Movie = cls.classes.Movie
         Director = cls.classes.Director
         DirectorPhoto = cls.classes.DirectorPhoto
@@ -2794,7 +2794,7 @@ class SubqueryloadDistinctTest(
             Movie(title="Manhattan", credits=[Credit(), Credit()]),
             Movie(title="Sweet and Lowdown", credits=[Credit()]),
         ]
-        sess = create_session()
+        sess = create_session(connection)
         sess.add_all([d])
         sess.flush()
 
@@ -2958,11 +2958,11 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
             )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Parent = cls.classes.Parent
         Child = cls.classes.Child
 
-        s = Session()
+        s = Session(connection)
         s.add(Parent(name="parent", children=[Child(name="c1")]))
         s.commit()
 
@@ -3008,10 +3008,10 @@ class SelfRefInheritanceAliasedTest(
             __mapper_args__ = {"polymorphic_identity": "bar"}
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Foo, Bar = cls.classes("Foo", "Bar")
 
-        session = Session()
+        session = Session(connection)
         target = Bar(id=1)
         b1 = Bar(id=2, foo=Foo(id=3, foo=target))
         session.add(b1)
@@ -3117,12 +3117,12 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
             id = Column(Integer, primary_key=True)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, A2, B, C1o2m, C2o2m, C1m2o, C2m2o = cls.classes(
             "A", "A2", "B", "C1o2m", "C2o2m", "C1m2o", "C2m2o"
         )
 
-        s = Session()
+        s = Session(connection)
 
         b = B(
             c1_o2m=[C1o2m()], c2_o2m=[C2o2m()], c1_m2o=C1m2o(), c2_m2o=C2m2o()

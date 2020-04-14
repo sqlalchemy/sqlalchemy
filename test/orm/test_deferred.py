@@ -1256,10 +1256,10 @@ class SelfReferentialMultiPathTest(testing.fixtures.DeclarativeMappedTest):
             name = sa.Column(sa.String(10))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Node = cls.classes.Node
 
-        session = Session()
+        session = Session(connection)
         session.add_all(
             [
                 Node(id=1, name="name"),
@@ -1721,9 +1721,9 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             b_expr = query_expression()
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
-        s = Session()
+        s = Session(connection)
 
         s.add_all(
             [
@@ -1866,9 +1866,9 @@ class RaiseLoadTest(fixtures.DeclarativeMappedTest):
             z = deferred(Column(Integer), raiseload=True)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A = cls.classes.A
-        s = Session()
+        s = Session(connection)
         s.add(A(id=1, x=2, y=3, z=4))
         s.commit()
 

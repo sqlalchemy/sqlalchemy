@@ -231,19 +231,18 @@ class AnyAllTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         stuff = cls.tables.stuff
-        with testing.db.begin() as conn:
-            conn.execute(
-                stuff.insert(),
-                [
-                    {"id": 1, "value": 1},
-                    {"id": 2, "value": 2},
-                    {"id": 3, "value": 3},
-                    {"id": 4, "value": 4},
-                    {"id": 5, "value": 5},
-                ],
-            )
+        connection.execute(
+            stuff.insert(),
+            [
+                {"id": 1, "value": 1},
+                {"id": 2, "value": 2},
+                {"id": 3, "value": 3},
+                {"id": 4, "value": 4},
+                {"id": 5, "value": 5},
+            ],
+        )
 
     def test_any_w_comparator(self, connection):
         stuff = self.tables.stuff

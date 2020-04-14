@@ -555,9 +555,9 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
             deferred_data = deferred(Column(String(30)))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A = cls.classes.A
-        s = Session()
+        s = Session(connection)
         s.add(A(data="d1", deferred_data="d2"))
         s.commit()
 

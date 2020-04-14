@@ -69,9 +69,9 @@ class BaseAndSubFixture(object):
             a_sub_id = Column(ForeignKey("asub.id"))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, ASub, C = cls.classes("A", "B", "ASub", "C")
-        s = Session()
+        s = Session(connection)
         s.add(A(id=1, adata="adata", bs=[B(), B()]))
         s.add(
             ASub(
@@ -564,11 +564,11 @@ class LoaderOptionsTest(
             )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Parent, ChildSubclass1, Other = cls.classes(
             "Parent", "ChildSubclass1", "Other"
         )
-        session = Session()
+        session = Session(connection)
 
         parent = Parent(id=1)
         subclass1 = ChildSubclass1(id=1, parent=parent)

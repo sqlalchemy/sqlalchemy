@@ -1,6 +1,5 @@
 import datetime
 
-from .. import config
 from .. import engines
 from .. import fixtures
 from ..assertions import eq_
@@ -37,21 +36,20 @@ class RowFetchTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.plain_pk.insert(),
-                [
-                    {"id": 1, "data": "d1"},
-                    {"id": 2, "data": "d2"},
-                    {"id": 3, "data": "d3"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.plain_pk.insert(),
+            [
+                {"id": 1, "data": "d1"},
+                {"id": 2, "data": "d2"},
+                {"id": 3, "data": "d3"},
+            ],
+        )
 
-            conn.execute(
-                cls.tables.has_dates.insert(),
-                [{"id": 1, "today": datetime.datetime(2006, 5, 12, 12, 0, 0)}],
-            )
+        connection.execute(
+            cls.tables.has_dates.insert(),
+            [{"id": 1, "today": datetime.datetime(2006, 5, 12, 12, 0, 0)}],
+        )
 
     def test_via_attr(self, connection):
         row = connection.execute(

@@ -1685,7 +1685,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
         mapper(Paperwork, paperwork)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
 
         e1 = Engineer(primary_language="java")
         e2 = Engineer(primary_language="c++")
@@ -1694,7 +1694,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             Paperwork(description="tps report #2"),
         ]
         e2.paperwork = [Paperwork(description="tps report #3")]
-        sess = create_session()
+        sess = create_session(connection)
         sess.add_all([e1, e2])
         sess.flush()
 
@@ -1992,7 +1992,7 @@ class HeterogeneousSubtypesTest(fixtures.DeclarativeMappedTest):
             name = Column(String(50))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Company, Programmer, Manager, GolfSwing, Language = cls.classes(
             "Company", "Programmer", "Manager", "GolfSwing", "Language"
         )
@@ -2016,7 +2016,7 @@ class HeterogeneousSubtypesTest(fixtures.DeclarativeMappedTest):
                 ),
             ],
         )
-        sess = Session()
+        sess = Session(connection)
         sess.add_all([c1, c2])
         sess.commit()
 
@@ -2118,10 +2118,10 @@ class TupleTest(fixtures.DeclarativeMappedTest):
             )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
 
-        session = Session()
+        session = Session(connection)
         session.add_all(
             [
                 A(id1=i, id2=i + 2, bs=[B(id=(i * 6) + j) for j in range(6)])
@@ -2226,10 +2226,10 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
             a = relationship("A", back_populates="bs")
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
 
-        session = Session()
+        session = Session(connection)
         session.add_all(
             [
                 A(id=i, bs=[B(id=(i * 6) + j) for j in range(1, 6)])
@@ -2460,9 +2460,9 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
         mapper(MachineType, machine_type)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         c1 = cls._fixture()
-        sess = create_session()
+        sess = create_session(connection)
         sess.add(c1)
         sess.flush()
 
@@ -2838,10 +2838,10 @@ class SelfRefInheritanceAliasedTest(
             __mapper_args__ = {"polymorphic_identity": "bar"}
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Foo, Bar = cls.classes("Foo", "Bar")
 
-        session = Session()
+        session = Session(connection)
         target = Bar(id=1)
         b1 = Bar(id=2, foo=Foo(id=3, foo=target))
         session.add(b1)
@@ -2943,12 +2943,12 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
             id = Column(Integer, primary_key=True)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, A2, B, C1o2m, C2o2m, C1m2o, C2m2o = cls.classes(
             "A", "A2", "B", "C1o2m", "C2o2m", "C1m2o", "C2m2o"
         )
 
-        s = Session()
+        s = Session(connection)
 
         b = B(
             c1_o2m=[C1o2m()], c2_o2m=[C2o2m()], c1_m2o=C1m2o(), c2_m2o=C2m2o()
@@ -3025,10 +3025,10 @@ class SingleInhSubclassTest(
             user_id = Column(Integer, ForeignKey("user.id"))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         EmployerUser, Role = cls.classes("EmployerUser", "Role")
 
-        s = Session()
+        s = Session(connection)
         s.add(EmployerUser(roles=[Role(), Role(), Role()]))
         s.commit()
 
@@ -3076,10 +3076,10 @@ class MissingForeignTest(
             y = Column(Integer)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
 
-        s = Session()
+        s = Session(connection)
         b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
         s.add_all(
             [
@@ -3130,10 +3130,10 @@ class M2OWDegradeTest(
             y = Column(Integer)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
 
-        s = Session()
+        s = Session(connection)
         b1, b2 = B(id=1, x=5, y=9), B(id=2, x=10, y=8)
         s.add_all(
             [
@@ -3369,11 +3369,11 @@ class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
             parent = relationship("ParentB", back_populates="children")
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         ParentA, ParentB, ChildA, ChildB = cls.classes(
             "ParentA", "ParentB", "ChildA", "ChildB"
         )
-        session = Session()
+        session = Session(connection)
         parent_a = ParentA(id=1)
         parent_b = ParentB(id=2)
         for i in range(10):

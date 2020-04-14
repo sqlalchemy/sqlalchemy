@@ -55,16 +55,17 @@ class UpdateDeleteTest(fixtures.MappedTest):
             pass
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         users = cls.tables.users
 
-        users.insert().execute(
+        connection.execute(
+            users.insert(),
             [
                 dict(id=1, name="john", age_int=25),
                 dict(id=2, name="jack", age_int=47),
                 dict(id=3, name="jill", age_int=29),
                 dict(id=4, name="jane", age_int=37),
-            ]
+            ],
         )
 
     @classmethod
@@ -744,26 +745,28 @@ class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
             pass
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         users = cls.tables.users
 
-        users.insert().execute(
+        connection.execute(
+            users.insert(),
             [
                 dict(id=1, name="john", age=25),
                 dict(id=2, name="jack", age=47),
                 dict(id=3, name="jill", age=29),
                 dict(id=4, name="jane", age=37),
-            ]
+            ],
         )
 
         documents = cls.tables.documents
 
-        documents.insert().execute(
+        connection.execute(
+            documents.insert(),
             [
                 dict(id=1, user_id=1, title="foo"),
                 dict(id=2, user_id=1, title="bar"),
                 dict(id=3, user_id=2, title="baz"),
-            ]
+            ],
         )
 
     @classmethod
@@ -863,16 +866,17 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             pass
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         users = cls.tables.users
 
-        users.insert().execute(
-            [dict(id=1), dict(id=2), dict(id=3), dict(id=4)]
+        connection.execute(
+            users.insert(), [dict(id=1), dict(id=2), dict(id=3), dict(id=4)]
         )
 
         documents = cls.tables.documents
 
-        documents.insert().execute(
+        connection.execute(
+            documents.insert(),
             [
                 dict(id=1, user_id=1, title="foo"),
                 dict(id=2, user_id=1, title="bar"),
@@ -880,7 +884,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
                 dict(id=4, user_id=2, title="hoho"),
                 dict(id=5, user_id=3, title="lala"),
                 dict(id=6, user_id=3, title="bleh"),
-            ]
+            ],
         )
 
     @classmethod
@@ -1141,13 +1145,13 @@ class InheritTest(fixtures.DeclarativeMappedTest):
             manager_name = Column(String(50))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Engineer, Person, Manager = (
             cls.classes.Engineer,
             cls.classes.Person,
             cls.classes.Manager,
         )
-        s = Session(testing.db)
+        s = Session(connection)
         s.add_all(
             [
                 Engineer(name="e1", engineer_name="e1"),

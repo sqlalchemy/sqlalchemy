@@ -3091,10 +3091,10 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Node = cls.classes.Node
 
-        sess = create_session()
+        sess = create_session(connection)
         n1 = Node(data="n1")
         n1.append(Node(data="n11"))
         n1.append(Node(data="n12"))
@@ -3801,7 +3801,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
             pass
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Node, nodes, node_to_nodes = (
             cls.classes.Node,
             cls.tables.nodes,
@@ -3821,7 +3821,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
                 )
             },
         )
-        sess = create_session()
+        sess = create_session(connection)
         n1 = Node(data="n1")
         n2 = Node(data="n2")
         n3 = Node(data="n3")

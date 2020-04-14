@@ -948,14 +948,14 @@ class ExtractTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         # TODO: why does setting hours to anything
         # not affect the TZ in the DB col ?
         class TZ(datetime.tzinfo):
             def utcoffset(self, dt):
                 return datetime.timedelta(hours=4)
 
-        cls.bind.execute(
+        connection.execute(
             cls.tables.t.insert(),
             {
                 "dtme": datetime.datetime(2012, 5, 10, 12, 15, 25),
