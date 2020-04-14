@@ -1923,8 +1923,8 @@ class RelationshipProperty(StrategizedProperty):
         if other.viewonly:
             util.warn_limited(
                 "Setting backref / back_populates on relationship %s to refer "
-                "to viewonly relationship %s will be deprecated in SQLAlchemy "
-                "1.4, and will be disallowed in a future release.  "
+                "to viewonly relationship %s is deprecated "
+                "and will be disallowed in a future release.  "
                 "viewonly relationships should not be mutated",
                 (self, other),
             )
